@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>FetchJet settings</title>
+    <style>
+        :root { --bg: #0b1020; --panel: #141a2e; --panel-2: #1b2340; --line: rgba(255,255,255,.08); --text: #f1f5f9; --muted: #94a3b8; --accent: #6366f1; --ok: #4ade80; --bad: #f87171; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); font-size: 14px; padding: 28px 16px 60px; }
+        .wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+        h1 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+        .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #a855f7); display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+        .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .row label { flex: 1; }
+        .row small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+        input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+        input[type=number], select, textarea { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none; }
+        input[type=number] { width: 110px; }
+        textarea { width: 100%; min-height: 90px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+        textarea:focus, input:focus, select:focus { border-color: var(--accent); }
+        button { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; padding: 9px 14px; color: #fff; background: linear-gradient(135deg, var(--accent), #8b5cf6); }
+        button.ghost { background: var(--panel-2); }
+        .actions { display: flex; gap: 8px; align-items: center; }
+        .saved { color: var(--ok); font-size: 12px; }
+        .status { font-size: 13px; color: var(--muted); }
+        .status b { color: var(--text); }
+        code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+        kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1><span class="logo">⚡</span> FetchJet extension settings</h1>
+
+    <div class="card">
+        <h2>Connection</h2>
+        <div class="status" id="connStatus">Checking FetchJet…</div>
+        <div class="row"><label>Start FetchJet automatically when a download is captured and the app
+            is closed<small>Off: the browser keeps the download when FetchJet is not running. Uses
+                the native messaging host or the <code>fetchjet://</code> link handler registered by
+                the installer.</small></label><input id="autoLaunch" type="checkbox"></div>
+        <div class="row"><label>Show notifications</label><input id="notifications" type="checkbox">
+        </div>
+        <div class="row" id="permRow" style="display:none"><label>Site access<small>Firefox asks for
+            this separately: without it the extension cannot see downloads or media on
+            pages.</small></label>
+            <button class="ghost" id="grantBtn">Allow all sites</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Capture</h2>
+        <div class="row"><label>Enable FetchJet capture<small>Master switch. Shortcut:
+            <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggles it.</small></label><input
+                id="enabled" type="checkbox"></div>
+        <div class="row"><label>Take over browser downloads<small>Any download the browser starts is
+            cancelled and sent to FetchJet instead.</small></label><input id="captureDownloads"
+                                                                          type="checkbox">
+        </div>
+        <div class="row"><label>Intercept clicks on file links<small>Links ending in one of the
+            extensions below open in FetchJet directly.</small></label><input id="captureLinks"
+                                                                              type="checkbox">
+        </div>
+        <div class="row"><label>Detect video &amp; audio on pages<small>Streams the page plays (MP4,
+            WebM, HLS, DASH…) are listed in the popup. YouTube is handled by yt-dlp instead.</small></label><input
+                id="captureMedia" type="checkbox"></div>
+        <div class="row"><label>Ask FetchJet for video qualities automatically<small>When a page
+            plays a video (YouTube, Facebook, Instagram, TikTok, X, Vimeo…), the qualities found by
+            yt-dlp are listed in the popup and on the page button.</small></label><input
+                id="autoResolve" type="checkbox"></div>
+        <div class="row"><label>Show the “Download this video” button on pages</label><input
+                id="pagePanel" type="checkbox"></div>
+        <div class="row"><label>Send the site's cookies with each link<small>Needed for downloads
+            behind a login. Cookies go only to the FetchJet app on this computer
+            (127.0.0.1).</small></label><input id="sendCookies" type="checkbox"></div>
+        <div class="row"><label>Hold this key to download with the browser instead</label>
+            <select id="holdKey">
+                <option value="alt">Alt</option>
+                <option value="ctrl">Ctrl</option>
+                <option value="shift">Shift</option>
+                <option value="meta">Meta / Win / Cmd</option>
+                <option value="none">Disabled</option>
+            </select></div>
+        <div class="row"><label>Ignore browser downloads smaller than (KB)<small>0 = capture
+            everything. The size is only known when the server reports it.</small></label><input
+                id="minSizeKB" min="0" step="1" type="number"></div>
+    </div>
+
+    <div class="card">
+        <h2>File types</h2>
+        <label>Extensions to capture (comma or space separated)</label>
+        <textarea id="extensions" spellcheck="false"></textarea>
+        <div class="actions">
+            <button class="ghost" id="resetExt">Reset to defaults</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Excluded sites</h2>
+        <label>Never capture on these hosts (one per line, sub-domains included)<small>Example:
+            <code>drive.google.com</code></small></label>
+        <textarea id="excludedHosts" placeholder="example.com" spellcheck="false"></textarea>
+    </div>
+
+    <div class="card">
+        <h2>Keyboard shortcuts</h2>
+        <div class="status"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> send current page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>
+            all links on page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggle capture<br>
+            <small>Change them at <code>chrome://extensions/shortcuts</code> (Chrome/Edge) or
+                Add-ons → ⚙ → Manage Extension Shortcuts (Firefox).</small></div>
+    </div>
+
+    <div class="actions">
+        <button id="save">Save</button>
+        <span class="saved" id="saved"></span></div>
+</div>
+<script src="options.js"></script>
+</body>
+</html>

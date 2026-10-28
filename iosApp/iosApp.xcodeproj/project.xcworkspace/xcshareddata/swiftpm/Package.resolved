@@ -1,0 +1,42 @@
+{
+  "originHash" : "53df3491e0d342eee6f8d1d2f5025f0a8ad71d24977e5f28c84d29d58f5c530f",
+  "pins" : [
+    {
+      "identity" : "ffmpeg-ios-lame",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kewlbear/FFmpeg-iOS-Lame",
+      "state" : {
+        "revision" : "1808fa5a1263c5e216646cd8421fc7dcb70520cc",
+        "version" : "0.0.6-b20230730-000000"
+      }
+    },
+    {
+      "identity" : "ffmpeg-ios-support",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kewlbear/FFmpeg-iOS-Support",
+      "state" : {
+        "revision" : "be3bd9149ac53760e8725652eee99c405b2be47a",
+        "version" : "0.0.2"
+      }
+    },
+    {
+      "identity" : "openssl",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/krzyzanowskim/OpenSSL.git",
+      "state" : {
+        "revision" : "0a6149bff4fb00921ce0ec1811f726b166638095",
+        "version" : "3.6.5000"
+      }
+    },
+    {
+      "identity" : "pythonkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pvieito/PythonKit.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "fe7d97334600b0fc11fbef5e0525f93eaa68ef7e"
+      }
+    }
+  ],
+  "version" : 3
+}

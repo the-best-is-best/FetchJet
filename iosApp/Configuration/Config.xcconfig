@@ -1,0 +1,25 @@
+TEAM_ID = Z7W9947668
+
+// ---------------------------------------------------------------------------------------
+// Edition: "full"  = everything (GitHub / AltStore .ipa)   -> bundle id com.michelle.raouf.fetch-jet.full
+//          "store" = App Store compliant (HTTP downloads only) -> bundle id com.michelle.raouf.fetch-jet
+// Override on the command line:  xcodebuild ... FETCHJET_EDITION=store
+// ---------------------------------------------------------------------------------------
+FETCHJET_EDITION = full
+
+FETCHJET_BUNDLE_SUFFIX_full = .full
+FETCHJET_BUNDLE_SUFFIX_store =
+FETCHJET_SWIFT_FLAGS_full = FETCHJET_FULL
+FETCHJET_SWIFT_FLAGS_store = FETCHJET_STORE
+FETCHJET_DISPLAY_NAME_full = FetchJet
+FETCHJET_DISPLAY_NAME_store = FetchJet
+
+FETCHJET_BUNDLE_ID = com.michelle.raouf.fetch-jet$(FETCHJET_BUNDLE_SUFFIX_$(FETCHJET_EDITION))
+
+PRODUCT_NAME = FetchJet
+PRODUCT_BUNDLE_IDENTIFIER = $(FETCHJET_BUNDLE_ID)
+INFOPLIST_KEY_CFBundleDisplayName = $(FETCHJET_DISPLAY_NAME_$(FETCHJET_EDITION))
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) $(FETCHJET_SWIFT_FLAGS_$(FETCHJET_EDITION))
+
+CURRENT_PROJECT_VERSION = 1
+MARKETING_VERSION = 1.0.0

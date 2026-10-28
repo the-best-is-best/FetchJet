@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>FetchJet</title>
+    <style>
+        :root {
+          --bg: #0b1020; --panel: #141a2e; --panel-2: #1b2340; --line: rgba(255,255,255,.08);
+          --text: #f1f5f9; --muted: #94a3b8; --accent: #6366f1; --accent-2: #a855f7;
+          --ok: #4ade80; --bad: #f87171; --warn: #fbbf24;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { width: 360px; background: var(--bg); color: var(--text); font-size: 13px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: linear-gradient(135deg, #1e1b4b, #1a1033); border-bottom: 1px solid var(--line); }
+        .brand { display: flex; align-items: center; gap: 8px; }
+        .logo { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: flex; align-items: center; justify-content: center; font-weight: 900; color: #fff; }
+        .title { font-weight: 700; font-size: 14px; }
+        .status { display: flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; background: rgba(248,113,113,.14); color: var(--bad); border: 1px solid rgba(248,113,113,.3); }
+        .status.online { background: rgba(74,222,128,.14); color: var(--ok); border-color: rgba(74,222,128,.3); }
+        .status.busy { background: rgba(251,191,36,.14); color: var(--warn); border-color: rgba(251,191,36,.3); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .page-url { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .row { display: flex; gap: 6px; }
+        button { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; padding: 8px 10px; color: #fff; background: var(--panel-2); transition: filter .15s; }
+        button:hover { filter: brightness(1.2); }
+        button:disabled { opacity: .5; cursor: default; filter: none; }
+        button.primary { background: linear-gradient(135deg, var(--accent), #8b5cf6); flex: 1; }
+        button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+        button.small { padding: 5px 8px; font-size: 11px; }
+        input[type=text] { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 12px; outline: none; }
+        input[type=text]:focus { border-color: var(--accent); }
+        .media-list { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow: auto; }
+        .media { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--panel-2); border-radius: 8px; }
+        .kind { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 5px; background: rgba(99,102,241,.25); color: #c7d2fe; min-width: 44px; text-align: center; }
+        .kind.Audio { background: rgba(168,85,247,.25); color: #e9d5ff; }
+        .kind.HLS, .kind.DASH { background: rgba(251,191,36,.2); color: #fde68a; }
+        .kind.ytdlp { background: rgba(74,222,128,.2); color: #bbf7d0; }
+        .kind.captured { background: rgba(248,113,113,.2); color: #fecaca; }
+        .media.off { opacity: .6; }
+        .media .sub { display:block; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .media .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+        .media .size { color: var(--muted); font-size: 11px; white-space: nowrap; }
+        .empty { color: var(--muted); font-size: 12px; text-align: center; padding: 6px 0; }
+        .toggle { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); }
+        .switch { position: relative; width: 34px; height: 18px; background: #334155; border-radius: 9px; cursor: pointer; transition: background .15s; }
+        .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+        .switch.on { background: var(--accent); }
+        .switch.on::after { left: 18px; }
+        .footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 12px; font-size: 11px; color: var(--muted); }
+        .footer a { color: var(--muted); cursor: pointer; text-decoration: none; }
+        .footer a:hover { color: var(--text); }
+        .msg { min-height: 14px; font-size: 11px; text-align: center; color: var(--ok); }
+        .msg.err { color: var(--bad); }
+        .banner { background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3); color: #fde68a; border-radius: 8px; padding: 8px 10px; font-size: 11px; display: none; }
+        .banner button { margin-top: 6px; width: 100%; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="brand">
+        <div class="logo">⚡</div>
+        <span class="title">FetchJet</span></div>
+    <div class="status" id="status" title="Click to connect / launch FetchJet"><span
+            class="dot"></span><span id="statusText">Checking…</span></div>
+</div>
+
+<div class="body">
+    <div class="banner" id="permBanner">
+        FetchJet needs access to websites to capture downloads and media on every page.
+        <button class="primary" id="grantBtn">Allow access to all sites</button>
+    </div>
+
+    <div class="card" id="pageCard">
+        <div class="page-title" id="pageTitle">Current page</div>
+        <div class="page-url" id="pageUrl">…</div>
+        <div class="row">
+            <button class="primary" id="sendPageBtn"
+                    title="Send this page to FetchJet (video sites are inspected with yt-dlp)">⚡
+                Download page / video
+            </button>
+            <button id="allLinksBtn" title="Send every downloadable link on this page">All links
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Video &amp; media on this page <span><button class="small ghost" id="resolveBtn"
+                                                         title="Ask FetchJet (yt-dlp) for the qualities of this page">Get qualities</button> <button
+                class="small ghost" id="clearMediaBtn">Clear</button></span></h3>
+        <div class="media-list" id="mediaList">
+            <div class="empty">Nothing yet. Play the video, or click “Get qualities”.</div>
+        </div>
+        <button class="primary" id="allMediaBtn" style="display:none">Download all detected media
+            files
+        </button>
+    </div>
+
+    <div class="card">
+        <h3>Paste a link</h3>
+        <div class="row">
+            <input id="urlInput" placeholder="https://… or magnet:?…" type="text">
+            <button class="primary" id="sendInputBtn" style="flex:0 0 auto">Send</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="toggle">Capture downloads &amp; links
+            <div class="switch" id="enabledSwitch" role="switch"></div>
+        </div>
+        <div class="toggle">Detect media on pages
+            <div class="switch" id="mediaSwitch" role="switch"></div>
+        </div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+</div>
+
+<div class="footer">
+    <span id="hint">Hold Alt while clicking to download with the browser</span>
+    <a id="optionsLink">Settings</a>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

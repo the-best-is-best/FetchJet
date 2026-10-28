@@ -1,0 +1,732 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		41F731523092206B00EE47F8 /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 41F731513092206B00EE47F8 /* PythonKit */; };
+		41F731553092209D00EE47F8 /* FFmpeg-iOS-Lame in Frameworks */ = {isa = PBXBuildFile; productRef = 41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */; };
+		A1000000000000000000000A /* DownloadWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* DownloadWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B20000000000000000000002 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Python.xcframework */; };
+		B20000000000000000000003 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B30000000000000000000002 /* LibTorrent.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* LibTorrent.xcframework */; };
+		B30000000000000000000003 /* LibTorrent.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* LibTorrent.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B2000000000000000000000A /* FFmpeg-iOS-Support in Frameworks */ = {isa = PBXBuildFile; productRef = B20000000000000000000009 /* FFmpeg-iOS-Support */; };
+		B3000000000000000000000A /* OpenSSL in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000009 /* OpenSSL */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6E1CF0B19FEAF2E316F282B8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000007;
+			remoteInfo = DownloadWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A1000000000000000000000B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A1000000000000000000000A /* DownloadWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B20000000000000000000005 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B20000000000000000000003 /* Python.xcframework in Embed Frameworks */,
+				B30000000000000000000003 /* LibTorrent.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		86AF69C485E6ED2A6EC01284 /* FetchJet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FetchJet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000001 /* DownloadWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DownloadWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Python.xcframework; path = Frameworks/Python.xcframework; sourceTree = "<group>"; };
+		B30000000000000000000001 /* LibTorrent.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = LibTorrent.xcframework; path = Frameworks/LibTorrent.xcframework; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		880CFCC1892261D67094E619 /* Exceptions for "iosApp" folder in "iosApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7FA41CC48E8F42CF7F1EAB6E /* iosApp */;
+		};
+		A10000000000000000000002 /* Exceptions for "DownloadWidget" folder in "DownloadWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A10000000000000000000007 /* DownloadWidget */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		215AC81CD2FF532F6569BD35 /* Configuration */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		60CF63DCB2DFD077A95A1BAD /* iosApp */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				880CFCC1892261D67094E619 /* Exceptions for "iosApp" folder in "iosApp" target */,
+			);
+			path = iosApp;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000003 /* DownloadWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A10000000000000000000002 /* Exceptions for "DownloadWidget" folder in "DownloadWidget" target */,
+			);
+			path = DownloadWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6A305F061367FF94866E3311 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				41F731553092209D00EE47F8 /* FFmpeg-iOS-Lame in Frameworks */,
+				B2000000000000000000000A /* FFmpeg-iOS-Support in Frameworks */,
+				B3000000000000000000000A /* OpenSSL in Frameworks */,
+				41F731523092206B00EE47F8 /* PythonKit in Frameworks */,
+				B20000000000000000000002 /* Python.xcframework in Frameworks */,
+				B30000000000000000000002 /* LibTorrent.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		38408DA9EE9BD43C9696AB14 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				86AF69C485E6ED2A6EC01284 /* FetchJet.app */,
+				A10000000000000000000001 /* DownloadWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		83C726E80E5A1CEE8F3E957F = {
+			isa = PBXGroup;
+			children = (
+				215AC81CD2FF532F6569BD35 /* Configuration */,
+				60CF63DCB2DFD077A95A1BAD /* iosApp */,
+				A10000000000000000000003 /* DownloadWidget */,
+				B20000000000000000000004 /* Frameworks */,
+				38408DA9EE9BD43C9696AB14 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B20000000000000000000004 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000001 /* Python.xcframework */,
+				B30000000000000000000001 /* LibTorrent.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7FA41CC48E8F42CF7F1EAB6E /* iosApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4BB720EC6A616B7E9E3D3A09 /* Build configuration list for PBXNativeTarget "iosApp" */;
+			buildPhases = (
+				B40000000000000000000001 /* Prepare Native Frameworks */,
+				11CE927B672A43E080796B7D /* Compile Kotlin Framework */,
+				FAFC93194E1123143FAD1042 /* Sources */,
+				6A305F061367FF94866E3311 /* Frameworks */,
+				98FFF1A4C002AE18C61095F2 /* Resources */,
+				B20000000000000000000006 /* Install Python Runtime */,
+				B20000000000000000000005 /* Embed Frameworks */,
+				A1000000000000000000000B /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000009 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				60CF63DCB2DFD077A95A1BAD /* iosApp */,
+			);
+			name = iosApp;
+			packageProductDependencies = (
+				41F731513092206B00EE47F8 /* PythonKit */,
+				41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */,
+				B20000000000000000000009 /* FFmpeg-iOS-Support */,
+				B30000000000000000000009 /* OpenSSL */,
+			);
+			productName = iosApp;
+			productReference = 86AF69C485E6ED2A6EC01284 /* FetchJet.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000007 /* DownloadWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000000000000000000000E /* Build configuration list for PBXNativeTarget "DownloadWidget" */;
+			buildPhases = (
+				A10000000000000000000004 /* Sources */,
+				A10000000000000000000005 /* Frameworks */,
+				A10000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000009 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000003 /* DownloadWidget */,
+			);
+			name = DownloadWidget;
+			packageProductDependencies = (
+			);
+			productName = DownloadWidget;
+			productReference = A10000000000000000000001 /* DownloadWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6E1CF0B19FEAF2E316F282B8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					7FA41CC48E8F42CF7F1EAB6E = {
+						CreatedOnToolsVersion = 16.2;
+					};
+				};
+			};
+			buildConfigurationList = 1DF33F8E243E8FBD46A9C3B9 /* Build configuration list for PBXProject "iosApp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 83C726E80E5A1CEE8F3E957F;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */,
+				41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */,
+				B20000000000000000000008 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Support" */,
+				B30000000000000000000008 /* XCRemoteSwiftPackageReference "OpenSSL" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 38408DA9EE9BD43C9696AB14 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7FA41CC48E8F42CF7F1EAB6E /* iosApp */,
+				A10000000000000000000007 /* DownloadWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		98FFF1A4C002AE18C61095F2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		11CE927B672A43E080796B7D /* Compile Kotlin Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Compile Kotlin Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\nif [ -z \"$JAVA_HOME\" ]; then\n  for cand in \"/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home\" \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" \"$(/usr/libexec/java_home 2>/dev/null)\"; do\n    if [ -n \"$cand\" ] && [ -d \"$cand\" ]; then\n      export JAVA_HOME=\"$cand\"\n      break\n    fi\n  done\nfi\ncd \"$SRCROOT/..\"\n./gradlew :sharedUI:embedAndSignAppleFrameworkForXcode\n";
+		};
+		B20000000000000000000006 /* Install Python Runtime */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Install Python Runtime";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n# Copies the Python standard library from Frameworks/Python.xcframework into the app\n# (python/lib/python3.X) and turns every extension module (.so) into a signed framework.\n# See Frameworks/Python.xcframework/build/utils.sh (BeeWare Python-Apple-support).\nXC=\"$PROJECT_DIR/Frameworks/Python.xcframework\"\nif [ ! -d \"$XC\" ]; then\n  echo \"error: $XC is missing. Download Python-3.13-iOS-support.bNN.tar.gz from https://github.com/beeware/Python-Apple-support/releases and extract Python.xcframework into iosApp/Frameworks/ (see CLAUDE_HANDOFF.md).\"\n  exit 1\nfi\n# Unsigned / simulator builds have no identity: ad-hoc sign the generated frameworks.\nif [ -z \"$(echo \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" | tr -d '[:space:]')\" ]; then\n  export EXPANDED_CODE_SIGN_IDENTITY=\"-\"\n  export EXPANDED_CODE_SIGN_IDENTITY_NAME=\"ad-hoc\"\nfi\nsource \"$XC/build/utils.sh\"\n# curl_cffi (browser impersonation for yt-dlp): prebuilt payload fetched by \"Prepare Native\n# Frameworks\" into Frameworks/SwiftCurlCffi-iOS. site-packages-<platform> is copied to\n# FetchJet.app/python-packages and its .so modules are turned into frameworks like the stdlib.\nCC_RES=\"$PROJECT_DIR/Frameworks/SwiftCurlCffi-iOS/Sources/SwiftCurlCffiIOS/Resources\"\nCC_PY=$(sed -n 's/.*\"python\": *\"\\([0-9.]*\\)\".*/\\1/p' \"$CC_RES/manifest.json\" 2>/dev/null)\nAPP_PY=$(sed -n 's/^#define PY_VERSION[[:space:]]*\"\\([0-9]*\\.[0-9]*\\).*\"/\\1/p' \"$XC/ios-arm64/Python.framework/Headers/patchlevel.h\" | head -1)\nrm -rf \"$CODESIGNING_FOLDER_PATH/python-packages\"\nPKG_ARGS=\"\"\nif [ ! -f \"$CC_RES/curl_cffi_ios_payload.zip\" ]; then\n  echo \"note: curl_cffi payload not available (yt-dlp impersonation disabled)\"\nelif [ -n \"$CC_PY\" ] && [ -n \"$APP_PY\" ] && [ \"$CC_PY\" != \"$APP_PY\" ]; then\n  echo \"warning: curl_cffi payload is for Python $CC_PY, app embeds Python $APP_PY - skipping it (see scripts/ios-prepare-frameworks.sh)\"\nelse\n  CC_TMP=\"$DERIVED_FILE_DIR/curl_cffi_payload\"\n  rm -rf \"$CC_TMP\"; mkdir -p \"$CC_TMP\"\n  unzip -q -o \"$CC_RES/curl_cffi_ios_payload.zip\" -d \"$CC_TMP\"\n  CC_SRC=\"$CC_TMP/curl_cffi_ios_payload/site-packages-$PLATFORM_NAME\"\n  if [ -d \"$CC_SRC\" ]; then\n    echo \"Installing curl_cffi payload for $PLATFORM_NAME\"\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/python-packages\"\n    rsync -a --exclude '__pycache__' \"$CC_SRC/\" \"$CODESIGNING_FOLDER_PATH/python-packages/\"\n    PKG_ARGS=\"python-packages\"\n  else\n    echo \"warning: curl_cffi payload has no site-packages-$PLATFORM_NAME - skipping\"\n  fi\nfi\ninstall_python Frameworks/Python.xcframework $PKG_ARGS\n";
+		};
+		B40000000000000000000001 /* Prepare Native Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Prepare Native Frameworks";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Downloads Python.xcframework / builds LibTorrent.xcframework when missing (idempotent).\n# Full log of the libtorrent build: build/libtorrent-ios.log\ncd \"$SRCROOT/..\"\nexec /bin/bash scripts/ios-prepare-frameworks.sh\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAFC93194E1123143FAD1042 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000007 /* DownloadWidget */;
+			targetProxy = A10000000000000000000008 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		86F29708BA017477534B8E74 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 215AC81CD2FF532F6569BD35 /* Configuration */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1000000000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DownloadWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DownloadWidget;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID).DownloadWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A1000000000000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DownloadWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DownloadWidget;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID).DownloadWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A98E7F7EDFB3A36070664F02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iosApp/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "FetchJet requires access to your Documents folder to save and read downloaded files.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "FetchJet requires access to your Downloads folder to save downloaded files.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "FetchJet needs permission to add downloaded videos and photos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FetchJet requires access to your photo library to save and export downloaded videos and images.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		C43CC371FFC0D38B949D6C17 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iosApp/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "FetchJet requires access to your Documents folder to save and read downloaded files.";
+				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "FetchJet requires access to your Downloads folder to save downloaded files.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "FetchJet needs permission to add downloaded videos and photos to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FetchJet requires access to your photo library to save and export downloaded videos and images.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F1942040EBAD1241A815362F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 215AC81CD2FF532F6569BD35 /* Configuration */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DF33F8E243E8FBD46A9C3B9 /* Build configuration list for PBXProject "iosApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86F29708BA017477534B8E74 /* Debug */,
+				F1942040EBAD1241A815362F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4BB720EC6A616B7E9E3D3A09 /* Build configuration list for PBXNativeTarget "iosApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A98E7F7EDFB3A36070664F02 /* Debug */,
+				C43CC371FFC0D38B949D6C17 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000000000000000000000E /* Build configuration list for PBXNativeTarget "DownloadWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000000000000000000C /* Debug */,
+				A1000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pvieito/PythonKit.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kewlbear/FFmpeg-iOS-Lame";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = "0.0.6-b20230416-184420";
+			};
+		};
+		B20000000000000000000008 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Support" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kewlbear/FFmpeg-iOS-Support";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.2;
+			};
+		};
+		B30000000000000000000008 /* XCRemoteSwiftPackageReference "OpenSSL" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzyzanowskim/OpenSSL.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.1.5004;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		41F731513092206B00EE47F8 /* PythonKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */;
+			productName = PythonKit;
+		};
+		41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */;
+			productName = "FFmpeg-iOS-Lame";
+		};
+		B20000000000000000000009 /* FFmpeg-iOS-Support */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B20000000000000000000008 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Support" */;
+			productName = "FFmpeg-iOS-Support";
+		};
+		B30000000000000000000009 /* OpenSSL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000008 /* XCRemoteSwiftPackageReference "OpenSSL" */;
+			productName = OpenSSL;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 6E1CF0B19FEAF2E316F282B8 /* Project object */;
+}

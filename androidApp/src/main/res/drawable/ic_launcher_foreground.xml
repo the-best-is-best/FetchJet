@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Speed Halo Ring -->
+    <path
+        android:pathData="M 54,16 A 38,38 0 1 0 54,92 A 38,38 0 1 0 54,16 Z"
+        android:strokeWidth="0.8"
+        android:strokeColor="#2500E5FF" />
+
+    <!-- Left Contrail (HTTP Stream - Cyan) -->
+    <path android:pathData="M 45,18 L 49,18 L 50,42 L 46,42 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="48"
+                android:endY="42"
+                android:startX="47"
+                android:startY="18"
+                android:type="linear">
+                <item
+                    android:color="#0000E5FF"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF00E5FF"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right Contrail (Swarm Stream - Violet) -->
+    <path android:pathData="M 59,18 L 63,18 L 62,42 L 58,42 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="60"
+                android:endY="42"
+                android:startX="61"
+                android:startY="18"
+                android:type="linear">
+                <item
+                    android:color="#00818CF8"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF818CF8"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- FetchJet Left Wing -->
+    <path android:pathData="M 54,77 L 24,46 L 41,51 L 49,37 L 54,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="54"
+                android:endY="77"
+                android:startX="24"
+                android:startY="37"
+                android:type="linear">
+                <item
+                    android:color="#FF00F2FE"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF0284C7"
+                    android:offset="0.5" />
+                <item
+                    android:color="#FF0C3D60"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- FetchJet Right Wing -->
+    <path android:pathData="M 54,77 L 84,46 L 67,51 L 59,37 L 54,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="54"
+                android:endY="77"
+                android:startX="84"
+                android:startY="37"
+                android:type="linear">
+                <item
+                    android:color="#FF818CF8"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF4F46E5"
+                    android:offset="0.5" />
+                <item
+                    android:color="#FF2C2F63"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Central Downward Download Arrow / Thrust Spine -->
+    <path android:pathData="M 54,36 L 49,50 L 51,50 L 54,77 L 57,50 L 59,50 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="54"
+                android:endY="77"
+                android:startX="54"
+                android:startY="36"
+                android:type="linear">
+                <item
+                    android:color="#FFFFFFFF"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF38BDF8"
+                    android:offset="0.4" />
+                <item
+                    android:color="#FF00E5FF"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Cockpit Canopy -->
+    <path android:pathData="M 54,41 L 56.5,49 L 54,57 L 51.5,49 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="54"
+                android:endY="57"
+                android:startX="54"
+                android:startY="41"
+                android:type="linear">
+                <item
+                    android:color="#FFFFFFFF"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FFBAE6FD"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Supersonic Shockwave Arc -->
+    <path android:pathData="M 34,80 C 45,89 63,89 74,80 L 76,82 C 64,92 44,92 32,82 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="76"
+                android:endY="92"
+                android:startX="32"
+                android:startY="80"
+                android:type="linear">
+                <item
+                    android:color="#FF00E5FF"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF818CF8"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

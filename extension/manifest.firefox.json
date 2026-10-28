@@ -1,0 +1,90 @@
+{
+  "manifest_version": 3,
+  "name": "FetchJet Download Manager",
+  "version": "3.0.0",
+  "description": "Send downloads, videos, audio and whole link lists from your browser to FetchJet, with cookies and referer so logged-in downloads just work.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "fetchjet@michelle.raouf",
+      "strict_min_version": "121.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "downloads",
+    "contextMenus",
+    "storage",
+    "notifications",
+    "cookies",
+    "nativeMessaging",
+    "webRequest",
+    "webNavigation",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:28450/*",
+    "http://localhost:28450/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "yt-core.js",
+      "background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FetchJet",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "send-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "Download current page / video with FetchJet"
+    },
+    "send-all-links": {
+      "suggested_key": {
+        "default": "Alt+Shift+L"
+      },
+      "description": "Download all links on this page with FetchJet"
+    },
+    "toggle-capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+X"
+      },
+      "description": "Toggle FetchJet download capture"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "FetchJet Download Manager",
+  "version": "3.0.0",
+  "description": "Send downloads, videos, audio and whole link lists from your browser to FetchJet, with cookies and referer so logged-in downloads just work.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdeWTdWaFXC3WkIdJ3ZX0kwZkWAj7KvwCG0eUmG2iUUOVQ1iv9v3/xNgeCxW725sPHJydavfqhIV943oQrIsDrN5B01LWPVJtIUFN/7ozihxOu7Sld+yFGg8xHPLBanexM6D1nTQHdFvU8bowBPEuNLuO+N9JkZZ8uE86jQFq+2bslxMQo9IQ7cdBLdQ91iAMNGLeEI+m77Gd8yhR8HE8lxPGiXJ27gm4THN/1vt2WhPjq3p5yY5VNqj6+oUJS4v7rNZBp6/43L1GwAvasQwXXkZzJGsOfaJwBdG2otkQ4mjRAR/0kA0JM9iuQuvzG8sBzQYlEt7u3JQ9I5Kg0195wIDAQAB",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "downloads",
+    "contextMenus",
+    "storage",
+    "notifications",
+    "cookies",
+    "nativeMessaging",
+    "webRequest",
+    "webNavigation",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:28450/*",
+    "http://localhost:28450/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FetchJet",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "send-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "Download current page / video with FetchJet"
+    },
+    "send-all-links": {
+      "suggested_key": {
+        "default": "Alt+Shift+L"
+      },
+      "description": "Download all links on this page with FetchJet"
+    },
+    "toggle-capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+X"
+      },
+      "description": "Toggle FetchJet download capture"
+    }
+  }
+}
