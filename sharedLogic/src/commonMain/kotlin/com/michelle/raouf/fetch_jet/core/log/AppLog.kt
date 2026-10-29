@@ -1,5 +1,8 @@
 package com.michelle.raouf.fetch_jet.core.log
 
+import com.michelle.raouf.fetch_jet.core.log.AppLog.verbose
+
+
 /**
  * Diagnostic logging switch. Errors are always printed; the chatty lines (torrent peer
  * statistics every few seconds, engine details) only when [verbose] is on.
@@ -12,7 +15,8 @@ package com.michelle.raouf.fetch_jet.core.log
  *    release build can be made to log for a bug report without rebuilding.
  */
 object AppLog {
-    @Volatile
+    // Plain var on purpose: a momentarily stale read only affects whether a debug line prints,
+    // and @Volatile is not available in common code on every Kotlin target.
     var verbose: Boolean = false
 
     /** Printed only in verbose mode; the message is built lazily. */
