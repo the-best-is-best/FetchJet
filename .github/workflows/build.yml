@@ -56,16 +56,24 @@ jobs:
         run: ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease
 
       - name: Upload Android APKs
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: android-release-apk
           path: |
             androidApp/build/outputs/apk/release/*.apk
             androidApp/build/outputs/apk/release/**/*.apk
 
       - name: Upload Android App Bundle
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: android-release-bundle
           path: androidApp/build/outputs/bundle/release/*.aab
 
@@ -94,14 +102,22 @@ jobs:
           tar czf ../FetchJet-linux-x64.tar.gz .
 
       - name: Upload Linux DEB Package
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: desktop-linux-deb
           path: desktopApp/build/compose/binaries/main/deb/*.deb
 
       - name: Upload Linux AppImage
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: desktop-linux-appimage
           path: desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz
 
@@ -124,14 +140,22 @@ jobs:
         run: ./gradlew :desktopApp:packageExe :desktopApp:packageMsi
 
       - name: Upload Windows EXE Installer
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: desktop-windows-exe
           path: desktopApp/build/compose/binaries/main/exe/*.exe
 
       - name: Upload Windows MSI Installer
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: desktop-windows-msi
           path: desktopApp/build/compose/binaries/main/msi/*.msi
 
@@ -154,8 +178,12 @@ jobs:
         run: ./gradlew :desktopApp:packageDmg
 
       - name: Upload macOS DMG Installer
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: desktop-macos-dmg
           path: desktopApp/build/compose/binaries/main/dmg/*.dmg
 
@@ -206,8 +234,12 @@ jobs:
         run: ./scripts/build-ios-ipa.sh full
 
       - name: Upload iOS IPA
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: ios-full-ipa
           path: build/ios/FetchJet-full.ipa
 
@@ -215,6 +247,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: ios-build-logs
           path: |
             build/*.log
@@ -246,8 +279,12 @@ jobs:
           cp build/extension/signed/*.xpi build/extension/
 
       - name: Upload extension packages
+        # Only a v* tag needs the files (for the release): plain pushes just build,
+        # which keeps the account's artifact storage quota from filling up.
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: browser-extension
           path: |
             build/extension/*.zip
