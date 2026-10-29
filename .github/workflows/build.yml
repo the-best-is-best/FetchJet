@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    # The signing secrets are stored in the "release-build" environment (Settings -> Environments).
+    environment: release-build
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,7 +52,8 @@ jobs:
 
       - name: Build Android Release APK and Bundle
         env:
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          # The alias is saved as an environment *variable*, the rest as secrets.
+          SIGNING_KEY_ALIAS: ${{ vars.SIGNING_KEY_ALIAS || secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease

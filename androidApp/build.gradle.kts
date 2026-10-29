@@ -101,7 +101,15 @@ android {
             } else {
                 // Local convenience only. On CI a release without the signing secrets must fail
                 // loudly instead of publishing a debug-signed "release" APK.
-                if (System.getenv("CI") == "true") {
+                // Only when an Android release is actually being built: the desktop and iOS jobs
+                // also configure this project and must not fail on missing Android secrets.
+                val buildsAndroidRelease = gradle.startParameter.taskNames.any { task ->
+                    val t = task.substringAfterLast(':')
+                    (task.startsWith(":androidApp:") || !task.contains(':')) &&
+                            (t.startsWith("assemble") || t.startsWith("bundle") || t.startsWith("package")) &&
+                            t.contains("Release", ignoreCase = true)
+                }
+                if (System.getenv("CI") == "true" && buildsAndroidRelease) {
                     throw GradleException("Release signing not configured: set SIGNING_KEY_STORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS and SIGNING_KEY_PASSWORD secrets")
                 }
                 logger.warn("WARNING: release signing not configured (SIGNING_* env vars missing) - signing release with the DEBUG key")
