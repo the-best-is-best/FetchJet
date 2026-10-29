@@ -79,6 +79,18 @@ struct iOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // A .torrent opened from Files / Safari / Mail, or a magnet: link.
+                .onOpenURL { url in
+                    let target: String?
+                    if url.isFileURL {
+                        target = TorrentFilePicker.shared.importTorrent(url: url)
+                    } else {
+                        target = url.absoluteString
+                    }
+                    if let t = target, !t.isEmpty {
+                        ExternalDownloadBridge.shared.dispatch(url: t, cookie: "")
+                    }
+                }
         }
     }
 }

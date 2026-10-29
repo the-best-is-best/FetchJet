@@ -168,7 +168,7 @@ fun AddDownloadModalDialog(
     var showEndTimePicker by remember { mutableStateOf(false) }
 
     val fullVideoDurationHhMm = remember(mediaDurationSeconds) {
-        if (mediaDurationSeconds > 0) formatSecondsToHhMm(mediaDurationSeconds) else "00:10"
+        if (mediaDurationSeconds > 0) formatSecondsToHhMm(mediaDurationSeconds) else "00:10:00"
     }
 
     val currentStartSec =
@@ -358,12 +358,42 @@ fun AddDownloadModalDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // URL Input Field
-                Text(
-                    text = "Download URL / Magnet Link",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Download URL / Magnet Link",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // A .torrent on this device: the chooser fills the field with its path.
+                    if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent &&
+                        com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.isSupported
+                    ) {
+                        TextButton(
+                            onClick = {
+                                com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.pick { path ->
+                                    if (!path.isNullOrBlank()) {
+                                        urlTextFieldValue =
+                                            TextFieldValue(path, TextRange(path.length))
+                                        onUrlChanged(path)
+                                    }
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                "📂 Open .torrent file",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedTextField(
@@ -967,8 +997,8 @@ fun AddDownloadModalDialog(
                                                 QuickTimeChip(
                                                     label = "First 5 min",
                                                     onClick = {
-                                                        onClipStartTimeChanged("00:00"); onClipEndTimeChanged(
-                                                        "00:05"
+                                                        onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
+                                                        "00:05:00"
                                                     )
                                                     })
                                             }
@@ -976,8 +1006,8 @@ fun AddDownloadModalDialog(
                                                 QuickTimeChip(
                                                     label = "First 15 min",
                                                     onClick = {
-                                                        onClipStartTimeChanged("00:00"); onClipEndTimeChanged(
-                                                        "00:15"
+                                                        onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
+                                                        "00:15:00"
                                                     )
                                                     })
                                             }
@@ -985,8 +1015,8 @@ fun AddDownloadModalDialog(
                                                 QuickTimeChip(
                                                     label = "First 30 min",
                                                     onClick = {
-                                                        onClipStartTimeChanged("00:00"); onClipEndTimeChanged(
-                                                        "00:30"
+                                                        onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
+                                                        "00:30:00"
                                                     )
                                                     })
                                             }
@@ -994,8 +1024,8 @@ fun AddDownloadModalDialog(
                                                 QuickTimeChip(
                                                     label = "First 1 hour",
                                                     onClick = {
-                                                        onClipStartTimeChanged("00:00"); onClipEndTimeChanged(
-                                                        "01:00"
+                                                        onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
+                                                        "01:00:00"
                                                     )
                                                     })
                                             }

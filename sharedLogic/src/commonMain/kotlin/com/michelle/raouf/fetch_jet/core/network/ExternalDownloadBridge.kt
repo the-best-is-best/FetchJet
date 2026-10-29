@@ -26,6 +26,16 @@ data class ExternalDownloadRequest(
 object ExternalDownloadBridge {
     /** Single link: the app opens the Add dialog pre-filled so the user can inspect/choose. */
     var onExternalRequest: ((ExternalDownloadRequest) -> Unit)? = null
+        set(value) {
+            field = value
+            // A file / link opened at launch arrives before the UI exists: replay it now.
+            if (value != null) {
+                val waiting = pending.toList()
+                pending.clear()
+                waiting.forEach { value(it) }
+            }
+        }
+    private val pending = mutableListOf<ExternalDownloadRequest>()
 
     /** Several links at once ("Download all links"): queued directly, no dialog per link. */
     var onExternalBatch: ((List<ExternalDownloadRequest>) -> Unit)? = null
@@ -38,7 +48,8 @@ object ExternalDownloadBridge {
         val clean = request.copy(url = request.url.trim())
         // Do not log the URL: links from the browser often carry signed tokens or session ids.
         println("ExternalDownloadBridge: dispatched a URL (${clean.url.length} chars)")
-        onExternalRequest?.invoke(clean)
+        val handler = onExternalRequest
+        if (handler != null) handler(clean) else pending.add(clean)
     }
 
     fun dispatchBatch(requests: List<ExternalDownloadRequest>) {

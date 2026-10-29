@@ -966,6 +966,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     rawArgs.add("-c")
     rawArgs.add("--no-mtime")
     rawArgs.add("--newline")
+    // Exact bytes on disk so far ("FJBYTES=" appended to yt-dlp's normal progress line): for
+    // fragmented video yt-dlp only estimates the size, and size x percent jumped around.
+    rawArgs.add("--progress-template"); rawArgs.add("download:[download] %(progress._default_template)s FJBYTES=%(progress.downloaded_bytes)s")
     rawArgs.add("--no-playlist")
     rawArgs.add("--geo-bypass")
     if (url.contains("youtube.com", ignoreCase = true) || url.contains(
@@ -1220,7 +1223,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                         if (recordedTotalBytes > 0L) recordedTotalBytes else temporaryEstimatedBytes
                     val computedDownloaded =
                         if (effectiveTotal > 0L) (effectiveTotal * (percent / 100f)).toLong() else 0L
-                    downloadedBytes = computedDownloaded
+                    downloadedBytes =
+                        Regex("""FJBYTES=(\d+)""").find(currentLine)?.groupValues?.get(1)
+                            ?.toLongOrNull() ?: computedDownloaded
 
                     // Per-file percentage, like desktop/Android; MultiStreamProgress (common code)
                     // combines video + audio so the bar always matches the bytes shown.

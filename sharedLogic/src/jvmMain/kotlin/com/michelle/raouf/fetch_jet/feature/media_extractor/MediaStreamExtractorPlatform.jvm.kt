@@ -896,6 +896,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     command.add(outputTemplate)
 
     command.add("--newline")
+    // Exact bytes on disk so far ("FJBYTES=" appended to yt-dlp's normal progress line): for
+    // fragmented video yt-dlp only estimates the size, and size x percent jumped around.
+    command.add("--progress-template"); command.add("download:[download] %(progress._default_template)s FJBYTES=%(progress.downloaded_bytes)s")
     command.add("--")
     command.add(url)
 
@@ -1162,7 +1165,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                                 }
                                 if (totalBytes > 0) progressHolder.totalBytes = totalBytes
                                 val downloadedBytes =
-                                    if (progressHolder.totalBytes > 0) (progressHolder.totalBytes * (percent / 100f)).toLong() else 0L
+                                    Regex("""FJBYTES=(\d+)""").find(currentLine)?.groupValues?.get(1)
+                                        ?.toLongOrNull()
+                                        ?: if (progressHolder.totalBytes > 0) (progressHolder.totalBytes * (percent / 100f)).toLong() else 0L
                                 progressHolder.downloadedBytes = downloadedBytes
 
                                 val speedNum =

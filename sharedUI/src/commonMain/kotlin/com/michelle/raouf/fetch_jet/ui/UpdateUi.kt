@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -198,58 +195,18 @@ fun UpdatesSettingsCard() {
     if (!state.supported) return
     val uriHandler = LocalUriHandler.current
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    SettingsGroup(title = "Updates") {
+        SettingRow(
+            title = "FetchJet ${state.currentVersion}",
+            subtitle = state.available?.let { "Version ${it.version} is available" }
+                ?: "You have the version installed here"
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "🔄 Updates",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Version ${state.currentVersion}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SettingSwitchRow(
-                title = "Check for updates automatically",
-                subtitle = "Looks for a new version when FetchJet starts (at most twice a day).",
-                checked = state.autoCheck,
-                onChange = { UpdateManager.setAutoCheck(it) }
-            )
-
-            if (state.canInstallInApp) {
-                SettingSwitchRow(
-                    title = "Download updates automatically",
-                    subtitle = "Downloads a new version in the background; you only confirm the restart to install it.",
-                    checked = state.autoInstall,
-                    enabled = state.autoCheck,
-                    onChange = { UpdateManager.setAutoInstall(it) }
-                )
+            if (state.available != null) {
+                Button(
+                    onClick = { UpdateManager.showDialog() },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text("See what's new") }
             } else {
-                Text(
-                    text = "On this device FetchJet tells you about a new version and links to its download; " +
-                            "installing it is done by you.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
                 OutlinedButton(
                     onClick = { UpdateManager.checkNow() },
                     enabled = !state.checking,
@@ -262,29 +219,48 @@ fun UpdatesSettingsCard() {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("Check now")
-                }
-                if (state.available != null) {
-                    Button(
-                        onClick = { UpdateManager.showDialog() },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("See version ${state.available!!.version}")
-                    }
-                }
-                TextButton(onClick = { uriHandler.openUri("https://github.com/${com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY}/releases") }) {
-                    Text("All releases")
+                    Text(if (state.checking) "Checking…" else "Check now")
                 }
             }
-
-            state.message?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (it.startsWith("Could not") || it.contains("failed")) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        }
+        state.message?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (it.startsWith("Could not") || it.contains("failed")) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            )
+        }
+        SettingDivider()
+        SettingSwitch(
+            title = "Check for updates automatically",
+            subtitle = "Looks for a new version when FetchJet starts (at most twice a day).",
+            checked = state.autoCheck,
+            onChange = { UpdateManager.setAutoCheck(it) }
+        )
+        SettingDivider()
+        if (state.canInstallInApp) {
+            SettingSwitch(
+                title = "Download updates automatically",
+                subtitle = "Downloads a new version in the background; you only confirm the restart.",
+                checked = state.autoInstall,
+                enabled = state.autoCheck,
+                onChange = { UpdateManager.setAutoInstall(it) }
+            )
+        } else {
+            SettingRow(
+                title = "Installing updates",
+                subtitle = "On this device FetchJet tells you about a new version and links to it; you install it."
+            )
+        }
+        SettingDivider()
+        SettingRow(
+            title = "Release notes",
+            subtitle = "Every version and what changed",
+            onClick = { uriHandler.openUri("https://github.com/${com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY}/releases") }
+        ) {
+            Text("↗", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
 }

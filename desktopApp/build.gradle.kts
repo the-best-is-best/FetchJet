@@ -23,9 +23,17 @@ val fetchJetVersion: String = (rootProject.file(
 ).readText().let { Regex("""APP_VERSION\s*=\s*"([^"]+)"""").find(it)?.groupValues?.get(1) }
     ?: error("APP_VERSION not found in AppVersion.kt")).substringBefore('-')
 
+// Verbose diagnostics: env FETCHJET_VERBOSE_LOGS wins, then fetchjet.verboseLogs in
+// gradle.properties. Baked into the launcher as a JVM system property.
+val fetchJetVerboseLogs: Boolean =
+    (System.getenv("FETCHJET_VERBOSE_LOGS") ?: project.findProperty("fetchjet.verboseLogs")
+        ?.toString() ?: "false")
+        .trim().equals("true", ignoreCase = true)
+
 compose.desktop {
     application {
         mainClass = "com.michelle.raouf.fetch_jet.MainKt"
+        jvmArgs += listOf("-Dfetchjet.verboseLogs=$fetchJetVerboseLogs")
 
         // packageRelease* would run ProGuard with no keep rules for ktor/okhttp/okio and
         // the packaged app would crash at startup. Keep it off until rules exist.
@@ -45,6 +53,12 @@ compose.desktop {
             packageVersion = fetchJetVersion
             description = "FetchJet High-Velocity Multi-Engine Downloader"
             vendor = "Michelle Raouf"
+            // Double-clicking a .torrent opens it in FetchJet (the path arrives as the first arg).
+            fileAssociation(
+                mimeType = "application/x-bittorrent",
+                extension = "torrent",
+                description = "BitTorrent file"
+            )
             // includeAllModules bundles the whole JDK (~270 MB incl. JavaFX, jshell, javadoc...).
             // This explicit list keeps the runtime small. Re-check with
             //   ./gradlew :desktopApp:suggestRuntimeModules

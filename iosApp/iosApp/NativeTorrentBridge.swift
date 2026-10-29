@@ -362,10 +362,12 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         settings.isNatEnabled = true
         settings.encryptionPolicy = .enabled
         settings.validateHttpsTrackers = false
-        settings.port = 6881
+        // Random port: 6881 is the one every client tries first.
+        let port = Int.random(in: 20000...59999)
+        settings.port = port
         settings.portBindRetries = 10
         settings.outgoingInterfaces = ""
-        settings.listenInterfaces = "0.0.0.0:6881,[::]:6881"
+        settings.listenInterfaces = "0.0.0.0:\(port),[::]:\(port)"
         settings.proxyType = .none
         settings.proxyHostname = ""
         settings.proxyHostPort = 0
@@ -464,7 +466,9 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         }
         let settings = session.settings
         settings.maxDownloadSpeed = UInt(downs.min() ?? 0)
-        settings.maxUploadSpeed = noUpload ? 1 : UInt(ups.min() ?? 0)
+        // "Download only" keeps a 32 KB/s trickle: at 1 B/s peers choke us and the
+        // download crawls (same value as the desktop/Android engine).
+        settings.maxUploadSpeed = noUpload ? 32 * 1024 : UInt(ups.min() ?? 0)
         session.settings = settings
     }
 

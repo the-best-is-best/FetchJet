@@ -442,7 +442,12 @@ class QueueManagerRepository(
         /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
         scheduledAtMs: Long = 0L
     ): Result<DownloadTask> {
-        val trimmedUrl = url.trim()
+        // A quoted / file:// .torrent path is stored as a plain path.
+        val trimmedUrl = url.trim().let {
+            if (com.michelle.raouf.fetch_jet.feature.torrent_engine.isLocalTorrentPath(it))
+                com.michelle.raouf.fetch_jet.feature.torrent_engine.normalizeLocalTorrentPath(it)
+            else it
+        }
         if (trimmedUrl.isBlank()) return Result.failure(Exception("URL cannot be empty"))
 
         var targetUrl = trimmedUrl

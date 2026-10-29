@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -24,13 +26,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,7 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -68,9 +68,11 @@ fun TimeRangePickerDialog(
     // Seconds come only from the typed field (the spinners step by minutes).
     var seconds by remember { mutableStateOf(parsedSeconds.coerceIn(0, 59)) }
 
+    // Always HH:MM:SS (two parts would be read as MM:SS by the download engine).
     val formatted = buildString {
-        append(hours.toString().padStart(2, '0')).append(':').append(minutes.toString().padStart(2, '0'))
-        if (seconds > 0) append(':').append(seconds.toString().padStart(2, '0'))
+        append(hours.toString().padStart(2, '0')).append(':')
+        append(minutes.toString().padStart(2, '0')).append(':')
+        append(seconds.toString().padStart(2, '0'))
     }
     val currentTotalSeconds = hours * 3600L + minutes * 60L + seconds
 

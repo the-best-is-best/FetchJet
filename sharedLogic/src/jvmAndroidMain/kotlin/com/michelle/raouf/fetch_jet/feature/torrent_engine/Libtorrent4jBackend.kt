@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.feature.torrent_engine
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionHandle
 import org.libtorrent4j.SessionManager
@@ -44,12 +45,72 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         SessionManager(false).also { sm ->
             sm.start()
             try {
-                // DHT + local discovery on; libtorrent's default bootstrap nodes are used.
+                // libtorrent's defaults are tuned for a seedbox-style client with many torrents;
+                // a download manager wants each torrent to open connections fast and use the
+                // whole line. These are the values the popular desktop clients ship with.
                 val sp = SettingsPack()
                 sp.isEnableDht = true
                 sp.setBoolean(settings_pack.bool_types.enable_lsd.swigValue(), true)
                 sp.setBoolean(settings_pack.bool_types.enable_upnp.swigValue(), true)
                 sp.setBoolean(settings_pack.bool_types.enable_natpmp.swigValue(), true)
+                sp.setString(
+                    settings_pack.string_types.dht_bootstrap_nodes.swigValue(),
+                    "dht.libtorrent.org:25401,router.bittorrent.com:6881," +
+                            "router.utorrent.com:6881,dht.transmissionbt.com:6881,dht.aelitis.com:6881"
+                )
+                // A random port (6881 is often taken by another client, and then libtorrent
+                // simply has no listen socket: no incoming peers at all).
+                val port =
+                    20000 + (System.nanoTime() % 40000L).toInt().let { if (it < 0) -it else it }
+                sp.setString(
+                    settings_pack.string_types.listen_interfaces.swigValue(),
+                    "0.0.0.0:$port,[::]:$port"
+                )
+                // No global caps: the per-torrent limits in setLimits() are the only ones.
+                sp.downloadRateLimit(0)
+                sp.uploadRateLimit(0)
+                sp.connectionsLimit(800)
+                // How many connection attempts per second (default 30): the first minute of a
+                // download is spent waiting for peers otherwise.
+                sp.setInteger(settings_pack.int_types.connection_speed.swigValue(), 250)
+                sp.setInteger(settings_pack.int_types.torrent_connect_boost.swigValue(), 100)
+                sp.setInteger(settings_pack.int_types.max_peerlist_size.swigValue(), 4000)
+                sp.setInteger(settings_pack.int_types.peer_connect_timeout.swigValue(), 10)
+                sp.setInteger(settings_pack.int_types.request_timeout.swigValue(), 20)
+                // We take the torrents out of libtorrent's queue, but keep sane values anyway.
+                sp.activeDownloads(10)
+                sp.activeSeeds(5)
+                sp.activeLimit(20)
+                sp.setInteger(settings_pack.int_types.unchoke_slots_limit.swigValue(), 16)
+                // Disk / socket buffers sized for fast lines (defaults assume ~10 Mbit).
+                sp.setInteger(
+                    settings_pack.int_types.send_buffer_watermark.swigValue(),
+                    3 * 1024 * 1024
+                )
+                sp.setInteger(
+                    settings_pack.int_types.send_buffer_low_watermark.swigValue(),
+                    512 * 1024
+                )
+                sp.setInteger(
+                    settings_pack.int_types.max_queued_disk_bytes.swigValue(),
+                    16 * 1024 * 1024
+                )
+                sp.setInteger(settings_pack.int_types.aio_threads.swigValue(), 8)
+                // uTP is throttled by many routers; let TCP carry the bulk when both are available.
+                sp.setInteger(
+                    settings_pack.int_types.mixed_mode_algorithm.swigValue(),
+                    settings_pack.bandwidth_mixed_algo_t.prefer_tcp.swigValue()
+                )
+                sp.setBoolean(settings_pack.bool_types.enable_outgoing_utp.swigValue(), true)
+                sp.setBoolean(settings_pack.bool_types.enable_incoming_utp.swigValue(), true)
+                sp.setBoolean(settings_pack.bool_types.announce_to_all_trackers.swigValue(), true)
+                sp.setBoolean(settings_pack.bool_types.announce_to_all_tiers.swigValue(), true)
+                sp.setBoolean(settings_pack.bool_types.prefer_udp_trackers.swigValue(), true)
+                // Web seeds (archive.org & co. serve the files over HTTP): more parallel
+                // connections and a shorter retry after a failed request.
+                sp.setInteger(settings_pack.int_types.max_web_seed_connections.swigValue(), 8)
+                sp.setInteger(settings_pack.int_types.urlseed_wait_retry.swigValue(), 10)
+                sp.setInteger(settings_pack.int_types.urlseed_pipeline_size.swigValue(), 10)
                 sm.applySettings(sp)
             } catch (_: Throwable) {
             }
@@ -66,14 +127,7 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
                 ignoreCase = true
             )
         ) return magnet
-        val trackers = listOf(
-            "udp://tracker.opentrackr.org:1337/announce",
-            "udp://open.stealth.si:80/announce",
-            "udp://tracker.torrent.eu.org:451/announce",
-            "udp://exodus.desync.com:6969/announce",
-            "udp://tracker.openbittorrent.com:6969/announce"
-        )
-        return magnet + trackers.joinToString("") {
+        return magnet + PUBLIC_TRACKERS.joinToString("") {
             "&tr=" + java.net.URLEncoder.encode(
                 it,
                 "UTF-8"
@@ -186,6 +240,16 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
             ?: throw IllegalStateException("libtorrent did not accept the torrent")
         th.unsetFlags(TorrentFlags.AUTO_MANAGED)   // we decide when it runs, not the queue
         th.prioritizeFiles(prio)
+        // A .torrent file often carries one dead tracker (or none): the public ones plus a
+        // DHT announce are what get the first peers quickly.
+        try {
+            val known = th.trackers().map { it.url().lowercase() }.toSet()
+            PUBLIC_TRACKERS.filter { it.lowercase() !in known }
+                .forEach { th.addTracker(AnnounceEntry(it)) }
+            th.forceReannounce()
+            th.forceDHTAnnounce()
+        } catch (_: Throwable) {
+        }
         entries[taskId] = Entry(th, ti, disableUpload)
         setLimits(taskId, downloadLimitBytesPerSec, uploadLimitBytesPerSec)
         th.resume()
@@ -236,10 +300,11 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
     override fun setLimits(taskId: String, downloadBytesPerSec: Long, uploadBytesPerSec: Long) {
         val e = entries[taskId] ?: return
         if (!e.handle.isValid) return
-        // libtorrent: 0 = unlimited. A 1 B/s upload limit is how "do not seed" is expressed.
+        // libtorrent: 0 = unlimited. "Download only" keeps a small trickle (not 1 B/s): peers
+        // that never get a piece back choke us, and the download crawls at a few KB/s.
         e.handle.downloadLimit = downloadBytesPerSec.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         val up = when {
-            e.disableUpload -> 1
+            e.disableUpload -> 32 * 1024
             else -> uploadBytesPerSec.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         }
         e.handle.uploadLimit = up
@@ -258,6 +323,7 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         val errorText: String? = if (err != null && err.isError) err.message else null
         val flags = st.flags()
         val paused = flags.and_(TorrentFlags.PAUSED).non_zero()
+        logDiagnostics(taskId, e, st)
         return TorrentProgress(
             downloadedBytes = st.totalWantedDone(),
             wantedBytes = st.totalWanted(),
@@ -283,6 +349,66 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         )
     }
 
+    // One line every ~15 s per torrent in app.log: enough to see why a download is slow
+    // (no listen port, dead trackers, DHT off, no web seeds, few connect candidates).
+    private val lastDiag = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private fun logDiagnostics(taskId: String, e: Entry, st: TorrentStatus) {
+        if (!com.michelle.raouf.fetch_jet.core.log.AppLog.verbose) return
+        val now = System.currentTimeMillis()
+        val last = lastDiag[taskId] ?: 0L
+        if (now - last < 15_000L) return
+        lastDiag[taskId] = now
+        try {
+            val trackers = try {
+                e.handle.trackers().joinToString(" | ") { t ->
+                    val eps = t.endpoints()
+                    val msg = eps.firstOrNull()?.let { ep ->
+                        val ih = ep.infohashV1()
+                        val m = ih.message()
+                        when {
+                            !m.isNullOrBlank() -> m
+                            ih.fails() > 0 -> "fails=${ih.fails()}"
+                            ih.isWorking -> "ok"
+                            ih.updating() -> "updating"
+                            else -> "idle"
+                        }
+                    } ?: "no endpoint"
+                    t.url().substringAfter("://").substringBefore("/") + "=" + msg
+                }
+            } catch (_: Throwable) {
+                "n/a"
+            }
+            val webInfo = try {
+                val seeds = e.handle.urlSeeds()
+                val conns = e.handle.peerInfo().filter {
+                    it.connectionType() == org.libtorrent4j.PeerInfo.ConnectionType.WEB_SEED ||
+                            it.connectionType() == org.libtorrent4j.PeerInfo.ConnectionType.HTTP_SEED
+                }
+                "webSeeds=${seeds.size}${
+                    if (seeds.isNotEmpty()) seeds.joinToString(
+                        ",",
+                        "[",
+                        "]"
+                    ) { it.take(60) } else ""
+                } " +
+                        "webConns=${conns.size} webDown=${conns.sumOf { it.downSpeed() } / 1024}KB/s"
+            } catch (_: Throwable) {
+                "web=n/a"
+            }
+            println(
+                "[torrent $taskId] state=${st.state()} peers=${st.numPeers()} seeds=${st.numSeeds()} $webInfo " +
+                        "conns=${st.numConnections()} candidates=${st.connectCandidates()} " +
+                        "listPeers=${st.listPeers()} listSeeds=${st.listSeeds()} " +
+                        "down=${st.downloadPayloadRate() / 1024}KB/s up=${st.uploadPayloadRate() / 1024}KB/s " +
+                        "dht=${session.isDhtRunning} dhtNodes=${session.dhtNodes()} " +
+                        "listenPort=${SessionHandle(session.swig()).listenPort} external=${session.externalAddress()} " +
+                        "upLimit=${e.handle.uploadLimit} trackers: $trackers"
+            )
+        } catch (_: Throwable) {
+        }
+    }
+
     override fun shutdown() {
         try {
             entries.clear()
@@ -293,5 +419,14 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
 
     private companion object {
         const val MAGNET_TIMEOUT_SECONDS = 60
+        val PUBLIC_TRACKERS = listOf(
+            "udp://tracker.opentrackr.org:1337/announce",
+            "udp://open.stealth.si:80/announce",
+            "udp://tracker.torrent.eu.org:451/announce",
+            "udp://exodus.desync.com:6969/announce",
+            "udp://tracker.openbittorrent.com:6969/announce",
+            "udp://open.demonii.com:1337/announce",
+            "udp://tracker.dler.org:6969/announce"
+        )
     }
 }

@@ -538,6 +538,12 @@ actual suspend fun downloadMediaWithPlatformTool(
     request.addOption("-c")
     request.addOption("--no-mtime")
     request.addOption("--newline")
+    // Exact bytes on disk so far ("FJBYTES=" appended to yt-dlp's normal progress line): for
+    // fragmented video yt-dlp only estimates the size, and size x percent jumped around.
+    request.addOption(
+        "--progress-template",
+        "download:[download] %(progress._default_template)s FJBYTES=%(progress.downloaded_bytes)s"
+    )
     FileUtil.getCookieFile(context) { cookiePath ->
         request.addOption("--cookies", cookiePath)
     }
@@ -835,7 +841,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                             else -> 0L
                         }
 
-                        downloadedBytes = maxOf(diskBytes, computedFromPercent)
+                        downloadedBytes =
+                            Regex("""FJBYTES=(\d+)""").find(currentLine)?.groupValues?.get(1)
+                                ?.toLongOrNull() ?: maxOf(diskBytes, computedFromPercent)
 
                         onProgress(
                             percent,

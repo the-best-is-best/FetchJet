@@ -794,7 +794,8 @@ class DashboardViewModel(
                 if ((!hasMediaData || durationSec <= 0L) && event.enabled) {
                     return
                 }
-                val fullEndTime = if (durationSec > 0) formatSecondsToHhMm(durationSec) else "00:10"
+                val fullEndTime =
+                    if (durationSec > 0) formatSecondsToHhMm(durationSec) else "00:10:00"
                 _uiState.update {
                     it.copy(
                         isClipRangeEnabled = event.enabled,
@@ -1100,7 +1101,7 @@ class DashboardViewModel(
                         qualities.firstOrNull { !it.videoTitle.isNullOrBlank() }?.videoTitle
                     val duration =
                         qualities.map { it.durationSeconds }.maxOrNull()?.coerceAtLeast(0L) ?: 0L
-                    val fullEnd = if (duration > 0) formatSecondsToHhMm(duration) else "00:10"
+                    val fullEnd = if (duration > 0) formatSecondsToHhMm(duration) else "00:10:00"
 
                     _uiState.update {
                         it.copy(
@@ -1634,9 +1635,14 @@ class DashboardViewModel(
     }
 
     private fun formatSecondsToHhMm(totalSeconds: Long): String {
+        // HH:MM:SS - the seconds matter: a 4:37 video used to get an end time of 00:04,
+        // cutting the last 37 seconds off every "full video" clip.
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
-        return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
+        val seconds = totalSeconds % 60
+        return "${hours.toString().padStart(2, '0')}:${
+            minutes.toString().padStart(2, '0')
+        }:${seconds.toString().padStart(2, '0')}"
     }
 
     private fun normalizeHhMmForYtDlp(hhMm: String): String {

@@ -4,7 +4,10 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 
 class DetectLinkTypeUseCase {
     operator fun invoke(url: String): EngineType {
-        val trimmed = url.trim().lowercase()
+        // "C:\x.torrent" pasted with quotes (Windows "Copy as path") or as file:///... must
+        // still be a torrent, not an HTTP download of a local path.
+        val trimmed = com.michelle.raouf.fetch_jet.feature.torrent_engine
+            .normalizeLocalTorrentPath(url).lowercase()
         return when {
             trimmed.startsWith("magnet:") || trimmed.contains("xt=urn:btih:") || trimmed.endsWith(".torrent") -> EngineType.BITTORRENT
             isMediaSource(trimmed) -> EngineType.MEDIA_STREAM

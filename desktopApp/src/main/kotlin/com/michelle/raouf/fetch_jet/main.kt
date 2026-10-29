@@ -75,6 +75,11 @@ fun parseUrlFromArg(arg: String): String {
     ) {
         return clean
     }
+    // A .torrent file opened with FetchJet (file association / drag onto the exe).
+    val asFile = clean.removePrefix("file://").let { java.io.File(it) }
+    if (clean.lowercase().endsWith(".torrent") && asFile.isFile) {
+        return asFile.absolutePath
+    }
     return ""
 }
 
@@ -518,6 +523,13 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
 
 fun main(rawArgs: Array<String>) {
     installCrashLog()
+    // Baked in at build time (-Dfetchjet.verboseLogs) or switched on for one run with the
+    // environment variable, e.g. to collect a bug report from a release build.
+    com.michelle.raouf.fetch_jet.core.log.AppLog.verbose =
+        System.getenv("FETCHJET_VERBOSE_LOGS")?.trim()?.equals("true", ignoreCase = true)
+            ?: System.getProperty("fetchjet.verboseLogs")?.trim()?.equals("true", ignoreCase = true)
+                    ?: false
+    println("Verbose logs: ${com.michelle.raouf.fetch_jet.core.log.AppLog.verbose}")
     // Started by the OS at login (see StartupLauncher): remember it, and never treat the flag
     // as a link to download.
     val startedAtLogin =

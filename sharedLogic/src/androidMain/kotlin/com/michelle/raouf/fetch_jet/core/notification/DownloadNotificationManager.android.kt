@@ -120,9 +120,11 @@ actual class DownloadNotificationManager actual constructor() {
                     .build()
             }
 
-            // Snapshot tasks in their strict, non-changing display order
-            val tasksSnapshot = taskOrderList.mapNotNull { taskDataMap[it] }
-            val activeTasks = tasksSnapshot.filter { !it.isCompleted }
+            // Snapshot tasks in their strict, non-changing display order.
+            // Only downloads still running: a finished file has no place in a progress card.
+            val tasksSnapshot =
+                taskOrderList.mapNotNull { taskDataMap[it] }.filter { !it.isCompleted }
+            val activeTasks = tasksSnapshot
 
             // Aggregate metrics
             var totalSpeedBps = 0.0
@@ -156,9 +158,7 @@ actual class DownloadNotificationManager actual constructor() {
                     val collapsed = RemoteViews(pkg, collapsedLayoutId)
                     val expanded = RemoteViews(pkg, expandedLayoutId)
 
-                    val topTask =
-                        tasksSnapshot.firstOrNull { !it.isCompleted } ?: tasksSnapshot.firstOrNull()
-                    val topTaskName = topTask?.fileName ?: "Downloads"
+                    val topTaskName = tasksSnapshot.firstOrNull()?.fileName ?: "Downloads"
 
                     // --- Populate Collapsed View ---
                     val colTitleId = res.getIdentifier("live_collapsed_title", "id", pkg)
@@ -183,7 +183,7 @@ actual class DownloadNotificationManager actual constructor() {
                     val expSpeedId = res.getIdentifier("live_expanded_speed", "id", pkg)
                     val expOverallProgId = res.getIdentifier("live_overall_progress", "id", pkg)
 
-                    expanded.setTextViewText(expTitleId, "FetchJet Live Activity")
+                    expanded.setTextViewText(expTitleId, "FetchJet")
                     expanded.setTextViewText(expCountId, "${activeTasks.size} active")
                     expanded.setTextViewText(expSpeedId, totalSpeedStr)
                     expanded.setProgressBar(expOverallProgId, 100, overallPercent, false)
@@ -238,7 +238,7 @@ actual class DownloadNotificationManager actual constructor() {
                         expanded.setViewVisibility(moreTextId, View.VISIBLE)
                         expanded.setTextViewText(
                             moreTextId,
-                            "+ ${tasksSnapshot.size - maxSlots} more downloads in queue"
+                            "+ ${tasksSnapshot.size - maxSlots} more downloading"
                         )
                     } else {
                         expanded.setViewVisibility(moreTextId, View.GONE)
@@ -268,11 +268,11 @@ actual class DownloadNotificationManager actual constructor() {
             }.joinToString("\n")
 
             return NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setContentTitle("FetchJet Live Downloads ($totalSpeedStr)")
-                .setContentText("${activeTasks.size} active downloads • $overallPercent%")
+                .setContentTitle("FetchJet downloads ($totalSpeedStr)")
+                .setContentText("${activeTasks.size} downloading • $overallPercent%")
                 .setStyle(
                     NotificationCompat.BigTextStyle()
-                        .setBigContentTitle("FetchJet Live Downloads ($totalSpeedStr)")
+                        .setBigContentTitle("FetchJet downloads ($totalSpeedStr)")
                         .bigText(summaryLines)
                 )
                 .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -339,37 +339,36 @@ actual class DownloadNotificationManager actual constructor() {
     ) {
         val ctx = getEffectiveContext() ?: return
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    ctx,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
-        }
-
+        // The foreground service (wake + Wi-Fi lock, no background throttling) must run for
+        // every download, whether or not the user lets us post notifications. Only the
+        // visible card is skipped without permission.
+        val canNotify = (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED)
         val notificationManager = NotificationManagerCompat.from(ctx)
-        if (!notificationManager.areNotificationsEnabled()) {
-            return
+
+        // 100 % alone is not "done": a video sits at 100 % while audio and video are merged.
+        val isCompleted = speedText.equals("Completed", ignoreCase = true)
+
+        if (isCompleted) {
+            // Done: drop it from the live card right away (the card shows progress only).
+            taskOrderList.remove(taskId)
+            taskDataMap.remove(taskId)
+        } else {
+            // Strict deterministic insertion: tasks added to the end and NEVER reordered!
+            if (!taskOrderList.contains(taskId)) {
+                taskOrderList.add(taskId)
+            }
+            taskDataMap[taskId] = LiveTaskItem(
+                taskId = taskId,
+                fileName = fileName.ifBlank { "Download Task" },
+                progressPercent = progressPercent,
+                speedText = speedText,
+                downloadedBytes = downloadedBytes,
+                totalBytes = totalBytes,
+                isCompleted = false
+            )
         }
-
-        val isCompleted = progressPercent >= 100 || speedText.equals("Completed", ignoreCase = true)
-
-        // Strict deterministic insertion: tasks added to the end and NEVER reordered!
-        if (!taskOrderList.contains(taskId)) {
-            taskOrderList.add(taskId)
-        }
-
-        taskDataMap[taskId] = LiveTaskItem(
-            taskId = taskId,
-            fileName = fileName.ifBlank { "Download Task" },
-            progressPercent = progressPercent,
-            speedText = speedText,
-            downloadedBytes = downloadedBytes,
-            totalBytes = totalBytes,
-            isCompleted = isCompleted
-        )
 
         val activeCount = taskOrderList.mapNotNull { taskDataMap[it] }.count { !it.isCompleted }
 
@@ -378,7 +377,10 @@ actual class DownloadNotificationManager actual constructor() {
             taskOrderList.clear()
             taskDataMap.clear()
             DownloadForegroundService.stop(ctx)
-            notificationManager.cancel(FOREGROUND_NOTIFICATION_ID)
+            try {
+                notificationManager.cancel(FOREGROUND_NOTIFICATION_ID)
+            } catch (_: Throwable) {
+            }
             return
         }
 
@@ -386,10 +388,11 @@ actual class DownloadNotificationManager actual constructor() {
         if (!DownloadForegroundService.isRunning) {
             DownloadForegroundService.start(ctx)
         }
+        if (!canNotify || !notificationManager.areNotificationsEnabled()) return
 
-        // Throttle notification updates to at most once per 500ms
+        // Throttle progress updates to at most once per 500ms (a finished file refreshes at once)
         val now = System.currentTimeMillis()
-        if (now - lastUpdateTime < 500L) {
+        if (!isCompleted && now - lastUpdateTime < 500L) {
             return
         }
         lastUpdateTime = now

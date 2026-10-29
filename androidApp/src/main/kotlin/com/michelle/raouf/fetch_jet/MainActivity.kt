@@ -31,6 +31,16 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> }
 
+    // "Open .torrent file" in the Add dialog: the system document picker.
+    private var torrentPickCallback: ((android.net.Uri?) -> Unit)? = null
+    private val torrentPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val cb = torrentPickCallback
+        torrentPickCallback = null
+        cb?.invoke(uri)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
@@ -46,6 +56,23 @@ class MainActivity : ComponentActivity() {
 
         PathResolver.appContext = applicationContext
         DownloadNotificationManager.setContext(applicationContext)
+        com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.launcher = { onResult ->
+            torrentPickCallback = onResult
+            try {
+                torrentPicker.launch(
+                    arrayOf(
+                        "application/x-bittorrent",
+                        "application/octet-stream",
+                        "*/*"
+                    )
+                )
+            } catch (_: Throwable) {
+                torrentPickCallback = null
+                onResult(null)
+            }
+        }
+        handleIncomingIntent(intent)
         com.michelle.raouf.fetch_jet.feature.media_extractor.triggerBackgroundYtDlpUpdate(
             applicationContext
         )
@@ -88,6 +115,32 @@ class MainActivity : ComponentActivity() {
                 onDarkModeChanged = { isDark = it }
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    /** A .torrent file or a magnet link opened with FetchJet. */
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val uri = intent.data ?: return
+        // Consume it: a rotation must not add the same torrent again.
+        intent.data = null
+        intent.action = null
+        val target = when (uri.scheme?.lowercase()) {
+            "magnet" -> uri.toString()
+            "content", "file" ->
+                com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.copyTorrentToCache(
+                    applicationContext, uri
+                )
+
+            "http", "https" -> uri.toString()
+            else -> null
+        } ?: return
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(target)
     }
 
     private fun requestPermissionsIfNeeded() {

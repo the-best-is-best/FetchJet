@@ -39,13 +39,12 @@ class DownloadForegroundService : Service() {
         try {
             val wifiManager =
                 applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager
+            // LOW_LATENCY only takes effect while the app is in the foreground with the screen
+            // on, so it did nothing for background downloads; HIGH_PERF keeps Wi-Fi at full
+            // throughput (no power-save mode) while the service runs.
+            @Suppress("DEPRECATION")
             wifiLock = wifiManager?.createWifiLock(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-                } else {
-                    @Suppress("DEPRECATION")
-                    WifiManager.WIFI_MODE_FULL_HIGH_PERF
-                },
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF,
                 "FetchJet::WifiLock"
             )?.apply {
                 setReferenceCounted(false)

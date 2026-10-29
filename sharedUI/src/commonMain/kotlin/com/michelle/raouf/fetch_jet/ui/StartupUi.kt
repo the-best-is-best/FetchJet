@@ -1,17 +1,11 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -45,57 +39,41 @@ fun StartupSettingsCard() {
         busy = false
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                "🚀 Startup",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            StartupSwitchRow(
-                title = "Start FetchJet when you log in",
-                subtitle = "So scheduled and queued downloads continue and the browser extension always finds the app.",
-                checked = enabled,
-                enabled = !busy,
-                onChange = { want ->
-                    busy = true
-                    error = null
-                    scope.launch {
-                        StartupLauncher.setEnabled(want)
-                            .onFailure { error = "Could not change the setting: ${it.message}" }
-                        enabled = StartupLauncher.isEnabled()
-                        busy = false
-                    }
+    SettingsGroup(title = "Startup") {
+        SettingSwitch(
+            title = "Start FetchJet when you log in",
+            subtitle = "Scheduled and queued downloads continue, and the browser extension always finds the app.",
+            checked = enabled,
+            enabled = !busy,
+            onChange = { want ->
+                busy = true
+                error = null
+                scope.launch {
+                    StartupLauncher.setEnabled(want)
+                        .onFailure { error = "Could not change the setting: ${it.message}" }
+                    enabled = StartupLauncher.isEnabled()
+                    busy = false
                 }
-            )
-
-            StartupSwitchRow(
-                title = "Start hidden in the tray",
-                subtitle = "When started at login, stay in the system tray instead of opening the window.",
-                checked = startHidden,
-                enabled = enabled && !busy,
-                onChange = {
-                    startHidden = it
-                    StartupPreferences.startHidden = it
-                }
-            )
-
-            error?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
             }
+        )
+        SettingDivider()
+        SettingSwitch(
+            title = "Start hidden in the tray",
+            subtitle = "When started at login, stay in the tray instead of opening the window.",
+            checked = startHidden,
+            enabled = enabled && !busy,
+            onChange = {
+                startHidden = it
+                StartupPreferences.startHidden = it
+            }
+        )
+        error?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            )
         }
     }
 }

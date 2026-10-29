@@ -29,11 +29,23 @@ val fetchJetVersionCode: Int = fetchJetVersion.substringBefore('-').split('.')
     .map { it.toIntOrNull() ?: 0 }.let { (it + listOf(0, 0, 0)).take(3) }
     .let { (ma, mi, pa) -> ma * 10000 + mi * 100 + pa }
 
+// ABI splits are on for APK runs only (see splits {} below). Computed here, outside every
+// DSL block, so the IDE does not mistake the collection call for a DSL method.
+val requestedTasks: List<String> = gradle.startParameter.taskNames
+val buildingApksNotBundle: Boolean =
+    requestedTasks.none { it.contains("bundle", ignoreCase = true) }
+
 android {
     namespace = "com.michelle.raouf.fetch_jet"
+    // Verbose diagnostics (see AppLog): env FETCHJET_VERBOSE_LOGS, else gradle.properties.
+    val fetchJetVerboseLogs: Boolean =
+        (System.getenv("FETCHJET_VERBOSE_LOGS") ?: project.findProperty("fetchjet.verboseLogs")
+            ?.toString() ?: "false")
+            .trim().equals("true", ignoreCase = true)
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
+        buildConfigField("boolean", "VERBOSE_LOGS", fetchJetVerboseLogs.toString())
         applicationId = "com.michelle.raouf.fetch_jet"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
@@ -48,9 +60,8 @@ android {
             // One APK per CPU for sideloading. Off while building the .aab (Play splits it
             // itself): AGP cannot build a bundle with ABI splits on ("Multiple shrunk-resources
             // files"), so CI builds the APKs and the bundle in two separate Gradle runs.
-            isEnable =
-                gradle.startParameter.taskNames.none { it.contains("bundle", ignoreCase = true) }
-            reset()
+            isEnable = buildingApksNotBundle
+            // (AGP 9 dropped reset(); include() alone defines the list.)
             include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             isUniversalApk = true
         }
@@ -131,5 +142,6 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }

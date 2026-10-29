@@ -121,10 +121,15 @@ fun decodeUnicodeText(input: String): String {
  * Formats total seconds into a HH:MM string (padded with leading zeros).
  */
 fun formatSecondsToHhMm(totalSeconds: Long): String {
+    // Always HH:MM:SS. A two-part "HH:MM" is read by yt-dlp / ffmpeg as MM:SS, so a
+    // 10-minute clip came out as 10 seconds; three parts are unambiguous everywhere.
     val s = if (totalSeconds < 0L) 0L else totalSeconds
     val hours = s / 3600
     val minutes = (s % 3600) / 60
-    return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
+    val seconds = s % 60
+    return "${hours.toString().padStart(2, '0')}:${
+        minutes.toString().padStart(2, '0')
+    }:${seconds.toString().padStart(2, '0')}"
 }
 
 /**
@@ -134,12 +139,13 @@ fun formatHhMmToEnglishText(hhMm: String): String {
     val parts = hhMm.split(":")
     val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
     val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
-    return when {
-        h > 0 && m > 0 -> "${h}h ${m}m"
-        h > 0 -> "${h}h"
-        m > 0 -> "${m}m"
-        else -> "0m"
+    val s = parts.getOrNull(2)?.toIntOrNull() ?: 0
+    val out = buildList {
+        if (h > 0) add("${h}h")
+        if (m > 0) add("${m}m")
+        if (s > 0) add("${s}s")
     }
+    return if (out.isEmpty()) "0s" else out.joinToString(" ")
 }
 
 /**

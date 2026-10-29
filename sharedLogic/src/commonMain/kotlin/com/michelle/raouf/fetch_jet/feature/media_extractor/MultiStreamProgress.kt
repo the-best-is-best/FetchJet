@@ -25,6 +25,13 @@ internal class MultiStreamProgress {
     private val total = LongArray(2)
     private val done = LongArray(2)
 
+    // Fragmented streams (DASH/HLS): yt-dlp only estimates the size ("of ~54.5MiB") and the
+    // estimate jumps around (36 -> 54 -> 44 -> 62 MB). Once it moves, the file is treated as
+    // estimated: the size shown only grows (largest estimate so far, with "~"), and the bar
+    // follows yt-dlp's percentage, which counts fragments and is steady.
+    private val estimated = BooleanArray(2)
+    private val maxEstimate = LongArray(2)
+
     @Volatile
     private var lastIndex = -1
 
@@ -47,6 +54,27 @@ internal class MultiStreamProgress {
         lastIndex = idx
         // The update that announces a new file still carries the previous file's numbers
         // (sent on yt-dlp's "Destination:" line): do not adopt them for the new file.
+        if (!switched && reportedTotal > 0L && total[idx] > 0L &&
+            kotlin.math.abs(reportedTotal - total[idx]) > total[idx] / 50
+        ) {
+            estimated[idx] = true
+        }
+        if (switched && idx < 2) { // a new file starts: its size is not known to be an estimate yet
+            estimated[idx] = false
+            maxEstimate[idx] = 0L
+        }
+        if (!switched && estimated[idx]) {
+            if (reportedTotal > 0L) total[idx] = reportedTotal
+            maxEstimate[idx] = maxOf(maxEstimate[idx], total[idx])
+            val p = progress.coerceIn(0f, 1f)
+            // Real bytes when the platform has them (they only grow), else size x percent.
+            val got = if (downloaded > 0L) downloaded else (maxEstimate[idx] * p).toLong()
+            done[idx] = maxOf(done[idx], got)
+            val shownTotal = maxOf(maxEstimate[idx], done[idx])
+            val fraction = if (shownTotal > 0L) (done[idx].toDouble() / shownTotal).toFloat()
+                .coerceIn(0f, 1f) else p
+            return View(fraction, done[idx], shownTotal, totalIsEstimate = true)
+        }
         if (!switched) {
             if (reportedTotal > 0L) total[idx] = reportedTotal
             val p = progress.coerceIn(0f, 1f)
@@ -70,5 +98,5 @@ internal class MultiStreamProgress {
         return View(fraction, fileDone, fileTotal, totalIsEstimate = false)
     }
 
-    private fun sizeOf(i: Int): Long = maxOf(total[i], done[i])
+    private fun sizeOf(i: Int): Long = maxOf(total[i], done[i], maxEstimate[i])
 }
