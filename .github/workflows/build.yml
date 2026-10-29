@@ -264,6 +264,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # The in-app update check compares the release tag with APP_VERSION: they must match,
+      # or users of the new build would be told about an "update" to the version they have.
+      - name: Check the tag matches APP_VERSION
+        run: |
+          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "tag=$TAG app=$APP_VERSION"
+          if [ "$TAG" != "$APP_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match APP_VERSION $APP_VERSION in AppVersion.kt"
+            exit 1
+          fi
+
       - name: Download all workflow artifacts
         uses: actions/download-artifact@v4
 

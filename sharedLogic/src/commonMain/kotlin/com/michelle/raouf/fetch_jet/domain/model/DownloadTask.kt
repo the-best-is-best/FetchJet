@@ -59,11 +59,57 @@ data class DownloadTask(
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,
+    /** Clip mode chosen when the task was added: full-speed download + local cut (see enqueueTask). */
+    val clipByCutting: Boolean = false,
     val approximateTotalBytes: Long = 0L,
     /**
      * Request headers the browser extension captured for this link (Cookie, Referer,
      * User-Agent). Sent with every HTTP request of the task so logged-in / hot-linked
      * downloads work exactly as they did in the browser.
      */
-    val requestHeaders: Map<String, String> = emptyMap()
+    val requestHeaders: Map<String, String> = emptyMap(),
+    /**
+     * Second progress line for the work after the download (merging video + audio, MP3
+     * conversion, moving the file into place). null = no such step running.
+     */
+    val postProcessLabel: String? = null,
+    /** 0..1, or -1 while the step runs but its length is unknown. */
+    val postProcessProgress: Float = -1f,
+    val postProcessStartedAtMs: Long = 0L,
+    /** HTTP only: whether the server accepts byte ranges (null = not connected yet). */
+    val serverSupportsResume: Boolean? = null
 )
+
+/**
+ * Whether Pause keeps what was downloaded (true), throws it away so Resume starts from zero
+ * (false), or is not known yet (null: an HTTP link before the first connection).
+ */
+fun DownloadTask.canResume(): Boolean? = when (engineType) {
+    EngineType.BITTORRENT -> true
+    // yt-dlp continues its .part files; a clip fetched as a section (ffmpeg) restarts.
+    EngineType.MEDIA_STREAM -> clipByCutting || (clipStart.isNullOrBlank() && clipEnd.isNullOrBlank())
+    // Needs "Accept-Ranges: bytes" and a known length, else the file is streamed again from 0.
+    EngineType.HTTP_DIRECT -> serverSupportsResume
+}
+
+/** Seconds left at the current speed, null when it cannot be estimated. */
+fun DownloadTask.etaSeconds(): Long? {
+    if (status != DownloadStatus.DOWNLOADING || postProcessLabel != null) return null
+    if (currentStepText?.let {
+            it.contains(
+                "Merging",
+                true
+            ) || it.contains("Step 3 of 3")
+        } == true) return null
+    val speed = downloadSpeedBytesPerSec
+    if (speed <= 0L) return null
+    val remaining = when {
+        // A section clip has no real total: extrapolate from the share of the clip time done.
+        engineType == EngineType.MEDIA_STREAM && canResume() == false ->
+            if (progress in 0.02f..0.999f && downloadedBytes > 0L) (downloadedBytes * (1f - progress) / progress).toLong() else return null
+
+        totalBytes > 0L -> (totalBytes - downloadedBytes).coerceAtLeast(0L)
+        else -> return null
+    }
+    return remaining / speed
+}

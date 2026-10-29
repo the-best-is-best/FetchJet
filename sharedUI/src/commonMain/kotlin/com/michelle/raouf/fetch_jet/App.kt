@@ -74,6 +74,8 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
@@ -354,6 +356,14 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         )
                     },
                     onToggleClipRange = { viewModel.onEvent(DashboardUiEvent.OnToggleClipRange(it)) },
+                    clipFastMode = state.clipFastMode,
+                    onToggleClipFastMode = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnToggleClipFastMode(
+                                it
+                            )
+                        )
+                    },
                     onEngineSelected = { viewModel.onEvent(DashboardUiEvent.OnEngineSelected(it)) },
                     onAddDownload = { viewModel.onEvent(DashboardUiEvent.OnAddDownloadClicked) },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(false)) }
@@ -369,6 +379,9 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissRemoveDialog) }
                 )
             }
+
+            // New FetchJet version: automatic check on start + "what's new" dialog
+            com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
             // "Download in browser instead?" (only for plain file links sent by the extension)
             state.browserFallbackUrl?.let { url ->
@@ -859,6 +872,18 @@ private fun DownloadTaskItem(
     val fullPath = decodeUnicodeText(rawFullPath).trim()
     val pathResolver = remember { PathResolver() }
     var showFiles by remember { mutableStateOf(false) }
+    var confirmRestartPause by remember { mutableStateOf(false) }
+    // Pausing a download that cannot resume throws its data away: ask first.
+    val pauseClicked: () -> Unit = {
+        if (task.canResume() == false) confirmRestartPause = true else onPause()
+    }
+    if (confirmRestartPause) {
+        RestartOnPauseDialog(
+            isClip = task.engineType == EngineType.MEDIA_STREAM,
+            onConfirm = { confirmRestartPause = false; onPause() },
+            onDismiss = { confirmRestartPause = false }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -904,13 +929,16 @@ private fun DownloadTaskItem(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Badges row: Engine Type + Clip Range
-            Row(
+            // Badges row: Engine Type + Clip Range + Resume support (wraps on narrow screens)
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 EngineBadge(engineType = task.engineType)
+                if (task.status != DownloadStatus.COMPLETED) {
+                    ResumeBadge(task.canResume())
+                }
 
                 if (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank()) {
                     Surface(
@@ -918,7 +946,10 @@ private fun DownloadTaskItem(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(
-                            text = "✂️ ${task.clipStart ?: "00:00"} - ${task.clipEnd ?: "End"}",
+                            // Fast clip mode downloads the whole video first, then cuts it: say so,
+                            // otherwise the full video's size on a clip card looks like a bug.
+                            text = "✂️ ${task.clipStart ?: "00:00"} - ${task.clipEnd ?: "End"}" +
+                                    if (task.clipByCutting && task.status != DownloadStatus.COMPLETED) " · cut after download" else "",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
@@ -1075,6 +1106,19 @@ private fun DownloadTaskItem(
                 drawStopIndicator = {}
             )
 
+            // Second line: what happens after the download (merging video + audio, MP3
+            // conversion, saving to the folder). On a long video this takes minutes; without it
+            // the task sat at 100 % looking frozen.
+            val postLabel = task.postProcessLabel
+            if (postLabel != null && (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING)) {
+                Spacer(modifier = Modifier.height(6.dp))
+                PostProcessLine(
+                    label = postLabel,
+                    progress = task.postProcessProgress,
+                    startedAtMs = task.postProcessStartedAtMs
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Task Progress & Speed Details
@@ -1083,9 +1127,19 @@ private fun DownloadTaskItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // "~" while the total is still an estimate (video downloading, audio size not known yet)
+                val totalIsEstimate = task.status == DownloadStatus.DOWNLOADING &&
+                        task.approximateTotalBytes > 0L && task.approximateTotalBytes == task.totalBytes
+                // A clip downloaded as a section has no known size until it ends (only a guess):
+                // like other download managers, show only what has been downloaded; the step line
+                // already shows the clip time (09:49 / 10:00).
+                val sectionClipRunning =
+                    task.status == DownloadStatus.DOWNLOADING && !task.clipByCutting &&
+                            (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank())
                 Text(
-                    text = "${formatBytes(task.downloadedBytes)} / ${
-                        if (task.totalBytes > 0) formatBytes(
+                    text = if (sectionClipRunning) formatBytes(task.downloadedBytes)
+                    else "${formatBytes(task.downloadedBytes)} / ${
+                        if (task.totalBytes > 0) (if (totalIsEstimate) "~" else "") + formatBytes(
                             task.totalBytes
                         ) else "Unknown"
                     }",
@@ -1095,7 +1149,13 @@ private fun DownloadTaskItem(
                 )
 
                 val speedText = if (task.status == DownloadStatus.DOWNLOADING) {
-                    if (task.currentStepText?.contains("Merging", ignoreCase = true) == true) {
+                    if (task.postProcessLabel != null) {
+                        "${task.postProcessLabel}..."
+                    } else if (task.currentStepText?.contains(
+                            "Merging",
+                            ignoreCase = true
+                        ) == true
+                    ) {
                         "Merging Audio & Video..."
                     } else if (task.engineType == EngineType.BITTORRENT && task.disableUpload) {
                         "DL: ${
@@ -1120,8 +1180,10 @@ private fun DownloadTaskItem(
                     task.status.name
                 }
 
+                // Time left at the current speed, next to the speed: "2.4 Mbps · 3m 20s left"
+                val eta = task.etaSeconds()
                 Text(
-                    text = speedText,
+                    text = if (eta != null) "$speedText · ${formatEta(eta)} left" else speedText,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = when (task.status) {
@@ -1239,7 +1301,7 @@ private fun DownloadTaskItem(
                     }
                 } else if (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING) {
                     OutlinedButton(
-                        onClick = onPause,
+                        onClick = pauseClicked,
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(
                             1.dp,
@@ -1449,6 +1511,65 @@ private fun TaskListArea(
             }
         }
     }
+}
+
+/** "Resumable" / "No resume" chip; nothing while unknown (HTTP link not connected yet). */
+@Composable
+private fun ResumeBadge(canResume: Boolean?) {
+    if (canResume == null) return
+    val color = if (canResume) StatusCompleted else StatusPaused
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.4f))
+    ) {
+        Text(
+            text = if (canResume) "↻ Resumable" else "⚠ No resume",
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+    }
+}
+
+/** 45s · 12m 05s · 1h 07m */
+private fun formatEta(seconds: Long): String {
+    val s = seconds.coerceAtLeast(0L)
+    return when {
+        s < 60L -> "${s}s"
+        s < 3600L -> "${s / 60}m ${(s % 60).toString().padStart(2, '0')}s"
+        s < 100L * 3600L -> "${s / 3600}h ${((s % 3600) / 60).toString().padStart(2, '0')}m"
+        else -> "> 99h"
+    }
+}
+
+@Composable
+private fun RestartOnPauseDialog(isClip: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(18.dp),
+        title = { Text("This download can't be resumed", fontWeight = FontWeight.Bold) },
+        text = {
+            Text(
+                if (isClip) "Clips cut while downloading can't continue where they stopped. " +
+                        "If you pause now, the clip will start again from the beginning when you resume."
+                else "The server doesn't support resuming. If you pause now, the download will " +
+                        "start again from the beginning when you resume.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) {
+                Text("Pause anyway")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
+                Text("Keep downloading")
+            }
+        }
+    )
 }
 
 @Composable
@@ -1823,6 +1944,81 @@ private fun FdmBottomNavigation(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The post-processing progress line under a task's main bar: label, percentage (or a moving bar
+ * when the length is unknown) and the time the step has been running.
+ */
+@Composable
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun PostProcessLine(label: String, progress: Float, startedAtMs: Long) {
+    // Elapsed time comes from when the step really started (kept in the task), so it does not
+    // restart at 0:00 when the card scrolls out of view and back.
+    val fallbackStart = remember(label) { kotlin.time.Clock.System.now().toEpochMilliseconds() }
+    val start = if (startedAtMs > 0L) startedAtMs else fallbackStart
+    var elapsedSec by remember(label, start) { mutableStateOf(0L) }
+    LaunchedEffect(label, start) {
+        while (true) {
+            elapsedSec = ((kotlin.time.Clock.System.now()
+                .toEpochMilliseconds() - start) / 1000L).coerceAtLeast(0L)
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    val m = elapsedSec / 60
+    val sec = elapsedSec % 60
+    val elapsedText =
+        if (m >= 60) "${m / 60}:${(m % 60).toString().padStart(2, '0')}:${
+            sec.toString().padStart(2, '0')
+        }"
+        else "$m:${sec.toString().padStart(2, '0')}"
+    val icon = when {
+        label.startsWith("Merging", ignoreCase = true) -> "🔗"
+        label.startsWith("Saving", ignoreCase = true) -> "📁"
+        label.contains("MP3", ignoreCase = true) -> "🎵"
+        else -> "⚙️"
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$icon $label",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.tertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Text(
+                text = (if (progress >= 0f) "${(progress * 100).toInt()}% · " else "") + elapsedText,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        val barModifier = Modifier
+            .fillMaxWidth()
+            .height(5.dp)
+            .clip(RoundedCornerShape(3.dp))
+        if (progress >= 0f) {
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = barModifier,
+                color = MaterialTheme.colorScheme.tertiary,
+                gapSize = 0.dp,
+                drawStopIndicator = {}
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = barModifier,
+                color = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }

@@ -241,6 +241,9 @@ class QueueManagerRepository(
         forcedEngineType: EngineType? = null,
         clipStart: String? = null,
         clipEnd: String? = null,
+        /** Clip: whole video at full speed, then a local cut (see CutPlugin.kt). Off = only the
+         *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
+        clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap()
     ): Result<DownloadTask> {
         val trimmedUrl = url.trim()
@@ -260,7 +263,8 @@ class QueueManagerRepository(
                 originalMediaUrl = selected.originalUrl ?: trimmedUrl
                 if (selected.size > 0L) {
                     val isClippingRequest = !clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()
-                    if (isClippingRequest) {
+                    // Fast mode downloads the whole file: its real size is the total.
+                    if (isClippingRequest && !clipByCutting) {
                         val s = parseSimpleTimeSec(clipStart)
                         val e =
                             if (!clipEnd.isNullOrBlank()) parseSimpleTimeSec(clipEnd) else selected.durationSeconds.toDouble()
@@ -288,6 +292,9 @@ class QueueManagerRepository(
         if (engineType == EngineType.MEDIA_STREAM && originalMediaUrl.isNullOrBlank()) {
             originalMediaUrl = trimmedUrl
         }
+        // Clip mode is the user's choice in the Add dialog (default: only the clip is downloaded).
+        val cutAfterDownload =
+            clipByCutting && (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank())
         val taskId = generateUniqueTaskId()
         val destDir =
             if (!customDestinationPath.isNullOrBlank()) customDestinationPath else pathResolver.getDownloadsDirectory()
@@ -308,6 +315,7 @@ class QueueManagerRepository(
             originalUrl = originalMediaUrl,
             clipStart = clipStart,
             clipEnd = clipEnd,
+            clipByCutting = cutAfterDownload,
             approximateTotalBytes = initialApproximateBytes,
             createdAtEpochMs = nowEpochMs(),
             requestHeaders = requestHeaders.filterKeys { it.isNotBlank() }
@@ -544,6 +552,10 @@ class QueueManagerRepository(
                 val originalUrl = extractJsonField(content, "originalUrl")?.ifBlank { null }
                 val clipStart = extractJsonField(content, "clipStart")?.ifBlank { null }
                 val clipEnd = extractJsonField(content, "clipEnd")?.ifBlank { null }
+                val clipByCutting =
+                    extractJsonField(content, "clipByCutting")?.toBooleanStrictOrNull() ?: false
+                val serverSupportsResume =
+                    extractJsonField(content, "serverSupportsResume")?.toBooleanStrictOrNull()
                 val currentStepText = extractJsonField(content, "currentStepText")?.ifBlank { null }
                 val disableUpload =
                     extractJsonField(content, "disableUpload")?.toBooleanStrictOrNull() ?: false
@@ -603,6 +615,8 @@ class QueueManagerRepository(
                     originalUrl = originalUrl,
                     clipStart = clipStart,
                     clipEnd = clipEnd,
+                    clipByCutting = clipByCutting,
+                    serverSupportsResume = serverSupportsResume,
                     currentStepText = currentStepText,
                     disableUpload = disableUpload,
                     maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
@@ -695,7 +709,11 @@ class QueueManagerRepository(
                         it.copy(
                             downloadSpeedBytesPerSec = 0L,
                             uploadSpeedBytesPerSec = 0L,
-                            chunks = emptyList()
+                            chunks = emptyList(),
+                            // the merge/save progress line is not worth a disk write every 0.5 s
+                            postProcessLabel = null,
+                            postProcessProgress = -1f,
+                            postProcessStartedAtMs = 0L
                         )
                     }
                 }
@@ -731,7 +749,7 @@ class QueueManagerRepository(
                             val safeUa = escapeJson(task.requestHeaders["User-Agent"] ?: "")
                             val safeTorrentFiles = escapeJson(task.torrentFiles.joinToString(";") { "${it.index}:${if (it.isSelected) 1 else 0}:${it.priority}" })
                             val safeWebSeeds = escapeJson(task.webSeedUrls.joinToString(" "))
-                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds"}"""
+                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds"}"""
                         }
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()

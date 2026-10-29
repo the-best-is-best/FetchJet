@@ -118,6 +118,8 @@ data class DashboardUiState(
     val clipStartTime: String = "",
     val clipEndTime: String = "",
     val isClipRangeEnabled: Boolean = false,
+    /** Clip: download the whole video at full speed and cut it afterwards (uses more data). */
+    val clipFastMode: Boolean = false,
     val mediaDurationSeconds: Long = 0L,
     val speedDisplayUnit: String = "MB/s"
 )
@@ -150,6 +152,7 @@ sealed interface DashboardUiEvent {
     data class OnClipStartTimeChanged(val time: String) : DashboardUiEvent
     data class OnClipEndTimeChanged(val time: String) : DashboardUiEvent
     data class OnToggleClipRange(val enabled: Boolean) : DashboardUiEvent
+    data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
 

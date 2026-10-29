@@ -628,7 +628,11 @@ async function inspectWithApp(pageUrl) {
   const t = setTimeout(() => controller.abort(), 90000);
   try {
     const res = await fetch(`${FETCHJET_BASE}/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers: { "X-FetchJet": "1" } });
-    const data = await res.json();
+    // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (_) { data = { error: text.trim() }; }
+    if (res.status === 403) return { resolveError: "FetchJet refused the request: reload the extension (it is older than the app)" };
     if (!res.ok || !Array.isArray(data)) return { resolveError: (data && data.error) || `FetchJet answered HTTP ${res.status}` };
     const title = (data.find(q => q.title) || {}).title || "";
     const options = [];

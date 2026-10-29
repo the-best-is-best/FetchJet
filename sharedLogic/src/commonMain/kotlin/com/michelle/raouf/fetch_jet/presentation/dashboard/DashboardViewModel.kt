@@ -395,6 +395,7 @@ class DashboardViewModel(
                         clipStartTime = "",
                         clipEndTime = "",
                         isClipRangeEnabled = false,
+                        clipFastMode = false,
                         mediaDurationSeconds = 0L
                     )
 
@@ -743,6 +744,10 @@ class DashboardViewModel(
 
             is DashboardUiEvent.OnClipEndTimeChanged -> {
                 _uiState.update { it.copy(clipEndTime = event.time) }
+            }
+
+            is DashboardUiEvent.OnToggleClipFastMode -> {
+                _uiState.update { it.copy(clipFastMode = event.enabled) }
             }
 
             is DashboardUiEvent.OnToggleClipRange -> {
@@ -1270,6 +1275,7 @@ class DashboardViewModel(
                 clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
                     currentState.clipEndTime
                 ) else null,
+                clipByCutting = isActualSubClip && currentState.clipFastMode,
                 requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap()
             ).onSuccess { task ->
                 pendingExternalUrl = null
@@ -1289,6 +1295,7 @@ class DashboardViewModel(
                         clipStartTime = "",
                         clipEndTime = "",
                         isClipRangeEnabled = false,
+                        clipFastMode = false,
                         mediaDurationSeconds = 0L
                     )
                 }

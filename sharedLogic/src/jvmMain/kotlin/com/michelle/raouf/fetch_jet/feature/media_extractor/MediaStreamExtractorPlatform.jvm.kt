@@ -17,7 +17,19 @@ import java.util.concurrent.TimeUnit
 
 actual suspend fun resolvePlatformStream(url: String): String? {
 
-    return runYtDlp(listOf("--js-runtimes", "deno", "--js-runtimes", "node", "-g", "--no-warnings", "--", url))
+    return runYtDlp(
+        listOf(
+            "--js-runtimes",
+            "deno",
+            "--js-runtimes",
+            "node",
+            "-g",
+            "--no-warnings",
+            "--no-playlist",
+            "--",
+            url
+        )
+    )
 
 }
 
@@ -123,7 +135,19 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
         ?: throw Exception("yt-dlp tool is not found. Please click 'Download Tools' in Settings.")
 
     val output =
-        runYtDlp(listOf("--js-runtimes", "deno", "--js-runtimes", "node", "-j", "--no-warnings", "--", url))
+        runYtDlp(
+            listOf(
+                "--js-runtimes",
+                "deno",
+                "--js-runtimes",
+                "node",
+                "-j",
+                "--no-warnings",
+                "--no-playlist",
+                "--",
+                url
+            )
+        )
             ?: return emptyList()
 
     val parsedRoot = try {
@@ -737,9 +761,11 @@ actual suspend fun downloadMediaWithPlatformTool(
     formatId: String?,
     clipStart: String?,
     clipEnd: String?,
+    clipByCutting: Boolean,
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
-    onProgress: (Float, Long, Long, Long, String?) -> Unit
+    onProgress: (Float, Long, Long, Long, String?) -> Unit,
+    onPostProcess: ((String, Float) -> Unit)?
 ): Boolean = withContext(Dispatchers.IO) {
     val executableFile = getExistingYtDlpBinary() ?: return@withContext false
 
@@ -826,13 +852,32 @@ actual suspend fun downloadMediaWithPlatformTool(
     command.add("-c")
     command.add("--no-mtime")
     command.add("--geo-bypass")
+    command.add("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
     // (No forced youtube:player_client: the "android" client now needs a PO token and only
     // produced warnings; yt-dlp's default client selection is the right one.)
     if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
         val s = clipStart?.trim()?.ifBlank { null } ?: "0"
         val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        command.add("--download-sections")
-        command.add("*$s-$e")
+        if (clipByCutting) {
+            // Full-speed download, then a local stream-copy cut by FetchJet's own yt-dlp plugin
+            // (see CutPlugin.kt; yt-dlp's "--remove-chapters *a-b" crashes in 2026.x).
+            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
+            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
+            if (pluginDir != null) {
+                command.add("--plugin-dirs"); command.add(pluginDir)
+                command.add("--use-postprocessor"); command.add(
+                    cutPluginArg(
+                        parseTimeToSeconds(s),
+                        endSec
+                    )
+                )
+            } else {
+                command.add("--download-sections"); command.add("*$s-$e")
+            }
+        } else {
+            command.add("--download-sections")
+            command.add("*$s-$e")
+        }
     }
     command.add("-o")
     val isScript = fileName.matches(
@@ -858,6 +903,10 @@ actual suspend fun downloadMediaWithPlatformTool(
     try {
         val processBuilder = ProcessBuilder(command)
             .redirectErrorStream(true)
+        // yt-dlp on Windows writes the pipe in the console code page: titles in Arabic and other
+        // scripts arrived garbled (and so did the file paths in its progress lines).
+        processBuilder.environment()["PYTHONIOENCODING"] = "utf-8"
+        processBuilder.environment()["PYTHONUTF8"] = "1"
 
         if (proxy != null) {
             val proxyUrl = "http://127.0.0.1:${proxy.port}"
@@ -881,7 +930,9 @@ actual suspend fun downloadMediaWithPlatformTool(
 
     val isCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
 
-    val isClipping = !clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()
+    // Progress is read the clip way (ffmpeg "time=") only in section mode; a cut-afterwards
+    // clip downloads like a normal video and the cut shows on the post-processing line.
+    val isClipping = (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) && !clipByCutting
     val clipStartSec = parseTimeToSeconds(clipStart)
     val clipEndSec = if (!clipEnd.isNullOrBlank()) parseTimeToSeconds(clipEnd) else 0.0
     val clipDurationSec = if (clipEndSec > clipStartSec) clipEndSec - clipStartSec else 0.0
@@ -896,8 +947,14 @@ actual suspend fun downloadMediaWithPlatformTool(
     // A merged format ("137+140") means video + audio + merge; a single format id (progressive
     // file, audio-only, HLS) is one plain download. Decide from the chosen format instead of
     // guessing "3 steps" and correcting later.
-    val isMergedFormat = formatId?.contains('+') == true
+    // Decide from the selector actually passed to yt-dlp: a bare "137" was turned into
+    // "137+bestaudio" above, which is a merge too.
+    val fIndex = command.indexOf("-f")
+    val formatSelector = if (fIndex >= 0) command.getOrNull(fIndex + 1).orEmpty() else ""
+    val isMergedFormat = formatSelector.contains('+')
     var totalExpectedPhases = if (isClipping || !isMergedFormat) 1 else 3
+    MediaToolErrors.clear(destinationDir)
+    val postProcess = PostProcessTracker(destinationDir)
     var destinationCount = 0
 
     class ProgressHolder {
@@ -965,19 +1022,24 @@ actual suspend fun downloadMediaWithPlatformTool(
 
     val readerThread = Thread {
         try {
-            process.inputStream.bufferedReader().use { reader ->
+            process.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
                 var line: String? = null
                 while (!isCancelled.get() && reader.readLine().also { line = it } != null) {
                     if (isCancelled.get()) break
                     val rawLine = line ?: continue
                     val currentLine = rawLine.replace(ansiRegex, "").trim()
                     if (currentLine.isBlank()) continue
+                    postProcess.onLine(currentLine)
+                    MediaToolErrors.record(destinationDir, currentLine)
 
                     if (!isClipping && currentLine.contains("Downloading") && currentLine.contains("format(s):")) {
                         val formatPart = currentLine.substringAfter("format(s):").trim()
                         if (!formatPart.contains("+")) {
                             totalExpectedPhases = 1
                             progressHolder.phase = "Downloading Media"
+                        } else {
+                            totalExpectedPhases = 3
+                            progressHolder.phase = "Downloading Video (Step 1 of 3)"
                         }
                     }
 
@@ -986,6 +1048,12 @@ actual suspend fun downloadMediaWithPlatformTool(
                         ))
                     ) {
                         destinationCount++
+                        // A new file starts: its size is not the previous file's.
+                        if (destinationCount > 1) {
+                            progressHolder.totalBytes = 0L
+                            progressHolder.downloadedBytes = 0L
+                            progressHolder.percent = 0f
+                        }
                         if (totalExpectedPhases == 3) {
                             progressHolder.phase = if (destinationCount <= 1) {
                                 "Downloading Video (Step 1 of 3)"
@@ -1164,9 +1232,11 @@ actual suspend fun downloadMediaWithPlatformTool(
     readerThread.start()
 
     try {
-        while (process.isAlive) {
-            coroutineContext.ensureActive()
-            process.waitFor(150, TimeUnit.MILLISECONDS)
+        trackPostProcessing(postProcess, onPostProcess) {
+            while (process.isAlive) {
+                coroutineContext.ensureActive()
+                process.waitFor(150, TimeUnit.MILLISECONDS)
+            }
         }
         val exitCode = process.exitValue()
         exitCode == 0 && !isCancelled.get()

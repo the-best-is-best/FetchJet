@@ -33,6 +33,9 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
     /// yt-dlp's error from the most recent failed capture/execute (shown to the user by Kotlin).
     private var lastRunError: String?
     private let stateLock = NSLock()
+    /// Downloads Kotlin asked to stop (Pause / Cancel). The embedded yt-dlp cannot be killed
+    /// like a process, so its progress hook checks this and raises DownloadCancelled.
+    private var cancelledRuns = Set<String>()
 
     /// ALL Python work happens on this one serial queue: PythonKit does not manage the GIL,
     /// so the interpreter must only ever be touched from a single thread.
@@ -160,11 +163,36 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         return nil
     }
 
-    /// `yt-dlp <args>` with progress; used for the actual download.
+    /// `yt-dlp <args>` with progress, without a way to stop it (kept for older callers).
     public func executeYtDlp(
         args: [String],
         progressCallback: (any IosMediaExecutionProgressCallback)?
     ) -> Int32 {
+        executeYtDlpCancellable(runId: UUID().uuidString, args: args, progressCallback: progressCallback)
+    }
+
+    /// Stops the download started with this id at its next progress update (a fraction of a
+    /// second while downloading). The partial file stays, so a resume continues from it.
+    /// An in-process ffmpeg step (clip, merge) still runs to its end.
+    public func cancelRun(runId: String) {
+        stateLock.lock(); cancelledRuns.insert(runId); stateLock.unlock()
+        NSLog("[yt-dlp] cancel requested for %@", runId)
+    }
+
+    private func isRunCancelled(_ runId: String) -> Bool {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return cancelledRuns.contains(runId)
+    }
+
+    /// `yt-dlp <args>` with progress; used for the actual download. `runId` lets Kotlin stop it.
+    public func executeYtDlpCancellable(
+        runId: String,
+        args: [String],
+        progressCallback: (any IosMediaExecutionProgressCallback)?
+    ) -> Int32 {
+        defer {
+            stateLock.lock(); cancelledRuns.remove(runId); stateLock.unlock()
+        }
         guard ensureEngine() else { return 1 }
         let argv = sanitize(args)
         NSLog("[yt-dlp] run: %@", argv.joined(separator: " "))
@@ -179,6 +207,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         let result = runYtDlp(
             argv: argv,
+            isCancelled: { [weak self] in self?.isRunCancelled(runId) ?? false },
             progress: { dict in
                 let (percent, speed, line) = Self.describeProgress(dict)
                 hookCount += 1
@@ -284,6 +313,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
     /// parse_options -> YoutubeDL(opts) with our logger / progress hook -> download(urls).
     private func runYtDlp(
         argv: [String],
+        isCancelled: (() -> Bool)? = nil,
         progress: (([String: PythonObject]) -> Void)?,
         log: @escaping (String, String) -> Void,
         captureStdout: ((String) -> Void)? = nil
@@ -291,6 +321,11 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         precondition(!Thread.isMainThread, "NativeMediaExtractorBridge must not block the main thread")
         var outcome: String?
         pythonQueue.sync {
+            // Cancelled while it was still waiting for the Python queue: do not start at all.
+            if isCancelled?() == true {
+                outcome = "Download cancelled"
+                return
+            }
             EmbeddedPython.withGIL {
                 do {
                     let ytdlp = try Python.attemptImport("yt_dlp")
@@ -300,7 +335,11 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
 
                     ydlOpts["logger"] = Self.makeLogger(log)
                     if let progress {
-                        ydlOpts["progress_hooks"] = [Self.makeProgressHook(progress)]
+                        if let isCancelled {
+                            ydlOpts["progress_hooks"] = [Self.makeCancellableProgressHook(progress, isCancelled: isCancelled)]
+                        } else {
+                            ydlOpts["progress_hooks"] = [Self.makeProgressHook(progress)]
+                        }
                     }
 
                     let sys = Python.import("sys")
@@ -359,6 +398,31 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
             return Python.None
         }
         .pythonObject
+    }
+
+    /// Progress hook written in Python so it can raise yt-dlp's own DownloadCancelled (a clean
+    /// stop that keeps the .part file for resuming) when Kotlin cancelled this download.
+    private static func makeCancellableProgressHook(
+        _ progress: @escaping ([String: PythonObject]) -> Void,
+        isCancelled: @escaping () -> Bool
+    ) -> PythonObject {
+        let builtins = Python.import("builtins")
+        let ns = Python.dict()
+        let code = """
+                   def _fj_make_hook(on_progress, is_cancelled):
+                       from yt_dlp.utils import DownloadCancelled
+                       def _hook(d):
+                           if is_cancelled(None):
+                               raise DownloadCancelled('Cancelled by FetchJet')
+                           on_progress(d)
+                       return _hook
+                   """
+        builtins.exec(PythonObject(code), ns)
+        // PythonFunction always receives exactly one argument (hence `is_cancelled(None)`).
+        let check = PythonFunction { (_: PythonObject) -> PythonConvertible in
+            isCancelled()
+        }
+        return ns["_fj_make_hook"](makeProgressHook(progress), check.pythonObject)
     }
 
     // MARK: - yt_dlp module (zipimport binary)

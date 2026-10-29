@@ -109,6 +109,8 @@ fun AddDownloadModalDialog(
     onClipStartTimeChanged: (String) -> Unit = {},
     onClipEndTimeChanged: (String) -> Unit = {},
     onToggleClipRange: (Boolean) -> Unit = {},
+    clipFastMode: Boolean = false,
+    onToggleClipFastMode: (Boolean) -> Unit = {},
     onEngineSelected: (EngineType) -> Unit = {},
     onAddDownload: () -> Unit,
     onDismiss: () -> Unit
@@ -696,7 +698,12 @@ fun AddDownloadModalDialog(
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    val isAnyAudio = inspectedMediaQualities.any {
+                                    // Audio only when the *selected* quality is audio (the list always
+                                    // contains audio options, so checking "any" said "Audio" for videos).
+                                    val selectedQuality =
+                                        inspectedMediaQualities.firstOrNull { it.isSelected }
+                                    val isAnyAudio =
+                                        selectedQuality != null && selectedQuality.let {
                                         it.qualityLabel.contains("Audio", ignoreCase = true) ||
                                                 it.format in listOf(
                                             "mp3",
@@ -763,7 +770,11 @@ fun AddDownloadModalDialog(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text(
-                                                        text = "⏱️ $mediaTypeLabel Duration: $fullVideoDurationHhMm (${
+                                                        text = "⏱️ $mediaTypeLabel Duration: ${
+                                                            clockText(
+                                                                mediaDurationSeconds
+                                                            )
+                                                        } (${
                                                             formatSecondsToDisplayFriendly(
                                                                 mediaDurationSeconds
                                                             )
@@ -921,7 +932,11 @@ fun AddDownloadModalDialog(
                                         ) {
                                             if (mediaDurationSeconds > 0) {
                                                 QuickTimeChip(
-                                                    label = "Full Video ($fullVideoDurationHhMm)",
+                                                    label = "Full ${if (isAnyAudio) "Audio" else "Video"} (${
+                                                        clockText(
+                                                            mediaDurationSeconds
+                                                        )
+                                                    })",
                                                     onClick = {
                                                         onClipStartTimeChanged("00:00")
                                                         onClipEndTimeChanged(fullVideoDurationHhMm)
@@ -964,6 +979,48 @@ fun AddDownloadModalDialog(
                                                     )
                                                     })
                                             }
+                                        }
+
+                                        // How the clip is fetched: two always-visible choices, the
+                                        // chosen one highlighted (a single switch whose label
+                                        // changed with its state was confusing).
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "How to download the clip",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        val fullSizeText = selectedQuality?.size?.takeIf { it > 0L }
+                                            ?.let { " (${formatBytes(it)})" } ?: ""
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            ClipModeOption(
+                                                selected = !clipFastMode,
+                                                title = "✂️ Only the clip",
+                                                lines = listOf(
+                                                    "Downloads only the part you chose",
+                                                    "Slower: YouTube limits the speed",
+                                                    "Pause starts the clip over"
+                                                ),
+                                                onClick = { onToggleClipFastMode(false) },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            ClipModeOption(
+                                                selected = clipFastMode,
+                                                title = "⚡ Full $mediaTypeLabel, then cut",
+                                                lines = listOf(
+                                                    "Downloads the whole $mediaTypeLabel$fullSizeText",
+                                                    "Faster: full speed",
+                                                    "Then keeps only your part",
+                                                    "Pause / resume works"
+                                                ),
+                                                onClick = { onToggleClipFastMode(true) },
+                                                modifier = Modifier.weight(1f)
+                                            )
                                         }
                                     }
                                 }
@@ -1622,3 +1679,60 @@ private fun QuickTimeChip(
     }
 }
 
+/** 42:44 / 1:05:09 - a clock reading, so 42 minutes is never shown as "00:42". */
+private fun clockText(totalSeconds: Long): String {
+    val t = totalSeconds.coerceAtLeast(0L)
+    val h = t / 3600
+    val m = (t % 3600) / 60
+    val s = t % 60
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    else "$m:${s.toString().padStart(2, '0')}"
+}
+
+/** One of the two clip download choices: a card, highlighted when chosen. */
+@Composable
+private fun ClipModeOption(
+    selected: Boolean,
+    title: String,
+    lines: List<String>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (selected) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(
+            alpha = 0.25f
+        ),
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) accent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (selected) "◉" else "○",
+                    fontSize = 14.sp,
+                    color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (selected) accent else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            lines.forEach { line ->
+                Text(
+                    text = "• $line",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}

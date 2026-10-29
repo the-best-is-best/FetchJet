@@ -19,6 +19,16 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
+// The app version lives in ONE place: sharedLogic/.../core/update/AppVersion.kt (APP_VERSION).
+val fetchJetVersion: String = rootProject.file(
+    "sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt"
+).readText().let { Regex("""APP_VERSION\s*=\s*"([^"]+)"""").find(it)?.groupValues?.get(1) }
+    ?: error("APP_VERSION not found in AppVersion.kt")
+// versionCode must grow with every release for Android to accept the update: 1.2.3 -> 10203.
+val fetchJetVersionCode: Int = fetchJetVersion.substringBefore('-').split('.')
+    .map { it.toIntOrNull() ?: 0 }.let { (it + listOf(0, 0, 0)).take(3) }
+    .let { (ma, mi, pa) -> ma * 10000 + mi * 100 + pa }
+
 android {
     namespace = "com.michelle.raouf.fetch_jet"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -27,8 +37,8 @@ android {
         applicationId = "com.michelle.raouf.fetch_jet"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = fetchJetVersionCode
+        versionName = fetchJetVersion
         ndk {
             abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
         }

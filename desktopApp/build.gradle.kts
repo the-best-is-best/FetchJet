@@ -16,6 +16,13 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
 }
 
+// The app version lives in ONE place: sharedLogic/.../core/update/AppVersion.kt (APP_VERSION).
+// jpackage needs a plain MAJOR.MINOR.PATCH (no "-beta"): the pre-release part is dropped here.
+val fetchJetVersion: String = (rootProject.file(
+    "sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt"
+).readText().let { Regex("""APP_VERSION\s*=\s*"([^"]+)"""").find(it)?.groupValues?.get(1) }
+    ?: error("APP_VERSION not found in AppVersion.kt")).substringBefore('-')
+
 compose.desktop {
     application {
         mainClass = "com.michelle.raouf.fetch_jet.MainKt"
@@ -35,7 +42,7 @@ compose.desktop {
                 TargetFormat.AppImage
             )
             packageName = "FetchJet"
-            packageVersion = "1.0.0"
+            packageVersion = fetchJetVersion
             description = "FetchJet High-Velocity Multi-Engine Downloader"
             vendor = "Michelle Raouf"
             // includeAllModules bundles the whole JDK (~270 MB incl. JavaFX, jshell, javadoc...).

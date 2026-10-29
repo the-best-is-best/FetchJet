@@ -7,6 +7,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,10 +38,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
 import okio.buffer
+import okio.use
 import kotlin.coroutines.coroutineContext
 import kotlin.time.TimeSource
 
@@ -102,8 +106,29 @@ class MediaStreamDownloader(
 
     override suspend fun start(task: DownloadTask): Result<Unit> {
         return try {
-            activeJobs.remove(task.id)?.cancel()
-            enqueueTask(task.copy(status = DownloadStatus.QUEUED, downloadSpeedBytesPerSec = 0L))
+            // Wait for a previous run to really stop (yt-dlp/ffmpeg killed, files closed)
+            // before touching its files.
+            activeJobs.remove(task.id)?.let { it.cancel(); withTimeoutOrNull(3000L) { it.join() } }
+
+            // Only the section mode cannot resume; a cut-afterwards clip resumes like any video.
+            val isClip =
+                (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank()) && !task.clipByCutting
+            if (isClip) {
+                // A clip is cut by ffmpeg while it downloads and cannot be resumed: yt-dlp took
+                // the half-written file left by a pause as finished and the task completed with
+                // only the part downloaded before the pause. Start the clip again cleanly.
+                try {
+                    deleteRecursively("${pathResolver.getTempDirectory()}/task_${task.id}".toPath())
+                } catch (_: Exception) {
+                }
+            }
+            val fresh = if (isClip) task.copy(
+                downloadedBytes = 0L,
+                progress = 0f,
+                currentStepText = null,
+                errorMessage = null
+            ) else task
+            enqueueTask(fresh.copy(status = DownloadStatus.QUEUED, downloadSpeedBytesPerSec = 0L))
 
             val job = scope.launch {
                 executeMediaDownload(task.id)
@@ -124,6 +149,10 @@ class MediaStreamDownloader(
         }
         val currentJob = activeJobs.remove(taskId)
         currentJob?.cancel()
+        // Wait (briefly) until yt-dlp/ffmpeg is really gone, so an immediate Resume never works
+        // on files the old process is still writing. Capped: on iOS the in-app engine cannot
+        // be interrupted and an unbounded wait would freeze Pause.
+        currentJob?.let { withTimeoutOrNull(3000L) { it.join() } }
         return Result.success(Unit)
     }
 
@@ -136,7 +165,7 @@ class MediaStreamDownloader(
     override suspend fun cancel(taskId: String): Result<Unit> {
         val currentJob = activeJobs.remove(taskId)
         currentJob?.cancel()
-        currentJob?.join()
+        currentJob?.let { withTimeoutOrNull(3000L) { it.join() } } // capped: see pause()
         tasksState.update { current -> current - taskId }
         // The task's scratch folder (yt-dlp .part files, temp copies) is of no use any more.
         try { deleteRecursively("${pathResolver.getTempDirectory()}/task_$taskId".toPath()) } catch (_: Exception) {}
@@ -198,13 +227,14 @@ class MediaStreamDownloader(
             // Check if yt-dlp native download is possible
             if (isMediaExtractorToolInstalled()) {
                 val currentLimit = speedLimitProvider(taskId)
+                // Only the section mode is read as a clip; a cut-afterwards clip downloads like a
+                // normal video (steps 1-3) and the cut shows on the post-processing line.
                 val isClipping =
-                    !initialTask.clipStart.isNullOrBlank() || !initialTask.clipEnd.isNullOrBlank()
-                val initialStep = when {
-                    isClipping -> "Clipping Video..."
-                    initialTask.formatId?.contains('+') == true -> "Downloading Video (Step 1 of 3)..."
-                    else -> "Downloading Media..."
-                }
+                    (!initialTask.clipStart.isNullOrBlank() || !initialTask.clipEnd.isNullOrBlank()) &&
+                            !initialTask.clipByCutting
+                // The platform layer names the real steps as soon as yt-dlp has chosen the formats.
+                val initialStep = if (isClipping) "Clipping Video..." else "Preparing download..."
+                val streams = MultiStreamProgress()
                 updateTaskState(taskId) {
                     if (it.status == DownloadStatus.PAUSED) it
                     else it.copy(
@@ -220,12 +250,56 @@ class MediaStreamDownloader(
                         formatId = initialTask.formatId,
                         clipStart = initialTask.clipStart,
                         clipEnd = initialTask.clipEnd,
+                        clipByCutting = initialTask.clipByCutting,
                         speedLimitBytesPerSec = currentLimit,
                         speedLimitProvider = { speedLimitProvider(taskId) },
                         onProgress = { progress, downloadedBytes, reportedTotalBytes, speedBytesPerSec, stepText ->
                             if (tasksState.value[taskId]?.status != DownloadStatus.PAUSED) {
+                                val combined = if (isClipping) null
+                                else streams.update(
+                                    progress,
+                                    downloadedBytes,
+                                    reportedTotalBytes,
+                                    stepText
+                                )
                                 updateTaskState(taskId) {
                                     if (it.status == DownloadStatus.PAUSED) it
+                                    else if (combined != null) {
+                                        // Video + audio counted together: bar == downloaded / total.
+                                        it.copy(
+                                            status = DownloadStatus.DOWNLOADING,
+                                            progress = combined.fraction,
+                                            downloadedBytes = combined.downloaded,
+                                            totalBytes = combined.total,
+                                            approximateTotalBytes = if (combined.totalIsEstimate) combined.total else 0L,
+                                            downloadSpeedBytesPerSec = if (speedBytesPerSec > 0L) speedBytesPerSec else it.downloadSpeedBytesPerSec,
+                                            currentStepText = stepText ?: it.currentStepText
+                                        )
+                                    } else if (isClipping) {
+                                        // A section clip's size is only an estimate: the one made when the
+                                        // download was added (full size x clip share) assumes an even bitrate
+                                        // and was shown as a fixed total - the clip then passed it
+                                        // ("90.7 MB / 76.7 MB"). Follow the real rate instead: bytes so far /
+                                        // share of the clip time done, never below what is already on disk.
+                                        val got =
+                                            if (downloadedBytes > 0L) downloadedBytes else it.downloadedBytes
+                                        val live =
+                                            if (got > 0L && progress >= 0.03f) (got / progress).toLong() else 0L
+                                        val clipTotal = (if (live > 0L) live else maxOf(
+                                            it.totalBytes,
+                                            reportedTotalBytes
+                                        ))
+                                            .coerceAtLeast(got)
+                                        it.copy(
+                                            status = DownloadStatus.DOWNLOADING,
+                                            progress = if (progress > 0f) progress else it.progress,
+                                            downloadedBytes = got,
+                                            totalBytes = clipTotal,
+                                            approximateTotalBytes = clipTotal, // shown with "~"
+                                            downloadSpeedBytesPerSec = if (speedBytesPerSec > 0L) speedBytesPerSec else it.downloadSpeedBytesPerSec,
+                                            currentStepText = stepText ?: it.currentStepText
+                                        )
+                                    }
                                     else {
                                         val newApprox =
                                             if (isClipping && downloadedBytes > 0 && progress > 0.02f) {
@@ -258,6 +332,13 @@ class MediaStreamDownloader(
                                     }
                                 }
                             }
+                        },
+                        onPostProcess = { label, fraction ->
+                            reportPostProcess(
+                                taskId,
+                                label,
+                                fraction
+                            )
                         }
                     )
                 } catch (e: CancellationException) {
@@ -273,7 +354,11 @@ class MediaStreamDownloader(
                 // yt-dlp failed (or a merge failed): the cache may still hold an intermediate
                 // file like "name.f137.mp4". Do NOT pick it up as the finished download.
                 if (!success) {
-                    throw Exception("Media tool reported a failure. Check the URL, quality or your network.")
+                    throw Exception(
+                        MediaToolErrors.last(cacheDir)
+                            ?.let { "yt-dlp: ${it.removePrefix("ERROR:").trim()}" }
+                            ?: "Media tool reported a failure. Check the URL, quality or your network."
+                    )
                 }
 
                 val baseName = fileName.substringBeforeLast(".")
@@ -321,10 +406,7 @@ class MediaStreamDownloader(
                         }
                         val actualFinalPath =
                             "${initialTask.destinationPath}/${foundCachePath.name}".toPath()
-                        if (FileSystem.SYSTEM.exists(actualFinalPath)) {
-                            FileSystem.SYSTEM.delete(actualFinalPath)
-                        }
-                        FileSystem.SYSTEM.copy(foundCachePath, actualFinalPath)
+                        moveIntoPlace(taskId, foundCachePath, actualFinalPath)
                         deleteRecursively(cacheDir.toPath())
                         updateTaskState(taskId) {
                             it.copy(
@@ -339,6 +421,17 @@ class MediaStreamDownloader(
                         }
                         downloadedRealFile = true
                     }
+                }
+            }
+
+            // Anything after yt-dlp (HTTP fallback) is a plain download: no merge line.
+            if (!downloadedRealFile) {
+                updateTaskState(taskId) {
+                    it.copy(
+                        postProcessLabel = null,
+                        postProcessProgress = -1f,
+                        postProcessStartedAtMs = 0L
+                    )
                 }
             }
 
@@ -1570,15 +1663,90 @@ class MediaStreamDownloader(
 
 
     private fun updateTaskState(taskId: String, transform: (DownloadTask) -> DownloadTask) {
-
         tasksState.update { current ->
-
             val existing = current[taskId] ?: return@update current
-
-            current + (taskId to transform(existing))
-
+            var next = transform(existing)
+            // The post-processing line only exists while the task is running.
+            if (next.postProcessLabel != null && next.status != DownloadStatus.DOWNLOADING &&
+                next.status != DownloadStatus.CONNECTING
+            ) {
+                next = next.copy(
+                    postProcessLabel = null,
+                    postProcessProgress = -1f,
+                    postProcessStartedAtMs = 0L
+                )
+            }
+            current + (taskId to next)
         }
+    }
 
+    private fun reportPostProcess(taskId: String, label: String, fraction: Float) {
+        updateTaskState(taskId) {
+            // Only a running task gets the line: a late tick from a cancelled job must not
+            // pull a paused/queued/restarted task back to DOWNLOADING.
+            if (it.status != DownloadStatus.DOWNLOADING && it.status != DownloadStatus.CONNECTING) it
+            else if (fraction == POST_PROCESS_CLEAR) it.copy(
+                postProcessLabel = null, postProcessProgress = -1f, postProcessStartedAtMs = 0L
+            )
+            else it.copy(
+                status = DownloadStatus.DOWNLOADING,
+                postProcessLabel = label,
+                postProcessProgress = fraction,
+                postProcessStartedAtMs = if (it.postProcessLabel == label && it.postProcessStartedAtMs > 0L)
+                    it.postProcessStartedAtMs else nowEpochMs(),
+                downloadSpeedBytesPerSec = 0L
+            )
+        }
+    }
+
+    /**
+     * Puts the finished file into the user's folder. A rename when cache and destination are on
+     * the same drive (instant); otherwise a copy that reports its progress on the second line,
+     * written under a temporary name so an interrupted copy never leaves a half file behind.
+     */
+    private suspend fun moveIntoPlace(taskId: String, from: okio.Path, to: okio.Path) {
+        if (FileSystem.SYSTEM.exists(to)) FileSystem.SYSTEM.delete(to)
+        try {
+            FileSystem.SYSTEM.atomicMove(from, to)
+            return
+        } catch (_: Exception) {
+            // different drive: copy below
+        }
+        val total = FileSystem.SYSTEM.metadataOrNull(from)?.size ?: 0L
+        val partial = "$to.fetchjet-part".toPath()
+        reportPostProcess(taskId, "Saving to folder", if (total > 0L) 0f else -1f)
+        try {
+            FileSystem.SYSTEM.source(from).buffer().use { src ->
+                FileSystem.SYSTEM.sink(partial).buffer().use { dst ->
+                    val buffer = okio.Buffer()
+                    var copied = 0L
+                    var lastReport = 0L
+                    while (true) {
+                        val n = src.read(buffer, 1L shl 20)
+                        if (n == -1L) break
+                        dst.write(buffer, n)
+                        copied += n
+                        coroutineContext.ensureActive()
+                        val now = nowEpochMs()
+                        if (total > 0L && now - lastReport >= 300L) {
+                            lastReport = now
+                            reportPostProcess(
+                                taskId, "Saving to folder",
+                                (copied.toDouble() / total).toFloat().coerceIn(0f, 1f)
+                            )
+                        }
+                    }
+                }
+            }
+            FileSystem.SYSTEM.atomicMove(partial, to)
+            FileSystem.SYSTEM.delete(from)
+        } catch (e: Exception) {
+            try {
+                FileSystem.SYSTEM.delete(partial)
+            } catch (_: Exception) {
+            }
+            throw e
+        }
     }
 
 

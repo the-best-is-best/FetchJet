@@ -248,7 +248,11 @@ class HttpChunkDownloader(
             val targetFileName = pathResolver.sanitizeFileName(rawFileName)
 
             updateTaskState(taskId) {
-                it.copy(fileName = targetFileName)
+                // Resume needs byte ranges and a known length (see downloadSingleStream).
+                it.copy(
+                    fileName = targetFileName,
+                    serverSupportsResume = acceptRanges && contentLength > 0L
+                )
             }
 
             val baseCacheDir = pathResolver.getTempDirectory()
@@ -275,6 +279,7 @@ class HttpChunkDownloader(
                     throw e
                 } catch (e: RangeNotHonouredException) {
                     // The server cannot do ranges at all: the parts are worthless, stream it whole.
+                    updateTaskState(taskId) { it.copy(serverSupportsResume = false) }
                     cleanupTempFiles(
                         initialTask.copy(
                             fileName = targetFileName,

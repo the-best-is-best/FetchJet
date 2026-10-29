@@ -681,6 +681,9 @@ fun FdmSettingsPanel(
                 }
             }
 
+            // Updates: automatic check, auto download (Windows), check now
+            UpdatesSettingsCard()
+
             // Section 6: Apply / Confirmation Button
             Button(
                 onClick = {

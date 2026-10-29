@@ -17,6 +17,9 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -823,9 +826,11 @@ actual suspend fun downloadMediaWithPlatformTool(
     formatId: String?,
     clipStart: String?,
     clipEnd: String?,
+    clipByCutting: Boolean,
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
-    onProgress: (Float, Long, Long, Long, String?) -> Unit
+    onProgress: (Float, Long, Long, Long, String?) -> Unit,
+    onPostProcess: ((String, Float) -> Unit)?
 ): Boolean = withContext(Dispatchers.IO) {
     requireIosMediaEngine()
     val bridge = IosMediaBridgeRegistry.bridge
@@ -918,8 +923,26 @@ actual suspend fun downloadMediaWithPlatformTool(
     if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
         val s = clipStart?.trim()?.ifBlank { null } ?: "0"
         val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        rawArgs.add("--download-sections")
-        rawArgs.add("*$s-$e")
+        if (clipByCutting) {
+            // Full-speed download, then a local stream-copy cut by FetchJet's own yt-dlp plugin
+            // (see CutPlugin.kt; yt-dlp's "--remove-chapters *a-b" crashes in 2026.x).
+            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
+            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
+            if (pluginDir != null) {
+                rawArgs.add("--plugin-dirs"); rawArgs.add(pluginDir)
+                rawArgs.add("--use-postprocessor"); rawArgs.add(
+                    cutPluginArg(
+                        parseTimeToSeconds(s),
+                        endSec
+                    )
+                )
+            } else {
+                rawArgs.add("--download-sections"); rawArgs.add("*$s-$e")
+            }
+        } else {
+            rawArgs.add("--download-sections")
+            rawArgs.add("*$s-$e")
+        }
     }
 
     if (speedLimitBytesPerSec > 0) {
@@ -957,7 +980,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
     rawArgs.add(url)
 
-    val isClipping = !clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()
+    // Progress is read the clip way (ffmpeg "time=") only in section mode; a cut-afterwards
+    // clip downloads like a normal video and the cut shows on the post-processing line.
+    val isClipping = (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) && !clipByCutting
     val clipStartSec = parseTimeToSeconds(clipStart)
     val clipEndSec = if (!clipEnd.isNullOrBlank()) parseTimeToSeconds(clipEnd) else 0.0
     val clipDurationSec = if (clipEndSec > clipStartSec) clipEndSec - clipStartSec else 0.0
@@ -973,8 +998,13 @@ actual suspend fun downloadMediaWithPlatformTool(
 
     // A merged format ("137+140") means video + audio + merge; a single format id (progressive
     // file, audio-only, HLS) is one plain download. Decide from the chosen format up front.
-    val isMergedFormat = formatId?.contains('+') == true
+    // Decide from the selector actually given to yt-dlp: a bare "137" became "137+bestaudio".
+    val fIndex = rawArgs.indexOf("-f")
+    val formatSelector = if (fIndex >= 0) rawArgs.getOrNull(fIndex + 1).orEmpty() else ""
+    val isMergedFormat = formatSelector.contains('+')
     var totalExpectedPhases = if (isClipping || !isMergedFormat) 1 else 3
+    MediaToolErrors.clear(destinationDir)
+    val postProcess = PostProcessTracker(destinationDir)
     var destinationCount = 0
 
     var recordedTotalBytes = 0L
@@ -999,6 +1029,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     val lineHandler: (String) -> Unit = { rawLine ->
         val currentLine = rawLine.replace(ansiRegex, "").trim()
         if (currentLine.isNotBlank()) {
+            postProcess.onLine(currentLine)
+            MediaToolErrors.record(destinationDir, currentLine)
             val speedMatch = standaloneSpeedRegex.find(currentLine)
             if (speedMatch != null) {
                 val num = speedMatch.groupValues[1].toDoubleOrNull() ?: 0.0
@@ -1040,6 +1072,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                 if (!formatPart.contains("+")) {
                     totalExpectedPhases = 1
                     currentPhase = "Downloading Media"
+                } else {
+                    totalExpectedPhases = 3
+                    currentPhase = "Downloading Video (Step 1 of 3)"
                 }
             }
 
@@ -1048,6 +1083,13 @@ actual suspend fun downloadMediaWithPlatformTool(
                 ))
             ) {
                 destinationCount++
+                // A new file starts: its size is not the previous file's.
+                if (destinationCount > 1) {
+                    recordedTotalBytes = 0L
+                    temporaryEstimatedBytes = 0L
+                    hasExactTotalBytes = false
+                    downloadedBytes = 0L
+                }
                 if (totalExpectedPhases == 3) {
                     currentPhase =
                         if (destinationCount <= 1) "Downloading Video (Step 1 of 3)" else "Downloading Audio (Step 2 of 3)"
@@ -1178,21 +1220,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                         if (effectiveTotal > 0L) (effectiveTotal * (percent / 100f)).toLong() else 0L
                     downloadedBytes = computedDownloaded
 
-                    val overallFraction = if (totalExpectedPhases == 3 && !isClipping) {
-                        val phaseBase = when {
-                            destinationCount <= 1 -> 0.0f
-                            destinationCount == 2 -> 0.70f
-                            else -> 0.95f
-                        }
-                        val phaseWeight = when {
-                            destinationCount <= 1 -> 0.70f
-                            destinationCount == 2 -> 0.25f
-                            else -> 0.05f
-                        }
-                        (phaseBase + (percent / 100f) * phaseWeight).coerceIn(0f, 0.99f)
-                    } else {
-                        (percent / 100f).coerceIn(0f, 1f)
-                    }
+                    // Per-file percentage, like desktop/Android; MultiStreamProgress (common code)
+                    // combines video + audio so the bar always matches the bytes shown.
+                    val overallFraction = (percent / 100f).coerceIn(0f, 1f)
 
                     onProgress(
                         overallFraction,
@@ -1211,13 +1241,7 @@ actual suspend fun downloadMediaWithPlatformTool(
                             if (effectiveTotal > 0L) (effectiveTotal * (percent / 100f)).toLong() else 0L
                         downloadedBytes = computedDownloaded
 
-                        val overallFraction = if (totalExpectedPhases == 3 && !isClipping) {
-                            val phaseBase = if (destinationCount <= 1) 0.0f else 0.70f
-                            val phaseWeight = if (destinationCount <= 1) 0.70f else 0.25f
-                            (phaseBase + (percent / 100f) * phaseWeight).coerceIn(0f, 0.99f)
-                        } else {
-                            (percent / 100f).coerceIn(0f, 1f)
-                        }
+                        val overallFraction = (percent / 100f).coerceIn(0f, 1f)
 
                         onProgress(
                             overallFraction,
@@ -1232,8 +1256,9 @@ actual suspend fun downloadMediaWithPlatformTool(
         }
     }
 
-    val exitCode = if (bridge != null && bridge.isAvailable()) {
-        bridge.executeYtDlp(rawArgs) { _, _, line ->
+    val exitCode = trackPostProcessing(postProcess, onPostProcess) {
+        if (bridge != null && bridge.isAvailable()) {
+            runCancellableOnBridge(bridge, rawArgs) { line ->
             lineHandler(line)
         }
     } else {
@@ -1247,6 +1272,7 @@ actual suspend fun downloadMediaWithPlatformTool(
         cmdList.addAll(rawArgs.map { escapeShellArg(it) })
         executeCommandStreaming(cmdList.joinToString(" ")) { rawLine ->
             lineHandler(rawLine)
+        }
         }
     }
 
@@ -1282,4 +1308,32 @@ actual suspend fun downloadMediaWithPlatformTool(
         onProgress(1f, totalSize, totalSize, 0L, "Completed")
     }
     success
+}
+
+/**
+ * Runs yt-dlp on the in-app engine so that cancelling the coroutine (Pause / Cancel in the UI)
+ * really stops it: the embedded Python cannot be killed like a process, so the bridge is told
+ * to raise yt-dlp's DownloadCancelled at its next progress update. Before this, Pause only froze
+ * the bar while the download went on in the background, and Resume waited behind it.
+ */
+private suspend fun runCancellableOnBridge(
+    bridge: IosMediaExecutionBridge,
+    args: List<String>,
+    onLine: (String) -> Unit
+): Int = coroutineScope {
+    val runId = "dl-" + kotlin.random.Random.nextLong().toULong().toString(16)
+    var finished = false
+    val watchdog = launch(Dispatchers.Default) {
+        try {
+            awaitCancellation()
+        } finally {
+            if (!finished) bridge.cancelRun(runId)
+        }
+    }
+    try {
+        bridge.executeYtDlpCancellable(runId, args) { _, _, line -> onLine(line) }
+    } finally {
+        finished = true
+        watchdog.cancel()
+    }
 }

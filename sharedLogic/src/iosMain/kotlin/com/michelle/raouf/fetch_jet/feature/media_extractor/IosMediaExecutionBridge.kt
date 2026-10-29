@@ -43,6 +43,20 @@ interface IosMediaExecutionBridge {
     ): Int
 
     /**
+     * Same as [executeYtDlp], identified by [runId] so that [cancelRun] can stop it: the
+     * embedded yt-dlp cannot be killed like a process, so Pause / Cancel ask it to stop at its
+     * next progress update (partial file kept for resuming).
+     */
+    fun executeYtDlpCancellable(
+        runId: String,
+        args: List<String>,
+        progressCallback: IosMediaExecutionProgressCallback?
+    ): Int
+
+    /** Asks the download started with [runId] to stop as soon as possible. */
+    fun cancelRun(runId: String)
+
+    /**
      * Captures full stdout of yt-dlp (e.g. JSON metadata from `yt-dlp -j ...`).
      */
     fun captureYtDlp(args: List<String>): String?

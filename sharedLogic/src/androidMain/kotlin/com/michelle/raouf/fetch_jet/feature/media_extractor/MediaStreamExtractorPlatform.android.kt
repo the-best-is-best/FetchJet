@@ -437,9 +437,11 @@ actual suspend fun downloadMediaWithPlatformTool(
     formatId: String?,
     clipStart: String?,
     clipEnd: String?,
+    clipByCutting: Boolean,
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
-    onProgress: (Float, Long, Long, Long, String?) -> Unit
+    onProgress: (Float, Long, Long, Long, String?) -> Unit,
+    onPostProcess: ((String, Float) -> Unit)?
 ): Boolean = withContext(Dispatchers.IO) {
     if (!ensureRuntimeInitialized()) {
         return@withContext false
@@ -467,6 +469,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val ext = if (isAudio) "mp3" else "%(ext)s"
     val outputTemplate = File(outDir, "$cleanName.$ext").absolutePath
     request.addOption("-o", outputTemplate)
+    request.addOption("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
 
     if (isAudio) {
         request.addOption("-x")
@@ -496,7 +499,23 @@ actual suspend fun downloadMediaWithPlatformTool(
     if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
         val s = clipStart?.trim()?.ifBlank { null } ?: "0"
         val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        request.addOption("--download-sections", "*$s-$e")
+        if (clipByCutting) {
+            // Full-speed download, then a local stream-copy cut by FetchJet's own yt-dlp plugin
+            // (see CutPlugin.kt; yt-dlp's "--remove-chapters *a-b" crashes in 2026.x).
+            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
+            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
+            if (pluginDir != null) {
+                request.addOption("--plugin-dirs", pluginDir)
+                request.addOption(
+                    "--use-postprocessor",
+                    cutPluginArg(parseTimeToSeconds(s), endSec)
+                )
+            } else {
+                request.addOption("--download-sections", "*$s-$e")
+            }
+        } else {
+            request.addOption("--download-sections", "*$s-$e")
+        }
     }
 
     if (speedLimitBytesPerSec > 0) {
@@ -521,7 +540,9 @@ actual suspend fun downloadMediaWithPlatformTool(
         request.addOption("--cookies", cookiePath)
     }
 
-    val isClipping = !clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()
+    // Progress is read the clip way (ffmpeg "time=") only in section mode; a cut-afterwards
+    // clip downloads like a normal video and the cut shows on the post-processing line.
+    val isClipping = (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) && !clipByCutting
     val clipStartSec = parseTimeToSeconds(clipStart)
     val clipEndSec = if (!clipEnd.isNullOrBlank()) parseTimeToSeconds(clipEnd) else 0.0
     val clipDurationSec = if (clipEndSec > clipStartSec) clipEndSec - clipStartSec else 0.0
@@ -538,8 +559,12 @@ actual suspend fun downloadMediaWithPlatformTool(
     // A merged format ("137+140") means video + audio + merge; a single format id (progressive
     // file, audio-only, HLS) is one plain download. Decide from the chosen format instead of
     // guessing "3 steps" and correcting later.
-    val isMergedFormat = formatId?.contains('+') == true
+    // Decide from the selector actually given to yt-dlp: a bare "137" became "137+bestaudio".
+    val isMergedFormat = !isAudio && (formatId.isNullOrBlank() || formatId.contains('+') ||
+            !(formatId.contains('/') || formatId.contains("best")))
     var totalExpectedPhases = if (isClipping || !isMergedFormat) 1 else 3
+    MediaToolErrors.clear(destinationDir)
+    val postProcess = PostProcessTracker(destinationDir)
     var destinationCount = 0
     var isMerging = false
 
@@ -569,7 +594,8 @@ actual suspend fun downloadMediaWithPlatformTool(
         // execute() blocks its thread, so a coroutine cancel (pause / cancel in the UI) was
         // never observed and yt-dlp kept downloading; a resume then started a second yt-dlp
         // on the same files. runKillable kills the process when the coroutine is cancelled.
-        val response = RuntimeManager.getInstance().runKillable { killableId ->
+        val response = trackPostProcessing(postProcess, onPostProcess) {
+            RuntimeManager.getInstance().runKillable { killableId ->
             RuntimeManager.getInstance().execute(
             request = request,
                 processId = killableId,
@@ -577,6 +603,8 @@ actual suspend fun downloadMediaWithPlatformTool(
         ) { progressPercent, _, rawLine ->
             val currentLine = rawLine.replace(ansiRegex, "").trim()
             if (currentLine.isBlank()) return@execute
+                postProcess.onLine(currentLine)
+                MediaToolErrors.record(destinationDir, currentLine)
 
             // 1. Scan line for speed using standalone speed regex
             val speedMatch = standaloneSpeedRegex.find(currentLine)
@@ -629,6 +657,9 @@ actual suspend fun downloadMediaWithPlatformTool(
                 if (!formatPart.contains("+")) {
                     totalExpectedPhases = 1
                     currentPhase = "Downloading Media"
+                } else {
+                    totalExpectedPhases = 3
+                    currentPhase = "Downloading Video (Step 1 of 3)"
                 }
             }
 
@@ -637,6 +668,13 @@ actual suspend fun downloadMediaWithPlatformTool(
                 ))
             ) {
                 destinationCount++
+                // A new file starts: its size is not the previous file's.
+                if (destinationCount > 1) {
+                    recordedTotalBytes = 0L
+                    temporaryEstimatedBytes = 0L
+                    hasExactTotalBytes = false
+                    downloadedBytes = 0L
+                }
                 if (totalExpectedPhases == 3) {
                     currentPhase = if (destinationCount <= 1) {
                         "Downloading Video (Step 1 of 3)"
@@ -850,6 +888,7 @@ actual suspend fun downloadMediaWithPlatformTool(
                     }
                 }
             }
+        }
         }
         }
         response.exitCode == 0
