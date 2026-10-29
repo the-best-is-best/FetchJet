@@ -270,6 +270,8 @@ jobs:
   # otherwise the unsigned xpi is uploaded (installable on Developer Edition / Nightly only).
   build-extension:
     runs-on: ubuntu-latest
+    # The AMO keys live in the "release-build" environment with the other signing secrets.
+    environment: release-build
     # `secrets` cannot be read inside a step `if:`; expose it as env and test that instead.
     env:
       AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
