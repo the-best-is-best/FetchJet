@@ -56,7 +56,11 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ vars.SIGNING_KEY_ALIAS || secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        run: ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease
+        # Two runs: per-CPU APKs, then the .aab. AGP cannot build both in one run while ABI
+        # splits are on ("Multiple shrunk-resources files"); splits are off for the bundle run.
+        run: |
+          ./gradlew :androidApp:assembleRelease
+          ./gradlew :androidApp:bundleRelease
 
       - name: Upload Android APKs
         # Only a v* tag needs the files (for the release): plain pushes just build,
@@ -71,8 +75,6 @@ jobs:
             androidApp/build/outputs/apk/release/**/*.apk
 
       - name: Upload Android App Bundle
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:

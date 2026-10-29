@@ -784,6 +784,10 @@ class DashboardViewModel(
 
             is DashboardUiEvent.OnScheduleChanged -> _uiState.update { it.copy(scheduleStartMs = event.epochMs) }
 
+            DashboardUiEvent.OnPauseAllClicked -> queueRepository.pauseAll()
+
+            DashboardUiEvent.OnResumeAllClicked -> queueRepository.resumeAll()
+
             is DashboardUiEvent.OnToggleClipRange -> {
                 val hasMediaData = _uiState.value.inspectedMediaQualities.isNotEmpty()
                 val durationSec = _uiState.value.mediaDurationSeconds
@@ -1297,6 +1301,24 @@ class DashboardViewModel(
             }
         }
 
+        // Several qualities ticked: each one is its own download ("Title (720p).mp4", ...).
+        val selectedQualities = currentState.inspectedMediaQualities.filter { it.isSelected }
+        if (currentState.detectedEngine == EngineType.MEDIA_STREAM && selectedQualities.size > 1) {
+            addSeveralQualities(
+                state = currentState,
+                url = url,
+                qualities = selectedQualities,
+                clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
+                    currentState.clipStartTime
+                ) else null,
+                clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
+                    currentState.clipEndTime
+                ) else null,
+                clipByCutting = isActualSubClip && currentState.clipFastMode
+            )
+            return
+        }
+
         val selectedQuality = currentState.inspectedMediaQualities.firstOrNull { it.isSelected }
         val videoTitle = currentState.inspectedMediaTitle ?: selectedQuality?.videoTitle
         val customFileName = overrideFileName ?: if (!videoTitle.isNullOrBlank()) {
@@ -1386,6 +1408,80 @@ class DashboardViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /** One download per ticked quality of the same video, each with its own file name. */
+    private fun addSeveralQualities(
+        state: DashboardUiState,
+        url: String,
+        qualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>,
+        clipStart: String?,
+        clipEnd: String?,
+        clipByCutting: Boolean
+    ) {
+        val destDir =
+            state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+        val title =
+            state.inspectedMediaTitle ?: qualities.firstNotNullOfOrNull { it.videoTitle } ?: "video"
+        val baseName = queueRepository.pathResolver.sanitizeFileName(title)
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        scope.launch {
+            var added = 0
+            var failed = 0
+            val usedNames = mutableSetOf<String>()
+            for (q in qualities) {
+                // "1080p (Full HD - MP4)" -> "1080p"; "Audio Only (M4A)" -> "Audio"
+                val tag = queueRepository.pathResolver.sanitizeFileName(
+                    q.qualityLabel.substringBefore(" (").replace("Audio Only", "Audio").trim()
+                        .ifBlank { q.format }
+                )
+                val ext = q.format.ifBlank { "mp4" }
+                var fileName = "$baseName ($tag).$ext"
+                if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
+                    var n = 2
+                    while ("$baseName ($tag) ($n).$ext".lowercase() in usedNames ||
+                        FileSystem.SYSTEM.exists("$destDir/$baseName ($tag) ($n).$ext".toPath())
+                    ) n++
+                    fileName = "$baseName ($tag) ($n).$ext"
+                }
+                usedNames.add(fileName.lowercase())
+                queueRepository.enqueueTask(
+                    url = url,
+                    customDestinationPath = destDir,
+                    customFileName = fileName,
+                    // only this quality selected for this download
+                    mediaQualities = state.inspectedMediaQualities.map { it.copy(isSelected = it.index == q.index && it.formatId == q.formatId) },
+                    maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
+                    forcedEngineType = EngineType.MEDIA_STREAM,
+                    clipStart = clipStart,
+                    clipEnd = clipEnd,
+                    clipByCutting = clipByCutting,
+                    requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap(),
+                    scheduledAtMs = state.scheduleStartMs
+                ).onSuccess { added++ }.onFailure { failed++ }
+            }
+            pendingExternalUrl = null
+            pendingExternalHeaders = emptyMap()
+            pendingExternalFileName = null
+            _uiState.update {
+                it.copy(
+                    inputUrl = "",
+                    isLoading = false,
+                    isAddDialogVisible = false,
+                    inspectedMediaQualities = emptyList(),
+                    inspectedPlaylist = null,
+                    inspectedMediaTitle = null,
+                    clipStartTime = "",
+                    clipEndTime = "",
+                    isClipRangeEnabled = false,
+                    clipFastMode = false,
+                    scheduleStartMs = 0L,
+                    mediaDurationSeconds = 0L,
+                    errorMessage = if (failed > 0) "$failed quality(s) could not be added." else null
+                )
+            }
+            _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added downloads of \"$title\""))
         }
     }
 
@@ -1486,7 +1582,26 @@ class DashboardViewModel(
             TaskSortOption.NAME_ASC -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.fileName.ifBlank { it.url } }
         }
         val (unfinished, finished) = filtered.partition { it.status != DownloadStatus.COMPLETED }
-        return unfinished.sortedWith(comparator) + finished.sortedWith(comparator)
+        // Unfinished: what is downloading now on top, then the queue in its order, then paused,
+        // then failed. The chosen sort applies inside each group.
+        val stateRank = { t: DownloadTask ->
+            when {
+                t.waitingInQueue -> 1
+                t.status == DownloadStatus.DOWNLOADING || t.status == DownloadStatus.CONNECTING ||
+                        t.status == DownloadStatus.QUEUED -> 0
+
+                t.status == DownloadStatus.PAUSED -> 2
+                else -> 3
+            }
+        }
+        val queueOrder = { t: DownloadTask ->
+            if (t.waitingInQueue) (if (t.queuePosition > 0) t.queuePosition.toLong() else Long.MAX_VALUE / 2 + t.scheduledAtMs / 1000)
+            else 0L
+        }
+        val unfinishedOrder = compareBy<DownloadTask> { stateRank(it) }
+            .thenBy { queueOrder(it) }
+            .then(comparator)
+        return unfinished.sortedWith(unfinishedOrder) + finished.sortedWith(comparator)
     }
 
     private fun filterByTab(tasks: List<DownloadTask>, tab: DashboardTab): List<DownloadTask> {

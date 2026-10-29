@@ -45,7 +45,11 @@ android {
     }
     splits {
         abi {
-            isEnable = true
+            // One APK per CPU for sideloading. Off while building the .aab (Play splits it
+            // itself): AGP cannot build a bundle with ABI splits on ("Multiple shrunk-resources
+            // files"), so CI builds the APKs and the bundle in two separate Gradle runs.
+            isEnable =
+                gradle.startParameter.taskNames.none { it.contains("bundle", ignoreCase = true) }
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             isUniversalApk = true

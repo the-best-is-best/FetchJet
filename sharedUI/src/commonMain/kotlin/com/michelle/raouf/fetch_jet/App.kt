@@ -1483,15 +1483,89 @@ private fun TaskListArea(
     // In "All" we show the two groups with their own headers so a finished file never
     // sits between two running downloads.
     val grouped = selectedTab == DashboardTab.ALL
-    val unfinished = remember(tasks) { tasks.filter { it.status != DownloadStatus.COMPLETED } }
-    val finished = remember(tasks) { tasks.filter { it.status == DownloadStatus.COMPLETED } }
+    // Tap a group header to fold / unfold it.
+    var activeCollapsed by remember { mutableStateOf(false) }
+    var finishedCollapsed by remember { mutableStateOf(false) }
+    // Search by file name (or link) in the current view.
+    var searchQuery by remember { mutableStateOf("") }
+    val allTasks = tasks
+    val shownTasks = remember(allTasks, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) allTasks
+        else allTasks.filter {
+            it.fileName.contains(q, ignoreCase = true) || it.url.contains(q, ignoreCase = true) ||
+                    (it.originalUrl?.contains(q, ignoreCase = true) == true)
+        }
+    }
+    val unfinished =
+        remember(shownTasks) { shownTasks.filter { it.status != DownloadStatus.COMPLETED } }
+    val finished =
+        remember(shownTasks) { shownTasks.filter { it.status == DownloadStatus.COMPLETED } }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        if (allTasks.isNotEmpty()) {
+            androidx.compose.material3.OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("🔍 Search downloads by name…", fontSize = 13.sp) },
+                singleLine = true,
+                trailingIcon = if (searchQuery.isNotEmpty()) {
+                    { IconButton(onClick = { searchQuery = "" }) { Text("✕", fontSize = 14.sp) } }
+                } else null,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+            )
+        }
+        val tasks = shownTasks
         if (tasks.isNotEmpty()) {
             SortBar(
                 current = sortOption,
                 onChange = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) }
             )
+            // Pause everything / put everything paused back in the queue.
+            val anyActive = unfinished.any {
+                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.CONNECTING ||
+                        it.status == DownloadStatus.QUEUED
+            }
+            val anyStopped =
+                unfinished.any { it.status == DownloadStatus.PAUSED || it.status == DownloadStatus.ERROR }
+            if (anyActive || anyStopped) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (anyActive) {
+                        OutlinedButton(
+                            onClick = { viewModel.onEvent(DashboardUiEvent.OnPauseAllClicked) },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(
+                                "⏸ Pause all",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    if (anyStopped) {
+                        OutlinedButton(
+                            onClick = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(
+                                "▶ Resume all",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         if (tasks.isEmpty()) {
@@ -1503,7 +1577,7 @@ private fun TaskListArea(
                     Text("📥", fontSize = 48.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "No tasks in this view",
+                        text = if (searchQuery.isNotBlank()) "No downloads match \"${searchQuery.trim()}\"" else "No tasks in this view",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1557,10 +1631,12 @@ private fun TaskListArea(
                             emoji = "⬇️",
                             title = "In progress",
                             count = unfinished.size,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            collapsed = activeCollapsed,
+                            onToggle = { activeCollapsed = !activeCollapsed }
                         )
                     }
-                    items(unfinished, key = { it.id }) { taskItem(it) }
+                    if (!activeCollapsed) items(unfinished, key = { it.id }) { taskItem(it) }
                 }
                 if (finished.isNotEmpty()) {
                     item(key = "header-done") {
@@ -1568,10 +1644,12 @@ private fun TaskListArea(
                             emoji = "✅",
                             title = "Completed",
                             count = finished.size,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = MaterialTheme.colorScheme.tertiary,
+                            collapsed = finishedCollapsed,
+                            onToggle = { finishedCollapsed = !finishedCollapsed }
                         )
                     }
-                    items(finished, key = { it.id }) { taskItem(it) }
+                    if (!finishedCollapsed) items(finished, key = { it.id }) { taskItem(it) }
                 }
             } else {
                 items(tasks, key = { it.id }) { taskItem(it) }
@@ -1680,14 +1758,27 @@ private fun SectionHeader(
     emoji: String,
     title: String,
     count: Int,
-    color: Color
+    color: Color,
+    collapsed: Boolean = false,
+    onToggle: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (onToggle != null) Modifier.clip(RoundedCornerShape(8.dp))
+                    .clickable { onToggle() } else Modifier)
             .padding(top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (onToggle != null) {
+            Text(
+                text = if (collapsed) "▶" else "▼",
+                fontSize = 11.sp,
+                color = color,
+                modifier = Modifier.padding(end = 6.dp)
+            )
+        }
         Text(emoji, fontSize = 14.sp)
         Spacer(modifier = Modifier.width(6.dp))
         Text(

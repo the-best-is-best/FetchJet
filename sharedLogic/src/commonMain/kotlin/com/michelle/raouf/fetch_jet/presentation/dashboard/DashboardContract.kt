@@ -167,6 +167,8 @@ sealed interface DashboardUiEvent {
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
+    data object OnPauseAllClicked : DashboardUiEvent
+    data object OnResumeAllClicked : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
 

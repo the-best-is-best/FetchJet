@@ -199,6 +199,12 @@ class QueueManagerRepository(
         return max <= 0 || runningCount() < max
     }
 
+    /**
+     * Paused / failed downloads that "Resume all" put back in line: they stay paused in their
+     * engine until the queue gives them a slot, then they continue from where they stopped.
+     */
+    private val resumeQueue = MutableStateFlow<Set<String>>(emptySet())
+
     private val pumpLock = Mutex()
 
     /** Starts waiting downloads whose time has come, while there are free slots (oldest first). */
@@ -206,17 +212,67 @@ class QueueManagerRepository(
         scope.launch {
             pumpLock.withLock {
                 val now = nowEpochMs()
-                val due = pendingTasks.value.values
-                    .filter { it.scheduledAtMs <= now }
+                val engineTasks = getAllCurrentTasks().associateBy { it.id }
+                val due = (pendingTasks.value.values.filter { it.scheduledAtMs <= now } +
+                        resumeQueue.value.mapNotNull { engineTasks[it] })
                     .sortedBy { it.createdAtEpochMs }
+                // A resumed engine task shows "running" only a moment later: count it here.
+                var resumedNow = 0
                 for (task in due) {
-                    if (!hasFreeSlot()) break
+                    val max = _maxConcurrentDownloads.value
+                    if (max > 0 && runningCount() + resumedNow >= max) break
                     // Taken out in one step: "Start now" / Cancel may race with this loop.
-                    val taken = pendingTasks.getAndUpdate { it - task.id }[task.id] ?: continue
-                    startOnEngine(taken)
+                    val taken = pendingTasks.getAndUpdate { it - task.id }[task.id]
+                    if (taken != null) {
+                        startOnEngine(taken)
+                    } else if (task.id in resumeQueue.getAndUpdate { it - task.id }) {
+                        resumeOnEngine(task)
+                        resumedNow++
+                    }
+                }
+                // Ids whose download is gone or no longer paused leave the line.
+                resumeQueue.update { ids ->
+                    ids.filterTo(mutableSetOf()) { id ->
+                        val t = engineTasks[id]
+                        t != null && (t.status == DownloadStatus.PAUSED || t.status == DownloadStatus.ERROR)
+                    }
                 }
             }
         }
+    }
+
+    private suspend fun resumeOnEngine(task: DownloadTask): Result<Unit> = try {
+        when (task.engineType) {
+            EngineType.HTTP_DIRECT -> httpEngine.resume(task.id)
+            EngineType.BITTORRENT -> torrentEngine.resume(task.id)
+            EngineType.MEDIA_STREAM -> mediaEngine.resume(task.id)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /** Pauses everything that runs or waits. */
+    fun pauseAll() {
+        scope.launch {
+            resumeQueue.value = emptySet()
+            val ids = pendingTasks.value.keys + getAllCurrentTasks().filter {
+                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.CONNECTING ||
+                        it.status == DownloadStatus.QUEUED
+            }.map { it.id }
+            ids.forEach { pauseTask(it) }
+        }
+    }
+
+    /**
+     * Puts every paused / failed download back in line; the queue runs them a few at a time
+     * (Settings -> downloads at the same time), oldest first.
+     */
+    fun resumeAll() {
+        val ids = getAllCurrentTasks().filter {
+            it.status == DownloadStatus.PAUSED || it.status == DownloadStatus.ERROR
+        }.map { it.id }
+        resumeQueue.update { it + ids }
+        pumpQueue()
     }
 
     private suspend fun startOnEngine(task: DownloadTask) {
@@ -253,10 +309,14 @@ class QueueManagerRepository(
         httpEngine.getAllTasksFlow(),
         torrentEngine.getAllTasksFlow(),
         mediaEngine.getAllTasksFlow(),
-        pendingTasks
-    ) { httpTasks, torrentTasks, mediaTasks, pending ->
+        pendingTasks,
+        resumeQueue
+    ) { httpTasks, torrentTasks, mediaTasks, pending, resumeIds ->
         val now = nowEpochMs()
-        val dueOrder = pending.values.filter { it.scheduledAtMs <= now }
+        val inLine = (httpTasks.values + torrentTasks.values + mediaTasks.values).filter {
+            it.id in resumeIds && (it.status == DownloadStatus.PAUSED || it.status == DownloadStatus.ERROR)
+        }
+        val dueOrder = (pending.values.filter { it.scheduledAtMs <= now } + inLine)
             .sortedBy { it.createdAtEpochMs }
             .mapIndexed { i, t -> t.id to i + 1 }.toMap()
         val waiting = pending.values.map {
@@ -266,7 +326,16 @@ class QueueManagerRepository(
                 queuePosition = dueOrder[it.id] ?: 0
             )
         }
-        (httpTasks.values + torrentTasks.values + mediaTasks.values + waiting)
+        val inLineIds = inLine.map { it.id }.toSet()
+        val engineTasks = (httpTasks.values + torrentTasks.values + mediaTasks.values).map {
+            if (it.id in inLineIds) it.copy(
+                status = DownloadStatus.QUEUED,
+                waitingInQueue = true,
+                errorMessage = null,
+                queuePosition = dueOrder[it.id] ?: 0
+            ) else it
+        }
+        (engineTasks + waiting)
             .sortedByDescending { it.createdAtEpochMs }
     }.stateIn(
         scope = scope,
@@ -285,7 +354,7 @@ class QueueManagerRepository(
         scope.launch {
             while (true) {
                 delay(1000)
-                if (pendingTasks.value.isNotEmpty()) pumpQueue()
+                if (pendingTasks.value.isNotEmpty() || resumeQueue.value.isNotEmpty()) pumpQueue()
             }
         }
     }
@@ -475,6 +544,8 @@ class QueueManagerRepository(
     }
 
     suspend fun pauseTask(taskId: String): Result<Unit> {
+        // In line after "Resume all": it is still paused in its engine, just leave the line.
+        if (taskId in resumeQueue.getAndUpdate { it - taskId }) return Result.success(Unit)
         // A waiting download leaves the queue and stays paused until Resume.
         pendingTasks.getAndUpdate { it - taskId }[taskId]?.let { waiting ->
             val paused = waiting.copy(status = DownloadStatus.PAUSED, scheduledAtMs = 0L)
@@ -502,6 +573,7 @@ class QueueManagerRepository(
             startOnEngine(waiting)
             return Result.success(Unit)
         }
+        resumeQueue.update { it - taskId } // "Start now" on a download in line
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
         return when (task.engineType) {
@@ -512,6 +584,7 @@ class QueueManagerRepository(
     }
 
     suspend fun cancelTask(taskId: String): Result<Unit> {
+        resumeQueue.update { it - taskId }
         if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
             return Result.success(Unit) // never started: nothing on disk
         }
@@ -529,6 +602,7 @@ class QueueManagerRepository(
     }
 
     suspend fun removeTask(taskId: String, deleteFile: Boolean): Result<Unit> {
+        resumeQueue.update { it - taskId }
         if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
             return Result.success(Unit)
         }

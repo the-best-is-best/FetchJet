@@ -41,7 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
-import com.michelle.raouf.fetch_jet.core.util.nextLocalTimeEpochMs
+import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
+import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 
@@ -171,8 +172,11 @@ fun PlaylistSelectionCard(
 @Composable
 fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Unit) {
     var showTimeFields by remember { mutableStateOf(false) }
-    var hourText by remember { mutableStateOf("02") }
+    var hourText by remember { mutableStateOf("09") }
     var minuteText by remember { mutableStateOf("00") }
+    var isPm by remember { mutableStateOf(false) }
+    var dayOffset by remember { mutableStateOf(0) }
+    var timeError by remember { mutableStateOf<String?>(null) }
 
     Text(
         "When to start",
@@ -197,10 +201,45 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
             showTimeFields = false
             onScheduleChanged(currentEpochMs() + 60 * 60_000L)
         }
-        ChoiceChip("At a time…", selected = showTimeFields) { showTimeFields = true }
+        ChoiceChip("At a time…", selected = showTimeFields) {
+            if (!showTimeFields) {
+                // Start from the current local time; the user moves it forward from there.
+                val minuteOfDay =
+                    ((currentEpochMs() + localUtcOffsetMs()).mod(24L * 60 * 60 * 1000) / 60_000L).toInt()
+                val h24 = minuteOfDay / 60
+                hourText = (if (h24 % 12 == 0) 12 else h24 % 12).toString().padStart(2, '0')
+                minuteText = (minuteOfDay % 60).toString().padStart(2, '0')
+                isPm = h24 >= 12
+                dayOffset = 0
+                timeError = null
+            }
+            showTimeFields = true
+        }
     }
 
     if (showTimeFields) {
+        // 12-hour clock with AM / PM and a day: "01:49 PM, today" is what people mean;
+        // a 24-hour "01:49" silently became 1:49 AM tomorrow.
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Day", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf(
+                0 to "Today",
+                1 to "Tomorrow",
+                2 to "In 2 days",
+                3 to "In 3 days",
+                7 to "In a week"
+            )
+                .forEach { (d, label) ->
+                    ChoiceChip(label, selected = dayOffset == d) {
+                        dayOffset = d
+                    }
+                }
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
@@ -209,7 +248,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
                 label = { Text("Hour", fontSize = 11.sp) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(90.dp)
+                modifier = Modifier.width(80.dp)
             )
             Text(" : ", fontWeight = FontWeight.Bold)
             OutlinedTextField(
@@ -218,26 +257,40 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
                 label = { Text("Minute", fontSize = 11.sp) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(90.dp)
+                modifier = Modifier.width(80.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            ChoiceChip("AM", selected = !isPm) { isPm = false }
+            Spacer(modifier = Modifier.width(4.dp))
+            ChoiceChip("PM", selected = isPm) { isPm = true }
             Spacer(modifier = Modifier.width(10.dp))
             Button(
                 onClick = {
-                    val h = hourText.toIntOrNull()?.coerceIn(0, 23) ?: 0
+                    val h12 = hourText.toIntOrNull()?.coerceIn(1, 12) ?: 12
                     val m = minuteText.toIntOrNull()?.coerceIn(0, 59) ?: 0
-                    hourText = h.toString().padStart(2, '0')
+                    hourText = h12.toString().padStart(2, '0')
                     minuteText = m.toString().padStart(2, '0')
-                    onScheduleChanged(nextLocalTimeEpochMs(h, m))
+                    val h24 = (h12 % 12) + if (isPm) 12 else 0
+                    val at = localTimeOnDayEpochMs(dayOffset, h24, m)
+                    if (at <= currentEpochMs()) {
+                        timeError =
+                            "That time has already passed today. Pick a later time or another day."
+                    } else {
+                        timeError = null
+                        onScheduleChanged(at)
+                    }
                 },
                 shape = RoundedCornerShape(10.dp)
             ) { Text("Set", fontSize = 12.sp) }
         }
-        Text(
-            text = "24-hour clock (e.g. 02:00 = 2 AM, 14:30 = 2:30 PM).",
-            fontSize = 10.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        timeError?.let {
+            Text(
+                text = it,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 
     if (scheduleStartMs > 0L) {
