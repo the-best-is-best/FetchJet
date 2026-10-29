@@ -462,8 +462,10 @@ actual suspend fun downloadMediaWithPlatformTool(
             fileName.endsWith(".flac", ignoreCase = true) ||
             fileName.endsWith(".wav", ignoreCase = true) ||
             fileName.endsWith(".ogg", ignoreCase = true) ||
+            // A video selector like "bestvideo+bestaudio" names audio too: only an audio-only
+            // selector (no '+') means an audio download.
             (formatId?.lowercase()?.let {
-                it.contains("audio") || it.contains("ba") || it == "140" || it == "251"
+                !it.contains('+') && (it.contains("audio") || it.contains("ba") || it == "140" || it == "251")
             } ?: false)
 
     val ext = if (isAudio) "mp3" else "%(ext)s"
@@ -899,3 +901,25 @@ actual suspend fun downloadMediaWithPlatformTool(
         false
     }
 }
+
+
+actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
+    withContext(Dispatchers.IO) {
+        val trimmedUrl = normalizePlaylistUrl(url)
+        if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) return@withContext null
+        val context = PathResolver.appContext ?: return@withContext null
+        val request = YTDLRequest(trimmedUrl)
+        request.addOption("--flat-playlist")
+        request.addOption("-J")
+        request.addOption("--no-warnings")
+        request.addOption("--yes-playlist")
+        FileUtil.getCookieFile(context) { cookiePath ->
+            request.addOption("--cookies", cookiePath)
+        }
+        val response = try {
+            RuntimeManager.getInstance().execute(request)
+        } catch (_: Exception) {
+            null
+        } ?: return@withContext null
+        parsePlaylistJson(response.out)
+    }

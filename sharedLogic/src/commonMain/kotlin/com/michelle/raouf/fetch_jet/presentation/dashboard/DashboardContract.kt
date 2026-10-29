@@ -120,6 +120,12 @@ data class DashboardUiState(
     val isClipRangeEnabled: Boolean = false,
     /** Clip: download the whole video at full speed and cut it afterwards (uses more data). */
     val clipFastMode: Boolean = false,
+    /** A playlist / channel link: its videos (null = a single video). */
+    val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
+    /** Start the new download(s) at this time (epoch ms); 0 = now. */
+    val scheduleStartMs: Long = 0L,
     val mediaDurationSeconds: Long = 0L,
     val speedDisplayUnit: String = "MB/s"
 )
@@ -153,6 +159,14 @@ sealed interface DashboardUiEvent {
     data class OnClipEndTimeChanged(val time: String) : DashboardUiEvent
     data class OnToggleClipRange(val enabled: Boolean) : DashboardUiEvent
     data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
+    data class OnPlaylistEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
+    data class OnPlaylistSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnPlaylistQualityChanged(val quality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) :
+        DashboardUiEvent
+
+    /** "Download only this video" for a watch?v=...&list=... link. */
+    data object OnPlaylistUseSingleVideo : DashboardUiEvent
+    data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
 

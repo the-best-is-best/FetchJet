@@ -77,7 +77,16 @@ data class DownloadTask(
     val postProcessProgress: Float = -1f,
     val postProcessStartedAtMs: Long = 0L,
     /** HTTP only: whether the server accepts byte ranges (null = not connected yet). */
-    val serverSupportsResume: Boolean? = null
+    val serverSupportsResume: Boolean? = null,
+    /** Start no earlier than this time (epoch ms); 0 = as soon as a slot is free. */
+    val scheduledAtMs: Long = 0L,
+    /**
+     * Waiting in FetchJet's queue (not started yet): either for its scheduled time or for a free
+     * slot (Settings -> downloads at the same time). Set by the queue, not stored.
+     */
+    val waitingInQueue: Boolean = false,
+    /** 1-based place in the queue among the waiting downloads that are due; 0 = none. */
+    val queuePosition: Int = 0
 )
 
 /**

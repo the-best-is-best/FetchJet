@@ -516,8 +516,15 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
     }
 }
 
-fun main(args: Array<String>) {
+fun main(rawArgs: Array<String>) {
     installCrashLog()
+    // Started by the OS at login (see StartupLauncher): remember it, and never treat the flag
+    // as a link to download.
+    val startedAtLogin =
+        rawArgs.any { it.trim() == com.michelle.raouf.fetch_jet.core.startup.AUTOSTART_ARG }
+    com.michelle.raouf.fetch_jet.core.startup.StartupPreferences.launchedAtLogin = startedAtLogin
+    val args =
+        rawArgs.filter { it.trim() != com.michelle.raouf.fetch_jet.core.startup.AUTOSTART_ARG }
     val rawArg = args.firstOrNull()?.trim()
     if (!rawArg.isNullOrBlank()) {
         val targetUrl = parseUrlFromArg(rawArg)
@@ -533,8 +540,17 @@ fun main(args: Array<String>) {
         return
     }
 
+    // At login, start in the tray when the user asked for it (and a tray exists to come back from).
+    val startInTray = startedAtLogin &&
+            com.michelle.raouf.fetch_jet.core.startup.StartupPreferences.startHidden &&
+            (try {
+                java.awt.SystemTray.isSupported()
+            } catch (_: Throwable) {
+                false
+            })
+
     application {
-        var isWindowVisible by remember { mutableStateOf(true) }
+        var isWindowVisible by remember { mutableStateOf(!startInTray) }
         var bringToFrontTrigger by remember { mutableStateOf(0) }
         val trayState = rememberTrayState()
         val windowState = rememberWindowState(width = 1100.dp, height = 750.dp)

@@ -58,6 +58,9 @@ class DashboardViewModel(
     private var pendingExternalHeaders: Map<String, String> = emptyMap()
     private var pendingExternalFileName: String? = null
 
+    /** The playlist link for which the user chose "download only this video". */
+    private var singleVideoUrl: String? = null
+
 
     init {
 
@@ -351,6 +354,7 @@ class DashboardViewModel(
                     it.copy(
                         detectedEngine = event.engine,
                         inspectedMediaQualities = emptyList(),
+                        inspectedPlaylist = null,
                         inspectedTorrentFiles = emptyList(),
                         inspectError = null,
                         inspectMediaError = null
@@ -388,6 +392,7 @@ class DashboardViewModel(
                         inspectedTorrentName = null,
 
                         inspectedMediaQualities = defaultQualities,
+                        inspectedPlaylist = null,
 
                         inspectedMediaTitle = null,
                         inspectMediaError = null,
@@ -396,6 +401,7 @@ class DashboardViewModel(
                         clipEndTime = "",
                         isClipRangeEnabled = false,
                         clipFastMode = false,
+                        scheduleStartMs = 0L,
                         mediaDurationSeconds = 0L
                     )
 
@@ -467,6 +473,8 @@ class DashboardViewModel(
                         inspectedTorrentName = null,
 
                         inspectedMediaQualities = defaultQualities,
+                        inspectedPlaylist = null,
+                        scheduleStartMs = 0L,
 
                         inspectedMediaTitle = null,
 
@@ -750,6 +758,32 @@ class DashboardViewModel(
                 _uiState.update { it.copy(clipFastMode = event.enabled) }
             }
 
+            is DashboardUiEvent.OnPlaylistEntryToggled -> _uiState.update { st ->
+                val pl = st.inspectedPlaylist ?: return@update st
+                st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map {
+                    if (it.index == event.index) it.copy(isSelected = event.selected) else it
+                }))
+            }
+
+            is DashboardUiEvent.OnPlaylistSelectAll -> _uiState.update { st ->
+                val pl = st.inspectedPlaylist ?: return@update st
+                st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map { it.copy(isSelected = event.selected) }))
+            }
+
+            is DashboardUiEvent.OnPlaylistQualityChanged -> _uiState.update {
+                it.copy(
+                    playlistQuality = event.quality
+                )
+            }
+
+            DashboardUiEvent.OnPlaylistUseSingleVideo -> {
+                singleVideoUrl = _uiState.value.inputUrl
+                _uiState.update { it.copy(inspectedPlaylist = null) }
+                inspectMedia()
+            }
+
+            is DashboardUiEvent.OnScheduleChanged -> _uiState.update { it.copy(scheduleStartMs = event.epochMs) }
+
             is DashboardUiEvent.OnToggleClipRange -> {
                 val hasMediaData = _uiState.value.inspectedMediaQualities.isNotEmpty()
                 val durationSec = _uiState.value.mediaDurationSeconds
@@ -1010,15 +1044,50 @@ class DashboardViewModel(
 
         scope.launch {
             _uiState.update { it.copy(isInspectingMedia = true, inspectMediaError = null) }
+            // A playlist / channel link: list its videos (unless the user chose "only this video").
+            if (url != singleVideoUrl && com.michelle.raouf.fetch_jet.feature.media_extractor.looksLikePlaylistUrl(
+                    url
+                )
+            ) {
+                val playlist = try {
+                    withTimeoutOrNull(90_000L) { queueRepository.inspectPlaylist(url) }
+                } catch (_: Exception) {
+                    null
+                }
+                if (playlist != null && playlist.entries.size >= 2 && _uiState.value.inputUrl == url) {
+                    _uiState.update {
+                        it.copy(
+                            isInspectingMedia = false,
+                            inspectedPlaylist = playlist,
+                            inspectedMediaQualities = emptyList(),
+                            inspectedMediaTitle = playlist.title,
+                            inspectMediaError = null,
+                            isClipRangeEnabled = false
+                        )
+                    }
+                    return@launch
+                }
+                // The link was changed meanwhile: its own inspection takes over.
+                if (_uiState.value.inputUrl != url) {
+                    _uiState.update { it.copy(isInspectingMedia = false) }
+                    return@launch
+                }
+            }
             try {
                 val qualities = withTimeoutOrNull(45_000L) {
                     queueRepository.inspectMediaQualities(url)
                 } ?: emptyList()
+                if (_uiState.value.inputUrl != url) {
+                    // Results of a link that is no longer in the box.
+                    _uiState.update { it.copy(isInspectingMedia = false) }
+                    return@launch
+                }
                 if (qualities.isEmpty()) {
                     _uiState.update {
                         it.copy(
                             isInspectingMedia = false,
                             inspectedMediaQualities = emptyList(),
+                            inspectedPlaylist = null,
                             inspectMediaError = "Unable to fetch video formats. Please verify the URL or check your internet connection."
                         )
                     }
@@ -1046,6 +1115,7 @@ class DashboardViewModel(
                     it.copy(
                         isInspectingMedia = false,
                         inspectedMediaQualities = emptyList(),
+                        inspectedPlaylist = null,
                         inspectMediaError = e.message ?: "Failed to inspect media qualities"
                     )
                 }
@@ -1167,6 +1237,11 @@ class DashboardViewModel(
             return
         }
 
+        currentState.inspectedPlaylist?.let { playlist ->
+            addPlaylist(currentState, playlist)
+            return
+        }
+
         if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
             if (currentState.inspectMediaError != null) {
                 _uiState.update { it.copy(errorMessage = "Cannot start download: Video inspection failed.") }
@@ -1276,7 +1351,8 @@ class DashboardViewModel(
                     currentState.clipEndTime
                 ) else null,
                 clipByCutting = isActualSubClip && currentState.clipFastMode,
-                requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap()
+                requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap(),
+                scheduledAtMs = currentState.scheduleStartMs
             ).onSuccess { task ->
                 pendingExternalUrl = null
                 pendingExternalHeaders = emptyMap()
@@ -1289,6 +1365,7 @@ class DashboardViewModel(
                         inspectedTorrentFiles = emptyList(),
                         inspectedTorrentName = null,
                         inspectedMediaQualities = emptyList(),
+                        inspectedPlaylist = null,
                         inspectedMediaTitle = null,
                         duplicateTaskAlert = null,
                         fileConflictAlert = null,
@@ -1296,6 +1373,7 @@ class DashboardViewModel(
                         clipEndTime = "",
                         isClipRangeEnabled = false,
                         clipFastMode = false,
+                        scheduleStartMs = 0L,
                         mediaDurationSeconds = 0L
                     )
                 }
@@ -1308,6 +1386,83 @@ class DashboardViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Queues every selected video of a playlist as its own download, all with the chosen
+     * quality. The download queue (Settings -> downloads at the same time) runs them a few at a
+     * time; a schedule applies to all of them.
+     */
+    private fun addPlaylist(
+        state: DashboardUiState,
+        playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
+    ) {
+        val selected = playlist.entries.filter { it.isSelected }
+        if (selected.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "Select at least one video of the playlist.") }
+            return
+        }
+        val quality = state.playlistQuality
+        val destDir =
+            state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        scope.launch {
+            var added = 0
+            var failed = 0
+            val usedNames = mutableSetOf<String>()
+            for (entry in selected) {
+                val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
+                var fileName = if (name.endsWith(
+                        ".${quality.extension}",
+                        ignoreCase = true
+                    )
+                ) name else "$name.${quality.extension}"
+                // Two videos with the same title, or a file already in the folder: "Title (2).mp4".
+                if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
+                    val base = fileName.substringBeforeLast('.')
+                    val ext = fileName.substringAfterLast('.')
+                    var n = 2
+                    while ("$base ($n).$ext".lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$base ($n).$ext".toPath())) n++
+                    fileName = "$base ($n).$ext"
+                }
+                usedNames.add(fileName.lowercase())
+                val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
+                    index = 0,
+                    qualityLabel = quality.label,
+                    directUrl = entry.url,
+                    format = quality.extension,
+                    size = -1L,
+                    isSelected = true,
+                    formatId = quality.formatSelector,
+                    originalUrl = entry.url,
+                    videoTitle = entry.title,
+                    durationSeconds = entry.durationSeconds
+                )
+                queueRepository.enqueueTask(
+                    url = entry.url,
+                    customDestinationPath = destDir,
+                    customFileName = fileName,
+                    mediaQualities = listOf(pseudoQuality),
+                    maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
+                    forcedEngineType = EngineType.MEDIA_STREAM,
+                    scheduledAtMs = state.scheduleStartMs
+                ).onSuccess { added++ }.onFailure { failed++ }
+            }
+            _uiState.update {
+                it.copy(
+                    inputUrl = "",
+                    isLoading = false,
+                    isAddDialogVisible = false,
+                    inspectedPlaylist = null,
+                    inspectedMediaQualities = emptyList(),
+                    inspectedMediaTitle = null,
+                    scheduleStartMs = 0L,
+                    errorMessage = if (failed > 0) "$failed video(s) could not be added." else null
+                )
+            }
+            singleVideoUrl = null
+            _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added videos from \"${playlist.title}\""))
         }
     }
 

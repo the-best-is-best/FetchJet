@@ -364,6 +364,33 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             )
                         )
                     },
+                    inspectedPlaylist = state.inspectedPlaylist,
+                    playlistQuality = state.playlistQuality,
+                    onPlaylistEntryToggled = { i, sel ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnPlaylistEntryToggled(
+                                i,
+                                sel
+                            )
+                        )
+                    },
+                    onPlaylistSelectAll = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnPlaylistSelectAll(
+                                it
+                            )
+                        )
+                    },
+                    onPlaylistQualityChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnPlaylistQualityChanged(
+                                it
+                            )
+                        )
+                    },
+                    onPlaylistUseSingleVideo = { viewModel.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo) },
+                    scheduleStartMs = state.scheduleStartMs,
+                    onScheduleChanged = { viewModel.onEvent(DashboardUiEvent.OnScheduleChanged(it)) },
                     onEngineSelected = { viewModel.onEvent(DashboardUiEvent.OnEngineSelected(it)) },
                     onAddDownload = { viewModel.onEvent(DashboardUiEvent.OnAddDownloadClicked) },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(false)) }
@@ -1176,6 +1203,11 @@ private fun DownloadTaskItem(
                     }
                 } else if (task.status == DownloadStatus.CONNECTING) {
                     "Connecting..."
+                } else if (task.waitingInQueue) {
+                    if (task.scheduledAtMs > com.michelle.raouf.fetch_jet.core.util.currentEpochMs())
+                        "🕑 Starts ${com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule(task.scheduledAtMs)}"
+                    else if (task.queuePosition > 0) "⏳ Waiting in queue (#${task.queuePosition})"
+                    else "⏳ Waiting in queue"
                 } else {
                     task.status.name
                 }
@@ -1316,6 +1348,41 @@ private fun DownloadTaskItem(
                         Text("Pause", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
 
+                    OutlinedButton(
+                        onClick = onCancel,
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Cancel", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else if (task.waitingInQueue) {
+                    // Waiting for its time / a free slot: start it now, hold it, or drop it.
+                    Button(
+                        onClick = onResume,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Start now", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = onPause,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Pause", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                     OutlinedButton(
                         onClick = onCancel,
                         border = BorderStroke(

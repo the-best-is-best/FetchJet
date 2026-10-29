@@ -1,4 +1,5 @@
 [versions]
+autoLaunch = "0.9.0"
 agp = "9.3.0"
 android-compileSdk = "37"
 android-minSdk = "24"
@@ -26,6 +27,7 @@ gson = "2.11.0"
 preference-ktx = "1.2.1"
 
 [libraries]
+auto-launch = { module = "io.github.vinceglb:auto-launch", version.ref = "autoLaunch" }
 ffmpeg = { module = "io.github.junkfood02.youtubedl-android:ffmpeg", version.ref = "library" }
 aria2c = { module = "io.github.junkfood02.youtubedl-android:aria2c", version.ref = "library" }
 okhttp3 = { module = "com.squareup.okhttp3:okhttp", version = "4.12.0" }

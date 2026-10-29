@@ -21,9 +21,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -147,12 +151,122 @@ class QueueManagerRepository(
         return "task_${taskSequence}_$randomNum"
     }
 
+    // ---- Queue & schedule ------------------------------------------------------------------
+    // Downloads that wait (for their start time, or for a free slot) live here, not in an
+    // engine: an engine only ever sees a download when it really starts.
+
+    /** Waiting downloads, by id. */
+    private val pendingTasks = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
+
+    private val queueSettingsFile get() = "${pathResolver.getSettingsDirectory()}/queue.properties".toPath()
+
+    private val _maxConcurrentDownloads = MutableStateFlow(loadMaxConcurrent())
+
+    /** How many downloads run at the same time; 0 = no limit. */
+    val maxConcurrentDownloads: StateFlow<Int> = _maxConcurrentDownloads.asStateFlow()
+
+    fun setMaxConcurrentDownloads(count: Int) {
+        _maxConcurrentDownloads.value = count.coerceIn(0, 20)
+        try {
+            queueSettingsFile.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+            FileSystem.SYSTEM.write(queueSettingsFile) {
+                writeUtf8("# FetchJet queue settings\n")
+                writeUtf8("maxConcurrentDownloads=${_maxConcurrentDownloads.value}\n")
+            }
+        } catch (_: Exception) {
+        }
+        pumpQueue()
+    }
+
+    private fun loadMaxConcurrent(): Int = try {
+        if (!FileSystem.SYSTEM.exists(queueSettingsFile)) 3
+        else FileSystem.SYSTEM.read(queueSettingsFile) { readUtf8() }.lineSequence()
+            .map { it.trim() }
+            .firstOrNull { it.startsWith("maxConcurrentDownloads=") }
+            ?.substringAfter('=')?.trim()?.toIntOrNull()?.coerceIn(0, 20) ?: 3
+    } catch (_: Exception) {
+        3
+    }
+
+    /** Downloads the engines are running (or starting) now. */
+    private fun runningCount(): Int = getAllCurrentTasks().count {
+        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.CONNECTING ||
+                it.status == DownloadStatus.QUEUED
+    }
+
+    private fun hasFreeSlot(): Boolean {
+        val max = _maxConcurrentDownloads.value
+        return max <= 0 || runningCount() < max
+    }
+
+    private val pumpLock = Mutex()
+
+    /** Starts waiting downloads whose time has come, while there are free slots (oldest first). */
+    private fun pumpQueue() {
+        scope.launch {
+            pumpLock.withLock {
+                val now = nowEpochMs()
+                val due = pendingTasks.value.values
+                    .filter { it.scheduledAtMs <= now }
+                    .sortedBy { it.createdAtEpochMs }
+                for (task in due) {
+                    if (!hasFreeSlot()) break
+                    // Taken out in one step: "Start now" / Cancel may race with this loop.
+                    val taken = pendingTasks.getAndUpdate { it - task.id }[task.id] ?: continue
+                    startOnEngine(taken)
+                }
+            }
+        }
+    }
+
+    private suspend fun startOnEngine(task: DownloadTask) {
+        val fresh = task.copy(
+            status = DownloadStatus.QUEUED,
+            scheduledAtMs = 0L,
+            waitingInQueue = false,
+            queuePosition = 0
+        )
+        val result = try {
+            when (fresh.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.start(fresh)
+                EngineType.BITTORRENT -> torrentEngine.start(fresh)
+                EngineType.MEDIA_STREAM -> mediaEngine.start(fresh)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+        result.onFailure { e ->
+            // Keep it visible with the reason instead of losing it.
+            val failed = fresh.copy(
+                status = DownloadStatus.ERROR,
+                errorMessage = e.message ?: "Could not start"
+            )
+            when (fresh.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(failed)
+                EngineType.BITTORRENT -> torrentEngine.enqueueTask(failed)
+                EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(failed)
+            }
+        }
+    }
+
     val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
         httpEngine.getAllTasksFlow(),
         torrentEngine.getAllTasksFlow(),
-        mediaEngine.getAllTasksFlow()
-    ) { httpTasks, torrentTasks, mediaTasks ->
-        (httpTasks.values + torrentTasks.values + mediaTasks.values)
+        mediaEngine.getAllTasksFlow(),
+        pendingTasks
+    ) { httpTasks, torrentTasks, mediaTasks, pending ->
+        val now = nowEpochMs()
+        val dueOrder = pending.values.filter { it.scheduledAtMs <= now }
+            .sortedBy { it.createdAtEpochMs }
+            .mapIndexed { i, t -> t.id to i + 1 }.toMap()
+        val waiting = pending.values.map {
+            it.copy(
+                status = DownloadStatus.QUEUED,
+                waitingInQueue = true,
+                queuePosition = dueOrder[it.id] ?: 0
+            )
+        }
+        (httpTasks.values + torrentTasks.values + mediaTasks.values + waiting)
             .sortedByDescending { it.createdAtEpochMs }
     }.stateIn(
         scope = scope,
@@ -167,6 +281,13 @@ class QueueManagerRepository(
         observeTasksForNotifications()
         loadAndRestoreTasks()
         observeTasksForPersistence()
+        // Starts queued / scheduled downloads when a slot frees up or their time comes.
+        scope.launch {
+            while (true) {
+                delay(1000)
+                if (pendingTasks.value.isNotEmpty()) pumpQueue()
+            }
+        }
     }
 
     private fun observeTasksForNotifications() {
@@ -227,6 +348,10 @@ class QueueManagerRepository(
         return mediaEngine.inspectMediaQualities(url)
     }
 
+    /** The videos of a playlist / channel link (null = not a playlist). */
+    suspend fun inspectPlaylist(url: String): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url)
+
     suspend fun enqueueTask(
         url: String,
         customDestinationPath: String? = null,
@@ -244,7 +369,9 @@ class QueueManagerRepository(
         /** Clip: whole video at full speed, then a local cut (see CutPlugin.kt). Off = only the
          *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
         clipByCutting: Boolean = false,
-        requestHeaders: Map<String, String> = emptyMap()
+        requestHeaders: Map<String, String> = emptyMap(),
+        /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
+        scheduledAtMs: Long = 0L
     ): Result<DownloadTask> {
         val trimmedUrl = url.trim()
         if (trimmedUrl.isBlank()) return Result.failure(Exception("URL cannot be empty"))
@@ -319,16 +446,27 @@ class QueueManagerRepository(
             approximateTotalBytes = initialApproximateBytes,
             createdAtEpochMs = nowEpochMs(),
             requestHeaders = requestHeaders.filterKeys { it.isNotBlank() }
-                .filterValues { it.isNotBlank() }
+                .filterValues { it.isNotBlank() },
+            scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L
         )
+
+        // Later (scheduled), others already waiting, or no free slot: join the queue. The pump
+        // (under its lock) starts it, so a new add never jumps ahead of waiting ones.
+        if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
+            pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
+            pumpQueue()
+            return Result.success(task)
+        }
 
         return try {
             // An engine that refuses (e.g. BitTorrent not available on this build) must not be
             // reported as "Started download".
+            // QUEUED (= starting) right away, so the next add already counts this one as running.
+            val starting = task.copy(status = DownloadStatus.QUEUED)
             when (engineType) {
-                EngineType.HTTP_DIRECT -> httpEngine.start(task)
-                EngineType.BITTORRENT -> torrentEngine.start(task)
-                EngineType.MEDIA_STREAM -> mediaEngine.start(task)
+                EngineType.HTTP_DIRECT -> httpEngine.start(starting)
+                EngineType.BITTORRENT -> torrentEngine.start(starting)
+                EngineType.MEDIA_STREAM -> mediaEngine.start(starting)
             }.getOrThrow()
             Result.success(task)
         } catch (e: Exception) {
@@ -337,6 +475,16 @@ class QueueManagerRepository(
     }
 
     suspend fun pauseTask(taskId: String): Result<Unit> {
+        // A waiting download leaves the queue and stays paused until Resume.
+        pendingTasks.getAndUpdate { it - taskId }[taskId]?.let { waiting ->
+            val paused = waiting.copy(status = DownloadStatus.PAUSED, scheduledAtMs = 0L)
+            when (paused.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(paused)
+                EngineType.BITTORRENT -> torrentEngine.enqueueTask(paused)
+                EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(paused)
+            }
+            return Result.success(Unit)
+        }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
         notificationManager.cancelNotification(taskId)
@@ -349,6 +497,11 @@ class QueueManagerRepository(
     }
 
     suspend fun resumeTask(taskId: String): Result<Unit> {
+        // "Start now" on a waiting download: skip the queue / the schedule.
+        pendingTasks.getAndUpdate { it - taskId }[taskId]?.let { waiting ->
+            startOnEngine(waiting)
+            return Result.success(Unit)
+        }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
         return when (task.engineType) {
@@ -359,6 +512,9 @@ class QueueManagerRepository(
     }
 
     suspend fun cancelTask(taskId: String): Result<Unit> {
+        if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
+            return Result.success(Unit) // never started: nothing on disk
+        }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
         notificationManager.cancelNotification(taskId)
@@ -373,6 +529,9 @@ class QueueManagerRepository(
     }
 
     suspend fun removeTask(taskId: String, deleteFile: Boolean): Result<Unit> {
+        if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
+            return Result.success(Unit)
+        }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
         notificationManager.cancelNotification(taskId)
@@ -520,6 +679,17 @@ class QueueManagerRepository(
     }
 
     fun updateTorrentFileSelection(taskId: String, fileIndex: Int, isSelected: Boolean) {
+        if (pendingTasks.value.containsKey(taskId)) {
+            pendingTasks.update { m ->
+                val t = m[taskId] ?: return@update m
+                m + (taskId to t.copy(torrentFiles = t.torrentFiles.map { f ->
+                    if (f.index == fileIndex) f.copy(
+                        isSelected = isSelected
+                    ) else f
+                }))
+            }
+            return
+        }
         torrentEngine.updateFileSelection(taskId, fileIndex, isSelected)
     }
 
@@ -556,6 +726,7 @@ class QueueManagerRepository(
                     extractJsonField(content, "clipByCutting")?.toBooleanStrictOrNull() ?: false
                 val serverSupportsResume =
                     extractJsonField(content, "serverSupportsResume")?.toBooleanStrictOrNull()
+                val scheduledAtMs = extractJsonField(content, "scheduledAtMs")?.toLongOrNull() ?: 0L
                 val currentStepText = extractJsonField(content, "currentStepText")?.ifBlank { null }
                 val disableUpload =
                     extractJsonField(content, "disableUpload")?.toBooleanStrictOrNull() ?: false
@@ -623,10 +794,14 @@ class QueueManagerRepository(
                     maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
                     requestHeaders = requestHeaders,
                     torrentFiles = torrentFiles,
-                    webSeedUrls = webSeedUrls
+                    webSeedUrls = webSeedUrls,
+                    scheduledAtMs = scheduledAtMs
                 )
 
-                when (engineType) {
+                if (status == DownloadStatus.QUEUED) {
+                    // Was waiting (or just starting) when the app closed: back in the queue.
+                    pendingTasks.update { it + (task.id to task) }
+                } else when (engineType) {
                     EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task)
                     EngineType.BITTORRENT -> torrentEngine.enqueueTask(task)
                     EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task)
@@ -713,7 +888,8 @@ class QueueManagerRepository(
                             // the merge/save progress line is not worth a disk write every 0.5 s
                             postProcessLabel = null,
                             postProcessProgress = -1f,
-                            postProcessStartedAtMs = 0L
+                            postProcessStartedAtMs = 0L,
+                            queuePosition = 0
                         )
                     }
                 }
@@ -749,7 +925,7 @@ class QueueManagerRepository(
                             val safeUa = escapeJson(task.requestHeaders["User-Agent"] ?: "")
                             val safeTorrentFiles = escapeJson(task.torrentFiles.joinToString(";") { "${it.index}:${if (it.isSelected) 1 else 0}:${it.priority}" })
                             val safeWebSeeds = escapeJson(task.webSeedUrls.joinToString(" "))
-                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds"}"""
+                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs}}"""
                         }
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()

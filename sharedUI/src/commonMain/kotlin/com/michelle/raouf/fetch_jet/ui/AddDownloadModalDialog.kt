@@ -111,6 +111,15 @@ fun AddDownloadModalDialog(
     onToggleClipRange: (Boolean) -> Unit = {},
     clipFastMode: Boolean = false,
     onToggleClipFastMode: (Boolean) -> Unit = {},
+    inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
+    onPlaylistEntryToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onPlaylistSelectAll: (Boolean) -> Unit = {},
+    onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit = {},
+    onPlaylistUseSingleVideo: () -> Unit = {},
+    scheduleStartMs: Long = 0L,
+    onScheduleChanged: (Long) -> Unit = {},
     onEngineSelected: (EngineType) -> Unit = {},
     onAddDownload: () -> Unit,
     onDismiss: () -> Unit
@@ -249,7 +258,7 @@ fun AddDownloadModalDialog(
                     }
                 }
                 EngineType.MEDIA_STREAM -> {
-                    if (inspectedMediaQualities.isEmpty() && !isInspectingMedia && inspectMediaError == null && isYtDlpInstalled) {
+                    if (inspectedMediaQualities.isEmpty() && inspectedPlaylist == null && !isInspectingMedia && inspectMediaError == null && isYtDlpInstalled) {
                         onInspectMedia()
                     }
                 }
@@ -262,7 +271,9 @@ fun AddDownloadModalDialog(
     val isUrlValid = inputUrl.isNotBlank()
     val isInspectionComplete = when (detectedEngine) {
         EngineType.BITTORRENT -> inspectedTorrentFiles.isNotEmpty() && inspectedTorrentFiles.any { it.isSelected } && inspectError == null
-        EngineType.MEDIA_STREAM -> inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected } && inspectMediaError == null
+        EngineType.MEDIA_STREAM -> inspectMediaError == null && (
+                inspectedPlaylist?.entries?.any { it.isSelected } == true ||
+                        (inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected }))
         EngineType.HTTP_DIRECT -> true
     }
     val isInspecting = isInspectingTorrent || isInspectingMedia
@@ -647,6 +658,15 @@ fun AddDownloadModalDialog(
                                 }
                             }
                         }
+                    } else if (inspectedPlaylist != null) {
+                        PlaylistSelectionCard(
+                            playlist = inspectedPlaylist,
+                            quality = playlistQuality,
+                            onEntryToggled = onPlaylistEntryToggled,
+                            onSelectAll = onPlaylistSelectAll,
+                            onQualityChanged = onPlaylistQualityChanged,
+                            onUseSingleVideo = if (inputUrl.contains("v=") || inputUrl.contains("youtu.be/")) onPlaylistUseSingleVideo else null
+                        )
                     } else if (inspectedMediaQualities.isEmpty()) {
                         val isInputAudio = inputUrl.substringBefore('?').substringAfterLast('.', "")
                             .lowercase() in listOf(
@@ -1031,6 +1051,13 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // When to start: now, in a while, or at a time of day
+                ScheduleStartSection(
+                    scheduleStartMs = scheduleStartMs,
+                    onScheduleChanged = onScheduleChanged
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+
                 // Save Destination Section
                 Text(
                     text = "Save Destination Directory",
@@ -1222,6 +1249,12 @@ fun AddDownloadModalDialog(
                                 !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> "Inspect Video First"
                                 !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> "Inspect Torrent First"
                                 !isClipRangeValid -> "Invalid Time Range"
+                                inspectedPlaylist != null && detectedEngine == EngineType.MEDIA_STREAM -> {
+                                    val n = inspectedPlaylist.entries.count { it.isSelected }
+                                    if (scheduleStartMs > 0L) "Schedule $n videos" else "Download $n videos"
+                                }
+
+                                scheduleStartMs > 0L -> "Schedule Download"
                                 else -> "Start Download"
                             },
                             // On the cyan primary button the readable text colour is onPrimary

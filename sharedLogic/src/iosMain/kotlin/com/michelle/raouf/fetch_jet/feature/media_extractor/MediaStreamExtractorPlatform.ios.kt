@@ -869,8 +869,10 @@ actual suspend fun downloadMediaWithPlatformTool(
             fileName.endsWith(".flac", ignoreCase = true) ||
             fileName.endsWith(".wav", ignoreCase = true) ||
             fileName.endsWith(".ogg", ignoreCase = true) ||
+            // A video selector like "bestvideo+bestaudio" names audio too: only an audio-only
+            // selector (no '+') means an audio download.
             (formatId?.lowercase()?.let {
-                it.contains("audio") || it.contains("ba") || it == "140" || it == "251"
+                !it.contains('+') && (it.contains("audio") || it.contains("ba") || it == "140" || it == "251")
             } ?: false)
 
     val outputTemplate = "$destinationDir/$cleanName.%(ext)s"
@@ -1337,3 +1339,24 @@ private suspend fun runCancellableOnBridge(
         watchdog.cancel()
     }
 }
+
+
+actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
+    withContext(Dispatchers.IO) {
+        requireIosMediaEngine()
+        val trimmedUrl = normalizePlaylistUrl(url)
+        if (trimmedUrl.isEmpty()) return@withContext null
+        val args = mutableListOf("--flat-playlist", "-J", "--no-warnings", "--yes-playlist")
+        getIosCookieFile()?.let { cookiePath ->
+            args.add("--cookies")
+            args.add(cookiePath)
+        }
+        args.add(trimmedUrl)
+        val bridge = IosMediaBridgeRegistry.bridge
+        val output = if (bridge != null && bridge.isAvailable()) {
+            bridge.captureYtDlp(args)
+        } else {
+            runYtDlpCapture(args)
+        }
+        output?.let { parsePlaylistJson(it) }
+    }

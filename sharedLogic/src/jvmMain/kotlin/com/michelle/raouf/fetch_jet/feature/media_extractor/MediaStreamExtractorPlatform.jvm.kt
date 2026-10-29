@@ -1268,7 +1268,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
 }
 
-private fun runYtDlp(args: List<String>): String? {
+private fun runYtDlp(args: List<String>, timeoutSec: Long = 25L): String? {
 
     return try {
 
@@ -1317,7 +1317,7 @@ private fun runYtDlp(args: List<String>): String? {
         readerThread.start()
 
 
-        val finished = process.waitFor(25, TimeUnit.SECONDS)
+        val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
 
         if (!finished) {
 
@@ -1489,3 +1489,23 @@ private fun formatDurationSeconds(totalSeconds: Long): String {
     }
 }
 
+
+actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? {
+    getExistingYtDlpBinary() ?: return null
+    val output = runYtDlp(
+        listOf(
+            "--js-runtimes",
+            "deno",
+            "--js-runtimes",
+            "node",
+            "--flat-playlist",
+            "-J",
+            "--no-warnings",
+            "--yes-playlist",
+            "--",
+            normalizePlaylistUrl(url)
+        ),
+        timeoutSec = 85L // a channel with hundreds of videos takes a while
+    ) ?: return null
+    return parsePlaylistJson(output)
+}

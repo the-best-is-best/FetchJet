@@ -681,6 +681,12 @@ fun FdmSettingsPanel(
                 }
             }
 
+            // Queue: how many downloads run at the same time
+            QueueSettingsCard()
+
+            // Startup (desktop): start with the system, hidden in the tray
+            StartupSettingsCard()
+
             // Updates: automatic check, auto download (Windows), check now
             UpdatesSettingsCard()
 
