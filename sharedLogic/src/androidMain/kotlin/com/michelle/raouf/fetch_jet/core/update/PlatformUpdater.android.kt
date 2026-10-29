@@ -5,6 +5,7 @@ import android.os.Build
 actual object PlatformUpdater {
     /** An Android app cannot replace itself: the user opens the APK (or the release page). */
     actual val canInstallInApp: Boolean = false
+    actual val platformKey: String = "android"
 
     /** The APK built for this device's CPU (the release has one per ABI), else any APK. */
     actual fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? {

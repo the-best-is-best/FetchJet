@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>FetchJet downloads</title>
+    <meta content="Every FetchJet release for every platform: Windows, macOS, Linux, Android, iOS and the browser extension."
+          name="description">
+    <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2322D3EE' d='M12 3v12m-5-5 5 5 5-5M5 20h14' stroke='%2322D3EE' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"
+          rel="icon">
+    <style>
+        :root {
+          --bg: #0B1020; --panel: #121933; --panel-2: #141B33; --line: rgba(255,255,255,0.07);
+          --text: #E8ECF5; --muted: #8A94B0; --accent: #22D3EE; --accent-ink: #0B1020;
+          --ok: #34D399; --warn: #FBBF24;
+        }
+        @media (prefers-color-scheme: light) {
+          :root:not([data-theme="dark"]) {
+            --bg: #F4F6FB; --panel: #FFFFFF; --panel-2: #EEF1F8; --line: rgba(10,20,40,0.10);
+            --text: #0F172A; --muted: #5B6478; --accent: #0891B2; --accent-ink: #FFFFFF;
+          }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+        a { color: var(--accent); }
+        header { max-width: 1100px; margin: 0 auto; padding: 40px 16px 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        header .logo { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+        header h1 { font-size: 26px; margin: 0; }
+        header p { margin: 0; color: var(--muted); }
+        header .grow { flex: 1 1 auto; }
+        .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+        main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 60px; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 16px; }
+        .tab { border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+        .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+        .tab .n { opacity: 0.7; font-weight: 500; margin-left: 4px; }
+        .latest { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+        .latest .v { font-size: 22px; font-weight: 700; }
+        .latest .d { color: var(--muted); font-size: 13px; }
+        .latest .grow { flex: 1 1 auto; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; padding: 10px 16px; border-radius: 12px; font-size: 14px; }
+        .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+        .btn small { opacity: 0.75; font-weight: 500; }
+        .list { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+        .rel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+        .rel-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .rel-head .v { font-weight: 700; font-size: 16px; }
+        .rel-head .d { color: var(--muted); font-size: 13px; }
+        .rel-head .grow { flex: 1 1 auto; }
+        .rel-head a.notes { font-size: 13px; }
+        .files { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .file { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); text-decoration: none; padding: 7px 12px; border-radius: 10px; font-size: 13px; }
+        .file:hover { border-color: var(--accent); }
+        .file .sz { color: var(--muted); font-size: 12px; }
+        .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: rgba(34,211,238,0.14); color: var(--accent); }
+        .empty, .error { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
+        .error { color: var(--warn); }
+        .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+        .notes-body { margin-top: 10px; padding: 12px 14px; background: var(--panel-2); border-radius: 10px; font-size: 13px; white-space: pre-wrap; color: var(--muted); display: none; }
+        .rel.open .notes-body { display: block; }
+        footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 13px; }
+    </style>
+</head>
+<body>
+<header>
+    <div aria-hidden="true" class="logo">
+        <svg fill="none" height="22" stroke="#0B1020" stroke-linecap="round" stroke-linejoin="round"
+             stroke-width="2.5" viewBox="0 0 24 24" width="22">
+            <path d="M12 3v12"/>
+            <path d="m7 10 5 5 5-5"/>
+            <path d="M5 20h14"/>
+        </svg>
+    </div>
+    <div><h1>FetchJet downloads</h1>
+        <p>Every version, for every platform. Pick yours.</p></div>
+    <div class="grow"></div>
+    <span class="pill" id="count">loading…</span>
+</header>
+<main>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <section id="content">
+        <div class="empty">Loading releases from GitHub…</div>
+    </section>
+    <p class="hint" id="hint"></p>
+</main>
+<footer>Files are published on <a href="#" id="repo-link">GitHub Releases</a>. Android: install the
+    APK for your CPU, or the <em>universal</em> one if unsure. iOS: the IPA is for sideloading
+    (AltStore / Sideloadly). Firefox needs the signed <code>.xpi</code>.
+</footer>
+
+<script>
+    (function () {
+      var REPO = "the-best-is-best/FetchJet";
+      document.getElementById("repo-link").href = "https://github.com/" + REPO + "/releases";
+
+      var PLATFORMS = [
+        { key: "windows",   label: "Windows",   match: function (n) { return /\.(exe|msi)$/i.test(n); },
+          hint: "The .msi installs and lets FetchJet update itself; the .exe is the same installer in a single file." },
+        { key: "macos",     label: "macOS",     match: function (n) { return /\.dmg$/i.test(n); },
+          hint: "Open the .dmg and drag FetchJet to Applications." },
+        { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },
+          hint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet)." },
+        { key: "android",   label: "Android",   match: function (n) { return /\.apk$/i.test(n); },
+          hint: "arm64-v8a fits almost every phone made after 2017. Not sure? Take the universal APK." },
+        { key: "ios",       label: "iOS",       match: function (n) { return /\.ipa$/i.test(n); },
+          hint: "Unsigned IPA for sideloading with AltStore or Sideloadly." },
+        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n); },
+          hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions); .xpi = Firefox." }
+      ];
+
+      var tabsEl = document.getElementById("tabs"), contentEl = document.getElementById("content"),
+          hintEl = document.getElementById("hint"), countEl = document.getElementById("count");
+      var releases = [], current = guessPlatform();
+
+      function guessPlatform() {
+        var ua = navigator.userAgent, saved = null;
+        try { saved = localStorage.getItem("fj.platform"); } catch (e) {}
+        if (saved) return saved;
+        if (/Android/i.test(ua)) return "android";
+        if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+        if (/Mac/i.test(ua)) return "macos";
+        if (/Linux/i.test(ua)) return "linux";
+        return "windows";
+      }
+
+      function fmtSize(b) {
+        if (!b) return "";
+        var u = ["B", "KB", "MB", "GB"], i = 0;
+        while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+        return (i ? b.toFixed(1) : b) + " " + u[i];
+      }
+      function fmtDate(s) {
+        try { return new Date(s).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); } catch (e) { return s; }
+      }
+      function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+      function unchangedOf(r) {
+        var m = /<!--\s*fetchjet-unchanged:\s*([a-z0-9,\s_-]*)-->/i.exec(r.body || "");
+        return m ? m[1].split(",").map(function (x) { return x.trim().toLowerCase(); }) : [];
+      }
+      function cleanNotes(body) {
+        return (body || "").replace(/<!--\s*fetchjet-unchanged:[^>]*-->\s*/gi, "").trim();
+      }
+      function fileLabel(name, platform) {
+        if (platform === "android") {
+          var m = /(arm64-v8a|armeabi-v7a|x86_64|x86|universal)/i.exec(name);
+          return m ? m[1] : name;
+        }
+        if (platform === "extension") return /\.xpi$/i.test(name) ? "Firefox (.xpi)" : "Chrome / Edge (.zip)";
+        if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : "Installer (.exe)";
+        if (platform === "linux") return /\.deb$/i.test(name) ? "Debian / Ubuntu (.deb)" : "Portable (.tar.gz)";
+        return name;
+      }
+
+      function renderTabs() {
+        tabsEl.innerHTML = "";
+        PLATFORMS.forEach(function (p) {
+          var n = releases.filter(function (r) { return r.assets.some(function (a) { return p.match(a.name); }); }).length;
+          var b = document.createElement("button");
+          b.className = "tab"; b.setAttribute("role", "tab");
+          b.setAttribute("aria-selected", p.key === current ? "true" : "false");
+          b.innerHTML = esc(p.label) + '<span class="n">' + n + "</span>";
+          b.onclick = function () { current = p.key; try { localStorage.setItem("fj.platform", p.key); } catch (e) {} renderTabs(); renderList(); };
+          tabsEl.appendChild(b);
+        });
+      }
+
+      function renderList() {
+        var p = PLATFORMS.filter(function (x) { return x.key === current; })[0];
+        var rows = releases.map(function (r) {
+          return { r: r, files: r.assets.filter(function (a) { return p.match(a.name); }) };
+        }).filter(function (x) { return x.files.length; });
+        hintEl.textContent = p.hint;
+        if (!rows.length) {
+          contentEl.innerHTML = '<div class="empty">No ' + esc(p.label) + " build has been published yet.</div>";
+          return;
+        }
+        var latest = rows[0], html = "";
+        var skippedIn = releases.filter(function (r) { return unchangedOf(r).indexOf(p.key) >= 0 && r.tag_name !== latest.r.tag_name && isNewerTag(r.tag_name, latest.r.tag_name); });
+        html += '<div class="latest"><div><div class="v">Latest for ' + esc(p.label) + ": " + esc(latest.r.tag_name) + '</div><div class="d">' + fmtDate(latest.r.published_at) +
+                (skippedIn.length ? " · newer releases (" + skippedIn.map(function (r) { return esc(r.tag_name); }).join(", ") + ") had no changes for " + esc(p.label) : "") +
+                '</div></div><div class="grow"></div>' +
+                latest.files.map(function (a) { return '<a class="btn" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + " <small>" + fmtSize(a.size) + "</small></a>"; }).join(" ") +
+                '<a class="btn ghost" href="' + latest.r.html_url + '">Release notes</a></div>';
+        html += '<div class="list">';
+        rows.forEach(function (x, i) {
+          var notes = cleanNotes(x.r.body);
+          html += '<div class="rel" id="rel-' + esc(x.r.tag_name) + '"><div class="rel-head"><span class="v">' + esc(x.r.tag_name) + "</span>" +
+                  (i === 0 ? '<span class="tag">latest</span>' : "") + (x.r.prerelease ? '<span class="tag">pre-release</span>' : "") +
+                  '<span class="d">' + fmtDate(x.r.published_at) + '</span><span class="grow"></span>' +
+                  (notes ? '<a class="notes" href="#" data-toggle="' + esc(x.r.tag_name) + '">what changed</a>' : "") +
+                  '<a class="notes" href="' + x.r.html_url + '">on GitHub</a></div>' +
+                  '<div class="files">' + x.files.map(function (a) {
+                    return '<a class="file" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + '<span class="sz">' + fmtSize(a.size) + "</span></a>";
+                  }).join("") + "</div>" +
+                  (notes ? '<div class="notes-body">' + esc(notes) + "</div>" : "") + "</div>";
+        });
+        html += "</div>";
+        contentEl.innerHTML = html;
+        Array.prototype.forEach.call(contentEl.querySelectorAll("a[data-toggle]"), function (a) {
+          a.onclick = function (e) { e.preventDefault(); document.getElementById("rel-" + a.getAttribute("data-toggle")).classList.toggle("open"); };
+        });
+      }
+
+      function isNewerTag(a, b) {
+        var pa = a.replace(/^v/i, "").split(/[.-]/), pb = b.replace(/^v/i, "").split(/[.-]/);
+        for (var i = 0; i < 3; i++) { var x = parseInt(pa[i] || "0", 10), y = parseInt(pb[i] || "0", 10); if (x !== y) return x > y; }
+        return false;
+      }
+
+      fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100", { headers: { Accept: "application/vnd.github+json" } })
+        .then(function (r) { if (!r.ok) throw new Error("GitHub answered " + r.status); return r.json(); })
+        .then(function (list) {
+          releases = list.filter(function (r) { return !r.draft; });
+          countEl.textContent = releases.length + (releases.length === 1 ? " release" : " releases");
+          renderTabs(); renderList();
+        })
+        .catch(function (e) {
+          countEl.textContent = "offline";
+          contentEl.innerHTML = '<div class="error">Could not load the release list (' + esc(e.message) + '). Open <a href="https://github.com/' + REPO + '/releases">the releases page on GitHub</a> instead.</div>';
+        });
+    })();
+</script>
+</body>
+</html>

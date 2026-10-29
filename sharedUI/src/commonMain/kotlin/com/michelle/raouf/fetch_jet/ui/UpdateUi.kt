@@ -95,7 +95,7 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = plainNotes(release.notes).ifBlank { "No release notes." },
+                            text = plainNotes(release.notesForDisplay).ifBlank { "No release notes." },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

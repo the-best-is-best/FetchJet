@@ -17,6 +17,11 @@ actual object PlatformUpdater {
      * newer MSI replaces it in place (per-user install, no admin prompt).
      */
     actual val canInstallInApp: Boolean = isWindows && launcherPath != null
+    actual val platformKey: String = when {
+        isWindows -> "windows"
+        isMac -> "macos"
+        else -> "linux"
+    }
 
     actual fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? {
         fun first(vararg ext: String) =

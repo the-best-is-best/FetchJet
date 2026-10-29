@@ -10,6 +10,14 @@ expect object PlatformUpdater {
      */
     val canInstallInApp: Boolean
 
+    /**
+     * Name of this platform in release notes: windows / macos / linux / android / ios.
+     * A release built for some platforms only lists the others in a
+     * `<!-- fetchjet-unchanged: windows,linux -->` line, and the app then knows the new
+     * version has nothing new for it.
+     */
+    val platformKey: String
+
     /** The release file for this platform, or null to send the user to the release page. */
     fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset?
 

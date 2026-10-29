@@ -47,7 +47,29 @@ data class AppRelease(
     val pageUrl: String,
     val publishedAt: String,
     val assets: List<ReleaseAsset>
-)
+) {
+    /**
+     * Platforms this release did not rebuild (their files are copies of the previous
+     * release). Read from a `<!-- fetchjet-unchanged: windows,linux -->` line in the notes.
+     */
+    val unchangedPlatforms: Set<String>
+        get() = Regex(
+            """<!--\s*fetchjet-unchanged:\s*([a-z0-9,\s_-]*)-->""",
+            RegexOption.IGNORE_CASE
+        )
+            .find(notes)?.groupValues?.get(1)
+            ?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet()
+            ?: emptySet()
+
+    /** The notes without the machine-readable marker line. */
+    val notesForDisplay: String
+        get() = notes.replace(
+            Regex(
+                """<!--\s*fetchjet-unchanged:[^>]*-->\s*""",
+                RegexOption.IGNORE_CASE
+            ), ""
+        ).trim()
+}
 
 data class UpdateState(
     /** false in the App Store edition: Apple does not allow pointing users to other installs. */
@@ -186,7 +208,12 @@ object UpdateManager {
         val result = runCatching { fetchLatestRelease() }
         val now = nowEpochMs()
         result.onSuccess { latest ->
-            val newer = latest != null && isNewer(latest.version, APP_VERSION)
+            val isNewerVersion = latest != null && isNewer(latest.version, APP_VERSION)
+            // A release that only fixed other platforms ships this platform's previous file
+            // unchanged: nothing to install here, say so instead of offering the same build.
+            val unchangedHere =
+                isNewerVersion && latest!!.unchangedPlatforms.contains(PlatformUpdater.platformKey)
+            val newer = isNewerVersion && !unchangedHere
             val skipped = newer && !manual && latest!!.version == _state.value.skippedVersion
             _state.update {
                 it.copy(
@@ -196,6 +223,8 @@ object UpdateManager {
                     showDialog = newer && !skipped,
                     message = when {
                         latest == null -> "No published release yet."
+                        unchangedHere -> "Version ${latest!!.version} has no changes for this device; " +
+                                "you have the latest build for it ($APP_VERSION)."
                         newer -> "Version ${latest.version} is available."
                         else -> "You're up to date ($APP_VERSION)."
                     }

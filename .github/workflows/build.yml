@@ -1,7 +1,13 @@
 name: Build FetchJet
 
-# Builds on every push to master; a version tag (git tag v1.0.0 && git push --tags) additionally
-# creates a draft GitHub Release with all installers attached.
+# Two modes:
+#  - VERIFY (push / pull request / manual run without a version): every platform is compiled
+#    and packaged so a breaking change shows up early. Nothing is uploaded or published.
+#  - RELEASE: either push a tag (git tag v1.0.2 && git push --tags) = all platforms, or
+#    Actions -> "Build FetchJet" -> Run workflow, type the version and tick only the platforms
+#    that changed. Unticked platforms get their files copied from the previous release and are
+#    listed in the notes as unchanged (the app then tells those users there is nothing new).
+#    The result is a DRAFT release you review and publish.
 on:
   push:
     branches: [ master ]
@@ -9,6 +15,35 @@ on:
   pull_request:
     branches: [ master ]
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release version, e.g. 1.0.2 (must equal APP_VERSION). Empty = verify only, no release."
+        required: false
+        default: ""
+      android:
+        description: "Android (APK + AAB)"
+        type: boolean
+        default: true
+      windows:
+        description: "Windows (EXE + MSI)"
+        type: boolean
+        default: true
+      macos:
+        description: "macOS (DMG)"
+        type: boolean
+        default: true
+      linux:
+        description: "Linux (DEB + AppImage)"
+        type: boolean
+        default: true
+      ios:
+        description: "iOS (IPA, full edition)"
+        type: boolean
+        default: true
+      extension:
+        description: "Browser extension (Chrome zip + Firefox xpi)"
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -21,7 +56,57 @@ env:
   FETCHJET_VERBOSE_LOGS: ${{ vars.FETCHJET_VERBOSE_LOGS || 'false' }}
 
 jobs:
+  # Decides the mode and the platform list; every other job reads these outputs.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+      android: ${{ steps.plan.outputs.android }}
+      windows: ${{ steps.plan.outputs.windows }}
+      macos: ${{ steps.plan.outputs.macos }}
+      linux: ${{ steps.plan.outputs.linux }}
+      ios: ${{ steps.plan.outputs.ios }}
+      extension: ${{ steps.plan.outputs.extension }}
+    steps:
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          IN_VERSION: ${{ inputs.release_version }}
+          IN_ANDROID: ${{ inputs.android }}
+          IN_WINDOWS: ${{ inputs.windows }}
+          IN_MACOS: ${{ inputs.macos }}
+          IN_LINUX: ${{ inputs.linux }}
+          IN_IOS: ${{ inputs.ios }}
+          IN_EXTENSION: ${{ inputs.extension }}
+        run: |
+          if [[ "$REF" == refs/tags/v* ]]; then
+            # tag push: release everything
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "version=${REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+            for p in android windows macos linux ios extension; do echo "$p=true" >> "$GITHUB_OUTPUT"; done
+          elif [[ "$EVENT" == "workflow_dispatch" && -n "$IN_VERSION" ]]; then
+            # manual release of the ticked platforms only
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "version=${IN_VERSION#v}" >> "$GITHUB_OUTPUT"
+            echo "android=$IN_ANDROID" >> "$GITHUB_OUTPUT"
+            echo "windows=$IN_WINDOWS" >> "$GITHUB_OUTPUT"
+            echo "macos=$IN_MACOS" >> "$GITHUB_OUTPUT"
+            echo "linux=$IN_LINUX" >> "$GITHUB_OUTPUT"
+            echo "ios=$IN_IOS" >> "$GITHUB_OUTPUT"
+            echo "extension=$IN_EXTENSION" >> "$GITHUB_OUTPUT"
+          else
+            # verify: build everything, publish nothing
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            for p in android windows macos linux ios extension; do echo "$p=true" >> "$GITHUB_OUTPUT"; done
+          fi
+          cat "$GITHUB_OUTPUT"
+
   build-android:
+    needs: plan
+    if: needs.plan.outputs.android == 'true'
     runs-on: ubuntu-latest
     # The signing secrets are stored in the "release-build" environment (Settings -> Environments).
     environment: release-build
@@ -69,9 +154,8 @@ jobs:
           ./gradlew :androidApp:bundleRelease
 
       - name: Upload Android APKs
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -81,7 +165,7 @@ jobs:
             androidApp/build/outputs/apk/release/**/*.apk
 
       - name: Upload Android App Bundle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -89,6 +173,8 @@ jobs:
           path: androidApp/build/outputs/bundle/release/*.aab
 
   build-desktop-linux:
+    needs: plan
+    if: needs.plan.outputs.linux == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -113,9 +199,8 @@ jobs:
           tar czf ../FetchJet-linux-x64.tar.gz .
 
       - name: Upload Linux DEB Package
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -123,9 +208,8 @@ jobs:
           path: desktopApp/build/compose/binaries/main/deb/*.deb
 
       - name: Upload Linux AppImage
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -133,6 +217,8 @@ jobs:
           path: desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz
 
   build-desktop-windows:
+    needs: plan
+    if: needs.plan.outputs.windows == 'true'
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -151,9 +237,8 @@ jobs:
         run: ./gradlew :desktopApp:packageExe :desktopApp:packageMsi
 
       - name: Upload Windows EXE Installer
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -161,9 +246,8 @@ jobs:
           path: desktopApp/build/compose/binaries/main/exe/*.exe
 
       - name: Upload Windows MSI Installer
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -171,6 +255,8 @@ jobs:
           path: desktopApp/build/compose/binaries/main/msi/*.msi
 
   build-desktop-macos:
+    needs: plan
+    if: needs.plan.outputs.macos == 'true'
     runs-on: macos-latest
     steps:
       - name: Checkout repository
@@ -189,9 +275,8 @@ jobs:
         run: ./gradlew :desktopApp:packageDmg
 
       - name: Upload macOS DMG Installer
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -202,6 +287,8 @@ jobs:
   # The App Store build (FETCHJET_EDITION=store) is archived and uploaded from Xcode with
   # your signing identity; it is not produced here.
   build-ios-ipa:
+    needs: plan
+    if: needs.plan.outputs.ios == 'true'
     runs-on: macos-latest
     timeout-minutes: 120
     steps:
@@ -245,9 +332,8 @@ jobs:
         run: ./scripts/build-ios-ipa.sh full
 
       - name: Upload iOS IPA
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -269,6 +355,8 @@ jobs:
   # the AMO_JWT_ISSUER / AMO_JWT_SECRET secrets exist (addons.mozilla.org -> Tools -> Manage API keys);
   # otherwise the unsigned xpi is uploaded (installable on Developer Edition / Nightly only).
   build-extension:
+    needs: plan
+    if: needs.plan.outputs.extension == 'true'
     runs-on: ubuntu-latest
     # The AMO keys live in the "release-build" environment with the other signing secrets.
     environment: release-build
@@ -284,7 +372,8 @@ jobs:
         run: ./extension/build.sh
 
       - name: Sign Firefox extension on AMO (if keys are configured)
-        if: ${{ env.AMO_JWT_ISSUER != '' }}
+        # Signing uploads a version to your AMO account: release mode only.
+        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' }}
         run: |
           npx --yes web-ext@8 sign --channel unlisted --source-dir build/extension/firefox \
             --artifacts-dir build/extension/signed --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
@@ -292,9 +381,8 @@ jobs:
           cp build/extension/signed/*.xpi build/extension/
 
       - name: Upload extension packages
-        # Only a v* tag needs the files (for the release): plain pushes just build,
-        # which keeps the account's artifact storage quota from filling up.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Release mode only: verify runs just build, which keeps the artifact quota free.
+        if: needs.plan.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
@@ -304,46 +392,72 @@ jobs:
             build/extension/*.xpi
 
   release:
-    needs: [ build-android, build-desktop-linux, build-desktop-windows, build-desktop-macos, build-ios-ipa, build-extension ]
+    needs: [ plan, build-android, build-desktop-linux, build-desktop-windows, build-desktop-macos, build-ios-ipa, build-extension ]
     runs-on: ubuntu-latest
-    # Publish only for version tags (git tag v1.0.1 && git push --tags), as a draft you review.
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Release mode, after every selected build succeeded (skipped platforms are fine).
+    if: ${{ !cancelled() && needs.plan.outputs.release == 'true' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # The in-app update check compares the release tag with APP_VERSION: they must match,
       # or users of the new build would be told about an "update" to the version they have.
-      - name: Check the tag matches APP_VERSION
+      - name: Check the version matches APP_VERSION
         run: |
           APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
-          TAG="${GITHUB_REF_NAME#v}"
-          echo "tag=$TAG app=$APP_VERSION"
-          if [ "$TAG" != "$APP_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match APP_VERSION $APP_VERSION in AppVersion.kt"
+          echo "release=$VERSION app=$APP_VERSION"
+          if [ "$VERSION" != "$APP_VERSION" ]; then
+            echo "::error::Release version $VERSION does not match APP_VERSION $APP_VERSION in AppVersion.kt"
             exit 1
           fi
 
-      - name: Download all workflow artifacts
+      - name: Download the new builds
         uses: actions/download-artifact@v4
+        with:
+          path: new
+
+      # The release holds only the platforms built for this version. The others are listed
+      # as unchanged in the notes: the app on those platforms then reports "nothing new for
+      # this device", and the downloads page (docs/) shows every version per platform.
+      - name: Collect assets and write the notes header
+        env:
+          ANDROID: ${{ needs.plan.outputs.android }}
+          WINDOWS: ${{ needs.plan.outputs.windows }}
+          MACOS: ${{ needs.plan.outputs.macos }}
+          LINUX: ${{ needs.plan.outputs.linux }}
+          IOS: ${{ needs.plan.outputs.ios }}
+          EXTENSION: ${{ needs.plan.outputs.extension }}
+        run: |
+          mkdir -p assets
+          find new -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name '*.ipa' -o -name '*.zip' -o -name '*.xpi' \) -exec cp {} assets/ \;
+          ls -la assets
+          BUILT=""; UNCHANGED=""
+          add() { if [ "$2" = "true" ]; then BUILT="${BUILT:+$BUILT, }$1"; else UNCHANGED="${UNCHANGED:+$UNCHANGED,}$1"; fi; }
+          add android "$ANDROID"; add windows "$WINDOWS"; add macos "$MACOS"; add linux "$LINUX"; add ios "$IOS"; add extension "$EXTENSION"
+          {
+            echo "**Platforms in this release:** $BUILT"
+            if [ -n "$UNCHANGED" ]; then
+              echo
+              echo "<!-- fetchjet-unchanged: $UNCHANGED -->"
+              echo "**Unchanged (not included):** $(echo "$UNCHANGED" | sed 's/,/, /g') — the latest build for these is in an earlier release; see the downloads page."
+            fi
+            echo
+          } > notes.md
+          cat notes.md
 
       - name: Create GitHub Release (draft) and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            android-release-apk/**/*.apk
-            desktop-linux-deb/*.deb
-            desktop-linux-appimage/*.tar.gz
-            desktop-windows-exe/*.exe
-            desktop-windows-msi/*.msi
-            desktop-macos-dmg/*.dmg
-            ios-full-ipa/*.ipa
-            browser-extension/*.zip
-            browser-extension/*.xpi
-          tag_name: ${{ github.ref_name }}
-          name: "FetchJet ${{ github.ref_name }}"
+          files: assets/*
+          tag_name: v${{ needs.plan.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: "FetchJet v${{ needs.plan.outputs.version }}"
+          body_path: notes.md
           generate_release_notes: true
           draft: true
           prerelease: false
