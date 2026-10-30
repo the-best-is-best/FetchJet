@@ -4,6 +4,7 @@ actual object PlatformUpdater {
     /** iOS apps cannot replace themselves: the user installs the new .ipa (AltStore, Sideloadly...). */
     actual val canInstallInApp: Boolean = false
     actual val platformKey: String = "ios"
+    actual val updatesFromStore: Boolean = false
 
     actual fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? =
         assets.firstOrNull { it.name.endsWith(".ipa", ignoreCase = true) }

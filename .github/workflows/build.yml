@@ -26,7 +26,7 @@ on:
         type: boolean
         default: true
       windows:
-        description: "Windows (EXE + MSI)"
+        description: "Windows (EXE + MSI + Store MSIX)"
         type: boolean
         default: true
       macos:
@@ -283,7 +283,49 @@ jobs:
       - name: Build Windows EXE & MSI
         # cmd, not PowerShell: a self-hosted Windows PC usually blocks .ps1 scripts.
         shell: cmd
-        run: call gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi
+        run: call gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi :desktopApp:createDistributable
+
+      # Microsoft Store package: the same app image packed as an (unsigned) .msix. Upload it in
+      # Partner Center -> FetchJet (MSIX) -> Packages; the Store signs and hosts it.
+      - name: Build Microsoft Store package (MSIX)
+        shell: bash
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -e
+          V="$VERSION"
+          [ -n "$V" ] || V=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          V="${V%%-*}"
+          while [ "$(echo "$V" | tr -cd . | wc -c)" -lt 2 ]; do V="$V.0"; done
+          MSIX_VERSION="$V.0"   # the Store wants the 4th number to be 0
+
+          # makeappx / makepri: from an installed Windows SDK, else the SDK build-tools NuGet.
+          TOOLS=$(ls -d "/c/Program Files (x86)/Windows Kits/10/bin/"10.*/x64 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$TOOLS" ] || [ ! -f "$TOOLS/makeappx.exe" ]; then
+            NV=$(curl -fsSL https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json | grep -o '"[0-9.]*"' | tr -d '"' | tail -1)
+            echo "Windows SDK build tools $NV from NuGet"
+            mkdir -p "$RUNNER_TEMP/sdkbt"
+            curl -fsSL -o "$RUNNER_TEMP/sdkbt.zip" "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$NV/microsoft.windows.sdk.buildtools.$NV.nupkg"
+            /c/Windows/System32/tar.exe -xf "$(cygpath -w "$RUNNER_TEMP/sdkbt.zip")" -C "$(cygpath -w "$RUNNER_TEMP/sdkbt")"
+            TOOLS=$(ls -d "$RUNNER_TEMP"/sdkbt/bin/10.*/x64 | sort -V | tail -1)
+          fi
+          echo "tools: $TOOLS"
+
+          STAGE="$RUNNER_TEMP/msix"
+          rm -rf "$STAGE"; mkdir -p "$STAGE"
+          cp -r desktopApp/build/compose/binaries/main/app/FetchJet/. "$STAGE/"
+          cp -r desktopApp/msix/Assets "$STAGE/"
+          sed "s/__VERSION__/$MSIX_VERSION/" desktopApp/msix/AppxManifest.xml > "$STAGE/AppxManifest.xml"
+
+          # resources.pri lets Windows pick the sharp icon sizes (taskbar, Start); optional.
+          ( cd "$RUNNER_TEMP" && "$TOOLS/makepri.exe" createconfig /cf priconfig.xml /dq en-US /o >/dev/null \
+            && "$TOOLS/makepri.exe" new /pr "$(cygpath -w "$STAGE")" /cf priconfig.xml /mn "$(cygpath -w "$STAGE/AppxManifest.xml")" /of "$(cygpath -w "$STAGE/resources.pri")" /o ) \
+            || echo "::warning::makepri failed; the package works with the plain icons"
+
+          mkdir -p desktopApp/build/msix
+          OUT="desktopApp/build/msix/FetchJet-$V-store.msix"
+          "$TOOLS/makeappx.exe" pack /o /d "$(cygpath -w "$STAGE")" /p "$(cygpath -w "$OUT")"
+          ls -la "$OUT"
 
       - name: Upload Windows to the draft release
         if: needs.plan.outputs.release == 'true'
@@ -293,7 +335,7 @@ jobs:
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi )
+          FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi desktopApp/build/msix/*.msix )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 

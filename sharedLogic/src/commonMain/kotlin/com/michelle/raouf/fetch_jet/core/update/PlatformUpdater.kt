@@ -18,6 +18,9 @@ expect object PlatformUpdater {
      */
     val platformKey: String
 
+    /** true = a store (Microsoft Store) installs the updates: FetchJet does not check GitHub. */
+    val updatesFromStore: Boolean
+
     /** The release file for this platform, or null to send the user to the release page. */
     fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset?
 

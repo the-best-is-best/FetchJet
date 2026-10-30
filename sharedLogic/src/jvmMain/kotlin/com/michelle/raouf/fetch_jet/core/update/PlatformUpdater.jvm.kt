@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.update
 
+import com.michelle.raouf.fetch_jet.core.platform.WindowsStorePackage
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -16,7 +17,11 @@ actual object PlatformUpdater {
      * Only the installed Windows build updates itself: its MSI has a fixed upgrade id, so a
      * newer MSI replaces it in place (per-user install, no admin prompt).
      */
-    actual val canInstallInApp: Boolean = isWindows && launcherPath != null
+    actual val canInstallInApp: Boolean =
+        isWindows && launcherPath != null && !WindowsStorePackage.isInstalled
+
+    /** The Microsoft Store build is updated by the Store. */
+    actual val updatesFromStore: Boolean = WindowsStorePackage.isInstalled
     actual val platformKey: String = when {
         isWindows -> "windows"
         isMac -> "macos"

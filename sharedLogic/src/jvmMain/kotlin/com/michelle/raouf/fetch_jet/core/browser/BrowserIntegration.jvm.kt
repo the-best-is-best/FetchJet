@@ -1,10 +1,14 @@
 package com.michelle.raouf.fetch_jet.core.browser
 
+import com.michelle.raouf.fetch_jet.core.platform.WindowsStorePackage
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 actual object BrowserIntegration {
-    private val isWindows = System.getProperty("os.name").orEmpty().lowercase().contains("win")
+    // The Store (MSIX) build may not change Edge settings by itself (its registry writes are
+    // private to the package anyway): there the page links to Edge Add-ons instead.
+    private val isWindows = System.getProperty("os.name").orEmpty().lowercase().contains("win") &&
+            !WindowsStorePackage.isInstalled
     private const val EDGE_KEY = "HKCU\\Software\\Microsoft\\Edge\\Extensions\\$EDGE_EXTENSION_ID"
     private const val EDGE_UPDATE_URL = "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
 

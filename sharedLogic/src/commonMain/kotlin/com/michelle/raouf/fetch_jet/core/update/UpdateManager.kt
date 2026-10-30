@@ -128,7 +128,7 @@ object UpdateManager {
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
     init {
-        val supported = currentAppEdition() != AppEdition.STORE
+        val supported = currentAppEdition() != AppEdition.STORE && !PlatformUpdater.updatesFromStore
         val saved = load()
         _state.value = UpdateState(
             supported = supported,

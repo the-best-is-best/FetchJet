@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  Microsoft Store package of the Windows app. The workflow copies the jpackage app image
+  (FetchJet.exe + runtime) next to this file, puts __VERSION__ in, and packs it with makeappx.
+  Identity values come from Partner Center -> FetchJet -> Product identity: never change them.
+-->
+<Package xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+    xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+    IgnorableNamespaces="uap uap3 desktop rescap"
+    xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
+
+    <Identity Name="MichelleRaouf.FetchJet" ProcessorArchitecture="x64"
+        Publisher="CN=81BF98FB-E3BB-479B-BCA6-3F56A36736A0" Version="__VERSION__" />
+
+    <Properties>
+        <DisplayName>FetchJet</DisplayName>
+        <PublisherDisplayName>Michelle Raouf</PublisherDisplayName>
+        <Logo>Assets\StoreLogo.png</Logo>
+    </Properties>
+
+    <Dependencies>
+        <TargetDeviceFamily MaxVersionTested="10.0.26100.0" MinVersion="10.0.17763.0"
+            Name="Windows.Desktop" />
+    </Dependencies>
+
+    <Resources>
+        <Resource Language="en-us" />
+    </Resources>
+
+    <Applications>
+        <Application EntryPoint="Windows.FullTrustApplication" Executable="FetchJet.exe"
+            Id="FetchJet">
+            <uap:VisualElements BackgroundColor="transparent"
+                Description="Download manager for files, videos, playlists and torrents"
+                DisplayName="FetchJet" Square150x150Logo="Assets\Square150x150Logo.png"
+                Square44x44Logo="Assets\Square44x44Logo.png">
+                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+            </uap:VisualElements>
+            <Extensions>
+                <!-- Double-clicking a .torrent opens it in FetchJet (path = first argument). -->
+                <uap:Extension Category="windows.fileTypeAssociation">
+                    <uap:FileTypeAssociation Name="torrent">
+                        <uap:DisplayName>BitTorrent file</uap:DisplayName>
+                        <uap:SupportedFileTypes>
+                            <uap:FileType ContentType="application/x-bittorrent">.torrent
+                            </uap:FileType>
+                        </uap:SupportedFileTypes>
+                    </uap:FileTypeAssociation>
+                </uap:Extension>
+                <!-- magnet: links from the browser. -->
+                <uap:Extension Category="windows.protocol">
+                    <uap:Protocol Name="magnet" Parameters="&quot;%1&quot;">
+                        <uap:DisplayName>Magnet link</uap:DisplayName>
+                    </uap:Protocol>
+                </uap:Extension>
+                <!-- "fetchjet" in Run / a terminal starts the app. -->
+                <uap3:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication"
+                    Executable="FetchJet.exe">
+                    <uap3:AppExecutionAlias>
+                        <desktop:ExecutionAlias Alias="fetchjet.exe" />
+                    </uap3:AppExecutionAlias>
+                </uap3:Extension>
+            </Extensions>
+        </Application>
+    </Applications>
+
+    <Capabilities>
+        <Capability Name="internetClient" />
+        <Capability Name="internetClientServer" />
+        <Capability Name="privateNetworkClientServer" />
+        <rescap:Capability Name="runFullTrust" />
+    </Capabilities>
+</Package>
