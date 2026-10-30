@@ -291,6 +291,9 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ needs.plan.outputs.version }}
+          # Git Bash would turn the /o /d /p switches of makeappx into paths: keep them as typed.
+          MSYS_NO_PATHCONV: "1"
+          MSYS2_ARG_CONV_EXCL: "*"
         run: |
           set -e
           V="$VERSION"
@@ -302,10 +305,10 @@ jobs:
           # makeappx / makepri: from an installed Windows SDK, else the SDK build-tools NuGet.
           TOOLS=$(ls -d "/c/Program Files (x86)/Windows Kits/10/bin/"10.*/x64 2>/dev/null | sort -V | tail -1 || true)
           if [ -z "$TOOLS" ] || [ ! -f "$TOOLS/makeappx.exe" ]; then
-            NV=$(curl -fsSL https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json | grep -o '"[0-9.]*"' | tr -d '"' | tail -1)
+            NV=$(curl -4 --retry 3 -fsSL https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json | grep -o '"[0-9.]*"' | tr -d '"' | tail -1)
             echo "Windows SDK build tools $NV from NuGet"
             mkdir -p "$RUNNER_TEMP/sdkbt"
-            curl -fsSL -o "$RUNNER_TEMP/sdkbt.zip" "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$NV/microsoft.windows.sdk.buildtools.$NV.nupkg"
+            curl -4 --retry 3 -fsSL -o "$RUNNER_TEMP/sdkbt.zip" "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$NV/microsoft.windows.sdk.buildtools.$NV.nupkg"
             /c/Windows/System32/tar.exe -xf "$(cygpath -w "$RUNNER_TEMP/sdkbt.zip")" -C "$(cygpath -w "$RUNNER_TEMP/sdkbt")"
             TOOLS=$(ls -d "$RUNNER_TEMP"/sdkbt/bin/10.*/x64 | sort -V | tail -1)
           fi
