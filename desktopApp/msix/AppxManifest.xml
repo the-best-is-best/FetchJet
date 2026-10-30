@@ -50,7 +50,7 @@
                 </uap:Extension>
                 <!-- magnet: links from the browser. -->
                 <uap:Extension Category="windows.protocol">
-                    <uap:Protocol Name="magnet" Parameters="&quot;%1&quot;">
+                    <uap:Protocol Name="magnet">
                         <uap:DisplayName>Magnet link</uap:DisplayName>
                     </uap:Protocol>
                 </uap:Extension>
