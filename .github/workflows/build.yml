@@ -241,7 +241,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Windows EXE & MSI
-        run: ./gradlew :desktopApp:packageExe :desktopApp:packageMsi
+        # cmd, not PowerShell: a self-hosted Windows PC usually blocks .ps1 scripts.
+        shell: cmd
+        run: call gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi
 
       - name: Upload Windows EXE Installer
         # Release mode only: verify runs just build, which keeps the artifact quota free.
@@ -313,9 +315,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Select Xcode
+        # DEVELOPER_DIR instead of "sudo xcode-select": works on a self-hosted Mac too
+        # (no password prompt) and only affects this job.
         run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
-          xcodebuild -version
+          XCODE="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          echo "DEVELOPER_DIR=$XCODE/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$XCODE/Contents/Developer" xcodebuild -version
 
       - name: Install native build tools (cmake, boost for libtorrent)
         # Already there on a self-hosted Mac after the first run: skip the reinstall.
