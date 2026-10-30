@@ -1,17 +1,20 @@
 {
   "manifest_version": 3,
   "name": "FetchJet Download Manager",
-  "version": "3.0.0",
-  "description": "Send downloads, videos, audio and whole link lists from your browser to FetchJet, with cookies and referer so logged-in downloads just work.",
+  "version": "3.0.1",
+  "description": "Send downloads, videos and link lists from your browser to FetchJet, with cookies so logged-in downloads just work.",
   "browser_specific_settings": {
     "gecko": {
       "id": "fetchjet@michelle.raouf",
-      "strict_min_version": "121.0",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [
           "none"
         ]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
   "icons": {
@@ -27,9 +30,7 @@
     "cookies",
     "nativeMessaging",
     "webRequest",
-    "webNavigation",
-    "scripting",
-    "activeTab"
+    "scripting"
   ],
   "host_permissions": [
     "http://127.0.0.1:28450/*",

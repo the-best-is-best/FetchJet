@@ -29,10 +29,10 @@ async function load() {
   const r = await send({ action: "checkStatus" });
   if (r && r.online) {
     const c = r.config || {};
-    $("connStatus").innerHTML = `<b>Connected</b> to FetchJet ${c.version ? "v" + c.version : ""} on 127.0.0.1:28450` +
-      (c.mediaExtractor === false ? " · media extractor disabled in this edition" : "");
+    setStatus("Connected", ` to FetchJet ${c.version ? "v" + c.version : ""} on 127.0.0.1:28450` +
+      (c.mediaExtractor === false ? " · media extractor disabled in this edition" : ""));
   } else {
-    $("connStatus").innerHTML = `<b>FetchJet is not running.</b> Start the desktop app, then reload this page.`;
+    setStatus("FetchJet is not running.", " Open the FetchJet app (desktop or Android), then reload this page.");
   }
 
   if (api.permissions && api.permissions.contains) {
@@ -66,3 +66,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (_) {}
   });
 });
+
+// Bold label + plain text, built without innerHTML.
+function setStatus(bold, rest) {
+  const el = $("connStatus");
+  el.textContent = "";
+  const b = document.createElement("b");
+  b.textContent = bold;
+  el.append(b, document.createTextNode(rest));
+}

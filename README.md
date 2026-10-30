@@ -44,15 +44,15 @@
 **👉 [Downloads page](https://the-best-is-best.github.io/FetchJet/)** – every version for every
 platform, with the right file highlighted for your device.
 
-| Platform              | File                           | Notes                                                              |
-|-----------------------|--------------------------------|--------------------------------------------------------------------|
-| Windows 10 / 11       | `.msi` (recommended) or `.exe` | The MSI lets FetchJet update itself.                               |
-| macOS 12+             | `.dmg`                         | Drag FetchJet to Applications.                                     |
-| Linux                 | `.deb` or `.tar.gz`            | The tarball runs anywhere: unpack and start `bin/FetchJet`.        |
-| Android 8+            | `.apk`                         | `arm64-v8a` fits almost every phone; take *universal* if unsure.   |
-| iOS 16+               | `.ipa`                         | Sideload with AltStore or Sideloadly.                              |
-| Chrome / Edge / Brave | `.zip`                         | Load it on `chrome://extensions` (Developer mode → Load unpacked). |
-| Firefox               | `.xpi`                         | Signed by Mozilla; opens straight into the install prompt.         |
+| Platform              | File                                                                                   | Notes                                                              |
+|-----------------------|----------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Windows 10 / 11       | `.msi` (recommended) or `.exe`                                                         | The MSI lets FetchJet update itself.                               |
+| macOS 12+             | `.dmg`                                                                                 | Drag FetchJet to Applications.                                     |
+| Linux                 | `.deb` or `.tar.gz`                                                                    | The tarball runs anywhere: unpack and start `bin/FetchJet`.        |
+| Android 8+            | `.apk`                                                                                 | `arm64-v8a` fits almost every phone; take *universal* if unsure.   |
+| iOS 16+               | `.ipa`                                                                                 | Sideload with AltStore or Sideloadly.                              |
+| Chrome / Edge / Brave | `.zip`                                                                                 | Load it on `chrome://extensions` (Developer mode → Load unpacked). |
+| Firefox               | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/) | Install from the store; Firefox keeps it updated.                  |
 
 ---
 

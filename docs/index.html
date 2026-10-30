@@ -85,7 +85,7 @@
 </main>
 <footer>Files are published on <a href="#" id="repo-link">GitHub Releases</a>. Android: install the
     APK for your CPU, or the <em>universal</em> one if unsure. iOS: the IPA is for sideloading
-    (AltStore / Sideloadly). Firefox needs the signed <code>.xpi</code>.
+    (AltStore / Sideloadly). Firefox: install from Firefox Add-ons.
 </footer>
 
 <script>
@@ -105,7 +105,8 @@
         { key: "ios",       label: "iOS",       match: function (n) { return /\.ipa$/i.test(n); },
           hint: "Unsigned IPA for sideloading with AltStore or Sideloadly." },
         { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n); },
-          hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions); .xpi = Firefox." }
+          hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
+          hintHtml: 'Firefox: <a href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">install from Firefox Add-ons</a> (updates by itself). .zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).' }
       ];
 
       var tabsEl = document.getElementById("tabs"), contentEl = document.getElementById("content"),
@@ -169,7 +170,7 @@
         var rows = releases.map(function (r) {
           return { r: r, files: r.assets.filter(function (a) { return p.match(a.name); }) };
         }).filter(function (x) { return x.files.length; });
-        hintEl.textContent = p.hint;
+        if (p.hintHtml) hintEl.innerHTML = p.hintHtml; else hintEl.textContent = p.hint;
         if (!rows.length) {
           contentEl.innerHTML = '<div class="empty">No ' + esc(p.label) + " build has been published yet.</div>";
           return;

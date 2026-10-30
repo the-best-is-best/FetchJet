@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
         PathResolver.appContext = applicationContext
         DownloadNotificationManager.setContext(applicationContext)
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        // Lets the FetchJet extension in Firefox for Android send links to this app.
+        ExtensionBridgeServer.start(applicationContext)
         com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.launcher = { onResult ->
             torrentPickCallback = onResult
             try {
@@ -132,6 +134,13 @@ class MainActivity : ComponentActivity() {
         intent.action = null
         val target = when (uri.scheme?.lowercase()) {
             "magnet" -> uri.toString()
+            // From the browser extension: fetchjet://download?url=<encoded link>
+            "fetchjet" -> uri.getQueryParameter("url")?.takeIf {
+                it.startsWith("http://", true) || it.startsWith(
+                    "https://",
+                    true
+                ) || it.startsWith("magnet:", true)
+            }
             "content", "file" ->
                 com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.copyTorrentToCache(
                     applicationContext, uri

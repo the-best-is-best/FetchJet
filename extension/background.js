@@ -278,7 +278,9 @@ async function launchApp(firstUrl) {
 
   // 2. fetchjet:// protocol handler (registered by the installer)
   try {
-    const tab = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(firstUrl || ""), active: false });
+    // Firefox for Android only hands a link to another app from the visible tab.
+    const onAndroid = /android/i.test(navigator.userAgent);
+    const tab = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(firstUrl || ""), active: onAndroid });
     if (tab && tab.id != null) setTimeout(() => api.tabs.remove(tab.id).catch(() => {}), 1500);
     return true;
   } catch (_) { return false; }
@@ -388,6 +390,7 @@ async function shouldTake(item) {
 
 async function takeOver(item) {
   const targetUrl = item.finalUrl || item.url;
+  if (!HAS_DOWNLOADS) return;
   try { await api.downloads.cancel(item.id); } catch (_) {}
   try { await api.downloads.erase({ id: item.id }); } catch (_) {}
   const fileName = baseName(item.filename);
@@ -411,7 +414,9 @@ async function takeOver(item) {
 // Chromium (Chrome, Edge, Brave, Opera, Vivaldi): decide before the browser asks where to
 // save, so its "Save as" window never appears for files FetchJet takes. Firefox has no such
 // moment and decides when the download is created.
-const DECIDE_EARLY = !!(api.downloads.onDeterminingFilename && api.downloads.onDeterminingFilename.addListener);
+// Firefox for Android has no downloads API at all: nothing to capture there.
+const HAS_DOWNLOADS = !!(api.downloads && api.downloads.onCreated);
+const DECIDE_EARLY = HAS_DOWNLOADS && !!(api.downloads.onDeterminingFilename && api.downloads.onDeterminingFilename.addListener);
 if (DECIDE_EARLY) {
   api.downloads.onDeterminingFilename.addListener((item, suggest) => {
     let answered = false;
@@ -426,7 +431,7 @@ if (DECIDE_EARLY) {
   });
 }
 
-api.downloads.onCreated.addListener((downloadItem) => {
+if (HAS_DOWNLOADS) api.downloads.onCreated.addListener((downloadItem) => {
   if (DECIDE_EARLY) return;
   // Firefox: give it a moment to resolve the final URL / filename / size.
   setTimeout(async () => {

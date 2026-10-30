@@ -75,6 +75,16 @@
                 <data android:pathPattern=".*\\..*\\.torrent" />
                 <data android:pathPattern=".*\\..*\\..*\\.torrent" />
             </intent-filter>
+            <!-- fetchjet://download?url=... : the extension opens this when the app is not
+                 answering on 127.0.0.1 (closed or frozen by Android), which starts it -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="fetchjet" />
+            </intent-filter>
             <!-- magnet: links from browsers -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

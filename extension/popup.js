@@ -73,11 +73,14 @@ async function loadMedia() {
   const r = await send({ action: "getItems", tabId: currentTab.id });
   const items = (r && r.items) || [];
   const list = $("mediaList");
-  list.innerHTML = "";
+  list.replaceChildren();
   const files = items.filter(i => i.kind === "media");
   $("allMediaBtn").style.display = files.length > 1 ? "" : "none";
   if (items.length === 0) {
-    list.innerHTML = '<div class="empty">Nothing yet. Play the video, or click “Get qualities”.</div>';
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Nothing yet. Play the video, or click “Get qualities”.";
+    list.appendChild(empty);
     return;
   }
   for (const it of items) {

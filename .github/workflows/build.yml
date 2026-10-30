@@ -202,8 +202,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
-          FILES=( androidApp/build/outputs/apk/release/**/*.apk androidApp/build/outputs/bundle/release/*.aab )
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
+          FILES=( androidApp/build/outputs/apk/release/*.apk androidApp/build/outputs/apk/release/*/*.apk androidApp/build/outputs/bundle/release/*.aab )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
@@ -256,7 +256,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
@@ -292,7 +292,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
@@ -326,7 +326,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/dmg/*.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
@@ -391,21 +391,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( build/ios/FetchJet-full.ipa )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No iOS files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
-      - name: Upload iOS build logs (on failure)
+      # On failure, print the end of the build logs here (no artifact: the storage quota
+      # is too small for this account).
+      - name: Show iOS build log (on failure)
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 3
-          name: ios-build-logs
-          path: |
-            build/*.log
-            build/*.errors.txt
-          if-no-files-found: ignore
+        run: |
+          for f in build/*.errors.txt build/*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$f (last 150 lines)"; tail -n 150 "$f"; echo "::endgroup::"
+          done
+          grep -h -E "error:|\*\* (ARCHIVE|BUILD) FAILED" build/*.log 2>/dev/null | head -40 || true
 
   # Browser extension: Chrome/Edge zip + Firefox xpi. The Firefox file is signed on AMO when
   # the AMO_JWT_ISSUER / AMO_JWT_SECRET secrets exist (addons.mozilla.org -> Tools -> Manage API keys);
@@ -420,16 +420,33 @@ jobs:
     env:
       AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
       AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags, to compare with the previous release
 
-      # Browsers want 1-4 numbers; AMO refuses a version it has already signed. So the
-      # extension version is APP_VERSION's numbers plus this workflow's run number: 1.0.0.57.
+      # The stores only get a new version when extension/ changed since the previous
+      # release tag; an app-only release leaves the store listing alone.
+      - name: Did the extension change since the last release?
+        id: ext
+        run: |
+          PREV=$(git tag --list 'v*' --sort=-v:refname | grep -vx "v${{ needs.plan.outputs.version }}" | head -1)
+          if [ -z "$PREV" ] || ! git diff --quiet "$PREV" HEAD -- extension/; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"; echo "extension changed since ${PREV:-the start}"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"; echo "extension unchanged since $PREV: stores are not updated"
+          fi
+
+      # AMO refuses a version it has already signed, and Firefox only updates to a higher
+      # one. So the extension keeps its own MAJOR.MINOR from manifest.json and the patch is
+      # this workflow's run number: 3.0.0 in the manifest -> 3.0.57. Bump the manifest's
+      # MAJOR.MINOR by hand for a big extension change.
       - name: Set the extension version
         run: |
-          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
-          EXT_VERSION="$(echo "${APP_VERSION%%-*}" | cut -d. -f1-3).${GITHUB_RUN_NUMBER}"
+          BASE=$(sed -n 's/.*"version": *"\([0-9]*\.[0-9]*\).*/\1/p' extension/manifest.json | head -1)
+          EXT_VERSION="$BASE.${GITHUB_RUN_NUMBER}"
           echo "extension version $EXT_VERSION"
           sed -i -E 's/("version": *")[^"]*"/\1'"$EXT_VERSION"'"/' extension/manifest.json extension/manifest.firefox.json
           grep '"version"' extension/manifest.json extension/manifest.firefox.json
@@ -437,14 +454,32 @@ jobs:
       - name: Package Chrome and Firefox builds
         run: ./extension/build.sh
 
-      - name: Sign Firefox extension on AMO (if keys are configured)
-        # Signing uploads a version to your AMO account: release mode only.
-        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' }}
+      # Submits the new version to the public Firefox Add-ons store (listed). Mozilla reviews
+      # it and Firefox users get the update by themselves; nothing to wait for here, so the
+      # .xpi is not attached to the GitHub release (an unsigned one would not install).
+      - name: Submit the Firefox version to addons.mozilla.org
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' }}
         run: |
-          npx --yes web-ext@8 sign --channel unlisted --source-dir build/extension/firefox \
-            --artifacts-dir build/extension/signed --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
+          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
+            --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
           rm -f build/extension/*.xpi
-          cp build/extension/signed/*.xpi build/extension/
+
+      # Same idea for Microsoft Edge Add-ons: the Chrome build is submitted for certification
+      # and Edge users get updates from the store. Needs the EDGE_* secrets (Partner Center ->
+      # Edge -> Publish API) and a first version submitted by hand.
+      - name: Submit the Edge version to Microsoft Edge Add-ons
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.EDGE_PRODUCT_ID != '' }}
+        uses: wdzeng/edge-addon@v2
+        with:
+          product-id: ${{ secrets.EDGE_PRODUCT_ID }}
+          zip-path: build/extension/fetchjet-store-*.zip
+          client-id: ${{ secrets.EDGE_CLIENT_ID }}
+          api-key: ${{ secrets.EDGE_API_KEY }}
+          notes-for-certification: >-
+            The extension sends the link, cookies and referer only to the FetchJet desktop app on
+            127.0.0.1:28450 so downloads that need a login work. <all_urls> is needed to show the
+            download button on any site. No data leaves the computer. Source is not minified.
 
       - name: Upload extension to the draft release
         if: needs.plan.outputs.release == 'true'
@@ -453,8 +488,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
-          shopt -s globstar nullglob
-          FILES=( build/extension/*.zip build/extension/*.xpi )
+          shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
+          FILES=( build/extension/fetchjet-chrome-*.zip )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 

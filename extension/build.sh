@@ -9,6 +9,11 @@ FILES="background.js yt-core.js content.js popup.html popup.js options.html opti
 cp $FILES manifest.json "$OUT/chrome/"
 cp $FILES "$OUT/firefox/"; cp manifest.firefox.json "$OUT/firefox/manifest.json"
 ( cd "$OUT/chrome"  && zip -q -r "../fetchjet-chrome-$VERSION.zip" . )
+# Store build (Edge Add-ons / Chrome Web Store): same files without "key" - the stores give
+# the extension their own ID and refuse a manifest that pins one.
+mkdir -p "$OUT/store"; cp $FILES "$OUT/store/"
+grep -v '"key":' manifest.json > "$OUT/store/manifest.json"
+( cd "$OUT/store" && zip -q -r "../fetchjet-store-$VERSION.zip" . )
 ( cd "$OUT/firefox" && zip -q -r "../fetchjet-firefox-$VERSION.xpi" . )
 echo "Built:"; ls -1 "$OUT"/*.zip "$OUT"/*.xpi
 echo
