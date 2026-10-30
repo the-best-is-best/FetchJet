@@ -318,7 +318,10 @@ jobs:
           rm -rf "$STAGE"; mkdir -p "$STAGE"
           cp -r desktopApp/build/compose/binaries/main/app/FetchJet/. "$STAGE/"
           cp -r desktopApp/msix/Assets "$STAGE/"
-          sed "s/__VERSION__/$MSIX_VERSION/" desktopApp/msix/AppxManifest.xml > "$STAGE/AppxManifest.xml"
+          # An IDE "Reformat code" may wrap <FileType>.torrent</FileType> over two lines, which
+          # the manifest schema rejects: trim the whitespace around every text value first.
+          perl -0pe 's/>\s*([^<>\s][^<>]*?)\s*</>$1</g; s/__VERSION__/'"$MSIX_VERSION"'/g' \
+            desktopApp/msix/AppxManifest.xml > "$STAGE/AppxManifest.xml"
 
           # resources.pri lets Windows pick the sharp icon sizes (taskbar, Start); optional.
           ( cd "$RUNNER_TEMP" && "$TOOLS/makepri.exe" createconfig /cf priconfig.xml /dq en-US /o >/dev/null \
