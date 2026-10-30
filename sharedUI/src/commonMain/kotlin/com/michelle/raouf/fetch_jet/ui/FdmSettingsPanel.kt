@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ import com.michelle.raouf.fetch_jet.theme.StatusPaused
 private enum class SettingsSection(val title: String, val glyph: String, val blurb: String) {
     GENERAL("General", "◐", "Look of the app and how it starts"),
     DOWNLOADS("Downloads", "↓", "Where files go and how many run at once"),
+    BROWSER("Browser extension", "⧉", "Send links and videos from your browser to FetchJet"),
     SPEED("Speed limits", "≋", "Cap the bandwidth FetchJet uses"),
     MEDIA("Media tools", "▶", "yt-dlp and FFmpeg for video sites"),
     TORRENT("BitTorrent", "⇅", "Peers, uploading and the torrent engine"),
@@ -127,6 +129,7 @@ fun FdmSettingsPanel(
 
         SettingsSection.MEDIA -> if (toolsReady) "Ready" to StatusCompleted else "Setup needed" to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) "Uploading off" else "Uploading on") to null
+        SettingsSection.BROWSER -> (if (isJvm) "Edge · Firefox · Chrome" else "Firefox for Android") to null
         SettingsSection.UPDATES -> updateState.available?.let { "${it.version} available" to StatusCompleted }
             ?: ("Version " + updateState.currentVersion to null)
     }
@@ -165,6 +168,7 @@ fun FdmSettingsPanel(
             )
 
             SettingsSection.UPDATES -> UpdatesSettingsCard()
+            SettingsSection.BROWSER -> BrowserExtensionPage(isJvm)
         }
     }
 
@@ -597,3 +601,94 @@ private fun limitText(bytes: Long): String =
         (if (mb == mb.toLong().toDouble()) mb.toLong()
             .toString() else ((mb * 10).toLong() / 10.0).toString()) + " MB/s"
     } else "${bytes / 1024L} KB/s"
+
+// ---------------------------------------------------------------- browser extension
+
+private const val AMO_URL = "https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/"
+private const val EDGE_STORE_URL =
+    "https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj"
+private const val MANUAL_INSTALL_URL = "https://the-best-is-best.github.io/FetchJet/#extension"
+
+/**
+ * Where to get the extension for each browser (like FDM's "Browser Integration"). The stores
+ * keep it updated; Chrome has no store listing, so it gets the .zip with the developer-mode steps.
+ */
+@Composable
+private fun BrowserExtensionPage(isDesktop: Boolean) {
+    val uri = LocalUriHandler.current
+
+    @Composable
+    fun storeButton(text: String, url: String, primary: Boolean = true) {
+        if (primary) Button(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
+            Text(text, fontWeight = FontWeight.SemiBold)
+        } else OutlinedButton(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
+            Text(text, fontWeight = FontWeight.SemiBold)
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        SettingsGroup(
+            title = "Install",
+            footer = "With the extension, a \"Download with FetchJet\" button shows on videos and links, " +
+                    "and the browser can hand its downloads to FetchJet. It talks only to this app on your device."
+        ) {
+            if (isDesktop) {
+                val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
+                if (bi.canAddToEdgeAutomatically) {
+                    // Windows: the registry hand-off, like IDM. Edge asks to turn it on.
+                    var registered by remember { mutableStateOf(bi.isEdgeRegistered()) }
+                    var note by remember { mutableStateOf<String?>(null) }
+                    SettingRow(
+                        "Microsoft Edge",
+                        note
+                            ?: if (registered) "Added · restart Edge and click \"Turn on extension\" when it asks"
+                            else "From Microsoft Edge Add-ons · updates by itself"
+                    ) {
+                        if (registered) storeButton(
+                            "Open in Edge store",
+                            EDGE_STORE_URL,
+                            primary = false
+                        )
+                        else Button(onClick = {
+                            bi.addToEdge()
+                                .onSuccess {
+                                    registered = true; note =
+                                    "Done: restart Edge, it will ask to turn FetchJet on."
+                                }
+                                .onFailure { uri.openUri(EDGE_STORE_URL) }
+                        }, shape = RoundedCornerShape(10.dp)) {
+                            Text(
+                                "Add to Edge",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                } else {
+                    SettingRow(
+                        "Microsoft Edge",
+                        "From Microsoft Edge Add-ons · updates by itself"
+                    ) {
+                        storeButton("Add to Edge", EDGE_STORE_URL)
+                    }
+                }
+                SettingDivider()
+                SettingRow("Firefox", "From Firefox Add-ons · updates by itself") {
+                    storeButton("Add to Firefox", AMO_URL)
+                }
+                SettingDivider()
+                SettingRow(
+                    "Chrome, Brave, Opera, Vivaldi",
+                    "Not in the Chrome Web Store: install the .zip in developer mode (steps on the page). It does not update by itself."
+                ) {
+                    storeButton("Get the .zip", MANUAL_INSTALL_URL, primary = false)
+                }
+            } else {
+                SettingRow(
+                    "Firefox for Android",
+                    "Open this in Firefox on this phone. Links you send go straight to this app."
+                ) {
+                    storeButton("Add to Firefox", AMO_URL)
+                }
+            }
+        }
+    }
+}

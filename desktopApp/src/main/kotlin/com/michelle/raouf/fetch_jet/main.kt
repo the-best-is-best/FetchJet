@@ -530,6 +530,13 @@ fun main(rawArgs: Array<String>) {
             ?: System.getProperty("fetchjet.verboseLogs")?.trim()?.equals("true", ignoreCase = true)
                     ?: false
     println("Verbose logs: ${com.michelle.raouf.fetch_jet.core.log.AppLog.verbose}")
+    // First run on Windows: tell Edge about the FetchJet extension (like IDM); Edge then
+    // asks the user to turn it on.
+    Thread(
+        { com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration.setUpOnFirstRun() },
+        "browser-integration"
+    )
+        .apply { isDaemon = true }.start()
     // Started by the OS at login (see StartupLauncher): remember it, and never treat the flag
     // as a link to download.
     val startedAtLogin =

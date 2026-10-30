@@ -56,6 +56,12 @@
         .empty, .error { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
         .error { color: var(--warn); }
         .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+        .notice { margin: 0 0 16px; padding: 14px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); font-size: 14px; }
+        .notice.warn { border-color: rgba(251,191,36,.45); }
+        .notice h3 { margin: 0 0 8px; font-size: 15px; }
+        .notice ol { margin: 6px 0 0 18px; padding: 0; } .notice li { margin: 3px 0; }
+        .stores { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .notice code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
         .notes-body { margin-top: 10px; padding: 12px 14px; background: var(--panel-2); border-radius: 10px; font-size: 13px; white-space: pre-wrap; color: var(--muted); display: none; }
         .rel.open .notes-body { display: block; }
         footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 13px; }
@@ -106,7 +112,22 @@
           hint: "Unsigned IPA for sideloading with AltStore or Sideloadly." },
         { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n); },
           hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
-          hintHtml: 'Firefox: <a href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">install from Firefox Add-ons</a> (updates by itself). .zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).' }
+          hintHtml: "",
+          // Shown above the version list: stores first, then the manual .zip install with its caveats.
+          noticeHtml:
+            '<div class="notice"><h3>Install from a store (recommended)</h3>' +
+            'Updates install by themselves and the browser shows no warnings.' +
+            '<div class="stores">' +
+            '<a class="btn" href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">Firefox Add-ons</a>' +
+            '<a class="btn" href="https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj">Microsoft Edge Add-ons</a>' +
+            '</div><div class="hint">Chrome, Brave, Opera and Vivaldi: FetchJet is not in the Chrome Web Store, so use the .zip below.</div></div>' +
+            '<div class="notice warn"><h3>⚠ Installing the .zip below (developer mode)</h3>' +
+            'The .zip is for Chrome / Edge / Brave when you cannot use a store. The browser treats it as a developer extension: ' +
+            'it may show a "developer mode extensions" warning at start-up, and it does <b>not</b> update by itself - come back here for new versions.' +
+            '<ol><li>Download the <code>.zip</code> and unzip it into a folder you keep (do not delete it afterwards).</li>' +
+            '<li>Open <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>' +
+            '<li>Turn on <b>Developer mode</b>.</li>' +
+            '<li>Click <b>Load unpacked</b> and choose the unzipped folder.</li></ol></div>' }
       ];
 
       var tabsEl = document.getElementById("tabs"), contentEl = document.getElementById("content"),
@@ -115,6 +136,11 @@
 
       function guessPlatform() {
         var ua = navigator.userAgent, saved = null;
+    // A link to #extension (from the app's settings) opens that tab.
+    if (location.hash && location.hash.length > 1) {
+      var want = location.hash.slice(1).toLowerCase();
+      for (var i = 0; i < PLATFORMS.length; i++) if (PLATFORMS[i].key === want) return want;
+    }
         try { saved = localStorage.getItem("fj.platform"); } catch (e) {}
         if (saved) return saved;
         if (/Android/i.test(ua)) return "android";
@@ -171,8 +197,9 @@
           return { r: r, files: r.assets.filter(function (a) { return p.match(a.name); }) };
         }).filter(function (x) { return x.files.length; });
         if (p.hintHtml) hintEl.innerHTML = p.hintHtml; else hintEl.textContent = p.hint;
+        var notice = p.noticeHtml || "";
         if (!rows.length) {
-          contentEl.innerHTML = '<div class="empty">No ' + esc(p.label) + " build has been published yet.</div>";
+          contentEl.innerHTML = notice + '<div class="empty">No ' + esc(p.label) + " build has been published yet.</div>";
           return;
         }
         var latest = rows[0], html = "";
@@ -196,7 +223,7 @@
                   (notes ? '<div class="notes-body">' + esc(notes) + "</div>" : "") + "</div>";
         });
         html += "</div>";
-        contentEl.innerHTML = html;
+        contentEl.innerHTML = notice + html;
         Array.prototype.forEach.call(contentEl.querySelectorAll("a[data-toggle]"), function (a) {
           a.onclick = function (e) { e.preventDefault(); document.getElementById("rel-" + a.getAttribute("data-toggle")).classList.toggle("open"); };
         });
