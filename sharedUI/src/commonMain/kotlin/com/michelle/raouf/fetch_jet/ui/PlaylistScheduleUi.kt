@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -241,47 +242,63 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
                 }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = hourText,
-                onValueChange = { v -> hourText = v.filter { it.isDigit() }.take(2) },
-                label = { Text("Hour", fontSize = 11.sp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(80.dp)
-            )
-            Text(" : ", fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = minuteText,
-                onValueChange = { v -> minuteText = v.filter { it.isDigit() }.take(2) },
-                label = { Text("Minute", fontSize = 11.sp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(80.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            ChoiceChip("AM", selected = !isPm) { isPm = false }
-            Spacer(modifier = Modifier.width(4.dp))
-            ChoiceChip("PM", selected = isPm) { isPm = true }
-            Spacer(modifier = Modifier.width(10.dp))
-            Button(
-                onClick = {
-                    val h12 = hourText.toIntOrNull()?.coerceIn(1, 12) ?: 12
-                    val m = minuteText.toIntOrNull()?.coerceIn(0, 59) ?: 0
-                    hourText = h12.toString().padStart(2, '0')
-                    minuteText = m.toString().padStart(2, '0')
-                    val h24 = (h12 % 12) + if (isPm) 12 else 0
-                    val at = localTimeOnDayEpochMs(dayOffset, h24, m)
-                    if (at <= currentEpochMs()) {
-                        timeError =
-                            "That time has already passed today. Pick a later time or another day."
-                    } else {
-                        timeError = null
-                        onScheduleChanged(at)
+        // Two rows on phones: [hour : minute  AM PM] / [Set]; one row when there is room.
+        val setTime: () -> Unit = {
+            val h12 = hourText.toIntOrNull()?.coerceIn(1, 12) ?: 12
+            val m = minuteText.toIntOrNull()?.coerceIn(0, 59) ?: 0
+            hourText = h12.toString().padStart(2, '0')
+            minuteText = m.toString().padStart(2, '0')
+            val h24 = (h12 % 12) + if (isPm) 12 else 0
+            val at = localTimeOnDayEpochMs(dayOffset, h24, m)
+            if (at <= currentEpochMs()) {
+                timeError =
+                    "That time has already passed today. Pick a later time or another day."
+            } else {
+                timeError = null
+                onScheduleChanged(at)
+            }
+        }
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val compact = maxWidth < 420.dp
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = hourText,
+                        onValueChange = { v -> hourText = v.filter { it.isDigit() }.take(2) },
+                        label = { Text("Hour", fontSize = 11.sp) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(if (compact) 72.dp else 80.dp)
+                    )
+                    Text(" : ", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = minuteText,
+                        onValueChange = { v -> minuteText = v.filter { it.isDigit() }.take(2) },
+                        label = { Text("Minute", fontSize = 11.sp) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(if (compact) 72.dp else 80.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ChoiceChip("AM", selected = !isPm) { isPm = false }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    ChoiceChip("PM", selected = isPm) { isPm = true }
+                    if (!compact) {
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Button(onClick = setTime, shape = RoundedCornerShape(10.dp)) {
+                            Text("Set", fontSize = 12.sp)
+                        }
                     }
-                },
-                shape = RoundedCornerShape(10.dp)
-            ) { Text("Set", fontSize = 12.sp) }
+                }
+                if (compact) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = setTime,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    ) { Text("Set time", fontSize = 12.sp) }
+                }
+            }
         }
         timeError?.let {
             Text(

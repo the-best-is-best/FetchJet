@@ -1,8 +1,11 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
 import io.ktor.client.HttpClient
-import io.ktor.client.request.get
+import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.currentCoroutineContext
@@ -21,66 +24,75 @@ actual suspend fun streamUrlToFile(
 ): Result<Unit> {
     return try {
         val safeUrlStr = urlStr.replace(" ", "%20")
-        val client = HttpClient()
-        val response = client.get(safeUrlStr) {
-            header("User-Agent", userAgent)
-            header("Referer", extractReferer(safeUrlStr))
-            if (startByte > 0) {
-                header(io.ktor.http.HttpHeaders.Range, "bytes=$startByte-")
+        // Darwin engine (NSURLSession). prepareGet().execute{} streams the body; client.get()
+        // would first buffer the whole file in memory, which is why web-seed downloads looked
+        // stalled and then jumped, and used RAM proportional to the file size.
+        val client = HttpClient(Darwin) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                connectTimeoutMillis = 20_000
+                socketTimeoutMillis = 60_000
             }
         }
-        val responseCode = response.status.value
-        if (responseCode !in 200..299) {
-            client.close()
-            return Result.failure(Exception("HTTP $responseCode: Failed to download from $urlStr"))
-        }
-
-        val channel = response.bodyAsChannel()
-        val useAppending = (responseCode == 206 && startByte > 0)
-        val sink = if (useAppending) {
-            FileSystem.SYSTEM.appendingSink(targetPath).buffer()
-        } else {
-            FileSystem.SYSTEM.sink(targetPath).buffer()
-        }
-        val buffer = ByteArray(64 * 1024)
-        var downloaded = 0L
-        val startTime = kotlin.time.TimeSource.Monotonic.markNow()
-        val rateLimiter =
-            com.michelle.raouf.fetch_jet.core.network.RateLimiter(speedLimitProvider)
-        var lastBytes = 0L
-        var lastTime = startTime
-        var activeSpeed = 0L
-
         try {
-            while (!channel.isClosedForRead) {
-                currentCoroutineContext().ensureActive()
-                val read = channel.readAvailable(buffer, 0, buffer.size)
-                if (read <= 0) break
-                sink.write(buffer, 0, read)
-                downloaded += read
-                rateLimiter.acquire(read)
-
-                val now = kotlin.time.TimeSource.Monotonic.markNow()
-                val elapsed = (now - lastTime).inWholeMilliseconds
-                if (elapsed >= 150) {
-                    val diff = downloaded - lastBytes
-                    val instantaneous = (diff * 1000.0 / elapsed).toLong()
-                    activeSpeed = if (activeSpeed > 0) {
-                        (activeSpeed * 0.4 + instantaneous * 0.6).toLong()
-                    } else {
-                        instantaneous
-                    }
-                    onProgress(downloaded, activeSpeed)
-                    lastBytes = downloaded
-                    lastTime = now
+            client.prepareGet(safeUrlStr) {
+                header("User-Agent", userAgent)
+                header("Referer", extractReferer(safeUrlStr))
+                if (startByte > 0) {
+                    header(io.ktor.http.HttpHeaders.Range, "bytes=$startByte-")
                 }
+            }.execute { response ->
+                val responseCode = response.status.value
+                if (responseCode !in 200..299) {
+                    return@execute Result.failure<Unit>(Exception("HTTP $responseCode: Failed to download from $urlStr"))
+                }
+                val channel = response.bodyAsChannel()
+                val useAppending = (responseCode == 206 && startByte > 0)
+                val sink = if (useAppending) {
+                    FileSystem.SYSTEM.appendingSink(targetPath).buffer()
+                } else {
+                    FileSystem.SYSTEM.sink(targetPath).buffer()
+                }
+                val buffer = ByteArray(256 * 1024)
+                var downloaded = 0L
+                val startTime = kotlin.time.TimeSource.Monotonic.markNow()
+                val rateLimiter =
+                    com.michelle.raouf.fetch_jet.core.network.RateLimiter(speedLimitProvider)
+                var lastBytes = 0L
+                var lastTime = startTime
+                var activeSpeed = 0L
+                try {
+                    while (!channel.isClosedForRead) {
+                        currentCoroutineContext().ensureActive()
+                        val read = channel.readAvailable(buffer, 0, buffer.size)
+                        if (read <= 0) break
+                        sink.write(buffer, 0, read)
+                        downloaded += read
+                        rateLimiter.acquire(read)
+                        val now = kotlin.time.TimeSource.Monotonic.markNow()
+                        val elapsed = (now - lastTime).inWholeMilliseconds
+                        if (elapsed >= 150) {
+                            val diff = downloaded - lastBytes
+                            val instantaneous = (diff * 1000.0 / elapsed).toLong()
+                            activeSpeed = if (activeSpeed > 0) {
+                                (activeSpeed * 0.4 + instantaneous * 0.6).toLong()
+                            } else {
+                                instantaneous
+                            }
+                            onProgress(downloaded, activeSpeed)
+                            lastBytes = downloaded
+                            lastTime = now
+                        }
+                    }
+                    sink.flush()
+                } finally {
+                    sink.close()
+                }
+                Result.success(Unit)
             }
-            sink.flush()
         } finally {
-            sink.close()
             client.close()
         }
-        Result.success(Unit)
     } catch (e: Exception) {
         if (e is kotlinx.coroutines.CancellationException) throw e
         Result.failure(e)
