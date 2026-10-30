@@ -58,7 +58,7 @@ env:
 jobs:
   # Decides the mode and the platform list; every other job reads these outputs.
   plan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     outputs:
       release: ${{ steps.plan.outputs.release }}
       version: ${{ steps.plan.outputs.version }}
@@ -107,9 +107,14 @@ jobs:
   build-android:
     needs: plan
     if: needs.plan.outputs.android == 'true'
-    runs-on: ubuntu-latest
+    # RUNNER_ANDROID = win-host builds it on your Windows PC (see scripts/setup-windows-runner.ps1).
+    runs-on: ${{ vars.RUNNER_ANDROID || 'ubuntu-latest' }}
     # The signing secrets are stored in the "release-build" environment (Settings -> Environments).
     environment: release-build
+    # Git Bash on a Windows runner, so the same scripts work there and on Linux.
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,8 +155,9 @@ jobs:
         # Two runs: per-CPU APKs, then the .aab. AGP cannot build both in one run while ABI
         # splits are on ("Multiple shrunk-resources files"); splits are off for the bundle run.
         run: |
-          ./gradlew :androidApp:assembleRelease
-          ./gradlew :androidApp:bundleRelease
+          GRADLE=./gradlew; [ "$RUNNER_OS" = "Windows" ] && GRADLE=./gradlew.bat
+          $GRADLE :androidApp:assembleRelease
+          $GRADLE :androidApp:bundleRelease
 
       - name: Upload Android APKs
         # Release mode only: verify runs just build, which keeps the artifact quota free.
@@ -175,7 +181,7 @@ jobs:
   build-desktop-linux:
     needs: plan
     if: needs.plan.outputs.linux == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -219,7 +225,8 @@ jobs:
   build-desktop-windows:
     needs: plan
     if: needs.plan.outputs.windows == 'true'
-    runs-on: windows-latest
+    # RUNNER_WINDOWS = win-host builds it on your Windows PC (see scripts/setup-windows-runner.ps1).
+    runs-on: ${{ vars.RUNNER_WINDOWS || 'windows-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -257,7 +264,8 @@ jobs:
   build-desktop-macos:
     needs: plan
     if: needs.plan.outputs.macos == 'true'
-    runs-on: macos-latest
+    # RUNNER_MACOS = mac-host builds it on your own Mac (see scripts/setup-macos-runner.sh).
+    runs-on: ${{ vars.RUNNER_MACOS || 'macos-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -289,7 +297,7 @@ jobs:
   build-ios-ipa:
     needs: plan
     if: needs.plan.outputs.ios == 'true'
-    runs-on: macos-latest
+    runs-on: ${{ vars.RUNNER_MACOS || 'macos-latest' }}
     timeout-minutes: 120
     steps:
       - name: Checkout repository
@@ -310,7 +318,8 @@ jobs:
           xcodebuild -version
 
       - name: Install native build tools (cmake, boost for libtorrent)
-        run: brew install cmake boost
+        # Already there on a self-hosted Mac after the first run: skip the reinstall.
+        run: brew list cmake >/dev/null 2>&1 && brew list boost >/dev/null 2>&1 || brew install cmake boost
 
       # Python.xcframework (BeeWare) is downloaded and LibTorrent.xcframework is compiled from
       # source by scripts/ios-prepare-frameworks.sh. libtorrent takes ~20 min, so cache the result
@@ -357,7 +366,7 @@ jobs:
   build-extension:
     needs: plan
     if: needs.plan.outputs.extension == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     # The AMO keys live in the "release-build" environment with the other signing secrets.
     environment: release-build
     # `secrets` cannot be read inside a step `if:`; expose it as env and test that instead.
@@ -393,7 +402,7 @@ jobs:
 
   release:
     needs: [ plan, build-android, build-desktop-linux, build-desktop-windows, build-desktop-macos, build-ios-ipa, build-extension ]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     # Release mode, after every selected build succeeded (skipped platforms are fine).
     if: ${{ !cancelled() && needs.plan.outputs.release == 'true' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     permissions:
