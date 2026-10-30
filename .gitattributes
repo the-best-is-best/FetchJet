@@ -1,0 +1,7 @@
+# Shell scripts must keep LF even on a Windows checkout (Git Bash / WSL run them).
+gradlew        text eol=lf
+*.sh           text eol=lf
+gradlew.bat    text eol=crlf
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=crlf

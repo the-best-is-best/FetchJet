@@ -5,9 +5,10 @@ name: Build FetchJet
 #    and packaged so a breaking change shows up early. Nothing is uploaded or published.
 #  - RELEASE: either push a tag (git tag v1.0.2 && git push --tags) = all platforms, or
 #    Actions -> "Build FetchJet" -> Run workflow, type the version and tick only the platforms
-#    that changed. Unticked platforms get their files copied from the previous release and are
-#    listed in the notes as unchanged (the app then tells those users there is nothing new).
-#    The result is a DRAFT release you review and publish.
+#    that changed. Unticked platforms are listed in the notes as unchanged (the app then tells
+#    those users there is nothing new). The result is a DRAFT release you review and publish.
+#    Each build job uploads its files straight to the draft release (no workflow artifacts,
+#    so the account's artifact storage quota is never hit).
 on:
   push:
     branches: [ master ]
@@ -44,6 +45,9 @@ on:
         description: "Browser extension (Chrome zip + Firefox xpi)"
         type: boolean
         default: true
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -104,6 +108,38 @@ jobs:
           fi
           cat "$GITHUB_OUTPUT"
 
+      - name: Checkout repository
+        if: steps.plan.outputs.release == 'true'
+        uses: actions/checkout@v4
+
+      # The in-app update check compares the release tag with APP_VERSION: they must match,
+      # or users of the new build would be told about an "update" to the version they have.
+      - name: Check the version matches APP_VERSION
+        if: steps.plan.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          echo "release=$VERSION app=$APP_VERSION"
+          if [ "$VERSION" != "$APP_VERSION" ]; then
+            echo "::error::Release version $VERSION does not match APP_VERSION $APP_VERSION in AppVersion.kt"
+            exit 1
+          fi
+
+      # The build jobs upload their files into this draft as they finish.
+      - name: Create the draft release
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.plan.outputs.version }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG exists: files will be replaced."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+              --title "FetchJet $TAG" --notes "Building…"
+          fi
+
   build-android:
     needs: plan
     if: needs.plan.outputs.android == 'true'
@@ -159,24 +195,18 @@ jobs:
           $GRADLE :androidApp:assembleRelease
           $GRADLE :androidApp:bundleRelease
 
-      - name: Upload Android APKs
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload Android to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: android-release-apk
-          path: |
-            androidApp/build/outputs/apk/release/*.apk
-            androidApp/build/outputs/apk/release/**/*.apk
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( androidApp/build/outputs/apk/release/**/*.apk androidApp/build/outputs/bundle/release/*.aab )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
-      - name: Upload Android App Bundle
-        if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: android-release-bundle
-          path: androidApp/build/outputs/bundle/release/*.aab
 
   build-desktop-linux:
     needs: plan
@@ -195,6 +225,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # jpackage needs dpkg-deb, fakeroot and objcopy for the .deb. GitHub's image has them;
+      # on a self-hosted machine install them once (sudo needs a password there).
+      - name: Check Linux packaging tools
+        run: |
+          MISSING=""
+          for t in fakeroot dpkg-deb objcopy; do command -v $t >/dev/null || MISSING="$MISSING $t"; done
+          if [ -n "$MISSING" ]; then
+            if sudo -n true 2>/dev/null; then
+              sudo apt-get update -y && sudo apt-get install -y fakeroot dpkg-dev binutils
+            else
+              echo "::error::Missing:$MISSING. On the runner machine run once: sudo apt-get install -y fakeroot dpkg-dev binutils"
+              exit 1
+            fi
+          fi
+
       - name: Build Linux Deb & AppImage
         run: ./gradlew :desktopApp:packageDeb :desktopApp:packageAppImage
 
@@ -204,23 +249,18 @@ jobs:
           cd desktopApp/build/compose/binaries/main/app
           tar czf ../FetchJet-linux-x64.tar.gz .
 
-      - name: Upload Linux DEB Package
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload Linux to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: desktop-linux-deb
-          path: desktopApp/build/compose/binaries/main/deb/*.deb
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
-      - name: Upload Linux AppImage
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
-        if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: desktop-linux-appimage
-          path: desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz
 
   build-desktop-windows:
     needs: plan
@@ -245,23 +285,18 @@ jobs:
         shell: cmd
         run: call gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi
 
-      - name: Upload Windows EXE Installer
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload Windows to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: desktop-windows-exe
-          path: desktopApp/build/compose/binaries/main/exe/*.exe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
-      - name: Upload Windows MSI Installer
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
-        if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: desktop-windows-msi
-          path: desktopApp/build/compose/binaries/main/msi/*.msi
 
   build-desktop-macos:
     needs: plan
@@ -284,14 +319,18 @@ jobs:
       - name: Build macOS DMG
         run: ./gradlew :desktopApp:packageDmg
 
-      - name: Upload macOS DMG Installer
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload macOS to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: desktop-macos-dmg
-          path: desktopApp/build/compose/binaries/main/dmg/*.dmg
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( desktopApp/build/compose/binaries/main/dmg/*.dmg )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+
 
   # Unsigned .ipa of the FULL edition for GitHub Releases (sideload via AltStore/Sideloadly).
   # The App Store build (FETCHJET_EDITION=store) is archived and uploaded from Xcode with
@@ -345,14 +384,17 @@ jobs:
       - name: Build unsigned IPA (full edition)
         run: ./scripts/build-ios-ipa.sh full
 
-      - name: Upload iOS IPA
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload iOS to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: ios-full-ipa
-          path: build/ios/FetchJet-full.ipa
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( build/ios/FetchJet-full.ipa )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No iOS files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload iOS build logs (on failure)
         if: failure()
@@ -382,6 +424,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Browsers want 1-4 numbers; AMO refuses a version it has already signed. So the
+      # extension version is APP_VERSION's numbers plus this workflow's run number: 1.0.0.57.
+      - name: Set the extension version
+        run: |
+          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          EXT_VERSION="$(echo "${APP_VERSION%%-*}" | cut -d. -f1-3).${GITHUB_RUN_NUMBER}"
+          echo "extension version $EXT_VERSION"
+          sed -i -E 's/("version": *")[^"]*"/\1'"$EXT_VERSION"'"/' extension/manifest.json extension/manifest.firefox.json
+          grep '"version"' extension/manifest.json extension/manifest.firefox.json
+
       - name: Package Chrome and Firefox builds
         run: ./extension/build.sh
 
@@ -394,51 +446,32 @@ jobs:
           rm -f build/extension/*.xpi
           cp build/extension/signed/*.xpi build/extension/
 
-      - name: Upload extension packages
-        # Release mode only: verify runs just build, which keeps the artifact quota free.
+      - name: Upload extension to the draft release
         if: needs.plan.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: browser-extension
-          path: |
-            build/extension/*.zip
-            build/extension/*.xpi
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          shopt -s globstar nullglob
+          FILES=( build/extension/*.zip build/extension/*.xpi )
+          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+
 
   release:
     needs: [ plan, build-android, build-desktop-linux, build-desktop-windows, build-desktop-macos, build-ios-ipa, build-extension ]
     runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     # Release mode, after every selected build succeeded (skipped platforms are fine).
     if: ${{ !cancelled() && needs.plan.outputs.release == 'true' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-    permissions:
-      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: v${{ needs.plan.outputs.version }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # The in-app update check compares the release tag with APP_VERSION: they must match,
-      # or users of the new build would be told about an "update" to the version they have.
-      - name: Check the version matches APP_VERSION
-        run: |
-          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
-          echo "release=$VERSION app=$APP_VERSION"
-          if [ "$VERSION" != "$APP_VERSION" ]; then
-            echo "::error::Release version $VERSION does not match APP_VERSION $APP_VERSION in AppVersion.kt"
-            exit 1
-          fi
-
-      - name: Download the new builds
-        uses: actions/download-artifact@v4
-        with:
-          path: new
-
-      # The release holds only the platforms built for this version. The others are listed
-      # as unchanged in the notes: the app on those platforms then reports "nothing new for
-      # this device", and the downloads page (docs/) shows every version per platform.
-      - name: Collect assets and write the notes header
+      # The files are already in the draft (uploaded by each build job). Write the notes:
+      # which platforms are in it, which are unchanged (read by the app and the downloads
+      # page), then GitHub's list of changes since the previous release.
+      - name: Write the release notes
         env:
           ANDROID: ${{ needs.plan.outputs.android }}
           WINDOWS: ${{ needs.plan.outputs.windows }}
@@ -447,9 +480,6 @@ jobs:
           IOS: ${{ needs.plan.outputs.ios }}
           EXTENSION: ${{ needs.plan.outputs.extension }}
         run: |
-          mkdir -p assets
-          find new -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name '*.ipa' -o -name '*.zip' -o -name '*.xpi' \) -exec cp {} assets/ \;
-          ls -la assets
           BUILT=""; UNCHANGED=""
           add() { if [ "$2" = "true" ]; then BUILT="${BUILT:+$BUILT, }$1"; else UNCHANGED="${UNCHANGED:+$UNCHANGED,}$1"; fi; }
           add android "$ANDROID"; add windows "$WINDOWS"; add macos "$MACOS"; add linux "$LINUX"; add ios "$IOS"; add extension "$EXTENSION"
@@ -461,17 +491,8 @@ jobs:
               echo "**Unchanged (not included):** $(echo "$UNCHANGED" | sed 's/,/, /g') — the latest build for these is in an earlier release; see the downloads page."
             fi
             echo
+            gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body 2>/dev/null || true
           } > notes.md
           cat notes.md
-
-      - name: Create GitHub Release (draft) and upload assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: assets/*
-          tag_name: v${{ needs.plan.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: "FetchJet v${{ needs.plan.outputs.version }}"
-          body_path: notes.md
-          generate_release_notes: true
-          draft: true
-          prerelease: false
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
+          echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
