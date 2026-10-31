@@ -1,20 +1,17 @@
 name: Build FetchJet
 
-# Two modes:
-#  - VERIFY (push / pull request / manual run without a version): every platform is compiled
-#    and packaged so a breaking change shows up early. Nothing is uploaded or published.
-#  - RELEASE: either push a tag (git tag v1.0.2 && git push --tags) = all platforms, or
+# Runs only when asked (the runners are your own machines, so nothing builds on every push):
+#  - RELEASE: push a tag (git tag v1.0.2 && git push --tags) = all platforms, or
 #    Actions -> "Build FetchJet" -> Run workflow, type the version and tick only the platforms
 #    that changed. Unticked platforms are listed in the notes as unchanged (the app then tells
 #    those users there is nothing new). The result is a DRAFT release you review and publish.
 #    Each build job uploads its files straight to the draft release (no workflow artifacts,
 #    so the account's artifact storage quota is never hit).
+#  - VERIFY: Run workflow with the version left empty = compile and package everything,
+#    publish nothing.
 on:
   push:
-    branches: [ master ]
     tags: [ 'v*' ]
-  pull_request:
-    branches: [ master ]
   workflow_dispatch:
     inputs:
       release_version:
@@ -537,7 +534,9 @@ jobs:
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          FILES=( build/extension/fetchjet-chrome-*.zip )
+          # fetchjet-chrome-*.zip: developer-mode install (fixed key). fetchjet-store-*.zip: the
+          # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
+          FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 

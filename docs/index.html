@@ -115,7 +115,7 @@
           hint: "arm64-v8a fits almost every phone made after 2017. Not sure? Take the universal APK." },
         { key: "ios",       label: "iOS",       match: function (n) { return /\.ipa$/i.test(n); },
           hint: "Unsigned IPA for sideloading with AltStore or Sideloadly." },
-        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n); },
+        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n); },
           hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
           hintHtml: "",
           // Shown above the version list: stores first, then the manual .zip install with its caveats.
