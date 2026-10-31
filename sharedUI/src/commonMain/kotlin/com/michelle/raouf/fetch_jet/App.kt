@@ -4,7 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -71,6 +73,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -434,46 +437,92 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     val phone = maxWidth < 680.dp
                     val tablet = maxWidth < 1280.dp
                     if (phone || tablet) {
+                        // The sheet is as tall as its content; pull the handle up (or tap it) to
+                        // expand, pull it down or tap outside to close.
+                        var sheetExpanded by remember(selectedTaskId) { mutableStateOf(false) }
                         Dialog(
                             onDismissRequest = { selectedTaskId = null },
                             properties = DialogProperties(usePlatformDefaultWidth = false)
                         ) {
                             Box(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { selectedTaskId = null },
                                 contentAlignment = if (phone) Alignment.TopCenter else Alignment.BottomCenter
                             ) {
+                                val sheetModifier = when {
+                                    phone -> Modifier.fillMaxSize()
+                                    sheetExpanded -> Modifier.fillMaxWidth().widthIn(max = 820.dp)
+                                        .fillMaxHeight(0.94f)
+
+                                    else -> Modifier.fillMaxWidth().widthIn(max = 820.dp)
+                                        .heightIn(max = this@BoxWithConstraints.maxHeight * 0.9f)
+                                }
                                 Surface(
                                     color = MaterialTheme.colorScheme.background,
                                     shape = if (phone) RoundedCornerShape(0.dp) else RoundedCornerShape(
                                         topStart = 22.dp,
                                         topEnd = 22.dp
                                     ),
-                                    modifier = if (phone) Modifier.fillMaxSize()
-                                    else Modifier.fillMaxWidth().widthIn(max = 820.dp)
-                                        .heightIn(max = 620.dp)
+                                    modifier = sheetModifier.clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { /* swallow: a tap on the sheet must not close it */ }
                                 ) {
                                     Column {
                                         if (!phone) {
-                                            // sheet handle
+                                            // sheet handle: tap toggles, drag up expands, drag down closes
+                                            var dragTotal by remember { mutableStateOf(0f) }
                                             Box(
                                                 modifier = Modifier
-                                                    .align(Alignment.CenterHorizontally)
-                                                    .padding(top = 10.dp)
-                                                    .size(width = 44.dp, height = 5.dp)
-                                                    .clip(RoundedCornerShape(3.dp))
-                                                    .background(
-                                                        MaterialTheme.colorScheme.onSurface.copy(
-                                                            alpha = 0.18f
+                                                    .fillMaxWidth()
+                                                    .padding(top = 6.dp, bottom = 2.dp)
+                                                    .clickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null
+                                                    ) { sheetExpanded = !sheetExpanded }
+                                                    .pointerInput(Unit) {
+                                                        detectVerticalDragGestures(
+                                                            onDragStart = { dragTotal = 0f },
+                                                            onVerticalDrag = { _, dy -> dragTotal += dy },
+                                                            onDragEnd = {
+                                                                when {
+                                                                    dragTotal < -40f -> sheetExpanded =
+                                                                        true
+
+                                                                    dragTotal > 40f && sheetExpanded -> sheetExpanded =
+                                                                        false
+
+                                                                    dragTotal > 40f -> selectedTaskId =
+                                                                        null
+                                                                }
+                                                            }
                                                         )
-                                                    )
-                                            )
+                                                    },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(vertical = 6.dp)
+                                                        .size(width = 44.dp, height = 5.dp)
+                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .background(
+                                                            MaterialTheme.colorScheme.onSurface.copy(
+                                                                alpha = 0.18f
+                                                            )
+                                                        )
+                                                )
+                                            }
                                         }
                                         TaskDetailsPane(
                                             task = selectedTask,
                                             viewModel = viewModel,
                                             speedDisplayUnit = state.speedDisplayUnit,
                                             fullScreen = phone,
-                                            onClose = { selectedTaskId = null }
+                                            onClose = { selectedTaskId = null },
+                                            fillHeight = phone || sheetExpanded
                                         )
                                     }
                                 }
@@ -2409,9 +2458,12 @@ private fun TaskDetailsPane(
     viewModel: DashboardViewModel,
     speedDisplayUnit: String,
     fullScreen: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    /** Take all the height offered (side pane, expanded sheet) instead of wrapping the content. */
+    fillHeight: Boolean = true
 ) {
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+    val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+    Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
         Row(
             modifier = Modifier.fillMaxWidth()
                 .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
@@ -2433,8 +2485,7 @@ private fun TaskDetailsPane(
             }
         }
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = (if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
                 .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp)
         ) {
