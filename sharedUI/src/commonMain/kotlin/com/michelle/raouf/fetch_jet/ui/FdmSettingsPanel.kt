@@ -23,12 +23,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +53,7 @@ import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
+import kotlin.time.Duration.Companion.milliseconds
 
 /** The pages of Settings, in the order of the side list. */
 private enum class SettingsSection(val title: String, val glyph: String, val blurb: String) {
@@ -87,11 +90,13 @@ fun FdmSettingsPanel(
     monitorClipboard: Boolean = false,
     clipboardVideoPages: Boolean = false,
     sortIntoFolders: Boolean = false,
+    defaultConnections: Int = 0,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
     onMonitorClipboardChanged: (Boolean) -> Unit = {},
     onClipboardVideoPagesChanged: (Boolean) -> Unit = {},
     onSortIntoFoldersChanged: (Boolean) -> Unit = {},
+    onDefaultConnectionsChanged: (Int) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
     onGlobalDownloadSpeedLimitChanged: (Long) -> Unit,
@@ -159,9 +164,11 @@ fun FdmSettingsPanel(
             SettingsSection.DOWNLOADS -> DownloadsPage(
                 destinationPath,
                 sortIntoFolders,
+                defaultConnections,
                 pathResolver,
                 onDestinationPathChanged,
-                onSortIntoFoldersChanged
+                onSortIntoFoldersChanged,
+                onDefaultConnectionsChanged
             )
 
             SettingsSection.SPEED -> SpeedPage(
@@ -429,9 +436,11 @@ private fun GeneralPage(
 private fun DownloadsPage(
     destinationPath: String,
     sortIntoFolders: Boolean,
+    defaultConnections: Int,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
-    onSortIntoFoldersChanged: (Boolean) -> Unit
+    onSortIntoFoldersChanged: (Boolean) -> Unit,
+    onDefaultConnectionsChanged: (Int) -> Unit
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     var showDirectoryPicker by remember { mutableStateOf(false) }
@@ -481,6 +490,33 @@ private fun DownloadsPage(
                             onClick = { onDestinationPathChanged(defaultDownloads) },
                             shape = RoundedCornerShape(10.dp)
                         ) { Text("Use Downloads") }
+                    }
+                }
+            }
+        }
+        SettingsGroup(
+            title = "Connections",
+            footer = "How many pieces a direct download is split into. Each piece is a connection; when one finishes it takes half of the biggest remaining piece, so none sits idle. Auto picks by file size (4–8). Some servers limit connections per client."
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    "Connections per download",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    (listOf(0, 1, 4, 8, 16, 32)).forEach { n ->
+                        val label = if (n == 0) "Auto" else n.toString()
+                        FilterChip(
+                            selected = defaultConnections == n,
+                            onClick = { onDefaultConnectionsChanged(n) },
+                            label = { Text(label) }
+                        )
                     }
                 }
             }
@@ -748,6 +784,23 @@ private fun BrowserExtensionPage(isDesktop: Boolean) {
                             "Off: Firefox opens FetchJet and you pick the quality here. On: qualities show in Firefox (keeps a notification).",
                         checked = keepReady,
                         onChange = { keepReady = it; bi.setKeepReadyForBrowser(it) }
+                    )
+                }
+                if (bi.canPopUpOverBrowser) {
+                    var allowed by remember { mutableStateOf(bi.isPopUpAllowed()) }
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            kotlinx.coroutines.delay(1500.milliseconds); allowed =
+                                bi.isPopUpAllowed()
+                        }
+                    }
+                    SettingDivider()
+                    SettingSwitch(
+                        title = "Pop up over the browser",
+                        subtitle = if (allowed) "On · FetchJet opens by itself when Firefox sends a link"
+                        else "Off · a notification appears instead; tap to allow \"display over other apps\"",
+                        checked = allowed,
+                        onChange = { bi.requestPopUpPermission() }
                     )
                 }
             }

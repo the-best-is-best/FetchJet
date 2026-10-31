@@ -457,16 +457,57 @@ object ExtensionBridgeServer {
     private fun deliver(action: () -> Unit) {
         main.post {
             action()
-            try {
-                appContext.startActivity(
-                    Intent(appContext, MainActivity::class.java).addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    )
-                )
-            } catch (_: Exception) {
+            val open = Intent(appContext, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+            // Android 10+ blocks opening a screen from the background unless the app may
+            // "display over other apps" (Settings > Browser extension > Pop up). Otherwise a
+            // notification brings the user over.
+            val canPopUp = android.os.Build.VERSION.SDK_INT < 29 ||
+                    android.provider.Settings.canDrawOverlays(appContext)
+            if (canPopUp) {
+                try {
+                    appContext.startActivity(open)
+                } catch (_: Exception) {
+                }
+                Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
+            } else {
+                showOpenNotification(open)
             }
-            Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun showOpenNotification(open: Intent) {
+        try {
+            val nm =
+                appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                nm.createNotificationChannel(
+                    android.app.NotificationChannel(
+                        LINK_CHANNEL, "Links from the browser",
+                        android.app.NotificationManager.IMPORTANCE_HIGH
+                    ).apply { description = "Tap to open the link FetchJet just received" }
+                )
+            }
+            val pi = android.app.PendingIntent.getActivity(
+                appContext, 7001, open,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            val n = androidx.core.app.NotificationCompat.Builder(appContext, LINK_CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Link received")
+                .setContentText("Tap to open it in FetchJet")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setCategory(androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .setFullScreenIntent(pi, true)
+                .build()
+            nm.notify(7001, n)
+        } catch (_: Exception) {
+        }
+    }
+
+    private const val LINK_CHANNEL = "fetchjet_links"
 }

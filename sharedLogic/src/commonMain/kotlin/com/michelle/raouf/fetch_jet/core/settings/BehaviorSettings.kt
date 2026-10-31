@@ -45,6 +45,16 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _connections =
+        MutableStateFlow(read("connections")?.toIntOrNull()?.coerceIn(0, 32) ?: 0)
+
+    /** Connections per direct download; 0 = automatic (by file size). */
+    val connections: StateFlow<Int> = _connections.asStateFlow()
+
+    fun setConnections(n: Int) {
+        val v = n.coerceIn(0, 32); _connections.value = v; write("connections", v.toString())
+    }
+
     private fun read(key: String): String? = try {
         if (!FileSystem.SYSTEM.exists(file)) null
         else FileSystem.SYSTEM.read(file) { readUtf8() }.lineSequence().map { it.trim() }
@@ -115,6 +125,29 @@ object FileCategory {
     /** Every folder name [folderFor] can return. */
     val allFolders =
         listOf("Video", "Music", "Archives", "Documents", "Programs", "Images", "Torrents", "Other")
+
+    /** [path] without any trailing type folder(s): "…\Downloads\Video\Archives" → "…\Downloads". */
+    fun stripTypeFolders(path: String): String {
+        var p = path.trimEnd('/', '\\')
+        while (true) {
+            val hit =
+                allFolders.firstOrNull { p.endsWith("/$it") || p.endsWith("\\$it") } ?: return p
+            p = p.dropLast(hit.length + 1).trimEnd('/', '\\')
+        }
+    }
+
+    /** [base] + the type folder for [fileName], idempotent (a base already ending in a type folder is cleaned first). */
+    fun withTypeFolder(
+        base: String,
+        fileName: String,
+        isMedia: Boolean = false,
+        isTorrent: Boolean = false
+    ): String {
+        val clean = stripTypeFolders(base)
+        val sub = folderFor(fileName, isMedia, isTorrent) ?: return clean
+        val sep = if (clean.contains('\\')) "\\" else "/"
+        return clean + sep + sub
+    }
 
     /**
      * Folder name for [fileName] (null = keep the chosen folder). [isMedia] = a video/audio

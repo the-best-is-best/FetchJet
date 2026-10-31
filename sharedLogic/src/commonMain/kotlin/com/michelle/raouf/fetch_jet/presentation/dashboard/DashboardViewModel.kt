@@ -354,6 +354,15 @@ class DashboardViewModel(
     /** Mirrors BehaviorSettings into the UI state so screens read state and send events only. */
     private fun observeBehaviorSettings() {
         scope.launch {
+            BehaviorSettings.connections.collect { n ->
+                _uiState.update {
+                    it.copy(
+                        defaultConnections = n
+                    )
+                }
+            }
+        }
+        scope.launch {
             BehaviorSettings.monitorClipboard.collect { on ->
                 _uiState.update {
                     it.copy(
@@ -522,6 +531,7 @@ class DashboardViewModel(
                         isClipRangeEnabled = false,
                         clipFastMode = false,
                         scheduleStartMs = 0L,
+                        selectedConnections = 0,
                         mediaDurationSeconds = 0L,
                         fileNameOverride = "",
                         suggestedFileName = ""
@@ -595,6 +605,8 @@ class DashboardViewModel(
                         inspectedMediaQualities = defaultQualities,
                         inspectedPlaylist = null,
                         scheduleStartMs = 0L,
+
+                        selectedConnections = 0,
 
                         inspectedMediaTitle = null,
 
@@ -912,6 +924,14 @@ class DashboardViewModel(
             }
 
             is DashboardUiEvent.OnScheduleChanged -> _uiState.update { it.copy(scheduleStartMs = event.epochMs) }
+
+            is DashboardUiEvent.OnConnectionsChanged -> _uiState.update {
+                it.copy(
+                    selectedConnections = event.connections
+                )
+            }
+
+            is DashboardUiEvent.OnDefaultConnectionsChanged -> BehaviorSettings.setConnections(event.connections)
 
             DashboardUiEvent.OnPauseAllClicked -> queueRepository.pauseAll()
 
@@ -1566,7 +1586,8 @@ class DashboardViewModel(
                 ) else null,
                 clipByCutting = isActualSubClip && currentState.clipFastMode,
                 requestHeaders = headersForLink(url),
-                scheduledAtMs = currentState.scheduleStartMs
+                scheduledAtMs = currentState.scheduleStartMs,
+                maxConnections = currentState.selectedConnections
             ).onSuccess { task ->
                 pendingExternalUrl = null
                 pendingExternalHeaders = emptyMap()
@@ -1592,6 +1613,7 @@ class DashboardViewModel(
                         isClipRangeEnabled = false,
                         clipFastMode = false,
                         scheduleStartMs = 0L,
+                        selectedConnections = 0,
                         mediaDurationSeconds = 0L
                     )
                 }
@@ -1677,6 +1699,7 @@ class DashboardViewModel(
                     isClipRangeEnabled = false,
                     clipFastMode = false,
                     scheduleStartMs = 0L,
+                    selectedConnections = 0,
                     mediaDurationSeconds = 0L,
                     errorMessage = if (failed > 0) "$failed quality(s) could not be added." else null
                 )
@@ -1758,6 +1781,7 @@ class DashboardViewModel(
                     inspectedMediaQualities = emptyList(),
                     inspectedMediaTitle = null,
                     scheduleStartMs = 0L,
+                    selectedConnections = 0,
                     errorMessage = if (failed > 0) "$failed video(s) could not be added." else null
                 )
             }

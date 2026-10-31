@@ -136,6 +136,10 @@ data class DashboardUiState(
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
     val scheduleStartMs: Long = 0L,
+    /** Connections for this direct download (0 = app setting / automatic). */
+    val selectedConnections: Int = 0,
+    /** App-wide default connections per direct download (Settings > Downloads); 0 = automatic. */
+    val defaultConnections: Int = 0,
     val mediaDurationSeconds: Long = 0L,
     val speedDisplayUnit: String = "MB/s"
 )
@@ -178,6 +182,8 @@ sealed interface DashboardUiEvent {
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
+    data class OnConnectionsChanged(val connections: Int) : DashboardUiEvent
+    data class OnDefaultConnectionsChanged(val connections: Int) : DashboardUiEvent
     data object OnPauseAllClicked : DashboardUiEvent
     data object OnResumeAllClicked : DashboardUiEvent
 

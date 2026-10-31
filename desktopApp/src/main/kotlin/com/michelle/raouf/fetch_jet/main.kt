@@ -610,6 +610,8 @@ fun main(rawArgs: Array<String>) {
         }
 
         remember {
+            ExternalDownloadBridge.onShowAndFocus =
+                { SwingUtilities.invokeLater { triggerFocus() } }
             // (The bridge server calls onShowAndFocus itself; the ViewModel owns onExternalRequest.)
             ExternalDownloadBridge.openInBrowserFallback = { url ->
                 try {
@@ -689,10 +691,19 @@ fun main(rawArgs: Array<String>) {
                         window.isVisible = true
                         window.toFront()
                         window.requestFocus()
-                        // Windows OS trick to steal focus and bring window to front of browser:
+                        // Windows refuses to let a background process take the foreground
+                        // (SetForegroundWindow lock). A synthetic Alt tap counts as user input
+                        // and lifts the lock; always-on-top for a moment does the rest.
+                        try {
+                            val robot = java.awt.Robot()
+                            robot.keyPress(java.awt.event.KeyEvent.VK_ALT)
+                            robot.keyRelease(java.awt.event.KeyEvent.VK_ALT)
+                        } catch (_: Throwable) {
+                        }
                         window.isAlwaysOnTop = true
                         window.toFront()
                         window.requestFocus()
+                        delay(150)
                         window.isAlwaysOnTop = false
                     } catch (e: Exception) {
                         e.printStackTrace()

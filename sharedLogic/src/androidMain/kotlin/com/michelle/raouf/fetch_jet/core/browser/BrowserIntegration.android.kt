@@ -22,6 +22,27 @@ actual object BrowserIntegration {
 
     actual val canKeepReadyForBrowser: Boolean get() = true
 
+    actual val canPopUpOverBrowser: Boolean get() = android.os.Build.VERSION.SDK_INT >= 29
+    actual fun isPopUpAllowed(): Boolean {
+        val ctx = PathResolver.appContext ?: return false
+        return android.os.Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(
+            ctx
+        )
+    }
+
+    actual fun requestPopUpPermission() {
+        val ctx = PathResolver.appContext ?: return
+        try {
+            ctx.startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:" + ctx.packageName)
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     actual fun isKeptReadyForBrowser(): Boolean =
         prefs()?.getBoolean(KEY_KEEP_READY, false) ?: false
 

@@ -173,6 +173,10 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
     // Wide layout: sidebar filter and the search box in the top bar.
     var sideFilter by remember { mutableStateOf(SideFilter.ALL) }
     var searchQuery by remember { mutableStateOf("") }
+    // A copied link was accepted as an offer: come to the front so the user sees it.
+    LaunchedEffect(state.clipboardOfferUrl) {
+        if (state.clipboardOfferUrl != null) com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
+    }
     val selectedTask = state.allTasks.firstOrNull { it.id == selectedTaskId }
     var wideLayout by remember { mutableStateOf(false) }
     // The desktop sidebar filters on its own over "All": coming from a tablet/phone tab
@@ -613,6 +617,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onPlaylistUseSingleVideo = { viewModel.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo) },
                     scheduleStartMs = state.scheduleStartMs,
                     onScheduleChanged = { viewModel.onEvent(DashboardUiEvent.OnScheduleChanged(it)) },
+                    selectedConnections = state.selectedConnections,
+                    defaultConnections = state.defaultConnections,
+                    onConnectionsChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnConnectionsChanged(
+                                it
+                            )
+                        )
+                    },
                     onEngineSelected = { viewModel.onEvent(DashboardUiEvent.OnEngineSelected(it)) },
                     onAddDownload = { viewModel.onEvent(DashboardUiEvent.OnAddDownloadClicked) },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(false)) }
@@ -702,6 +715,7 @@ private fun SettingsContentView(
         monitorClipboard = state.monitorClipboard,
         clipboardVideoPages = state.clipboardVideoPages,
         sortIntoFolders = state.sortIntoFolders,
+        defaultConnections = state.defaultConnections,
         pathResolver = pathResolver,
         onDestinationPathChanged = { viewModel.onEvent(DashboardUiEvent.OnDestinationPathChanged(it)) },
         onMonitorClipboardChanged = {
@@ -719,6 +733,13 @@ private fun SettingsContentView(
             )
         },
         onSortIntoFoldersChanged = { viewModel.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(it)) },
+        onDefaultConnectionsChanged = {
+            viewModel.onEvent(
+                DashboardUiEvent.OnDefaultConnectionsChanged(
+                    it
+                )
+            )
+        },
         onDisableTorrentUploadToggled = {
             viewModel.onEvent(
                 DashboardUiEvent.OnDisableTorrentUploadToggled(
@@ -1497,6 +1518,15 @@ private fun DownloadTaskItem(
                         }
                     }
                 }
+            }
+
+            // Pieces (IDM-style): one segment per piece, filled as it downloads.
+            if (task.chunks.size > 1 && task.status != DownloadStatus.COMPLETED) {
+                Spacer(modifier = Modifier.height(12.dp))
+                com.michelle.raouf.fetch_jet.ui.PiecesBar(
+                    task = task,
+                    speedDisplayUnit = speedDisplayUnit
+                )
             }
 
             if (task.status == DownloadStatus.ERROR && !task.errorMessage.isNullOrBlank()) {

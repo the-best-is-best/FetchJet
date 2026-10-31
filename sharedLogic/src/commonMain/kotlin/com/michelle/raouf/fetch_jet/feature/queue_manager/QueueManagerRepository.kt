@@ -443,7 +443,9 @@ class QueueManagerRepository(
         clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap(),
         /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
-        scheduledAtMs: Long = 0L
+        scheduledAtMs: Long = 0L,
+        /** Connections for a direct download; 0 = app setting / automatic. */
+        maxConnections: Int = 0
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -541,7 +543,8 @@ class QueueManagerRepository(
             createdAtEpochMs = nowEpochMs(),
             requestHeaders = requestHeaders.filterKeys { it.isNotBlank() }
                 .filterValues { it.isNotBlank() },
-            scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L
+            scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
+            maxConnections = maxConnections.coerceIn(0, 32)
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump
@@ -826,6 +829,7 @@ class QueueManagerRepository(
                 val serverSupportsResume =
                     extractJsonField(content, "serverSupportsResume")?.toBooleanStrictOrNull()
                 val scheduledAtMs = extractJsonField(content, "scheduledAtMs")?.toLongOrNull() ?: 0L
+                val maxConnections = extractJsonField(content, "maxConnections")?.toIntOrNull() ?: 0
                 val currentStepText = extractJsonField(content, "currentStepText")?.ifBlank { null }
                 val disableUpload =
                     extractJsonField(content, "disableUpload")?.toBooleanStrictOrNull() ?: false
@@ -894,7 +898,8 @@ class QueueManagerRepository(
                     requestHeaders = requestHeaders,
                     torrentFiles = torrentFiles,
                     webSeedUrls = webSeedUrls,
-                    scheduledAtMs = scheduledAtMs
+                    scheduledAtMs = scheduledAtMs,
+                    maxConnections = maxConnections
                 )
 
                 if (status == DownloadStatus.QUEUED) {
@@ -1024,7 +1029,7 @@ class QueueManagerRepository(
                             val safeUa = escapeJson(task.requestHeaders["User-Agent"] ?: "")
                             val safeTorrentFiles = escapeJson(task.torrentFiles.joinToString(";") { "${it.index}:${if (it.isSelected) 1 else 0}:${it.priority}" })
                             val safeWebSeeds = escapeJson(task.webSeedUrls.joinToString(" "))
-                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs}}"""
+                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs},"maxConnections":${task.maxConnections}}"""
                         }
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()

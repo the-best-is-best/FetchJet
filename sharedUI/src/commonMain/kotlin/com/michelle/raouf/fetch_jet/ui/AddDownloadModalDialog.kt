@@ -124,6 +124,9 @@ fun AddDownloadModalDialog(
     onPlaylistUseSingleVideo: () -> Unit = {},
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
+    selectedConnections: Int = 0,
+    defaultConnections: Int = 0,
+    onConnectionsChanged: (Int) -> Unit = {},
     onEngineSelected: (EngineType) -> Unit = {},
     onAddDownload: () -> Unit,
     onDismiss: () -> Unit
@@ -1092,6 +1095,16 @@ fun AddDownloadModalDialog(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // Direct files: how many connections split the file (IDM-style pieces).
+                if (detectedEngine == EngineType.HTTP_DIRECT) {
+                    ConnectionsSection(
+                        selected = selectedConnections,
+                        appDefault = defaultConnections,
+                        onChanged = onConnectionsChanged
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
                 // File name: what FetchJet will call the file, editable.
                 if (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank()) {
                     Text(
@@ -1147,13 +1160,15 @@ fun AddDownloadModalDialog(
                     ) else null
                 // Sorted-by-type: the field shows the real target folder (e.g. ...\Downloads\Video) and stays editable.
                 LaunchedEffect(typeFolder) {
-                    if (typeFolder == null) return@LaunchedEffect
-                    val sep = if (destinationPath.contains('\\')) "\\" else "/"
-                    val base = destinationPath.trimEnd('/', '\\')
-                    val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
-                    val alreadyTyped = known.any { base.endsWith(sep + it) }
-                    if (!alreadyTyped) {
-                        val full = base + sep + typeFolder
+                    // The field shows the real target: <base>\<Type>. Any type folder already
+                    // on the path (ours, from before) is replaced, never stacked.
+                    val base =
+                        com.michelle.raouf.fetch_jet.core.settings.FileCategory.stripTypeFolders(
+                            destinationPath
+                        )
+                    val sep = if (base.contains('\\')) "\\" else "/"
+                    val full = if (typeFolder != null) base + sep + typeFolder else base
+                    if (full != destinationPath) {
                         pathTextFieldValue = TextFieldValue(full, TextRange(full.length))
                         onDestinationPathChanged(full)
                     }

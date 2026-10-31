@@ -44,6 +44,16 @@ object ExternalDownloadBridge {
 
     var openInBrowserFallback: ((String) -> Unit)? = null
 
+    /**
+     * Brings the app in front of whatever the user is looking at (the browser, usually).
+     * Set by each platform's entry point; called when a link arrives from the extension, the
+     * clipboard or a fetchjet:// URL.
+     */
+    var onShowAndFocus: (() -> Unit)? = null
+    fun showAndFocus() {
+        onShowAndFocus?.invoke()
+    }
+
     fun dispatch(url: String, cookie: String = "") = dispatch(ExternalDownloadRequest(url, cookie))
 
     fun dispatch(request: ExternalDownloadRequest) {

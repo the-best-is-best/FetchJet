@@ -20,7 +20,12 @@ data class DownloadChunk(
     val startByte: Long,
     val endByte: Long,
     val downloadedBytes: Long,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    /** A connection is writing this piece right now. */
+    val isActive: Boolean = false,
+    val speedBytesPerSec: Long = 0L,
+    /** Why the piece is waiting ("HTTP 429"), null when fine. */
+    val note: String? = null
 )
 
 data class TorrentFileEntry(
@@ -47,6 +52,10 @@ data class DownloadTask(
     val disableUpload: Boolean = false,
     val progress: Float = 0f,
     val chunks: List<DownloadChunk> = emptyList(),
+    /** Connections the user asked for (0 = app setting / automatic). */
+    val maxConnections: Int = 0,
+    /** Connections actually used for this download. */
+    val connections: Int = 0,
     val priority: Int = 0,
     val errorMessage: String? = null,
     val createdAtEpochMs: Long = 0L,
