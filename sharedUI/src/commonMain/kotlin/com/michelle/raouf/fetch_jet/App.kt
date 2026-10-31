@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1828,7 +1829,14 @@ private fun TaskListArea(
         }
 
         TaskRowsHeader()
+        // A download just added (dialog or extension) sits at the top: bring it into view.
+        val listState = rememberLazyListState()
+        val uiState by viewModel.uiState.collectAsState()
+        LaunchedEffect(uiState.scrollToTopSignal) {
+            if (uiState.scrollToTopSignal > 0) listState.animateScrollToItem(0)
+        }
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             // Phone: room so the floating add button never hides the last row.

@@ -119,8 +119,9 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
         ) {
             val w = size.width
             val h = size.height
-            val r = CornerRadius(5f, 5f)
-            val gapPx = 2.5f
+            val r = CornerRadius(3f, 3f)
+            // Hairline gaps: on a narrow pane with many pieces a wide gap turned the bar into stripes.
+            val gapPx = if (w / chunks.size > 60f) 2f else 1f
             chunks.forEach { c ->
                 val len = max(1L, c.endByte - c.startByte + 1)
                 val x0 = w * (c.startByte.toFloat() / total) + gapPx / 2

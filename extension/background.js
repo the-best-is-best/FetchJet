@@ -655,7 +655,9 @@ async function inspectWithApp(pageUrl) {
     const seen = new Set();
     for (const q of data) {
       if (!q.formatId) continue;
-      const label = `${q.quality || "video"} · ${(q.format || "mp4").toUpperCase()}`;
+      const fmt = (q.format || "mp4").toUpperCase();
+      // "1080p (Full HD - MP4)" already names the container: do not add "· MP4" again.
+      const label = (q.quality || "").toUpperCase().includes(fmt) ? q.quality : `${q.quality || "video"} · ${fmt}`;
       if (seen.has(label)) continue;
       seen.add(label);
       options.push({
@@ -669,6 +671,16 @@ async function inspectWithApp(pageUrl) {
   } catch (e) {
     return { resolveError: (await pingApp()) ? String(e && e.message || e) : "FetchJet is not running" };
   } finally { clearTimeout(t); }
+}
+
+/** A piece of a stream rather than a whole file: tiny, or a byte-range / segment URL. */
+function isStreamFragment(m) {
+  const u = String(m.url || "");
+  if (/[?&](bytestart|byteend|range)=/i.test(u)) return true;
+  if (/\.(m4s|ts)(\?|$)/i.test(u)) return true;
+  if (/fbcdn\.net\/.*\/m\d{2,3}\//i.test(u) && (!m.size || m.size < 8 * 1048576)) return true;
+  if (/googlevideo\.com\//i.test(u) && /[?&]range=/i.test(u)) return true;
+  return !!m.size && m.size < 512 * 1024 && !/\.(mp4|mkv|webm|mp3|m4a)(\?|$)/i.test(u);
 }
 
 function fmtBytes(n) { return typeof ytFmtSize === "function" ? ytFmtSize(n) : `${Math.round(n / 1048576)} MB`; }
@@ -786,9 +798,15 @@ async function itemsForTab(tabId) {
     else if (res.resolveError) items.push({ label: "Page qualities unavailable", sub: res.resolveError, disabled: true });
   }
   const resolvedFound = items.some(i => i.kind === "ytdlp");
+  const resolving = !!(res && res.resolving && !yt);
   for (const m of media) {
     // when yt-dlp already found the real qualities, raw streams are noise
     if (resolvedFound && (m.kind === "HLS" || m.kind === "DASH" || m.kind === "Video")) continue;
+    // while FetchJet is still working out the page's qualities, the raw streams only confuse
+    if (resolving && (m.kind === "HLS" || m.kind === "DASH" || m.kind === "Video")) continue;
+    // DASH/HLS *fragments* the player fetched (Facebook: fbcdn ".../m311/..." pieces of a few
+    // hundred KB, "bytestart=" ranges) are not files anyone wants
+    if (m.kind === "Video" && isStreamFragment(m)) continue;
     // HLS/DASH: show the rendition (AVC_192 -> "192", 1080p, 720p...) read from the URL instead of
     // the playlist's hash; the size of a playlist file means nothing to the user.
     const isPl = m.kind === "HLS" || m.kind === "DASH";
@@ -845,7 +863,10 @@ async function downloadItem(item, tab) {
   }
   if (item.kind === "ytdlp") {
     // "1080p · Full HD · H.264" -> only "1080p" goes into the file name.
-    const qTag = (item.quality || "").split(" · ")[0].trim();
+    // "1080p (Full HD - MP4)" -> "1080p"; "Audio Only (M4A)" -> "Audio"; otherwise the first word
+    const q = item.quality || "";
+    const qm = /(\d{3,4}p|4K|8K)/i.exec(q);
+    const qTag = qm ? qm[1] : (/audio/i.test(q) ? "Audio" : q.split(/[\s(·]/)[0].trim());
     const fileName = `${clean}${qTag ? " [" + qTag + "]" : ""}.${item.ext || "mp4"}`;
     let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl, openClip: !!item.openClip }, "quality");
     if (!r.ok && tab) {

@@ -1501,3 +1501,20 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? {
     ) ?: return null
     return parsePlaylistJson(output)
 }
+
+
+actual suspend fun runYtDlpJson(
+    url: String,
+    selector: String,
+    headers: Map<String, String>
+): String? =
+    withContext(Dispatchers.IO) {
+        getExistingYtDlpBinary() ?: return@withContext null
+        runYtDlp(
+            listOf(
+                "--js-runtimes", "deno", "--js-runtimes", "node",
+                "-j", "--no-warnings", "--no-playlist", "-f", selector
+            ) + ytDlpHeaderArgs(headers, url) + listOf("--", url),
+            timeoutSec = 40L
+        )
+    }

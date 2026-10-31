@@ -11,7 +11,6 @@ import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
-import com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -225,7 +224,10 @@ object ExtensionBridgeServer {
                 if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
             }
         }
-        val fresh = runBlocking { inspectPlatformQualities(url, requestHeaders) }
+        val fresh = runBlocking {
+            com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                .inspectMediaQualities(url, requestHeaders)
+        }
         if (fresh.isNotEmpty()) synchronized(inspectCache) {
             inspectCache[url] = System.currentTimeMillis() to fresh
         }

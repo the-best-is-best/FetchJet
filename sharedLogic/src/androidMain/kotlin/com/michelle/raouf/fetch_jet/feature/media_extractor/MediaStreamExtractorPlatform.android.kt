@@ -944,3 +944,28 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     }
 
 actual fun lastMediaInspectionError(): String? = null
+
+
+actual suspend fun runYtDlpJson(
+    url: String,
+    selector: String,
+    headers: Map<String, String>
+): String? =
+    withContext(Dispatchers.IO) {
+        val trimmedUrl = url.trim()
+        if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) return@withContext null
+        val context = PathResolver.appContext ?: return@withContext null
+        val request = YTDLRequest(trimmedUrl)
+        request.addOption("-j")
+        request.addOption("--no-warnings")
+        request.addOption("--no-playlist")
+        request.addOption("-f", selector)
+        ytDlpHeaderArgs(headers, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
+        FileUtil.getCookieFile(context) { cookiePath -> request.addOption("--cookies", cookiePath) }
+        val response = try {
+            RuntimeManager.getInstance().execute(request)
+        } catch (_: Exception) {
+            null
+        }
+        response?.out?.trim()?.takeIf { it.isNotBlank() }
+    }

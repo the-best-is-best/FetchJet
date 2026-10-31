@@ -150,10 +150,10 @@ private fun inspectCached(
         }
     }
     val fresh = kotlinx.coroutines.runBlocking {
-        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities(
-            url,
-            requestHeaders
-        )
+        // Same path as the Add dialog: HLS first, yt-dlp with the browser's headers, then
+        // without them (Facebook serves a page yt-dlp cannot read when the login cookie is sent).
+        com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+            .inspectMediaQualities(url, requestHeaders)
     }
     if (fresh.isNotEmpty()) synchronized(inspectCache) {
         inspectCache[url] = System.currentTimeMillis() to fresh

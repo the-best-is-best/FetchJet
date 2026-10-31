@@ -97,6 +97,8 @@ data class DashboardUiState(
     val browserFallbackUrl: String? = null,
     /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
     val clipboardOfferUrl: String? = null,
+    /** Bumped when a download was just added: the list scrolls to the top to show it. */
+    val scrollToTopSignal: Int = 0,
     /** Behaviour settings (Settings > General / Downloads), mirrored from BehaviorSettings. */
     val monitorClipboard: Boolean = false,
     val clipboardVideoPages: Boolean = false,

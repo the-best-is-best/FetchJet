@@ -61,6 +61,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.java)
             // "Start FetchJet when I log in" (Windows Run key, macOS LaunchAgent, Linux autostart)
             implementation(libs.auto.launch)
             // libtorrent natives for every desktop OS the app is packaged for

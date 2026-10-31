@@ -68,6 +68,10 @@ class DashboardViewModel(
     /** Quality the extension chose for a clip: re-applied when the dialog's own inspection finishes. */
     private var pendingSelectedFormatId: String? = null
 
+    /** An extension download whose file already exists: waits for Overwrite / Save as copy. */
+    private var pendingExternalConflict: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest? =
+        null
+
     /** The playlist link for which the user chose "download only this video". */
     private var singleVideoUrl: String? = null
 
@@ -206,7 +210,11 @@ class DashboardViewModel(
      * The browser already chose everything (quality picked in the extension popup, or a
      * "download now" click): queue it without showing the Add dialog.
      */
-    private fun startExternalDirectly(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
+    private fun startExternalDirectly(
+        request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest,
+        forceOverwrite: Boolean = false,
+        overrideFileName: String? = null
+    ) {
         scope.launch {
             val state = _uiState.value
             val destDir =
@@ -217,11 +225,41 @@ class DashboardViewModel(
                 val title = selected?.videoTitle
                 if (!title.isNullOrBlank()) "$title.${selected.format?.ifBlank { "mp4" } ?: "mp4"}" else ""
             }
-            val fileName = rawName.ifBlank { null }
+            val fileName = (overrideFileName ?: rawName).ifBlank { null }
                 ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
-                ?.let { freeFileName(destDir, it) }
+            // The file is already in the folder: ask, like the Add dialog does, instead of
+            // quietly saving "name (1).mp4".
+            if (fileName != null && !forceOverwrite && overrideFileName == null &&
+                FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())
+            ) {
+                pendingExternalConflict = request
+                _uiState.update {
+                    it.copy(
+                        fileConflictAlert = FileConflictData(
+                            fileName = fileName,
+                            destinationPath = destDir,
+                            suggestedNewName = getUniqueFileName(destDir, fileName)
+                        )
+                    )
+                }
+                com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
+                return@launch
+            }
             val engine =
                 if (qualities.isNotEmpty()) EngineType.MEDIA_STREAM else engineForDirectFile(request.url)
+            // The same video + quality already downloading or queued (a double click in the
+            // popup, the page sending twice): do not start it a second time.
+            val wantedFormat = selected?.formatId
+            val same = queueRepository.allTasksFlow.value.firstOrNull { t ->
+                (t.url == request.url || t.originalUrl == request.url) &&
+                        (wantedFormat == null || t.formatId == wantedFormat) &&
+                        t.status != com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.COMPLETED &&
+                        t.status != com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.ERROR
+            }
+            if (same != null) {
+                _uiEffect.emit(DashboardUiEffect.ShowToast("Already in the list: ${same.fileName.ifBlank { same.url }}"))
+                return@launch
+            }
             if (engine == EngineType.MEDIA_STREAM && qualities.isEmpty()) {
                 // A video page without a chosen quality still needs the inspector. The name the
                 // extension chose (the page title for an HLS playlist) is kept for the file.
@@ -244,6 +282,7 @@ class DashboardViewModel(
                 requestHeaders = request.toRequestHeaders()
             ).onSuccess { task ->
                 _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
+                _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
             }.onFailure { error ->
                 _uiEffect.emit(DashboardUiEffect.ShowToast("Could not start download: ${error.message ?: "unknown error"}"))
             }
@@ -803,6 +842,8 @@ class DashboardViewModel(
             DashboardUiEvent.OnConfirmOverwriteClicked -> {
                 val conflict = _uiState.value.fileConflictAlert
                 _uiState.update { it.copy(fileConflictAlert = null) }
+                val external = pendingExternalConflict
+                pendingExternalConflict = null
                 scope.launch {
                     // The file is replaced: the old entry for it would show a stale download.
                     if (conflict != null) {
@@ -810,13 +851,19 @@ class DashboardViewModel(
                             .filter { it.fileName == conflict.fileName && it.destinationPath == conflict.destinationPath }
                             .forEach { queueRepository.removeTask(it.id, deleteFile = false) }
                     }
-                    addDownload(forceOverwrite = true, skipDuplicateCheck = true)
+                    if (external != null) startExternalDirectly(external, forceOverwrite = true)
+                    else addDownload(forceOverwrite = true, skipDuplicateCheck = true)
                 }
             }
 
             is DashboardUiEvent.OnSaveAsCopyClicked -> {
                 val newName = event.newFileName
                 _uiState.update { it.copy(fileConflictAlert = null) }
+                pendingExternalConflict?.let { external ->
+                    pendingExternalConflict = null
+                    startExternalDirectly(external, overrideFileName = newName)
+                    return
+                }
                 addDownload(
                     forceOverwrite = false,
                     overrideFileName = newName,
@@ -825,6 +872,7 @@ class DashboardViewModel(
             }
 
             DashboardUiEvent.OnDismissFileConflictDialog -> {
+                pendingExternalConflict = null
                 _uiState.update { it.copy(fileConflictAlert = null) }
             }
 
@@ -1618,6 +1666,7 @@ class DashboardViewModel(
                     )
                 }
                 _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
+                _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(

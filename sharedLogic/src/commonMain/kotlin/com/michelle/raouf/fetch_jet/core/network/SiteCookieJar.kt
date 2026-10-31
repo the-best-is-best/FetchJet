@@ -41,8 +41,28 @@ object SiteCookieJar {
         bySite = bySite + (site to keep)
     }
 
+    /** Sites where the browser's cookie made yt-dlp see *less* (Facebook logged in): use none. */
+    @kotlin.concurrent.Volatile
+    private var cookieHurts: Set<String> = emptySet()
+
+    fun markCookieUnhelpful(url: String) {
+        siteOf(url).ifBlank { return }.let { cookieHurts = cookieHurts + it }
+    }
+
+    fun cookieUnhelpful(url: String): Boolean = siteOf(url) in cookieHurts
+
+    /** [headers] minus Cookie/Referer when this site is known to do worse with them. */
+    fun effective(url: String, headers: Map<String, String>): Map<String, String> =
+        if (cookieUnhelpful(url)) headers.filterKeys {
+            !it.equals(
+                "Cookie",
+                true
+            ) && !it.equals("Referer", true)
+        } else headers
+
     /** Headers remembered for [url]'s site, or [fallback] when none. */
     fun headersFor(url: String, fallback: Map<String, String> = emptyMap()): Map<String, String> {
+        if (cookieUnhelpful(url)) return effective(url, fallback)
         if (fallback.any { it.key.equals("Cookie", true) }) return fallback
         val site = siteOf(url)
         val saved = bySite[site] ?: return fallback

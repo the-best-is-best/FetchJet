@@ -74,6 +74,9 @@ class MediaStreamDownloader(
     /** Why the last HLS (own engine) step failed, for the task's error line. */
     private var lastHlsError: String? = null
 
+    /** HTTP/1.1-only client for piece downloads (googlevideo rejects ranged requests over h2). */
+    private val streamClient: HttpClient by lazy { com.michelle.raouf.fetch_jet.core.network.createStreamHttpClient() }
+
 
     override val engineType: EngineType = EngineType.MEDIA_STREAM
 
@@ -175,7 +178,7 @@ class MediaStreamDownloader(
     }
 
     private suspend fun executeMediaDownload(taskId: String) {
-        val initialTask = tasksState.value[taskId] ?: return
+        var initialTask = tasksState.value[taskId] ?: return
         if (!coroutineContext.isActive || tasksState.value[taskId]?.status == DownloadStatus.PAUSED) {
             return
         }
@@ -191,6 +194,13 @@ class MediaStreamDownloader(
 
         val effectiveUrl = resolveEffectiveMediaUrl(initialTask.url)
         val downloadSourceUrl = resolveEffectiveMediaUrl(initialTask.originalUrl ?: initialTask.url)
+        // Sites where the browser cookie made things worse (see inspectMediaQualities) get none.
+        initialTask = initialTask.copy(
+            requestHeaders = com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.effective(
+                downloadSourceUrl,
+                initialTask.requestHeaders
+            )
+        )
 
         val resolvedTitle = try {
             if (isYouTubeUrl(effectiveUrl)) fetchYouTubeTitle(effectiveUrl) else fetchGenericMediaTitle(
@@ -258,7 +268,47 @@ class MediaStreamDownloader(
                 }
                 val useOwnHls = initialTask.formatId == HlsDownloader.FORMAT_ID ||
                         (HlsDownloader.isHlsUrl(downloadSourceUrl) && initialTask.formatId.isNullOrBlank())
-                val success = try {
+
+                // Own engine first (YouTube & co.): yt-dlp only resolves the direct stream
+                // URLs; FetchJet downloads them in pieces (several connections, pause/resume,
+                // piece map) and merges with the local ffmpeg. Anything it cannot do — HLS/DASH
+                // fragments, section clips, a failure midway — falls back to yt-dlp below.
+                var directDone = false
+                if (!useOwnHls && !isClipping) {
+                    directDone = try {
+                        downloadWithOwnEngine(
+                            taskId,
+                            initialTask,
+                            downloadSourceUrl,
+                            cacheDir,
+                            cacheTargetPath.toString(),
+                            fileName
+                        )
+                    } catch (e: CancellationException) {
+                        if (tasksState.value[taskId]?.status == DownloadStatus.PAUSED) return
+                        throw e
+                    } catch (e: Exception) {
+                        com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: own engine failed, using yt-dlp: ${e.message}")
+                        updateTaskState(taskId) {
+                            if (it.status == DownloadStatus.PAUSED) it
+                            else it.copy(
+                                currentStepText = "yt-dlp fallback · ${
+                                    (e.message ?: e::class.simpleName ?: "error").take(
+                                        90
+                                    )
+                                }",
+                                chunks = emptyList(),
+                                connections = 0,
+                                progress = 0f,
+                                downloadedBytes = 0L
+                            )
+                        }
+                        false
+                    }
+                    if (tasksState.value[taskId]?.status == DownloadStatus.PAUSED) return
+                }
+
+                val success = if (directDone) true else try {
                     if (useOwnHls) {
                         updateTaskState(taskId) {
                             if (it.status == DownloadStatus.PAUSED) it else it.copy(
@@ -1273,9 +1323,23 @@ class MediaStreamDownloader(
 
     suspend fun resolveEffectiveMediaUrl(url: String): String {
         val current = normalizeYouTubeUrl(url.trim())
-        val isRedirectLink = current.contains("facebook.com/share/", ignoreCase = true) ||
-                current.contains("fb.watch/", ignoreCase = true) ||
-                current.contains("m.facebook.com/", ignoreCase = true) ||
+        // Facebook share links: yt-dlp follows them itself (with the right cookies/headers).
+        // Resolving them here got a 400 or a generic /watch/live/ page from Facebook, and
+        // yt-dlp then saw an "Unsupported URL".
+        if (current.contains(
+                "facebook.com/share/",
+                ignoreCase = true
+            ) || current.contains("fb.watch/", ignoreCase = true)
+        ) {
+            return current.replace("m.facebook.com", "www.facebook.com")
+        }
+        // facebook.com/watch/live/?ref=…&v=ID (the Live tab) → the plain watch URL yt-dlp knows.
+        if (current.contains("facebook.com/", ignoreCase = true)) {
+            Regex("""[?&]v=(\d{8,})""").find(current)?.groupValues?.get(1)?.let { id ->
+                if (!current.contains("/watch/?v=")) return "https://www.facebook.com/watch/?v=$id"
+            }
+        }
+        val isRedirectLink = current.contains("m.facebook.com/", ignoreCase = true) ||
                 current.contains("tiktok.com/t/", ignoreCase = true) ||
                 current.contains("vm.tiktok.com/", ignoreCase = true) ||
                 current.contains("vt.tiktok.com/", ignoreCase = true)
@@ -1291,6 +1355,11 @@ class MediaStreamDownloader(
                 )
             }
             val finalUrl = response.call.request.url.toString()
+            // A Facebook "redirect" to a page without a video id (/watch/live/?ref=…) is useless:
+            // keep the link the user gave and let yt-dlp resolve it.
+            if (finalUrl.contains("facebook.com", ignoreCase = true) &&
+                !Regex("""\d{8,}""").containsMatchIn(finalUrl.substringAfter("facebook.com"))
+            ) return current
             if (finalUrl.isNotBlank() && !finalUrl.contains("/login") && !finalUrl.contains("checkpoint")) {
                 if (finalUrl.contains("m.facebook.com")) {
                     finalUrl.replace("m.facebook.com", "www.facebook.com")
@@ -1739,6 +1808,224 @@ class MediaStreamDownloader(
         }
     }
 
+    /**
+     * YouTube-style download with FetchJet's own engine. Returns false when the page is not a
+     * plain-stream page (yt-dlp should download it), true when the finished file is at
+     * [cacheTargetPath]; throws when a download started and failed.
+     */
+    private suspend fun downloadWithOwnEngine(
+        taskId: String,
+        task: DownloadTask,
+        sourceUrl: String,
+        cacheDir: String,
+        cacheTargetPath: String,
+        fileName: String
+    ): Boolean {
+        val audioTarget = Regex(
+            """\.(mp3|m4a|aac|opus|ogg|flac|wav)$""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(fileName)
+        updateTaskState(taskId) {
+            if (it.status == DownloadStatus.PAUSED) it else it.copy(currentStepText = "Resolving streams…")
+        }
+        var headersUsed = task.requestHeaders
+        val resolved =
+            DirectMediaResolver.resolve(sourceUrl, task.formatId, audioTarget, headersUsed)
+                ?: if (headersUsed.isNotEmpty()) {
+                    headersUsed = emptyMap()
+                    DirectMediaResolver.resolve(sourceUrl, task.formatId, audioTarget, headersUsed)
+                } else null
+        if (resolved == null) {
+            updateTaskState(taskId) {
+                if (it.status == DownloadStatus.PAUSED) it else it.copy(currentStepText = "yt-dlp fallback · not a plain stream")
+            }
+            return false
+        }
+        // video first, then audio
+        val streams = resolved.streams.sortedByDescending { it.hasVideo }
+        val connections = task.maxConnections.takeIf { it > 0 }
+            ?: com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.connections.value.takeIf { it > 0 }
+            ?: 8
+        val limiter =
+            com.michelle.raouf.fetch_jet.core.network.RateLimiter { speedLimitProvider(taskId) }
+        val fetcher = com.michelle.raouf.fetch_jet.core.network.PieceDownloader(streamClient)
+
+        val knownSizes = LongArray(streams.size) { streams[it].size.coerceAtLeast(0L) }
+        val doneBytes = LongArray(streams.size)
+        val files = ArrayList<String>()
+        for ((i, stream) in streams.withIndex()) {
+            val label = when {
+                streams.size == 1 -> "Downloading"
+                stream.hasVideo -> "Downloading video (1/2)"
+                else -> "Downloading audio (2/2)"
+            }
+            val out = "$cacheDir/stream$i.${stream.ext}"
+            files.add(out)
+            if (FileSystem.SYSTEM.exists(out.toPath()) && knownSizes[i] > 0 &&
+                FileSystem.SYSTEM.metadataOrNull(out.toPath())?.size == knownSizes[i]
+            ) {
+                doneBytes[i] = knownSizes[i]; continue // finished on an earlier run
+            }
+            fetcher.download(
+                urlProvider = { refresh ->
+                    if (!refresh) stream.url
+                    else DirectMediaResolver.resolve(
+                        sourceUrl,
+                        task.formatId,
+                        audioTarget,
+                        headersUsed
+                    )
+                        ?.streams?.firstOrNull { it.hasVideo == stream.hasVideo && it.hasAudio == stream.hasAudio }?.url
+                        ?: stream.url
+                },
+                headers = stream.headers,
+                partBase = "$cacheDir/stream$i",
+                outputFile = out,
+                totalLength = knownSizes[i].takeIf { it > 0 } ?: -1L,
+                connections = connections,
+                rateLimiter = limiter,
+                onProgress = { p ->
+                    if (knownSizes[i] <= 0 && p.total > 0) knownSizes[i] = p.total
+                    doneBytes[i] = p.downloaded
+                    val total = knownSizes.sum()
+                    val got = doneBytes.sum()
+                    updateTaskState(taskId) {
+                        if (it.status == DownloadStatus.PAUSED) it
+                        else it.copy(
+                            status = DownloadStatus.DOWNLOADING,
+                            progress = if (total > 0) (got.toFloat() / total).coerceIn(
+                                0f,
+                                0.99f
+                            ) else it.progress,
+                            downloadedBytes = got,
+                            totalBytes = total,
+                            approximateTotalBytes = 0L,
+                            downloadSpeedBytesPerSec = p.speedBytesPerSec,
+                            chunks = p.chunks,
+                            connections = p.connections,
+                            currentStepText = label
+                        )
+                    }
+                }
+            )
+        }
+
+        // Merge / remux into the target name with the local ffmpeg.
+        updateTaskState(taskId) {
+            if (it.status == DownloadStatus.PAUSED) it else it.copy(
+                chunks = emptyList(),
+                downloadSpeedBytesPerSec = 0L
+            )
+        }
+        val target = cacheTargetPath
+        val targetExt = fileName.substringAfterLast('.', "mp4").lowercase()
+        val ok: Boolean = when {
+            files.size == 2 -> {
+                reportPostProcess(taskId, "Merging video and audio", 0.3f)
+                runLocalFfmpeg(
+                    listOf(
+                        "-y",
+                        "-i",
+                        files[0],
+                        "-i",
+                        files[1],
+                        "-c",
+                        "copy",
+                        "-movflags",
+                        "+faststart",
+                        target
+                    )
+                ) ||
+                        runLocalFfmpeg(
+                            listOf(
+                                "-y",
+                                "-i",
+                                files[0],
+                                "-i",
+                                files[1],
+                                "-c:v",
+                                "copy",
+                                "-c:a",
+                                "aac",
+                                "-movflags",
+                                "+faststart",
+                                target
+                            )
+                        )
+            }
+
+            audioTarget && targetExt == "mp3" -> {
+                reportPostProcess(taskId, "Converting to MP3", 0.3f)
+                runLocalFfmpeg(
+                    listOf(
+                        "-y",
+                        "-i",
+                        files[0],
+                        "-vn",
+                        "-c:a",
+                        "libmp3lame",
+                        "-q:a",
+                        "2",
+                        target
+                    )
+                )
+            }
+
+            files[0].substringAfterLast('.').equals(targetExt, true) -> {
+                try {
+                    FileSystem.SYSTEM.atomicMove(files[0].toPath(), target.toPath()); true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+
+            else -> {
+                reportPostProcess(taskId, "Saving as .$targetExt", 0.3f)
+                runLocalFfmpeg(
+                    listOf(
+                        "-y",
+                        "-i",
+                        files[0],
+                        "-c",
+                        "copy",
+                        "-movflags",
+                        "+faststart",
+                        target
+                    )
+                ) ||
+                        try {
+                            FileSystem.SYSTEM.atomicMove(files[0].toPath(), target.toPath()); true
+                        } catch (_: Exception) {
+                            false
+                        }
+            }
+        }
+        if (!ok || !FileSystem.SYSTEM.exists(target.toPath())) throw Exception("ffmpeg could not put the streams together")
+
+        // "Cut afterwards" clip: stream-copy the chosen part out of the full file.
+        if (task.clipByCutting && (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank())) {
+            reportPostProcess(taskId, "Cutting the clip", 0.7f)
+            val cut = "$cacheDir/cut.$targetExt"
+            val args = mutableListOf("-y")
+            task.clipStart?.takeIf { it.isNotBlank() }?.let { args += listOf("-ss", it) }
+            task.clipEnd?.takeIf { it.isNotBlank() }?.let { args += listOf("-to", it) }
+            args += listOf("-i", target, "-c", "copy", "-movflags", "+faststart", cut)
+            if (runLocalFfmpeg(args) && FileSystem.SYSTEM.exists(cut.toPath())) {
+                try {
+                    FileSystem.SYSTEM.delete(target.toPath())
+                } catch (_: Exception) {
+                }
+                FileSystem.SYSTEM.atomicMove(cut.toPath(), target.toPath())
+            }
+        }
+        for (f in files) try {
+            FileSystem.SYSTEM.delete(f.toPath())
+        } catch (_: Exception) {
+        }
+        reportPostProcess(taskId, "", POST_PROCESS_CLEAR)
+        return true
+    }
+
     private fun reportPostProcess(taskId: String, label: String, fraction: Float) {
         updateTaskState(taskId) {
             // Only a running task gets the line: a late tick from a cancelled job must not
@@ -1874,19 +2161,57 @@ class MediaStreamDownloader(
 
             // 0. Try platform-specific quality inspector (e.g. yt-dlp on Desktop)
 
-            val platformQualities = try {
-
-                inspectPlatformQualities(effectiveUrl, requestHeaders)
-
-            } catch (_: Exception) {
-
-                emptyList()
-
+            // The browser's Cookie/Referer help on sites that need a login (Udemy) but can make
+            // others serve a page the extractor cannot read (Facebook, logged in). Try with the
+            // headers first, then without them.
+            val requestHeaders = com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.effective(
+                effectiveUrl,
+                requestHeaders
+            )
+            val platformQualities = run {
+                val withHeaders = try {
+                    inspectPlatformQualities(effectiveUrl, requestHeaders)
+                } catch (e: Exception) {
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: inspect failed with headers ${requestHeaders.keys}: ${e.message}")
+                    emptyList()
+                }
+                com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                    "MediaStream: inspect ${effectiveUrl.take(80)} headers=${requestHeaders.keys} -> ${withHeaders.size} formats"
+                )
+                // "Good" = at least one real resolution (720p, 1080p…). A logged-in Facebook
+                // page gives yt-dlp a single nameless "sd/hd" entry; the same page without the
+                // cookie gives every quality.
+                fun good(list: List<MediaQualityEntry>) =
+                    list.any { Regex("""\b\d{3,4}p\b|\b4K\b""").containsMatchIn(it.qualityLabel) }
+                if (requestHeaders.isEmpty() || good(withHeaders)) withHeaders
+                else {
+                    val plain = try {
+                        com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: weak result with the browser headers, retrying without them")
+                        inspectPlatformQualities(effectiveUrl, emptyMap())
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: inspect without headers -> ${plain.size} formats")
+                    if (plain.size > withHeaders.size) {
+                        // Downloads of this site must not send the cookie either.
+                        com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.markCookieUnhelpful(
+                            effectiveUrl
+                        )
+                        plain
+                    } else withHeaders
+                }
             }
 
             if (platformQualities.isNotEmpty()) {
                 val maxDur = platformQualities.maxOfOrNull { it.durationSeconds } ?: 0L
-                return platformQualities.map {
+                // Facebook lists nameless "sd"/"hd" progressive files next to the real
+                // 360p/720p/1080p ones: with numbered qualities present they are only noise.
+                val numbered =
+                    platformQualities.any { Regex("""\b\d{3,4}p\b|\b4K\b""").containsMatchIn(it.qualityLabel) }
+                val cleaned = if (numbered) platformQualities.filterNot {
+                    it.qualityLabel.startsWith("HD Quality (Direct") || it.qualityLabel.startsWith("SD Quality (Direct")
+                } else platformQualities
+                return cleaned.map {
                     var entry = it
                     if (entry.videoTitle.isNullOrBlank() && resolvedTitle != null) {
                         entry = entry.copy(videoTitle = resolvedTitle)

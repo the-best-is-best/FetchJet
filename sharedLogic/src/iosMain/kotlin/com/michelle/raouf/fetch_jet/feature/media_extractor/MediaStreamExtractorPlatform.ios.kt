@@ -1379,3 +1379,27 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     }
 
 actual fun lastMediaInspectionError(): String? = null
+
+
+actual suspend fun runYtDlpJson(
+    url: String,
+    selector: String,
+    headers: Map<String, String>
+): String? =
+    withContext(Dispatchers.IO) {
+        val trimmedUrl = url.trim()
+        if (trimmedUrl.isEmpty()) return@withContext null
+        val args =
+            mutableListOf("-j", "--no-warnings", "--no-playlist", "--geo-bypass", "-f", selector)
+        args.addAll(ytDlpHeaderArgs(headers, url))
+        getIosCookieFile()?.let { args.add("--cookies"); args.add(it) }
+        args.add(trimmedUrl)
+        val bridge = IosMediaBridgeRegistry.bridge
+        try {
+            if (bridge != null && bridge.isAvailable()) bridge.captureYtDlp(args) else runYtDlpCapture(
+                args
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
