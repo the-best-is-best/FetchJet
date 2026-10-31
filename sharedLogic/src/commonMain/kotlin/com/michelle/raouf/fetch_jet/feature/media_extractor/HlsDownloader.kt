@@ -268,6 +268,8 @@ object HlsDownloader {
         parallel: Int = 6,
         isCancelled: () -> Boolean = { false },
         onProgress: (Float, Long, Long, Long) -> Unit = { _, _, _, _ -> },
+        /** The segment map for the pieces bar: one chunk per segment (virtual, equal-sized units). */
+        onPieces: ((List<com.michelle.raouf.fetch_jet.domain.model.DownloadChunk>, Int) -> Unit)? = null,
         onPostProcess: ((String, Float) -> Unit)? = null,
         /** Clip: only the parts between these seconds are fetched (null = whole video). */
         clipStartSec: Double? = null,
@@ -317,17 +319,43 @@ object HlsDownloader {
         var bytes = 0L
         val startedAt = nowMs()
         val lock = Mutex()
-        val sem = Semaphore(parallel.coerceIn(1, 12))
+        val workers = parallel.coerceIn(1, 16)
+        val sem = Semaphore(workers)
         val segName: (Int) -> String = { i -> "seg${i.toString().padStart(6, '0')}.ts" }
+
+        // 0 = waiting, 1 = downloading, 2 = done — one byte per segment, read by the ticker.
+        val segState = ByteArray(total)
+        var lastPiecesMs = 0L
+        fun pieces(): List<com.michelle.raouf.fetch_jet.domain.model.DownloadChunk> =
+            List(total) { i ->
+                val st = segState[i].toInt()
+                com.michelle.raouf.fetch_jet.domain.model.DownloadChunk(
+                    chunkIndex = i,
+                    startByte = i * UNIT,
+                    endByte = i * UNIT + UNIT - 1,
+                    downloadedBytes = if (st == 2) UNIT else 0L,
+                    isCompleted = st == 2,
+                    isActive = st == 1
+                )
+            }
+
+        fun publishPieces(force: Boolean = false) {
+            val cb = onPieces ?: return
+            val now = nowMs()
+            if (!force && now - lastPiecesMs < 250) return
+            lastPiecesMs = now
+            cb(pieces(), workers)
+        }
 
         // What is already there counts (resume).
         segments.indices.forEach { i ->
             val p = dir / segName(i)
             if (fs.exists(p)) {
-                done++; bytes += fs.metadata(p).size ?: 0L
+                done++; bytes += fs.metadata(p).size ?: 0L; segState[i] = 2
             }
         }
         onProgress(if (total > 0) done.toFloat() / total else 0f, bytes, 0L, 0L)
+        publishPieces(force = true)
 
         coroutineScope {
             segments.mapIndexed { i, seg ->
@@ -337,6 +365,7 @@ object HlsDownloader {
                     if (isCancelled()) throw CancellationException("paused")
                     sem.withPermit {
                         if (isCancelled()) throw CancellationException("paused")
+                        segState[i] = 1; publishPieces()
                         var attempt = 0
                         var data: ByteArray? = null
                         while (data == null) {
@@ -352,10 +381,12 @@ object HlsDownloader {
                         val tmp = dir / (segName(i) + ".part")
                         fs.write(tmp) { write(data) }
                         fs.atomicMove(tmp, p)
+                        segState[i] = 2
                         val snapshot = lock.withLock {
                             done++; bytes += data.size
                             Triple(done, bytes, nowMs() - startedAt)
                         }
+                        publishPieces()
                         val (d, b, elapsed) = snapshot
                         val est = if (d > 0) (b.toDouble() / d * total).toLong() else 0L
                         val speed = if (elapsed > 300) b * 1000 / elapsed else 0L
@@ -365,6 +396,7 @@ object HlsDownloader {
             }.awaitAll()
         }
         if (isCancelled()) return@withContext false
+        publishPieces(force = true)
 
         // Local playlist: same tags, files instead of URLs, local key.
         val local = buildString {
@@ -454,6 +486,9 @@ object HlsDownloader {
     }
 
     private fun nowMs(): Long = com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs()
+
+    /** Size of one virtual segment slot in the pieces map (segments have unknown byte sizes). */
+    private const val UNIT = 1000L
 }
 
 /** Runs the platform's ffmpeg on local files only (no network). true = exit code 0. */

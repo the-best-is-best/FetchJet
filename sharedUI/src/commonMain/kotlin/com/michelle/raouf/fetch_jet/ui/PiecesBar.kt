@@ -54,7 +54,9 @@ import kotlin.math.max
 @Composable
 fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
     val chunks = task.chunks.sortedBy { it.startByte }
-    val total = task.totalBytes.takeIf { it > 0 } ?: return
+    // The map's own span: real bytes for a file, virtual equal slots for HLS segments.
+    val total = chunks.maxOfOrNull { it.endByte + 1 }?.takeIf { it > 0 } ?: return
+    val manySegments = chunks.size > 40
     val scheme = MaterialTheme.colorScheme
 
     val done = scheme.primary
@@ -90,7 +92,7 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
                 modifier = Modifier.weight(1f)
             )
             Pill(
-                "${chunks.size} pieces",
+                if (manySegments) "${chunks.size} segments" else "${chunks.size} pieces",
                 scheme.onSurfaceVariant,
                 scheme.surfaceVariant.copy(alpha = 0.5f)
             )
@@ -121,7 +123,11 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
             val h = size.height
             val r = CornerRadius(3f, 3f)
             // Hairline gaps: on a narrow pane with many pieces a wide gap turned the bar into stripes.
-            val gapPx = if (w / chunks.size > 60f) 2f else 1f
+            val gapPx = when {
+                w / chunks.size > 60f -> 2f
+                w / chunks.size > 6f -> 1f
+                else -> 0f
+            }
             chunks.forEach { c ->
                 val len = max(1L, c.endByte - c.startByte + 1)
                 val x0 = w * (c.startByte.toFloat() / total) + gapPx / 2
@@ -165,7 +171,7 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
                     drawRoundRect(waiting.copy(alpha = 0.5f), Offset(x0, h - 3f), Size(segW, 3f), r)
                 }
             }
-            chunks.drop(1).forEach { c ->
+            if (gapPx > 0f) chunks.drop(1).forEach { c ->
                 val x = w * (c.startByte.toFloat() / total)
                 drawRect(gap, Offset(x - gapPx / 2, 0f), Size(gapPx, h))
             }
@@ -173,7 +179,18 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
 
         // connections
         val shown = (active + stalled).sortedBy { it.chunkIndex }
-        if (shown.isNotEmpty()) {
+        if (manySegments) {
+            // Hundreds of HLS segments: a line instead of a card per connection.
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Segments $finished/${chunks.size}" +
+                        (if (active.isNotEmpty()) " · downloading ${active.joinToString(", ") { "#${it.chunkIndex + 1}" }}" else ""),
+                fontSize = 11.sp,
+                color = scheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        } else if (shown.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
             shown.chunked(2).forEach { pair ->
                 Row(

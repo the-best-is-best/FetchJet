@@ -257,7 +257,17 @@ class DashboardViewModel(
                         t.status != com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.ERROR
             }
             if (same != null) {
-                _uiEffect.emit(DashboardUiEffect.ShowToast("Already in the list: ${same.fileName.ifBlank { same.url }}"))
+                // Paused → continue it; running / queued → just show it. Never a silent no-op.
+                if (same.status == com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.PAUSED) {
+                    queueRepository.resumeTask(same.id)
+                }
+                _uiState.update {
+                    it.copy(
+                        scrollToTopSignal = it.scrollToTopSignal + 1,
+                        selectedTab = DashboardTab.ALL
+                    )
+                }
+                com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
                 return@launch
             }
             if (engine == EngineType.MEDIA_STREAM && qualities.isEmpty()) {

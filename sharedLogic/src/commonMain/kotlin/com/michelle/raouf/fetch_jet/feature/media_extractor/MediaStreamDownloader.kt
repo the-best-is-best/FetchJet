@@ -321,7 +321,16 @@ class MediaStreamDownloader(
                             headers = initialTask.requestHeaders,
                             workDir = cacheDir,
                             outputFile = cacheTargetPath.toString(),
+                            parallel = initialTask.maxConnections.takeIf { it > 0 }
+                                ?: com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.connections.value.takeIf { it > 0 }
+                                ?: 6,
                             isCancelled = { tasksState.value[taskId]?.status == DownloadStatus.PAUSED },
+                            onPieces = { pieces, workers ->
+                                updateTaskState(taskId) {
+                                    if (it.status == DownloadStatus.PAUSED) it
+                                    else it.copy(chunks = pieces, connections = workers)
+                                }
+                            },
                             onProgress = { fraction, got, est, speed ->
                                 updateTaskState(taskId) {
                                     if (it.status == DownloadStatus.PAUSED) it
