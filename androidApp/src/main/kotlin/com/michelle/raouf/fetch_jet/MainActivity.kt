@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
         // Lets the FetchJet extension in Firefox for Android send links to this app.
         ExtensionBridgeServer.start(applicationContext)
+        // "Keep ready for the browser" (Settings > Browser): restart its service if it is on.
+        com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration.restoreKeepReady()
         com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.launcher = { onResult ->
             torrentPickCallback = onResult
             try {

@@ -27,4 +27,16 @@ expect object BrowserIntegration {
 
     /** Called once at app start: writes the Edge entry the first time FetchJet runs. */
     fun setUpOnFirstRun()
+
+    /**
+     * Android: "Keep ready for the browser". Android freezes apps in the background, so the
+     * Firefox extension could not ask FetchJet for video qualities until the app was opened.
+     * A quiet foreground service (with a notification) keeps it answering. Off by default.
+     */
+    val canKeepReadyForBrowser: Boolean
+    fun isKeptReadyForBrowser(): Boolean
+    fun setKeepReadyForBrowser(enabled: Boolean)
+
+    /** Called at app start: starts the service again if the user turned the option on. */
+    fun restoreKeepReady()
 }

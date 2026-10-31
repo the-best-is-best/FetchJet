@@ -540,7 +540,10 @@ fun main(rawArgs: Array<String>) {
     // Started by the OS at login (see StartupLauncher): remember it, and never treat the flag
     // as a link to download.
     val startedAtLogin =
-        rawArgs.any { it.trim() == com.michelle.raouf.fetch_jet.core.startup.AUTOSTART_ARG }
+        rawArgs.any { it.trim() == com.michelle.raouf.fetch_jet.core.startup.AUTOSTART_ARG } ||
+                // Microsoft Store build: Windows' startup task starts it with no arguments.
+                (rawArgs.isEmpty() &&
+                        com.michelle.raouf.fetch_jet.core.platform.WindowsStorePackage.looksLikeLoginStart())
     com.michelle.raouf.fetch_jet.core.startup.StartupPreferences.launchedAtLogin = startedAtLogin
     val args =
         rawArgs.filter { it.trim() != com.michelle.raouf.fetch_jet.core.startup.AUTOSTART_ARG }

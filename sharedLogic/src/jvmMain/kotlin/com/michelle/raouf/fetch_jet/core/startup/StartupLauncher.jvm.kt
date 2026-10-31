@@ -19,6 +19,9 @@ actual object StartupLauncher {
             false
         }
 
+    actual val managedBySystemUri: String?
+        get() = if (WindowsStorePackage.isInstalled) "ms-settings:startupapps" else null
+
     actual suspend fun isEnabled(): Boolean =
         isSupported && runCatching { autoLaunch.isEnabled() }.getOrDefault(false)
 

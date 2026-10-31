@@ -14,6 +14,12 @@ import kotlin.concurrent.Volatile
 expect object StartupLauncher {
     /** false on Android/iOS, and on desktop when run from Gradle/an IDE instead of the installed app. */
     val isSupported: Boolean
+
+    /**
+     * Microsoft Store build: Windows owns the switch (Settings > Apps > Startup); the app only
+     * opens that page. null elsewhere.
+     */
+    val managedBySystemUri: String?
     suspend fun isEnabled(): Boolean
     suspend fun setEnabled(enabled: Boolean): Result<Unit>
 }

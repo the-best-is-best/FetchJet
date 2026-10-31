@@ -10,4 +10,9 @@ actual object BrowserIntegration {
         Result.failure(UnsupportedOperationException("Desktop only"))
 
     actual fun setUpOnFirstRun() {}
+
+    actual val canKeepReadyForBrowser: Boolean get() = false
+    actual fun isKeptReadyForBrowser(): Boolean = false
+    actual fun setKeepReadyForBrowser(enabled: Boolean) {}
+    actual fun restoreKeepReady() {}
 }

@@ -7,7 +7,8 @@
     xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
     xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
     xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
-    IgnorableNamespaces="uap uap3 desktop rescap"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+    IgnorableNamespaces="uap uap3 uap5 desktop rescap"
     xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10">
 
     <Identity Name="MichelleRaouf.FetchJet" ProcessorArchitecture="x64"
@@ -54,6 +55,11 @@
                         <uap:DisplayName>Magnet link</uap:DisplayName>
                     </uap:Protocol>
                 </uap:Extension>
+                <!-- "Start FetchJet when you log in": Windows lists it under Settings > Apps > Startup
+                     (and Task Manager); the app starts hidden in the tray with the same flag as the MSI build. -->
+                <desktop:Extension Category="windows.startupTask" Executable="FetchJet.exe" EntryPoint="Windows.FullTrustApplication">
+                    <desktop:StartupTask TaskId="FetchJetStartup" Enabled="false" DisplayName="FetchJet" />
+                </desktop:Extension>
                 <!-- "fetchjet" in Run / a terminal starts the app. -->
                 <uap3:Extension Category="windows.appExecutionAlias" EntryPoint="Windows.FullTrustApplication"
                     Executable="FetchJet.exe">

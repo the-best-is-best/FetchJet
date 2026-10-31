@@ -688,6 +688,20 @@ private fun BrowserExtensionPage(isDesktop: Boolean) {
                 ) {
                     storeButton("Add to Firefox", AMO_URL)
                 }
+                val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
+                if (bi.canKeepReadyForBrowser) {
+                    var keepReady by remember { mutableStateOf(bi.isKeptReadyForBrowser()) }
+                    SettingDivider()
+                    SettingSwitch(
+                        title = "Keep ready for the browser",
+                        subtitle = if (keepReady)
+                            "Video qualities show right in Firefox. A quiet notification stays while this is on."
+                        else
+                            "Off: Firefox opens FetchJet and you pick the quality here. On: qualities show in Firefox (keeps a notification).",
+                        checked = keepReady,
+                        onChange = { keepReady = it; bi.setKeepReadyForBrowser(it) }
+                    )
+                }
             }
         }
     }

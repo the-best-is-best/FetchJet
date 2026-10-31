@@ -67,4 +67,9 @@ actual object BrowserIntegration {
         } catch (_: Exception) {
         }
     }
+
+    actual val canKeepReadyForBrowser: Boolean get() = false
+    actual fun isKeptReadyForBrowser(): Boolean = false
+    actual fun setKeepReadyForBrowser(enabled: Boolean) {}
+    actual fun restoreKeepReady() {}
 }
