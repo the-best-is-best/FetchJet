@@ -462,6 +462,9 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     isDownloadingYtDlp = state.isDownloadingYtDlp,
                     onDownloadYtDlp = { viewModel.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked) },
                     onUrlChanged = { viewModel.onEvent(DashboardUiEvent.OnUrlChanged(it)) },
+                    suggestedFileName = state.suggestedFileName,
+                    fileNameOverride = state.fileNameOverride,
+                    onFileNameChanged = { viewModel.onEvent(DashboardUiEvent.OnFileNameChanged(it)) },
                     onDestinationPathChanged = {
                         viewModel.onEvent(
                             DashboardUiEvent.OnDestinationPathChanged(

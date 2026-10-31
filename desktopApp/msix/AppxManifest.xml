@@ -49,6 +49,12 @@
                         </uap:SupportedFileTypes>
                     </uap:FileTypeAssociation>
                 </uap:Extension>
+                <!-- fetchjet://download?url=... : the browser extension starts the app with a link. -->
+                <uap:Extension Category="windows.protocol">
+                    <uap:Protocol Name="fetchjet">
+                        <uap:DisplayName>FetchJet link</uap:DisplayName>
+                    </uap:Protocol>
+                </uap:Extension>
                 <!-- magnet: links from the browser. -->
                 <uap:Extension Category="windows.protocol">
                     <uap:Protocol Name="magnet">

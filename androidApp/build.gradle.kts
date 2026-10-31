@@ -61,8 +61,10 @@ android {
             // itself): AGP cannot build a bundle with ABI splits on ("Multiple shrunk-resources
             // files"), so CI builds the APKs and the bundle in two separate Gradle runs.
             isEnable = buildingApksNotBundle
-            // (AGP 9 dropped reset(); include() alone defines the list.)
+            // AGP 9 dropped reset(), and include() only adds to the default list, so the
+            // dead ABIs (no phone ships them) have to be excluded by name.
             include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            exclude("mips", "mips64", "riscv64", "armeabi")
             isUniversalApk = true
         }
     }

@@ -13,7 +13,9 @@ data class ExternalDownloadRequest(
      */
     val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     /** Start right away with the default folder instead of opening the Add dialog. */
-    val direct: Boolean = false
+    val direct: Boolean = false,
+    /** The extension's scissors button: open the Add dialog with this quality and the clip range on. */
+    val openClip: Boolean = false
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {

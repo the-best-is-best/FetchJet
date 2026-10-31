@@ -71,6 +71,8 @@ class MediaStreamDownloader(
     private val speedLimitProvider: (String) -> Long = { 0L }
 
 ) : DownloadEngine {
+    /** Why the last HLS (own engine) step failed, for the task's error line. */
+    private var lastHlsError: String? = null
 
 
     override val engineType: EngineType = EngineType.MEDIA_STREAM
@@ -204,8 +206,20 @@ class MediaStreamDownloader(
                 RegexOption.IGNORE_CASE
             )
         )
-        val rawFileName =
-            if (initialTask.fileName.isNotBlank() && !isInvalidExtension) initialTask.fileName else "$mediaTitle.mp4"
+        // An HLS / DASH playlist (.m3u8 / .mpd, e.g. captured by the browser extension on Udemy)
+        // is downloaded and merged into one video: the file must not keep the playlist's name.
+        val isPlaylistName =
+            initialTask.fileName.matches(Regex(""".*\.(m3u8|mpd)$""", RegexOption.IGNORE_CASE))
+        val rawFileName = when {
+            initialTask.fileName.isNotBlank() && isPlaylistName ->
+                initialTask.fileName.replace(
+                    Regex("""\.(m3u8|mpd)$""", RegexOption.IGNORE_CASE),
+                    ".mp4"
+                )
+
+            initialTask.fileName.isNotBlank() && !isInvalidExtension -> initialTask.fileName
+            else -> "$mediaTitle.mp4"
+        }
         val fileName = pathResolver.sanitizeFileName(rawFileName)
 
         updateTaskState(taskId) {
@@ -242,8 +256,49 @@ class MediaStreamDownloader(
                         currentStepText = initialStep
                     )
                 }
+                val useOwnHls = initialTask.formatId == HlsDownloader.FORMAT_ID ||
+                        (HlsDownloader.isHlsUrl(downloadSourceUrl) && initialTask.formatId.isNullOrBlank())
                 val success = try {
-                    downloadMediaWithPlatformTool(
+                    if (useOwnHls) {
+                        updateTaskState(taskId) {
+                            if (it.status == DownloadStatus.PAUSED) it else it.copy(
+                                currentStepText = "Downloading parts…"
+                            )
+                        }
+                        HlsDownloader.download(
+                            client = client,
+                            playlistUrl = downloadSourceUrl,
+                            headers = initialTask.requestHeaders,
+                            workDir = cacheDir,
+                            outputFile = cacheTargetPath.toString(),
+                            isCancelled = { tasksState.value[taskId]?.status == DownloadStatus.PAUSED },
+                            onProgress = { fraction, got, est, speed ->
+                                updateTaskState(taskId) {
+                                    if (it.status == DownloadStatus.PAUSED) it
+                                    else it.copy(
+                                        status = DownloadStatus.DOWNLOADING,
+                                        progress = fraction.coerceIn(0f, 0.99f),
+                                        downloadedBytes = got,
+                                        totalBytes = est,
+                                        approximateTotalBytes = est,
+                                        downloadSpeedBytesPerSec = if (speed > 0L) speed else it.downloadSpeedBytesPerSec,
+                                        currentStepText = "Downloading parts…"
+                                    )
+                                }
+                            },
+                            onPostProcess = { label, fraction ->
+                                reportPostProcess(
+                                    taskId,
+                                    label,
+                                    fraction
+                                )
+                            },
+                            clipStartSec = initialTask.clipStart?.takeIf { it.isNotBlank() }
+                                ?.let { parseTimeToSecondsOrNull(it) },
+                            clipEndSec = initialTask.clipEnd?.takeIf { it.isNotBlank() }
+                                ?.let { parseTimeToSecondsOrNull(it) }
+                        )
+                    } else downloadMediaWithPlatformTool(
                         url = downloadSourceUrl,
                         destinationDir = cacheDir,
                         fileName = fileName,
@@ -253,6 +308,7 @@ class MediaStreamDownloader(
                         clipByCutting = initialTask.clipByCutting,
                         speedLimitBytesPerSec = currentLimit,
                         speedLimitProvider = { speedLimitProvider(taskId) },
+                        requestHeaders = initialTask.requestHeaders,
                         onProgress = { progress, downloadedBytes, reportedTotalBytes, speedBytesPerSec, stepText ->
                             if (tasksState.value[taskId]?.status != DownloadStatus.PAUSED) {
                                 val combined = if (isClipping) null
@@ -342,8 +398,10 @@ class MediaStreamDownloader(
                         }
                     )
                 } catch (e: CancellationException) {
+                    if (useOwnHls && tasksState.value[taskId]?.status == DownloadStatus.PAUSED) return
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    if (useOwnHls) lastHlsError = e.message
                     false
                 }
 
@@ -354,6 +412,7 @@ class MediaStreamDownloader(
                 // yt-dlp failed (or a merge failed): the cache may still hold an intermediate
                 // file like "name.f137.mp4". Do NOT pick it up as the finished download.
                 if (!success) {
+                    if (useOwnHls) throw Exception("HLS: ${lastHlsError ?: "the stream could not be downloaded"}")
                     throw Exception(
                         MediaToolErrors.last(cacheDir)
                             ?.let { "yt-dlp: ${it.removePrefix("ERROR:").trim()}" }
@@ -1750,7 +1809,45 @@ class MediaStreamDownloader(
     }
 
 
-    suspend fun inspectMediaQualities(url: String): List<MediaQualityEntry> {
+    suspend fun inspectMediaQualities(
+        url: String,
+        requestHeaders: Map<String, String> = emptyMap()
+    ): List<MediaQualityEntry> {
+        // A playlist link (.m3u8): FetchJet's own HLS engine reads the renditions itself. The
+        // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
+        if (HlsDownloader.isHlsUrl(url)) {
+            try {
+                val variants = HlsDownloader.listVariants(client, url.trim(), requestHeaders)
+                if (variants.isNotEmpty()) {
+                    // One rendition's playlist gives the duration (same for all); size follows
+                    // from the bandwidth. Enables the clip range and a realistic total.
+                    val duration =
+                        HlsDownloader.durationSeconds(client, variants.first().url, requestHeaders)
+                    return variants.mapIndexed { i, v ->
+                        val codec = when {
+                            v.codecs.contains("avc1") -> " · H.264"
+                            v.codecs.contains("hvc1") || v.codecs.contains("hev1") -> " · H.265"
+                            else -> ""
+                        }
+                        MediaQualityEntry(
+                            index = i,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                v.label
+                            ) + codec,
+                            directUrl = v.url,
+                            format = "mp4",
+                            size = if (duration > 0 && v.bandwidth > 0) duration * v.bandwidth / 8 else -1L,
+                            isSelected = i == 0,
+                            formatId = HlsDownloader.FORMAT_ID,
+                            originalUrl = v.url,
+                            durationSeconds = duration
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                lastHlsError = e.message
+            }
+        }
 
         val effectiveUrl = resolveEffectiveMediaUrl(url)
 
@@ -1779,7 +1876,7 @@ class MediaStreamDownloader(
 
             val platformQualities = try {
 
-                inspectPlatformQualities(effectiveUrl)
+                inspectPlatformQualities(effectiveUrl, requestHeaders)
 
             } catch (_: Exception) {
 
@@ -2178,5 +2275,17 @@ class MediaStreamDownloader(
             FileSystem.SYSTEM.delete(path)
         } catch (_: Exception) {
         }
+    }
+}
+
+/** "HH:MM:SS", "MM:SS" or plain seconds -> seconds; null when unreadable. */
+private fun parseTimeToSecondsOrNull(t: String): Double? {
+    val parts = t.trim().split(':').map { it.trim() }
+    if (parts.any { it.isEmpty() || it.toDoubleOrNull() == null }) return null
+    return when (parts.size) {
+        1 -> parts[0].toDouble()
+        2 -> parts[0].toDouble() * 60 + parts[1].toDouble()
+        3 -> parts[0].toDouble() * 3600 + parts[1].toDouble() * 60 + parts[2].toDouble()
+        else -> null
     }
 }

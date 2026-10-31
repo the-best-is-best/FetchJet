@@ -149,7 +149,10 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
     null
 }
 
-actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry> =
+actual suspend fun inspectPlatformQualities(
+    url: String,
+    requestHeaders: Map<String, String>
+): List<MediaQualityEntry> =
     withContext(Dispatchers.IO) {
         val trimmedUrl = url.trim()
         if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) {
@@ -162,6 +165,8 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
         val request = YTDLRequest(trimmedUrl)
         request.addOption("-j")
         request.addOption("--no-warnings")
+        ytDlpHeaderArgs(requestHeaders, url).chunked(2)
+            .forEach { (k, v) -> request.addOption(k, v) }
         FileUtil.getCookieFile(context) { cookiePath ->
             request.addOption("--cookies", cookiePath)
         }
@@ -339,7 +344,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     list.add(
                         MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -357,7 +364,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     if (existingIsHls) {
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -441,7 +450,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
     onProgress: (Float, Long, Long, Long, String?) -> Unit,
-    onPostProcess: ((String, Float) -> Unit)?
+    onPostProcess: ((String, Float) -> Unit)?,
+    requestHeaders: Map<String, String>
 ): Boolean = withContext(Dispatchers.IO) {
     if (!ensureRuntimeInitialized()) {
         return@withContext false
@@ -471,6 +481,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val ext = if (isAudio) "mp3" else "%(ext)s"
     val outputTemplate = File(outDir, "$cleanName.$ext").absolutePath
     request.addOption("-o", outputTemplate)
+    ytDlpHeaderArgs(requestHeaders, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
     request.addOption("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
 
     if (isAudio) {
@@ -931,3 +942,5 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
         } ?: return@withContext null
         parsePlaylistJson(response.out)
     }
+
+actual fun lastMediaInspectionError(): String? = null

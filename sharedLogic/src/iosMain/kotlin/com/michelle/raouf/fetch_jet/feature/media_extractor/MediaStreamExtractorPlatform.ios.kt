@@ -1,4 +1,4 @@
-﻿@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class)
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
@@ -470,7 +470,10 @@ private fun getLongFromMap(map: Map<*, *>?, key: String): Long? {
     return v.toString().toDoubleOrNull()?.toLong()
 }
 
-actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry> =
+actual suspend fun inspectPlatformQualities(
+    url: String,
+    requestHeaders: Map<String, String>
+): List<MediaQualityEntry> =
     withContext(Dispatchers.IO) {
         requireIosMediaEngine()
         val trimmedUrl = url.trim()
@@ -482,6 +485,7 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
             "--no-playlist",   // a watch?v=...&list=... link is one video, not the whole mix
             "--geo-bypass"
         )
+        args.addAll(ytDlpHeaderArgs(requestHeaders, url))
         getIosCookieFile()?.let { cookiePath ->
             args.add("--cookies")
             args.add(cookiePath)
@@ -679,7 +683,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     list.add(
                         MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -697,7 +703,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     if (existingIsHls) {
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -770,7 +778,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                         list.add(
                             MediaQualityEntry(
                                 index = 0,
-                                qualityLabel = label,
+                                qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                    label
+                                ),
                                 directUrl = trimmedUrl,
                                 format = ext,
                                 size = size,
@@ -830,7 +840,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
     onProgress: (Float, Long, Long, Long, String?) -> Unit,
-    onPostProcess: ((String, Float) -> Unit)?
+    onPostProcess: ((String, Float) -> Unit)?,
+    requestHeaders: Map<String, String>
 ): Boolean = withContext(Dispatchers.IO) {
     requireIosMediaEngine()
     val bridge = IosMediaBridgeRegistry.bridge
@@ -880,6 +891,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val rawArgs = mutableListOf<String>()
     rawArgs.add("-o")
     rawArgs.add(outputTemplate)
+    rawArgs.addAll(ytDlpHeaderArgs(requestHeaders, url))
 
     if (isAudio) {
         if (hasFfmpeg) {
@@ -1365,3 +1377,5 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
         }
         output?.let { parsePlaylistJson(it) }
     }
+
+actual fun lastMediaInspectionError(): String? = null

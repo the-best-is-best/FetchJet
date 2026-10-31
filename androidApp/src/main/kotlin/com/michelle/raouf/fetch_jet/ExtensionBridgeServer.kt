@@ -177,7 +177,7 @@ object ExtensionBridgeServer {
         reply(
             out, r, 204, "", extra = mapOf(
                 "Access-Control-Allow-Methods" to methods,
-                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet"
+                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
             )
         )
 
@@ -216,13 +216,16 @@ object ExtensionBridgeServer {
                 size > 40
         }
 
-    private fun inspectCached(url: String): List<MediaQualityEntry> {
+    private fun inspectCached(
+        url: String,
+        requestHeaders: Map<String, String> = emptyMap()
+    ): List<MediaQualityEntry> {
         synchronized(inspectCache) {
             inspectCache[url]?.let { (at, list) ->
                 if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
             }
         }
-        val fresh = runBlocking { inspectPlatformQualities(url) }
+        val fresh = runBlocking { inspectPlatformQualities(url, requestHeaders) }
         if (fresh.isNotEmpty()) synchronized(inspectCache) {
             inspectCache[url] = System.currentTimeMillis() to fresh
         }
@@ -277,7 +280,16 @@ object ExtensionBridgeServer {
                     )
                 }
                 try {
-                    val list = inspectCached(url).joinToString(",", "[", "]") { q ->
+                    val headers = buildMap {
+                        r.header("X-FetchJet-Cookie")?.takeIf { it.isNotBlank() }
+                            ?.let { put("Cookie", it) }
+                        r.header("X-FetchJet-Referer")?.takeIf { it.isNotBlank() }
+                            ?.let { put("Referer", it) }
+                    }
+                    com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+                        headers["Referer"] ?: url, headers
+                    )
+                    val list = inspectCached(url, headers).joinToString(",", "[", "]") { q ->
                         """{"index":${q.index},"quality":"${json(q.qualityLabel)}","format":"${
                             json(
                                 q.format
@@ -415,7 +427,10 @@ object ExtensionBridgeServer {
         val formatId = getString("formatId")?.trim().orEmpty()
         val qualities = if (formatId.isNotBlank()) {
             val list = try {
-                inspectCached(url)
+                inspectCached(url, buildMap {
+                    hdr("cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                    hdr("referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                })
             } catch (_: Exception) {
                 emptyList()
             }
@@ -429,7 +444,8 @@ object ExtensionBridgeServer {
             userAgent = hdr("userAgent"),
             fileName = getString("fileName")?.trim().orEmpty().take(255),
             mediaQualities = qualities,
-            direct = (this["direct"] as? Boolean) == true
+            direct = (this["direct"] as? Boolean) == true,
+            openClip = (this["openClip"] as? Boolean) == true
         )
     }
 

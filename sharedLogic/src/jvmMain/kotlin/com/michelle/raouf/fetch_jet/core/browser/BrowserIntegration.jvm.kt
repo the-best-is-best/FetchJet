@@ -55,7 +55,70 @@ actual object BrowserIntegration {
         )
     }
 
+    /**
+     * Registers the fetchjet:// link (HKCU, no admin) so the browser extension can start the
+     * installed app with a link when it is not running. The Store build gets it from its
+     * manifest instead; a Gradle / IDE run has no stable path to register.
+     */
+    fun registerUrlScheme() {
+        val onWindows = System.getProperty("os.name").orEmpty().lowercase().contains("win")
+        if (!onWindows || WindowsStorePackage.isInstalled) return
+        val exe = System.getProperty("jpackage.app-path")?.takeIf { File(it).exists() } ?: return
+        try {
+            val cmd = "\"$exe\" \"%1\""
+            val current = reg(
+                "query",
+                "HKCU\\Software\\Classes\\fetchjet\\shell\\open\\command",
+                "/ve"
+            ).second
+            if (current.contains(exe, ignoreCase = true)) return
+            reg(
+                "add",
+                "HKCU\\Software\\Classes\\fetchjet",
+                "/ve",
+                "/t",
+                "REG_SZ",
+                "/d",
+                "URL:FetchJet link",
+                "/f"
+            )
+            reg(
+                "add",
+                "HKCU\\Software\\Classes\\fetchjet",
+                "/v",
+                "URL Protocol",
+                "/t",
+                "REG_SZ",
+                "/d",
+                "",
+                "/f"
+            )
+            reg(
+                "add",
+                "HKCU\\Software\\Classes\\fetchjet\\DefaultIcon",
+                "/ve",
+                "/t",
+                "REG_SZ",
+                "/d",
+                "\"$exe\",0",
+                "/f"
+            )
+            reg(
+                "add",
+                "HKCU\\Software\\Classes\\fetchjet\\shell\\open\\command",
+                "/ve",
+                "/t",
+                "REG_SZ",
+                "/d",
+                cmd,
+                "/f"
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     actual fun setUpOnFirstRun() {
+        registerUrlScheme()
         if (!isWindows) return
         try {
             val marker =

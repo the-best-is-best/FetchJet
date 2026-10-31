@@ -139,7 +139,10 @@ private val inspectCache = object :
         size > 40
 }
 
-private fun inspectCached(url: String): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
+private fun inspectCached(
+    url: String,
+    requestHeaders: Map<String, String> = emptyMap()
+): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
     synchronized(inspectCache) {
         inspectCache[url]?.let { (at, list) ->
             // Direct stream URLs expire (YouTube: ~6 h); keep results for 30 minutes.
@@ -147,7 +150,10 @@ private fun inspectCached(url: String): List<com.michelle.raouf.fetch_jet.domain
         }
     }
     val fresh = kotlinx.coroutines.runBlocking {
-        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities(url)
+        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities(
+            url,
+            requestHeaders
+        )
     }
     if (fresh.isNotEmpty()) synchronized(inspectCache) {
         inspectCache[url] = System.currentTimeMillis() to fresh
@@ -258,7 +264,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -291,7 +297,19 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                     return@createContext
                 }
 
-                val qualities = inspectCached(targetUrl)
+                // The extension sends the page's cookies / referer so logged-in sites (Udemy...)
+                // answer yt-dlp like they answer the browser.
+                fun hdr(name: String) = exchange.requestHeaders.getFirst(name)?.trim().orEmpty()
+                    .take(16 * 1024).filter { it != '\r' && it != '\n' }
+
+                val headers = buildMap {
+                    hdr("X-FetchJet-Cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                    hdr("X-FetchJet-Referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                }
+                com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+                    headers["Referer"] ?: targetUrl, headers
+                )
+                val qualities = inspectCached(targetUrl, headers)
 
                 fun escape(s: String): String = jsonEscape(s)
 
@@ -326,7 +344,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -366,7 +384,10 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             val formatId = getString("formatId")?.trim().orEmpty()
             val qualities = if (formatId.isNotBlank()) {
                 val list = try {
-                    inspectCached(url)
+                    inspectCached(url, buildMap {
+                        hdr("cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                        hdr("referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                    })
                 } catch (_: Exception) {
                     emptyList()
                 }
@@ -380,7 +401,8 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 userAgent = hdr("userAgent"),
                 fileName = getString("fileName")?.trim().orEmpty().take(255),
                 mediaQualities = qualities,
-                direct = (this["direct"] as? Boolean) == true
+                direct = (this["direct"] as? Boolean) == true,
+                openClip = (this["openClip"] as? Boolean) == true
             )
         }
 
@@ -390,7 +412,10 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             }
             if (requestMethod.equals("OPTIONS", ignoreCase = true)) {
                 responseHeaders.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-                responseHeaders.add("Access-Control-Allow-Headers", "Content-Type, X-FetchJet")
+                responseHeaders.add(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                )
                 reply(204, "")
                 return true
             }
@@ -474,7 +499,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext

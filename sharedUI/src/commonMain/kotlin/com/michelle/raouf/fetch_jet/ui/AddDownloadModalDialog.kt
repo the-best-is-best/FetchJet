@@ -94,6 +94,9 @@ fun AddDownloadModalDialog(
     onDownloadYtDlp: () -> Unit = {},
     onUrlChanged: (String) -> Unit,
     onDestinationPathChanged: (String) -> Unit,
+    suggestedFileName: String = "",
+    fileNameOverride: String = "",
+    onFileNameChanged: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
@@ -1087,6 +1090,49 @@ fun AddDownloadModalDialog(
                     onScheduleChanged = onScheduleChanged
                 )
                 Spacer(modifier = Modifier.height(14.dp))
+
+                // File name: what FetchJet will call the file, editable.
+                if (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank()) {
+                    Text(
+                        text = "File name",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = fileNameOverride.ifEmpty { suggestedFileName },
+                        onValueChange = { onFileNameChanged(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true,
+                        leadingIcon = { Text("📝", fontSize = 16.sp) },
+                        trailingIcon = {
+                            if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {
+                                IconButton(onClick = { onFileNameChanged("") }) {
+                                    Text(
+                                        "↺",
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.35f
+                            ),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.35f
+                            ),
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
 
                 // Save Destination Section
                 Text(

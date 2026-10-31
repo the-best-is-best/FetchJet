@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 
+import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getDouble
 import com.michelle.raouf.fetch_jet.core.util.getInt
@@ -130,7 +131,10 @@ fun probeMediaDurationWithFfmpeg(url: String): Long {
     }
 }
 
-actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry> {
+actual suspend fun inspectPlatformQualities(
+    url: String,
+    requestHeaders: Map<String, String>
+): List<MediaQualityEntry> {
     getExistingYtDlpBinary()
         ?: throw Exception("yt-dlp tool is not found. Please click 'Download Tools' in Settings.")
 
@@ -143,10 +147,8 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 "node",
                 "-j",
                 "--no-warnings",
-                "--no-playlist",
-                "--",
-                url
-            )
+                "--no-playlist"
+            ) + ytDlpHeaderArgs(requestHeaders, url) + listOf("--", url)
         )
             ?: return emptyList()
 
@@ -326,7 +328,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 list.add(
                     MediaQualityEntry(
                         index = 0,
-                        qualityLabel = label,
+                        qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                            label
+                        ),
                         directUrl = directUrl,
                         format = ext,
                         size = filesize,
@@ -346,7 +350,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 if (existingIsHls) {
                     list[existingIndex] = MediaQualityEntry(
                         index = 0,
-                        qualityLabel = label,
+                        qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                            label
+                        ),
                         directUrl = directUrl,
                         format = ext,
                         size = filesize,
@@ -405,7 +411,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 list.add(
                     MediaQualityEntry(
                         index = 0,
-                        qualityLabel = label,
+                        qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                            label
+                        ),
                         directUrl = url,
                         format = ext,
                         size = size,
@@ -765,7 +773,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
     onProgress: (Float, Long, Long, Long, String?) -> Unit,
-    onPostProcess: ((String, Float) -> Unit)?
+    onPostProcess: ((String, Float) -> Unit)?,
+    requestHeaders: Map<String, String>
 ): Boolean = withContext(Dispatchers.IO) {
     val executableFile = getExistingYtDlpBinary() ?: return@withContext false
 
@@ -784,6 +793,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     command.add("deno")
     command.add("--js-runtimes")
     command.add("node")
+    command.addAll(ytDlpHeaderArgs(requestHeaders, url))
 
     if (proxy != null) {
         command.add("--proxy")
@@ -853,6 +863,15 @@ actual suspend fun downloadMediaWithPlatformTool(
     command.add("--no-mtime")
     command.add("--geo-bypass")
     command.add("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
+    // A direct HLS/DASH playlist URL: one video, written as mp4 whatever the stream container is,
+    // and the referer is required by most players' CDNs.
+    val isPlaylistUrl =
+        url.substringBefore('?').lowercase().let { it.endsWith(".m3u8") || it.endsWith(".mpd") }
+    if (isPlaylistUrl) {
+        command.add("--merge-output-format"); command.add("mp4")
+        command.add("--remux-video"); command.add("mp4")
+        command.add("--hls-prefer-ffmpeg")
+    }
     // (No forced youtube:player_client: the "android" client now needs a PO token and only
     // produced warnings; yt-dlp's default client selection is the right one.)
     if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
@@ -1273,91 +1292,59 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
 }
 
+/** Last "ERROR:" line yt-dlp printed (inspection), shown in the Add dialog when it fails. */
+@Volatile
+var lastYtDlpError: String? = null
+
+actual fun lastMediaInspectionError(): String? = lastYtDlpError
+
 private fun runYtDlp(args: List<String>, timeoutSec: Long = 25L): String? {
-
     return try {
-
         val executableFile = getExistingYtDlpBinary() ?: return null
-
         val command = mutableListOf<String>()
-
         // Run yt-dlp directly (never through `cmd.exe /c`: cmd re-parses `&`, `|`, `^`
         // and `>` in the URL, which is a command-injection hole reachable from any web page).
         command.add(executableFile.absolutePath)
-
         command.addAll(args)
-
-
         val process = ProcessBuilder(command)
-
             .redirectErrorStream(true)
-
             .start()
-
-
         val outputBuilder = StringBuilder()
-
         val readerThread = Thread {
-
             try {
-
                 process.inputStream.bufferedReader().use { reader ->
-
                     var line: String?
-
                     while (reader.readLine().also { line = it } != null) {
-
                         outputBuilder.append(line ?: "").append("\n")
-
                     }
-
                 }
-
             } catch (_: Exception) {
-
             }
-
         }
-
         readerThread.start()
-
-
         val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
-
         if (!finished) {
-
             process.destroyForcibly()
-
             readerThread.interrupt()
-
             return null
-
         }
-
-
-
         readerThread.join(2000)
-
         val output = outputBuilder.toString().trim()
-
-
-
         if (process.exitValue() == 0 && output.isNotBlank()) {
-
             output
-
         } else {
-
+            // Keep the reason (yt-dlp prints "ERROR: ..." on its output) for the Add dialog.
+            val err = output.lineSequence().lastOrNull { it.contains("ERROR", ignoreCase = true) }
+                ?: output.lineSequence().lastOrNull { it.isNotBlank() }
+            lastYtDlpError = err?.take(400)
+            AppLog.e("yt-dlp failed (exit ${process.exitValue()}): ${err ?: "no output"}")
             null
-
         }
-
-    } catch (_: Exception) {
-
+    } catch (e: Exception) {
+        lastYtDlpError = e.message
+        AppLog.e("yt-dlp could not run: ${e.message}")
         null
-
     }
-
 }
 
 

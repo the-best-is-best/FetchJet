@@ -58,6 +58,9 @@ class DashboardViewModel(
     private var pendingExternalHeaders: Map<String, String> = emptyMap()
     private var pendingExternalFileName: String? = null
 
+    /** Quality the extension chose for a clip: re-applied when the dialog's own inspection finishes. */
+    private var pendingSelectedFormatId: String? = null
+
     /** The playlist link for which the user chose "download only this video". */
     private var singleVideoUrl: String? = null
 
@@ -142,6 +145,14 @@ class DashboardViewModel(
 
     /** One link from the browser: open the Add dialog pre-filled, remember its headers. */
     fun handleExternalRequest(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
+        // Keep the site's login for links of the same site added by hand later.
+        com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+            request.referer.ifBlank { request.url }, request.toRequestHeaders()
+        )
+        if (request.openClip && request.mediaQualities.isNotEmpty()) {
+            openClipDialog(request)
+            return
+        }
         if (request.mediaQualities.isNotEmpty() || request.direct) {
             startExternalDirectly(request)
             return
@@ -151,6 +162,36 @@ class DashboardViewModel(
         pendingExternalFileName = request.fileName.ifBlank { null }
         onEvent(DashboardUiEvent.OnUrlChanged(request.url))
         onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+    }
+
+    /**
+     * The scissors button in the extension: the Add dialog opens on this link with the chosen
+     * quality selected and the clip range switched on, so the user sets From / To and downloads.
+     */
+    private fun openClipDialog(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
+        val qualities = request.mediaQualities
+        val selected = qualities.firstOrNull { it.isSelected } ?: qualities.first()
+        pendingExternalUrl = request.url
+        pendingExternalHeaders = request.toRequestHeaders()
+        pendingExternalFileName = request.fileName.ifBlank { null }
+        pendingSelectedFormatId = selected.formatId
+        onEvent(DashboardUiEvent.OnUrlChanged(request.url))
+        onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+        val duration = qualities.maxOfOrNull { it.durationSeconds }?.coerceAtLeast(0L) ?: 0L
+        _uiState.update {
+            it.copy(
+                detectedEngine = EngineType.MEDIA_STREAM,
+                inspectedMediaQualities = qualities.map { q -> q.copy(isSelected = q === selected) },
+                inspectedMediaTitle = selected.videoTitle,
+                mediaDurationSeconds = duration,
+                isInspectingMedia = false,
+                inspectMediaError = null,
+                isClipRangeEnabled = true,
+                clipStartTime = "00:00:00",
+                clipEndTime = if (duration > 0) formatSecondsToHhMm(duration) else "00:10:00"
+            )
+        }
+        refreshSuggestedFileName()
     }
 
     /**
@@ -174,10 +215,11 @@ class DashboardViewModel(
             val engine =
                 if (qualities.isNotEmpty()) EngineType.MEDIA_STREAM else engineForDirectFile(request.url)
             if (engine == EngineType.MEDIA_STREAM && qualities.isEmpty()) {
-                // A video page without a chosen quality still needs the inspector.
+                // A video page without a chosen quality still needs the inspector. The name the
+                // extension chose (the page title for an HLS playlist) is kept for the file.
                 pendingExternalUrl = request.url
                 pendingExternalHeaders = request.toRequestHeaders()
-                pendingExternalFileName = null
+                pendingExternalFileName = request.fileName.ifBlank { null }
                 onEvent(DashboardUiEvent.OnUrlChanged(request.url))
                 onEvent(DashboardUiEvent.OnToggleAddDialog(true))
                 return@launch
@@ -362,6 +404,10 @@ class DashboardViewModel(
                 }
             }
 
+            is DashboardUiEvent.OnFileNameChanged -> {
+                _uiState.update { it.copy(fileNameOverride = event.name) }
+            }
+
             is DashboardUiEvent.OnUrlChanged -> {
 
                 // App Store edition: media and torrent engines are not shipped.
@@ -402,13 +448,13 @@ class DashboardViewModel(
                         isClipRangeEnabled = false,
                         clipFastMode = false,
                         scheduleStartMs = 0L,
-                        mediaDurationSeconds = 0L
+                        mediaDurationSeconds = 0L,
+                        fileNameOverride = "",
+                        suggestedFileName = ""
                     )
-
                 }
-
+                refreshSuggestedFileName()
             }
-
 
             is DashboardUiEvent.OnDestinationPathChanged -> {
 
@@ -669,8 +715,17 @@ class DashboardViewModel(
             }
 
             DashboardUiEvent.OnConfirmOverwriteClicked -> {
+                val conflict = _uiState.value.fileConflictAlert
                 _uiState.update { it.copy(fileConflictAlert = null) }
-                addDownload(forceOverwrite = true, skipDuplicateCheck = true)
+                scope.launch {
+                    // The file is replaced: the old entry for it would show a stale download.
+                    if (conflict != null) {
+                        queueRepository.allTasksFlow.value
+                            .filter { it.fileName == conflict.fileName && it.destinationPath == conflict.destinationPath }
+                            .forEach { queueRepository.removeTask(it.id, deleteFile = false) }
+                    }
+                    addDownload(forceOverwrite = true, skipDuplicateCheck = true)
+                }
             }
 
             is DashboardUiEvent.OnSaveAsCopyClicked -> {
@@ -1080,7 +1135,10 @@ class DashboardViewModel(
             }
             try {
                 val qualities = withTimeoutOrNull(45_000L) {
-                    queueRepository.inspectMediaQualities(url)
+                    queueRepository.inspectMediaQualities(
+                        url,
+                        headersForLink(url)
+                    )
                 } ?: emptyList()
                 if (_uiState.value.inputUrl != url) {
                     // Results of a link that is no longer in the box.
@@ -1093,7 +1151,11 @@ class DashboardViewModel(
                             isInspectingMedia = false,
                             inspectedMediaQualities = emptyList(),
                             inspectedPlaylist = null,
-                            inspectMediaError = "Unable to fetch video formats. Please verify the URL or check your internet connection."
+                            inspectMediaError = com.michelle.raouf.fetch_jet.feature.media_extractor
+                                .lastMediaInspectionError()
+                                ?.removePrefix("ERROR:")?.trim()
+                                ?.let { "Unable to fetch video formats: $it" }
+                                ?: "Unable to fetch video formats. Please verify the URL or check your internet connection."
                         )
                     }
                 } else {
@@ -1103,10 +1165,14 @@ class DashboardViewModel(
                         qualities.map { it.durationSeconds }.maxOrNull()?.coerceAtLeast(0L) ?: 0L
                     val fullEnd = if (duration > 0) formatSecondsToHhMm(duration) else "00:10:00"
 
+                    val wanted = pendingSelectedFormatId
+                    val picked = if (wanted != null && qualities.any { it.formatId == wanted })
+                        qualities.map { q -> q.copy(isSelected = q.formatId == wanted) } else qualities
+                    pendingSelectedFormatId = null
                     _uiState.update {
                         it.copy(
                             isInspectingMedia = false,
-                            inspectedMediaQualities = qualities,
+                            inspectedMediaQualities = picked,
                             inspectedMediaTitle = mediaTitle,
                             mediaDurationSeconds = duration,
                             inspectMediaError = null,
@@ -1114,6 +1180,7 @@ class DashboardViewModel(
                             clipEndTime = if (it.isClipRangeEnabled && (it.clipEndTime.isBlank() || it.clipEndTime == "00:00")) fullEnd else it.clipEndTime
                         )
                     }
+                    refreshSuggestedFileName()
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -1151,6 +1218,38 @@ class DashboardViewModel(
         return false
     }
 
+    /**
+     * Headers for a link in the Add dialog: the ones the extension sent with this very link,
+     * else what the jar remembers for the link's site (a lesson pasted after another one came
+     * from the browser), else nothing.
+     */
+    private fun headersForLink(url: String): Map<String, String> {
+        val own = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap()
+        return com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.headersFor(url, own)
+    }
+
+    /** Recomputes the name shown in the Add dialog from the current link / inspection. */
+    private fun refreshSuggestedFileName() {
+        val s = _uiState.value
+        val url = s.inputUrl.trim()
+        if (url.isBlank()) {
+            _uiState.update { it.copy(suggestedFileName = "") }; return
+        }
+        val name = try {
+            val selected = s.inspectedMediaQualities.firstOrNull { it.isSelected }
+            val title = s.inspectedMediaTitle ?: selected?.videoTitle
+            val fromTitle = if (!title.isNullOrBlank()) {
+                val ext = selected?.format ?: "mp4"
+                val clean = queueRepository.pathResolver.sanitizeFileName(title)
+                if (clean.endsWith(".$ext", ignoreCase = true)) clean else "$clean.$ext"
+            } else null
+            resolveTargetFileName(s, url, fromTitle)
+        } catch (_: Exception) {
+            ""
+        }
+        _uiState.update { it.copy(suggestedFileName = name) }
+    }
+
     private fun resolveTargetFileName(
         currentState: DashboardUiState,
         url: String,
@@ -1162,7 +1261,8 @@ class DashboardViewModel(
         // extension cancelled its download; it beats anything we can guess from the URL.
         val browserName = pendingExternalFileName
         if (pendingExternalUrl == url && !browserName.isNullOrBlank() &&
-            currentState.detectedEngine == EngineType.HTTP_DIRECT
+            (currentState.detectedEngine == EngineType.HTTP_DIRECT ||
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(url))
         ) {
             return queueRepository.pathResolver.sanitizeFileName(browserName)
         }
@@ -1175,6 +1275,17 @@ class DashboardViewModel(
         }
         val cleanUrl = url.substringBefore('?')
         val nameFromUrl = cleanUrl.substringAfterLast('/')
+        // A pasted playlist link: its name is a hash ("aa004d...m3u8"), and the video is saved
+        // as MP4 anyway. Use the site + date so the user sees what to rename.
+        if (com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(url) ||
+            nameFromUrl.endsWith(".mpd", ignoreCase = true)
+        ) {
+            val site = com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.siteOf(url)
+                .substringBefore('.')
+                .replaceFirstChar { it.uppercase() }.ifBlank { "Video" }
+            val stamp = kotlin.time.Clock.System.now().toEpochMilliseconds() / 1000 % 100000
+            return "$site video $stamp.mp4"
+        }
         val isWebScript = nameFromUrl.matches(
             Regex(
                 """.*\.(php|asp|aspx|jsp|html|htm|cgi|do|action)$""",
@@ -1322,7 +1433,13 @@ class DashboardViewModel(
 
         val selectedQuality = currentState.inspectedMediaQualities.firstOrNull { it.isSelected }
         val videoTitle = currentState.inspectedMediaTitle ?: selectedQuality?.videoTitle
-        val customFileName = overrideFileName ?: if (!videoTitle.isNullOrBlank()) {
+        // The name typed in the dialog wins; its extension is kept when the user left it out.
+        val typedName =
+            currentState.fileNameOverride.trim().takeIf { it.isNotBlank() }?.let { typed ->
+                val ext = currentState.suggestedFileName.substringAfterLast('.', "")
+                if (!typed.contains('.') && ext.isNotBlank()) "$typed.$ext" else typed
+            }
+        val customFileName = overrideFileName ?: typedName ?: if (!videoTitle.isNullOrBlank()) {
             val ext = selectedQuality?.format ?: "mp4"
             val sanitized = queueRepository.pathResolver.sanitizeFileName(videoTitle)
             if (sanitized.endsWith(".$ext", ignoreCase = true)) sanitized else "$sanitized.$ext"
@@ -1374,7 +1491,7 @@ class DashboardViewModel(
                     currentState.clipEndTime
                 ) else null,
                 clipByCutting = isActualSubClip && currentState.clipFastMode,
-                requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap(),
+                requestHeaders = headersForLink(url),
                 scheduledAtMs = currentState.scheduleStartMs
             ).onSuccess { task ->
                 pendingExternalUrl = null
@@ -1383,6 +1500,10 @@ class DashboardViewModel(
                 _uiState.update {
                     it.copy(
                         inputUrl = "",
+
+                        fileNameOverride = "",
+
+                        suggestedFileName = "",
                         isLoading = false,
                         isAddDialogVisible = false,
                         inspectedTorrentFiles = emptyList(),
@@ -1458,7 +1579,7 @@ class DashboardViewModel(
                     clipStart = clipStart,
                     clipEnd = clipEnd,
                     clipByCutting = clipByCutting,
-                    requestHeaders = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap(),
+                    requestHeaders = headersForLink(url),
                     scheduledAtMs = state.scheduleStartMs
                 ).onSuccess { added++ }.onFailure { failed++ }
             }
@@ -1468,6 +1589,10 @@ class DashboardViewModel(
             _uiState.update {
                 it.copy(
                     inputUrl = "",
+
+                    fileNameOverride = "",
+
+                    suggestedFileName = "",
                     isLoading = false,
                     isAddDialogVisible = false,
                     inspectedMediaQualities = emptyList(),
@@ -1549,6 +1674,10 @@ class DashboardViewModel(
             _uiState.update {
                 it.copy(
                     inputUrl = "",
+
+                    fileNameOverride = "",
+
+                    suggestedFileName = "",
                     isLoading = false,
                     isAddDialogVisible = false,
                     inspectedPlaylist = null,

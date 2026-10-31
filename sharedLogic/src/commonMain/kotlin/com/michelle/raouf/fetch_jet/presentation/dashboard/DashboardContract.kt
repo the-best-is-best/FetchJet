@@ -83,6 +83,10 @@ data class DashboardUiState(
     val isInspectingMedia: Boolean = false,
 
     val inspectedMediaTitle: String? = null,
+    /** Name FetchJet would give the file (shown in the Add dialog's "File name" box). */
+    val suggestedFileName: String = "",
+    /** What the user typed in that box; empty = use [suggestedFileName]. */
+    val fileNameOverride: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
 
@@ -139,6 +143,7 @@ sealed interface DashboardUiEvent {
     data class OnUrlChanged(val url: String) : DashboardUiEvent
 
     data class OnDestinationPathChanged(val path: String) : DashboardUiEvent
+    data class OnFileNameChanged(val name: String) : DashboardUiEvent
 
     data class OnDisableTorrentUploadToggled(val disable: Boolean) : DashboardUiEvent
 

@@ -413,8 +413,11 @@ class QueueManagerRepository(
         }
     }
 
-    suspend fun inspectMediaQualities(url: String): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
-        return mediaEngine.inspectMediaQualities(url)
+    suspend fun inspectMediaQualities(
+        url: String,
+        requestHeaders: Map<String, String> = emptyMap()
+    ): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
+        return mediaEngine.inspectMediaQualities(url, requestHeaders)
     }
 
     /** The videos of a playlist / channel link (null = not a playlist). */

@@ -184,7 +184,29 @@
     while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
     return `${n.toFixed(i ? 1 : 0)} ${u[i]}`;
   }
-  const cleanTitle = () => (document.title || "video").replace(/\s*-\s*YouTube\s*$/i, "").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").trim().slice(0, 120) || "video";
+  const sanitizeTitle = (t) => (t || "").replace(/^\(\d+\)\s*/, "").replace(/\s*-\s*YouTube\s*$/i, "").replace(/^Course[:_]\s*/i, "")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim().slice(0, 120);
+  const textOf = (sel) => { try { const e = document.querySelector(sel); return e ? (e.textContent || "").trim() : ""; } catch (_) { return ""; } };
+  // The name of what is playing, not of the whole page: course sites show the course in the
+  // tab title and the current lesson only in the playlist / heading.
+  const mediaTitle = () => {
+    const h = location.hostname;
+    let t = "";
+    if (/udemy\.com$/.test(h)) {
+      t = textOf('[class*="curriculum-item-link--is-current"] [data-purpose="item-title"]') ||
+          textOf('[aria-current="true"] [data-purpose="item-title"]') ||
+          textOf('[data-purpose="curriculum-item-title"]');
+    } else if (/coursera\.org$/.test(h) || /linkedin\.com$/.test(h) || /skillshare\.com$/.test(h) || /pluralsight\.com$/.test(h)) {
+      t = textOf("h1");
+    }
+    if (!t) {
+      // YouTube and most sites: the tab title is the video's; an <h1> may be an ad or a header.
+      const og = /youtube\.com$|youtu\.be$/.test(h) ? null : document.querySelector('meta[property="og:title"]');
+      t = document.title || (og && og.content) || "";
+    }
+    return sanitizeTitle(t) || "video";
+  };
+  const cleanTitle = mediaTitle;
 
   // Videos of the page, also those inside shadow DOM (players built as web components).
   let shadowVideos = [], deepRound = 0;
@@ -290,6 +312,8 @@
     .item.off { cursor: default; opacity: .65; }
     .item.off:hover { background: transparent; }
     .num { color: #94a3b8; min-width: 18px; text-align: right; }
+    .cut { margin-left: auto; align-self: center; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: transparent; color: #cbd5e1; cursor: pointer; font-size: 14px; line-height: 26px; text-align: center; }
+    .cut:hover { background: #334155; color: #fff; }
     .body { flex: 1; min-width: 0; }
     .t { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .s { color: #94a3b8; font-size: 11px; overflow-wrap: anywhere; }
@@ -441,6 +465,12 @@
         el("span", { class: "num", text: m.disabled ? "" : `${++n}.` }),
         el("div", { class: "body" }, t, el("div", { class: "s", text: subText.length > 110 ? subText.slice(0, 110) + "…" : subText })));
       if (!m.disabled) row.addEventListener("click", () => download(b, m));
+      if (!m.disabled && m.kind === "ytdlp") {
+        // Scissors: open FetchJet on this quality with the clip range on (download a part only).
+        const cut = el("button", { class: "cut", text: "✂", title: "Download a part of it (clip) in FetchJet" });
+        cut.addEventListener("click", (e) => { e.stopPropagation(); download(b, { ...m, openClip: true }); });
+        row.appendChild(cut);
+      }
       box.appendChild(row);
     }
   }
@@ -558,7 +588,7 @@
       return false;
     }
     if (request && request.action === "pageInfo") {
-      sendResponse({ title: document.title, url: window.location.href });
+      sendResponse({ title: mediaTitle(), url: window.location.href });
       return false;
     }
     return false;

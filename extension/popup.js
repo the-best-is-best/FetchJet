@@ -103,6 +103,17 @@ async function loadMedia() {
         btn.disabled = false;
       });
       row.appendChild(btn);
+      if (it.kind === "ytdlp") {
+        const cut = document.createElement("button");
+        cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = "Download a part of it (clip) in FetchJet";
+        cut.addEventListener("click", async () => {
+          cut.disabled = true; flash("Opening FetchJet…");
+          const res = await send({ action: "downloadItem", item: { ...it, openClip: true }, tabId: currentTab.id });
+          if (res && res.ok) flash("✓ Opened in FetchJet"); else flash(`Could not send (${(res && res.reason) || "unknown error"})`, true, 4000);
+          cut.disabled = false;
+        });
+        row.appendChild(cut);
+      }
     }
     list.appendChild(row);
   }

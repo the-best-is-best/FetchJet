@@ -19,7 +19,7 @@ on:
         required: false
         default: ""
       android:
-        description: "Android (APK + AAB)"
+        description: "Android (APKs)"
         type: boolean
         default: true
       windows:
@@ -185,12 +185,13 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ vars.SIGNING_KEY_ALIAS || secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        # Two runs: per-CPU APKs, then the .aab. AGP cannot build both in one run while ABI
-        # splits are on ("Multiple shrunk-resources files"); splits are off for the bundle run.
+        # The .aab (Google Play) is not built: Play rejects apps that download from YouTube-like
+        # sites, so FetchJet is distributed as APKs. To bring it back add a second Gradle run,
+        # ":androidApp:bundleRelease" (AGP cannot build APKs with ABI splits and the bundle in
+        # one run), and "*.aab" to the upload list below.
         run: |
           GRADLE=./gradlew; [ "$RUNNER_OS" = "Windows" ] && GRADLE=./gradlew.bat
           $GRADLE :androidApp:assembleRelease
-          $GRADLE :androidApp:bundleRelease
 
       - name: Upload Android to the draft release
         if: needs.plan.outputs.release == 'true'
@@ -200,7 +201,12 @@ jobs:
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          FILES=( androidApp/build/outputs/apk/release/*.apk androidApp/build/outputs/apk/release/*/*.apk androidApp/build/outputs/bundle/release/*.aab )
+          # Only the CPUs real devices have: arm64 (nearly every phone), armeabi-v7a (old phones),
+          # x86_64 (emulators, Chromebooks) and the universal APK.
+          FILES=()
+          for f in androidApp/build/outputs/apk/release/*.apk androidApp/build/outputs/apk/release/*/*.apk; do
+            case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*|*universal*) FILES+=("$f");; esac
+          done
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
