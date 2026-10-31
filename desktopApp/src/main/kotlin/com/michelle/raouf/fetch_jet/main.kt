@@ -129,6 +129,10 @@ private const val BRIDGE_PORT = 28450
  * Last yt-dlp inspections, so the extension can list qualities (GET /inspect) and then
  * start the chosen one (POST /add with formatId) without running yt-dlp twice.
  */
+private val inspectGates = HashMap<String, Any>()
+
+/** /add requests seen in the last seconds (a click reaching us twice must not start twice). */
+private val recentAdds = HashMap<String, Long>()
 private val inspectCache = object :
     LinkedHashMap<String, Pair<Long, List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>>>(
         16,
@@ -143,22 +147,31 @@ private fun inspectCached(
     url: String,
     requestHeaders: Map<String, String> = emptyMap()
 ): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
-    synchronized(inspectCache) {
-        inspectCache[url]?.let { (at, list) ->
+    val key = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.canonical(url)
+    fun cached(): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>? =
+        synchronized(inspectCache) {
+            inspectCache[key]?.let { (at, list) ->
             // Direct stream URLs expire (YouTube: ~6 h); keep results for 30 minutes.
-            if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
+                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) list else null
         }
     }
-    val fresh = kotlinx.coroutines.runBlocking {
-        // Same path as the Add dialog: HLS first, yt-dlp with the browser's headers, then
-        // without them (Facebook serves a page yt-dlp cannot read when the login cookie is sent).
-        com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
-            .inspectMediaQualities(url, requestHeaders)
+    cached()?.let { return it }
+    // The popup asks for the same video in two spellings at once: the second waits for the
+    // first instead of running yt-dlp twice.
+    val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
+    synchronized(gate) {
+        cached()?.let { return it }
+        val fresh = kotlinx.coroutines.runBlocking {
+            // Same path as the Add dialog: HLS first, yt-dlp with the browser's headers, then
+            // without them (Facebook serves a page yt-dlp cannot read when the login cookie is sent).
+            com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                .inspectMediaQualities(url, requestHeaders)
+        }
+        if (fresh.isNotEmpty()) synchronized(inspectCache) {
+            inspectCache[key] = System.currentTimeMillis() to fresh
+        }
+        return fresh
     }
-    if (fresh.isNotEmpty()) synchronized(inspectCache) {
-        inspectCache[url] = System.currentTimeMillis() to fresh
-    }
-    return fresh
 }
 
 /** Only http(s) and magnet links may enter the queue or be handed to yt-dlp/ffmpeg. */
@@ -449,7 +462,16 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 )
                 return@createContext
             }
-            ExternalDownloadBridge.dispatch(request)
+            val dedupeKey =
+                request.url + "|" + (obj.getString("formatId") ?: "") + "|" + request.openClip
+            val now = System.currentTimeMillis()
+            val repeat = synchronized(recentAdds) {
+                recentAdds.entries.removeAll { now - it.value > 5_000 }
+                if (recentAdds.containsKey(dedupeKey)) true else {
+                    recentAdds[dedupeKey] = now; false
+                }
+            }
+            if (!repeat) ExternalDownloadBridge.dispatch(request)
             SwingUtilities.invokeLater { onShowAndFocus() }
             exchange.reply(200, """{"ok":true}""", "application/json; charset=UTF-8")
         }

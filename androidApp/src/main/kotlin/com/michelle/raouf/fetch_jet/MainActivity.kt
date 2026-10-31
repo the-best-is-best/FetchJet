@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         PathResolver.appContext = applicationContext
+        com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
         DownloadNotificationManager.setContext(applicationContext)
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
         // Lets the FetchJet extension in Firefox for Android send links to this app.

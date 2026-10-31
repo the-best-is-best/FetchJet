@@ -41,9 +41,38 @@ object DirectMediaResolver {
         audioOnly: Boolean,
         headers: Map<String, String>
     ): ResolvedMedia? {
-        val json = runYtDlpJson(url, selector(formatId, audioOnly), headers) ?: return null
-        return parse(json)
+        val sel = selector(formatId, audioOnly)
+        val json = runYtDlpJson(url, sel, headers)
+        if (json == null) {
+            com.michelle.raouf.fetch_jet.core.log.AppLog.e("DirectMediaResolver: yt-dlp gave no JSON for -f $sel")
+            return null
+        }
+        val parsed = parse(json)
+        if (parsed != null) return parsed
+        com.michelle.raouf.fetch_jet.core.log.AppLog.e("DirectMediaResolver: not a plain stream (-f $sel): $lastReject")
+        // The chosen format is an HLS/DASH manifest (Android's yt-dlp often picks the iOS
+        // client's m3u8 itags): ask for the same picture size as plain https files instead.
+        val h = lastRejectHeight
+        if (lastReject.contains("protocol=") || lastReject.contains("playlist")) {
+            val httpsSel = when {
+                audioOnly -> "bestaudio[protocol^=http]/best[protocol^=http]"
+                h > 0 -> "bestvideo[height<=$h][protocol^=http]+bestaudio[protocol^=http]/best[height<=$h][protocol^=http]"
+                else -> "bestvideo[protocol^=http]+bestaudio[protocol^=http]/best[protocol^=http]"
+            }
+            val json2 = runYtDlpJson(url, httpsSel, headers) ?: return null
+            val parsed2 = parse(json2)
+            com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                if (parsed2 != null) "DirectMediaResolver: https formats found with -f $httpsSel"
+                else "DirectMediaResolver: still no plain stream (-f $httpsSel): $lastReject"
+            )
+            return parsed2
+        }
+        return null
     }
+
+    /** Why the last [parse] said no (for the log), and the rejected format's height. */
+    private var lastReject: String = ""
+    private var lastRejectHeight: Int = 0
 
     @Suppress("UNCHECKED_CAST")
     fun parse(output: String): ResolvedMedia? {
@@ -54,7 +83,7 @@ object DirectMediaResolver {
             MiniJson.parse(line) as? Map<String, Any?>
         } catch (_: Exception) {
             null
-        } ?: return null
+        } ?: run { lastReject = "bad json (${line.take(60)})"; return null }
         val title = root.getString("title")
         val duration = root.getLong("duration") ?: 0L
         val chosen: List<Map<String, Any?>> = root.getObjectArray("requested_formats")
@@ -62,9 +91,16 @@ object DirectMediaResolver {
             ?: listOf(root)
         val streams = chosen.map { f ->
             val protocol = (f.getString("protocol") ?: "https").lowercase()
-            if (protocol != "https" && protocol != "http") return null
-            val u = f.getString("url")?.takeIf { it.startsWith("http") } ?: return null
-            if (u.contains(".m3u8", true) || u.contains(".mpd", true)) return null
+            lastRejectHeight = (f["height"] as? Number)?.toInt() ?: 0
+            if (protocol != "https" && protocol != "http") {
+                lastReject = "protocol=$protocol format=${f.getString("format_id")}"; return null
+            }
+            val u = f.getString("url")?.takeIf { it.startsWith("http") } ?: run {
+                lastReject = "no url for format=${f.getString("format_id")}"; return null
+            }
+            if (u.contains(".m3u8", true) || u.contains(".mpd", true)) {
+                lastReject = "playlist url format=${f.getString("format_id")}"; return null
+            }
             val vcodec = f.getString("vcodec") ?: "none"
             val acodec = f.getString("acodec") ?: "none"
             val hdrs = (f["http_headers"] as? Map<String, Any?>)
@@ -78,7 +114,9 @@ object DirectMediaResolver {
                 headers = hdrs
             )
         }
-        if (streams.isEmpty() || streams.size > 2) return null
+        if (streams.isEmpty() || streams.size > 2) {
+            lastReject = "${streams.size} streams"; return null
+        }
         return ResolvedMedia(title, streams, duration)
     }
 }

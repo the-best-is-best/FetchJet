@@ -400,6 +400,32 @@ private fun GeneralPage(
                 onChange = onClipboardVideoPagesChanged
             )
         }
+        val diag = com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog
+        if (diag.canExport) {
+            var savedTo by remember { mutableStateOf<String?>(null) }
+            SettingsGroup(
+                title = "Diagnostics",
+                footer = savedTo?.let { "Saved: $it — send this file when reporting a problem." }
+                    ?: "Saves the app's log (what yt-dlp and the engines did) to your Downloads folder."
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Save log to Downloads",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = { savedTo = diag.export() ?: "could not save" },
+                        shape = RoundedCornerShape(10.dp)
+                    ) { Text("Save") }
+                }
+            }
+        }
         SettingsGroup(title = "Appearance") {
             SettingRow("Theme", "Light or dark look for every screen") {
                 SegmentedPicker(

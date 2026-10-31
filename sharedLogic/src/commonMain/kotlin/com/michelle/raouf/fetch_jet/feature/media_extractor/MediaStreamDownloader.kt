@@ -357,7 +357,15 @@ class MediaStreamDownloader(
                             clipEndSec = initialTask.clipEnd?.takeIf { it.isNotBlank() }
                                 ?.let { parseTimeToSecondsOrNull(it) }
                         )
-                    } else downloadMediaWithPlatformTool(
+                    } else {
+                        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                            "MediaStream: yt-dlp downloads ${
+                                downloadSourceUrl.take(
+                                    80
+                                )
+                            } format=${initialTask.formatId}"
+                        )
+                        downloadMediaWithPlatformTool(
                         url = downloadSourceUrl,
                         destinationDir = cacheDir,
                         fileName = fileName,
@@ -456,6 +464,7 @@ class MediaStreamDownloader(
                             )
                         }
                     )
+                    }
                 } catch (e: CancellationException) {
                     if (useOwnHls && tasksState.value[taskId]?.status == DownloadStatus.PAUSED) return
                     throw e
@@ -1403,36 +1412,15 @@ class MediaStreamDownloader(
         }
     }
 
+    /**
+     * Every way of writing a YouTube video link (/shorts/, /live/, /embed/, youtu.be, watch
+     * with a playlist) becomes "https://www.youtube.com/watch?v=ID": one page, one inspection,
+     * one cache entry, instead of yt-dlp running once per spelling.
+     */
     private fun normalizeYouTubeUrl(url: String): String {
-
-        try {
-
-            val lower = url.lowercase()
-
-            if (lower.contains("/shorts/")) {
-
-                val parts = url.split("/shorts/")
-
-                if (parts.size > 1) {
-
-                    val videoId = parts[1].substringBefore("?").substringBefore("/")
-
-                    if (videoId.isNotBlank()) {
-
-                        return "https://www.youtube.com/watch?v=$videoId"
-
-                    }
-
-                }
-
-            }
-
-        } catch (_: Exception) {
-
-        }
-
-        return url
-
+        val id = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.youTubeVideoId(url)
+            ?: return url
+        return "https://www.youtube.com/watch?v=$id"
     }
 
 
@@ -1859,6 +1847,10 @@ class MediaStreamDownloader(
             com.michelle.raouf.fetch_jet.core.network.RateLimiter { speedLimitProvider(taskId) }
         val fetcher = com.michelle.raouf.fetch_jet.core.network.PieceDownloader(streamClient)
 
+        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+            "MediaStream: own engine · ${streams.size} stream(s) · $connections connections · " +
+                    streams.joinToString { "${if (it.hasVideo) "video" else "audio"} ${it.ext} ${it.size / 1048576} MB" }
+        )
         val knownSizes = LongArray(streams.size) { streams[it].size.coerceAtLeast(0L) }
         val doneBytes = LongArray(streams.size)
         val files = ArrayList<String>()

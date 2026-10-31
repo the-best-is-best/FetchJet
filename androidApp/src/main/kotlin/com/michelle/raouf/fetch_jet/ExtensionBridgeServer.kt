@@ -209,6 +209,10 @@ object ExtensionBridgeServer {
 
     // ---- inspection cache (same as desktop) ------------------------------------------------
 
+    private val inspectGates = HashMap<String, Any>()
+
+    /** /add requests seen in the last seconds (a tap reaching us twice must not start twice). */
+    private val recentAdds = HashMap<String, Long>()
     private val inspectCache =
         object : LinkedHashMap<String, Pair<Long, List<MediaQualityEntry>>>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, List<MediaQualityEntry>>>?) =
@@ -219,19 +223,27 @@ object ExtensionBridgeServer {
         url: String,
         requestHeaders: Map<String, String> = emptyMap()
     ): List<MediaQualityEntry> {
-        synchronized(inspectCache) {
-            inspectCache[url]?.let { (at, list) ->
-                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
+        val key = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.canonical(url)
+        fun cached(): List<MediaQualityEntry>? = synchronized(inspectCache) {
+            inspectCache[key]?.let { (at, list) ->
+                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) list else null
             }
         }
-        val fresh = runBlocking {
-            com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
-                .inspectMediaQualities(url, requestHeaders)
+        cached()?.let { return it }
+        // The popup asks for the same video in two spellings at once: the second waits for
+        // the first instead of running yt-dlp twice.
+        val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
+        synchronized(gate) {
+            cached()?.let { return it }
+            val fresh = runBlocking {
+                com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                    .inspectMediaQualities(url, requestHeaders)
+            }
+            if (fresh.isNotEmpty()) synchronized(inspectCache) {
+                inspectCache[key] = System.currentTimeMillis() to fresh
+            }
+            return fresh
         }
-        if (fresh.isNotEmpty()) synchronized(inspectCache) {
-            inspectCache[url] = System.currentTimeMillis() to fresh
-        }
-        return fresh
     }
 
     // ---- routes -----------------------------------------------------------------------------
@@ -352,7 +364,16 @@ object ExtensionBridgeServer {
                             "application/json; charset=UTF-8"
                         )
                     }
-                    deliver { ExternalDownloadBridge.dispatch(req) }
+                    val dedupeKey =
+                        req.url + "|" + (obj.getString("formatId") ?: "") + "|" + req.openClip
+                    val now = System.currentTimeMillis()
+                    val repeat = synchronized(recentAdds) {
+                        recentAdds.entries.removeAll { now - it.value > 5_000 }
+                        if (recentAdds.containsKey(dedupeKey)) true else {
+                            recentAdds[dedupeKey] = now; false
+                        }
+                    }
+                    if (!repeat) deliver { ExternalDownloadBridge.dispatch(req) }
                     reply(out, r, 200, """{"ok":true}""", "application/json; charset=UTF-8")
                 } else {
                     @Suppress("UNCHECKED_CAST")

@@ -103,6 +103,14 @@ class PieceDownloader(private val client: HttpClient) {
         }
         val total = if (totalLength > 0) totalLength else probe.length
         if (total <= 0) throw Exception("The server did not say how big the stream is")
+        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+            "PieceDownloader: ${total / 1048576} MB, ranges=${probe.ranges}, connections=${if (probe.ranges) connections else 1}, host=${
+                url.substringAfter(
+                    "://"
+                ).substringBefore('/')
+            }"
+        )
+        val startedAtMs = TimeSource.Monotonic.markNow()
 
         val manifestPath = "$partBase.chunks".toPath()
         fun partPath(i: Int) = "$partBase.part$i".toPath()
@@ -251,6 +259,9 @@ class PieceDownloader(private val client: HttpClient) {
         }
         val size = FileSystem.SYSTEM.metadataOrNull(out)?.size ?: 0L
         if (size != total) throw Exception("Assembled $size bytes, expected $total")
+        val secs = startedAtMs.elapsedNow().inWholeMilliseconds.coerceAtLeast(1) / 1000.0
+        val mbps = ((total / 1048576.0 / secs) * 10).toLong() / 10.0
+        com.michelle.raouf.fetch_jet.core.log.AppLog.e("PieceDownloader: done ${total / 1048576} MB in ${secs.toLong()}s ($mbps MB/s)")
         for (p in layout.ordered()) try {
             FileSystem.SYSTEM.delete(partPath(p.index))
         } catch (_: Exception) {

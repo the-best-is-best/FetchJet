@@ -843,8 +843,20 @@ async function clearTab(tabId) {
 }
 
 /** The user picked one item (popup or page button). */
+// One tap can reach us several times (touch + click, two badges, a retry): the same item within
+// a few seconds is sent once.
+const recentSends = new Map();
+function alreadySent(key) {
+  const now = Date.now();
+  for (const [k, t] of recentSends) if (now - t > 8000) recentSends.delete(k);
+  if (recentSends.has(key)) return true;
+  recentSends.set(key, now);
+  return false;
+}
+
 async function downloadItem(item, tab) {
   const pageUrl = (tab && tab.url) || item.referer || "";
+  if (alreadySent(`${item.url}|${item.formatId || ""}|${item.openClip ? "clip" : ""}`)) return { ok: true };
   // Prefer the page's own idea of what is playing (lesson title on course sites) over the tab
   // title, which is the course / site name there.
   let pageTitle = "";

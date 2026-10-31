@@ -360,6 +360,11 @@ actual suspend fun inspectPlatformQualities(
                 } else if (isDirectMp4) {
                     val existing = list[existingIndex]
                     val existingIsHls = existing.directUrl.contains(".m3u8", ignoreCase = true) ||
+                            existing.directUrl.contains("/hls", ignoreCase = true) ||
+                            existing.directUrl.contains(
+                                "manifest.googlevideo",
+                                ignoreCase = true
+                            ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
                     if (existingIsHls) {
                         list[existingIndex] = MediaQualityEntry(
@@ -964,7 +969,12 @@ actual suspend fun runYtDlpJson(
         FileUtil.getCookieFile(context) { cookiePath -> request.addOption("--cookies", cookiePath) }
         val response = try {
             RuntimeManager.getInstance().execute(request)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                "runYtDlpJson: yt-dlp failed: ${
+                    e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
+                }"
+            )
             null
         }
         response?.out?.trim()?.takeIf { it.isNotBlank() }
