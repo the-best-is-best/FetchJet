@@ -42,6 +42,10 @@ on:
         description: "Browser extension (Chrome zip + Firefox xpi)"
         type: boolean
         default: true
+      stores:
+        description: "Submit the extension to the Firefox / Edge stores (off = sign it unlisted and attach the .xpi to the release instead)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -69,6 +73,7 @@ jobs:
       linux: ${{ steps.plan.outputs.linux }}
       ios: ${{ steps.plan.outputs.ios }}
       extension: ${{ steps.plan.outputs.extension }}
+      stores: ${{ steps.plan.outputs.stores }}
     steps:
       - id: plan
         env:
@@ -81,12 +86,13 @@ jobs:
           IN_LINUX: ${{ inputs.linux }}
           IN_IOS: ${{ inputs.ios }}
           IN_EXTENSION: ${{ inputs.extension }}
+          IN_STORES: ${{ inputs.stores }}
         run: |
           if [[ "$REF" == refs/tags/v* ]]; then
             # tag push: release everything
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "version=${REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-            for p in android windows macos linux ios extension; do echo "$p=true" >> "$GITHUB_OUTPUT"; done
+            for p in android windows macos linux ios extension stores; do echo "$p=true" >> "$GITHUB_OUTPUT"; done
           elif [[ "$EVENT" == "workflow_dispatch" && -n "$IN_VERSION" ]]; then
             # manual release of the ticked platforms only
             echo "release=true" >> "$GITHUB_OUTPUT"
@@ -97,11 +103,13 @@ jobs:
             echo "linux=$IN_LINUX" >> "$GITHUB_OUTPUT"
             echo "ios=$IN_IOS" >> "$GITHUB_OUTPUT"
             echo "extension=$IN_EXTENSION" >> "$GITHUB_OUTPUT"
+            echo "stores=${IN_STORES:-true}" >> "$GITHUB_OUTPUT"
           else
             # verify: build everything, publish nothing
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
             for p in android windows macos linux ios extension; do echo "$p=true" >> "$GITHUB_OUTPUT"; done
+            echo "stores=false" >> "$GITHUB_OUTPUT"
           fi
           cat "$GITHUB_OUTPUT"
 
@@ -509,18 +517,29 @@ jobs:
       # it and Firefox users get the update by themselves; nothing to wait for here, so the
       # .xpi is not attached to the GitHub release (an unsigned one would not install).
       - name: Submit the Firefox version to addons.mozilla.org
-        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' }}
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
         run: |
           npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
             --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
           rm -f build/extension/*.xpi
 
+      # "Submit to stores" off: a signed, installable .xpi for testing (unlisted = nobody sees
+      # it on AMO). It is attached to the release below.
+      - name: Sign the Firefox build unlisted (test file)
+        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores != 'true' }}
+        run: |
+          npx --yes web-ext@8 sign --channel unlisted \
+            --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
+          rm -f build/extension/*.xpi
+          cp build/extension/signed/*.xpi build/extension/
+
       # Same idea for Microsoft Edge Add-ons: the Chrome build is submitted for certification
       # and Edge users get updates from the store. Needs the EDGE_* secrets (Partner Center ->
       # Edge -> Publish API) and a first version submitted by hand.
       - name: Submit the Edge version to Microsoft Edge Add-ons
-        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.EDGE_PRODUCT_ID != '' }}
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.EDGE_PRODUCT_ID != '' && needs.plan.outputs.stores == 'true' }}
         uses: wdzeng/edge-addon@v2
         with:
           product-id: ${{ secrets.EDGE_PRODUCT_ID }}
@@ -542,7 +561,7 @@ jobs:
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           # fetchjet-chrome-*.zip: developer-mode install (fixed key). fetchjet-store-*.zip: the
           # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
-          FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip )
+          FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip build/extension/*.xpi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
