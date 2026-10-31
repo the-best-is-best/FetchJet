@@ -52,6 +52,7 @@ kotlin {
 
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutinesCore)
+            api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.ktor.client.core)
             implementation(libs.okio)
         }

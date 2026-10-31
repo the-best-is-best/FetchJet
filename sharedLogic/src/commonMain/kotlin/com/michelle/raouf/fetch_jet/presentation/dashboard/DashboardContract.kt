@@ -95,6 +95,12 @@ data class DashboardUiState(
     val removeConfirmationTaskId: String? = null,
     /** A browser-sent file link the user just dismissed; asks "download it in the browser instead?" */
     val browserFallbackUrl: String? = null,
+    /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
+    val clipboardOfferUrl: String? = null,
+    /** Behaviour settings (Settings > General / Downloads), mirrored from BehaviorSettings. */
+    val monitorClipboard: Boolean = false,
+    val clipboardVideoPages: Boolean = false,
+    val sortIntoFolders: Boolean = false,
 
     val cancelConfirmationTaskId: String? = null,
     val duplicateTaskAlert: DownloadTask? = null,
@@ -205,6 +211,12 @@ sealed interface DashboardUiEvent {
     data class OnSortChanged(val sort: TaskSortOption) : DashboardUiEvent
     data object OnConfirmBrowserFallback : DashboardUiEvent
     data object OnDismissBrowserFallback : DashboardUiEvent
+    data class OnClipboardLink(val url: String) : DashboardUiEvent
+    data object OnClipboardOfferAccepted : DashboardUiEvent
+    data object OnClipboardOfferDismissed : DashboardUiEvent
+    data class OnMonitorClipboardChanged(val on: Boolean) : DashboardUiEvent
+    data class OnClipboardVideoPagesChanged(val on: Boolean) : DashboardUiEvent
+    data class OnSortIntoFoldersChanged(val on: Boolean) : DashboardUiEvent
 
     data object OnInspectTorrentClicked : DashboardUiEvent
 

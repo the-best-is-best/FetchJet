@@ -1,6 +1,9 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -8,6 +11,7 @@ import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,13 +31,16 @@ class DashboardViewModel(
 
     private val queueRepository: QueueManagerRepository = QueueManagerRepository.getInstance()
 
-) {
+) : ViewModel() {
 
     private val settingsRepository =
         com.michelle.raouf.fetch_jet.core.settings.AppSettingsRepository(queueRepository.pathResolver)
 
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    /** Background work; cancelled with the ViewModel ([onCleared]). */
+    private val scope = CoroutineScope(
+        viewModelScope.coroutineContext + Dispatchers.IO + SupervisorJob(viewModelScope.coroutineContext[Job])
+    )
 
 
     private val _uiState = MutableStateFlow(
@@ -68,6 +75,7 @@ class DashboardViewModel(
     init {
 
         observeQueue()
+        observeBehaviorSettings()
 
         val savedSettings = settingsRepository.loadSettings()
 
@@ -343,6 +351,37 @@ class DashboardViewModel(
         }
     }
 
+    /** Mirrors BehaviorSettings into the UI state so screens read state and send events only. */
+    private fun observeBehaviorSettings() {
+        scope.launch {
+            BehaviorSettings.monitorClipboard.collect { on ->
+                _uiState.update {
+                    it.copy(
+                        monitorClipboard = on
+                    )
+                }
+            }
+        }
+        scope.launch {
+            BehaviorSettings.clipboardVideoPages.collect { on ->
+                _uiState.update {
+                    it.copy(
+                        clipboardVideoPages = on
+                    )
+                }
+            }
+        }
+        scope.launch {
+            BehaviorSettings.sortIntoFolders.collect { on ->
+                _uiState.update {
+                    it.copy(
+                        sortIntoFolders = on
+                    )
+                }
+            }
+        }
+    }
+
     private fun observeQueue() {
 
         scope.launch {
@@ -402,6 +441,41 @@ class DashboardViewModel(
                         inspectMediaError = null
                     )
                 }
+            }
+
+            is DashboardUiEvent.OnClipboardLink -> {
+                val s = _uiState.value
+                // Not while a dialog is up, and never twice for the same text or a link already queued.
+                // Already queued, or a dialog is up: say nothing. (The watcher itself only reports a
+                // text once, so copying the same link again later asks again.)
+                if (s.isAddDialogVisible || s.clipboardOfferUrl != null) return
+                if (queueRepository.allTasksFlow.value.any { it.url == event.url || it.originalUrl == event.url }) return
+                _uiState.update { it.copy(clipboardOfferUrl = event.url) }
+            }
+
+            is DashboardUiEvent.OnMonitorClipboardChanged -> BehaviorSettings.setMonitorClipboard(
+                event.on
+            )
+
+            is DashboardUiEvent.OnClipboardVideoPagesChanged -> BehaviorSettings.setClipboardVideoPages(
+                event.on
+            )
+
+            is DashboardUiEvent.OnSortIntoFoldersChanged -> BehaviorSettings.setSortIntoFolders(
+                event.on
+            )
+
+            DashboardUiEvent.OnClipboardOfferAccepted -> {
+                val url = _uiState.value.clipboardOfferUrl ?: return
+                _uiState.update { it.copy(clipboardOfferUrl = null) }
+                onEvent(DashboardUiEvent.OnUrlChanged(url))
+                onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+            }
+
+            DashboardUiEvent.OnClipboardOfferDismissed -> _uiState.update {
+                it.copy(
+                    clipboardOfferUrl = null
+                )
             }
 
             is DashboardUiEvent.OnFileNameChanged -> {

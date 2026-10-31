@@ -124,10 +124,49 @@ private fun openDownloadedFile(fullPath: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
-    val viewModel: DashboardViewModel = remember { DashboardViewModel() }
+    val viewModel: DashboardViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel { DashboardViewModel() }
 
     val state by viewModel.uiState.collectAsState()
     val pathResolver = remember { PathResolver() }
+
+    // Clipboard watcher (Settings > General): a copied file / magnet link is offered for download.
+    // Polled only while the app is on screen; the first read is skipped so what was already in
+    // the clipboard when the app opened is not offered.
+    val watchClipboard = state.monitorClipboard
+    val clipboardVideoPages = state.clipboardVideoPages
+    // At app start what is already in the clipboard is ignored; when the user turns the switch
+    // on (or changes "video pages") the current clipboard is looked at right away.
+    var clipboardFirstRun by remember { mutableStateOf(true) }
+    LaunchedEffect(watchClipboard, clipboardVideoPages) {
+        if (!watchClipboard) {
+            clipboardFirstRun = false; return@LaunchedEffect
+        }
+        var last: String? = if (clipboardFirstRun) {
+            try {
+                com.michelle.raouf.fetch_jet.getClipboardText()
+            } catch (_: Throwable) {
+                null
+            }
+        } else null
+        clipboardFirstRun = false
+        while (true) {
+            kotlinx.coroutines.delay(800)
+            val text = try {
+                com.michelle.raouf.fetch_jet.getClipboardText()
+            } catch (_: Throwable) {
+                null
+            }
+            if (text != null && text != last) {
+                last = text
+                com.michelle.raouf.fetch_jet.core.settings.ClipboardLinks.downloadableUrl(
+                    text,
+                    clipboardVideoPages
+                )
+                    ?.let { viewModel.onEvent(DashboardUiEvent.OnClipboardLink(it)) }
+            }
+        }
+    }
     // The download whose details are open (side panel on wide screens, a sheet / page on
     // tablets and phones). Gone from the list (cancelled, removed) = closed.
     var selectedTaskId by remember { mutableStateOf<String?>(null) }
@@ -464,6 +503,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onUrlChanged = { viewModel.onEvent(DashboardUiEvent.OnUrlChanged(it)) },
                     suggestedFileName = state.suggestedFileName,
                     fileNameOverride = state.fileNameOverride,
+                    sortIntoFolders = state.sortIntoFolders,
                     onFileNameChanged = { viewModel.onEvent(DashboardUiEvent.OnFileNameChanged(it)) },
                     onDestinationPathChanged = {
                         viewModel.onEvent(
@@ -592,6 +632,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             // New FetchJet version: automatic check on start + "what's new" dialog
             com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
+            // A link just copied (clipboard watcher): download it?
+            state.clipboardOfferUrl?.let { url ->
+                ClipboardOfferDialog(
+                    url = url,
+                    onConfirm = { viewModel.onEvent(DashboardUiEvent.OnClipboardOfferAccepted) },
+                    onDismiss = { viewModel.onEvent(DashboardUiEvent.OnClipboardOfferDismissed) }
+                )
+            }
+
             // "Download in browser instead?" (only for plain file links sent by the extension)
             state.browserFallbackUrl?.let { url ->
                 BrowserFallbackDialog(
@@ -650,8 +699,26 @@ private fun SettingsContentView(
         torrentEngineStatus = state.torrentEngineStatus,
         isTorrentEngineReady = state.isTorrentEngineReady,
         isDownloadingYtDlp = state.isDownloadingYtDlp,
+        monitorClipboard = state.monitorClipboard,
+        clipboardVideoPages = state.clipboardVideoPages,
+        sortIntoFolders = state.sortIntoFolders,
         pathResolver = pathResolver,
         onDestinationPathChanged = { viewModel.onEvent(DashboardUiEvent.OnDestinationPathChanged(it)) },
+        onMonitorClipboardChanged = {
+            viewModel.onEvent(
+                DashboardUiEvent.OnMonitorClipboardChanged(
+                    it
+                )
+            )
+        },
+        onClipboardVideoPagesChanged = {
+            viewModel.onEvent(
+                DashboardUiEvent.OnClipboardVideoPagesChanged(
+                    it
+                )
+            )
+        },
+        onSortIntoFoldersChanged = { viewModel.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(it)) },
         onDisableTorrentUploadToggled = {
             viewModel.onEvent(
                 DashboardUiEvent.OnDisableTorrentUploadToggled(
@@ -1792,6 +1859,51 @@ private fun RestartOnPauseDialog(isClip: Boolean, onConfirm: () -> Unit, onDismi
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
                 Text("Keep downloading")
             }
+        }
+    )
+}
+
+@Composable
+private fun ClipboardOfferDialog(url: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val name = if (url.startsWith("magnet:", true)) "Magnet link"
+    else url.substringBefore('?').substringAfterLast('/').ifBlank { url }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(18.dp),
+        title = { Text("Download the link you copied?", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Turn this off in Settings > General > Watch the clipboard.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) { Text("Download") }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(10.dp)
+            ) { Text("Not now") }
         }
     )
 }

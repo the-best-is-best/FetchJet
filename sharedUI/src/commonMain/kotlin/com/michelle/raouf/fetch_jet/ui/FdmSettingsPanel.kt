@@ -84,8 +84,14 @@ fun FdmSettingsPanel(
     torrentEngineStatus: String = "",
     isTorrentEngineReady: Boolean = true,
     isDownloadingYtDlp: Boolean,
+    monitorClipboard: Boolean = false,
+    clipboardVideoPages: Boolean = false,
+    sortIntoFolders: Boolean = false,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
+    onMonitorClipboardChanged: (Boolean) -> Unit = {},
+    onClipboardVideoPagesChanged: (Boolean) -> Unit = {},
+    onSortIntoFoldersChanged: (Boolean) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
     onGlobalDownloadSpeedLimitChanged: (Long) -> Unit,
@@ -142,14 +148,20 @@ fun FdmSettingsPanel(
             SettingsSection.GENERAL -> GeneralPage(
                 isDarkMode,
                 unitKey,
+                monitorClipboard,
+                clipboardVideoPages,
                 onThemeToggled,
-                onSpeedDisplayUnitChanged
+                onSpeedDisplayUnitChanged,
+                onMonitorClipboardChanged,
+                onClipboardVideoPagesChanged
             )
 
             SettingsSection.DOWNLOADS -> DownloadsPage(
                 destinationPath,
+                sortIntoFolders,
                 pathResolver,
-                onDestinationPathChanged
+                onDestinationPathChanged,
+                onSortIntoFoldersChanged
             )
 
             SettingsSection.SPEED -> SpeedPage(
@@ -354,10 +366,33 @@ private fun SectionNavItem(
 private fun GeneralPage(
     isDarkMode: Boolean,
     unitKey: String,
+    watchClipboard: Boolean,
+    clipboardVideoPages: Boolean,
     onThemeToggled: () -> Unit,
-    onSpeedDisplayUnitChanged: (String) -> Unit
+    onSpeedDisplayUnitChanged: (String) -> Unit,
+    onWatchClipboardChanged: (Boolean) -> Unit,
+    onClipboardVideoPagesChanged: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        SettingsGroup(
+            title = "Clipboard",
+            footer = "Copy a link to a file (zip, mp4, pdf, apk…) or a magnet link anywhere, and FetchJet asks whether to download it."
+        ) {
+            SettingSwitch(
+                title = "Watch the clipboard",
+                subtitle = if (watchClipboard) "On · copied file links are offered for download" else "Off",
+                checked = watchClipboard,
+                onChange = onWatchClipboardChanged
+            )
+            SettingDivider()
+            SettingSwitch(
+                title = "Also video pages",
+                subtitle = "YouTube, Facebook, TikTok, Vimeo… links are offered too (not only files)",
+                checked = clipboardVideoPages,
+                enabled = watchClipboard,
+                onChange = onClipboardVideoPagesChanged
+            )
+        }
         SettingsGroup(title = "Appearance") {
             SettingRow("Theme", "Light or dark look for every screen") {
                 SegmentedPicker(
@@ -393,8 +428,10 @@ private fun GeneralPage(
 @Composable
 private fun DownloadsPage(
     destinationPath: String,
+    sortIntoFolders: Boolean,
     pathResolver: PathResolver,
-    onDestinationPathChanged: (String) -> Unit
+    onDestinationPathChanged: (String) -> Unit,
+    onSortIntoFoldersChanged: (Boolean) -> Unit
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     var showDirectoryPicker by remember { mutableStateOf(false) }
@@ -447,6 +484,17 @@ private fun DownloadsPage(
                     }
                 }
             }
+        }
+        SettingsGroup(
+            title = "Organize",
+            footer = "Sub-folders are created inside the save location: Video, Music, Archives, Documents, Programs, Images, Torrents."
+        ) {
+            SettingSwitch(
+                title = "Sort into folders by type",
+                subtitle = if (sortIntoFolders) "On · e.g. Downloads/Video/lecture.mp4" else "Off · everything goes straight into the folder",
+                checked = sortIntoFolders,
+                onChange = onSortIntoFoldersChanged
+            )
         }
         QueueSettingsCard()
     }

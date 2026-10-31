@@ -500,8 +500,25 @@ class QueueManagerRepository(
         val cutAfterDownload =
             clipByCutting && (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank())
         val taskId = generateUniqueTaskId()
-        val destDir =
+        val baseDir =
             if (!customDestinationPath.isNullOrBlank()) customDestinationPath else pathResolver.getDownloadsDirectory()
+        // "Sort into folders": Video / Music / Archives / ... under the chosen folder, by file type.
+        val destDir =
+            if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
+                val nameForType = (customFileName ?: torrentName ?: targetUrl.substringBefore('?')
+                    .substringAfterLast('/'))
+                com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
+                    nameForType,
+                    isMedia = engineType == EngineType.MEDIA_STREAM,
+                    isTorrent = engineType == EngineType.BITTORRENT
+                )?.let { sub ->
+                    val trimmed = baseDir.trimEnd('/', '\\')
+                    // Already points at a type folder (the Add dialog shows the real target) → use as is.
+                    val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
+                    if (known.any { trimmed.endsWith("/$it") || trimmed.endsWith("\\$it") }) baseDir
+                    else trimmed + "/" + sub
+                } ?: baseDir
+            } else baseDir
 
         val task = DownloadTask(
             id = taskId,

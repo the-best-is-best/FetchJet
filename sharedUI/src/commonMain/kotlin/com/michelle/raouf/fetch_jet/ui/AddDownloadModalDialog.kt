@@ -96,6 +96,7 @@ fun AddDownloadModalDialog(
     onDestinationPathChanged: (String) -> Unit,
     suggestedFileName: String = "",
     fileNameOverride: String = "",
+    sortIntoFolders: Boolean = false,
     onFileNameChanged: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onInspectTorrent: () -> Unit,
@@ -1100,13 +1101,16 @@ fun AddDownloadModalDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(6.dp))
+                    // Locked while the link is still being inspected: the name follows the result.
+                    val inspecting = isInspectingMedia || isInspectingTorrent
                     OutlinedTextField(
-                        value = fileNameOverride.ifEmpty { suggestedFileName },
+                        value = if (inspecting && fileNameOverride.isEmpty()) "Finding the name…" else fileNameOverride.ifEmpty { suggestedFileName },
                         onValueChange = { onFileNameChanged(it) },
+                        enabled = !inspecting,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
-                        leadingIcon = { Text("📝", fontSize = 16.sp) },
+                        leadingIcon = { Text(if (inspecting) "⏳" else "📝", fontSize = 16.sp) },
                         trailingIcon = {
                             if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {
                                 IconButton(onClick = { onFileNameChanged("") }) {
@@ -1135,6 +1139,25 @@ fun AddDownloadModalDialog(
                 }
 
                 // Save Destination Section
+                val typeFolder =
+                    if (sortIntoFolders) com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
+                        fileNameOverride.ifEmpty { suggestedFileName },
+                        isMedia = detectedEngine == EngineType.MEDIA_STREAM,
+                        isTorrent = detectedEngine == EngineType.BITTORRENT
+                    ) else null
+                // Sorted-by-type: the field shows the real target folder (e.g. ...\Downloads\Video) and stays editable.
+                LaunchedEffect(typeFolder) {
+                    if (typeFolder == null) return@LaunchedEffect
+                    val sep = if (destinationPath.contains('\\')) "\\" else "/"
+                    val base = destinationPath.trimEnd('/', '\\')
+                    val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
+                    val alreadyTyped = known.any { base.endsWith(sep + it) }
+                    if (!alreadyTyped) {
+                        val full = base + sep + typeFolder
+                        pathTextFieldValue = TextFieldValue(full, TextRange(full.length))
+                        onDestinationPathChanged(full)
+                    }
+                }
                 Text(
                     text = "Save Destination Directory",
                     fontSize = 12.sp,
@@ -1174,7 +1197,6 @@ fun AddDownloadModalDialog(
                         cursorColor = MaterialTheme.colorScheme.primary
                     )
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Quick Directory Buttons (Always fit cleanly on mobile!)
