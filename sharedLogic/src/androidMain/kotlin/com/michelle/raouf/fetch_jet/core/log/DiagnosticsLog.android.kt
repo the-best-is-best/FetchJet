@@ -11,7 +11,8 @@ import java.io.OutputStream
 import java.io.PrintStream
 
 actual object DiagnosticsLog {
-    actual val canExport: Boolean get() = true
+    /** Only after [install] ran (debug / verbose builds): release builds show nothing. */
+    actual val canExport: Boolean get() = installed
 
     private var installed = false
     private fun logFile(): File? {

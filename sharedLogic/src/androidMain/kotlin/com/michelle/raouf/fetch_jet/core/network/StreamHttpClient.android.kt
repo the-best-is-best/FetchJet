@@ -17,11 +17,11 @@ actual fun createStreamHttpClient(): HttpClient = HttpClient(OkHttp) {
                 val req = chain.request()
                 val resp = chain.proceed(req)
                 if (resp.code == 403) {
-                    com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                         "StreamHttpClient 403\n  okUrl : ${req.url}\n  okHdr : " +
                                 req.headers.joinToString { "${it.first}=${it.second}" } +
                                 "\n  proto : ${resp.protocol}  tls=${resp.handshake?.tlsVersion}/${resp.handshake?.cipherSuite}"
-                    )
+                    }
                 }
                 resp
             }

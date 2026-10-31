@@ -44,12 +44,12 @@ object DirectMediaResolver {
         val sel = selector(formatId, audioOnly)
         val json = runYtDlpJson(url, sel, headers)
         if (json == null) {
-            com.michelle.raouf.fetch_jet.core.log.AppLog.e("DirectMediaResolver: yt-dlp gave no JSON for -f $sel")
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "DirectMediaResolver: yt-dlp gave no JSON for -f $sel" }
             return null
         }
         val parsed = parse(json)
         if (parsed != null) return parsed
-        com.michelle.raouf.fetch_jet.core.log.AppLog.e("DirectMediaResolver: not a plain stream (-f $sel): $lastReject")
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d { "DirectMediaResolver: not a plain stream (-f $sel): $lastReject" }
         // The chosen format is an HLS/DASH manifest (Android's yt-dlp often picks the iOS
         // client's m3u8 itags): ask for the same picture size as plain https files instead.
         val h = lastRejectHeight
@@ -61,10 +61,10 @@ object DirectMediaResolver {
             }
             val json2 = runYtDlpJson(url, httpsSel, headers) ?: return null
             val parsed2 = parse(json2)
-            com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                 if (parsed2 != null) "DirectMediaResolver: https formats found with -f $httpsSel"
                 else "DirectMediaResolver: still no plain stream (-f $httpsSel): $lastReject"
-            )
+            }
             return parsed2
         }
         return null

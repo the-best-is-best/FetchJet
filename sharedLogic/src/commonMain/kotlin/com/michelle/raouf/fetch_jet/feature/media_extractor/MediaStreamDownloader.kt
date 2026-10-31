@@ -358,13 +358,13 @@ class MediaStreamDownloader(
                                 ?.let { parseTimeToSecondsOrNull(it) }
                         )
                     } else {
-                        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                        com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                             "MediaStream: yt-dlp downloads ${
                                 downloadSourceUrl.take(
                                     80
                                 )
                             } format=${initialTask.formatId}"
-                        )
+                        }
                         downloadMediaWithPlatformTool(
                         url = downloadSourceUrl,
                         destinationDir = cacheDir,
@@ -1847,10 +1847,10 @@ class MediaStreamDownloader(
             com.michelle.raouf.fetch_jet.core.network.RateLimiter { speedLimitProvider(taskId) }
         val fetcher = com.michelle.raouf.fetch_jet.core.network.PieceDownloader(streamClient)
 
-        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d {
             "MediaStream: own engine · ${streams.size} stream(s) · $connections connections · " +
                     streams.joinToString { "${if (it.hasVideo) "video" else "audio"} ${it.ext} ${it.size / 1048576} MB" }
-        )
+        }
         val knownSizes = LongArray(streams.size) { streams[it].size.coerceAtLeast(0L) }
         val doneBytes = LongArray(streams.size)
         val files = ArrayList<String>()
@@ -2173,12 +2173,12 @@ class MediaStreamDownloader(
                 val withHeaders = try {
                     inspectPlatformQualities(effectiveUrl, requestHeaders)
                 } catch (e: Exception) {
-                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: inspect failed with headers ${requestHeaders.keys}: ${e.message}")
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: inspect failed with headers ${requestHeaders.keys}: ${e.message}" }
                     emptyList()
                 }
-                com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                     "MediaStream: inspect ${effectiveUrl.take(80)} headers=${requestHeaders.keys} -> ${withHeaders.size} formats"
-                )
+                }
                 // "Good" = at least one real resolution (720p, 1080p…). A logged-in Facebook
                 // page gives yt-dlp a single nameless "sd/hd" entry; the same page without the
                 // cookie gives every quality.
@@ -2187,12 +2187,12 @@ class MediaStreamDownloader(
                 if (requestHeaders.isEmpty() || good(withHeaders)) withHeaders
                 else {
                     val plain = try {
-                        com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: weak result with the browser headers, retrying without them")
+                        com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: weak result with the browser headers, retrying without them" }
                         inspectPlatformQualities(effectiveUrl, emptyMap())
                     } catch (_: Exception) {
                         emptyList()
                     }
-                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: inspect without headers -> ${plain.size} formats")
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: inspect without headers -> ${plain.size} formats" }
                     if (plain.size > withHeaders.size) {
                         // Downloads of this site must not send the cookie either.
                         com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.markCookieUnhelpful(

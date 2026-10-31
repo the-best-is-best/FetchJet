@@ -55,9 +55,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         PathResolver.appContext = applicationContext
-        com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
         DownloadNotificationManager.setContext(applicationContext)
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        // Debug / verbose builds only: a log file and the "Save log" button. Release builds
+        // have neither.
+        if (BuildConfig.DEBUG || BuildConfig.VERBOSE_LOGS) com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
         // Lets the FetchJet extension in Firefox for Android send links to this app.
         ExtensionBridgeServer.start(applicationContext)
         // "Keep ready for the browser" (Settings > Browser): restart its service if it is on.

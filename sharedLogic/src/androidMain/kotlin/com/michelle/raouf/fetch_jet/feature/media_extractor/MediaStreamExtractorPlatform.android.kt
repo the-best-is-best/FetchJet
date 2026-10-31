@@ -970,11 +970,11 @@ actual suspend fun runYtDlpJson(
         val response = try {
             RuntimeManager.getInstance().execute(request)
         } catch (e: Exception) {
-            com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                 "runYtDlpJson: yt-dlp failed: ${
                     e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
                 }"
-            )
+            }
             null
         }
         response?.out?.trim()?.takeIf { it.isNotBlank() }

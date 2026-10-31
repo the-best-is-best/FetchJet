@@ -76,14 +76,14 @@ class PieceDownloader(private val client: HttpClient) {
                 probe = probe(url, hdrs)
             } catch (e: ExpiredLinkException) {
                 attempt++
-                com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                     "PieceDownloader: probe ${e.message} (attempt $attempt) host=${
                         url.substringAfter(
                             "://"
                         ).substringBefore('/')
                     } " +
                             "client=${Regex("[?&]c=([^&]+)").find(url)?.groupValues?.get(1)}"
-                )
+                }
                 when (attempt) {
                     1, 2 -> delay(2_000L * attempt)                       // same link, a moment later
                     3 -> {
@@ -103,13 +103,13 @@ class PieceDownloader(private val client: HttpClient) {
         }
         val total = if (totalLength > 0) totalLength else probe.length
         if (total <= 0) throw Exception("The server did not say how big the stream is")
-        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d {
             "PieceDownloader: ${total / 1048576} MB, ranges=${probe.ranges}, connections=${if (probe.ranges) connections else 1}, host=${
                 url.substringAfter(
                     "://"
                 ).substringBefore('/')
             }"
-        )
+        }
         val startedAtMs = TimeSource.Monotonic.markNow()
 
         val manifestPath = "$partBase.chunks".toPath()
@@ -261,7 +261,7 @@ class PieceDownloader(private val client: HttpClient) {
         if (size != total) throw Exception("Assembled $size bytes, expected $total")
         val secs = startedAtMs.elapsedNow().inWholeMilliseconds.coerceAtLeast(1) / 1000.0
         val mbps = ((total / 1048576.0 / secs) * 10).toLong() / 10.0
-        com.michelle.raouf.fetch_jet.core.log.AppLog.e("PieceDownloader: done ${total / 1048576} MB in ${secs.toLong()}s ($mbps MB/s)")
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d { "PieceDownloader: done ${total / 1048576} MB in ${secs.toLong()}s ($mbps MB/s)" }
         for (p in layout.ordered()) try {
             FileSystem.SYSTEM.delete(partPath(p.index))
         } catch (_: Exception) {
@@ -296,14 +296,14 @@ class PieceDownloader(private val client: HttpClient) {
                 } catch (_: Exception) {
                     ""
                 }
-                com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                     "PieceDownloader: $code\n  asked : $url\n  sent  : ${r.request.url}\n  reqHdr: ${
                         r.request.headers.entries()
                             .joinToString { it.key + "=" + it.value.joinToString() }
                     }\n  respHdr: ${
                         r.headers.entries().joinToString { it.key + "=" + it.value.joinToString() }
                     }\n  diag  : ${rawProbeForDiagnostics(url, headers["User-Agent"] ?: UA)}"
-                )
+                }
                 throw ExpiredLinkException("HTTP $code", body)
             }
             if (code !in 200..299) throw Exception("HTTP $code")
