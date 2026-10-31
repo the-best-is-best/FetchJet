@@ -15,6 +15,12 @@ const FETCHJET_PORT = 28450;
 const FETCHJET_BASE = `http://127.0.0.1:${FETCHJET_PORT}`;
 const NATIVE_HOST_NAME = "com.michelle.raouf.fetch_jet_downloader";
 const PROTOCOL = "fetchjet://download?url=";
+// Android freezes FetchJet while Firefox is in front, so asking it for qualities hangs until the
+// app is opened. If the app answers a quick ping (its "Keep ready for the browser" setting is on)
+// qualities are fetched as on desktop; otherwise the page button opens the app with the link and
+// the app lists the qualities itself.
+const ON_ANDROID = /android/i.test(navigator.userAgent);
+async function androidAppAwake() { return ON_ANDROID && await pingApp(1200); }
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -674,6 +680,13 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
   const videoId = ytVideoId(pageUrl);
   if (!videoId) return;
   const current = await tabState(YT_KEY, tabId);
+  if (ON_ANDROID && !(await androidAppAwake())) {
+    if (!(current && current.videoId === videoId && current.openApp)) {
+      await setTabState(YT_KEY, tabId, { ...((current && current.videoId === videoId) ? current : { videoId, sabr: false, streams: {} }), openApp: true });
+      pushToTab(tabId);
+    }
+    return;
+  }
   if (!force && current && current.videoId === videoId && (current.resolved || current.resolving || current.resolveError)) return;
   if (resolving.get(tabId) === videoId) return;
   const settings = await getSettings();
@@ -699,6 +712,13 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
   const current = await tabState(RES_KEY, tabId);
+  if (ON_ANDROID && !(await androidAppAwake())) {
+    if (!(current && current.page === page && current.openApp)) {
+      await setTabState(RES_KEY, tabId, { page, openApp: true });
+      pushToTab(tabId);
+    }
+    return;
+  }
   if (!force && current && current.page === page && (current.resolved || current.resolving || current.resolveError)) return;
   if (resolving.get(tabId) === page) return;
   if (!force) {
@@ -727,6 +747,10 @@ async function itemsForTab(tabId) {
   const media = Object.values(mediaAll[tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0));
   const items = [];
   let pageTitle = "";
+  if (ON_ANDROID) {
+    const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}` : (res && res.openApp ? res.page : "");
+    if (page) items.push({ kind: "openApp", label: "Open in FetchJet", sub: "Pick the quality in the app", url: page });
+  }
   if (yt) {
     const captured = typeof ytBuildOptions === "function" ? ytBuildOptions(yt.streams) : [];
     if (yt.resolved && yt.resolved.options.length) {
@@ -736,11 +760,17 @@ async function itemsForTab(tabId) {
       items.push(...captured.map(o => ({ ...o, referer: "https://www.youtube.com/" })));
       if (yt.resolving) items.push({ label: "Getting all qualities from FetchJet (yt-dlp)…", sub: "Captured streams are shown meanwhile", disabled: true });
     } else if (yt.resolving) {
-      items.push({ label: "Getting video qualities…", sub: "This takes a few seconds", disabled: true });
+      items.push({ label: "Getting video qualities…", sub: /android/i.test(navigator.userAgent) ? "Up to a minute on a phone" : "This takes a few seconds", disabled: true });
     } else if (yt.resolveError) {
       items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
     } else if (yt.sabr) {
-      items.push({ label: "Qualities come from FetchJet (yt-dlp) for this video", sub: "Start FetchJet (Settings → Download Tools once), then click Get qualities or reload the page", disabled: true });
+      items.push({
+        label: "Qualities come from FetchJet (yt-dlp) for this video",
+        sub: /android/i.test(navigator.userAgent)
+          ? "Open the FetchJet app, then reload this page"
+          : "Start FetchJet (Settings → Download Tools once), then click Get qualities or reload the page",
+        disabled: true
+      });
     }
   }
   if (res && !yt) {
@@ -784,6 +814,14 @@ async function downloadItem(item, tab) {
   const pageUrl = (tab && tab.url) || item.referer || "";
   const title = item.title || (tab && tab.title) || "video";
   const clean = typeof ytCleanTitle === "function" ? ytCleanTitle(title) : title;
+  if (item.kind === "openApp") {
+    // Android: the app opens with the link and shows the qualities itself.
+    try {
+      const t = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(item.url), active: true });
+      if (t && t.id != null) setTimeout(() => api.tabs.remove(t.id).catch(() => {}), 1500);
+      return { ok: true };
+    } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
+  }
   if (item.kind === "ytdlp") {
     const fileName = `${clean}${item.quality ? " [" + item.quality + "]" : ""}.${item.ext || "mp4"}`;
     let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl }, "quality");

@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://the-best-is-best.github.io/FetchJet/"><img alt="Download" src="https://img.shields.io/badge/Download-latest-22D3EE?style=for-the-badge&logo=github&logoColor=0B1020"></a>
+  <a href="https://apps.microsoft.com/detail/9NP3HJRHMPJS"><img alt="Microsoft Store" src="https://img.shields.io/badge/Microsoft%20Store-Get%20it-0078D4?style=for-the-badge&logo=microsoft&logoColor=white"></a>
   <a href="https://github.com/the-best-is-best/FetchJet/releases"><img alt="Releases" src="https://img.shields.io/badge/All-releases-0E1428?style=for-the-badge&logo=github"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Android%20%C2%B7%20iOS-0E1428?style=for-the-badge">
 </p>
@@ -44,15 +45,15 @@
 **👉 [Downloads page](https://the-best-is-best.github.io/FetchJet/)** – every version for every
 platform, with the right file highlighted for your device.
 
-| Platform              | File                                                                                   | Notes                                                              |
-|-----------------------|----------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| Windows 10 / 11       | `.msi` (recommended) or `.exe`                                                         | The MSI lets FetchJet update itself.                               |
-| macOS 12+             | `.dmg`                                                                                 | Drag FetchJet to Applications.                                     |
-| Linux                 | `.deb` or `.tar.gz`                                                                    | The tarball runs anywhere: unpack and start `bin/FetchJet`.        |
-| Android 8+            | `.apk`                                                                                 | `arm64-v8a` fits almost every phone; take *universal* if unsure.   |
-| iOS 16+               | `.ipa`                                                                                 | Sideload with AltStore or Sideloadly.                              |
-| Chrome / Edge / Brave | `.zip`                                                                                 | Load it on `chrome://extensions` (Developer mode → Load unpacked). |
-| Firefox               | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/) | Install from the store; Firefox keeps it updated.                  |
+| Platform              | File                                                                                                | Notes                                                              |
+|-----------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Windows 10 / 11       | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.    |
+| macOS 12+             | `.dmg`                                                                                              | Drag FetchJet to Applications.                                     |
+| Linux                 | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.        |
+| Android 8+            | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.   |
+| iOS 16+               | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly.                              |
+| Chrome / Edge / Brave | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked). |
+| Firefox               | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                  |
 
 ---
 
@@ -67,7 +68,6 @@ platform, with the right file highlighted for your device.
 Click **Add download**, paste a link – or a magnet, or a `.torrent` file path – and FetchJet detects
 the engine. Videos get a quality list; torrents show their files; plain links start right away.
 
-<img src="docs/media/add-download.gif" alt="Adding a download" width="100%">
 </td>
 <td width="50%" valign="top">
 
@@ -76,7 +76,6 @@ the engine. Videos get a quality list; torrents show their files; plain links st
 Turn on **Clip** and set *From* / *To* down to the second. **Only the clip** saves bandwidth; **Full
 video, then cut** is faster on sites that throttle partial downloads.
 
-<img src="docs/media/clip.gif" alt="Clipping a video" width="100%">
 </td>
 </tr>
 <tr>
@@ -87,7 +86,6 @@ video, then cut** is faster on sites that throttle partial downloads.
 Paste a playlist or channel link, untick what you don't need, pick a quality once. Each video
 becomes its own download in the queue.
 
-<img src="docs/media/playlist.gif" alt="Downloading a playlist" width="100%">
 </td>
 <td width="50%" valign="top">
 
@@ -96,7 +94,6 @@ becomes its own download in the queue.
 **Settings → Downloads** sets how many run at once. In the Add dialog, **Start → At a time** picks
 the hour and the day. Running downloads always sit on top of the list.
 
-<img src="docs/media/schedule.gif" alt="Scheduling a download" width="100%">
 </td>
 </tr>
 </table>

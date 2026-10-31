@@ -101,7 +101,12 @@
 
       var PLATFORMS = [
         { key: "windows",   label: "Windows",   match: function (n) { return /\.(exe|msi)$/i.test(n); },
-          hint: "The .msi installs and lets FetchJet update itself; the .exe is the same installer in a single file." },
+          hint: "The .msi installs and lets FetchJet update itself; the .exe is the same installer in a single file.",
+          noticeHtml:
+            '<div class="notice"><h3>Get it from the Microsoft Store (recommended)</h3>' +
+            'One click to install, no SmartScreen warning, and Windows keeps it updated.' +
+            '<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div>' +
+            '<div class="hint">Prefer an installer? Take the .msi or .exe below; it updates itself from GitHub.</div></div>' },
         { key: "macos",     label: "macOS",     match: function (n) { return /\.dmg$/i.test(n); },
           hint: "Open the .dmg and drag FetchJet to Applications." },
         { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },

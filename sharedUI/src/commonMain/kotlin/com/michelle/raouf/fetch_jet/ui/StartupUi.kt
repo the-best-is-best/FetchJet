@@ -27,6 +27,33 @@ import kotlinx.coroutines.launch
 /** Settings (desktop): start FetchJet when the user logs in, optionally hidden in the tray. */
 @Composable
 fun StartupSettingsCard() {
+    StartupLauncher.managedBySystemUri?.let { settingsUri ->
+        // Microsoft Store build: the switch lives in Windows itself.
+        val uri = androidx.compose.ui.platform.LocalUriHandler.current
+        var startHidden by remember { mutableStateOf(StartupPreferences.startHidden) }
+        SettingsGroup(
+            title = "Startup",
+            footer = "The Store version is started by Windows: turn FetchJet on under Settings > Apps > Startup."
+        ) {
+            SettingRow(
+                title = "Start FetchJet when you log in",
+                subtitle = "Managed by Windows",
+                onClick = { uri.openUri(settingsUri) }
+            ) {
+                androidx.compose.material3.OutlinedButton(onClick = { uri.openUri(settingsUri) }) {
+                    Text("Open Windows settings", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            SettingDivider()
+            SettingSwitch(
+                title = "Start hidden in the tray",
+                subtitle = "When started at login, stay in the tray instead of opening the window.",
+                checked = startHidden,
+                onChange = { startHidden = it; StartupPreferences.startHidden = it }
+            )
+        }
+        return
+    }
     if (!StartupLauncher.isSupported) return
     val scope = rememberCoroutineScope()
     var enabled by remember { mutableStateOf(false) }
