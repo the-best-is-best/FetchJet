@@ -91,6 +91,15 @@ extension\build.ps1
   not try to get around it). Hetzner `*-speed.hetzner.com` allows one connection per IP (429 for
   the rest): good for testing the 429 handling, bad for speed tests.
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
+  An incremental build does not re-embed `FetchJetSafariExtension.appex` into `FetchJet.app` when
+  only `extension/` JS changed: rsync `Debug-iphonesimulator/FetchJetSafariExtension.appex` into
+  `FetchJet.app/PlugIns/`, then `codesign --force --sign -` the appex and the app (or Clean Build
+  Folder). CI builds clean, so it is not affected.
+- `iosApp/FJTorrent/` is excluded from formatting (`.clang-format` `DisableFormat`). An IDE
+  reformat split `NS_SWIFT_NAME(...)` over lines, Swift then saw no `find`/`add`/`setLimits` and the
+  iOS CI archive failed. Keep each `NS_SWIFT_NAME(...)` on one line.
+- Self-hosted Mac runner: `~/actions-runner`, installed as a launchd service
+  (`./svc.sh start|stop|status`, or `./run.sh` in a terminal).
 
 ## Key engine pieces (sharedLogic)
 
@@ -169,6 +178,13 @@ Bridges:
   up over the browser".
 - Extension: `background.js` has `downloadItem`, `inspectWithApp`, `sendToFetchJet`,
   `isStreamFragment`, `recentSends` (8 s dedupe), quality labels via regex.
+- Extension per-browser UI (2026-11-01): `options.js` / `popup.js` read `FJ_PLATFORM` from
+  `platform.js`, which differs per build like the manifest: `platform.js` (Chromium: Chrome, Edge,
+  Brave, Opera, Vivaldi, Arc; also used when loading the folder unpacked), `platform.firefox.js`,
+  `platform.safari.js`. `build.sh` / `build.ps1` and the Xcode "Copy Web Extension Files" phase copy
+  the right one as `platform.js`. It lists the settings rows to hide (`hidden`), the shortcuts page
+  text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
+  install the Chrome build.
 
 ## Current state (release-v1.1.0)
 
@@ -304,6 +320,14 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
    (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`
    (`IosFetchJetLinks.kt`); media is found via the Performance API in content.js (no webRequest).
    Udemy works on the simulator (2026-11-01). Not tested yet: a real iPhone.
+   Qualities are not listed inside Safari on iOS: iOS suspends the app while Safari is in front
+   (no local server), so the page button shows "Open in FetchJet" and the app lists them.
+   Probe tried on 2026-11-01: running the app's Python + yt-dlp inside the extension's native
+   handler (dlopen of the app's `Python.framework`, `sys.executable` set to the app binary so the
+   `.fwork` modules load) worked on the simulator: 49-61 YouTube formats up to 4K in 12-13 s,
+   but a 165 MB memory peak. The simulator does not enforce the extension memory limit, so it may
+   be killed on a real iPhone. **The owner decided to keep "Open in FetchJet"**: the probe code
+   was removed. Do not bring it back unless the owner asks.
 
 ## Working style with the owner
 
