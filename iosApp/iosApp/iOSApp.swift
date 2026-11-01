@@ -61,7 +61,7 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let bridge = LiveActivityBridge()
     private let mediaBridge = NativeMediaExtractorBridge()
-    #if FETCHJET_FULL && canImport(LibTorrent)
+    #if FETCHJET_FULL && canImport(FJTorrent)
     private let torrentBridge = NativeTorrentBridge()
     #endif
 
@@ -71,7 +71,7 @@ struct iOSApp: App {
         Task { @MainActor in
             LiveActivityManager.shared.endStaleActivities()
         }
-        #if FETCHJET_FULL && canImport(LibTorrent)
+        #if FETCHJET_FULL && canImport(FJTorrent)
         IosTorrentBridgeRegistry.shared.bridge = torrentBridge
         #endif
     }

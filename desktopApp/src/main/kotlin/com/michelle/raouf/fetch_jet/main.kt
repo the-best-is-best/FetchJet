@@ -76,7 +76,7 @@ fun parseUrlFromArg(arg: String): String {
         return clean
     }
     // A .torrent file opened with FetchJet (file association / drag onto the exe).
-    val asFile = clean.removePrefix("file://").let { java.io.File(it) }
+    val asFile = clean.removePrefix("file://").let { File(it) }
     if (clean.lowercase().endsWith(".torrent") && asFile.isFile) {
         return asFile.absolutePath
     }
@@ -167,7 +167,7 @@ private fun inspectCached(
             com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
                 .inspectMediaQualities(url, requestHeaders)
         }
-        if (fresh.isNotEmpty()) synchronized(inspectCache) {
+        if (fresh.any { !it.formatId.isNullOrBlank() }) synchronized(inspectCache) {
             inspectCache[key] = System.currentTimeMillis() to fresh
         }
         return fresh

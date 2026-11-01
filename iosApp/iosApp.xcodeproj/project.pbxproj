@@ -13,8 +13,7 @@
 		A1000000000000000000000A /* DownloadWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* DownloadWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B20000000000000000000002 /* Python.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Python.xcframework */; };
 		B20000000000000000000003 /* Python.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Python.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		B30000000000000000000002 /* LibTorrent.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* LibTorrent.xcframework */; };
-		B30000000000000000000003 /* LibTorrent.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* LibTorrent.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B30000000000000000000002 /* FJTorrent.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = B30000000000000000000001 /* FJTorrent.xcframework */; };
 		B2000000000000000000000A /* FFmpeg-iOS-Support in Frameworks */ = {isa = PBXBuildFile; productRef = B20000000000000000000009 /* FFmpeg-iOS-Support */; };
 		B3000000000000000000000A /* OpenSSL in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000009 /* OpenSSL */; };
 /* End PBXBuildFile section */
@@ -56,7 +55,6 @@
 			dstSubfolderSpec = 10;
 			files = (
 				B20000000000000000000003 /* Python.xcframework in Embed Frameworks */,
-				B30000000000000000000003 /* LibTorrent.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -68,7 +66,7 @@
 		A10000000000000000000001 /* DownloadWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DownloadWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C50000000000000000000001 /* FetchJetSafariExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FetchJetSafariExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Python.xcframework; path = Frameworks/Python.xcframework; sourceTree = "<group>"; };
-		B30000000000000000000001 /* LibTorrent.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = LibTorrent.xcframework; path = Frameworks/LibTorrent.xcframework; sourceTree = "<group>"; };
+		B30000000000000000000001 /* FJTorrent.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = FJTorrent.xcframework; path = Frameworks/FJTorrent.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -137,7 +135,7 @@
 				B3000000000000000000000A /* OpenSSL in Frameworks */,
 				41F731523092206B00EE47F8 /* PythonKit in Frameworks */,
 				B20000000000000000000002 /* Python.xcframework in Frameworks */,
-				B30000000000000000000002 /* LibTorrent.xcframework in Frameworks */,
+				B30000000000000000000002 /* FJTorrent.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -184,7 +182,7 @@
 			isa = PBXGroup;
 			children = (
 				B20000000000000000000001 /* Python.xcframework */,
-				B30000000000000000000001 /* LibTorrent.xcframework */,
+				B30000000000000000000001 /* FJTorrent.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -393,7 +391,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Downloads Python.xcframework / builds LibTorrent.xcframework when missing (idempotent).\n# Full log of the libtorrent build: build/libtorrent-ios.log\ncd \"$SRCROOT/..\"\nexec /bin/bash scripts/ios-prepare-frameworks.sh\n";
+			shellScript = "# Downloads Python.xcframework / builds FJTorrent.xcframework when missing (idempotent).\n# Full log of the libtorrent build: build/libtorrent-ios.log\ncd \"$SRCROOT/..\"\nexec /bin/bash scripts/ios-prepare-frameworks.sh\n";
 		};
 		C5000000000000000000000B /* Copy Web Extension Files */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -606,10 +604,6 @@
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "FetchJet requires access to your Documents folder to save and read downloaded files.";
-				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "FetchJet requires access to your Downloads folder to save downloaded files.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "FetchJet needs permission to add downloaded videos and photos to your photo library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FetchJet requires access to your photo library to save and export downloaded videos and images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -651,10 +645,6 @@
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "FetchJet requires access to your Documents folder to save and read downloaded files.";
-				INFOPLIST_KEY_NSDownloadsFolderUsageDescription = "FetchJet requires access to your Downloads folder to save downloaded files.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "FetchJet needs permission to add downloaded videos and photos to your photo library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FetchJet requires access to your photo library to save and export downloaded videos and images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -29,7 +29,8 @@ browser extension (MV3).
 
 Features: multi-connection HTTP piece downloads, video downloads through yt-dlp (with FetchJet's own
 engine doing the piece fetch and ffmpeg merging), HLS, torrents via libtorrent4j (desktop/Android)
-and LibTorrent (iOS), queue, scheduling, clipboard monitoring, browser bridge on `127.0.0.1:28450`.
+and libtorrent through our own `FJTorrent` wrapper (iOS), queue, scheduling, clipboard monitoring,
+browser bridge on `127.0.0.1:28450`.
 
 Competitors the owner compares against: IDM, EZOO (Ezoo Download), and the iOS app they mentioned.
 The owner wants speed parity and smooth UX.
@@ -42,11 +43,11 @@ The owner wants speed parity and smooth UX.
 | `sharedUI/`                   | Compose UI shared by desktop, Android, iOS. Key files: `App.kt`, `PiecesBar.kt`, `AddDownloadModalDialog.kt`, `FdmSettingsPanel.kt`, `PlaylistScheduleUi.kt`. |
 | `desktopApp/`                 | JVM app. `main.kt` has the local bridge (`inspectCached`, `inspectGates`, `recentAdds`).                                                                      |
 | `androidApp/`                 | Android app. `ExtensionBridgeServer.kt`, `MainActivity.kt`, `AndroidManifest.xml`.                                                                            |
-| `iosApp/`                     | Xcode project (hand-edited, ids `B2…`/`B3…`). Swift bridges: `NativeMediaExtractorBridge.swift`, `NativeTorrentBridge.swift`.                                 |
+| `iosApp/`                     | Xcode project (hand-edited, ids `B2…`/`B3…`). Swift bridges: `NativeMediaExtractorBridge.swift`, `NativeTorrentBridge.swift` (on `iosApp/FJTorrent`).         |
 | `extension/`                  | Browser extension. `background.js`, `content.js`, `manifest.json` (Chromium), `manifest.firefox.json`. Build: `build.ps1` (Windows) / `build.sh`.             |
 | `.github/workflows/build.yml` | CI. `workflow_dispatch` inputs: `release_version`, `android`, `windows`, `macos`, `linux`, `ios`, `extension`, `stores` (default true).                       |
 | `docs/`                       | GitHub Pages download page.                                                                                                                                   |
-| `CLAUDE_HANDOFF.md`           | iOS engine details (Python 3.13 + yt-dlp, curl_cffi, LibTorrent).                                                                                             |
+| `CLAUDE_HANDOFF.md`           | iOS engine details (Python 3.13 + yt-dlp, curl_cffi). Its torrent part is outdated: see Open issue 8.                                                         |
 
 Version constants:
 
@@ -55,7 +56,7 @@ Version constants:
   `CURRENT_PROJECT_VERSION = 3`
 - `extension/manifest.json` and `manifest.firefox.json` → `3.1.0`
 
-## Build and run (Windows dev machine, path `E:\tbib\FetchJet`)
+## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
 
 ```
 .\gradlew.bat :desktopApp:run
@@ -74,7 +75,13 @@ extension\build.ps1
   owner
   exports the log from the app (Export log -> Downloads) and sends the file.
 - Desktop log: `~/.fetch_jet/logs/app.log`.
-- Android log: `adb logcat` (the owner had trouble with adb earlier; ask before assuming it works).
+- Android device: the owner's A56 over wireless debugging (`adb mdns services` finds it when it is
+  on).
+  `adb install -r` fails if the installed app was signed with another key (release / Windows debug):
+  ask before `adb uninstall`, it wipes the app data. Bridge from the Mac:
+  `adb forward tcp:28451 tcp:28450`,
+  then POST `/add` with header `X-FetchJet: 1`. Permission dialogs on the phone are the owner's to
+  tap.
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
 
 ## Key engine pieces (sharedLogic)
@@ -108,7 +115,7 @@ extension\build.ps1
   `filesDir/logs/app.log` (2 MB rotate). Export via MediaStore Downloads (API 29+). Only installed
   in debug or verbose builds.
 - `core/settings/BehaviorSettings.kt`: connections, sortIntoFolders, FileCategory folders
-  (`stripTypeFolders`, `withTypeFolder`).
+  (`stripTypeFolders`).
 
 Media tools (yt-dlp, ffmpeg, JS runtime):
 
@@ -123,7 +130,10 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
   ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.
 - Android: python/ffmpeg/QuickJS/aria2c are bundled as `.so` (Android 10+ cannot run downloaded
-  binaries). Only yt-dlp (a Python zip) is downloaded/updated. JS runtime = QuickJS. deno for
+  binaries, so they can only change with a new APK). yt-dlp (a Python zip, data not a binary) ships
+  in
+  `res/raw/ytdlp` (copied there by CI) and is auto-updated at start; the owner chose to keep it
+  bundled. JS runtime = QuickJS. deno for
   Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
   `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
   `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
@@ -150,10 +160,12 @@ Bridges:
 
 ## Current state (release-v1.1.0)
 
-- **Check `git status` and `git log` before assuming anything.** The owner commits himself. Last
-  known commits: `3a1b7f7` (tools auto-update, deno, progress banner, cache), `3885730` (inspect
-  timing logs, HLS size-probe skip; it also set `verboseLogs=true` by mistake). The EJS cache
-  plugin, mhtml probe skip, iOS cache and `verboseLogs=false` were pending the owner's commit.
+- **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
+  never ask or offer to commit.
+- 2026-11-01: dead code and unused permissions removed on all platforms. Fixed: `DashboardUiEffect`
+  messages now show (SnackbarHost in `App.kt`); desktop `inspectCached` caches only results with a
+  real `formatId`; NPE when a link arrived during `DashboardViewModel.init` (fields moved above
+  `init`).
 - Android inspect on Samsung A56 (measured from logs, 2026-11-01): 30-40 s at the start of the
   day ->
   19-23 s after the size-probe fixes -> **8.7-10.4 s** with the EJS player cache (QuickJS 10-14 s ->
@@ -185,18 +197,24 @@ Bridges:
    on AMO with the `AMO_JWT_*` secrets: `stores` on = listed (Firefox Add-ons), off = unlisted and
    the `.xpi` is attached to the release. Edge: submitted with the `EDGE_*` secrets; the owner
    publishes it on Microsoft's side by hand. Read `build.yml` before calling anything here "not done".
-7. **Android manifest:** `READ_MEDIA_AUDIO`, `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` (or
-   `READ_EXTERNAL_STORAGE`) are declared but not needed. Remove them only when the owner says so.
-   Check that nothing else uses them.
-8. **Licensing:** GPL-3.0 `LICENSE` file exists in the root. LibTorrent-Swift has no LICENSE
-   upstream: confirm with the author before a public release.
+7. **Android manifest:** unused permissions (`READ_MEDIA_*`, `ACCESS_NETWORK_STATE`) removed on
+   2026-11-01 with the dead-code cleanup.
+8. **Licensing:** GPL-3.0 `LICENSE` file exists in the root. iOS torrent no longer uses
+   LibTorrent-Swift (XITRIX, no LICENSE upstream): replaced on 2026-11-01 by our own wrapper
+   `iosApp/FJTorrent` (Objective-C++, ~400 lines) over libtorrent-rasterbar (BSD, arvidn, pinned
+   commit
+   in `scripts/build-libtorrent-ios.command`), shipped as static `FJTorrent.xcframework`.
+   Simulator-tested: magnet metadata, .torrent file, file selection, pause (disk stops) / resume
+   (continues from the same %), download to completion at 4-7 MB/s. Not tested: a real iPhone.
 
 ## Release plan (1.1.0)
 
 - Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
   `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
 - Stability (2026-11-01): Windows, macOS, Linux, Android and the Chrome / Edge / Firefox extension
-  are stable. iOS = Beta (simulator only, never run on a real iPhone; the owner cannot test one).
+  are stable. Android re-tested on the A56 over wireless adb after the dead-code cleanup
+  (direct 10 MB, YouTube with merged video+audio, Sintel torrent 123 MB, no crash in logcat). iOS =
+  Beta (simulator only, never run on a real iPhone; the owner cannot test one).
 - `beta` input: comma list of beta platforms (`ios`, `ios,linux`, `all`; empty = all stable). It
   writes `<!-- fetchjet-beta: ... -->` into the notes; the downloads page (`docs/index.html`) marks
   those platforms. Never make the release a GitHub "pre-release": the app reads `/releases/latest`,
@@ -239,7 +257,7 @@ there before an App Store build.
 ## Backlog (from CLAUDE_HANDOFF.md, adjusted)
 
 1. iOS: verify the Python 3.13 media engine on a real device or simulator.
-2. iOS: LibTorrent flow end to end.
+2. iOS: torrent flow end to end: done on the simulator (FJTorrent), real iPhone pending.
 3. `MediaStreamDownloader`: remove Invidious/cobalt resolvers. Stream bodies with
    `prepareGet().execute` instead of `client.get`.
 4. `DashboardViewModel`: lifecycle ViewModel (partly done). Split `App.kt` and

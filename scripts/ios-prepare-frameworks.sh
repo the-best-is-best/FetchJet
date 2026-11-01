@@ -1,7 +1,7 @@
 #!/bin/bash
 # Xcode build phase "Prepare native frameworks" (runs before everything else, idempotent).
 #  1. iosApp/Frameworks/Python.xcframework  - downloaded from BeeWare Python-Apple-support
-#  2. iosApp/Frameworks/LibTorrent.xcframework - built from source by scripts/build-libtorrent-ios.command
+#  2. iosApp/Frameworks/FJTorrent.xcframework  - built from source by scripts/build-libtorrent-ios.command
 # Both are git-ignored; this phase makes a fresh clone / CI machine self-sufficient.
 set -o pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -30,8 +30,8 @@ if [ ! -f "$FW/Python.xcframework/build/utils.sh" ]; then
 fi
 
 # ---- 2. libtorrent ------------------------------------------------------------------------
-if [ ! -d "$FW/LibTorrent.xcframework" ]; then
-  echo "note: LibTorrent.xcframework missing - building it (first time takes ~20 minutes)"
+if [ ! -d "$FW/FJTorrent.xcframework" ]; then
+  echo "note: FJTorrent.xcframework missing - building it (first time takes ~20 minutes)"
   BREW_BIN="$( [ -x /opt/homebrew/bin/brew ] && echo /opt/homebrew/bin || echo /usr/local/bin )"
   # Nested xcodebuild must not inherit this build's environment (SDKROOT, PLATFORM_NAME, ...).
   env -i HOME="$HOME" USER="$USER" LANG=en_US.UTF-8 \
@@ -39,8 +39,8 @@ if [ ! -d "$FW/LibTorrent.xcframework" ]; then
       DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)}" \
       bash "$ROOT/scripts/build-libtorrent-ios.command"
   status=$?
-  if [ $status -ne 0 ] || [ ! -d "$FW/LibTorrent.xcframework" ]; then
-    echo "error: LibTorrent.xcframework build failed (exit $status). See build/libtorrent-ios.log. Prerequisites: brew install cmake boost"
+  if [ $status -ne 0 ] || [ ! -d "$FW/FJTorrent.xcframework" ]; then
+    echo "error: FJTorrent.xcframework build failed (exit $status). See build/libtorrent-ios.log. Prerequisites: brew install cmake boost"
     exit 1
   fi
 fi

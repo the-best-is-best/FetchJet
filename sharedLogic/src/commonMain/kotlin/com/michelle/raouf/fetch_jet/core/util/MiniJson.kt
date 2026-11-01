@@ -131,9 +131,6 @@ fun Map<String, Any?>.getLong(key: String): Long? = (this[key] as? Number)?.toLo
 fun Map<String, Any?>.getDouble(key: String): Double? = (this[key] as? Number)?.toDouble()
 
 @Suppress("UNCHECKED_CAST")
-fun Map<String, Any?>.getObject(key: String): Map<String, Any?>? = this[key] as? Map<String, Any?>
-
-@Suppress("UNCHECKED_CAST")
 fun Map<String, Any?>.getArray(key: String): List<Any?>? = this[key] as? List<Any?>
 
 @Suppress("UNCHECKED_CAST")

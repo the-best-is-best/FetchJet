@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
@@ -27,7 +26,6 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
 
-
 class DashboardViewModel(
 
     private val queueRepository: QueueManagerRepository = QueueManagerRepository.getInstance()
@@ -37,12 +35,10 @@ class DashboardViewModel(
     private val settingsRepository =
         com.michelle.raouf.fetch_jet.core.settings.AppSettingsRepository(queueRepository.pathResolver)
 
-
     /** Background work; cancelled with the ViewModel ([onCleared]). */
     private val scope = CoroutineScope(
         viewModelScope.coroutineContext + Dispatchers.IO + SupervisorJob(viewModelScope.coroutineContext[Job])
     )
-
 
     private val _uiState = MutableStateFlow(
 
@@ -56,11 +52,9 @@ class DashboardViewModel(
 
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
-
-    private val _uiEffect = MutableSharedFlow<DashboardUiEffect>()
+    private val _uiEffect = MutableSharedFlow<DashboardUiEffect>(extraBufferCapacity = 8)
 
     val uiEffect: SharedFlow<DashboardUiEffect> = _uiEffect.asSharedFlow()
-
 
     private var pendingExternalUrl: String? = null
     private var pendingExternalHeaders: Map<String, String> = emptyMap()
@@ -109,6 +103,9 @@ class DashboardViewModel(
         }
     }
 
+    private val detectLinkTypeUseCase =
+        com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
+    private var toolStatusPollJob: Job? = null
 
     init {
 
@@ -145,15 +142,12 @@ class DashboardViewModel(
 
         }
 
-
-
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest =
             { request -> handleExternalRequest(request) }
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =
             { requests -> handleExternalBatch(requests) }
 
     }
-
 
     private fun persistCurrentSettings() {
 
@@ -180,15 +174,6 @@ class DashboardViewModel(
         )
 
     }
-
-
-    fun handleExternalUrl(url: String, cookie: String = "") =
-        handleExternalRequest(
-            com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest(
-                url,
-                cookie
-            )
-        )
 
     /** One link from the browser: open the Add dialog pre-filled, remember its headers. */
     fun handleExternalRequest(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
@@ -288,12 +273,12 @@ class DashboardViewModel(
             val same = queueRepository.allTasksFlow.value.firstOrNull { t ->
                 (t.url == request.url || t.originalUrl == request.url) &&
                         (wantedFormat == null || t.formatId == wantedFormat) &&
-                        t.status != com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.COMPLETED &&
-                        t.status != com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.ERROR
+                        t.status != DownloadStatus.COMPLETED &&
+                        t.status != DownloadStatus.ERROR
             }
             if (same != null) {
                 // Paused → continue it; running / queued → just show it. Never a silent no-op.
-                if (same.status == com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.PAUSED) {
+                if (same.status == DownloadStatus.PAUSED) {
                     queueRepository.resumeTask(same.id)
                 }
                 _uiState.update {
@@ -384,8 +369,6 @@ class DashboardViewModel(
         }
     }
 
-
-    private var toolStatusPollJob: kotlinx.coroutines.Job? = null
 
     /**
      * While the Add dialog is open and the media engine is not ready yet (iOS boots the
@@ -495,8 +478,6 @@ class DashboardViewModel(
 
                     val totalUlSpeed = activeTasks.sumOf { it.uploadSpeedBytesPerSec }
 
-
-
                     state.copy(
 
                         allTasks = tasks,
@@ -516,12 +497,6 @@ class DashboardViewModel(
         }
 
     }
-
-
-    private val detectLinkTypeUseCase =
-
-        com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
-
 
     fun onEvent(event: DashboardUiEvent) {
 
@@ -592,8 +567,6 @@ class DashboardViewModel(
 
                     emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
 
-
-
                 _uiState.update {
 
                     it.copy(
@@ -636,7 +609,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnDisableTorrentUploadToggled -> {
 
                 _uiState.update { it.copy(disableTorrentUpload = event.disable) }
@@ -644,7 +616,6 @@ class DashboardViewModel(
                 persistCurrentSettings()
 
             }
-
 
             is DashboardUiEvent.OnToggleAddDialog -> {
 
@@ -675,8 +646,6 @@ class DashboardViewModel(
                 val defaultQualities =
 
                     emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
-
-
 
                 _uiState.update { state ->
 
@@ -715,9 +684,7 @@ class DashboardViewModel(
                 }
                 if (event.show && !installed) pollToolStatusWhileNotReady()
 
-
             }
-
 
             is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged -> {
 
@@ -737,7 +704,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged -> {
 
                 _uiState.update {
@@ -756,7 +722,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnSpeedDisplayUnitChanged -> {
                 _uiState.update { it.copy(speedDisplayUnit = event.unit) }
                 persistCurrentSettings()
@@ -772,7 +737,6 @@ class DashboardViewModel(
 
             }
 
-
             DashboardUiEvent.OnThemeToggled -> {
 
                 _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
@@ -780,7 +744,6 @@ class DashboardViewModel(
                 persistCurrentSettings()
 
             }
-
 
             DashboardUiEvent.OnAddDownloadClicked -> addDownload()
 
@@ -790,13 +753,11 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnResumeClicked -> {
 
                 scope.launch { queueRepository.resumeTask(event.taskId) }
 
             }
-
 
             is DashboardUiEvent.OnCancelClicked, is DashboardUiEvent.OnRemoveClicked -> {
 
@@ -814,7 +775,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnConfirmRemoveClicked -> {
 
                 val taskId = _uiState.value.removeConfirmationTaskId
@@ -828,7 +788,6 @@ class DashboardViewModel(
                 }
 
             }
-
 
             DashboardUiEvent.OnConfirmBrowserFallback -> {
                 val url = _uiState.value.browserFallbackUrl
@@ -855,7 +814,6 @@ class DashboardViewModel(
                 }
 
             }
-
 
             DashboardUiEvent.OnResumeExistingDuplicateClicked -> {
                 val duplicate = _uiState.value.duplicateTaskAlert
@@ -931,7 +889,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnDownloadSpeedLimitChanged -> {
 
                 _uiState.update { it.copy(selectedDownloadSpeedLimitBytes = event.limitBytesPerSec) }
@@ -943,7 +900,6 @@ class DashboardViewModel(
                 _uiState.update { it.copy(selectedUploadSpeedLimitBytes = event.limitBytesPerSec) }
 
             }
-
 
             is DashboardUiEvent.OnTabSelected -> {
 
@@ -969,7 +925,6 @@ class DashboardViewModel(
                     )
                 }
             }
-
 
             DashboardUiEvent.OnInspectTorrentClicked -> inspectTorrent()
 
@@ -1051,7 +1006,6 @@ class DashboardViewModel(
                 }
             }
 
-
             is DashboardUiEvent.OnSelectAllMediaQualitiesToggled -> {
 
                 _uiState.update { state ->
@@ -1084,7 +1038,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnTorrentFilePriorityChanged -> {
 
                 _uiState.update { state ->
@@ -1101,7 +1054,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> {
 
                 _uiState.update { state ->
@@ -1115,7 +1067,6 @@ class DashboardViewModel(
                 }
 
             }
-
 
             is DashboardUiEvent.OnTaskTorrentFileSelectionToggled -> {
 
@@ -1131,7 +1082,6 @@ class DashboardViewModel(
 
             }
 
-
             is DashboardUiEvent.OnTaskTorrentFilePriorityChanged -> {
 
                 queueRepository.updateTorrentFilePriority(
@@ -1145,7 +1095,6 @@ class DashboardViewModel(
                 )
 
             }
-
 
             DashboardUiEvent.OnDownloadYtDlpClicked -> {
 
@@ -1227,7 +1176,6 @@ class DashboardViewModel(
 
     }
 
-
     private fun inspectTorrent() {
 
         val url = _uiState.value.inputUrl
@@ -1239,8 +1187,6 @@ class DashboardViewModel(
             return
 
         }
-
-
 
         scope.launch {
 
@@ -1288,7 +1234,6 @@ class DashboardViewModel(
 
     }
 
-
     private fun inspectMedia() {
 
         val url = _uiState.value.inputUrl
@@ -1300,8 +1245,6 @@ class DashboardViewModel(
             return
 
         }
-
-
 
         scope.launch {
             _uiState.update { it.copy(isInspectingMedia = true, inspectMediaError = null) }
@@ -1396,7 +1339,6 @@ class DashboardViewModel(
         }
 
     }
-
 
     private fun isSameDownload(task: DownloadTask, newUrl: String): Boolean {
         val trimmed = newUrl.trim()
@@ -1955,7 +1897,6 @@ class DashboardViewModel(
                         it.status == DownloadStatus.QUEUED
 
             }
-
 
             DashboardTab.COMPLETED -> tasks.filter { it.status == DownloadStatus.COMPLETED }
 

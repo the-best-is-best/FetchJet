@@ -5,7 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,8 +48,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -89,6 +86,7 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.canResume
 import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
+import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEffect
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
@@ -148,7 +146,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
         var last: String? = if (clipboardFirstRun) {
             try {
-                com.michelle.raouf.fetch_jet.getClipboardText()
+                getClipboardText()
             } catch (_: Throwable) {
                 null
             }
@@ -157,7 +155,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         while (true) {
             kotlinx.coroutines.delay(800)
             val text = try {
-                com.michelle.raouf.fetch_jet.getClipboardText()
+                getClipboardText()
             } catch (_: Throwable) {
                 null
             }
@@ -194,6 +192,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
 
     LaunchedEffect(state.isDarkMode) {
         onDarkModeChanged?.invoke(state.isDarkMode)
+    }
+
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is DashboardUiEffect.ShowToast -> snackbarHostState.showSnackbar(effect.text)
+            }
+        }
     }
 
     FetchJetTheme(isDarkMode = state.isDarkMode) {
@@ -738,6 +745,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissFileConflictDialog) }
                 )
             }
+
+            Box(
+                modifier = Modifier.fillMaxSize().padding(bottom = 88.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                androidx.compose.material3.SnackbarHost(snackbarHostState)
+            }
         }
     }
 }
@@ -826,378 +840,6 @@ private fun SettingsContentView(
         onDownloadYtDlpClicked = { viewModel.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked) },
         onApplySettings = { viewModel.onEvent(DashboardUiEvent.OnApplySettingsClicked) }
     )
-}
-
-@Composable
-private fun FdmNavigationRail(
-    selectedTab: DashboardTab,
-    allCount: Int,
-    activeCount: Int,
-    completedCount: Int,
-    torrentCount: Int,
-    mediaCount: Int,
-    onTabSelected: (DashboardTab) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .width(76.dp)
-            .fillMaxHeight(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .statusBarsPadding()
-                .displayCutoutPadding()
-                .navigationBarsPadding()
-                .padding(vertical = 12.dp, horizontal = 6.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(Res.drawable.ic_fetchjet_logo),
-                contentDescription = "Logo",
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            val items = listOfNotNull(
-                Triple(DashboardTab.ALL, "All", "📥" to allCount),
-                Triple(DashboardTab.ACTIVE, "Active", "⚡" to activeCount),
-                Triple(DashboardTab.COMPLETED, "Done", "✅" to completedCount),
-                if (AppFeatures.torrent) Triple(
-                    DashboardTab.TORRENT,
-                    "P2P",
-                    "🧲" to torrentCount
-                ) else null,
-                if (AppFeatures.mediaExtractor) Triple(
-                    DashboardTab.MEDIA,
-                    "Media",
-                    "🎬" to mediaCount
-                ) else null
-            )
-
-            items.forEach { (tab, label, iconBadge) ->
-                val isSelected = selectedTab == tab
-                val (icon, badgeCount) = iconBadge
-                RailNavItem(
-                    icon = icon,
-                    label = label,
-                    badgeCount = badgeCount,
-                    isSelected = isSelected,
-                    onClick = { onTabSelected(tab) }
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            RailNavItem(
-                icon = "⚙️",
-                label = "Settings",
-                badgeCount = null,
-                isSelected = selectedTab == DashboardTab.SETTINGS,
-                onClick = { onTabSelected(DashboardTab.SETTINGS) }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-    }
-}
-
-@Composable
-private fun RailNavItem(
-    icon: String,
-    label: String,
-    badgeCount: Int?,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val containerColor =
-        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val contentColor =
-        if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(containerColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (badgeCount != null && badgeCount > 0) {
-            BadgedBox(badge = {
-                Badge(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Text("$badgeCount", fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                }
-            }) {
-                Text(icon, fontSize = 20.sp)
-            }
-        } else {
-            Text(icon, fontSize = 20.sp)
-        }
-        Spacer(modifier = Modifier.height(3.dp))
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = contentColor,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun FdmNavigationSidebar(
-    selectedTab: DashboardTab,
-    allCount: Int,
-    activeCount: Int,
-    completedCount: Int,
-    torrentCount: Int,
-    mediaCount: Int,
-    onTabSelected: (DashboardTab) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .width(220.dp)
-            .fillMaxHeight(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .statusBarsPadding()
-                .displayCutoutPadding()
-                .navigationBarsPadding()
-                .padding(12.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // App Brand Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.ic_fetchjet_logo),
-                    contentDescription = "FetchJet Logo",
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "FetchJet",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Download Accelerator",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Navigation Items
-            SidebarNavItem("📥 All Downloads", allCount, selectedTab == DashboardTab.ALL) {
-                onTabSelected(DashboardTab.ALL)
-            }
-
-            SidebarNavItem("⚡ Active Tasks", activeCount, selectedTab == DashboardTab.ACTIVE) {
-                onTabSelected(DashboardTab.ACTIVE)
-            }
-
-            SidebarNavItem("✅ Completed", completedCount, selectedTab == DashboardTab.COMPLETED) {
-                onTabSelected(DashboardTab.COMPLETED)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (AppFeatures.torrent) {
-                SidebarNavItem(
-                    "🧲 BitTorrent P2P",
-                    torrentCount,
-                    selectedTab == DashboardTab.TORRENT
-                ) {
-                    onTabSelected(DashboardTab.TORRENT)
-                }
-            }
-
-            if (AppFeatures.mediaExtractor) {
-                SidebarNavItem("🎬 Media Extractor", mediaCount, selectedTab == DashboardTab.MEDIA) {
-                    onTabSelected(DashboardTab.MEDIA)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            SidebarNavItem("⚙️ Settings & Paths", null, selectedTab == DashboardTab.SETTINGS) {
-                onTabSelected(DashboardTab.SETTINGS)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-    }
-}
-
-@Composable
-private fun SidebarNavItem(
-    label: String,
-    badgeCount: Int?,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val containerColor =
-        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val contentColor =
-        if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = contentColor
-        )
-
-        if (badgeCount != null) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-            ) {
-                Text(
-                    text = "$badgeCount",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FdmTopHeader(
-    selectedTab: DashboardTab = DashboardTab.ALL,
-    totalDlSpeed: Long,
-    totalUlSpeed: Long,
-    speedDisplayUnit: String = "MB/s",
-    isDarkMode: Boolean,
-    onThemeToggled: () -> Unit,
-    onNewDownloadClicked: () -> Unit
-) {
-    val pageTitle = when (selectedTab) {
-        DashboardTab.ALL -> "Dashboard"
-        DashboardTab.ACTIVE -> "Active Tasks"
-        DashboardTab.COMPLETED -> "Completed"
-        DashboardTab.TORRENT -> "BitTorrent P2P"
-        DashboardTab.MEDIA -> "Media Extractor"
-        DashboardTab.SETTINGS -> "Settings & Paths"
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = pageTitle,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Live Speed Gauge Badge
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                ),
-                modifier = Modifier.padding(end = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⬇️ ", fontSize = 12.sp)
-                        Text(
-                            text = formatSpeed(totalDlSpeed, speedDisplayUnit),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⬆️ ", fontSize = 12.sp)
-                        Text(
-                            text = formatSpeed(totalUlSpeed, speedDisplayUnit),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
-            }
-
-            // Theme Switcher Button
-            IconButton(
-                onClick = onThemeToggled,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            ) {
-                Text(if (isDarkMode) "☀️" else "🌙", fontSize = 18.sp)
-            }
-
-            // Primary Add Download Button
-            Button(
-                onClick = onNewDownloadClicked,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-            ) {
-                Text("+ New Download", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
 }
 
 @Composable
@@ -1482,7 +1124,6 @@ private fun DownloadTaskItem(
                         ) else "Unknown"
                         }"
 
-
                 val speedText = if (task.status == DownloadStatus.DOWNLOADING) {
                     if (task.postProcessLabel != null) {
                         "${task.postProcessLabel}..."
@@ -1711,46 +1352,8 @@ private fun DetailSecondaryButton(text: String, modifier: Modifier, onClick: () 
 }
 
 @Composable
-private fun EngineBadge(engineType: EngineType) {
-    val bg = when (engineType) {
-        EngineType.HTTP_DIRECT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        EngineType.BITTORRENT -> EngineBitTorrent.copy(alpha = 0.15f)
-        EngineType.MEDIA_STREAM -> EngineMediaStream.copy(alpha = 0.15f)
-    }
-    val border = when (engineType) {
-        EngineType.HTTP_DIRECT -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-        EngineType.BITTORRENT -> EngineBitTorrent.copy(alpha = 0.4f)
-        EngineType.MEDIA_STREAM -> EngineMediaStream.copy(alpha = 0.4f)
-    }
-    val text = when (engineType) {
-        EngineType.HTTP_DIRECT -> MaterialTheme.colorScheme.primary
-        EngineType.BITTORRENT -> EngineBitTorrent
-        EngineType.MEDIA_STREAM -> EngineMediaStream
-    }
-    val label = when (engineType) {
-        EngineType.HTTP_DIRECT -> "⚡ HTTP Direct"
-        EngineType.BITTORRENT -> "🧲 BitTorrent P2P"
-        EngineType.MEDIA_STREAM -> "🎬 Media Stream"
-    }
-
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = bg,
-        border = BorderStroke(1.dp, border)
-    ) {
-        Text(
-            text = label,
-            color = text,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
-    }
-}
-
-@Composable
 private fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
-    androidx.compose.material3.Surface(
+    Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
@@ -1765,12 +1368,12 @@ private fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
             )
             Spacer(modifier = Modifier.height(6.dp))
             if (fraction != null) {
-                androidx.compose.material3.LinearProgressIndicator(
+                LinearProgressIndicator(
                     progress = { fraction },
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
-                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -1924,26 +1527,6 @@ private fun TaskListArea(
                 items(tasks, key = { it.id }) { taskItem(it) }
             }
         }
-    }
-}
-
-/** "Resumable" / "No resume" chip; nothing while unknown (HTTP link not connected yet). */
-@Composable
-private fun ResumeBadge(canResume: Boolean?) {
-    if (canResume == null) return
-    val color = if (canResume) StatusCompleted else StatusPaused
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.4f))
-    ) {
-        Text(
-            text = if (canResume) "↻ Resumable" else "⚠ No resume",
-            color = color,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
     }
 }
 
@@ -2121,200 +1704,6 @@ private fun SectionHeader(
                 .height(1.dp)
                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         )
-    }
-}
-
-/** Sort chips: Date (newest/oldest), Size (largest/smallest), Name. Tapping again flips. */
-@Composable
-private fun SortBar(current: TaskSortOption, onChange: (TaskSortOption) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(bottom = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Sort",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(end = 2.dp)
-        )
-        SortChip(
-            label = "Date",
-            arrow = when (current) {
-                TaskSortOption.DATE_DESC -> " ↓"
-                TaskSortOption.DATE_ASC -> " ↑"
-                else -> ""
-            },
-            selected = current == TaskSortOption.DATE_DESC || current == TaskSortOption.DATE_ASC,
-            onClick = {
-                onChange(if (current == TaskSortOption.DATE_DESC) TaskSortOption.DATE_ASC else TaskSortOption.DATE_DESC)
-            }
-        )
-        SortChip(
-            label = "Size",
-            arrow = when (current) {
-                TaskSortOption.SIZE_DESC -> " ↓"
-                TaskSortOption.SIZE_ASC -> " ↑"
-                else -> ""
-            },
-            selected = current == TaskSortOption.SIZE_DESC || current == TaskSortOption.SIZE_ASC,
-            onClick = {
-                onChange(if (current == TaskSortOption.SIZE_DESC) TaskSortOption.SIZE_ASC else TaskSortOption.SIZE_DESC)
-            }
-        )
-        SortChip(
-            label = "Name",
-            arrow = if (current == TaskSortOption.NAME_ASC) " ↓" else "",
-            selected = current == TaskSortOption.NAME_ASC,
-            onClick = { onChange(TaskSortOption.NAME_ASC) }
-        )
-    }
-}
-
-@Composable
-private fun SortChip(label: String, arrow: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label + arrow, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
-        shape = RoundedCornerShape(10.dp),
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-            selectedLabelColor = MaterialTheme.colorScheme.primary
-        ),
-        modifier = Modifier.height(30.dp)
-    )
-}
-
-@Composable
-private fun FdmMobileTopHeader(
-    totalDlSpeed: Long,
-    totalUlSpeed: Long,
-    speedDisplayUnit: String = "MB/s",
-    isDarkMode: Boolean,
-    onThemeToggled: () -> Unit,
-    onNewDownloadClicked: () -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_fetchjet_logo),
-                        contentDescription = "FetchJet Logo",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "FetchJet",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 18.sp
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    IconButton(
-                        onClick = onThemeToggled,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    ) {
-                        Text(if (isDarkMode) "☀️" else "🌙", fontSize = 16.sp)
-                    }
-
-                    Button(
-                        onClick = onNewDownloadClicked,
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Text("+ Add", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
-            }
-
-            // Live Traffic Sub-banner when transfers are active
-            if (totalDlSpeed > 0L || totalUlSpeed > 0L) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    border = BorderStroke(
-                        0.5.dp,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "⚡ Live Traffic",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "⬇ ${formatSpeed(totalDlSpeed, speedDisplayUnit)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            if (totalUlSpeed > 0L) {
-                                Text(
-                                    text = "⬆ ${formatSpeed(totalUlSpeed, speedDisplayUnit)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            )
-        }
     }
 }
 
@@ -2919,7 +2308,6 @@ private fun FjTopBar(
     }
 }
 
-
 /** One header group in the list: Downloading / Waiting / Paused & failed / Completed. */
 private class TaskStateGroup(
     val key: String,
@@ -3115,7 +2503,6 @@ private fun FjPhoneHeader(
         }
     }
 }
-
 
 /** Tablet navigation: an 80dp rail of state filters with counts, Settings at the bottom. */
 @Composable

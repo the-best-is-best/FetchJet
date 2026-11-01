@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -134,19 +135,6 @@ object FileCategory {
                 allFolders.firstOrNull { p.endsWith("/$it") || p.endsWith("\\$it") } ?: return p
             p = p.dropLast(hit.length + 1).trimEnd('/', '\\')
         }
-    }
-
-    /** [base] + the type folder for [fileName], idempotent (a base already ending in a type folder is cleaned first). */
-    fun withTypeFolder(
-        base: String,
-        fileName: String,
-        isMedia: Boolean = false,
-        isTorrent: Boolean = false
-    ): String {
-        val clean = stripTypeFolders(base)
-        val sub = folderFor(fileName, isMedia, isTorrent) ?: return clean
-        val sep = if (clean.contains('\\')) "\\" else "/"
-        return clean + sep + sub
     }
 
     /**

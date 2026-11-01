@@ -271,9 +271,6 @@ actual suspend fun inspectPlatformQualities(
 
                 else -> 0.0
             }
-            val estimatedFromBitrate = if (videoDuration > 0 && bitrateBps > 0.0) {
-                ((bitrateBps / 8.0) * videoDuration).toLong()
-            } else -1L
 
             val clenFromUrl =
                 Regex("""[?&]clen=(\d+)""").find(directUrl)?.groupValues?.get(1)?.toLongOrNull()
@@ -975,7 +972,6 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
 }
 
-
 actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         val trimmedUrl = normalizePlaylistUrl(url)
@@ -999,7 +995,6 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
 
 actual fun lastMediaInspectionError(): String? = null
 
-
 actual suspend fun runYtDlpJson(
     url: String,
     selector: String,
@@ -1019,7 +1014,7 @@ actual suspend fun runYtDlpJson(
         val response = try {
             RuntimeManager.getInstance().execute(request)
         } catch (e: Exception) {
-            com.michelle.raouf.fetch_jet.core.log.AppLog.d {
+            AppLog.d {
                 "runYtDlpJson: yt-dlp failed: ${
                     e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
                 }"

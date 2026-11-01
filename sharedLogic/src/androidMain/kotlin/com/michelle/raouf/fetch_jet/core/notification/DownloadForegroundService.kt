@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.core.notification
 
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -149,19 +148,6 @@ class DownloadForegroundService : Service() {
                     context.startService(intent)
                 }
                 isRunning = true
-            } catch (_: Throwable) {
-            }
-        }
-
-        fun updateNotification(context: Context) {
-            if (!isRunning) return
-            try {
-                val notificationManager =
-                    context.getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
-                        ?: return
-                val notification =
-                    DownloadNotificationManager.buildLiveActivityNotification(context)
-                notificationManager.notify(FOREGROUND_NOTIFICATION_ID, notification)
             } catch (_: Throwable) {
             }
         }

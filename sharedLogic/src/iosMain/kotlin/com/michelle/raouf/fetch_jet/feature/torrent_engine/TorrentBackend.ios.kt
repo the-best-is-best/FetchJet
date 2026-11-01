@@ -15,7 +15,7 @@ import platform.posix.memcpy
 
 /**
  * BitTorrent engine for iOS: delegates to the Swift [IosTorrentBridge] (libtorrent via
- * LibTorrent-Swift). The FULL edition registers that bridge at startup; the store edition
+ * the FJTorrent wrapper). The FULL edition registers that bridge at startup; the store edition
  * does not, so [isSupported] stays false and the UI hides the engine.
  *
  * Note: libtorrent runs in-process, so torrents only progress while the app is in the

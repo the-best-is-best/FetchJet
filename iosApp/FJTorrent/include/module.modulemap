@@ -1,0 +1,8 @@
+module FJTorrent {
+    header "FJTorrent.h"
+    link "c++"
+    link "iconv"
+    link framework "SystemConfiguration"
+    link framework "CoreFoundation"
+    export *
+}

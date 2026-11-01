@@ -8,6 +8,8 @@ package com.deniscerri.ytdl.core
 
 import android.content.Context
 import android.os.Build
+import com.deniscerri.ytdl.core.RuntimeManager.execute
+import com.deniscerri.ytdl.core.RuntimeManager.executeStreaming
 import com.deniscerri.ytdl.core.models.ExecuteException
 import com.deniscerri.ytdl.core.models.ExecuteResponse
 import com.deniscerri.ytdl.core.models.YTDLRequest
@@ -274,15 +276,6 @@ object RuntimeManager {
         }
     }
 
-    fun reInit(context: Context) {
-        synchronized(initLock) {
-            initialized = false
-            initLatch = CountDownLatch(1)
-            init(context)
-        }
-
-    }
-
     fun assertInit() {
         val success = initLatch.await(30, TimeUnit.SECONDS)
         if (!success || !initialized) {
@@ -480,95 +473,6 @@ object RuntimeManager {
         return executeImpl(fullCommand, processId, redirectErrorStream, callback = callback)
     }
 
-    fun executePython(
-        command: String,
-        processId: String? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(pythonLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(fullCommand, processId, true, callback = callback)
-    }
-
-    fun executeNode(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(nodeLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            extraEnv = getNodeEnvironment(),
-            callback = callback
-        )
-    }
-
-    /**
-     * Env only applied to node/npm processes. Not global, so the node yt-dlp spawns for js challenges stays untouched
-     */
-    fun getNodeEnvironment(): Map<String, String> {
-        val env = mutableMapOf("HOME" to NODE_HOME)
-        val certFile = listOf(nodeLocation, pythonLocation)
-            .map { File(it.ldDir, "usr/etc/tls/cert.pem") }
-            .firstOrNull { it.exists() }
-            ?: ENV_SSL_CERT_FILE?.let { File(it) }?.takeIf { it.exists() }
-        if (certFile != null) {
-            env["SSL_CERT_FILE"] = certFile.absolutePath
-            env["NODE_EXTRA_CA_CERTS"] = certFile.absolutePath
-        }
-        if (NODE_OPTIONS.isNotEmpty()) env["NODE_OPTIONS"] = NODE_OPTIONS
-        return env
-    }
-
-    fun executeNpm(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(nodeLocation.executable.absolutePath, NPM_CLI_PATH)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            extraEnv = getNodeEnvironment(),
-            callback = callback
-        )
-    }
-
-
-    fun executeDeno(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(denoLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            callback = callback
-        )
-    }
-
     fun executeImpl(
         fullCommand: List<String>,
         processId: String? = null,
@@ -721,14 +625,6 @@ object RuntimeManager {
         return env
     }
 
-    fun getEnvironmentForTerminal(): MutableMap<String, String?> {
-        val env = getEnvironment().toMutableMap()
-        val homePath = FileUtil.getDefaultTerminalPath()
-        File(homePath).mkdirs()
-        env["HOME"] = homePath
-        return env
-    }
-
     @Synchronized
     @Throws(ExecuteException::class)
     fun updateYTDL(
@@ -768,22 +664,6 @@ object RuntimeManager {
 
     open class UpdateChannel(val apiUrl: String) {
         object STABLE : UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
-        object NIGHTLY :
-            UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest")
-
-        object MASTER :
-            UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp-master-builds/releases/latest")
-
-        companion object {
-            @JvmField
-            val _STABLE: STABLE = STABLE
-
-            @JvmField
-            val _NIGHTLY: NIGHTLY = NIGHTLY
-
-            @JvmField
-            val _MASTER: MASTER = MASTER
-        }
     }
 
     @JvmStatic

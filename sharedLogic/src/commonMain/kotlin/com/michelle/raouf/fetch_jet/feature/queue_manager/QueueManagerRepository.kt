@@ -64,10 +64,8 @@ class QueueManagerRepository(
     }
 
     private val _globalDownloadSpeedLimit = MutableStateFlow(0L)
-    val globalDownloadSpeedLimit: StateFlow<Long> = _globalDownloadSpeedLimit.asStateFlow()
 
     private val _globalUploadSpeedLimit = MutableStateFlow(0L)
-    val globalUploadSpeedLimit: StateFlow<Long> = _globalUploadSpeedLimit.asStateFlow()
 
     fun setGlobalDownloadSpeedLimit(limit: Long) {
         _globalDownloadSpeedLimit.value = limit
@@ -614,24 +612,6 @@ class QueueManagerRepository(
             EngineType.HTTP_DIRECT -> httpEngine.resume(taskId)
             EngineType.BITTORRENT -> torrentEngine.resume(taskId)
             EngineType.MEDIA_STREAM -> mediaEngine.resume(taskId)
-        }
-    }
-
-    suspend fun cancelTask(taskId: String): Result<Unit> {
-        resumeQueue.update { it - taskId }
-        if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
-            return Result.success(Unit) // never started: nothing on disk
-        }
-        val task = allTasksFlow.value.find { it.id == taskId }
-            ?: return Result.failure(Exception("Task not found"))
-        notificationManager.cancelNotification(taskId)
-        activeRunningTaskIds.remove(taskId)
-        completedNotifiedTaskIds.remove(taskId)
-
-        return when (task.engineType) {
-            EngineType.HTTP_DIRECT -> httpEngine.cancel(taskId)
-            EngineType.BITTORRENT -> torrentEngine.cancel(taskId)
-            EngineType.MEDIA_STREAM -> mediaEngine.cancel(taskId)
         }
     }
 

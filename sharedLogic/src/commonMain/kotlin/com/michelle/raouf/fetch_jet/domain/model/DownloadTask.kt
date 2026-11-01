@@ -10,11 +10,6 @@ enum class DownloadStatus {
     ERROR
 }
 
-data class SpeedLimit(
-    val maxDownloadBytesPerSec: Long = 0L,
-    val maxUploadBytesPerSec: Long = 0L
-)
-
 data class DownloadChunk(
     val chunkIndex: Int,
     val startByte: Long,

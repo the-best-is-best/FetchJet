@@ -8,43 +8,11 @@ package com.deniscerri.ytdl.util
 
 import android.content.Context
 import android.os.Environment
-import androidx.preference.PreferenceManager
-import com.deniscerri.ytdl.core.models.YTDLRequest
 import java.io.File
 
 object FileUtil {
     fun getBundledYTDLPPluginsPath(context: Context): String {
         return File(context.filesDir, "yt_dlp_plugins").absolutePath
-    }
-
-    fun getDefaultApplicationPath(): String {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)?.absolutePath +
-                File.separator + "FetchJet"
-    }
-
-    fun getDefaultTerminalPath(): String {
-        return "${getDefaultApplicationPath()}/Terminal"
-    }
-
-    fun getDefaultApksPath(): String {
-        return "${getDefaultApplicationPath()}/Apks"
-    }
-
-    fun getCachePath(context: Context): String {
-        val preference =
-            PreferenceManager.getDefaultSharedPreferences(context).getString("cache_path", "")
-        if (!preference.isNullOrBlank()) {
-            return preference
-        }
-        return "${context.cacheDir.absolutePath}/ytdlnis_cache/"
-    }
-
-    fun getCacheYTDLPPath(context: Context): String {
-        return "${getCachePath(context)}yt-dlp"
-    }
-
-    fun getInfoJsonPath(context: Context): String {
-        return "${getCachePath(context)}infojsons"
     }
 
     /**
@@ -79,13 +47,4 @@ object FileUtil {
         }
     }
 
-    fun deleteConfigFiles(request: YTDLRequest) {
-        runCatching {
-            request.getArguments("--config")?.forEach {
-                if (it != null && it.contains("##url.txt")) {
-                    File(it).delete()
-                }
-            }
-        }
-    }
 }

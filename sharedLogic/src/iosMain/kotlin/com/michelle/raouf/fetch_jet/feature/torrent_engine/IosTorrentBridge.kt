@@ -38,7 +38,7 @@ class IosTorrentProgress(
 
 /**
  * Native BitTorrent engine for iOS, implemented in Swift on top of libtorrent
- * (`NativeTorrentBridge.swift`, using the LibTorrent-Swift wrapper). Same contract as
+ * (`NativeTorrentBridge.swift`, using the FJTorrent wrapper). Same contract as
  * [TorrentBackend]; errors are reported through [lastError] instead of exceptions so the
  * Swift side stays simple.
  */

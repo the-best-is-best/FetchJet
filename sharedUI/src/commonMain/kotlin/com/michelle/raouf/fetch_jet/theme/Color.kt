@@ -68,10 +68,6 @@ val LightOnSurfaceVariant = Color(0xFF475569)
 val LightOutline = Color(0xFF94A3B8)
 val LightOutlineVariant = Color(0xFFCBD5E1)
 
-// ==========================================
-// Semantic Engine & Status Badges
-// ==========================================
-val EngineHttpDirect = Color(0xFF00E5FF)
 val EngineBitTorrent = Color(0xFF10B981)
 val EngineMediaStream = Color(0xFF818CF8)
 

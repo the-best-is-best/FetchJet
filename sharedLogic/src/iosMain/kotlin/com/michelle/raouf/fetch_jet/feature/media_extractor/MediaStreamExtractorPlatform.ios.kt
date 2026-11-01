@@ -95,151 +95,6 @@ private suspend fun resolveEffectiveMediaUrl(url: String): String {
     }
 }
 
-private suspend fun extractDirectSocialMediaStreams(url: String): List<MediaQualityEntry> {
-    return try {
-        val effectiveUrl = resolveEffectiveMediaUrl(url)
-        val domain = effectiveUrl.lowercase()
-        val response = probeClient.get(effectiveUrl) {
-            header(HttpHeaders.UserAgent, DESKTOP_USER_AGENT)
-            header(
-                HttpHeaders.Accept,
-                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-            )
-            if (domain.contains("facebook.com") || domain.contains("fb.watch")) {
-                header("Referer", "https://www.facebook.com/")
-                header("Origin", "https://www.facebook.com")
-            } else if (domain.contains("instagram.com")) {
-                header("Referer", "https://www.instagram.com/")
-            }
-        }
-        val body = response.bodyAsText()
-        val list = mutableListOf<MediaQualityEntry>()
-
-        val titleMatch = Regex("""<title>([^<]+)</title>""", RegexOption.IGNORE_CASE).find(body)
-            ?: Regex(
-                """<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']""",
-                RegexOption.IGNORE_CASE
-            ).find(body)
-        val rawTitle = titleMatch?.groupValues?.get(1)?.trim()
-        val videoTitle = if (!rawTitle.isNullOrBlank()) decodeUnicodeEscapes(rawTitle) else null
-
-        if (domain.contains("facebook.com") || domain.contains("fb.watch")) {
-            val hdPatterns = listOf(
-                Regex("""["']playable_url_quality_hd["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""["']browser_native_hd_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""hd_src\s*:\s*["']([^"']+)["']"""),
-                Regex("""hd_src_no_ratelimit\s*:\s*["']([^"']+)["']""")
-            )
-            val sdPatterns = listOf(
-                Regex("""["']playable_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""["']browser_native_sd_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""sd_src\s*:\s*["']([^"']+)["']"""),
-                Regex("""sd_src_no_ratelimit\s*:\s*["']([^"']+)["']"""),
-                Regex("""video_src\s*:\s*["']([^"']+)["']"""),
-                Regex(
-                    """<meta\s+property=["']og:video(?::secure_url)?["']\s+content=["']([^"']+)["']""",
-                    RegexOption.IGNORE_CASE
-                ),
-                Regex("""(https?:\\?/\\?/[^"'\s]*fbcdn\.net[^"'\s]*\.mp4[^"'\s]*)"""),
-                Regex("""(https?:\\?/\\?/[^"'\s]*video[^"'\s]*\.fbcdn\.net[^"'\s]*)""")
-            )
-
-            var hdUrl: String? = null
-            for (p in hdPatterns) {
-                val m = p.find(body)
-                if (m != null) {
-                    val cleaned = cleanEscapedUrl(m.groupValues[1])
-                    if (cleaned.isNotBlank()) {
-                        hdUrl = cleaned
-                        break
-                    }
-                }
-            }
-
-            var sdUrl: String? = null
-            for (p in sdPatterns) {
-                val m = p.find(body)
-                if (m != null) {
-                    val cleaned = cleanEscapedUrl(m.groupValues[1])
-                    if (cleaned.isNotBlank() && cleaned != hdUrl) {
-                        sdUrl = cleaned
-                        break
-                    }
-                }
-            }
-
-            if (hdUrl != null) {
-                val size = probeContentLength(hdUrl)
-                list.add(
-                    MediaQualityEntry(
-                        index = 0,
-                        qualityLabel = "HD Quality (720p - MP4)",
-                        directUrl = hdUrl,
-                        format = "mp4",
-                        size = size,
-                        isSelected = true,
-                        formatId = "hd",
-                        originalUrl = url,
-                        videoTitle = videoTitle ?: "Facebook Video HD",
-                        durationSeconds = 0L
-                    )
-                )
-            }
-
-            if (sdUrl != null) {
-                val size = probeContentLength(sdUrl)
-                list.add(
-                    MediaQualityEntry(
-                        index = 0,
-                        qualityLabel = "SD Quality (480p - MP4)",
-                        directUrl = sdUrl,
-                        format = "mp4",
-                        size = size,
-                        isSelected = list.isEmpty(),
-                        formatId = "sd",
-                        originalUrl = url,
-                        videoTitle = videoTitle ?: "Facebook Video SD",
-                        durationSeconds = 0L
-                    )
-                )
-            }
-        } else {
-            val ogVideoMatch = Regex(
-                """<meta\s+property=["']og:video(?::secure_url)?["']\s+content=["']([^"']+)["']""",
-                RegexOption.IGNORE_CASE
-            ).find(body)
-                ?: Regex(
-                    """<meta\s+name=["']twitter:player:stream["']\s+content=["']([^"']+)["']""",
-                    RegexOption.IGNORE_CASE
-                ).find(body)
-                ?: Regex("""(https?:\\?/\\?/[^"'\s]+\.mp4[^"'\s]*)""").find(body)
-            if (ogVideoMatch != null) {
-                val videoUrl = cleanEscapedUrl(ogVideoMatch.groupValues[1])
-                if (videoUrl.isNotBlank() && videoUrl.startsWith("http")) {
-                    val size = probeContentLength(videoUrl)
-                    list.add(
-                        MediaQualityEntry(
-                            index = 0,
-                            qualityLabel = "Best Quality (MP4)",
-                            directUrl = videoUrl,
-                            format = "mp4",
-                            size = size,
-                            isSelected = true,
-                            formatId = "best",
-                            originalUrl = url,
-                            videoTitle = videoTitle,
-                            durationSeconds = 0L
-                        )
-                    )
-                }
-            }
-        }
-        list
-    } catch (_: Exception) {
-        emptyList()
-    }
-}
-
 private fun escapeShellArg(arg: String): String {
     return "'" + arg.replace("'", "'\\''") + "'"
 }
@@ -399,7 +254,6 @@ private fun probeMediaDurationWithFfmpeg(url: String): Long {
         match.groupValues[3].toDoubleOrNull()?.let { kotlin.math.round(it).toLong() } ?: 0L
     return (hours * 3600L) + (minutes * 60L) + seconds
 }
-
 
 /**
  * iOS cannot spawn processes, so yt-dlp only works through the Swift bridge once it runs
@@ -1369,7 +1223,6 @@ private suspend fun runCancellableOnBridge(
     }
 }
 
-
 actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         requireIosMediaEngine()
@@ -1391,7 +1244,6 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     }
 
 actual fun lastMediaInspectionError(): String? = null
-
 
 actual suspend fun runYtDlpJson(
     url: String,

@@ -133,22 +133,6 @@ fun formatSecondsToHhMm(totalSeconds: Long): String {
 }
 
 /**
- * Converts a HH:MM formatted string into descriptive text (e.g. "1h 30m").
- */
-fun formatHhMmToEnglishText(hhMm: String): String {
-    val parts = hhMm.split(":")
-    val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
-    val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
-    val s = parts.getOrNull(2)?.toIntOrNull() ?: 0
-    val out = buildList {
-        if (h > 0) add("${h}h")
-        if (m > 0) add("${m}m")
-        if (s > 0) add("${s}s")
-    }
-    return if (out.isEmpty()) "0s" else out.joinToString(" ")
-}
-
-/**
  * Parses a HH:MM or HH:MM:SS string into total seconds.
  */
 fun parseHhMmToSeconds(hhMm: String): Long {

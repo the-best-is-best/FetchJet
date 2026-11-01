@@ -104,7 +104,6 @@ data class DashboardUiState(
     val clipboardVideoPages: Boolean = false,
     val sortIntoFolders: Boolean = false,
 
-    val cancelConfirmationTaskId: String? = null,
     val duplicateTaskAlert: DownloadTask? = null,
     val fileConflictAlert: FileConflictData? = null,
 

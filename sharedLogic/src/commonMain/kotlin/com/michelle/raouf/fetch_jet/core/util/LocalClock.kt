@@ -9,16 +9,6 @@ fun currentEpochMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds(
 
 private const val DAY_MS = 24L * 60 * 60 * 1000
 
-/** The next moment the local clock shows [hour]:[minute] (today if still ahead, else tomorrow). */
-fun nextLocalTimeEpochMs(hour: Int, minute: Int, nowMs: Long = currentEpochMs()): Long {
-    val offset = localUtcOffsetMs()
-    val localNow = nowMs + offset
-    val dayStart = localNow - localNow.mod(DAY_MS)
-    var target = dayStart + (hour.coerceIn(0, 23) * 60L + minute.coerceIn(0, 59)) * 60_000L
-    if (target <= localNow) target += DAY_MS
-    return target - offset
-}
-
 /** [hour]:[minute] (24 h) on the local day [dayOffset] days from today (0 = today). */
 fun localTimeOnDayEpochMs(
     dayOffset: Int,

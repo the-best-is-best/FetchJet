@@ -1,6 +1,6 @@
 #!/bin/bash
-# Builds LibTorrent.xcframework (libtorrent-rasterbar + the LibTorrent-Swift Objective-C++/Swift
-# wrapper used by iTorrent) for iOS device + simulator and drops it into iosApp/Frameworks/.
+# Builds FJTorrent.xcframework (libtorrent-rasterbar + FetchJet's own Objective-C++ wrapper in
+# iosApp/FJTorrent) for iOS device + simulator and drops it into iosApp/Frameworks/.
 # Double-click in Finder or run from Terminal. Log: build/libtorrent-ios.log
 #
 # Prerequisites (one time):   brew install cmake boost
@@ -13,30 +13,37 @@ LOG="$ROOT/build/libtorrent-ios.log"
 log() { echo "$@" | tee -a "$LOG"; }
 run() { log "+ $*"; "$@" 2>&1 | tee -a "$LOG"; return ${PIPESTATUS[0]}; }
 
+LIBTORRENT_COMMIT="6da363d2994f17c0b3c0450d124cf73a31a73847"
+
 BREW_PREFIX="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
 export PATH="$BREW_PREFIX/bin:$PATH"
 if ! command -v cmake >/dev/null; then log "ERROR: cmake not found. Run: brew install cmake boost"; log "DONE_MARKER exit=2"; exit 2; fi
 if [ ! -d "$BREW_PREFIX/include/boost" ]; then log "ERROR: Boost headers not found in $BREW_PREFIX/include. Run: brew install boost"; log "DONE_MARKER exit=2"; exit 2; fi
 xcodebuild -version 2>&1 | tee -a "$LOG"
 
-TP="$ROOT/iosApp/ThirdParty/LibTorrent-Swift"
-if [ ! -f "$TP/LibTorrent.xcodeproj/project.pbxproj" ] || [ ! -f "$TP/Thirdparty/libtorrent/CMakeLists.txt" ]; then
-  log "=== Cloning LibTorrent-Swift (with libtorrent submodule) ==="
-  rm -rf "$TP"
-  run git clone --recursive --depth 1 https://github.com/XITRIX/LibTorrent-Swift "$TP" || { log "DONE_MARKER exit=3"; exit 3; }
-  # Plain sources only: a nested .git makes IDEs treat the folder as a second repository.
-  rm -rf "$TP/.git" "$TP/Thirdparty/libtorrent/.git" "$TP/Thirdparty/libtorrent/deps/"*/.git 2>/dev/null
+LT_SRC="$ROOT/iosApp/ThirdParty/libtorrent"
+if [ ! -f "$LT_SRC/CMakeLists.txt" ]; then
+  log "=== Fetching libtorrent $LIBTORRENT_COMMIT ==="
+  rm -rf "$LT_SRC"
+  mkdir -p "$LT_SRC"
+  ( cd "$LT_SRC" &&
+    run git init -q &&
+    run git remote add origin https://github.com/arvidn/libtorrent.git &&
+    run git fetch --depth 1 origin "$LIBTORRENT_COMMIT" &&
+    run git checkout -q FETCH_HEAD &&
+    run git submodule update --init --recursive --depth 1 ) || { log "DONE_MARKER exit=3"; exit 3; }
+  rm -rf "$LT_SRC/.git" "$LT_SRC/deps/"*/.git 2>/dev/null
 fi
-cd "$TP" || exit 1
 
-if [ ! -d libtorrent-build/libtorrent.xcodeproj ]; then
-  log "=== Generating libtorrent Xcode project (cmake) ==="
-  # Same as the wrapper's make.sh, but iOS-only and with deployment targets Xcode 27 accepts
-  # (make.sh uses macOS 10.13 and lists watchOS/tvOS/visionOS platforms -> compiler test fails).
-  rm -rf libtorrent-build
-  run cmake ./Thirdparty/libtorrent \
-    -B./libtorrent-build \
+BUILD="$ROOT/build/fjtorrent"
+FLAGS="-DTORRENT_HAVE_MMAP=0 -DNDEBUG"
+if [ ! -d "$BUILD/xcode/FJTorrent.xcodeproj" ]; then
+  log "=== Generating Xcode project (cmake) ==="
+  rm -rf "$BUILD"
+  run cmake "$ROOT/iosApp/FJTorrent" \
+    -B"$BUILD/xcode" \
     -G Xcode \
+    -DLIBTORRENT_SOURCE_DIR="$LT_SRC" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
@@ -45,7 +52,8 @@ if [ ! -d libtorrent-build/libtorrent.xcodeproj ]; then
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS="iphonesimulator iphoneos macosx" \
     -DCMAKE_XCODE_ATTRIBUTE_ARCHS="\$(ARCHS_STANDARD)" \
     -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=NO \
-    -DCMAKE_CXX_FLAGS="-DTORRENT_HAVE_MMAP=0 -DNDEBUG" \
+    -DCMAKE_CXX_FLAGS="$FLAGS" \
+    -DCMAKE_OBJCXX_FLAGS="$FLAGS" \
     -DBOOST_ROOT="$BREW_PREFIX" \
     -Ddeprecated-functions=OFF \
     -Dwebtorrent=OFF \
@@ -53,41 +61,36 @@ if [ ! -d libtorrent-build/libtorrent.xcodeproj ]; then
     -DBUILD_SHARED_LIBS=OFF || { log "DONE_MARKER exit=4"; exit 4; }
 fi
 
-OUT="$TP/build"
-rm -rf "$OUT"
-LT_PROJ="$TP/libtorrent-build/libtorrent.xcodeproj"
-LT_OUT="$TP/libtorrent-build/Release"   # CONFIGURATION_BUILD_DIR fixed by CMake (same for every platform)
+PROJ="$BUILD/xcode/FJTorrent.xcodeproj"
+HEADERS="$BUILD/headers"
+rm -rf "$HEADERS"
+mkdir -p "$HEADERS/FJTorrent"
+cp "$ROOT/iosApp/FJTorrent/include/"* "$HEADERS/FJTorrent/"
 
-# The wrapper links libtorrent-build/Release/libtorrent-rasterbar.a but has no target dependency on
-# the CMake project, so build libtorrent ourselves for each platform right before the wrapper.
-build_platform() {   # $1 = sdk (iphonesimulator|iphoneos)  $2 = destination  $3 = archive name
-  local sdk="$1" dest="$2" name="$3"
-  log "=== libtorrent ($sdk, arm64) ==="
-  rm -rf "$LT_OUT"
-  run xcodebuild -project "$LT_PROJ" -target torrent-rasterbar -configuration Release -sdk "$sdk" \
+build_platform() {   # $1 = sdk (iphonesimulator|iphoneos)
+  local sdk="$1"
+  log "=== FJTorrent + libtorrent ($sdk, arm64) ==="
+  rm -rf "$BUILD/xcode/Release" "$BUILD/xcode/libtorrent/Release"
+  run xcodebuild -project "$PROJ" -target FJTorrent -configuration Release -sdk "$sdk" \
     ARCHS=arm64 ONLY_ACTIVE_ARCH=NO IPHONEOS_DEPLOYMENT_TARGET=16.0 MACOSX_DEPLOYMENT_TARGET=12.0 \
     CODE_SIGNING_ALLOWED=NO build || return 1
-  [ -f "$LT_OUT/libtorrent-rasterbar.a" ] || { log "ERROR: $LT_OUT/libtorrent-rasterbar.a was not produced"; return 1; }
-  log "=== LibTorrent wrapper ($sdk) ==="
-  run xcodebuild -project "$TP/LibTorrent.xcodeproj" -scheme LibTorrent -configuration Release \
-    -derivedDataPath "$OUT/DerivedData" -destination "$dest" -archivePath "$OUT/$name.xcarchive" \
-    ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
-    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-    IPHONEOS_DEPLOYMENT_TARGET=16.0 MACOSX_DEPLOYMENT_TARGET=12.0 \
-    LIBRARY_SEARCH_PATHS="\$(inherited) $LT_OUT" \
-    HEADER_SEARCH_PATHS="\$(inherited) $BREW_PREFIX/include Thirdparty/libtorrent/include" \
-    -skipPackagePluginValidation -skipMacroValidation archive || return 1
+  local wrapper lt
+  wrapper="$(find "$BUILD/xcode" -name libFJTorrent.a -path '*Release*' | head -1)"
+  lt="$(find "$BUILD/xcode" -name libtorrent-rasterbar.a -path '*Release*' | head -1)"
+  [ -f "$wrapper" ] && [ -f "$lt" ] || { log "ERROR: libFJTorrent.a / libtorrent-rasterbar.a not produced"; return 1; }
+  mkdir -p "$BUILD/$sdk"
+  run libtool -static -o "$BUILD/$sdk/libFJTorrent.a" "$wrapper" "$lt" || return 1
 }
 
-build_platform iphonesimulator 'generic/platform=iOS Simulator' sim || { log "DONE_MARKER exit=5"; exit 5; }
-build_platform iphoneos 'generic/platform=iOS' ios || { log "DONE_MARKER exit=6"; exit 6; }
+build_platform iphonesimulator || { log "DONE_MARKER exit=5"; exit 5; }
+build_platform iphoneos || { log "DONE_MARKER exit=6"; exit 6; }
 
-log "=== Creating LibTorrent.xcframework ==="
-XC="$ROOT/iosApp/Frameworks/LibTorrent.xcframework"
-rm -rf "$XC"
+log "=== Creating FJTorrent.xcframework ==="
+XC="$ROOT/iosApp/Frameworks/FJTorrent.xcframework"
+rm -rf "$XC" "$ROOT/iosApp/Frameworks/LibTorrent.xcframework"
 run xcodebuild -create-xcframework \
-  -framework "$OUT/sim.xcarchive/Products/Library/Frameworks/LibTorrent.framework" \
-  -framework "$OUT/ios.xcarchive/Products/Library/Frameworks/LibTorrent.framework" \
+  -library "$BUILD/iphonesimulator/libFJTorrent.a" -headers "$HEADERS" \
+  -library "$BUILD/iphoneos/libFJTorrent.a" -headers "$HEADERS" \
   -output "$XC" || { log "DONE_MARKER exit=7"; exit 7; }
 
 log "=== DONE: $XC ==="

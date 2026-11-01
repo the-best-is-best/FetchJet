@@ -453,7 +453,7 @@ jobs:
         # Already there on a self-hosted Mac after the first run: skip the reinstall.
         run: brew list cmake >/dev/null 2>&1 && brew list boost >/dev/null 2>&1 || brew install cmake boost
 
-      # Python.xcframework (BeeWare) is downloaded and LibTorrent.xcframework is compiled from
+      # Python.xcframework (BeeWare) is downloaded and FJTorrent.xcframework is compiled from
       # source by scripts/ios-prepare-frameworks.sh. libtorrent takes ~20 min, so cache the result
       # keyed on the scripts that produce it.
       - name: Cache native frameworks
@@ -461,7 +461,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: iosApp/Frameworks
-          key: ios-native-frameworks-${{ runner.os }}-${{ hashFiles('scripts/ios-prepare-frameworks.sh', 'scripts/build-libtorrent-ios.command') }}
+          key: ios-native-frameworks-${{ runner.os }}-${{ hashFiles('scripts/ios-prepare-frameworks.sh', 'scripts/build-libtorrent-ios.command', 'iosApp/FJTorrent/**') }}
 
       - name: Prepare native frameworks (Python runtime + libtorrent)
         run: ./scripts/ios-prepare-frameworks.sh
