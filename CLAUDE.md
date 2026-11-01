@@ -191,6 +191,11 @@ Bridges:
   `codeHostRawUrl` in `enqueueTask`: `github.com/o/r/blob/...` → `/raw/...` (and GitLab `/-/blob/`);
   blob links are HTML pages and failed as "Protected by Cloudflare". Verified desktop + A56. The 429
   cap also verified on the A56 (Hetzner 100 MB in ~20 s, no slow tail).
+- `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
+  commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
+  `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
+  download and YouTube inspect (17 s, 4K listed) work, no crash. Always build the release locally
+  before a release: the debug build does not run R8.
 - 2026-11-01: dead code and unused permissions removed on all platforms. Fixed: `DashboardUiEffect`
   messages now show (SnackbarHost in `App.kt`); desktop `inspectCached` caches only results with a
   real `formatId`; NPE when a link arrived during `DashboardViewModel.init` (fields moved above

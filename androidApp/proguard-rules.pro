@@ -49,3 +49,6 @@
 -keep class org.libtorrent4j.swig.libtorrent_jni { *; }
 -keep class org.libtorrent4j.** { *; }
 -dontwarn org.libtorrent4j.**
+
+-dontwarn com.github.luben.zstd.**
+-dontwarn org.tukaani.xz.**
