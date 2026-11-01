@@ -19,11 +19,7 @@ import java.util.concurrent.TimeUnit
 actual suspend fun resolvePlatformStream(url: String): String? {
 
     return runYtDlp(
-        listOf(
-            "--js-runtimes",
-            "deno",
-            "--js-runtimes",
-            "node",
+        ytDlpRuntimeArgs() + listOf(
             "-g",
             "--no-warnings",
             "--no-playlist",
@@ -140,11 +136,7 @@ actual suspend fun inspectPlatformQualities(
 
     val output =
         runYtDlp(
-            listOf(
-                "--js-runtimes",
-                "deno",
-                "--js-runtimes",
-                "node",
+            ytDlpRuntimeArgs() + listOf(
                 "-j",
                 "--no-warnings",
                 "--no-playlist"
@@ -787,12 +779,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val command = mutableListOf<String>()
     command.add(executableFile.absolutePath)
 
-    // yt-dlp's default JS runtime is deno; naming only "node" would *replace* it. Allow both so
-    // whichever the user has installed is used for YouTube's JS challenges.
-    command.add("--js-runtimes")
-    command.add("deno")
-    command.add("--js-runtimes")
-    command.add("node")
+    command.addAll(ytDlpRuntimeArgs())
     command.addAll(ytDlpHeaderArgs(requestHeaders, url))
 
     if (proxy != null) {
@@ -1403,6 +1390,24 @@ fun getExistingFfmpegBinary(): File? {
 }
 
 
+fun getExistingDenoBinary(): File? {
+    val isWin = System.getProperty("os.name").lowercase().contains("win")
+    val toolsFile = File(getToolsDir(), if (isWin) "deno.exe" else "deno")
+    return toolsFile.takeIf { it.exists() && it.canExecute() }
+}
+
+fun getYtDlpCacheDir(): File =
+    File(System.getProperty("user.home"), ".fetch_jet/cache/yt-dlp").apply { mkdirs() }
+
+fun ytDlpRuntimeArgs(): List<String> = buildList {
+    add("--js-runtimes")
+    add(getExistingDenoBinary()?.let { "deno:${it.absolutePath}" } ?: "deno")
+    add("--js-runtimes")
+    add("node")
+    add("--cache-dir")
+    add(getYtDlpCacheDir().absolutePath)
+}
+
 @Volatile
 private var systemFfmpegCache: Boolean? = null
 
@@ -1485,11 +1490,7 @@ private fun formatDurationSeconds(totalSeconds: Long): String {
 actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? {
     getExistingYtDlpBinary() ?: return null
     val output = runYtDlp(
-        listOf(
-            "--js-runtimes",
-            "deno",
-            "--js-runtimes",
-            "node",
+        ytDlpRuntimeArgs() + listOf(
             "--flat-playlist",
             "-J",
             "--no-warnings",
@@ -1511,8 +1512,7 @@ actual suspend fun runYtDlpJson(
     withContext(Dispatchers.IO) {
         getExistingYtDlpBinary() ?: return@withContext null
         runYtDlp(
-            listOf(
-                "--js-runtimes", "deno", "--js-runtimes", "node",
+            ytDlpRuntimeArgs() + listOf(
                 "-j", "--no-warnings", "--no-playlist", "-f", selector
             ) + ytDlpHeaderArgs(headers, url) + listOf("--", url),
             timeoutSec = 40L

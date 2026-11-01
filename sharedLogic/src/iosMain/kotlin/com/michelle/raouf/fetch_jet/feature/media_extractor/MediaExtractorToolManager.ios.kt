@@ -2,7 +2,6 @@
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
-import io.ktor.client.request.get
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -231,11 +230,29 @@ actual fun getMediaToolsDirectory(): String {
     return getIosToolsDirectory()
 }
 
+actual fun getJsRuntimeStatus(): JsRuntimeStatus = JsRuntimeStatus(
+    name = "WebKit (built-in)",
+    isReady = IosMediaBridgeRegistry.bridge?.statusText()?.contains("WebKit JS solver") == true
+)
+
 @OptIn(ExperimentalForeignApi::class)
-actual suspend fun downloadMediaExtractorTool(): Boolean = withContext(Dispatchers.IO) {
-    // "Download Tools" on iOS: ask the Swift bridge to boot the embedded Python engine and
-    // fetch/update the yt_dlp module. A standalone yt-dlp binary cannot run on iOS, so
-    // there is nothing else to download here.
-    val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
-    bridge.prepareEngine() == null
-}
+actual suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
+    withContext(Dispatchers.IO) {
+        // "Download Tools" on iOS: ask the Swift bridge to boot the embedded Python engine and
+        // fetch/update the yt_dlp module. A standalone yt-dlp binary cannot run on iOS, so
+        // there is nothing else to download here.
+        val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
+        onProgress(ToolDownloadProgress("yt-dlp"))
+        bridge.prepareEngine() == null && bridge.updateYtDlpModule() == null
+    }
+
+actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
+    withContext(Dispatchers.IO) {
+        val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
+        if (!bridge.isAvailable() && bridge.prepareEngine() != null) return@withContext false
+        val latest = latestGitHubReleaseTag("yt-dlp/yt-dlp") ?: return@withContext false
+        val installed = Regex("yt-dlp (\\S+)").find(bridge.statusText())?.groupValues?.get(1)
+        if (installed == latest) return@withContext false
+        onProgress(ToolDownloadProgress("yt-dlp"))
+        bridge.updateYtDlpModule() == null
+    }

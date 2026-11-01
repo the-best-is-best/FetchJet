@@ -119,10 +119,15 @@ data class DashboardUiState(
     val ytDlpStatus: String = "",
 
     val isDownloadingYtDlp: Boolean = false,
+    val toolDownloadName: String? = null,
+    val toolDownloadFraction: Float? = null,
 
     val isYtDlpInstalled: Boolean = true,
 
     val isFfmpegInstalled: Boolean = true,
+
+    val jsRuntimeName: String = "",
+    val isJsRuntimeReady: Boolean = true,
 
     val toolsDirectoryPath: String = "",
     val torrentEngineStatus: String = "",

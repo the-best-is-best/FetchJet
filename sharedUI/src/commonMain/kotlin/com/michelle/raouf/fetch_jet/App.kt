@@ -758,10 +758,14 @@ private fun SettingsContentView(
         ytDlpStatus = state.ytDlpStatus,
         isYtDlpInstalled = state.isYtDlpInstalled,
         isFfmpegInstalled = state.isFfmpegInstalled,
+        jsRuntimeName = state.jsRuntimeName,
+        isJsRuntimeReady = state.isJsRuntimeReady,
         toolsDirectoryPath = state.toolsDirectoryPath,
         torrentEngineStatus = state.torrentEngineStatus,
         isTorrentEngineReady = state.isTorrentEngineReady,
         isDownloadingYtDlp = state.isDownloadingYtDlp,
+        toolDownloadName = state.toolDownloadName,
+        toolDownloadFraction = state.toolDownloadFraction,
         monitorClipboard = state.monitorClipboard,
         clipboardVideoPages = state.clipboardVideoPages,
         sortIntoFolders = state.sortIntoFolders,
@@ -1745,6 +1749,34 @@ private fun EngineBadge(engineType: EngineType) {
 }
 
 @Composable
+private fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
+    androidx.compose.material3.Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+                text = "Updating media tools · $tool" + (fraction?.let { " ${(it * 100).toInt()}%" }
+                    ?: "…"),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            if (fraction != null) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
 private fun TaskListArea(
     tasks: List<DownloadTask>,
     viewModel: DashboardViewModel,
@@ -1779,7 +1811,12 @@ private fun TaskListArea(
     val unfinished =
         remember(shownTasks) { shownTasks.filter { it.status != DownloadStatus.COMPLETED } }
 
+    val uiState by viewModel.uiState.collectAsState()
+
     Column(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isDownloadingYtDlp && uiState.toolDownloadName != null) {
+            ToolsDownloadBanner(uiState.toolDownloadName, uiState.toolDownloadFraction)
+        }
         if (allTasks.isNotEmpty() && externalSearch == null) {
             androidx.compose.material3.OutlinedTextField(
                 value = searchQuery,
@@ -1831,7 +1868,6 @@ private fun TaskListArea(
         TaskRowsHeader()
         // A download just added (dialog or extension) sits at the top: bring it into view.
         val listState = rememberLazyListState()
-        val uiState by viewModel.uiState.collectAsState()
         LaunchedEffect(uiState.scrollToTopSignal) {
             if (uiState.scrollToTopSignal > 0) listState.animateScrollToItem(0)
         }

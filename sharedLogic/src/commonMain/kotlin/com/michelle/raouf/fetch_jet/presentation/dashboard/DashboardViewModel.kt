@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -75,6 +76,39 @@ class DashboardViewModel(
     /** The playlist link for which the user chose "download only this video". */
     private var singleVideoUrl: String? = null
 
+    private val toolsMutex = kotlinx.coroutines.sync.Mutex()
+
+    private fun reportToolProgress(p: com.michelle.raouf.fetch_jet.feature.media_extractor.ToolDownloadProgress) {
+        _uiState.update {
+            it.copy(
+                isDownloadingYtDlp = true,
+                toolDownloadName = p.tool,
+                toolDownloadFraction = p.fraction
+            )
+        }
+    }
+
+    private fun autoUpdateTools() {
+        scope.launch {
+            val changed = toolsMutex.withLock {
+                runCatching {
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.autoUpdateMediaTools(::reportToolProgress)
+                }.getOrDefault(false)
+            }
+            _uiState.update {
+                it.copy(
+                    isDownloadingYtDlp = false,
+                    toolDownloadName = null,
+                    toolDownloadFraction = null
+                )
+            }
+            if (changed) {
+                refreshToolStatus()
+                _uiEffect.emit(DashboardUiEffect.ShowToast("Media tools updated"))
+            }
+        }
+    }
+
 
     init {
 
@@ -97,6 +131,7 @@ class DashboardViewModel(
         // Probing the tools spawns `ffmpeg -version` (up to 2 s each, twice) and touches the
         // disk. Doing that here, inside composition, froze the first frame of the app.
         refreshToolStatus()
+        autoUpdateTools()
 
         if (savedSettings.globalDownloadSpeedLimitBytes > 0L) {
 
@@ -379,6 +414,8 @@ class DashboardViewModel(
                 com.michelle.raouf.fetch_jet.feature.media_extractor.isMediaExtractorToolInstalled()
             val isFfmpeg =
                 com.michelle.raouf.fetch_jet.feature.media_extractor.isFfmpegToolInstalled()
+            val jsRuntime =
+                com.michelle.raouf.fetch_jet.feature.media_extractor.getJsRuntimeStatus()
             val toolsDir =
                 com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaToolsDirectory()
             val statusText =
@@ -392,6 +429,8 @@ class DashboardViewModel(
                     ytDlpStatus = statusText,
                     isYtDlpInstalled = isYtDlp,
                     isFfmpegInstalled = isFfmpeg,
+                    jsRuntimeName = jsRuntime.name,
+                    isJsRuntimeReady = jsRuntime.isReady,
                     toolsDirectoryPath = toolsDir,
                     torrentEngineStatus = torrentStatus,
                     isTorrentEngineReady = torrentReady
@@ -1114,9 +1153,11 @@ class DashboardViewModel(
 
                 scope.launch {
 
-                    val success =
-
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.downloadMediaExtractorTool()
+                    val success = toolsMutex.withLock {
+                        com.michelle.raouf.fetch_jet.feature.media_extractor.downloadMediaExtractorTool(
+                            ::reportToolProgress
+                        )
+                    }
 
                     // Same button also installs the BitTorrent engine if it is missing.
                     val torrentInstall =
@@ -1139,6 +1180,9 @@ class DashboardViewModel(
                     val isFfmpeg =
                         com.michelle.raouf.fetch_jet.feature.media_extractor.isFfmpegToolInstalled()
 
+                    val jsRuntime =
+                        com.michelle.raouf.fetch_jet.feature.media_extractor.getJsRuntimeStatus()
+
                     val toolsDir =
                         com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaToolsDirectory()
 
@@ -1147,12 +1191,17 @@ class DashboardViewModel(
                         it.copy(
 
                             isDownloadingYtDlp = false,
+                            toolDownloadName = null,
+                            toolDownloadFraction = null,
 
                             ytDlpStatus = newStatus,
 
                             isYtDlpInstalled = isYtDlp,
 
                             isFfmpegInstalled = isFfmpeg,
+
+                            jsRuntimeName = jsRuntime.name,
+                            isJsRuntimeReady = jsRuntime.isReady,
 
                             toolsDirectoryPath = toolsDir,
                             torrentEngineStatus = torrentInstall.exceptionOrNull()?.let { e ->

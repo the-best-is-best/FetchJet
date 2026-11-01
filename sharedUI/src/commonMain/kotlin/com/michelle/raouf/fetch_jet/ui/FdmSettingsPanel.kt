@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -83,10 +84,14 @@ fun FdmSettingsPanel(
     ytDlpStatus: String,
     isYtDlpInstalled: Boolean,
     isFfmpegInstalled: Boolean,
+    jsRuntimeName: String = "",
+    isJsRuntimeReady: Boolean = true,
     toolsDirectoryPath: String,
     torrentEngineStatus: String = "",
     isTorrentEngineReady: Boolean = true,
     isDownloadingYtDlp: Boolean,
+    toolDownloadName: String? = null,
+    toolDownloadFraction: Float? = null,
     monitorClipboard: Boolean = false,
     clipboardVideoPages: Boolean = false,
     sortIntoFolders: Boolean = false,
@@ -177,8 +182,9 @@ fun FdmSettingsPanel(
             )
 
             SettingsSection.MEDIA -> MediaToolsPage(
-                ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, toolsDirectoryPath,
-                isDownloadingYtDlp, pathResolver, onDownloadYtDlpClicked
+                ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,
+                toolsDirectoryPath, isDownloadingYtDlp, toolDownloadName, toolDownloadFraction,
+                pathResolver, onDownloadYtDlpClicked
             )
 
             SettingsSection.TORRENT -> TorrentPage(
@@ -600,8 +606,12 @@ private fun MediaToolsPage(
     ytDlpStatus: String,
     isYtDlpInstalled: Boolean,
     isFfmpegInstalled: Boolean,
+    jsRuntimeName: String,
+    isJsRuntimeReady: Boolean,
     toolsDirectoryPath: String,
     isDownloadingYtDlp: Boolean,
+    toolDownloadName: String?,
+    toolDownloadFraction: Float?,
     pathResolver: PathResolver,
     onDownloadYtDlpClicked: () -> Unit
 ) {
@@ -616,6 +626,19 @@ private fun MediaToolsPage(
             SettingRow("FFmpeg", "Joins video + audio (1080p and up), cuts clips, makes MP3") {
                 if (isFfmpegInstalled) StatusLabel("Ready", StatusCompleted)
                 else StatusLabel("Missing · up to 720p", StatusPaused)
+            }
+            if (jsRuntimeName.isNotBlank()) {
+                SettingDivider()
+                SettingRow(
+                    "JS runtime · $jsRuntimeName",
+                    "Solves YouTube's checks so every quality shows up, faster"
+                ) {
+                    if (isJsRuntimeReady) StatusLabel("Ready", StatusCompleted)
+                    else StatusLabel(
+                        "Missing · press ${if (isYtDlpInstalled && isFfmpegInstalled) "Update tools" else "Download the tools"}",
+                        StatusPaused
+                    )
+                }
             }
             if (toolsDirectoryPath.isNotBlank()) {
                 SettingDivider()
@@ -637,7 +660,13 @@ private fun MediaToolsPage(
                 if (isDownloadingYtDlp) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (ready) "Updating…" else "Downloading tools…")
+                    Text(
+                        when {
+                            toolDownloadName == null -> if (ready) "Updating…" else "Downloading tools…"
+                            toolDownloadFraction == null -> "Downloading $toolDownloadName…"
+                            else -> "Downloading $toolDownloadName… ${(toolDownloadFraction * 100).toInt()}%"
+                        }
+                    )
                 } else {
                     Text(
                         if (ready) "Update tools" else "Download the tools",
@@ -657,6 +686,16 @@ private fun MediaToolsPage(
                     enabled = !isDownloadingYtDlp,
                     shape = RoundedCornerShape(10.dp)
                 ) { content() }
+            }
+        }
+        if (isDownloadingYtDlp && toolDownloadName != null) {
+            if (toolDownloadFraction != null) {
+                LinearProgressIndicator(
+                    progress = { toolDownloadFraction },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
         if (ytDlpStatus.isNotBlank()) {

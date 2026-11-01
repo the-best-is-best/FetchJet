@@ -70,6 +70,7 @@ object RuntimeManager {
     private var OPEN_SSL_CONF: String? = null
     private var ENV_PYTHONHOME: String? = null
     private var TMPDIR: String = ""
+    private var YTDLP_CACHE_DIR: String = ""
 
     private var NPM_CONFIG_PREFIX: String = ""
     private var NPM_CONFIG_CACHE: String = ""
@@ -171,6 +172,7 @@ object RuntimeManager {
                         pythonLocation.ldDir.absolutePath + "/usr"
                     }
                     TMPDIR = appContext.cacheDir.absolutePath
+                    YTDLP_CACHE_DIR = File(appContext.filesDir, "yt-dlp-cache").absolutePath
 
                     NPM_CONFIG_PREFIX = File(appContext.filesDir, ".npm-global").absolutePath
                     NPM_CONFIG_CACHE = File(appContext.filesDir, ".npm-cache").absolutePath
@@ -447,7 +449,9 @@ object RuntimeManager {
             )
         }
 
-        if (!usingCacheDir) {
+        if (usingCacheDir && YTDLP_CACHE_DIR.isNotEmpty()) {
+            request.addOption("--cache-dir", YTDLP_CACHE_DIR)
+        } else {
             request.addOption("--no-cache-dir")
         }
 
@@ -461,7 +465,7 @@ object RuntimeManager {
         request: YTDLRequest,
         processId: String? = null,
         redirectErrorStream: Boolean = false,
-        usingCacheDir: Boolean = false,
+        usingCacheDir: Boolean = true,
         callback: ((Float, Long, String) -> Unit)? = null
     ): ExecuteResponse {
         val fullCommand = buildYTDLCommand(request, usingCacheDir)
@@ -647,7 +651,7 @@ object RuntimeManager {
     fun <T> executeStreaming(
         request: YTDLRequest,
         processId: String? = null,
-        usingCacheDir: Boolean = false,
+        usingCacheDir: Boolean = true,
         outputHandler: (InputStream) -> T
     ): T {
         val fullCommand = buildYTDLCommand(request, usingCacheDir)
