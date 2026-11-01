@@ -37,25 +37,28 @@
     <div class="card">
         <h2>Connection</h2>
         <div class="status" id="connStatus">Checking FetchJet…</div>
-        <div class="row"><label>Start FetchJet automatically when a download is captured and the app
+        <div class="row" id="rowAutoLaunch"><label>Start FetchJet automatically when a download is
+            captured and the app
             is closed<small>Off: the browser keeps the download when FetchJet is not running. Uses
                 the native messaging host or the <code>fetchjet://</code> link handler registered by
                 the installer.</small></label><input id="autoLaunch" type="checkbox"></div>
-        <div class="row"><label>Show notifications</label><input id="notifications" type="checkbox">
+        <div class="row" id="rowNotifications"><label>Show notifications</label><input
+                id="notifications" type="checkbox">
         </div>
-        <div class="row" id="permRow" style="display:none"><label>Site access<small>Firefox asks for
-            this separately: without it the extension cannot see downloads or media on
-            pages.</small></label>
+        <div class="row" id="permRow" style="display:none"><label>Site access<small>Without it the
+            extension cannot see downloads or media on pages.</small></label>
             <button class="ghost" id="grantBtn">Allow all sites</button>
         </div>
     </div>
 
     <div class="card">
         <h2>Capture</h2>
-        <div class="row"><label>Enable FetchJet capture<small>Master switch. Shortcut:
+        <div class="row"><label>Enable FetchJet capture<small id="masterHint">Master switch.
+            Shortcut:
             <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggles it.</small></label><input
                 id="enabled" type="checkbox"></div>
-        <div class="row"><label>Take over browser downloads<small>Any download the browser starts is
+        <div class="row" id="rowCaptureDownloads"><label>Take over browser downloads<small>Any
+            download the browser starts is
             cancelled and sent to FetchJet instead.</small></label><input id="captureDownloads"
                                                                           type="checkbox">
         </div>
@@ -66,16 +69,19 @@
         <div class="row"><label>Detect video &amp; audio on pages<small>Streams the page plays (MP4,
             WebM, HLS, DASH…) are listed in the popup. YouTube is handled by yt-dlp instead.</small></label><input
                 id="captureMedia" type="checkbox"></div>
-        <div class="row"><label>Ask FetchJet for video qualities automatically<small>When a page
+        <div class="row" id="rowAutoResolve"><label>Ask FetchJet for video qualities
+            automatically<small>When a page
             plays a video (YouTube, Facebook, Instagram, TikTok, X, Vimeo…), the qualities found by
             yt-dlp are listed in the popup and on the page button.</small></label><input
                 id="autoResolve" type="checkbox"></div>
         <div class="row"><label>Show the “Download this video” button on pages</label><input
                 id="pagePanel" type="checkbox"></div>
-        <div class="row"><label>Send the site's cookies with each link<small>Needed for downloads
+        <div class="row"><label>Send the site's cookies with each link<small id="cookiesNote">Needed
+            for downloads
             behind a login. Cookies go only to the FetchJet app on this computer
             (127.0.0.1).</small></label><input id="sendCookies" type="checkbox"></div>
-        <div class="row"><label>Hold this key to download with the browser instead</label>
+        <div class="row" id="rowHoldKey"><label>Hold this key to download with the browser
+            instead</label>
             <select id="holdKey">
                 <option value="alt">Alt</option>
                 <option value="ctrl">Ctrl</option>
@@ -83,7 +89,8 @@
                 <option value="meta">Meta / Win / Cmd</option>
                 <option value="none">Disabled</option>
             </select></div>
-        <div class="row"><label>Ignore browser downloads smaller than (KB)<small>0 = capture
+        <div class="row" id="rowMinSize"><label>Ignore browser downloads smaller than (KB)<small>0 =
+            capture
             everything. The size is only known when the server reports it.</small></label><input
                 id="minSizeKB" min="0" step="1" type="number"></div>
     </div>
@@ -104,18 +111,19 @@
         <textarea id="excludedHosts" placeholder="example.com" spellcheck="false"></textarea>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardShortcuts">
         <h2>Keyboard shortcuts</h2>
         <div class="status"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> send current page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>
             all links on page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggle capture<br>
-            <small>Change them at <code>chrome://extensions/shortcuts</code> (Chrome/Edge) or
-                Add-ons → ⚙ → Manage Extension Shortcuts (Firefox).</small></div>
+            <small id="shortcutsHelp">Change them at
+                <code>chrome://extensions/shortcuts</code>.</small></div>
     </div>
 
     <div class="actions">
         <button id="save">Save</button>
         <span class="saved" id="saved"></span></div>
 </div>
+<script src="platform.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

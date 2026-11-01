@@ -6,9 +6,10 @@ $out = Join-Path $PSScriptRoot "..\build\extension"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Path "$out\chrome", "$out\firefox" | Out-Null
 $files = "background.js","yt-core.js","content.js","popup.html","popup.js","options.html","options.js","icon16.png","icon48.png","icon128.png"
-Copy-Item ($files + "manifest.json") "$out\chrome\"
+Copy-Item ($files + "manifest.json" + "platform.js") "$out\chrome\"
 Copy-Item $files "$out\firefox\"
 Copy-Item "manifest.firefox.json" "$out\firefox\manifest.json"
+Copy-Item "platform.firefox.js" "$out\firefox\platform.js"
 Compress-Archive -Path "$out\chrome\*" -DestinationPath "$out\fetchjet-chrome-$version.zip" -Force
 Compress-Archive -Path "$out\firefox\*" -DestinationPath "$out\fetchjet-firefox-$version.zip" -Force
 Rename-Item "$out\fetchjet-firefox-$version.zip" "fetchjet-firefox-$version.xpi" -Force

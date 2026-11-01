@@ -81,7 +81,7 @@ async function loadMedia() {
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "Nothing yet. Play the video, or click “Get qualities”.";
+    empty.textContent = !FJ_PLATFORM.qualitiesInPopup ? "Nothing yet. Play the video, or tap “Download page / video”." : "Nothing yet. Play the video, or click “Get qualities”.";
     list.appendChild(empty);
     return;
   }
@@ -124,6 +124,10 @@ async function loadMedia() {
 function renderSwitches() {
   $("enabledSwitch").classList.toggle("on", !!settings.enabled);
   $("mediaSwitch").classList.toggle("on", !!settings.captureMedia);
+  if (FJ_PLATFORM.hint != null) {
+    $("hint").textContent = FJ_PLATFORM.hint;
+    return;
+  }
   const key = (settings.holdKey || "alt");
   $("hint").textContent = key === "none" ? "Use the context menu to download with FetchJet"
     : `Hold ${key[0].toUpperCase() + key.slice(1)} while clicking to download with the browser`;
@@ -145,6 +149,7 @@ async function checkHostPermission() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   settings = await send({ action: "getSettings" });
+  if (!FJ_PLATFORM.qualitiesInPopup) $("resolveBtn").style.display = "none";
   renderSwitches();
   checkStatus();
   checkHostPermission();
