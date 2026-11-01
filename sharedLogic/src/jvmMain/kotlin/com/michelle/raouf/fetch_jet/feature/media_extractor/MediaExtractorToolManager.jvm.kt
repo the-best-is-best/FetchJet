@@ -44,8 +44,14 @@ private const val MAX_TOOL_BYTES = 400L * 1024 * 1024
 private val osName = System.getProperty("os.name").lowercase()
 private val isWin = osName.contains("win")
 private val isMac = osName.contains("mac")
-private val isArm =
-    System.getProperty("os.arch").lowercase().let { it == "aarch64" || it == "arm64" }
+
+// os.arch is the CPU of the running JVM (the bundled runtime): the tools must match it, as
+// they are started by this process. x64 Windows/Linux builds on ARM run emulated, and so do
+// the x64 tools they download.
+private val osArch = System.getProperty("os.arch").lowercase()
+private val isArm = osArch == "aarch64" || osArch == "arm64"
+private val isArm32 = !isArm && osArch.startsWith("arm")
+private val isX86_32 = osArch in setOf("x86", "i386", "i486", "i586", "i686")
 
 /** Opens an HTTPS connection with timeouts and a status check (a 404 page is not a binary). */
 private fun openConnection(url: String): HttpURLConnection {
@@ -159,8 +165,13 @@ private fun sameVersion(installed: String?, latestTag: String?): Boolean =
 
 private fun installYtDlp(toolsDir: File, onProgress: (ToolDownloadProgress) -> Unit) {
     val assetName = when {
+        isWin && isArm -> "yt-dlp_arm64.exe"
+        isWin && isX86_32 -> "yt-dlp_x86.exe"
         isWin -> "yt-dlp.exe"
-        isMac -> "yt-dlp_macos"
+        isMac -> "yt-dlp_macos" // universal (arm64 + x86_64)
+        isArm -> "yt-dlp_linux_aarch64"
+        // No standalone build for 32-bit Linux: the zipapp, which runs on the system python3.
+        isArm32 || isX86_32 -> "yt-dlp"
         else -> "yt-dlp_linux"
     }
     val ytDlpFile = File(toolsDir, if (isWin) "yt-dlp.exe" else "yt-dlp")
@@ -183,12 +194,85 @@ private fun installYtDlp(toolsDir: File, onProgress: (ToolDownloadProgress) -> U
     ytDlpFile.setExecutable(true)
 }
 
-private fun installFfmpeg(toolsDir: File, onProgress: (ToolDownloadProgress) -> Unit) {
-    val ffmpegZipUrl = when {
-        isWin -> "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip"
-        isMac -> "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-osx-64.zip"
-        else -> "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-linux-64.zip"
+// ffbinaries has no Apple Silicon build: its osx-64 ffmpeg needs Rosetta, which Apple is
+// retiring. eugeneware/ffmpeg-static (the npm ffmpeg-static binaries) ships a native one; the
+// hash pins the exact file, as that release publishes no checksum. Everything else (Intel Macs,
+// Windows, Linux on every CPU) keeps ffbinaries.
+private const val FFMPEG_STATIC_BASE =
+    "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1"
+
+/** (asset, sha256) of the native ARM ffmpeg for this machine, or null to use ffbinaries. */
+private val nativeArmFfmpeg: Pair<String, String>? = when {
+    isMac && isArm -> "ffmpeg-darwin-arm64" to "a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584"
+    else -> null
+}
+
+/** ffbinaries 4.4.1 asset for this OS / CPU. Windows has only x64 (it runs emulated on ARM). */
+private val ffbinariesAsset: String = when {
+    isWin -> "win-64"
+    isMac -> "osx-64"
+    isArm -> "linux-arm-64"
+    isArm32 && osArch.contains("hf") -> "linux-armhf-32"
+    isArm32 -> "linux-armel-32"
+    isX86_32 -> "linux-32"
+    else -> "linux-64"
+}
+
+private fun installNativeArmFfmpeg(
+    toolsDir: File,
+    asset: String,
+    sha256: String,
+    onProgress: (ToolDownloadProgress) -> Unit
+) {
+    val ffmpegFile = File(toolsDir, "ffmpeg")
+    val staging = File(toolsDir, "ffmpeg.download")
+    val actual = downloadTo(
+        "$FFMPEG_STATIC_BASE/$asset",
+        staging
+    ) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
+    if (actual != sha256) {
+        staging.delete()
+        throw IllegalStateException("ffmpeg checksum mismatch (expected $sha256, got $actual)")
     }
+    Files.move(
+        staging.toPath(),
+        ffmpegFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.ATOMIC_MOVE
+    )
+    ffmpegFile.setExecutable(true)
+}
+
+/**
+ * An x86-64-only ffmpeg left by an older build on an ARM machine: a Mach-O that runs only via
+ * Rosetta, or an ELF that does not run at all.
+ */
+private fun isX86OnlyBinary(file: File): Boolean = try {
+    val header = ByteArray(20)
+    val n = file.inputStream().use { it.read(header) }
+    when {
+        // MH_MAGIC_64 (0xfeedfacf) + CPU_TYPE_X86_64 (0x01000007), little-endian.
+        n >= 8 && header.copyOfRange(0, 8).contentEquals(
+            byteArrayOf(0xcf.toByte(), 0xfa.toByte(), 0xed.toByte(), 0xfe.toByte(), 7, 0, 0, 1)
+        ) -> true
+        // ELF with e_machine = EM_X86_64 (0x3e).
+        n >= 20 && header[0] == 0x7f.toByte() && header[1] == 'E'.code.toByte() &&
+                header[2] == 'L'.code.toByte() && header[3] == 'F'.code.toByte() &&
+                header[18] == 0x3e.toByte() && header[19] == 0.toByte() -> true
+
+        else -> false
+    }
+} catch (_: Exception) {
+    false
+}
+
+private fun installFfmpeg(toolsDir: File, onProgress: (ToolDownloadProgress) -> Unit) {
+    nativeArmFfmpeg?.let { (asset, sha256) ->
+        installNativeArmFfmpeg(toolsDir, asset, sha256, onProgress)
+        return
+    }
+    val ffmpegZipUrl =
+        "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-$ffbinariesAsset.zip"
     val zipFile = File(toolsDir, "ffmpeg.zip")
     try {
         downloadTo(ffmpegZipUrl, zipFile) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
@@ -202,7 +286,9 @@ private fun installFfmpeg(toolsDir: File, onProgress: (ToolDownloadProgress) -> 
 }
 
 private fun installDeno(toolsDir: File, onProgress: (ToolDownloadProgress) -> Unit) {
+    if (isArm32 || isX86_32) throw IllegalStateException("deno has no build for $osArch")
     val asset = when {
+        isWin && isArm -> "deno-aarch64-pc-windows-msvc.zip"
         isWin -> "deno-x86_64-pc-windows-msvc.zip"
         isMac && isArm -> "deno-aarch64-apple-darwin.zip"
         isMac -> "deno-x86_64-apple-darwin.zip"
@@ -272,7 +358,11 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
             val bin = getExistingYtDlpBinary()
             bin == null || !sameVersion(installedVersion(bin), ytDlpTag)
         }) { installYtDlp(toolsDir, onProgress) }
-        step("ffmpeg", { getExistingFfmpegBinary() == null && !isSystemFfmpegInstalled() }) {
+        step("ffmpeg", {
+            val bin = getExistingFfmpegBinary()
+            (bin == null && !isSystemFfmpegInstalled()) ||
+                    (bin != null && isArm && isX86OnlyBinary(bin))
+        }) {
             installFfmpeg(toolsDir, onProgress)
         }
         step("deno", {

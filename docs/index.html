@@ -109,7 +109,7 @@
             '<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div>' +
             '<div class="hint">Prefer an installer? Take the .msi or .exe below; it updates itself from GitHub.</div></div>' },
         { key: "macos",     label: "macOS",     match: function (n) { return /\.dmg$/i.test(n); },
-          hint: "Open the .dmg and drag FetchJet to Applications." },
+          hint: "For Apple Silicon Macs (M1 or newer) only; Intel Macs are not supported. Open the .dmg and drag FetchJet to Applications." },
         { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },
           hint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet)." },
         { key: "android",   label: "Android",   match: function (n) { return /\.apk$/i.test(n); },
@@ -187,6 +187,7 @@
         if (platform === "extension") return /\.xpi$/i.test(name) ? "Firefox (.xpi)" : "Chrome / Edge (.zip)";
         if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : "Installer (.exe)";
         if (platform === "linux") return /\.deb$/i.test(name) ? "Debian / Ubuntu (.deb)" : "Portable (.tar.gz)";
+        if (platform === "macos") return "Apple Silicon (.dmg)";
         return name;
       }
 

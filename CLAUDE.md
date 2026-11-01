@@ -181,8 +181,10 @@ Bridges:
    unchanged.
 5. **googlevideo 403 right after resolve:** happens for a few seconds. Probe retries and link
    renewal mitigate it. A later curl with the same URL returns 206.
-6. **Firefox:** unlisted AMO signing is needed for the xpi. Not done. Mobile Firefox also needs a
-   signed xpi.
+6. **Browser extension stores: done in CI** (`build-extension` in `build.yml`). Firefox is signed
+   on AMO with the `AMO_JWT_*` secrets: `stores` on = listed (Firefox Add-ons), off = unlisted and
+   the `.xpi` is attached to the release. Edge: submitted with the `EDGE_*` secrets; the owner
+   publishes it on Microsoft's side by hand. Read `build.yml` before calling anything here "not done".
 7. **Android manifest:** `READ_MEDIA_AUDIO`, `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` (or
    `READ_EXTERNAL_STORAGE`) are declared but not needed. Remove them only when the owner says so.
    Check that nothing else uses them.
@@ -191,10 +193,22 @@ Bridges:
 
 ## Release plan (1.1.0)
 
-- Draft release. The owner runs workflow_dispatch: version `1.1.0`, only the platforms they choose,
-  `stores` as they decide. Current plan: extension only, `stores` OFF, then other platforms added to
-  the same draft.
+- Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
+  `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
+- Stability (2026-11-01): Windows, macOS, Linux, Android and the Chrome / Edge / Firefox extension
+  are stable. iOS = Beta (simulator only, never run on a real iPhone; the owner cannot test one).
+- `beta` input: comma list of beta platforms (`ios`, `ios,linux`, `all`; empty = all stable). It
+  writes `<!-- fetchjet-beta: ... -->` into the notes; the downloads page (`docs/index.html`) marks
+  those platforms. Never make the release a GitHub "pre-release": the app reads `/releases/latest`,
+  which skips pre-releases, so users would not get the update. The page shows the badge only after
+  `docs/` reaches the branch GitHub Pages builds from.
 - Do not run it yourself.
+- **macOS = Apple Silicon only** (one `FetchJet-x.y.z-arm64.dmg`; the job fails if the DMG is not
+  arm64). Intel was dropped on 2026-11-01 (owner's decision, no Intel Mac to test on):
+  libtorrent4j-macos ships arm64 only since 2.1.0-32; a self-built x86_64 libtorrent4j worked in a
+  standalone test, but the Intel app (under Rosetta) crashed silently 5-25 s into a torrent download
+  (no hs_err; lldb blocked by the JDK's hardened runtime). Compose Desktop JVM itself still supports
+  macos-x64. Do not bring Intel back without an Intel Mac to test on.
 
 ## iOS: verified on the Mac simulator (2026-11-01, iPhone 17, iOS 27)
 
@@ -203,13 +217,20 @@ All done and pushed (`a751617` + the Udemy preview fix):
 1. Build OK (Kotlin iosMain + Swift); `updateYtDlpModule(progressCallback)` conforms.
 2. `--plugin-dirs` in argv is ignored on iOS: Swift calls `parse_options` + `YoutubeDL(opts)`, not
    `_real_main`, so `plugin_dirs` stays `default`. The plugin folder still loads because for a
-   zipimport yt-dlp `default` searches `<folder of the zip>/yt-dlp-plugins`, i.e. our folder. The
-   clip-cut plugin (`CutPlugin`, its own folder) is therefore probably NOT loaded on iOS: untested.
+   zipimport yt-dlp `default` searches `<folder of the zip>/yt-dlp-plugins`, i.e. our folder.
+   `CutPlugin` (own folder) would not load on iOS, but iOS does not need it: both clip modes
+   tested OK (see 7).
 3. EJS cache works: second YouTube inspect logs `Loading challenge-solver.player... from cache`.
 4. Auto-update was broken (raced the engine warm-up in `init()`); `prepareEngine()` now waits.
    yt-dlp is no longer bundled: downloaded on first start, auto-updated, % shown in banner/button.
 5. Media tools settings page shown on iOS (full edition).
 6. Safari extension: see Backlog 7.
+7. YouTube quality on iOS was always 360p (fixed 2026-11-01, `MediaStreamExtractorPlatform.ios.kt`):
+   ffmpeg runs in-process so `getExistingFfmpegBinary()` is null, and the code then asked for a
+   single progressive format (`401/best` -> 18); plus a forced `youtube:player_client=android,web`
+   (removed on desktop long ago) got SABR-only formats. Now `hasFfmpeg` = binary OR bridge ready,
+   no forced client. Verified: 4K clip "Only the clip" = 3840x2160, 33 s, with audio; "Full video,
+   then cut" = exact 11 s (cut by the app's own ffmpeg step, not CutPlugin).
 
 Still needs a real iPhone: sideload with the extra Safari extension appex (bundle id
 `<app>.SafariExtension`), Udemy logged in. Store edition still embeds the Safari extension: remove it

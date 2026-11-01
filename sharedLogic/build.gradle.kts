@@ -6,6 +6,9 @@ plugins {
 }
 
 kotlin {
+    // Java 21 everywhere: the desktop app bundles a Java 21 runtime and Android desugars it.
+    jvmToolchain(21)
+
     // A manual dependsOn() edge (jvmAndroidMain below) switches the default source-set
     // hierarchy OFF unless it is applied explicitly - without this line iosMain is never
     // compiled and every expect declaration reports "no actual for Native".
@@ -29,7 +32,7 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
+            jvmTarget = JvmTarget.JVM_21
         }
         androidResources {
             enable = true

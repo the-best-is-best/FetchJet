@@ -864,7 +864,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     if (!isBridgeAvailable && ytdlp == null) return@withContext false
     val python = getExistingPythonBinary()
     val ffmpeg = getExistingFfmpegBinary()
-    val hasFfmpeg = ffmpeg != null
+    // The in-app engine runs ffmpeg in-process (Swift's Popen shim): there is no binary to find,
+    // but yt-dlp can still merge video + audio and cut sections.
+    val hasFfmpeg = ffmpeg != null || isBridgeAvailable
 
     val outDir = destinationDir.toPath()
     try {
@@ -943,8 +945,10 @@ actual suspend fun downloadMediaWithPlatformTool(
                 rawArgs.add("--merge-output-format")
                 rawArgs.add("mp4")
             }
-            rawArgs.add("--ffmpeg-location")
-            rawArgs.add(ffmpeg.substringBeforeLast('/'))
+            if (ffmpeg != null) {
+                rawArgs.add("--ffmpeg-location")
+                rawArgs.add(ffmpeg.substringBeforeLast('/'))
+            }
         }
     }
 
@@ -997,14 +1001,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     rawArgs.add("--progress-template"); rawArgs.add("download:[download] %(progress._default_template)s FJBYTES=%(progress.downloaded_bytes)s")
     rawArgs.add("--no-playlist")
     rawArgs.add("--geo-bypass")
-    if (url.contains("youtube.com", ignoreCase = true) || url.contains(
-            "youtu.be",
-            ignoreCase = true
-        )
-    ) {
-        rawArgs.add("--extractor-args")
-        rawArgs.add("youtube:player_client=android,web")
-    }
+    // (No forced youtube:player_client, as on desktop: "android" now gets SABR-only formats and
+    // left only 360p format 18, so a 4K pick silently downloaded 360p.)
     getIosCookieFile()?.let { cookiePath ->
         rawArgs.add("--cookies")
         rawArgs.add(cookiePath)

@@ -388,8 +388,24 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build macOS DMG
-        run: ./gradlew :desktopApp:packageDmg
+      # Apple Silicon only. The app bundles a Java runtime of the build machine's CPU, so the
+      # check below makes sure an Intel runner can never publish an Intel DMG by mistake.
+      - name: Build macOS DMG (Apple Silicon)
+        run: |
+          set -e
+          OUT=desktopApp/build/compose/binaries/main/dmg
+          rm -rf "$OUT"
+          ./gradlew :desktopApp:packageDmg
+          mkdir -p desktopApp/build/dmg-out
+          for f in "$OUT"/*.dmg; do
+            mnt=$(mktemp -d)
+            hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$f" >/dev/null
+            arch=$(lipo -archs "$mnt"/*.app/Contents/MacOS/* 2>/dev/null | head -1)
+            hdiutil detach "$mnt" >/dev/null
+            [ "$arch" = "arm64" ] || { echo "::error::$f is '$arch', not arm64 (the macOS build must run on Apple Silicon)"; exit 1; }
+            mv "$f" "desktopApp/build/dmg-out/$(basename "${f%.dmg}")-arm64.dmg"
+          done
+          ls -la desktopApp/build/dmg-out
 
       - name: Upload macOS to the draft release
         if: needs.plan.outputs.release == 'true'
@@ -399,7 +415,7 @@ jobs:
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          FILES=( desktopApp/build/compose/binaries/main/dmg/*.dmg )
+          FILES=( desktopApp/build/dmg-out/*-arm64.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
           gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
 
