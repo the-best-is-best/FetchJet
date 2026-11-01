@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-01 (night). Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
+Last updated: 2026-11-02. Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
 ## Owner rules (follow strictly)
@@ -283,8 +283,10 @@ Bridges:
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
   its work (clean code, kotlinx.serialization, multi-select delete) in 1.1.0 itself, since 1.1.0
   never reached users. The branch was deleted (local only, never pushed) and the work sits on
-  `release-v1.1.0`. Before releasing: build and test iOS on the Mac (clean code +
-  `navigationevent-compose` were never built for iOS).
+  `release-v1.1.0`. Not built for iOS yet, but low risk: every change is in `commonMain` with
+  official multiplatform libraries (kotlinx.serialization, navigationevent, Compose), and
+  `iosMain` / Swift were not touched. The next Mac build confirms it; it does not block the
+  commit (owner's decision, 2026-11-02).
 - Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
   `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
 - Stability (2026-11-01): all platforms are stable: Windows, macOS, Linux, Android, iOS and the
