@@ -256,16 +256,19 @@ Bridges:
    commit
    in `scripts/build-libtorrent-ios.command`), shipped as static `FJTorrent.xcframework`.
    Simulator-tested: magnet metadata, .torrent file, file selection, pause (disk stops) / resume
-   (continues from the same %), download to completion at 4-7 MB/s. Not tested: a real iPhone.
+   (continues from the same %), download to completion at 4-7 MB/s. Owner tested torrent on a real
+   iPhone: works (2026-11-01).
 
 ## Release plan (1.1.0)
 
 - Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
   `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
-- Stability (2026-11-01): Windows, macOS, Linux, Android and the Chrome / Edge / Firefox extension
-  are stable. Android re-tested on the A56 over wireless adb after the dead-code cleanup
-  (direct 10 MB, YouTube with merged video+audio, Sintel torrent 123 MB, no crash in logcat). iOS =
-  Beta (simulator only, never run on a real iPhone; the owner cannot test one).
+- Stability (2026-11-01): all platforms are stable: Windows, macOS, Linux, Android, iOS and the
+  Chrome / Edge / Firefox / Safari extension. Android re-tested on the A56 over wireless adb after
+  the dead-code cleanup (direct 10 MB, YouTube with merged video+audio, Sintel torrent 123 MB, no
+  crash in logcat). iOS is no longer Beta (owner's decision): the owner tested the app (video
+  download, torrent) and the Safari extension on a real iPhone, all work. Udemy logged in is not
+  tested there, but the owner says it does not justify Beta. So the release runs with `beta` empty.
 - `beta` input: comma list of beta platforms (`ios`, `ios,linux`, `all`; empty = all stable). It
   writes `<!-- fetchjet-beta: ... -->` into the notes; the downloads page (`docs/index.html`) marks
   those platforms. Never make the release a GitHub "pre-release": the app reads `/releases/latest`,
@@ -301,14 +304,16 @@ All done and pushed (`a751617` + the Udemy preview fix):
    no forced client. Verified: 4K clip "Only the clip" = 3840x2160, 33 s, with audio; "Full video,
    then cut" = exact 11 s (cut by the app's own ffmpeg step, not CutPlugin).
 
-Udemy works on the simulator (owner-tested 2026-11-01). Still needs a real iPhone: sideload with
-the extra Safari extension appex (bundle id `<app>.SafariExtension`). No App Store release is
+Udemy works on the simulator (owner-tested 2026-11-01). Safari extension (appex bundle id
+`<app>.SafariExtension`) sideloaded and working on the owner's real iPhone (2026-11-01). Video
+download and torrent also work there. Not confirmed on a real iPhone yet: Udemy logged in. No App
+Store release is
 planned (owner's decision: a YouTube/media downloader is rejected there), iOS ships sideloaded only.
 
 ## Backlog (from CLAUDE_HANDOFF.md, adjusted)
 
-1. iOS: verify the Python 3.13 media engine on a real device or simulator.
-2. iOS: torrent flow end to end: done on the simulator (FJTorrent), real iPhone pending.
+1. iOS: Python 3.13 media engine: done (simulator + owner's real iPhone, 2026-11-01).
+2. iOS: torrent flow end to end: done (FJTorrent, simulator + owner's real iPhone, 2026-11-01).
 3. `MediaStreamDownloader`: remove Invidious/cobalt resolvers. Stream bodies with
    `prepareGet().execute` instead of `client.get`.
 4. `DashboardViewModel`: lifecycle ViewModel (partly done). Split `App.kt` and
@@ -319,7 +324,8 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
    copies the same `extension/` JS at build time (`manifest.safari.json` -> manifest.json). On iOS
    (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`
    (`IosFetchJetLinks.kt`); media is found via the Performance API in content.js (no webRequest).
-   Udemy works on the simulator (2026-11-01). Not tested yet: a real iPhone.
+   Udemy works on the simulator (2026-11-01). The owner tested the extension on a real iPhone: it
+   works (2026-11-01).
    Qualities are not listed inside Safari on iOS: iOS suspends the app while Safari is in front
    (no local server), so the page button shows "Open in FetchJet" and the app lists them.
    Probe tried on 2026-11-01: running the app's Python + yt-dlp inside the extension's native
