@@ -5,6 +5,7 @@ import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.core.models.YTDLRequest
 import com.deniscerri.ytdl.util.FileUtil
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -155,9 +156,11 @@ actual suspend fun inspectPlatformQualities(
 ): List<MediaQualityEntry> =
     withContext(Dispatchers.IO) {
         val trimmedUrl = url.trim()
+        val initStarted = System.currentTimeMillis()
         if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) {
             return@withContext emptyList()
         }
+        AppLog.d { "Inspect: runtime ready in ${System.currentTimeMillis() - initStarted}ms" }
 
         val context = PathResolver.appContext ?: return@withContext emptyList()
 
@@ -165,17 +168,46 @@ actual suspend fun inspectPlatformQualities(
         val request = YTDLRequest(trimmedUrl)
         request.addOption("-j")
         request.addOption("--no-warnings")
+        request.addOption("--no-playlist")
         ytDlpHeaderArgs(requestHeaders, url).chunked(2)
             .forEach { (k, v) -> request.addOption(k, v) }
         FileUtil.getCookieFile(context) { cookiePath ->
             request.addOption("--cookies", cookiePath)
         }
 
+        val timed = AppLog.verbose
+        if (timed) request.addOption("-v")
+        val startedAt = System.currentTimeMillis()
         val response = try {
-            RuntimeManager.getInstance().execute(request)
-        } catch (_: Exception) {
+            if (timed) {
+                AppLog.d { "Inspect: yt-dlp start $trimmedUrl" }
+                RuntimeManager.getInstance()
+                    .execute(request, redirectErrorStream = true) { _, _, line ->
+                        if (!line.startsWith("{")) {
+                            AppLog.d {
+                                "Inspect +${System.currentTimeMillis() - startedAt}ms ${
+                                    if (line.contains(
+                                            "Command-line config"
+                                        )
+                                    ) line else line.take(300)
+                                }"
+                            }
+                        }
+                    }
+            } else {
+                RuntimeManager.getInstance().execute(request)
+            }
+        } catch (e: Exception) {
+            if (timed) AppLog.d {
+                "Inspect: yt-dlp failed after ${System.currentTimeMillis() - startedAt}ms: ${
+                    e.message?.take(
+                        300
+                    )
+                }"
+            }
             null
         } ?: return@withContext emptyList()
+        if (timed) AppLog.d { "Inspect: yt-dlp done in ${System.currentTimeMillis() - startedAt}ms (exit ${response.exitCode})" }
 
         val output = response.out.trim()
         if (output.isBlank()) return@withContext emptyList()
@@ -192,6 +224,7 @@ actual suspend fun inspectPlatformQualities(
         val videoDuration = json.optLong("duration", 0L)
 
         val rawFormats: JSONArray = json.optJSONArray("formats") ?: JSONArray()
+        val parseStarted = System.currentTimeMillis()
         val list = mutableListOf<MediaQualityEntry>()
         val seenKeys = mutableSetOf<String>()
 
@@ -237,9 +270,13 @@ actual suspend fun inspectPlatformQualities(
 
             // Only expose verified exact size (filesize, URL clen, or HTTP HEAD probe).
             // Do not expose unconfirmed estimates (like 2.9 GB); let unverified streams remain Unknown (-1L)
+            val isHlsFormat = f.optString("protocol")
+                .let { it.contains("m3u8", ignoreCase = true) || it == "mhtml" } ||
+                    directUrl.contains(".m3u8", ignoreCase = true)
             val filesize = when {
                 explicitFilesize > 0L -> explicitFilesize
                 clenFromUrl > 0L -> clenFromUrl
+                isHlsFormat -> -1L
                 else -> getCachedContentLength(directUrl.ifBlank { trimmedUrl })
             }
 
@@ -385,6 +422,7 @@ actual suspend fun inspectPlatformQualities(
                 }
             }
         }
+        AppLog.d { "Inspect: ${rawFormats.length()} formats parsed in ${System.currentTimeMillis() - parseStarted}ms" }
 
         // If list is empty (e.g. direct mp4 or single stream sites)
         if (list.isEmpty()) {

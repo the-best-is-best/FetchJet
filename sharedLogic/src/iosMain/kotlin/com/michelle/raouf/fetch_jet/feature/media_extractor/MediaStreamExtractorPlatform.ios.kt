@@ -568,9 +568,17 @@ actual suspend fun inspectPlatformQualities(
             val clenFromUrl =
                 Regex("""[?&]clen=(\d+)""").find(directUrl)?.groupValues?.get(1)?.toLongOrNull()
                     ?: -1L
+            val isHlsFormat = (getStringFromMap(f, "protocol") ?: "").let {
+                it.contains(
+                    "m3u8",
+                    ignoreCase = true
+                ) || it == "mhtml"
+            } ||
+                    directUrl.contains(".m3u8", ignoreCase = true)
             val filesize = when {
                 explicitFilesize > 0L -> explicitFilesize
                 clenFromUrl > 0L -> clenFromUrl
+                isHlsFormat -> -1L
                 else -> getCachedContentLength(directUrl.ifBlank { trimmedUrl })
             }
 

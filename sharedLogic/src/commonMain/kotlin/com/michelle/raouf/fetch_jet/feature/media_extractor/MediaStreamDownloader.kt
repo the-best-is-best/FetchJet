@@ -2145,6 +2145,7 @@ class MediaStreamDownloader(
 
         try {
 
+            val titleStarted = kotlin.time.TimeSource.Monotonic.markNow()
             val resolvedTitle = try {
 
                 if (isYouTubeUrl(effectiveUrl)) fetchYouTubeTitle(effectiveUrl) else fetchGenericMediaTitle(
@@ -2158,6 +2159,7 @@ class MediaStreamDownloader(
                 null
 
             }
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Inspect: title fetch ${titleStarted.elapsedNow().inWholeMilliseconds}ms" }
 
 
             // 0. Try platform-specific quality inspector (e.g. yt-dlp on Desktop)

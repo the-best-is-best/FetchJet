@@ -204,8 +204,18 @@ actual suspend fun inspectPlatformQualities(
 
             else -> 0.0
         }
-        val filesize =
-            if (explicitFilesize > 0) explicitFilesize else getCachedContentLength(directUrl.ifBlank { url })
+        val isHlsFormat = (f.getString("protocol") ?: "").let {
+            it.contains(
+                "m3u8",
+                ignoreCase = true
+            ) || it == "mhtml"
+        } ||
+                directUrl.contains(".m3u8", ignoreCase = true)
+        val filesize = when {
+            explicitFilesize > 0 -> explicitFilesize
+            isHlsFormat -> -1L
+            else -> getCachedContentLength(directUrl.ifBlank { url })
+        }
 
         // Check if audio only
         val isAudioOnly = (vcodec.equals("none", ignoreCase = true) || resolution.contains(

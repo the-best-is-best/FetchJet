@@ -417,7 +417,13 @@ class QueueManagerRepository(
         url: String,
         requestHeaders: Map<String, String> = emptyMap()
     ): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
-        return mediaEngine.inspectMediaQualities(url, requestHeaders)
+        val started = kotlin.time.TimeSource.Monotonic.markNow()
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Inspect: begin $url" }
+        return mediaEngine.inspectMediaQualities(url, requestHeaders).also { list ->
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d {
+                "Inspect: end in ${started.elapsedNow().inWholeMilliseconds}ms, ${list.size} qualities"
+            }
+        }
     }
 
     /** The videos of a playlist / channel link (null = not a playlist). */
