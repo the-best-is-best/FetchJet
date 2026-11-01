@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -28,19 +27,19 @@ import okio.SYSTEM
 
 class DashboardViewModel(
 
-    private val queueRepository: QueueManagerRepository = QueueManagerRepository.getInstance()
+    internal val queueRepository: QueueManagerRepository = QueueManagerRepository.getInstance()
 
 ) : ViewModel() {
 
-    private val settingsRepository =
+    internal val settingsRepository =
         com.michelle.raouf.fetch_jet.core.settings.AppSettingsRepository(queueRepository.pathResolver)
 
     /** Background work; cancelled with the ViewModel ([onCleared]). */
-    private val scope = CoroutineScope(
+    internal val scope = CoroutineScope(
         viewModelScope.coroutineContext + Dispatchers.IO + SupervisorJob(viewModelScope.coroutineContext[Job])
     )
 
-    private val _uiState = MutableStateFlow(
+    internal val _uiState = MutableStateFlow(
 
         DashboardUiState(
 
@@ -52,27 +51,27 @@ class DashboardViewModel(
 
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
-    private val _uiEffect = MutableSharedFlow<DashboardUiEffect>(extraBufferCapacity = 8)
+    internal val _uiEffect = MutableSharedFlow<DashboardUiEffect>(extraBufferCapacity = 8)
 
     val uiEffect: SharedFlow<DashboardUiEffect> = _uiEffect.asSharedFlow()
 
-    private var pendingExternalUrl: String? = null
-    private var pendingExternalHeaders: Map<String, String> = emptyMap()
-    private var pendingExternalFileName: String? = null
+    internal var pendingExternalUrl: String? = null
+    internal var pendingExternalHeaders: Map<String, String> = emptyMap()
+    internal var pendingExternalFileName: String? = null
 
     /** Quality the extension chose for a clip: re-applied when the dialog's own inspection finishes. */
-    private var pendingSelectedFormatId: String? = null
+    internal var pendingSelectedFormatId: String? = null
 
     /** An extension download whose file already exists: waits for Overwrite / Save as copy. */
-    private var pendingExternalConflict: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest? =
+    internal var pendingExternalConflict: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest? =
         null
 
     /** The playlist link for which the user chose "download only this video". */
-    private var singleVideoUrl: String? = null
+    internal var singleVideoUrl: String? = null
 
-    private val toolsMutex = kotlinx.coroutines.sync.Mutex()
+    internal val toolsMutex = kotlinx.coroutines.sync.Mutex()
 
-    private fun reportToolProgress(p: com.michelle.raouf.fetch_jet.feature.media_extractor.ToolDownloadProgress) {
+    internal fun reportToolProgress(p: com.michelle.raouf.fetch_jet.feature.media_extractor.ToolDownloadProgress) {
         _uiState.update {
             it.copy(
                 isDownloadingYtDlp = true,
@@ -82,30 +81,9 @@ class DashboardViewModel(
         }
     }
 
-    private fun autoUpdateTools() {
-        scope.launch {
-            val changed = toolsMutex.withLock {
-                runCatching {
-                    com.michelle.raouf.fetch_jet.feature.media_extractor.autoUpdateMediaTools(::reportToolProgress)
-                }.getOrDefault(false)
-            }
-            _uiState.update {
-                it.copy(
-                    isDownloadingYtDlp = false,
-                    toolDownloadName = null,
-                    toolDownloadFraction = null
-                )
-            }
-            refreshToolStatus()
-            if (changed) {
-                _uiEffect.emit(DashboardUiEffect.ShowToast("Media tools updated"))
-            }
-        }
-    }
-
-    private val detectLinkTypeUseCase =
+    internal val detectLinkTypeUseCase =
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
-    private var toolStatusPollJob: Job? = null
+    internal var toolStatusPollJob: Job? = null
 
     init {
 
@@ -149,7 +127,7 @@ class DashboardViewModel(
 
     }
 
-    private fun persistCurrentSettings() {
+    internal fun persistCurrentSettings() {
 
         val s = _uiState.value
 
@@ -200,7 +178,7 @@ class DashboardViewModel(
      * The scissors button in the extension: the Add dialog opens on this link with the chosen
      * quality selected and the clip range switched on, so the user sets From / To and downloads.
      */
-    private fun openClipDialog(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
+    internal fun openClipDialog(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
         val qualities = request.mediaQualities
         val selected = qualities.firstOrNull { it.isSelected } ?: qualities.first()
         pendingExternalUrl = request.url
@@ -230,7 +208,7 @@ class DashboardViewModel(
      * The browser already chose everything (quality picked in the extension popup, or a
      * "download now" click): queue it without showing the Add dialog.
      */
-    private fun startExternalDirectly(
+    internal fun startExternalDirectly(
         request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest,
         forceOverwrite: Boolean = false,
         overrideFileName: String? = null
@@ -369,61 +347,8 @@ class DashboardViewModel(
         }
     }
 
-
-    /**
-     * While the Add dialog is open and the media engine is not ready yet (iOS boots the
-     * embedded engine asynchronously; desktop/Android may be downloading yt-dlp), re-check
-     * the tool status every couple of seconds so the UI flips to "ready" by itself.
-     */
-    private fun pollToolStatusWhileNotReady() {
-        toolStatusPollJob?.cancel()
-        toolStatusPollJob = scope.launch {
-            repeat(150) { // ~5 minutes
-                val st = _uiState.value
-                if (!st.isAddDialogVisible || st.isYtDlpInstalled) return@launch
-                kotlinx.coroutines.delay(2000)
-                val installed =
-                    com.michelle.raouf.fetch_jet.feature.media_extractor.isMediaExtractorToolInstalled()
-                val status =
-                    com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaExtractorToolStatus()
-                _uiState.update { it.copy(isYtDlpInstalled = installed, ytDlpStatus = status) }
-            }
-        }
-    }
-
-    private fun refreshToolStatus() {
-        scope.launch {
-            val isYtDlp =
-                com.michelle.raouf.fetch_jet.feature.media_extractor.isMediaExtractorToolInstalled()
-            val isFfmpeg =
-                com.michelle.raouf.fetch_jet.feature.media_extractor.isFfmpegToolInstalled()
-            val jsRuntime =
-                com.michelle.raouf.fetch_jet.feature.media_extractor.getJsRuntimeStatus()
-            val toolsDir =
-                com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaToolsDirectory()
-            val statusText =
-                com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaExtractorToolStatus()
-            val torrentStatus = runCatching { queueRepository.torrentEngine.engineStatus() }
-                .getOrElse { "BitTorrent engine error: ${it.message}" }
-            val torrentReady =
-                runCatching { queueRepository.torrentEngine.isSupported }.getOrDefault(false)
-            _uiState.update {
-                it.copy(
-                    ytDlpStatus = statusText,
-                    isYtDlpInstalled = isYtDlp,
-                    isFfmpegInstalled = isFfmpeg,
-                    jsRuntimeName = jsRuntime.name,
-                    isJsRuntimeReady = jsRuntime.isReady,
-                    toolsDirectoryPath = toolsDir,
-                    torrentEngineStatus = torrentStatus,
-                    isTorrentEngineReady = torrentReady
-                )
-            }
-        }
-    }
-
     /** Mirrors BehaviorSettings into the UI state so screens read state and send events only. */
-    private fun observeBehaviorSettings() {
+    internal fun observeBehaviorSettings() {
         scope.launch {
             BehaviorSettings.connections.collect { n ->
                 _uiState.update {
@@ -462,7 +387,7 @@ class DashboardViewModel(
         }
     }
 
-    private fun observeQueue() {
+    internal fun observeQueue() {
 
         scope.launch {
 
@@ -501,682 +426,22 @@ class DashboardViewModel(
     fun onEvent(event: DashboardUiEvent) {
 
         when (event) {
-
-            is DashboardUiEvent.OnEngineSelected -> {
-                _uiState.update {
-                    it.copy(
-                        detectedEngine = event.engine,
-                        inspectedMediaQualities = emptyList(),
-                        inspectedPlaylist = null,
-                        inspectedTorrentFiles = emptyList(),
-                        inspectError = null,
-                        inspectMediaError = null
-                    )
-                }
-            }
-
-            is DashboardUiEvent.OnClipboardLink -> {
-                val s = _uiState.value
-                // Not while a dialog is up, and never twice for the same text or a link already queued.
-                // Already queued, or a dialog is up: say nothing. (The watcher itself only reports a
-                // text once, so copying the same link again later asks again.)
-                if (s.isAddDialogVisible || s.clipboardOfferUrl != null) return
-                if (queueRepository.allTasksFlow.value.any { it.url == event.url || it.originalUrl == event.url }) return
-                _uiState.update { it.copy(clipboardOfferUrl = event.url) }
-            }
-
-            is DashboardUiEvent.OnMonitorClipboardChanged -> BehaviorSettings.setMonitorClipboard(
-                event.on
+            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
+                event
             )
 
-            is DashboardUiEvent.OnClipboardVideoPagesChanged -> BehaviorSettings.setClipboardVideoPages(
-                event.on
+            is DashboardUiEvent.OnPauseClicked, is DashboardUiEvent.OnResumeClicked, is DashboardUiEvent.OnCancelClicked, is DashboardUiEvent.OnRemoveClicked, is DashboardUiEvent.OnRemoveSelectedClicked, is DashboardUiEvent.OnConfirmRemoveClicked, DashboardUiEvent.OnConfirmBrowserFallback, DashboardUiEvent.OnDismissBrowserFallback, DashboardUiEvent.OnConfirmCancelClicked, DashboardUiEvent.OnResumeExistingDuplicateClicked, DashboardUiEvent.OnRestartDuplicateClicked, DashboardUiEvent.OnDismissDuplicateDialog, DashboardUiEvent.OnConfirmOverwriteClicked, is DashboardUiEvent.OnSaveAsCopyClicked, DashboardUiEvent.OnDismissFileConflictDialog, DashboardUiEvent.OnDismissCancelDialog, DashboardUiEvent.OnDismissRemoveDialog, is DashboardUiEvent.OnDownloadSpeedLimitChanged, is DashboardUiEvent.OnUploadSpeedLimitChanged, DashboardUiEvent.OnPauseAllClicked, DashboardUiEvent.OnResumeAllClicked, is DashboardUiEvent.OnTaskTorrentFileSelectionToggled, is DashboardUiEvent.OnTaskTorrentFilePriorityChanged -> handleTaskEvent(
+                event
             )
 
-            is DashboardUiEvent.OnSortIntoFoldersChanged -> BehaviorSettings.setSortIntoFolders(
-                event.on
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+                event
             )
-
-            DashboardUiEvent.OnClipboardOfferAccepted -> {
-                val url = _uiState.value.clipboardOfferUrl ?: return
-                _uiState.update { it.copy(clipboardOfferUrl = null) }
-                onEvent(DashboardUiEvent.OnUrlChanged(url))
-                onEvent(DashboardUiEvent.OnToggleAddDialog(true))
-            }
-
-            DashboardUiEvent.OnClipboardOfferDismissed -> _uiState.update {
-                it.copy(
-                    clipboardOfferUrl = null
-                )
-            }
-
-            is DashboardUiEvent.OnFileNameChanged -> {
-                _uiState.update { it.copy(fileNameOverride = event.name) }
-            }
-
-            is DashboardUiEvent.OnUrlChanged -> {
-
-                // App Store edition: media and torrent engines are not shipped.
-                val engine = when (val detected = detectLinkTypeUseCase(event.url)) {
-                    EngineType.MEDIA_STREAM -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) detected else EngineType.HTTP_DIRECT
-                    EngineType.BITTORRENT -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) detected else EngineType.HTTP_DIRECT
-                    else -> detected
-                }
-
-                val defaultQualities =
-
-                    emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
-
-                _uiState.update {
-
-                    it.copy(
-
-                        inputUrl = event.url,
-
-                        detectedEngine = engine,
-
-                        errorMessage = null,
-
-                        inspectedTorrentFiles = emptyList(),
-
-                        inspectedTorrentName = null,
-
-                        inspectedMediaQualities = defaultQualities,
-                        inspectedPlaylist = null,
-
-                        inspectedMediaTitle = null,
-                        inspectMediaError = null,
-                        inspectError = null,
-                        clipStartTime = "",
-                        clipEndTime = "",
-                        isClipRangeEnabled = false,
-                        clipFastMode = false,
-                        scheduleStartMs = 0L,
-                        selectedConnections = 0,
-                        mediaDurationSeconds = 0L,
-                        fileNameOverride = "",
-                        suggestedFileName = ""
-                    )
-                }
-                refreshSuggestedFileName()
-            }
-
-            is DashboardUiEvent.OnDestinationPathChanged -> {
-
-                _uiState.update { it.copy(destinationPath = event.path) }
-
-                persistCurrentSettings()
-
-            }
-
-            is DashboardUiEvent.OnDisableTorrentUploadToggled -> {
-
-                _uiState.update { it.copy(disableTorrentUpload = event.disable) }
-
-                persistCurrentSettings()
-
-            }
-
-            is DashboardUiEvent.OnToggleAddDialog -> {
-
-                if (!event.show && pendingExternalUrl != null) {
-                    val urlToFallback = pendingExternalUrl!!
-                    pendingExternalUrl = null
-                    // The extension cancelled the browser's own download when it handed us this
-                    // link. Offer to give it back to the browser ONLY when the browser could
-                    // actually download it (a plain file over http/https) - never for magnets,
-                    // .torrent files or video pages, where opening the browser is pointless.
-                    val isPlainFile = urlToFallback.startsWith("http", ignoreCase = true) &&
-                            detectLinkTypeUseCase(urlToFallback) == EngineType.HTTP_DIRECT
-                    if (isPlainFile) {
-                        _uiState.update { it.copy(browserFallbackUrl = urlToFallback) }
-                    }
-                }
-
-                val installed =
-
-                    com.michelle.raouf.fetch_jet.feature.media_extractor.isMediaExtractorToolInstalled()
-
-                val status =
-
-                    com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaExtractorToolStatus()
-
-                val url = if (event.show) _uiState.value.inputUrl else ""
-
-                val defaultQualities =
-
-                    emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
-
-                _uiState.update { state ->
-
-                    state.copy(
-
-                        isAddDialogVisible = event.show,
-
-                        errorMessage = null,
-
-                        inspectedTorrentFiles = emptyList(),
-
-                        inspectedTorrentName = null,
-
-                        inspectedMediaQualities = defaultQualities,
-                        inspectedPlaylist = null,
-                        scheduleStartMs = 0L,
-
-                        selectedConnections = 0,
-
-                        inspectedMediaTitle = null,
-
-                        inspectMediaError = null,
-
-                        inspectError = null,
-
-                        ytDlpStatus = status,
-
-                        isYtDlpInstalled = installed,
-
-                        selectedDownloadSpeedLimitBytes = if (event.show) 0L else state.selectedDownloadSpeedLimitBytes,
-
-                        selectedUploadSpeedLimitBytes = if (event.show) 0L else state.selectedUploadSpeedLimitBytes
-
-                    )
-
-                }
-                if (event.show && !installed) pollToolStatusWhileNotReady()
-
-            }
-
-            is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged -> {
-
-                _uiState.update {
-
-                    it.copy(
-
-                        globalDownloadSpeedLimitBytes = event.limitBytesPerSec
-
-                    )
-
-                }
-
-                queueRepository.setGlobalDownloadSpeedLimit(event.limitBytesPerSec)
-
-                persistCurrentSettings()
-
-            }
-
-            is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged -> {
-
-                _uiState.update {
-
-                    it.copy(
-
-                        globalUploadSpeedLimitBytes = event.limitBytesPerSec
-
-                    )
-
-                }
-
-                queueRepository.setGlobalUploadSpeedLimit(event.limitBytesPerSec)
-
-                persistCurrentSettings()
-
-            }
-
-            is DashboardUiEvent.OnSpeedDisplayUnitChanged -> {
-                _uiState.update { it.copy(speedDisplayUnit = event.unit) }
-                persistCurrentSettings()
-            }
-
-            DashboardUiEvent.OnApplySettingsClicked -> {
-
-                queueRepository.setGlobalDownloadSpeedLimit(_uiState.value.globalDownloadSpeedLimitBytes)
-
-                queueRepository.setGlobalUploadSpeedLimit(_uiState.value.globalUploadSpeedLimitBytes)
-
-                persistCurrentSettings()
-
-            }
-
-            DashboardUiEvent.OnThemeToggled -> {
-
-                _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
-
-                persistCurrentSettings()
-
-            }
-
-            DashboardUiEvent.OnAddDownloadClicked -> addDownload()
-
-            is DashboardUiEvent.OnPauseClicked -> {
-
-                scope.launch { queueRepository.pauseTask(event.taskId) }
-
-            }
-
-            is DashboardUiEvent.OnResumeClicked -> {
-
-                scope.launch { queueRepository.resumeTask(event.taskId) }
-
-            }
-
-            is DashboardUiEvent.OnCancelClicked, is DashboardUiEvent.OnRemoveClicked -> {
-
-                val taskId = when (event) {
-
-                    is DashboardUiEvent.OnCancelClicked -> event.taskId
-
-                    is DashboardUiEvent.OnRemoveClicked -> event.taskId
-
-                    else -> return
-
-                }
-
-                _uiState.update { it.copy(removeConfirmationTaskId = taskId) }
-
-            }
-
-            is DashboardUiEvent.OnConfirmRemoveClicked -> {
-
-                val taskId = _uiState.value.removeConfirmationTaskId
-
-                if (taskId != null) {
-
-                    _uiState.update { it.copy(removeConfirmationTaskId = null) }
-
-                    scope.launch { queueRepository.removeTask(taskId, event.deleteFile) }
-
-                }
-
-            }
-
-            DashboardUiEvent.OnConfirmBrowserFallback -> {
-                val url = _uiState.value.browserFallbackUrl
-                _uiState.update { it.copy(browserFallbackUrl = null) }
-                if (url != null) {
-                    com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.triggerFallback(
-                        url
-                    )
-                }
-            }
-            DashboardUiEvent.OnDismissBrowserFallback -> {
-                _uiState.update { it.copy(browserFallbackUrl = null) }
-            }
-            DashboardUiEvent.OnConfirmCancelClicked -> {
-
-                val taskId = _uiState.value.removeConfirmationTaskId
-
-                if (taskId != null) {
-
-                    _uiState.update { it.copy(removeConfirmationTaskId = null) }
-
-                    scope.launch { queueRepository.removeTask(taskId, false) }
-
-                }
-
-            }
-
-            DashboardUiEvent.OnResumeExistingDuplicateClicked -> {
-                val duplicate = _uiState.value.duplicateTaskAlert
-                if (duplicate != null) {
-                    scope.launch {
-                        queueRepository.resumeTask(duplicate.id)
-                        _uiState.update {
-                            it.copy(
-                                duplicateTaskAlert = null,
-                                isAddDialogVisible = false,
-                                inputUrl = ""
-                            )
-                        }
-                    }
-                }
-            }
-
-            DashboardUiEvent.OnRestartDuplicateClicked -> {
-                val duplicate = _uiState.value.duplicateTaskAlert
-                if (duplicate != null) {
-                    scope.launch {
-                        queueRepository.removeTask(duplicate.id, deleteFile = true)
-                        _uiState.update { it.copy(duplicateTaskAlert = null) }
-                        addDownload(forceOverwrite = true, skipDuplicateCheck = true)
-                    }
-                }
-            }
-
-            DashboardUiEvent.OnDismissDuplicateDialog -> {
-                _uiState.update { it.copy(duplicateTaskAlert = null) }
-            }
-
-            DashboardUiEvent.OnConfirmOverwriteClicked -> {
-                val conflict = _uiState.value.fileConflictAlert
-                _uiState.update { it.copy(fileConflictAlert = null) }
-                val external = pendingExternalConflict
-                pendingExternalConflict = null
-                scope.launch {
-                    // The file is replaced: the old entry for it would show a stale download.
-                    if (conflict != null) {
-                        queueRepository.allTasksFlow.value
-                            .filter { it.fileName == conflict.fileName && it.destinationPath == conflict.destinationPath }
-                            .forEach { queueRepository.removeTask(it.id, deleteFile = false) }
-                    }
-                    if (external != null) startExternalDirectly(external, forceOverwrite = true)
-                    else addDownload(forceOverwrite = true, skipDuplicateCheck = true)
-                }
-            }
-
-            is DashboardUiEvent.OnSaveAsCopyClicked -> {
-                val newName = event.newFileName
-                _uiState.update { it.copy(fileConflictAlert = null) }
-                pendingExternalConflict?.let { external ->
-                    pendingExternalConflict = null
-                    startExternalDirectly(external, overrideFileName = newName)
-                    return
-                }
-                addDownload(
-                    forceOverwrite = false,
-                    overrideFileName = newName,
-                    skipDuplicateCheck = true
-                )
-            }
-
-            DashboardUiEvent.OnDismissFileConflictDialog -> {
-                pendingExternalConflict = null
-                _uiState.update { it.copy(fileConflictAlert = null) }
-            }
-
-            DashboardUiEvent.OnDismissCancelDialog, DashboardUiEvent.OnDismissRemoveDialog -> {
-
-                _uiState.update { it.copy(removeConfirmationTaskId = null) }
-
-            }
-
-            is DashboardUiEvent.OnDownloadSpeedLimitChanged -> {
-
-                _uiState.update { it.copy(selectedDownloadSpeedLimitBytes = event.limitBytesPerSec) }
-
-            }
-
-            is DashboardUiEvent.OnUploadSpeedLimitChanged -> {
-
-                _uiState.update { it.copy(selectedUploadSpeedLimitBytes = event.limitBytesPerSec) }
-
-            }
-
-            is DashboardUiEvent.OnTabSelected -> {
-
-                _uiState.update { state ->
-
-                    state.copy(
-
-                        selectedTab = event.tab,
-
-                        filteredTasks = filterTasks(state.allTasks, event.tab, state.sortOption)
-
-                    )
-
-                }
-
-            }
-
-            is DashboardUiEvent.OnSortChanged -> {
-                _uiState.update { state ->
-                    state.copy(
-                        sortOption = event.sort,
-                        filteredTasks = filterTasks(state.allTasks, state.selectedTab, event.sort)
-                    )
-                }
-            }
-
-            DashboardUiEvent.OnInspectTorrentClicked -> inspectTorrent()
-
-            DashboardUiEvent.OnInspectMediaClicked -> inspectMedia()
-
-            is DashboardUiEvent.OnMediaQualitySelectionToggled -> {
-                _uiState.update { state ->
-                    val updated = state.inspectedMediaQualities.map { q ->
-                        if (q.index == event.qualityIndex) q.copy(isSelected = event.isSelected) else q
-                    }
-                    state.copy(inspectedMediaQualities = updated)
-                }
-            }
-
-            is DashboardUiEvent.OnClipStartTimeChanged -> {
-                _uiState.update { it.copy(clipStartTime = event.time) }
-            }
-
-            is DashboardUiEvent.OnClipEndTimeChanged -> {
-                _uiState.update { it.copy(clipEndTime = event.time) }
-            }
-
-            is DashboardUiEvent.OnToggleClipFastMode -> {
-                _uiState.update { it.copy(clipFastMode = event.enabled) }
-            }
-
-            is DashboardUiEvent.OnPlaylistEntryToggled -> _uiState.update { st ->
-                val pl = st.inspectedPlaylist ?: return@update st
-                st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map {
-                    if (it.index == event.index) it.copy(isSelected = event.selected) else it
-                }))
-            }
-
-            is DashboardUiEvent.OnPlaylistSelectAll -> _uiState.update { st ->
-                val pl = st.inspectedPlaylist ?: return@update st
-                st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map { it.copy(isSelected = event.selected) }))
-            }
-
-            is DashboardUiEvent.OnPlaylistQualityChanged -> _uiState.update {
-                it.copy(
-                    playlistQuality = event.quality
-                )
-            }
-
-            DashboardUiEvent.OnPlaylistUseSingleVideo -> {
-                singleVideoUrl = _uiState.value.inputUrl
-                _uiState.update { it.copy(inspectedPlaylist = null) }
-                inspectMedia()
-            }
-
-            is DashboardUiEvent.OnScheduleChanged -> _uiState.update { it.copy(scheduleStartMs = event.epochMs) }
-
-            is DashboardUiEvent.OnConnectionsChanged -> _uiState.update {
-                it.copy(
-                    selectedConnections = event.connections
-                )
-            }
-
-            is DashboardUiEvent.OnDefaultConnectionsChanged -> BehaviorSettings.setConnections(event.connections)
-
-            DashboardUiEvent.OnPauseAllClicked -> queueRepository.pauseAll()
-
-            DashboardUiEvent.OnResumeAllClicked -> queueRepository.resumeAll()
-
-            is DashboardUiEvent.OnToggleClipRange -> {
-                val hasMediaData = _uiState.value.inspectedMediaQualities.isNotEmpty()
-                val durationSec = _uiState.value.mediaDurationSeconds
-                if ((!hasMediaData || durationSec <= 0L) && event.enabled) {
-                    return
-                }
-                val fullEndTime =
-                    if (durationSec > 0) formatSecondsToHhMm(durationSec) else "00:10:00"
-                _uiState.update {
-                    it.copy(
-                        isClipRangeEnabled = event.enabled,
-                        clipStartTime = if (event.enabled && (it.clipStartTime.isBlank() || it.clipStartTime == "00:00")) "00:00" else it.clipStartTime,
-                        clipEndTime = if (event.enabled && (it.clipEndTime.isBlank() || it.clipEndTime == "00:00")) fullEndTime else it.clipEndTime
-                    )
-                }
-            }
-
-            is DashboardUiEvent.OnSelectAllMediaQualitiesToggled -> {
-
-                _uiState.update { state ->
-
-                    val updated = state.inspectedMediaQualities.map { q ->
-
-                        q.copy(isSelected = event.selectAll)
-
-                    }
-
-                    state.copy(inspectedMediaQualities = updated)
-
-                }
-
-            }
-
-            is DashboardUiEvent.OnTorrentFileSelectionToggled -> {
-
-                _uiState.update { state ->
-
-                    val updatedFiles = state.inspectedTorrentFiles.map { file ->
-
-                        if (file.index == event.fileIndex) file.copy(isSelected = event.isSelected) else file
-
-                    }
-
-                    state.copy(inspectedTorrentFiles = updatedFiles)
-
-                }
-
-            }
-
-            is DashboardUiEvent.OnTorrentFilePriorityChanged -> {
-
-                _uiState.update { state ->
-
-                    val updatedFiles = state.inspectedTorrentFiles.map { file ->
-
-                        if (file.index == event.fileIndex) file.copy(priority = event.priority) else file
-
-                    }
-
-                    state.copy(inspectedTorrentFiles = updatedFiles)
-
-                }
-
-            }
-
-            is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> {
-
-                _uiState.update { state ->
-
-                    val updatedFiles =
-
-                        state.inspectedTorrentFiles.map { it.copy(isSelected = event.selectAll) }
-
-                    state.copy(inspectedTorrentFiles = updatedFiles)
-
-                }
-
-            }
-
-            is DashboardUiEvent.OnTaskTorrentFileSelectionToggled -> {
-
-                queueRepository.updateTorrentFileSelection(
-
-                    event.taskId,
-
-                    event.fileIndex,
-
-                    event.isSelected
-
-                )
-
-            }
-
-            is DashboardUiEvent.OnTaskTorrentFilePriorityChanged -> {
-
-                queueRepository.updateTorrentFilePriority(
-
-                    event.taskId,
-
-                    event.fileIndex,
-
-                    event.priority
-
-                )
-
-            }
-
-            DashboardUiEvent.OnDownloadYtDlpClicked -> {
-
-                _uiState.update { it.copy(isDownloadingYtDlp = true) }
-
-                scope.launch {
-
-                    val success = toolsMutex.withLock {
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.downloadMediaExtractorTool(
-                            ::reportToolProgress
-                        )
-                    }
-
-                    // Same button also installs the BitTorrent engine if it is missing.
-                    val torrentInstall =
-                        runCatching { queueRepository.torrentEngine.installEngine() }
-                            .getOrElse { Result.failure(it) }
-                    val torrentStatus2 =
-                        runCatching { queueRepository.torrentEngine.engineStatus() }
-                            .getOrElse { "BitTorrent engine error: ${it.message}" }
-                    val torrentReady2 = torrentInstall.isSuccess ||
-                            runCatching { queueRepository.torrentEngine.isSupported }.getOrDefault(
-                                false
-                            )
-                    val newStatus =
-
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaExtractorToolStatus()
-
-                    val isYtDlp =
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.isMediaExtractorToolInstalled()
-
-                    val isFfmpeg =
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.isFfmpegToolInstalled()
-
-                    val jsRuntime =
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.getJsRuntimeStatus()
-
-                    val toolsDir =
-                        com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaToolsDirectory()
-
-                    _uiState.update {
-
-                        it.copy(
-
-                            isDownloadingYtDlp = false,
-                            toolDownloadName = null,
-                            toolDownloadFraction = null,
-
-                            ytDlpStatus = newStatus,
-
-                            isYtDlpInstalled = isYtDlp,
-
-                            isFfmpegInstalled = isFfmpeg,
-
-                            jsRuntimeName = jsRuntime.name,
-                            isJsRuntimeReady = jsRuntime.isReady,
-
-                            toolsDirectoryPath = toolsDir,
-                            torrentEngineStatus = torrentInstall.exceptionOrNull()?.let { e ->
-                                "BitTorrent engine install failed: ${e.message}"
-                            } ?: torrentStatus2,
-                            isTorrentEngineReady = torrentReady2
-
-                        )
-
-                    }
-
-                    val msg =
-
-                        if (success) "Media tools downloaded successfully!" else "Failed to download media tools"
-
-                    _uiEffect.emit(DashboardUiEffect.ShowToast(msg))
-
-                }
-
-            }
-
         }
 
     }
 
-    private fun inspectTorrent() {
+    internal fun inspectTorrent() {
 
         val url = _uiState.value.inputUrl
 
@@ -1234,7 +499,7 @@ class DashboardViewModel(
 
     }
 
-    private fun inspectMedia() {
+    internal fun inspectMedia() {
 
         val url = _uiState.value.inputUrl
 
@@ -1340,7 +605,7 @@ class DashboardViewModel(
 
     }
 
-    private fun isSameDownload(task: DownloadTask, newUrl: String): Boolean {
+    internal fun isSameDownload(task: DownloadTask, newUrl: String): Boolean {
         val trimmed = newUrl.trim()
         if (task.url.equals(trimmed, ignoreCase = true)) return true
         if (!task.originalUrl.isNullOrBlank() && task.originalUrl.equals(
@@ -1366,13 +631,13 @@ class DashboardViewModel(
      * else what the jar remembers for the link's site (a lesson pasted after another one came
      * from the browser), else nothing.
      */
-    private fun headersForLink(url: String): Map<String, String> {
+    internal fun headersForLink(url: String): Map<String, String> {
         val own = if (pendingExternalUrl == url) pendingExternalHeaders else emptyMap()
         return com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.headersFor(url, own)
     }
 
     /** Recomputes the name shown in the Add dialog from the current link / inspection. */
-    private fun refreshSuggestedFileName() {
+    internal fun refreshSuggestedFileName() {
         val s = _uiState.value
         val url = s.inputUrl.trim()
         if (url.isBlank()) {
@@ -1393,7 +658,7 @@ class DashboardViewModel(
         _uiState.update { it.copy(suggestedFileName = name) }
     }
 
-    private fun resolveTargetFileName(
+    internal fun resolveTargetFileName(
         currentState: DashboardUiState,
         url: String,
         customFileName: String?
@@ -1446,7 +711,7 @@ class DashboardViewModel(
     }
 
     /** The name itself when it is free, else "name (n).ext". */
-    private fun freeFileName(destDir: String, fileName: String): String =
+    internal fun freeFileName(destDir: String, fileName: String): String =
         if (FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) getUniqueFileName(
             destDir,
             fileName
@@ -1458,7 +723,7 @@ class DashboardViewModel(
      * the link detector would route it to the media inspector. Only real video *pages* (no file
      * extension) and HLS/DASH playlists still need yt-dlp.
      */
-    private fun engineForDirectFile(url: String): EngineType {
+    internal fun engineForDirectFile(url: String): EngineType {
         val detected = detectLinkTypeUseCase(url)
         if (detected != EngineType.MEDIA_STREAM) return detected
         val path = url.substringBefore('?').substringBefore('#').lowercase()
@@ -1471,7 +736,7 @@ class DashboardViewModel(
         return if (isFile || isGoogleVideo) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM
     }
 
-    private fun getUniqueFileName(destDir: String, originalFileName: String): String {
+    internal fun getUniqueFileName(destDir: String, originalFileName: String): String {
         val nameWithoutExt = originalFileName.substringBeforeLast('.')
         val ext =
             if (originalFileName.contains('.')) ".${originalFileName.substringAfterLast('.')}" else ""
@@ -1482,468 +747,6 @@ class DashboardViewModel(
             candidate = "$nameWithoutExt ($counter)$ext"
         }
         return candidate
-    }
-
-    private fun addDownload(
-        forceOverwrite: Boolean = false,
-        overrideFileName: String? = null,
-        skipDuplicateCheck: Boolean = false
-    ) {
-        val currentState = _uiState.value
-        val url = currentState.inputUrl
-        if (url.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Please enter a valid URL or Magnet link") }
-            return
-        }
-
-        currentState.inspectedPlaylist?.let { playlist ->
-            addPlaylist(currentState, playlist)
-            return
-        }
-
-        if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
-            if (currentState.inspectMediaError != null) {
-                _uiState.update { it.copy(errorMessage = "Cannot start download: Video inspection failed.") }
-                return
-            }
-        }
-
-        if (currentState.detectedEngine == EngineType.BITTORRENT) {
-            if (currentState.inspectError != null || currentState.inspectedTorrentFiles.isEmpty() || !currentState.inspectedTorrentFiles.any { it.isSelected }) {
-                _uiState.update { it.copy(errorMessage = "Cannot start download: Torrent inspection failed or no files selected.") }
-                return
-            }
-        }
-
-        val isClippingActive =
-            currentState.isClipRangeEnabled && currentState.detectedEngine == EngineType.MEDIA_STREAM
-        val clipStartSec =
-            if (isClippingActive && currentState.clipStartTime.isNotBlank()) parseHhMmToSeconds(
-                currentState.clipStartTime
-            ) else 0L
-        val clipEndSec =
-            if (isClippingActive && currentState.clipEndTime.isNotBlank()) parseHhMmToSeconds(
-                currentState.clipEndTime
-            ) else currentState.mediaDurationSeconds
-        val mediaDur = currentState.mediaDurationSeconds
-        val fullEndHhMm = if (mediaDur > 0L) formatSecondsToHhMm(mediaDur) else ""
-        val isClipEndAtEnd = currentState.clipEndTime.isBlank() ||
-                (fullEndHhMm.isNotBlank() && currentState.clipEndTime == fullEndHhMm) ||
-                (mediaDur > 0L && clipEndSec >= mediaDur)
-
-        if (isClippingActive) {
-            if (mediaDur > 0L && !isClipEndAtEnd && clipEndSec > mediaDur) {
-                _uiState.update { it.copy(errorMessage = "Clip end time exceeds video duration.") }
-                return
-            }
-            if (clipEndSec > 0L && clipStartSec >= clipEndSec) {
-                _uiState.update { it.copy(errorMessage = "Clip start time must be before end time.") }
-                return
-            }
-        }
-
-        val isActualSubClip =
-            isClippingActive && (clipStartSec > 0L || (!isClipEndAtEnd && clipEndSec in 1 until mediaDur) || (mediaDur == 0L && clipEndSec > 0L))
-
-        val allTasks = queueRepository.allTasksFlow.value
-
-        // 1. Check for duplicate in queue
-        if (!skipDuplicateCheck) {
-            val duplicate = allTasks.find { isSameDownload(it, url) }
-            if (duplicate != null) {
-                _uiState.update { it.copy(duplicateTaskAlert = duplicate) }
-                return
-            }
-        }
-
-        // Several qualities ticked: each one is its own download ("Title (720p).mp4", ...).
-        val selectedQualities = currentState.inspectedMediaQualities.filter { it.isSelected }
-        if (currentState.detectedEngine == EngineType.MEDIA_STREAM && selectedQualities.size > 1) {
-            addSeveralQualities(
-                state = currentState,
-                url = url,
-                qualities = selectedQualities,
-                clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                    currentState.clipStartTime
-                ) else null,
-                clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                    currentState.clipEndTime
-                ) else null,
-                clipByCutting = isActualSubClip && currentState.clipFastMode
-            )
-            return
-        }
-
-        val selectedQuality = currentState.inspectedMediaQualities.firstOrNull { it.isSelected }
-        val videoTitle = currentState.inspectedMediaTitle ?: selectedQuality?.videoTitle
-        // The name typed in the dialog wins; its extension is kept when the user left it out.
-        val typedName =
-            currentState.fileNameOverride.trim().takeIf { it.isNotBlank() }?.let { typed ->
-                val ext = currentState.suggestedFileName.substringAfterLast('.', "")
-                if (!typed.contains('.') && ext.isNotBlank()) "$typed.$ext" else typed
-            }
-        val customFileName = overrideFileName ?: typedName ?: if (!videoTitle.isNullOrBlank()) {
-            val ext = selectedQuality?.format ?: "mp4"
-            val sanitized = queueRepository.pathResolver.sanitizeFileName(videoTitle)
-            if (sanitized.endsWith(".$ext", ignoreCase = true)) sanitized else "$sanitized.$ext"
-        } else null
-
-        val destDir =
-            currentState.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
-        val targetName = resolveTargetFileName(currentState, url, customFileName)
-
-        // 2. Check if file already exists on disk
-        if (!forceOverwrite) {
-            val targetPath = "$destDir/$targetName".toPath()
-            if (FileSystem.SYSTEM.exists(targetPath)) {
-                val suggested = getUniqueFileName(destDir, targetName)
-                _uiState.update {
-                    it.copy(
-                        fileConflictAlert = FileConflictData(
-                            fileName = targetName,
-                            destinationPath = destDir,
-                            suggestedNewName = suggested
-                        )
-                    )
-                }
-                return
-            }
-        }
-
-        scope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            queueRepository.enqueueTask(
-                url = url,
-                customDestinationPath = currentState.destinationPath,
-                // A synthesized placeholder ("download_123456") must not be forced on the engine:
-                // left null, the HTTP engine names the file from Content-Disposition / final URL.
-                customFileName = customFileName
-                    ?: targetName.takeUnless { currentState.detectedEngine == EngineType.HTTP_DIRECT && it.startsWith("download_") && !it.contains('.') },
-                disableUpload = currentState.disableTorrentUpload,
-                torrentFiles = currentState.inspectedTorrentFiles,
-                mediaQualities = currentState.inspectedMediaQualities,
-                torrentName = currentState.inspectedTorrentName,
-                webSeedUrls = currentState.inspectedTorrentWebSeeds,
-                maxDownloadSpeedBytesPerSec = currentState.selectedDownloadSpeedLimitBytes,
-                maxUploadSpeedBytesPerSec = currentState.selectedUploadSpeedLimitBytes,
-                forcedEngineType = currentState.detectedEngine,
-                clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                    currentState.clipStartTime
-                ) else null,
-                clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                    currentState.clipEndTime
-                ) else null,
-                clipByCutting = isActualSubClip && currentState.clipFastMode,
-                requestHeaders = headersForLink(url),
-                scheduledAtMs = currentState.scheduleStartMs,
-                maxConnections = currentState.selectedConnections
-            ).onSuccess { task ->
-                pendingExternalUrl = null
-                pendingExternalHeaders = emptyMap()
-                pendingExternalFileName = null
-                _uiState.update {
-                    it.copy(
-                        inputUrl = "",
-
-                        fileNameOverride = "",
-
-                        suggestedFileName = "",
-                        isLoading = false,
-                        isAddDialogVisible = false,
-                        inspectedTorrentFiles = emptyList(),
-                        inspectedTorrentName = null,
-                        inspectedMediaQualities = emptyList(),
-                        inspectedPlaylist = null,
-                        inspectedMediaTitle = null,
-                        duplicateTaskAlert = null,
-                        fileConflictAlert = null,
-                        clipStartTime = "",
-                        clipEndTime = "",
-                        isClipRangeEnabled = false,
-                        clipFastMode = false,
-                        scheduleStartMs = 0L,
-                        selectedConnections = 0,
-                        mediaDurationSeconds = 0L
-                    )
-                }
-                _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
-                _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = error.message ?: "Failed to queue download"
-                    )
-                }
-            }
-        }
-    }
-
-    /** One download per ticked quality of the same video, each with its own file name. */
-    private fun addSeveralQualities(
-        state: DashboardUiState,
-        url: String,
-        qualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>,
-        clipStart: String?,
-        clipEnd: String?,
-        clipByCutting: Boolean
-    ) {
-        val destDir =
-            state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
-        val title =
-            state.inspectedMediaTitle ?: qualities.firstNotNullOfOrNull { it.videoTitle } ?: "video"
-        val baseName = queueRepository.pathResolver.sanitizeFileName(title)
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-        scope.launch {
-            var added = 0
-            var failed = 0
-            val usedNames = mutableSetOf<String>()
-            for (q in qualities) {
-                // "1080p (Full HD - MP4)" -> "1080p"; "Audio Only (M4A)" -> "Audio"
-                val tag = queueRepository.pathResolver.sanitizeFileName(
-                    q.qualityLabel.substringBefore(" (").replace("Audio Only", "Audio").trim()
-                        .ifBlank { q.format }
-                )
-                val ext = q.format.ifBlank { "mp4" }
-                var fileName = "$baseName ($tag).$ext"
-                if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
-                    var n = 2
-                    while ("$baseName ($tag) ($n).$ext".lowercase() in usedNames ||
-                        FileSystem.SYSTEM.exists("$destDir/$baseName ($tag) ($n).$ext".toPath())
-                    ) n++
-                    fileName = "$baseName ($tag) ($n).$ext"
-                }
-                usedNames.add(fileName.lowercase())
-                queueRepository.enqueueTask(
-                    url = url,
-                    customDestinationPath = destDir,
-                    customFileName = fileName,
-                    // only this quality selected for this download
-                    mediaQualities = state.inspectedMediaQualities.map { it.copy(isSelected = it.index == q.index && it.formatId == q.formatId) },
-                    maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
-                    forcedEngineType = EngineType.MEDIA_STREAM,
-                    clipStart = clipStart,
-                    clipEnd = clipEnd,
-                    clipByCutting = clipByCutting,
-                    requestHeaders = headersForLink(url),
-                    scheduledAtMs = state.scheduleStartMs
-                ).onSuccess { added++ }.onFailure { failed++ }
-            }
-            pendingExternalUrl = null
-            pendingExternalHeaders = emptyMap()
-            pendingExternalFileName = null
-            _uiState.update {
-                it.copy(
-                    inputUrl = "",
-
-                    fileNameOverride = "",
-
-                    suggestedFileName = "",
-                    isLoading = false,
-                    isAddDialogVisible = false,
-                    inspectedMediaQualities = emptyList(),
-                    inspectedPlaylist = null,
-                    inspectedMediaTitle = null,
-                    clipStartTime = "",
-                    clipEndTime = "",
-                    isClipRangeEnabled = false,
-                    clipFastMode = false,
-                    scheduleStartMs = 0L,
-                    selectedConnections = 0,
-                    mediaDurationSeconds = 0L,
-                    errorMessage = if (failed > 0) "$failed quality(s) could not be added." else null
-                )
-            }
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added downloads of \"$title\""))
-        }
-    }
-
-    /**
-     * Queues every selected video of a playlist as its own download, all with the chosen
-     * quality. The download queue (Settings -> downloads at the same time) runs them a few at a
-     * time; a schedule applies to all of them.
-     */
-    private fun addPlaylist(
-        state: DashboardUiState,
-        playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
-    ) {
-        val selected = playlist.entries.filter { it.isSelected }
-        if (selected.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "Select at least one video of the playlist.") }
-            return
-        }
-        val quality = state.playlistQuality
-        val destDir =
-            state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-        scope.launch {
-            var added = 0
-            var failed = 0
-            val usedNames = mutableSetOf<String>()
-            for (entry in selected) {
-                val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
-                var fileName = if (name.endsWith(
-                        ".${quality.extension}",
-                        ignoreCase = true
-                    )
-                ) name else "$name.${quality.extension}"
-                // Two videos with the same title, or a file already in the folder: "Title (2).mp4".
-                if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
-                    val base = fileName.substringBeforeLast('.')
-                    val ext = fileName.substringAfterLast('.')
-                    var n = 2
-                    while ("$base ($n).$ext".lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$base ($n).$ext".toPath())) n++
-                    fileName = "$base ($n).$ext"
-                }
-                usedNames.add(fileName.lowercase())
-                val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
-                    index = 0,
-                    qualityLabel = quality.label,
-                    directUrl = entry.url,
-                    format = quality.extension,
-                    size = -1L,
-                    isSelected = true,
-                    formatId = quality.formatSelector,
-                    originalUrl = entry.url,
-                    videoTitle = entry.title,
-                    durationSeconds = entry.durationSeconds
-                )
-                queueRepository.enqueueTask(
-                    url = entry.url,
-                    customDestinationPath = destDir,
-                    customFileName = fileName,
-                    mediaQualities = listOf(pseudoQuality),
-                    maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
-                    forcedEngineType = EngineType.MEDIA_STREAM,
-                    scheduledAtMs = state.scheduleStartMs
-                ).onSuccess { added++ }.onFailure { failed++ }
-            }
-            _uiState.update {
-                it.copy(
-                    inputUrl = "",
-
-                    fileNameOverride = "",
-
-                    suggestedFileName = "",
-                    isLoading = false,
-                    isAddDialogVisible = false,
-                    inspectedPlaylist = null,
-                    inspectedMediaQualities = emptyList(),
-                    inspectedMediaTitle = null,
-                    scheduleStartMs = 0L,
-                    selectedConnections = 0,
-                    errorMessage = if (failed > 0) "$failed video(s) could not be added." else null
-                )
-            }
-            singleVideoUrl = null
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added videos from \"${playlist.title}\""))
-        }
-    }
-
-    /**
-     * Filters by tab, then sorts. Unfinished downloads always come before completed ones
-     * (the UI shows them as two groups), and the chosen sort applies inside each group.
-     */
-    private fun filterTasks(
-        tasks: List<DownloadTask>,
-        tab: DashboardTab,
-        sort: TaskSortOption = TaskSortOption.DATE_DESC
-    ): List<DownloadTask> {
-        val filtered = filterByTab(tasks, tab)
-        val sizeOf =
-            { t: DownloadTask -> if (t.totalBytes > 0) t.totalBytes else t.approximateTotalBytes }
-        val comparator: Comparator<DownloadTask> = when (sort) {
-            TaskSortOption.DATE_DESC -> compareByDescending { it.createdAtEpochMs }
-            TaskSortOption.DATE_ASC -> compareBy { it.createdAtEpochMs }
-            TaskSortOption.SIZE_DESC -> compareByDescending<DownloadTask> { sizeOf(it) }.thenByDescending { it.createdAtEpochMs }
-            TaskSortOption.SIZE_ASC -> compareBy<DownloadTask> { sizeOf(it) }.thenByDescending { it.createdAtEpochMs }
-            TaskSortOption.NAME_ASC -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.fileName.ifBlank { it.url } }
-        }
-        val (unfinished, finished) = filtered.partition { it.status != DownloadStatus.COMPLETED }
-        // Unfinished: what is downloading now on top, then the queue in its order, then paused,
-        // then failed. The chosen sort applies inside each group.
-        val stateRank = { t: DownloadTask ->
-            when {
-                t.waitingInQueue -> 1
-                t.status == DownloadStatus.DOWNLOADING || t.status == DownloadStatus.CONNECTING ||
-                        t.status == DownloadStatus.QUEUED -> 0
-
-                t.status == DownloadStatus.PAUSED -> 2
-                else -> 3
-            }
-        }
-        val queueOrder = { t: DownloadTask ->
-            if (t.waitingInQueue) (if (t.queuePosition > 0) t.queuePosition.toLong() else Long.MAX_VALUE / 2 + t.scheduledAtMs / 1000)
-            else 0L
-        }
-        val unfinishedOrder = compareBy<DownloadTask> { stateRank(it) }
-            .thenBy { queueOrder(it) }
-            .then(comparator)
-        return unfinished.sortedWith(unfinishedOrder) + finished.sortedWith(comparator)
-    }
-
-    private fun filterByTab(tasks: List<DownloadTask>, tab: DashboardTab): List<DownloadTask> {
-
-        return when (tab) {
-
-            DashboardTab.ALL -> tasks
-
-            DashboardTab.ACTIVE -> tasks.filter {
-
-                it.status == DownloadStatus.DOWNLOADING ||
-
-                        it.status == DownloadStatus.CONNECTING ||
-
-                        it.status == DownloadStatus.QUEUED
-
-            }
-
-            DashboardTab.COMPLETED -> tasks.filter { it.status == DownloadStatus.COMPLETED }
-
-            DashboardTab.TORRENT -> tasks.filter { it.engineType == EngineType.BITTORRENT }
-
-            DashboardTab.MEDIA -> tasks.filter { it.engineType == EngineType.MEDIA_STREAM }
-
-            DashboardTab.SETTINGS -> tasks
-
-        }
-
-    }
-
-    private fun formatSecondsToHhMm(totalSeconds: Long): String {
-        // HH:MM:SS - the seconds matter: a 4:37 video used to get an end time of 00:04,
-        // cutting the last 37 seconds off every "full video" clip.
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return "${hours.toString().padStart(2, '0')}:${
-            minutes.toString().padStart(2, '0')
-        }:${seconds.toString().padStart(2, '0')}"
-    }
-
-    private fun normalizeHhMmForYtDlp(hhMm: String): String {
-        val parts = hhMm.split(":")
-        if (parts.size == 2) {
-            val h = parts[0].padStart(2, '0')
-            val m = parts[1].padStart(2, '0')
-            return "$h:$m:00"
-        }
-        if (parts.size == 3) {
-            val h = parts[0].padStart(2, '0')
-            val m = parts[1].padStart(2, '0')
-            val s = parts[2].padStart(2, '0')
-            return "$h:$m:$s"
-        }
-        return hhMm
-    }
-
-    private fun parseHhMmToSeconds(hhMm: String): Long {
-        if (hhMm.isBlank()) return 0L
-        val parts = hhMm.split(":")
-        val h = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-        val m = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-        val s = parts.getOrNull(2)?.toLongOrNull() ?: 0L
-        return (h * 3600L + m * 60L + s).coerceAtLeast(0L)
     }
 
 }

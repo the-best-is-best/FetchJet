@@ -37,17 +37,17 @@ The owner wants speed parity and smooth UX.
 
 ## Layout
 
-| Path                          | What                                                                                                                                                          |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sharedLogic/`                | All engines and logic. `commonMain`, `jvmMain`, `jvmAndroidMain`, `androidMain`, `iosMain`.                                                                   |
-| `sharedUI/`                   | Compose UI shared by desktop, Android, iOS. Key files: `App.kt`, `PiecesBar.kt`, `AddDownloadModalDialog.kt`, `FdmSettingsPanel.kt`, `PlaylistScheduleUi.kt`. |
-| `desktopApp/`                 | JVM app. `main.kt` has the local bridge (`inspectCached`, `inspectGates`, `recentAdds`).                                                                      |
-| `androidApp/`                 | Android app. `ExtensionBridgeServer.kt`, `MainActivity.kt`, `AndroidManifest.xml`.                                                                            |
-| `iosApp/`                     | Xcode project (hand-edited, ids `B2…`/`B3…`). Swift bridges: `NativeMediaExtractorBridge.swift`, `NativeTorrentBridge.swift` (on `iosApp/FJTorrent`).         |
-| `extension/`                  | Browser extension. `background.js`, `content.js`, `manifest.json` (Chromium), `manifest.firefox.json`. Build: `build.ps1` (Windows) / `build.sh`.             |
-| `.github/workflows/build.yml` | CI. `workflow_dispatch` inputs: `release_version`, `android`, `windows`, `macos`, `linux`, `ios`, `extension`, `stores` (default true).                       |
-| `docs/`                       | GitHub Pages download page.                                                                                                                                   |
-| `CLAUDE_HANDOFF.md`           | iOS engine details (Python 3.13 + yt-dlp, curl_cffi). Its torrent part is outdated: see Open issue 8.                                                         |
+| Path                          | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sharedLogic/`                | All engines and logic. `commonMain`, `jvmMain`, `jvmAndroidMain`, `androidMain`, `iosMain`.                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `sharedUI/`                   | Compose UI shared by desktop, Android, iOS. Home screen: `App.kt` (state + layout), `TaskList.kt`, `TaskDetails.kt`, `HomeNavigation.kt` (sidebar, rail, top bar, bottom nav), `HomeDialogs.kt`, `SettingsContent.kt`. Add dialog: `ui/AddDownloadModalDialog.kt` (state + layout), `ui/AddDownloadSections.kt` (header, URL, engine, name, destination, actions), `ui/AddDownloadMedia.kt`, `ui/AddDownloadTorrent.kt`. Settings: `ui/FdmSettingsPanel.kt`, `ui/SettingsPages.kt`, `ui/SettingsMediaToolsPage.kt`. |
+| `desktopApp/`                 | JVM app. `main.kt` has the local bridge (`inspectCached`, `inspectGates`, `recentAdds`).                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `androidApp/`                 | Android app. `ExtensionBridgeServer.kt`, `MainActivity.kt`, `AndroidManifest.xml`.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `iosApp/`                     | Xcode project (hand-edited, ids `B2…`/`B3…`). Swift bridges: `NativeMediaExtractorBridge.swift`, `NativeTorrentBridge.swift` (on `iosApp/FJTorrent`).                                                                                                                                                                                                                                                                                                                                                               |
+| `extension/`                  | Browser extension. `background.js`, `content.js`, `manifest.json` (Chromium), `manifest.firefox.json`. Build: `build.ps1` (Windows) / `build.sh`.                                                                                                                                                                                                                                                                                                                                                                   |
+| `.github/workflows/build.yml` | CI. `workflow_dispatch` inputs: `release_version`, `android`, `windows`, `macos`, `linux`, `ios`, `extension`, `stores` (default true).                                                                                                                                                                                                                                                                                                                                                                             |
+| `docs/`                       | GitHub Pages download page.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `CLAUDE_HANDOFF.md`           | iOS engine details (Python 3.13 + yt-dlp, curl_cffi). Its torrent part is outdated: see Open issue 8.                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 Version constants:
 
@@ -129,9 +129,17 @@ extension\build.ps1
   (shorts/live/embed/youtu.be → watch?v=ID). Used as cache key.
 - `feature/media_extractor/HlsDownloader.kt`: segments are virtual pieces (UNIT = 1000 bytes),
   publishes pieces throttled to 250 ms.
-- `feature/queue_manager/QueueManagerRepository.kt`: persistence in `tasks.json` written by hand
-  (`escapeJson`, `extractJsonField`, `splitJsonObjects`). Serialization migration
-  (kotlinx.serialization, `MiniJson`) is **deferred to 1.2.0**. Do not start it unless asked.
+- `feature/queue_manager/QueueManagerRepository.kt` + `TaskCache.kt`: tasks persist in
+  `tasks_cache.json` through kotlinx.serialization (`PersistedTask`, `TaskCache.encode/decode`,
+  `toPersisted()` / `toTask()`). The file format is the same as 1.1.0 (same field names, "" for
+  none,
+  torrent files as `index:selected:priority;...`), so old files load and 1.1.0 can still read new
+  ones. Entries decode one by one (a broken entry is skipped). Tests: `sharedLogic/src/jvmTest`
+  (`TaskCacheTest`, `MiniJsonTest`); `FETCHJET_TASKS_FILE=<path>` also checks a real cache file.
+- `core/util/MiniJson.kt`: `MiniJson.parse` now wraps kotlinx `parseToJsonElement` and returns plain
+  Map/List/String/Long/Double/Boolean, so the `getString/getLong/...` call sites (yt-dlp JSON,
+  bridges,
+  update check) are unchanged. If the whole text is not JSON it parses the first `{`/`[` line.
 - `core/log/DiagnosticsLog.kt`: expect/actual. Android actual tees stdout/stderr to
   `filesDir/logs/app.log` (2 MB rotate). Export via MediaStore Downloads (API 29+). Only installed
   in debug or verbose builds.
@@ -204,9 +212,19 @@ Bridges:
   `DownloadForegroundService`); 9 instant-failing downloads on the A56, no crash. `errorMessage` is
   now saved in `tasks_cache.json` (after a restart failed tasks showed "Failed: error"). Details
   page shows "Source" (download URL) and "Page" (Referer / original URL) with a Copy button.
+- Switching the Add dialog engine Media → Direct kept the media name (`x.mp4`);
+  `OnEngineSelected` now clears `inspectedMediaTitle` and recomputes the suggested name.
   `codeHostRawUrl` in `enqueueTask`: `github.com/o/r/blob/...` → `/raw/...` (and GitLab `/-/blob/`);
   blob links are HTML pages and failed as "Protected by Cloudflare". Verified desktop + A56. The 429
   cap also verified on the A56 (Hetzner 100 MB in ~20 s, no slow tail).
+- Multi-select delete in the task list. Wide rows (>= 720 dp: desktop, laptop, tablet)
+  always show a checkbox, plus a select-all checkbox in the column header. Phone rows: long-press
+  starts selection, then a tap toggles a row; Android back clears it (`NavigationBackHandler`,
+  dependency `navigationevent-compose` 1.1.0 added to `sharedUI`). While rows are checked,
+  `SelectionBar` (TaskList.kt) replaces the toolbar: count, Select all, Delete, ✕. Delete sends
+  `OnRemoveSelectedClicked(ids)` → `removeConfirmationTaskIds` → the same `RemoveConfirmationDialog`
+  (with count and "also delete files"). Tested on the A56 (long-press, tap, back, Select all +
+  Delete).
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
@@ -259,8 +277,14 @@ Bridges:
    (continues from the same %), download to completion at 4-7 MB/s. Owner tested torrent on a real
    iPhone: works (2026-11-01).
 
-## Release plan (1.1.0)
+## Release plan
 
+- **1.1.0 is not released yet** (the extension store reviews were still pending). A
+  `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
+  its work (clean code, kotlinx.serialization, multi-select delete) in 1.1.0 itself, since 1.1.0
+  never reached users. The branch was deleted (local only, never pushed) and the work sits on
+  `release-v1.1.0`. Before releasing: build and test iOS on the Mac (clean code +
+  `navigationevent-compose` were never built for iOS).
 - Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
   `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
 - Stability (2026-11-01): all platforms are stable: Windows, macOS, Linux, Android, iOS and the
@@ -316,8 +340,31 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
 2. iOS: torrent flow end to end: done (FJTorrent, simulator + owner's real iPhone, 2026-11-01).
 3. `MediaStreamDownloader`: remove Invidious/cobalt resolvers. Stream bodies with
    `prepareGet().execute` instead of `client.get`.
-4. `DashboardViewModel`: lifecycle ViewModel (partly done). Split `App.kt` and
-   `AddDownloadModalDialog.kt`. String resources. `MiniJson` → kotlinx.serialization (1.2.0).
+4. Clean-code plan (in 1.1.0) (owner's request): kotlinx.serialization done (step 1); `App.kt` split
+   from 2637 to ~700 lines (step 2, pure move, same package, `private` → `internal`). Step 3: Add
+   dialog 1884 → ~360 lines (sections get `MutableState` for the dialog-local fields and
+   re-delegate them, so their bodies are unchanged) and the settings pages split (step 3). Tested on
+   the A56: dialog fields, folder buttons, engine switch, start. Step 4 (done): `DashboardViewModel`
+   1949 → ~745 lines: `onEvent` dispatches to `handleAddDialogEvent` / `handleTaskEvent` /
+   `handleSettingsEvent` (files `DashboardAddDialogEvents.kt`, `DashboardTaskEvents.kt`,
+   `DashboardSettingsEvents.kt`), plus `DashboardAddDownload.kt`, `DashboardTools.kt`,
+   `DashboardFilters.kt`. `MediaStreamDownloader` 2619 → ~1200: `MediaYouTubeResolvers.kt`,
+   `MediaPageScraping.kt`, `MediaOwnEngine.kt`. Both use extension functions in the same package, so
+   class members went from `private` to `internal`. When adding a new `DashboardUiEvent`, add it to
+   the dispatcher in `onEvent` and to the matching handler (the dispatcher `when` is exhaustive; a
+   handler's `else -> Unit` would silently drop an event that is dispatched but not handled). Tested
+   on the A56: YouTube 4K (video+audio merged, 243 MB), small YouTube, direct downloads, release
+   build. Step 5 (done): `executeMediaDownload` 515 → ~210 lines (stages in `MediaDownloadSteps.kt`:
+   `resolveMediaFileName`, `downloadWithOwnHls`, `downloadWithYtDlp`, `findFinishedFileInCache`,
+   `moveFinishedFileIntoPlace`, `downloadWithHttpFallback`) and `inspectMediaQualities` 380 → ~85
+   (`MediaInspectSteps.kt`: `inspectHlsVariants`, `inspectPlatformWithCookieRetry`,
+   `withTitleAndDuration`, `inspectYouTubeFallbacks` (Piped/Cobalt/embed, still the old public
+   APIs), `inspectWebPage`). `MediaStreamDownloader.kt` is now ~600 lines. Tested on the A56: HLS
+   (mux test stream, 184p + 1080p via multi-quality), YouTube. String resources: not done on
+   purpose (~350 strings in ~20 files); worth it only when a second language (Arabic) is added.
+   `moveIntoPlace` now returns the saved path: when the old file cannot be deleted (Android: a file
+   made by an earlier install of the app is not ours) it saves as `name (1).ext` instead of failing
+   with "failed to delete".
 5. Playlist queue in the extension (`/playlist`), not ported from Ezoo yet.
 6. Merge captured video-only + audio-only pairs inside the app.
 7. iOS Safari extension: done (2026-11-01, simulator-tested). Target `FetchJetSafariExtension`

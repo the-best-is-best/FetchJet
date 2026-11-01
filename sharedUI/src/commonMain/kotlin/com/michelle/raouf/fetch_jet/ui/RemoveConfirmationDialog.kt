@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RemoveConfirmationDialog(
     onConfirm: (deleteFile: Boolean) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    count: Int = 1
 ) {
     var deleteFile by remember { mutableStateOf(false) }
 
@@ -35,7 +36,7 @@ fun RemoveConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Remove Download",
+                text = if (count > 1) "Remove $count Downloads" else "Remove Download",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -46,7 +47,7 @@ fun RemoveConfirmationDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Are you sure you want to remove this download task?",
+                    text = if (count > 1) "Are you sure you want to remove these $count download tasks?" else "Are you sure you want to remove this download task?",
                     style = MaterialTheme.typography.bodyMedium
                 )
 

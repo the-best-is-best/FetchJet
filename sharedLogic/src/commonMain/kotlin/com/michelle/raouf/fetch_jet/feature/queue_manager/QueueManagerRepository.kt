@@ -788,128 +788,31 @@ class QueueManagerRepository(
     private fun loadAndRestoreTasks() {
         try {
             if (!FileSystem.SYSTEM.exists(persistencePath)) return
-            val json = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
-            val objects = splitJsonObjects(json)
+            val text = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
             var restored = 0
             var broken = 0
-            for (content in objects) try {
-                val id = extractJsonField(content, "id") ?: continue
-                val url = extractJsonField(content, "url") ?: ""
-                val fileName = extractJsonField(content, "fileName") ?: ""
-                val destinationPath = extractJsonField(content, "destinationPath")
-                    ?: pathResolver.getDownloadsDirectory()
-                val engineTypeName = extractJsonField(content, "engineType") ?: "HTTP_DIRECT"
-                val statusName = extractJsonField(content, "status") ?: "PAUSED"
-                val totalBytes = extractJsonField(content, "totalBytes")?.toLongOrNull() ?: 0L
-                val downloadedBytes =
-                    extractJsonField(content, "downloadedBytes")?.toLongOrNull() ?: 0L
-                val progress = extractJsonField(content, "progress")?.toFloatOrNull() ?: 0f
-                val createdAtEpochMs =
-                    extractJsonField(content, "createdAtEpochMs")?.toLongOrNull() ?: 0L
-                val formatId = extractJsonField(content, "formatId")?.ifBlank { null }
-                val originalUrl = extractJsonField(content, "originalUrl")?.ifBlank { null }
-                val clipStart = extractJsonField(content, "clipStart")?.ifBlank { null }
-                val clipEnd = extractJsonField(content, "clipEnd")?.ifBlank { null }
-                val clipByCutting =
-                    extractJsonField(content, "clipByCutting")?.toBooleanStrictOrNull() ?: false
-                val serverSupportsResume =
-                    extractJsonField(content, "serverSupportsResume")?.toBooleanStrictOrNull()
-                val scheduledAtMs = extractJsonField(content, "scheduledAtMs")?.toLongOrNull() ?: 0L
-                val maxConnections = extractJsonField(content, "maxConnections")?.toIntOrNull() ?: 0
-                val currentStepText = extractJsonField(content, "currentStepText")?.ifBlank { null }
-                val errorMessage = extractJsonField(content, "errorMessage")?.ifBlank { null }
-                val disableUpload =
-                    extractJsonField(content, "disableUpload")?.toBooleanStrictOrNull() ?: false
-                val maxDownloadSpeedBytesPerSec =
-                    extractJsonField(content, "maxDownloadSpeedBytesPerSec")?.toLongOrNull() ?: 0L
-                val maxUploadSpeedBytesPerSec =
-                    extractJsonField(content, "maxUploadSpeedBytesPerSec")?.toLongOrNull() ?: 0L
-                // "index:selected:priority;..." - which files of a torrent the user picked.
-                val torrentFiles = extractJsonField(content, "torrentFiles")?.ifBlank { null }
-                    ?.split(';')?.mapNotNull { entry ->
-                        val f = entry.split(':')
-                        val idx = f.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
-                        com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry(
-                            index = idx,
-                            path = "",
-                            size = 0L,
-                            isSelected = f.getOrNull(1) != "0",
-                            priority = f.getOrNull(2)?.toIntOrNull() ?: 0
-                        )
-                    } ?: emptyList()
-                val webSeedUrls = extractJsonField(content, "webSeeds")?.ifBlank { null }
-                    ?.split(' ')?.filter { it.isNotBlank() } ?: emptyList()
-                val requestHeaders = buildMap {
-                    extractJsonField(content, "hdrCookie")?.ifBlank { null }
-                        ?.let { put("Cookie", it) }
-                    extractJsonField(content, "hdrReferer")?.ifBlank { null }
-                        ?.let { put("Referer", it) }
-                    extractJsonField(content, "hdrUserAgent")?.ifBlank { null }
-                        ?.let { put("User-Agent", it) }
-                }
-
-                val engineType = try {
-                    EngineType.valueOf(engineTypeName)
-                } catch (_: Exception) {
-                    EngineType.HTTP_DIRECT
-                }
-                val rawStatus = try {
-                    DownloadStatus.valueOf(statusName)
-                } catch (_: Exception) {
-                    DownloadStatus.PAUSED
-                }
-                val status =
-                    if (rawStatus == DownloadStatus.DOWNLOADING || rawStatus == DownloadStatus.CONNECTING) DownloadStatus.PAUSED else rawStatus
-
-                val task = DownloadTask(
-                    id = id,
-                    url = url,
-                    fileName = fileName,
-                    destinationPath = destinationPath,
-                    engineType = engineType,
-                    status = status,
-                    totalBytes = totalBytes,
-                    downloadedBytes = downloadedBytes,
-                    progress = progress,
-                    createdAtEpochMs = createdAtEpochMs,
-                    formatId = formatId,
-                    originalUrl = originalUrl,
-                    clipStart = clipStart,
-                    clipEnd = clipEnd,
-                    clipByCutting = clipByCutting,
-                    serverSupportsResume = serverSupportsResume,
-                    currentStepText = currentStepText,
-                    errorMessage = if (status == DownloadStatus.ERROR) errorMessage else null,
-                    disableUpload = disableUpload,
-                    maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
-                    maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
-                    requestHeaders = requestHeaders,
-                    torrentFiles = torrentFiles,
-                    webSeedUrls = webSeedUrls,
-                    scheduledAtMs = scheduledAtMs,
-                    maxConnections = maxConnections
-                )
-
-                if (status == DownloadStatus.QUEUED) {
-                    // Was waiting (or just starting) when the app closed: back in the queue.
+            val entries = TaskCache.decode(text) { e ->
+                broken++
+                println("QueueManager: skipped one unreadable task entry: ${e::class.simpleName}: ${e.message}")
+            }
+            for (entry in entries) try {
+                val task = entry.toTask(pathResolver.getDownloadsDirectory())
+                if (task.status == DownloadStatus.QUEUED) {
                     pendingTasks.update { it + (task.id to task) }
-                } else when (engineType) {
+                } else when (task.engineType) {
                     EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task)
                     EngineType.BITTORRENT -> torrentEngine.enqueueTask(task)
                     EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task)
                 }
                 restored++
             } catch (e: Throwable) {
-                // One damaged entry (hand-edited file, interrupted write, odd value) is skipped;
-                // the rest of the list still comes back.
                 broken++
                 println("QueueManager: skipped one unreadable task entry: ${e::class.simpleName}: ${e.message}")
             }
             if (broken > 0) println("QueueManager: restored $restored tasks, skipped $broken broken entries")
             if (restored == 0 && broken > 0) restoreFromBackup()
-        } catch (e: Throwable) { // also StackOverflowError/OOM from a corrupt or huge cache
+        } catch (e: Throwable) {
             e.printStackTrace()
-            // Keep the damaged file for inspection and fall back to the last good copy.
             try {
                 FileSystem.SYSTEM.atomicMove(persistencePath, "$persistencePath.corrupt".toPath())
             } catch (_: Throwable) {
@@ -927,34 +830,11 @@ class QueueManagerRepository(
             if (!FileSystem.SYSTEM.exists(backupPath)) return
             println("QueueManager: restoring tasks from backup")
             FileSystem.SYSTEM.copy(backupPath, persistencePath)
-            // Parse the backup with the same per-entry isolation; if it is broken too we end up empty.
-            val json = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
-            for (content in splitJsonObjects(json)) try {
-                val id = extractJsonField(content, "id") ?: continue
-                if (allTasksFlow.value.any { it.id == id }) continue
-                val engineType = try {
-                    EngineType.valueOf(extractJsonField(content, "engineType") ?: "HTTP_DIRECT")
-                } catch (_: Exception) {
-                    EngineType.HTTP_DIRECT
-                }
-                val task = DownloadTask(
-                    id = id,
-                    url = extractJsonField(content, "url") ?: "",
-                    fileName = extractJsonField(content, "fileName") ?: "",
-                    destinationPath = extractJsonField(content, "destinationPath")
-                        ?: pathResolver.getDownloadsDirectory(),
-                    engineType = engineType,
-                    status = DownloadStatus.PAUSED,
-                    totalBytes = extractJsonField(content, "totalBytes")?.toLongOrNull() ?: 0L,
-                    downloadedBytes = extractJsonField(content, "downloadedBytes")?.toLongOrNull()
-                        ?: 0L,
-                    progress = extractJsonField(content, "progress")?.toFloatOrNull() ?: 0f,
-                    createdAtEpochMs = extractJsonField(content, "createdAtEpochMs")?.toLongOrNull()
-                        ?: 0L,
-                    formatId = extractJsonField(content, "formatId")?.ifBlank { null },
-                    originalUrl = extractJsonField(content, "originalUrl")?.ifBlank { null }
-                )
-                when (engineType) {
+            val text = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+            for (entry in TaskCache.decode(text)) try {
+                if (allTasksFlow.value.any { it.id == entry.id }) continue
+                val task = entry.toTask(pathResolver.getDownloadsDirectory(), DownloadStatus.PAUSED)
+                when (task.engineType) {
                     EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task)
                     EngineType.BITTORRENT -> torrentEngine.enqueueTask(task)
                     EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task)
@@ -998,31 +878,7 @@ class QueueManagerRepository(
                         }
                     } else {
                         hasSeenTasks = true
-                        val jsonArray = tasks.joinToString(
-                            separator = ",",
-                            prefix = "[",
-                            postfix = "]"
-                        ) { task ->
-                            val safeId = escapeJson(task.id)
-                            val safeUrl = escapeJson(task.url)
-                            val safeFileName = escapeJson(task.fileName)
-                            val safeDest = escapeJson(task.destinationPath)
-                            val safeOriginalUrl = escapeJson(task.originalUrl ?: "")
-                            val safeFormatId = escapeJson(task.formatId ?: "")
-                            val safeClipStart = escapeJson(task.clipStart ?: "")
-                            val safeClipEnd = escapeJson(task.clipEnd ?: "")
-                            val safeStepText = escapeJson(task.currentStepText ?: "")
-                            val safeCookie = escapeJson(task.requestHeaders["Cookie"] ?: "")
-                            val safeReferer = escapeJson(task.requestHeaders["Referer"] ?: "")
-                            val safeUa = escapeJson(task.requestHeaders["User-Agent"] ?: "")
-                            val safeTorrentFiles = escapeJson(task.torrentFiles.joinToString(";") { "${it.index}:${if (it.isSelected) 1 else 0}:${it.priority}" })
-                            val safeWebSeeds = escapeJson(task.webSeedUrls.joinToString(" "))
-                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","errorMessage":"${
-                                escapeJson(
-                                    task.errorMessage ?: ""
-                                )
-                            }","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs},"maxConnections":${task.maxConnections}}"""
-                        }
+                        val jsonArray = TaskCache.encode(tasks)
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()
                         FileSystem.SYSTEM.write(tmp) {
@@ -1041,170 +897,6 @@ class QueueManagerRepository(
                     e.printStackTrace()
                 }
             }
-        }
-    }
-
-    private fun splitJsonObjects(jsonArrayStr: String): List<String> {
-        val result = mutableListOf<String>()
-        var depth = 0
-        var startIndex = -1
-        var inString = false
-        var escape = false
-
-        for (i in jsonArrayStr.indices) {
-            val c = jsonArrayStr[i]
-            if (escape) {
-                escape = false
-                continue
-            }
-            if (c == '\\') {
-                escape = true
-                continue
-            }
-            if (c == '"') {
-                inString = !inString
-                continue
-            }
-            if (!inString) {
-                if (c == '{') {
-                    if (depth == 0) startIndex = i
-                    depth++
-                } else if (c == '}') {
-                    depth--
-                    if (depth == 0 && startIndex != -1) {
-                        result.add(jsonArrayStr.substring(startIndex, i + 1))
-                        startIndex = -1
-                    }
-                }
-            }
-        }
-        return result
-    }
-
-    private fun escapeJson(str: String): String {
-        val sb = StringBuilder()
-        for (c in str) {
-            when (c) {
-                '\\' -> sb.append("\\\\")
-                '"' -> sb.append("\\\"")
-                '\b' -> sb.append("\\b")
-                '\u000c' -> sb.append("\\f")
-                '\n' -> sb.append("\\n")
-                '\r' -> sb.append("\\r")
-                '\t' -> sb.append("\\t")
-                else -> {
-                    if (c < ' ') {
-                        sb.append("\\u").append(c.code.toString(16).padStart(4, '0'))
-                    } else {
-                        sb.append(c)
-                    }
-                }
-            }
-        }
-        return sb.toString()
-    }
-
-    private fun unescapeJson(str: String): String {
-        val sb = StringBuilder()
-        var i = 0
-        while (i < str.length) {
-            val c = str[i]
-            if (c == '\\' && i + 1 < str.length) {
-                when (val next = str[i + 1]) {
-                    '\\' -> {
-                        sb.append('\\'); i += 2
-                    }
-
-                    '"' -> {
-                        sb.append('"'); i += 2
-                    }
-
-                    'b' -> {
-                        sb.append('\b'); i += 2
-                    }
-
-                    'f' -> {
-                        sb.append('\u000c'); i += 2
-                    }
-
-                    'n' -> {
-                        sb.append('\n'); i += 2
-                    }
-
-                    'r' -> {
-                        sb.append('\r'); i += 2
-                    }
-
-                    't' -> {
-                        sb.append('\t'); i += 2
-                    }
-
-                    'u' -> {
-                        if (i + 5 < str.length) {
-                            val hex = str.substring(i + 2, i + 6)
-                            val code = hex.toIntOrNull(16)
-                            if (code != null) {
-                                sb.append(code.toChar())
-                                i += 6
-                            } else {
-                                sb.append("\\u")
-                                i += 2
-                            }
-                        } else {
-                            sb.append("\\u")
-                            i += 2
-                        }
-                    }
-
-                    else -> {
-                        sb.append(next); i += 2
-                    }
-                }
-            } else {
-                sb.append(c)
-                i++
-            }
-        }
-        return sb.toString()
-    }
-
-    /**
-     * Reads `"field": "string"` or `"field": number|true|false|null` from one JSON object.
-     *
-     * Hand-rolled scanner: the previous regex `((?:\\.|[^"\\])*)` recurses once per character in
-     * java.util.regex and threw StackOverflowError at start-up as soon as a task carried a long
-     * value (the browser's Cookie header is often several KB) - the window stayed blank.
-     */
-    private fun extractJsonField(jsonObj: String, fieldName: String): String? {
-        val key = "\"$fieldName\""
-        var from = 0
-        while (true) {
-            val k = jsonObj.indexOf(key, from)
-            if (k < 0) return null
-            var i = k + key.length
-            while (i < jsonObj.length && jsonObj[i].isWhitespace()) i++
-            if (i >= jsonObj.length || jsonObj[i] != ':') {
-                from = k + 1; continue
-            } // key inside a value
-            i++
-            while (i < jsonObj.length && jsonObj[i].isWhitespace()) i++
-            if (i >= jsonObj.length) return null
-            if (jsonObj[i] == '"') {
-                val sb = StringBuilder()
-                var j = i + 1
-                while (j < jsonObj.length) {
-                    val c = jsonObj[j]
-                    if (c == '\\' && j + 1 < jsonObj.length) {
-                        sb.append(c).append(jsonObj[j + 1]); j += 2; continue
-                    }
-                    if (c == '"') return unescapeJson(sb.toString())
-                    sb.append(c); j++
-                }
-                return null // unterminated string
-            }
-            val endIdx = jsonObj.indexOfAny(charArrayOf(',', '}'), i)
-                .let { if (it < 0) jsonObj.length else it }
-            return jsonObj.substring(i, endIdx).trim()
         }
     }
 

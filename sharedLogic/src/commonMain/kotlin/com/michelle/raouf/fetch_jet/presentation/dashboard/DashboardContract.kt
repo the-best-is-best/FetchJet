@@ -93,6 +93,7 @@ data class DashboardUiState(
     val inspectMediaError: String? = null,
 
     val removeConfirmationTaskId: String? = null,
+    val removeConfirmationTaskIds: List<String> = emptyList(),
     /** A browser-sent file link the user just dismissed; asks "download it in the browser instead?" */
     val browserFallbackUrl: String? = null,
     /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
@@ -204,6 +205,8 @@ sealed interface DashboardUiEvent {
     data class OnCancelClicked(val taskId: String) : DashboardUiEvent
 
     data class OnRemoveClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnRemoveSelectedClicked(val taskIds: List<String>) : DashboardUiEvent
 
     data class OnConfirmRemoveClicked(val deleteFile: Boolean) : DashboardUiEvent
 
