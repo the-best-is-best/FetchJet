@@ -250,9 +250,9 @@ All done and pushed (`a751617` + the Udemy preview fix):
    no forced client. Verified: 4K clip "Only the clip" = 3840x2160, 33 s, with audio; "Full video,
    then cut" = exact 11 s (cut by the app's own ffmpeg step, not CutPlugin).
 
-Still needs a real iPhone: sideload with the extra Safari extension appex (bundle id
-`<app>.SafariExtension`), Udemy logged in. Store edition still embeds the Safari extension: remove it
-there before an App Store build.
+Udemy works on the simulator (owner-tested 2026-11-01). Still needs a real iPhone: sideload with
+the extra Safari extension appex (bundle id `<app>.SafariExtension`). No App Store release is
+planned (owner's decision: a YouTube/media downloader is rejected there), iOS ships sideloaded only.
 
 ## Backlog (from CLAUDE_HANDOFF.md, adjusted)
 
@@ -268,7 +268,7 @@ there before an App Store build.
    copies the same `extension/` JS at build time (`manifest.safari.json` -> manifest.json). On iOS
    (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`
    (`IosFetchJetLinks.kt`); media is found via the Performance API in content.js (no webRequest).
-   Not tested yet: a real iPhone, Udemy with a login.
+   Udemy works on the simulator (2026-11-01). Not tested yet: a real iPhone.
 
 ## Working style with the owner
 
