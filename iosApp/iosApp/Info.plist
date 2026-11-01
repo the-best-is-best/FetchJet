@@ -68,6 +68,14 @@
                 <string>magnet</string>
             </array>
         </dict>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>fetchjet</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>fetchjet</string>
+            </array>
+        </dict>
     </array>
 </dict>
 </plist>

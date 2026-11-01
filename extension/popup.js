@@ -36,7 +36,9 @@ async function checkStatus() {
   try {
     const r = await send({ action: "checkStatus" });
     online = !!(r && r.online);
-    if (online) {
+    if (r && r.ios) {
+      setStatus("online", "Links open in the FetchJet app");
+    } else if (online) {
       const v = r.config && r.config.version ? ` v${r.config.version}` : "";
       setStatus("online", `Connected${v}`);
     } else {

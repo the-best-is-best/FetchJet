@@ -102,8 +102,8 @@ class DashboardViewModel(
                     toolDownloadFraction = null
                 )
             }
+            refreshToolStatus()
             if (changed) {
-                refreshToolStatus()
                 _uiEffect.emit(DashboardUiEffect.ShowToast("Media tools updated"))
             }
         }

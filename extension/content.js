@@ -26,6 +26,35 @@
     });
   } catch (_) {}
 
+  // Safari on iPhone / iPad has no webRequest to see the media a page loads: read the same
+  // URLs (HLS/DASH playlists, mp4, audio) from the Performance API and hand them to the
+  // background, which lists them in the popup and the page button like on desktop.
+  const ON_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (/Macintosh/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+  if (ON_IOS) {
+    const MEDIA_PATH = /\.(m3u8|mpd|mp4|m4v|webm|mov|mkv|mp3|m4a|aac|ogg|opus|flac|wav)$/i;
+    const seenMedia = new Set();
+    const reportMedia = (entries) => {
+      const urls = [];
+      for (const e of entries) {
+        const u = e && e.name;
+        if (!u || seenMedia.has(u) || !/^https?:/i.test(u)) continue;
+        let path = "";
+        try { path = new URL(u).pathname; } catch (_) { continue; }
+        if (!MEDIA_PATH.test(path)) continue;
+        seenMedia.add(u);
+        urls.push(u);
+      }
+      if (urls.length) {
+        try { api.runtime.sendMessage({ action: "mediaSeen", urls }).catch(() => {}); } catch (_) {}
+      }
+    };
+    try {
+      reportMedia(performance.getEntriesByType("resource"));
+      new PerformanceObserver((list) => reportMedia(list.getEntries())).observe({ type: "resource", buffered: true });
+    } catch (_) {}
+  }
+
   // ---- helpers ------------------------------------------------------------
 
   function isArchiveOrgDirectoryOrDetails(url) {

@@ -255,7 +255,8 @@ actual suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress)
         // there is nothing else to download here.
         val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
         onProgress(ToolDownloadProgress("yt-dlp"))
-        bridge.prepareEngine() == null && bridge.updateYtDlpModule() == null
+        bridge.prepareEngine() == null &&
+                bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
     }
 
 actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
@@ -266,5 +267,5 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
         val installed = Regex("yt-dlp (\\S+)").find(bridge.statusText())?.groupValues?.get(1)
         if (installed == latest) return@withContext false
         onProgress(ToolDownloadProgress("yt-dlp"))
-        bridge.updateYtDlpModule() == null
+        bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
     }

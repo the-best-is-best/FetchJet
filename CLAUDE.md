@@ -218,8 +218,11 @@ Bridges:
    `AddDownloadModalDialog.kt`. String resources. `MiniJson` → kotlinx.serialization (1.2.0).
 5. Playlist queue in the extension (`/playlist`), not ported from Ezoo yet.
 6. Merge captured video-only + audio-only pairs inside the app.
-7. iOS has no browser extension; inspect only from inside the app. Idea: a Share Extension (
-   "Share -> FetchJet"), later maybe a Safari Web Extension. Needs a Mac.
+7. iOS Safari extension: done (2026-11-01, simulator-tested). Target `FetchJetSafariExtension`
+   copies the same `extension/` JS at build time (`manifest.safari.json` -> manifest.json). On iOS
+   (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`
+   (`IosFetchJetLinks.kt`); media is found via the Performance API in content.js (no webRequest).
+   Not tested yet: a real iPhone, Udemy with a login.
 
 ## Working style with the owner
 

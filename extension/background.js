@@ -20,7 +20,14 @@ const PROTOCOL = "fetchjet://download?url=";
 // qualities are fetched as on desktop; otherwise the page button opens the app with the link and
 // the app lists the qualities itself.
 const ON_ANDROID = /android/i.test(navigator.userAgent);
-async function androidAppAwake() { return ON_ANDROID && await pingApp(1200); }
+// Safari on iPhone / iPad: iOS suspends FetchJet while Safari is in front and the app has no
+// local server, so it is always "asleep": every link goes to the app through fetchjet://add
+// (with its cookies and referer) and the app lists the qualities itself.
+const ON_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (/Macintosh/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+const APP_SLEEPS = ON_ANDROID || ON_IOS;
+const IOS_ADD = "fetchjet://add?json=";
+async function appAwake() { return !ON_IOS && ON_ANDROID && await pingApp(1200); }
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -187,6 +194,7 @@ function baseName(path) {
 // ---------------------------------------------------------------------------
 
 async function pingApp(timeoutMs = 800) {
+  if (ON_IOS) return false;
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -293,6 +301,24 @@ async function launchApp(firstUrl) {
   } catch (_) { return false; }
 }
 
+/**
+ * iOS: hands one request (or a list) to the app through fetchjet://add. Safari asks "Open in
+ * FetchJet?" and the app opens with the link(s), so nothing waits for an answer here.
+ */
+async function openAppWith(payload, tabId = null) {
+  const url = IOS_ADD + encodeURIComponent(JSON.stringify(payload));
+  try {
+    let id = tabId;
+    if (id == null) {
+      const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+      id = tab && tab.id;
+    }
+    if (id != null) await api.tabs.update(id, { url });
+    else await api.tabs.create({ url, active: true });
+    return true;
+  } catch (_) { return false; }
+}
+
 async function waitForApp(maxMs = 8000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
@@ -319,6 +345,9 @@ async function notify(message, extra = {}) {
 async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
   const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip });
+  if (ON_IOS) {
+    return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
+  }
 
   if (await deliverOne(request)) return { ok: true };
 
@@ -348,6 +377,7 @@ async function sendBatchToFetchJet(items, referer = "") {
   if (unique.size === 0) return { ok: false, reason: "no links", count: 0 };
   const requests = [];
   for (const it of unique.values()) requests.push(await buildRequest(it));
+  if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
   if (!(await pingApp())) {
     if (!(await launchApp(requests[0].url)) || !(await waitForApp())) {
@@ -697,7 +727,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
   const videoId = ytVideoId(pageUrl);
   if (!videoId) return;
   const current = await tabState(YT_KEY, tabId);
-  if (ON_ANDROID && !(await androidAppAwake())) {
+  if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.videoId === videoId && current.openApp)) {
       await setTabState(YT_KEY, tabId, { ...((current && current.videoId === videoId) ? current : { videoId, sabr: false, streams: {} }), openApp: true });
       pushToTab(tabId);
@@ -729,7 +759,7 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
   const current = await tabState(RES_KEY, tabId);
-  if (ON_ANDROID && !(await androidAppAwake())) {
+  if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
       await setTabState(RES_KEY, tabId, { page, openApp: true });
       pushToTab(tabId);
@@ -764,7 +794,7 @@ async function itemsForTab(tabId) {
   const media = Object.values(mediaAll[tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0));
   const items = [];
   let pageTitle = "";
-  if (ON_ANDROID) {
+  if (APP_SLEEPS) {
     const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}` : (res && res.openApp ? res.page : "");
     if (page) items.push({ kind: "openApp", label: "Open in FetchJet", sub: "Pick the quality in the app", url: page });
   }
@@ -780,7 +810,7 @@ async function itemsForTab(tabId) {
       items.push({ label: "Getting video qualities…", sub: /android/i.test(navigator.userAgent) ? "Up to a minute on a phone" : "This takes a few seconds", disabled: true });
     } else if (yt.resolveError) {
       items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
-    } else if (yt.sabr) {
+    } else if (yt.sabr && !(ON_IOS && yt.openApp)) {
       items.push({
         label: "Qualities come from FetchJet (yt-dlp) for this video",
         sub: /android/i.test(navigator.userAgent)
@@ -866,7 +896,11 @@ async function downloadItem(item, tab) {
   const title = item.title || pageTitle || (tab && tab.title) || "video";
   const clean = typeof ytCleanTitle === "function" ? ytCleanTitle(title) : title;
   if (item.kind === "openApp") {
-    // Android: the app opens with the link and shows the qualities itself.
+    // Android / iOS: the app opens with the link and shows the qualities itself.
+    if (ON_IOS) {
+      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl }), tab && tab.id);
+      return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
+    }
     try {
       const t = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(item.url), active: true });
       if (t && t.id != null) setTimeout(() => api.tabs.remove(t.id).catch(() => {}), 1500);
@@ -1077,6 +1111,7 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return collectAndSendLinks(tab, { selectionOnly: !!request.selectionOnly });
       }
       case "checkStatus": {
+        if (ON_IOS) return { online: true, ios: true, config: null };
         const online = await pingApp();
         const config = online ? await fetchAppConfig() : null;
         return { online, config };
@@ -1119,6 +1154,14 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       case "resolveVideo":
         return resolveVideo(request, sender.tab || null);
+      case "mediaSeen": {
+        // iOS: media URLs the page loaded, read by the content script (no webRequest there).
+        if (!ON_IOS || !sender.tab || sender.tab.id == null) return { ok: false };
+        for (const url of (request.urls || []).slice(0, 20)) {
+          await sniffMedia({ tabId: sender.tab.id, statusCode: 200, url, responseHeaders: [], documentUrl: sender.url || "" });
+        }
+        return { ok: true };
+      }
       case "openPanel": {
         try { await api.tabs.sendMessage(request.tabId, { action: "openPanel" }); } catch (_) {}
         return { ok: true };

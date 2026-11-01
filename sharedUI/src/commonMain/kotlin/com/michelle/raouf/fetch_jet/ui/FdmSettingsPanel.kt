@@ -111,11 +111,12 @@ fun FdmSettingsPanel(
     onApplySettings: () -> Unit
 ) {
     val isJvm = getPlatform().isJvm
+    val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
     val sections = SettingsSection.entries.filter {
         when (it) {
-            SettingsSection.MEDIA -> isJvm
+            SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
             SettingsSection.TORRENT -> AppFeatures.torrent
             SettingsSection.UPDATES -> updateState.supported
             else -> true
@@ -183,7 +184,7 @@ fun FdmSettingsPanel(
 
             SettingsSection.MEDIA -> MediaToolsPage(
                 ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,
-                toolsDirectoryPath, isDownloadingYtDlp, toolDownloadName, toolDownloadFraction,
+                if (isIos) "" else toolsDirectoryPath, isDownloadingYtDlp, toolDownloadName, toolDownloadFraction,
                 pathResolver, onDownloadYtDlpClicked
             )
 

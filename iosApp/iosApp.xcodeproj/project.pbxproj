@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C5000000000000000000000A /* FetchJetSafariExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C50000000000000000000001 /* FetchJetSafariExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		41F731523092206B00EE47F8 /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = 41F731513092206B00EE47F8 /* PythonKit */; };
 		41F731553092209D00EE47F8 /* FFmpeg-iOS-Lame in Frameworks */ = {isa = PBXBuildFile; productRef = 41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */; };
 		A1000000000000000000000A /* DownloadWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* DownloadWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -26,6 +27,13 @@
 			remoteGlobalIDString = A10000000000000000000007;
 			remoteInfo = DownloadWidget;
 		};
+		C50000000000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6E1CF0B19FEAF2E316F282B8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C50000000000000000000007;
+			remoteInfo = FetchJetSafariExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -36,6 +44,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A1000000000000000000000A /* DownloadWidget.appex in Embed Foundation Extensions */,
+				C5000000000000000000000A /* FetchJetSafariExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -57,6 +66,7 @@
 /* Begin PBXFileReference section */
 		86AF69C485E6ED2A6EC01284 /* FetchJet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FetchJet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000001 /* DownloadWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DownloadWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C50000000000000000000001 /* FetchJetSafariExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FetchJetSafariExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* Python.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Python.xcframework; path = Frameworks/Python.xcframework; sourceTree = "<group>"; };
 		B30000000000000000000001 /* LibTorrent.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = LibTorrent.xcframework; path = Frameworks/LibTorrent.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -75,6 +85,13 @@
 				Info.plist,
 			);
 			target = A10000000000000000000007 /* DownloadWidget */;
+		};
+		C50000000000000000000002 /* Exceptions for "FetchJetSafariExtension" folder in "FetchJetSafariExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C50000000000000000000007 /* FetchJetSafariExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -100,6 +117,14 @@
 			path = DownloadWidget;
 			sourceTree = "<group>";
 		};
+		C50000000000000000000003 /* FetchJetSafariExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C50000000000000000000002 /* Exceptions for "FetchJetSafariExtension" folder in "FetchJetSafariExtension" target */,
+			);
+			path = FetchJetSafariExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +148,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C50000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -131,6 +163,7 @@
 			children = (
 				86AF69C485E6ED2A6EC01284 /* FetchJet.app */,
 				A10000000000000000000001 /* DownloadWidget.appex */,
+				C50000000000000000000001 /* FetchJetSafariExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -141,6 +174,7 @@
 				215AC81CD2FF532F6569BD35 /* Configuration */,
 				60CF63DCB2DFD077A95A1BAD /* iosApp */,
 				A10000000000000000000003 /* DownloadWidget */,
+				C50000000000000000000003 /* FetchJetSafariExtension */,
 				B20000000000000000000004 /* Frameworks */,
 				38408DA9EE9BD43C9696AB14 /* Products */,
 			);
@@ -175,6 +209,7 @@
 			);
 			dependencies = (
 				A10000000000000000000009 /* PBXTargetDependency */,
+				C50000000000000000000009 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				60CF63DCB2DFD077A95A1BAD /* iosApp */,
@@ -211,6 +246,29 @@
 			);
 			productName = DownloadWidget;
 			productReference = A10000000000000000000001 /* DownloadWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C50000000000000000000007 /* FetchJetSafariExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C5000000000000000000000E /* Build configuration list for PBXNativeTarget "FetchJetSafariExtension" */;
+			buildPhases = (
+				C50000000000000000000004 /* Sources */,
+				C50000000000000000000005 /* Frameworks */,
+				C50000000000000000000006 /* Resources */,
+				C5000000000000000000000B /* Copy Web Extension Files */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C50000000000000000000003 /* FetchJetSafariExtension */,
+			);
+			name = FetchJetSafariExtension;
+			packageProductDependencies = (
+			);
+			productName = FetchJetSafariExtension;
+			productReference = C50000000000000000000001 /* FetchJetSafariExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -250,6 +308,7 @@
 			targets = (
 				7FA41CC48E8F42CF7F1EAB6E /* iosApp */,
 				A10000000000000000000007 /* DownloadWidget */,
+				C50000000000000000000007 /* FetchJetSafariExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -263,6 +322,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C50000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -329,6 +395,25 @@
 			shellPath = /bin/sh;
 			shellScript = "# Downloads Python.xcframework / builds LibTorrent.xcframework when missing (idempotent).\n# Full log of the libtorrent build: build/libtorrent-ios.log\ncd \"$SRCROOT/..\"\nexec /bin/bash scripts/ios-prepare-frameworks.sh\n";
 		};
+		C5000000000000000000000B /* Copy Web Extension Files */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Web Extension Files";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n# Same JavaScript as the Chrome / Edge / Firefox extension: copied from extension/ so there is\n# one source. manifest.safari.json becomes manifest.json with the version of manifest.json.\nSRC=\"$SRCROOT/../extension\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$DST\"\nfor f in background.js yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png; do\n  cp \"$SRC/$f\" \"$DST/\"\ndone\nVERSION=$(sed -n 's/.*\"version\": *\"\\([^\"]*\\)\".*/\\1/p' \"$SRC/manifest.json\" | head -1)\nsed \"s/\\\"version\\\": *\\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$VERSION\\\"/\" \"$SRC/manifest.safari.json\" > \"$DST/manifest.json\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -346,6 +431,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C50000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -353,6 +445,11 @@
 			isa = PBXTargetDependency;
 			target = A10000000000000000000007 /* DownloadWidget */;
 			targetProxy = A10000000000000000000008 /* PBXContainerItemProxy */;
+		};
+		C50000000000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C50000000000000000000007 /* FetchJetSafariExtension */;
+			targetProxy = C50000000000000000000008 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -638,6 +735,66 @@
 			};
 			name = Release;
 		};
+		C5000000000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FetchJetSafariExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID).SafariExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C5000000000000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FetchJetSafariExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FetchJet;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FETCHJET_BUNDLE_ID).SafariExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -664,6 +821,15 @@
 			buildConfigurations = (
 				A1000000000000000000000C /* Debug */,
 				A1000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C5000000000000000000000E /* Build configuration list for PBXNativeTarget "FetchJetSafariExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C5000000000000000000000C /* Debug */,
+				C5000000000000000000000D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
