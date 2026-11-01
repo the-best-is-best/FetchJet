@@ -1249,6 +1249,45 @@ private fun DownloadTaskItem(
                 modifier = Modifier.padding(top = 3.dp)
             )
 
+            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            listOf(
+                "Source" to task.url,
+                "Page" to (task.requestHeaders["Referer"] ?: task.originalUrl.orEmpty())
+            ).filter { (_, link) -> link.isNotBlank() }
+                .distinctBy { (_, link) -> link }
+                .forEach { (label, link) ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "Copy",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clickable {
+                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
+                                }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(
+                            text = link,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 3.dp)
+                        )
+                    }
+                }
+
             Spacer(modifier = Modifier.height(18.dp))
 
             // Actions: two equal buttons, then the red one across the full width.

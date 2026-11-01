@@ -455,7 +455,7 @@ class QueueManagerRepository(
         val trimmedUrl = url.trim().let {
             if (com.michelle.raouf.fetch_jet.feature.torrent_engine.isLocalTorrentPath(it))
                 com.michelle.raouf.fetch_jet.feature.torrent_engine.normalizeLocalTorrentPath(it)
-            else it
+            else codeHostRawUrl(it)
         }
         if (trimmedUrl.isBlank()) return Result.failure(Exception("URL cannot be empty"))
 
@@ -817,6 +817,7 @@ class QueueManagerRepository(
                 val scheduledAtMs = extractJsonField(content, "scheduledAtMs")?.toLongOrNull() ?: 0L
                 val maxConnections = extractJsonField(content, "maxConnections")?.toIntOrNull() ?: 0
                 val currentStepText = extractJsonField(content, "currentStepText")?.ifBlank { null }
+                val errorMessage = extractJsonField(content, "errorMessage")?.ifBlank { null }
                 val disableUpload =
                     extractJsonField(content, "disableUpload")?.toBooleanStrictOrNull() ?: false
                 val maxDownloadSpeedBytesPerSec =
@@ -878,6 +879,7 @@ class QueueManagerRepository(
                     clipByCutting = clipByCutting,
                     serverSupportsResume = serverSupportsResume,
                     currentStepText = currentStepText,
+                    errorMessage = if (status == DownloadStatus.ERROR) errorMessage else null,
                     disableUpload = disableUpload,
                     maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
                     maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
@@ -1015,7 +1017,11 @@ class QueueManagerRepository(
                             val safeUa = escapeJson(task.requestHeaders["User-Agent"] ?: "")
                             val safeTorrentFiles = escapeJson(task.torrentFiles.joinToString(";") { "${it.index}:${if (it.isSelected) 1 else 0}:${it.priority}" })
                             val safeWebSeeds = escapeJson(task.webSeedUrls.joinToString(" "))
-                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs},"maxConnections":${task.maxConnections}}"""
+                            """{"id":"$safeId","url":"$safeUrl","fileName":"$safeFileName","destinationPath":"$safeDest","engineType":"${task.engineType.name}","status":"${task.status.name}","totalBytes":${task.totalBytes},"downloadedBytes":${task.downloadedBytes},"progress":${task.progress},"createdAtEpochMs":${task.createdAtEpochMs},"formatId":"$safeFormatId","originalUrl":"$safeOriginalUrl","clipStart":"$safeClipStart","clipEnd":"$safeClipEnd","currentStepText":"$safeStepText","errorMessage":"${
+                                escapeJson(
+                                    task.errorMessage ?: ""
+                                )
+                            }","disableUpload":${task.disableUpload},"clipByCutting":${task.clipByCutting},"serverSupportsResume":"${task.serverSupportsResume ?: ""}","maxDownloadSpeedBytesPerSec":${task.maxDownloadSpeedBytesPerSec},"maxUploadSpeedBytesPerSec":${task.maxUploadSpeedBytesPerSec},"hdrCookie":"$safeCookie","hdrReferer":"$safeReferer","hdrUserAgent":"$safeUa","torrentFiles":"$safeTorrentFiles","webSeeds":"$safeWebSeeds","scheduledAtMs":${task.scheduledAtMs},"maxConnections":${task.maxConnections}}"""
                         }
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()
@@ -1223,3 +1229,15 @@ class QueueManagerRepository(
 /** Real wall-clock time; the old `taskSequence*1000+random` made "sort by date" random. */
 @OptIn(kotlin.time.ExperimentalTime::class)
 internal fun nowEpochMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
+
+internal fun codeHostRawUrl(url: String): String {
+    val github = Regex(
+        """^(https?://(?:www\.)?github\.com/[^/]+/[^/]+)/blob/(.+)$""",
+        RegexOption.IGNORE_CASE
+    )
+    github.matchEntire(url)?.let { return "${it.groupValues[1]}/raw/${it.groupValues[2]}" }
+    val gitlab =
+        Regex("""^(https?://(?:www\.)?gitlab\.com/.+?/-)/blob/(.+)$""", RegexOption.IGNORE_CASE)
+    gitlab.matchEntire(url)?.let { return "${it.groupValues[1]}/raw/${it.groupValues[2]}" }
+    return url
+}

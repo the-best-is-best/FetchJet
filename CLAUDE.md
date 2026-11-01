@@ -178,9 +178,19 @@ Bridges:
   `usesCleartextTraffic="true"` (plain `http://` downloads failed with "CLEARTEXT not permitted";
   iOS already has `NSAllowsArbitraryLoads`); extension `hasSiteAccess()` in `shouldTake`: when
   Chrome/Edge site access is "On click" and the page's site is not allowed, browser downloads stay
-  in the browser (the `downloads` permission ignores site access). The extension change is not
-  tested yet. The owner said that with the extension turned off in `edge://extensions` downloads
+  in the browser (the `downloads` permission ignores site access). Owner-verified on Edge: the
+  browser downloads the file, no "Launching FetchJet" / Untitled tab. The owner said that with the
+  extension turned off in `edge://extensions` downloads
   still reached the app: cause unknown, not investigated.
+- Also 2026-11-01 (late): Android crash `ForegroundServiceDidNotStartInTimeException` when a
+  download failed right after it started (service stopped before `startForeground`): `stop()` now
+  waits for `onStartCommand` (`awaitingForeground` / `stopRequested` in
+  `DownloadForegroundService`); 9 instant-failing downloads on the A56, no crash. `errorMessage` is
+  now saved in `tasks_cache.json` (after a restart failed tasks showed "Failed: error"). Details
+  page shows "Source" (download URL) and "Page" (Referer / original URL) with a Copy button.
+  `codeHostRawUrl` in `enqueueTask`: `github.com/o/r/blob/...` → `/raw/...` (and GitLab `/-/blob/`);
+  blob links are HTML pages and failed as "Protected by Cloudflare". Verified desktop + A56. The 429
+  cap also verified on the A56 (Hetzner 100 MB in ~20 s, no slow tail).
 - 2026-11-01: dead code and unused permissions removed on all platforms. Fixed: `DashboardUiEffect`
   messages now show (SnackbarHost in `App.kt`); desktop `inspectCached` caches only results with a
   real `formatId`; NPE when a link arrived during `DashboardViewModel.init` (fields moved above
