@@ -413,6 +413,7 @@ private fun requireIosMediaEngine() {
             "Media extraction is not available on iOS yet. It needs the in-app Python engine (coming in a later build)."
         )
     }
+    iosEjsCacheReady
 }
 
 actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dispatchers.IO) {

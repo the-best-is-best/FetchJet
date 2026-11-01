@@ -573,7 +573,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         // Progress goes through the hook, never through stdout parsing here.
         if !out.contains("--newline") { out.insert("--newline", at: 0) }
-        if Self.jsSolverInstalled, !out.contains("--plugin-dirs") {
+        if Self.jsSolverInstalled, !out.contains(Self.pluginsDirectory.path) {
             out.insert(contentsOf: ["--plugin-dirs", Self.pluginsDirectory.path], at: 0)
         }
         if !out.contains("--remote-components") {

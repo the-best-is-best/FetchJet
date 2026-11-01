@@ -6,7 +6,9 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
+import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
@@ -20,6 +22,16 @@ import platform.Foundation.stringWithContentsOfFile
 import platform.posix.X_OK
 import platform.posix.access
 import platform.posix.chmod
+
+internal val iosEjsCacheReady: Boolean by lazy {
+    val support =
+        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true)
+            .firstOrNull() as? String
+    val caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)
+        .firstOrNull() as? String
+    if (caches != null) pruneEjsPlayerCache("$caches/yt-dlp")
+    support != null && ensureEjsCachePluginDir("$support/FetchJet-media-engine/yt-dlp-plugins") != null
+}
 
 fun getIosToolsDirectory(): String {
     val paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)

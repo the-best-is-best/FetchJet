@@ -22,6 +22,8 @@ import com.deniscerri.ytdl.core.stream.StreamGobbler
 import com.deniscerri.ytdl.core.stream.StreamProcessExtractor
 import com.deniscerri.ytdl.database.models.PackageItem
 import com.deniscerri.ytdl.util.FileUtil
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ensureEjsCachePluginDir
+import com.michelle.raouf.fetch_jet.feature.media_extractor.pruneEjsPlayerCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -71,6 +73,7 @@ object RuntimeManager {
     private var ENV_PYTHONHOME: String? = null
     private var TMPDIR: String = ""
     private var YTDLP_CACHE_DIR: String = ""
+    private var EJS_CACHE_PLUGIN_DIR: String? = null
 
     private var NPM_CONFIG_PREFIX: String = ""
     private var NPM_CONFIG_CACHE: String = ""
@@ -173,6 +176,10 @@ object RuntimeManager {
                     }
                     TMPDIR = appContext.cacheDir.absolutePath
                     YTDLP_CACHE_DIR = File(appContext.filesDir, "yt-dlp-cache").absolutePath
+                    pruneEjsPlayerCache(YTDLP_CACHE_DIR)
+                    EJS_CACHE_PLUGIN_DIR = ensureEjsCachePluginDir(
+                        File(appContext.filesDir, "fetchjet-ejs-cache-plugin").absolutePath
+                    )
 
                     NPM_CONFIG_PREFIX = File(appContext.filesDir, ".npm-global").absolutePath
                     NPM_CONFIG_CACHE = File(appContext.filesDir, ".npm-cache").absolutePath
@@ -451,6 +458,7 @@ object RuntimeManager {
 
         if (usingCacheDir && YTDLP_CACHE_DIR.isNotEmpty()) {
             request.addOption("--cache-dir", YTDLP_CACHE_DIR)
+            EJS_CACHE_PLUGIN_DIR?.let { request.addOption("--plugin-dirs", it) }
         } else {
             request.addOption("--no-cache-dir")
         }

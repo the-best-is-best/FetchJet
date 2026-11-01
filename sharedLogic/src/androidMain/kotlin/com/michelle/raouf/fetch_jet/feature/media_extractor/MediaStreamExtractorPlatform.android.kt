@@ -92,7 +92,18 @@ private val contentLengthCache = mutableMapOf<String, Long>()
 private fun getCachedContentLength(u: String): Long {
     val clean = u.trim()
     if (clean.isBlank()) return -1L
-    return contentLengthCache.getOrPut(clean) { probeContentLength(clean) }
+    return contentLengthCache.getOrPut(clean) {
+        val started = System.currentTimeMillis()
+        probeContentLength(clean).also { len ->
+            AppLog.d {
+                "Inspect: size probe ${System.currentTimeMillis() - started}ms -> $len ${
+                    clean.substringBefore(
+                        '?'
+                    ).take(120)
+                }"
+            }
+        }
+    }
 }
 
 private fun parseTimeToSeconds(timeStr: String?): Double {
