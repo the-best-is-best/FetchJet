@@ -1,12 +1,13 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-01. Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the handoff is
-from 2026-10-28 and partly outdated).
+Last updated: 2026-11-01 (evening). Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
+handoff is from 2026-10-28 and partly outdated).
 
 ## Owner rules (follow strictly)
 
-- The owner is Michelle (Egyptian Arabic speaker). Reply in **Egyptian Arabic**, short and direct.
-  No long explanations.
+- The owner is Michelle (Egyptian Arabic speaker). **He is a man**: use masculine Egyptian Arabic
+  forms (جرّب، عملت، ابعتلي), never feminine (جربتي، عملتي، ابعتيلي). Reply in **Egyptian Arabic**,
+  short and direct. No long explanations.
 - **Never run `git commit`, `git push`, `git reset`, or change branches on your own.** Make the
   change, show what changed, and let the owner test. Commit only after the owner says it is OK.
 - Commit message and PR attribution: follow the rule given by the session, not this file.
@@ -15,6 +16,10 @@ from 2026-10-28 and partly outdated).
 - Do not trigger GitHub Actions releases on your own. The owner runs them.
 - Do not upload the browser extension to a store unless the owner asks.
 - When the owner says "اشتغل" or "يلا", do the task they just described. Ask at most one question.
+- **Verify before applying.** Anything you suspect or are not sure of: read the code (ours or the
+  bundled yt-dlp), add a timing/diagnostic log, or test it locally first. Do not ship a guess.
+- **iOS:** edit iOS normally whenever a change needs it, even though it cannot be built on Windows.
+  It is tested later on a Mac. List every iOS/Swift change that still needs a Mac test (see below).
 
 ## What the project is
 
@@ -61,7 +66,13 @@ extension\build.ps1
 ```
 
 - Verbose engine logs: `fetchjet.verboseLogs=true` in `gradle.properties`, or env
-  `FETCHJET_VERBOSE_LOGS`.
+  `FETCHJET_VERBOSE_LOGS` (wins over the property). Android Studio runs use the property, so set it
+  to `true` for a measuring build and back to `false` after. CI releases use
+  `vars.FETCHJET_VERBOSE_LOGS || 'false'`, so a release is never verbose unless the owner sets it.
+- Android verbose builds: inspect logs every yt-dlp line with elapsed ms (`Inspect +NNNNms ...`),
+  plus `Inspect: begin/end`, `title fetch`, `runtime ready`, `formats parsed`, `size probe`. The
+  owner
+  exports the log from the app (Export log -> Downloads) and sends the file.
 - Desktop log: `~/.fetch_jet/logs/app.log`.
 - Android log: `adb logcat` (the owner had trouble with adb earlier; ask before assuming it works).
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
@@ -99,6 +110,34 @@ extension\build.ps1
 - `core/settings/BehaviorSettings.kt`: connections, sortIntoFolders, FileCategory folders
   (`stripTypeFolders`, `withTypeFolder`).
 
+Media tools (yt-dlp, ffmpeg, JS runtime):
+
+- `feature/media_extractor/MediaExtractorToolManager.kt` (expect/actual):
+  `downloadMediaExtractorTool(onProgress)` (the "Update tools" button), `autoUpdateMediaTools`
+  (runs at app start from `DashboardViewModel.autoUpdateTools`, guarded by `toolsMutex`),
+  `getJsRuntimeStatus()`, `latestGitHubReleaseTag(repo)`. Progress goes to
+  `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
+  `ToolsDownloadBanner` above the home list.
+- Desktop: tools in `~/.fetch_jet/tools` (yt-dlp, ffmpeg pinned 4.4.1, deno from denoland releases
+  with sha256 check). Auto-update compares `--version` with the latest GitHub tag. Every yt-dlp call
+  gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
+  ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.
+- Android: python/ffmpeg/QuickJS/aria2c are bundled as `.so` (Android 10+ cannot run downloaded
+  binaries). Only yt-dlp (a Python zip) is downloaded/updated. JS runtime = QuickJS. deno for
+  Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
+  `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
+  `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
+- iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
+  `EJSBaseJCP` subclass). Auto-update calls Swift `updateYtDlpModule()` (takes effect next launch).
+  deno is impossible on iOS (no JIT for apps, no subprocess).
+- `EjsCachePlugin.kt`: tiny yt-dlp plugin that sets
+  `EJSBaseJCP._ENABLE_PREPROCESSED_PLAYER_CACHE = True` (yt-dlp keeps it off because the files are
+  ~4.3 MB and never rotated). `pruneEjsPlayerCache` keeps the newest 2 `challenge-solver/player*`
+  files. `--plugin-dirs` treats each **child** folder as a plugin root, so the file lives at
+  `<dir>/fetchjet/yt_dlp_plugins/extractor/fetchjet_ejs_cache.py`.
+- Size probes: formats without `filesize`/`clen` get a HEAD request. Skipped for `m3u8` and `mhtml`
+  (storyboards) on all platforms.
+
 Bridges:
 
 - Desktop: `ExternalDownloadBridge.onShowAndFocus`. Windows focus trick (Robot Alt tap +
@@ -111,12 +150,16 @@ Bridges:
 
 ## Current state (release-v1.1.0)
 
-- HEAD (per reflog): `cb1071c` "Restrict diagnostics logging to debug builds and lower internal log
-  levels". **Check `git status` before assuming anything.** The owner may have committed or changed
-  files since.
-- The batch "diagnostics debug-only, AppLog.d conversion, MainActivity gate,
-  `DiagnosticsLog.canExport`" was pending review in the last session. HEAD's message for `cb1071c`
-  matches it, so it is probably committed. Confirm with `git status` and `git log -1`.
+- **Check `git status` and `git log` before assuming anything.** The owner commits himself. Last
+  known commits: `3a1b7f7` (tools auto-update, deno, progress banner, cache), `3885730` (inspect
+  timing logs, HLS size-probe skip; it also set `verboseLogs=true` by mistake). The EJS cache
+  plugin, mhtml probe skip, iOS cache and `verboseLogs=false` were pending the owner's commit.
+- Android inspect on Samsung A56 (measured from logs, 2026-11-01): 30-40 s at the start of the
+  day ->
+  19-23 s after the size-probe fixes -> **8.7-10.4 s** with the EJS player cache (QuickJS 10-14 s ->
+  ~1.3 s). The first inspect after YouTube ships a new player still pays the full ~20 s once.
+- Remaining Android inspect time: Python start ~2-3 s, webpage/player API ~2 s, QuickJS ~1.3 s,
+  one size probe ~1 s.
 - Verified on Windows: YouTube own-engine download and ffmpeg merge at 46–53 Mbps with 8 pieces.
   Owner tested a direct Ubuntu ISO download and it worked.
 - Verified on Android (log): YouTube 240p https fallback at 6–8 MB/s after yt-dlp returned m3u8 and
@@ -128,11 +171,10 @@ Bridges:
 
 ## Open issues
 
-1. **Android speed:** the owner measured 4–5 Mbps on Android against 70–80 Mbps on Windows for the
-   same content. Not solved. Earlier speculative analysis was wrong and rejected. **Do not guess the
-   cause. Ask for a side-by-side measurement with the same video and the same time window.**
-2. **Android slow inspect:** yt-dlp on the phone takes ~20–30 s per call. Mitigated by the canonical
-   cache key and a per-video gate.
+1. **Android speed:** a side-by-side test (same video, same time) showed the same speed on phone
+   and desktop. The earlier 4-5 vs 70-80 Mbps gap was not reproduced. Closed unless it comes back.
+2. **Android inspect:** now ~9-10 s on the A56 (see Current state). The app also caches qualities
+   in memory for 30 min per canonical URL (refresh / back shows them at once).
 3. **Extension slowness on Android:** multiple downloads share bandwidth. Unclear if that is the
    cause.
 4. **Udemy:** course page returns 403 from yt-dlp when cookies are sent. The HLS lecture path is
@@ -154,6 +196,18 @@ Bridges:
   the same draft.
 - Do not run it yourself.
 
+## iOS: to test on a Mac (not built since these changes)
+
+1. The project builds (Kotlin iosMain + Swift).
+2. `IosMediaExecutionBridge.updateYtDlpModule()` was added to the Kotlin interface; Swift already
+   has the method. Check conformance.
+3. `NativeMediaExtractorBridge.sanitize`: the WebKit plugin dir is now added unless that exact path
+   is present (before, any `--plugin-dirs`, e.g. the clip-cut plugin, dropped the YouTube solver).
+4. EJS cache: Kotlin writes `fetchjet/yt_dlp_plugins/extractor/fetchjet_ejs_cache.py` into
+   `Application Support/FetchJet-media-engine/yt-dlp-plugins`. Inspect two YouTube videos; the log
+   should show `Loading challenge-solver.player... from cache` on the second.
+5. Auto-update of the yt_dlp module at launch, and the "Update tools" button.
+
 ## Backlog (from CLAUDE_HANDOFF.md, adjusted)
 
 1. iOS: verify the Python 3.13 media engine on a real device or simulator.
@@ -164,6 +218,8 @@ Bridges:
    `AddDownloadModalDialog.kt`. String resources. `MiniJson` → kotlinx.serialization (1.2.0).
 5. Playlist queue in the extension (`/playlist`), not ported from Ezoo yet.
 6. Merge captured video-only + audio-only pairs inside the app.
+7. iOS has no browser extension; inspect only from inside the app. Idea: a Share Extension (
+   "Share -> FetchJet"), later maybe a Safari Web Extension. Needs a Mac.
 
 ## Working style with the owner
 
