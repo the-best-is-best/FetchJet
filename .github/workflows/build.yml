@@ -4,7 +4,8 @@ name: Build FetchJet
 #  - RELEASE: push a tag (git tag v1.0.2 && git push --tags) = all platforms, or
 #    Actions -> "Build FetchJet" -> Run workflow, type the version and tick only the platforms
 #    that changed. Unticked platforms are listed in the notes as unchanged (the app then tells
-#    those users there is nothing new). The result is a DRAFT release you review and publish.
+#    those users there is nothing new). "beta" lists the beta platforms (ios, linux, ... or all):
+#    the downloads page marks those builds Beta. The result is a DRAFT release you review and publish.
 #    Each build job uploads its files straight to the draft release (no workflow artifacts,
 #    so the account's artifact storage quota is never hit).
 #  - VERIFY: Run workflow with the version left empty = compile and package everything,
@@ -16,6 +17,10 @@ on:
     inputs:
       release_version:
         description: "Release version, e.g. 1.0.2 (must equal APP_VERSION). Empty = verify only, no release."
+        required: false
+        default: ""
+      beta:
+        description: "Beta platforms, e.g. ios or ios,linux or all. Empty = all stable. Users still get the update."
         required: false
         default: ""
       android:
@@ -67,6 +72,7 @@ jobs:
     outputs:
       release: ${{ steps.plan.outputs.release }}
       version: ${{ steps.plan.outputs.version }}
+      beta: ${{ steps.plan.outputs.beta }}
       android: ${{ steps.plan.outputs.android }}
       windows: ${{ steps.plan.outputs.windows }}
       macos: ${{ steps.plan.outputs.macos }}
@@ -87,7 +93,14 @@ jobs:
           IN_IOS: ${{ inputs.ios }}
           IN_EXTENSION: ${{ inputs.extension }}
           IN_STORES: ${{ inputs.stores }}
+          IN_BETA: ${{ inputs.beta }}
         run: |
+          # "iOS, Linux" -> "ios,linux"; anything that is not a known platform is dropped.
+          BETA=""
+          for p in $(echo "$IN_BETA" | tr 'A-Z,' 'a-z '); do
+            case "$p" in all|android|windows|macos|linux|ios|extension) BETA="${BETA:+$BETA,}$p" ;; esac
+          done
+          echo "beta=$BETA" >> "$GITHUB_OUTPUT"
           if [[ "$REF" == refs/tags/v* ]]; then
             # tag push: release everything
             echo "release=true" >> "$GITHUB_OUTPUT"
@@ -586,11 +599,25 @@ jobs:
           LINUX: ${{ needs.plan.outputs.linux }}
           IOS: ${{ needs.plan.outputs.ios }}
           EXTENSION: ${{ needs.plan.outputs.extension }}
+          BETA: ${{ needs.plan.outputs.beta }}
         run: |
           BUILT=""; UNCHANGED=""
           add() { if [ "$2" = "true" ]; then BUILT="${BUILT:+$BUILT, }$1"; else UNCHANGED="${UNCHANGED:+$UNCHANGED,}$1"; fi; }
           add android "$ANDROID"; add windows "$WINDOWS"; add macos "$MACOS"; add linux "$LINUX"; add ios "$IOS"; add extension "$EXTENSION"
+          # Beta is not a GitHub "pre-release": the app asks /releases/latest, which skips those,
+          # so users would never be offered the update. The beta platforms are a marker in the notes.
+          TITLE="FetchJet $TAG"
           {
+            if [ "$BETA" = "all" ] || echo ",$BETA," | grep -q ",all,"; then
+              TITLE="$TITLE (Beta)"
+              echo "<!-- fetchjet-beta: all -->"
+              echo "**Beta release:** new features that are not fully tested yet. Please report problems."
+              echo
+            elif [ -n "$BETA" ]; then
+              echo "<!-- fetchjet-beta: $BETA -->"
+              echo "**Beta for:** $(echo "$BETA" | sed 's/,/, /g') (not fully tested yet; the other platforms are stable)."
+              echo
+            fi
             echo "**Platforms in this release:** $BUILT"
             if [ -n "$UNCHANGED" ]; then
               echo
@@ -601,5 +628,5 @@ jobs:
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body 2>/dev/null || true
           } > notes.md
           cat notes.md
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file notes.md
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
