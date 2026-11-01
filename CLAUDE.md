@@ -81,7 +81,15 @@ extension\build.ps1
   ask before `adb uninstall`, it wipes the app data. Bridge from the Mac:
   `adb forward tcp:28451 tcp:28450`,
   then POST `/add` with header `X-FetchJet: 1`. Permission dialogs on the phone are the owner's to
-  tap.
+  tap. POST `/links` (JSON array of `{url, fileName}`) queues downloads directly, no dialog (desktop
+  port 28450 too). The UI can be driven with `adb shell input tap` + `uiautomator dump`
+  (set `MSYS_NO_PATHCONV=1` in Git Bash); the header shows the total speed (`↓ 10.5 MB/s`).
+  The app's task list is `files/settings/tasks_cache.json` (`adb shell run-as <pkg> cat ...`).
+- Test files:
+  `https://media.githubusercontent.com/media/inventer-dev/speed-test-files/main/<N>MB.bin`
+  (1-128 MB) work from Egypt. thinkbroadband returns 403 for Egyptian IPs (server-side block, do
+  not try to get around it). Hetzner `*-speed.hetzner.com` allows one connection per IP (429 for
+  the rest): good for testing the 429 handling, bad for speed tests.
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
 
 ## Key engine pieces (sharedLogic)
@@ -90,6 +98,10 @@ extension\build.ps1
   running piece when a worker is free, `.partN` files, `.chunks` manifest). `MAX_CONNECTIONS = 32`,
   `STALL_FAIL_MS = 180_000`. Min piece 512 KB. Connection count order: `task.maxConnections` →
   `BehaviorSettings.connections` → auto by size.
+  429 / 503 → `ServerBusyException` → `ChunkLayout.serverBusy`: the connection cap drops to the
+  connections still working, then +1 every `CAP_RAISE_MS` (10 s). Before this, a server that allows
+  one connection per IP (Hetzner speed files) took 120-138 s for 100 MB instead of 13 s; now ~14 s
+  (= curl). Added 2026-11-01.
 - `core/network/PieceDownloader.kt`: probe with `Range: bytes=0-0`, retry schedule (2 s, 4 s, fresh
   link, UA-only headers, fresh link). 403/410 → `ExpiredLinkException` → re-resolve via
   `urlProvider(refresh=true)`. Only HTTP 200 to a Range request is `RangeNotHonouredException`.
@@ -162,6 +174,13 @@ Bridges:
 
 - **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
   never ask or offer to commit.
+- 2026-11-01 (late, not committed when written): 429 connection cap (above); Android
+  `usesCleartextTraffic="true"` (plain `http://` downloads failed with "CLEARTEXT not permitted";
+  iOS already has `NSAllowsArbitraryLoads`); extension `hasSiteAccess()` in `shouldTake`: when
+  Chrome/Edge site access is "On click" and the page's site is not allowed, browser downloads stay
+  in the browser (the `downloads` permission ignores site access). The extension change is not
+  tested yet. The owner said that with the extension turned off in `edge://extensions` downloads
+  still reached the app: cause unknown, not investigated.
 - 2026-11-01: dead code and unused permissions removed on all platforms. Fixed: `DashboardUiEffect`
   messages now show (SnackbarHost in `App.kt`); desktop `inspectCached` caches only results with a
   real `formatId`; NPE when a link arrived during `DashboardViewModel.init` (fields moved above
@@ -187,10 +206,11 @@ Bridges:
    and desktop. The earlier 4-5 vs 70-80 Mbps gap was not reproduced. Closed unless it comes back.
 2. **Android inspect:** now ~9-10 s on the A56 (see Current state). The app also caches qualities
    in memory for 30 min per canonical URL (refresh / back shows them at once).
-3. **Extension slowness on Android:** multiple downloads share bandwidth. Unclear if that is the
-   cause.
-4. **Udemy:** course page returns 403 from yt-dlp when cookies are sent. The HLS lecture path is
-   unchanged.
+3. **Several downloads at once:** measured 2026-11-01, 3 files (128+64+32 MB) together: desktop
+   ~90 Mbps total, Android A56 ~10.5 MB/s total. No problem found. Speed limit verified on the A56
+   while downloading: 1 MB/s → 1.0, 5 MB/s → 5.0, applied at once and shared between the running
+   downloads. Not verified: switching back to Unlimited mid-download.
+4. **Udemy:** works (owner confirmed, 2026-11-01). Closed.
 5. **googlevideo 403 right after resolve:** happens for a few seconds. Probe retries and link
    renewal mitigate it. A later curl with the same URL returns 206.
 6. **Browser extension stores: done in CI** (`build-extension` in `build.yml`). Firefox is signed

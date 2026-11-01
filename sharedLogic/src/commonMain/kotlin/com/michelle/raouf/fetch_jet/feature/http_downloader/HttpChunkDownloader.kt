@@ -48,6 +48,8 @@ import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
+private class ServerBusyException(message: String) : Exception(message)
+
 private data class ResolvedHttpMetadata(
     val finalUrl: String,
     val statusCode: Int,
@@ -133,20 +135,36 @@ private class ChunkLayout(initial: List<DownloadChunk>) {
     /** Next piece for a free worker: an idle unfinished one, else half of the biggest running one. */
     suspend fun next(): Piece? = mutex.withLock {
         val now = nowMs()
+        if (connectionCap != Int.MAX_VALUE && now - lastBusyMs >= CAP_RAISE_MS) {
+            connectionCap++; lastBusyMs = now
+        }
+        if (pieces.count { it.running } >= connectionCap) return@withLock null
         pieces.firstOrNull { !it.running && !it.isCompleted && it.retryAtMs <= now }
             ?.also { it.running = true }
             ?: split()?.also { it.running = true }
     }
 
     /** Unfinished pieces exist that no worker holds (they are waiting out a retry delay). */
-    suspend fun hasPending(): Boolean =
-        mutex.withLock { pieces.any { !it.running && !it.isCompleted } }
+    suspend fun hasPending(): Boolean = mutex.withLock {
+        pieces.any { !it.running && !it.isCompleted } ||
+                (connectionCap != Int.MAX_VALUE && pieces.any { it.running })
+    }
 
     /** Give a failed piece back, to be retried after [delayMs]. */
     suspend fun fail(piece: Piece, error: String, delayMs: Long) = mutex.withLock {
         piece.running = false; piece.speedBytesPerSec = 0L
         piece.lastError = error; piece.retryAtMs = nowMs() + delayMs
     }
+
+    suspend fun serverBusy(piece: Piece, error: String) = mutex.withLock {
+        piece.running = false; piece.speedBytesPerSec = 0L
+        piece.lastError = error; piece.retryAtMs = nowMs() + BUSY_RETRY_MS
+        connectionCap = pieces.count { it.running }.coerceAtLeast(1)
+        lastBusyMs = nowMs()
+    }
+
+    private var connectionCap = Int.MAX_VALUE
+    private var lastBusyMs = 0L
 
     private fun split(): Piece? {
         val victim = pieces.filter { it.running && it.remaining >= MIN_SPLIT_BYTES * 2 }
@@ -177,6 +195,8 @@ private class ChunkLayout(initial: List<DownloadChunk>) {
     companion object {
         const val MIN_SPLIT_BYTES = 1L * 1024 * 1024
         const val MAX_CONNECTIONS = 32
+        const val CAP_RAISE_MS = 10_000L
+        const val BUSY_RETRY_MS = 1_000L
 
         /** Fail the download when no piece has received data for this long. */
         const val STALL_FAIL_MS = 180_000L
@@ -661,6 +681,13 @@ class HttpChunkDownloader(
                             layout.release(piece); throw e
                         } catch (e: RangeNotHonouredException) {
                             layout.release(piece); throw e
+                        } catch (e: ServerBusyException) {
+                            val stalledMs = layout.nowMs() - layout.lastProgressMs
+                            if (stalledMs > STALL_FAIL_MS) throw Exception(
+                                "No data for ${stalledMs / 1000}s · ${shortError(e)}"
+                            )
+                            layout.serverBusy(piece, shortError(e))
+                            delay(ChunkLayout.BUSY_RETRY_MS.milliseconds)
                         } catch (e: Exception) {
                             // 429 / 503 / a dropped connection: the server will not take this
                             // connection right now. Hand the piece back, wait, try again; the
@@ -792,6 +819,9 @@ class HttpChunkDownloader(
                 // that to a part would corrupt it. Ranged requests must get 206.
                 if (response.status.value == 200) {
                     throw RangeNotHonouredException("Piece ${piece.index}: server answered 200 to a Range request (no ranges)")
+                }
+                if (response.status.value == 429 || response.status.value == 503) {
+                    throw ServerBusyException("Piece ${piece.index}: HTTP ${response.status.value}")
                 }
                 if (response.status.value != 206) {
                     // 416 / 429 / 5xx: a transient problem, worth the retries.

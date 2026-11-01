@@ -413,6 +413,7 @@ async function shouldTake(item) {
   if (await takeBypass(targetUrl, item.url)) return false;      // "Download in browser instead"
   if (await consumeHold()) return false;                         // user held the bypass key
   if (isExcludedHost(targetUrl, settings) || isExcludedHost(item.referrer || "", settings)) return false;
+  if (!(await hasSiteAccess(item.referrer || targetUrl))) return false;
   const size = item.totalBytes > 0 ? item.totalBytes : (item.fileSize > 0 ? item.fileSize : -1);
   if (settings.minSizeKB > 0 && size >= 0 && size < settings.minSizeKB * 1024) return false;
   const fileName = baseName(item.filename);
@@ -423,6 +424,14 @@ async function shouldTake(item) {
   // App closed and auto-launch off: leave it to the browser (Ezoo behaviour).
   if (!settings.autoLaunch && !(await pingApp())) return false;
   return true;
+}
+
+async function hasSiteAccess(url) {
+  if (!api.permissions || !api.permissions.contains) return true;
+  let origin;
+  try { origin = new URL(url).origin; } catch (_) { return true; }
+  if (!/^https?:/i.test(origin)) return true;
+  try { return await api.permissions.contains({ origins: [origin + "/*"] }); } catch (_) { return true; }
 }
 
 async function takeOver(item) {
