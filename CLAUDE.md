@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-01 (evening). Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
+Last updated: 2026-11-01 (night). Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
 ## Owner rules (follow strictly)
@@ -196,17 +196,24 @@ Bridges:
   the same draft.
 - Do not run it yourself.
 
-## iOS: to test on a Mac (not built since these changes)
+## iOS: verified on the Mac simulator (2026-11-01, iPhone 17, iOS 27)
 
-1. The project builds (Kotlin iosMain + Swift).
-2. `IosMediaExecutionBridge.updateYtDlpModule()` was added to the Kotlin interface; Swift already
-   has the method. Check conformance.
-3. `NativeMediaExtractorBridge.sanitize`: the WebKit plugin dir is now added unless that exact path
-   is present (before, any `--plugin-dirs`, e.g. the clip-cut plugin, dropped the YouTube solver).
-4. EJS cache: Kotlin writes `fetchjet/yt_dlp_plugins/extractor/fetchjet_ejs_cache.py` into
-   `Application Support/FetchJet-media-engine/yt-dlp-plugins`. Inspect two YouTube videos; the log
-   should show `Loading challenge-solver.player... from cache` on the second.
-5. Auto-update of the yt_dlp module at launch, and the "Update tools" button.
+All done and pushed (`a751617` + the Udemy preview fix):
+
+1. Build OK (Kotlin iosMain + Swift); `updateYtDlpModule(progressCallback)` conforms.
+2. `--plugin-dirs` in argv is ignored on iOS: Swift calls `parse_options` + `YoutubeDL(opts)`, not
+   `_real_main`, so `plugin_dirs` stays `default`. The plugin folder still loads because for a
+   zipimport yt-dlp `default` searches `<folder of the zip>/yt-dlp-plugins`, i.e. our folder. The
+   clip-cut plugin (`CutPlugin`, its own folder) is therefore probably NOT loaded on iOS: untested.
+3. EJS cache works: second YouTube inspect logs `Loading challenge-solver.player... from cache`.
+4. Auto-update was broken (raced the engine warm-up in `init()`); `prepareEngine()` now waits.
+   yt-dlp is no longer bundled: downloaded on first start, auto-updated, % shown in banner/button.
+5. Media tools settings page shown on iOS (full edition).
+6. Safari extension: see Backlog 7.
+
+Still needs a real iPhone: sideload with the extra Safari extension appex (bundle id
+`<app>.SafariExtension`), Udemy logged in. Store edition still embeds the Safari extension: remove it
+there before an App Store build.
 
 ## Backlog (from CLAUDE_HANDOFF.md, adjusted)
 
