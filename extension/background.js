@@ -795,7 +795,11 @@ async function itemsForTab(tabId) {
   const items = [];
   let pageTitle = "";
   if (APP_SLEEPS) {
-    const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}` : (res && res.openApp ? res.page : "");
+    // A course / player page whose HLS or DASH playlist was captured (Udemy previews): the
+    // playlist downloads, the page itself usually does not (yt-dlp gets 403 there).
+    const hasPlaylist = media.some(m => m.kind === "HLS" || m.kind === "DASH");
+    const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}`
+      : (res && res.openApp && !hasPlaylist ? res.page : "");
     if (page) items.push({ kind: "openApp", label: "Open in FetchJet", sub: "Pick the quality in the app", url: page });
   }
   if (yt) {
