@@ -241,11 +241,21 @@ Bridges:
   Android opens the system installer (tested on the A56 up to the installer), macOS swaps
   `/Applications/FetchJet.app` from the downloaded .dmg, Linux installs the .deb with `pkexec`
   or swaps the portable folder (script run after the app quits, `fetchjet-update.sh/.log` next
-  to the download). macOS and the Linux .deb path still need a real test. Windows MSI in-app
+  to the download). Desktop code: `PlatformUpdater.jvm.kt` only picks the OS; each OS has its
+  own file in `jvmMain/.../core/update/`: `WindowsUpdater.kt` (MSI + Store check),
+  `MacUpdater.kt`, `LinuxUpdater.kt`, shared helpers in `DesktopUpdater.kt`
+  (`DesktopInstall.runShellAfterExit`, `shellQuote`, `firstAsset`). Change one OS = edit its file.
+  macOS in-app update verified 2026-11-02 on the Mac (local 1.0.9 in `/Applications` -> 1.1.0,
+  swapped and reopened by itself, data kept; the script also deletes the temp mount folder and
+  the .dmg). Linux `.deb` path still needs a real test. Release notes without the API: CI uploads
+  `release-notes.md` with each release (markers included); the web-page fallback reads it, or the
+  notes text on the release page (`notesFromReleasePage`) for releases without it. The API
+  limit is 60 checks/hour per IP: repeated update tests use it up (then the fallback runs).
+  Windows MSI in-app
   update verified 2026-11-02: a local 1.0.9 MSI found 1.1.0, downloaded it, restarted into
   1.1.0 (test MSI uninstalled after; the Store MSIX and `~/.fetch_jet` were untouched).
   The Store MSIX asks the Store, not GitHub (owner's request), so it never announces a version
-  Microsoft has not approved yet: `PlatformUpdater.latestStoreVersion()` runs PowerShell with
+  Microsoft has not approved yet: `WindowsUpdater.latestStoreVersion()` runs PowerShell with
   WinRT `StoreContext.GetAppAndOptionalStorePackageUpdatesAsync` (works because child processes
   of the MSIX keep its package identity; outside the package it just answers "no update"). A
   found update shows the dialog with "Open Microsoft Store"

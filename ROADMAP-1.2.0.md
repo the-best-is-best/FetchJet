@@ -16,7 +16,13 @@ Why first: every later fix only helps users who can update.
   `github.com/<repo>/releases/latest` instead so the check still works.
   Done: `UpdateManager.fetchLatestFromWebPage` (tag from the redirect, files from
   `expanded_assets`, no notes). JVM test `UpdateWebPageTest` passes against GitHub.
-  Not tested on a phone behind a VPN yet.
+  Not tested on a phone behind a VPN yet. Seen working on the Mac (2026-11-02): after many test
+  checks the API answered 403 (60/hour limit used up); the app still found 1.1.0 and its .dmg
+  from the web page and installed it. Its notes were empty then ("No release notes."); now
+  fixed: CI also uploads the notes as `release-notes.md` (with the unchanged / beta markers) and
+  the fallback reads that file, or the notes text on the release page for older releases
+  (`notesFromReleasePage`, checked in `UpdateWebPageTest` against v1.1.0). The file path is
+  used from the first release built with this `build.yml`.
 - [x] Android: download the new APK inside the app and open the system installer
   (`REQUEST_INSTALL_PACKAGES` + `FileProvider`) instead of sending the user to the browser.
   Done: `PlatformUpdater.android` (`canInstallInApp = true`, opens "Install unknown apps"
@@ -27,10 +33,15 @@ Why first: every later fix only helps users who can update.
 - [ ] macOS: download the .dmg in the app, then a script waits for FetchJet to quit, mounts it
   (`hdiutil attach`), replaces `/Applications/FetchJet.app` (`ditto`), detaches and opens the
   new app. A file our app downloads gets no quarantine flag, so no "could not verify" prompt.
-  Done in `PlatformUpdater.jvm.kt` (only when `/Applications/FetchJet.app` is writable).
-  Builds; needs a test on the Mac.
+  Done in `MacUpdater.kt` (only when `/Applications/FetchJet.app` is writable).
+  Tested on the Mac (2026-11-02): a local 1.0.9 build in `/Applications` found 1.1.0 ("Check
+  now"), "Download & install" downloaded the .dmg, quit, swapped the app and opened 1.1.0 by
+  itself (~12 s after the download). Downloads list and settings kept, update log empty (no
+  errors), DMG detached. The script now also deletes the empty mount folder and the downloaded
+  .dmg (retested the same way: only the empty `fetchjet-update.log` stays). Retested again after
+  splitting the desktop updater into `WindowsUpdater` / `MacUpdater` / `LinuxUpdater`: same result.
 - [ ] Linux: `.deb` install with `pkexec dpkg -i` (asks for the password), or replace the folder
-  of the portable `.tar.gz` build. Done in `PlatformUpdater.jvm.kt`: `.deb` when the app runs
+  of the portable `.tar.gz` build. Done in `LinuxUpdater.kt`: `.deb` when the app runs
   from `/opt/` and `pkexec` + `dpkg` exist, else the `.tar.gz` folder swap. The folder-swap
   shell steps were tested in WSL (wait for quit, swap, relaunch, path with a space). The
   `.deb` path needs a desktop Linux with a password prompt.

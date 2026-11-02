@@ -15,6 +15,9 @@ class UpdateWebPageTest {
         assertTrue(release.pageUrl.contains("/releases/tag/${release.tag}"), release.pageUrl)
         assertTrue(release.assets.any { it.name.endsWith(".apk") }, release.assets.toString())
         assertTrue(release.assets.all { it.url.startsWith("https://github.com/") })
+        assertTrue(release.notes.contains("Platforms in this release"), release.notes)
+        assertTrue(!release.notes.contains("<"), release.notes)
         println("web page: ${release.tag}, ${release.assets.size} files: ${release.assets.joinToString { it.name }}")
+        println("notes:\n${release.notes}")
     }
 }

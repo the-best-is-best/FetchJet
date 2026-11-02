@@ -295,6 +295,7 @@ object UpdateManager {
         }
         if (latest.status.value == 404) return null
         if (!latest.status.isSuccess()) throw Exception("GitHub answered HTTP ${latest.status.value}")
+        val pageHtml = latest.bodyAsText()
         val pageUrl = latest.call.request.url.toString()
         val tag =
             pageUrl.substringAfter("/releases/tag/", "").substringBefore('?').substringBefore('#')
@@ -315,11 +316,17 @@ object UpdateManager {
                 )
             }
             .toList()
+        val notes = assets.firstOrNull { it.name == RELEASE_NOTES_FILE }?.let { file ->
+            runCatching {
+                client.get(file.url) { header("User-Agent", "FetchJet/$APP_VERSION") }
+                    .takeIf { it.status.isSuccess() }?.bodyAsText()?.trim()
+            }.getOrNull()
+        } ?: notesFromReleasePage(pageHtml)
         return AppRelease(
             version = tag.trim().removePrefix("v").removePrefix("V"),
             tag = tag,
             title = "FetchJet $tag",
-            notes = "",
+            notes = notes,
             pageUrl = pageUrl,
             publishedAt = "",
             assets = assets
@@ -423,6 +430,33 @@ object UpdateManager {
 }
 
 const val MICROSOFT_STORE_PAGE = "ms-windows-store://pdp/?productid=9NP3HJRHMPJS"
+
+/** Release file with the raw notes (markers included), uploaded by CI next to the builds. */
+const val RELEASE_NOTES_FILE = "release-notes.md"
+
+/**
+ * The notes shown on a GitHub release page, as plain markdown-like text. Used for releases
+ * without [RELEASE_NOTES_FILE]; the page has no `<!-- fetchjet-... -->` markers.
+ */
+internal fun notesFromReleasePage(html: String): String {
+    val start = html.indexOf("data-test-selector=\"body-content\"")
+    if (start < 0) return ""
+    val open = html.indexOf('>', start)
+    val end = html.indexOf("</div>", open)
+    if (open < 0 || end < 0) return ""
+    return html.substring(open + 1, end)
+        .replace("\n", "")
+        .replace(Regex("<h[1-6][^>]*>"), "\n## ")
+        .replace(Regex("<p[^>]*>"), "\n")
+        .replace(Regex("<li[^>]*>"), "- ")
+        .replace(Regex("<br\\s*/?>|</p>|</li>|</h[1-6]>|</ul>|</ol>"), "\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
+        .replace("&#39;", "'").replace("&nbsp;", " ").replace("&amp;", "&")
+        .lines().joinToString("\n") { it.trim() }
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
+}
 
 /** true when [candidate] is a later version than [current] ("1.2.0" > "1.1.9", "1.0.0" > "1.0.0-beta"). */
 fun isNewer(candidate: String, current: String): Boolean {

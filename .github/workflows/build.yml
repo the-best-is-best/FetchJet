@@ -663,4 +663,8 @@ jobs:
           } > notes.md
           cat notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file notes.md
+          # The same notes as a file: the app reads it when the GitHub API is rate-limited
+          # (the release web page drops the fetchjet-unchanged / fetchjet-beta markers).
+          cp notes.md release-notes.md
+          gh release upload "$TAG" release-notes.md --repo "$GITHUB_REPOSITORY" --clobber
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
