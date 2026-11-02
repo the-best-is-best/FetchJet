@@ -236,7 +236,8 @@ jobs:
             case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*|*universal*) FILES+=("$f");; esac
           done
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
 
   build-desktop-linux:
@@ -290,7 +291,8 @@ jobs:
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
 
   build-desktop-windows:
@@ -374,7 +376,8 @@ jobs:
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi desktopApp/build/msix/*.msix )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
 
   build-desktop-macos:
@@ -424,7 +427,8 @@ jobs:
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/dmg-out/*-arm64.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
 
   # Unsigned .ipa of the FULL edition for GitHub Releases (sideload via AltStore/Sideloadly).
@@ -489,7 +493,8 @@ jobs:
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( build/ios/FetchJet-full.ipa )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No iOS files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
       # On failure, print the end of the build logs here (no artifact: the storage quota
       # is too small for this account).
@@ -599,7 +604,8 @@ jobs:
           # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
           FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip build/extension/*.xpi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
-          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
+          for p in "${pids[@]}"; do wait "$p"; done
 
 
   release:
