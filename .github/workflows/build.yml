@@ -94,6 +94,7 @@ jobs:
           IN_EXTENSION: ${{ inputs.extension }}
           IN_STORES: ${{ inputs.stores }}
           IN_BETA: ${{ inputs.beta }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           # "iOS, Linux" -> "ios,linux"; anything that is not a known platform is dropped.
           BETA=""
@@ -101,7 +102,13 @@ jobs:
             case "$p" in all|android|windows|macos|linux|ios|extension) BETA="${BETA:+$BETA,}$p" ;; esac
           done
           echo "beta=$BETA" >> "$GITHUB_OUTPUT"
-          if [[ "$REF" == refs/tags/v* ]]; then
+          if [[ "$REF" == refs/tags/v* ]] && gh release view "${REF#refs/tags/}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # Publishing a draft creates its tag: that push must not rebuild the release.
+            echo "Release ${REF#refs/tags/} already exists: nothing to build."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            for p in android windows macos linux ios extension stores; do echo "$p=false" >> "$GITHUB_OUTPUT"; done
+          elif [[ "$REF" == refs/tags/v* ]]; then
             # tag push: release everything
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "version=${REF#refs/tags/v}" >> "$GITHUB_OUTPUT"

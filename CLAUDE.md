@@ -98,6 +98,11 @@ extension\build.ps1
 - `iosApp/FJTorrent/` is excluded from formatting (`.clang-format` `DisableFormat`). An IDE
   reformat split `NS_SWIFT_NAME(...)` over lines, Swift then saw no `find`/`add`/`setLimits` and the
   iOS CI archive failed. Keep each `NS_SWIFT_NAME(...)` on one line.
+- Windows runner uploads (`gh release upload`) were ~3 Mbit/s while WSL on the same PC got 20-27
+  (2026-11-02, both over Wi-Fi; the Killer E2600 Ethernet was not connected). Stopping the Killer
+  bandwidth service (KNDBWM) helped only half the time. After the owner switched to the Wi-Fi
+  network "Mesho_5G 2", Windows and WSL both upload a steady ~15 Mbit/s. Cause not proven (the
+  old Wi-Fi network and/or Killer software). Slow release uploads from Windows = check this first.
 - Self-hosted Mac runner: `~/actions-runner`, installed as a launchd service
   (`./svc.sh start|stop|status`, or `./run.sh` in a terminal).
 

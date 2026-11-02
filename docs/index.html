@@ -65,6 +65,11 @@
         .notice code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
         .notes-body { margin-top: 10px; padding: 12px 14px; background: var(--panel-2); border-radius: 10px; font-size: 13px; white-space: pre-wrap; color: var(--muted); display: none; }
         .rel.open .notes-body { display: block; }
+        .latest-notes { margin-top: 10px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; white-space: pre-wrap; color: var(--muted); display: none; }
+        .latest-notes.open { display: block; }
+        .more { margin-top: 14px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+        .more:hover { border-color: var(--accent); }
+        .list[hidden] { display: none; }
         footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 13px; }
     </style>
 </head>
@@ -143,7 +148,7 @@
 
       var tabsEl = document.getElementById("tabs"), contentEl = document.getElementById("content"),
           hintEl = document.getElementById("hint"), countEl = document.getElementById("count");
-      var releases = [], current = guessPlatform();
+      var releases = [], current = guessPlatform(), showOld = false;
 
       function guessPlatform() {
         var ua = navigator.userAgent, saved = null;
@@ -204,7 +209,7 @@
           b.className = "tab"; b.setAttribute("role", "tab");
           b.setAttribute("aria-selected", p.key === current ? "true" : "false");
           b.innerHTML = esc(p.label) + '<span class="n">' + n + "</span>";
-          b.onclick = function () { current = p.key; try { localStorage.setItem("fj.platform", p.key); } catch (e) {} renderTabs(); renderList(); };
+          b.onclick = function () { current = p.key; showOld = false; try { localStorage.setItem("fj.platform", p.key); } catch (e) {} renderTabs(); renderList(); };
           tabsEl.appendChild(b);
         });
       }
@@ -228,11 +233,20 @@
                 '</div></div><div class="grow"></div>' +
                 latest.files.map(function (a) { return '<a class="btn" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + " <small>" + fmtSize(a.size) + "</small></a>"; }).join(" ") +
                 '<a class="btn ghost" href="' + latest.r.html_url + '">Release notes</a></div>';
-        html += '<div class="list">';
-        rows.forEach(function (x, i) {
+        var latestNotes = cleanNotes(latest.r.body);
+        if (latestNotes) {
+          html += '<button class="more" id="toggle-latest-notes">What&#39;s new in ' + esc(latest.r.tag_name) + "</button>" +
+                  '<div class="latest-notes" id="latest-notes">' + esc(latestNotes) + "</div>";
+        }
+        var older = rows.slice(1);
+        if (older.length) {
+          html += '<div><button class="more" id="toggle-old">' + (showOld ? "Hide older versions" : "Show older versions (" + older.length + ")") + "</button></div>";
+        }
+        html += '<div class="list"' + (showOld ? "" : ' hidden') + '>';
+        older.forEach(function (x) {
           var notes = cleanNotes(x.r.body);
           html += '<div class="rel" id="rel-' + esc(x.r.tag_name) + '"><div class="rel-head"><span class="v">' + esc(x.r.tag_name) + "</span>" +
-                  (i === 0 ? '<span class="tag">latest</span>' : "") + (x.r.prerelease ? '<span class="tag">pre-release</span>' : "") +
+                  (x.r.prerelease ? '<span class="tag">pre-release</span>' : "") +
                   (isBeta(x.r, p.key) ? '<span class="tag beta">beta</span>' : "") +
                   '<span class="d">' + fmtDate(x.r.published_at) + '</span><span class="grow"></span>' +
                   (notes ? '<a class="notes" href="#" data-toggle="' + esc(x.r.tag_name) + '">what changed</a>' : "") +
@@ -244,6 +258,10 @@
         });
         html += "</div>";
         contentEl.innerHTML = notice + html;
+        var tl = document.getElementById("toggle-latest-notes");
+        if (tl) tl.onclick = function () { document.getElementById("latest-notes").classList.toggle("open"); };
+        var to = document.getElementById("toggle-old");
+        if (to) to.onclick = function () { showOld = !showOld; renderList(); };
         Array.prototype.forEach.call(contentEl.querySelectorAll("a[data-toggle]"), function (a) {
           a.onclick = function (e) { e.preventDefault(); document.getElementById("rel-" + a.getAttribute("data-toggle")).classList.toggle("open"); };
         });
