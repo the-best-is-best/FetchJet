@@ -194,7 +194,7 @@ Bridges:
   text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
   install the Chrome build.
 
-## Current state (release-v1.1.0)
+## Current state (master, 1.1.0)
 
 - **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
   never ask or offer to commit.
@@ -288,13 +288,16 @@ Bridges:
 - **1.1.0 is not released yet** (the extension store reviews were still pending). A
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
   its work (clean code, kotlinx.serialization, multi-select delete) in 1.1.0 itself, since 1.1.0
-  never reached users. The branch was deleted (local only, never pushed) and the work sits on
-  `release-v1.1.0`. Not built for iOS yet, but low risk: every change is in `commonMain` with
+  never reached users. The branch was deleted (local only, never pushed). On 2026-11-02
+  `release-v1.1.0` was merged into `master` (PR #3, `0b6035e`) and the local branch deleted
+  (`origin/release-v1.1.0` still exists). Work from `master` now. Not built for iOS yet, but low
+  risk: every change is in `commonMain` with
   official multiplatform libraries (kotlinx.serialization, navigationevent, Compose), and
   `iosMain` / Swift were not touched. The next Mac build confirms it; it does not block the
   commit (owner's decision, 2026-11-02).
-- Draft release. The owner runs workflow_dispatch **from the `release-v1.1.0` branch**: version
-  `1.1.0`, only the platforms they choose, `stores` as they decide. Not released yet (2026-11-01).
+- Draft release. The owner runs workflow_dispatch: version `1.1.0`, all platforms, `stores` on,
+  `beta` empty (2026-11-02). The draft must be published before `/releases/latest` (the app's
+  update check) sees it. v1.0.0 and v1.0.1 are marked GitHub "Pre-release".
 - Stability (2026-11-01): all platforms are stable: Windows, macOS, Linux, Android, iOS and the
   Chrome / Edge / Firefox / Safari extension. Android re-tested on the A56 over wireless adb after
   the dead-code cleanup (direct 10 MB, YouTube with merged video+audio, Sintel torrent 123 MB, no
