@@ -256,6 +256,7 @@ object SpanishProvider : AppLocalization {
         "No se pudieron leer sus archivos ($error); se descargarán todos."
 
     override val linkTagVideo = "VÍDEO"
+    override val linkTagAudio = "AUDIO"
     override val linkTagTorrent = "TORRENT"
     override val linkTagFile = "ARCHIVO"
     override val linkListMagnet = "Enlace magnet"

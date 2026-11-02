@@ -1,6 +1,5 @@
 ﻿package com.michelle.raouf.fetch_jet
 
-import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -24,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        PathResolver.appContext = applicationContext
         com.tbib.kmp_localization.LocalizationManager.start()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(

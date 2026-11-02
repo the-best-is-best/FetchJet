@@ -64,54 +64,68 @@
     <div class="brand">
         <div class="logo">⚡</div>
         <span class="title">FetchJet</span></div>
-    <div class="status" id="status" title="Click to connect / launch FetchJet"><span
+    <div class="status" data-i18n-title="popupStatusTitle" id="status"
+         title="Click to connect / launch FetchJet"><span
             class="dot"></span><span id="statusText">Checking…</span></div>
 </div>
 
 <div class="body">
     <div class="banner" id="permBanner">
-        FetchJet needs access to websites to capture downloads and media on every page.
-        <button class="primary" id="grantBtn">Allow access to all sites</button>
+        <span data-i18n="popupPermText">FetchJet needs access to websites to capture downloads and media on every page.</span>
+        <button class="primary" data-i18n="popupPermButton" id="grantBtn">Allow access to all
+            sites
+        </button>
     </div>
 
     <div class="card" id="pageCard">
-        <div class="page-title" id="pageTitle">Current page</div>
+        <div class="page-title" data-i18n="popupCurrentPage" id="pageTitle">Current page</div>
         <div class="page-url" id="pageUrl">…</div>
         <div class="row">
-            <button class="primary" id="sendPageBtn"
+            <button class="primary" data-i18n="popupSendPage" data-i18n-title="popupSendPageTitle"
+                    id="sendPageBtn"
                     title="Send this page to FetchJet (video sites are inspected with yt-dlp)">⚡
                 Download page / video
             </button>
-            <button id="allLinksBtn" title="Send every downloadable link on this page">All links
+            <button data-i18n="popupAllLinks" data-i18n-title="popupAllLinksTitle" id="allLinksBtn"
+                    title="Send every downloadable link on this page">All links
             </button>
         </div>
     </div>
 
     <div class="card">
-        <h3>Video &amp; media on this page <span><button class="small ghost" id="resolveBtn"
+        <h3><span data-i18n="popupMediaHeader">Video &amp; media on this page</span> <span><button
+                class="small ghost" data-i18n="popupGetQualities"
+                data-i18n-title="popupGetQualitiesTitle" id="resolveBtn"
                                                          title="Ask FetchJet (yt-dlp) for the qualities of this page">Get qualities</button> <button
-                class="small ghost" id="clearMediaBtn">Clear</button></span></h3>
+                class="small ghost" data-i18n="popupClear" id="clearMediaBtn">Clear</button></span>
+        </h3>
         <div class="media-list" id="mediaList">
-            <div class="empty">Nothing yet. Play the video, or click “Get qualities”.</div>
+            <div class="empty" data-i18n="popupEmpty">Nothing yet. Play the video, or click “Get
+                qualities”.
+            </div>
         </div>
-        <button class="primary" id="allMediaBtn" style="display:none">Download all detected media
+        <button class="primary" data-i18n="popupAllMedia" id="allMediaBtn" style="display:none">
+            Download all detected media
             files
         </button>
     </div>
 
     <div class="card">
-        <h3>Paste a link</h3>
+        <h3 data-i18n="popupPasteHeader">Paste a link</h3>
         <div class="row">
             <input id="urlInput" placeholder="https://… or magnet:?…" type="text">
-            <button class="primary" id="sendInputBtn" style="flex:0 0 auto">Send</button>
+            <button class="primary" data-i18n="popupSend" id="sendInputBtn" style="flex:0 0 auto">
+                Send
+            </button>
         </div>
     </div>
 
     <div class="card">
-        <div class="toggle">Capture downloads &amp; links
+        <div class="toggle"><span
+                data-i18n="popupCaptureToggle">Capture downloads &amp; links</span>
             <div class="switch" id="enabledSwitch" role="switch"></div>
         </div>
-        <div class="toggle">Detect media on pages
+        <div class="toggle"><span data-i18n="popupMediaToggle">Detect media on pages</span>
             <div class="switch" id="mediaSwitch" role="switch"></div>
         </div>
     </div>
@@ -121,9 +135,25 @@
 
 <div class="footer">
     <span id="hint">Hold Alt while clicking to download with the browser</span>
-    <a id="optionsLink">Settings</a>
+    <a data-i18n="popupSettings" id="optionsLink">Settings</a>
 </div>
 
+<script src="i18n/i18n.js"></script>
+<script src="i18n/en.js"></script>
+<script src="i18n/ar.js"></script>
+<script src="i18n/fr.js"></script>
+<script src="i18n/de.js"></script>
+<script src="i18n/es.js"></script>
+<script src="i18n/pt.js"></script>
+<script src="i18n/it.js"></script>
+<script src="i18n/ru.js"></script>
+<script src="i18n/tr.js"></script>
+<script src="i18n/id.js"></script>
+<script src="i18n/zh.js"></script>
+<script src="i18n/ja.js"></script>
+<script src="i18n/ko.js"></script>
+<script src="i18n/hi.js"></script>
+<script src="i18n/fa.js"></script>
 <script src="platform.js"></script>
 <script src="popup.js"></script>
 </body>

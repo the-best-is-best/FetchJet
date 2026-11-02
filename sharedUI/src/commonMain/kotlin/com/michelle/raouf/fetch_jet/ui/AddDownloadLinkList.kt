@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
@@ -148,7 +149,9 @@ internal fun LinkListSection(
 @Composable
 private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
     val (tag, tagColor) = when (link.engine) {
-        EngineType.MEDIA_STREAM -> LocalizationManager.Strings.linkTagVideo to Color(0xFFE879F9)
+        EngineType.MEDIA_STREAM -> if (link.mediaQualities.isAllAudio())
+            LocalizationManager.Strings.linkTagAudio to Color(0xFFFBBF24)
+        else LocalizationManager.Strings.linkTagVideo to Color(0xFFE879F9)
         EngineType.BITTORRENT -> LocalizationManager.Strings.linkTagTorrent to Color(0xFF34D399)
         EngineType.HTTP_DIRECT -> LocalizationManager.Strings.linkTagFile to Color(0xFF38BDF8)
     }

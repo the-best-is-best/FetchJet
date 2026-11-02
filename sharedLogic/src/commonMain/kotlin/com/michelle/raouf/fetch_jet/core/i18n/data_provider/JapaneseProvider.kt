@@ -243,6 +243,7 @@ object JapaneseProvider : AppLocalization {
         "ファイルを読み込めませんでした（${error}）。すべてのファイルをダウンロードします。"
 
     override val linkTagVideo = "動画"
+    override val linkTagAudio = "音声"
     override val linkTagTorrent = "トレント"
     override val linkTagFile = "ファイル"
     override val linkListMagnet = "マグネットリンク"

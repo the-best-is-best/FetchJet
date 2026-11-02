@@ -293,13 +293,13 @@ internal fun TaskListArea(
                         if (desktop) listFocus.requestFocus()
                         checkedIds = if (on) checkedIds + task.id else checkedIds - task.id
                     },
-                    onCtrlClick = if (!desktop) null else {
+                    onCtrlClick = if (!desktop) null else ({
                         anchorId = task.id
                         listFocus.requestFocus()
                         checkedIds =
                             if (task.id in checkedIds) checkedIds - task.id else checkedIds + task.id
-                    },
-                    onShiftClick = if (!desktop) null else {
+                    }),
+                    onShiftClick = if (!desktop) null else ({
                         listFocus.requestFocus()
                         val ids = shownOrder.map { it.id }
                         val from = ids.indexOf(anchorId ?: selectedTaskId).takeIf { it >= 0 } ?: 0
@@ -308,7 +308,7 @@ internal fun TaskListArea(
                             checkedIds =
                                 checkedIds + ids.subList(minOf(from, to), maxOf(from, to) + 1)
                         }
-                    },
+                    }),
                     onLongClick = { checkedIds = checkedIds + task.id },
                     onQuickAction = { action ->
                         when (action) {

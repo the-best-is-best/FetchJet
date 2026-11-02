@@ -244,6 +244,7 @@ object IndonesianProvider : AppLocalization {
         "Tidak dapat membaca file-nya ($error); semuanya akan diunduh."
 
     override val linkTagVideo = "VIDEO"
+    override val linkTagAudio = "AUDIO"
     override val linkTagTorrent = "TORRENT"
     override val linkTagFile = "FILE"
     override val linkListMagnet = "Tautan magnet"

@@ -55,7 +55,7 @@ Version constants:
   `master` has 1.1.0)
 - `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.2.0`,
   `CURRENT_PROJECT_VERSION = 4`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.1.1`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.2.0` (also `manifest.safari.json`)
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
 
@@ -220,6 +220,31 @@ Bridges:
   up over the browser".
 - Extension: `background.js` has `downloadItem`, `inspectWithApp`, `sendToFetchJet`,
   `isStreamFragment`, `recentSends` (8 s dedupe), quality labels via regex.
+- Extension languages (2026-11-03): `extension/i18n/` holds the extension's texts in the app's
+  15 languages: `i18n/i18n.js` (the functions: `fjT(key, vars)`, `fjReason(code)`,
+  `fjApplyTexts(document)` for `data-i18n` / `data-i18n-title`, `fjIsRtl`, `fjOnLanguage`,
+  `fjUseLanguage`, `fjAddLanguage`) and one file per language (`i18n/en.js`, `i18n/ar.js`...:
+  `fjAddLanguage("ar", {...})`). A new text = add the key to `en.js` and every language file,
+  then `python scripts/extension-i18n/check.py` (missing / unknown keys, `{placeholders}`). A
+  missing key shows the English text. A new language = its file, its code in `KNOWN`
+  (`i18n.js`) and the file in every list below. The language is the app's: `/config` (desktop
+  `main.kt`, Android `ExtensionBridgeServer`) returns `"language"`, the background stores it as
+  `appLanguage` in `storage.local`, and the content script, popup and options follow it live (RTL
+  for ar / fa, sizes kept LTR). Without the app: the browser's language. iOS / Safari has no
+  `/config`, so it uses Safari's language. The `i18n/` files load first everywhere:
+  `importScripts` in the service worker (and the `executeScript` fallback in
+  `collectAndSendLinks`), first in `content_scripts.js` and Firefox `background.scripts` of
+  all three manifests, `<script>` tags in popup / options; `build.ps1`, `build.sh` and the
+  Xcode "Copy Web Extension Files" phase copy the whole folder. Reasons
+  (`reason: "app not running"`...) stay English codes
+  between scripts and are translated only when shown (`fjReason`); `resolveVideo` returns
+  `notRunning: true` instead of the content script matching English text. `start()` now applies
+  the saved language at once (before, `/config` answered "en" for the first seconds). Platform
+  files hold string keys (`cookiesNote`, `status`, `hint`, `shortcutsText`). Checked with stubbed
+  pages: popup and options in Arabic RTL, SoundCloud button "تنزيل هذا الصوت". Owner-verified in the
+  installed Edge extension (2026-11-03). Not checked: Firefox, Safari.
+- YouTube: only the main video gets a page button (`place()`, `oneVideoSite`): during ads the
+  owner saw 3 buttons (ad / preview players). Not re-checked on a real ad yet.
 - Extension per-browser UI (2026-11-01): `options.js` / `popup.js` read `FJ_PLATFORM` from
   `platform.js`, which differs per build like the manifest: `platform.js` (Chromium: Chrome, Edge,
   Brave, Opera, Vivaldi, Arc; also used when loading the folder unpacked), `platform.firefox.js`,
@@ -395,7 +420,34 @@ Bridges:
       removed; size/speed units of yt-dlp progress lines now go through `ytDlpUnitMultiplier` /
       `ytDlpUnitPrefixMultiplier` (`MediaUnits.kt`, same results as the old copies); Android
       `contentLengthCache` is a ConcurrentHashMap cleared above 500 entries; extension `VIDEO_PAGE`
-      has 9gag `/gag/` and kick `/videos|clips/` pages, extension version 3.1.1 (not uploaded).
+      has 9gag `/gag/` and kick `/videos|clips/` pages, extension version 3.2.0 (not uploaded; 3.1.1
+      was never released).
+      SoundCloud track / set pages are in `VIDEO_PAGE` too; they have no `<video>`, so
+      `audioHero()` (content.js, `AUDIO_HERO` list) gives the track header as the element the
+      page button sits on: `.fullListenHero` in the classic layout (logged out), or the
+      `<section>` around `main h1` in the new MUI layout (logged in, hashed `mui-*` classes).
+      The header never "plays", so its button shows at once (`place()`: any non-`VIDEO`
+      anchor) and a click asks the app (`lookUp`); waiting for pushed items failed in the
+      owner's Edge (no button, hero found). Checked on a local copy of each layout (button, click,
+      list). In the new layout the track is a same-site frame
+      (`soundcloud.com/n/<artist>/<track>?embedded=crossfade`), so the hero is looked up in
+      frames too and `audioPageUrl()` sends the clean `soundcloud.com/<artist>/<track>` link.
+      Owner-verified in Edge, logged in (new layout) and logged out (classic layout).
+      `/discover/sets/...` (personal "Related
+      tracks", private) gets no button: yt-dlp answers 404 there (also through the app with the
+      extension's cookies; these are system playlists). Instead "Download all links on this
+      page" on SoundCloud also collects track page links (`pushTrack` in `collectLinks`: two
+      path parts, not `sets`, `/n/` and `?in=` removed) so the app's link list reads each
+      track. Checked on the real `forss/sets/soulhack` DOM: its 11 tracks; `tags/`,
+      `getstarted/`, `company/` ... are excluded in `VIDEO_PAGE`.
+      The app used to skip every media page of a batch (`/links`, "Download all links"):
+      `handleExternalBatch` now queues the files and opens the Add dialog's link list with the
+      media pages (each read for title + quality). Owner-verified on the "Related tracks" page
+      (Edge, 2026-11-03). SoundCloud renders only part of a long list: scroll down first.
+      Audio vs video: `MediaQualityEntry.isAudioOnly` / `List.isAllAudio()` (all qualities are
+      sound only). The link list tags such rows "AUDIO" (`linkTagAudio`), and the Add dialog's
+      🎵 / "audio formats" title uses it too (it used `any`, so a YouTube video with an "Audio
+      Only" option showed as audio). Test `MediaQualityAudioTest`.
       A56 after all of it: 64 MB direct, YouTube `jNQXAC9IVRw` (own engine, https streams),
       SoundCloud (own HLS) all completed.
 - 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on

@@ -250,6 +250,7 @@ object RussianProvider : AppLocalization {
         "Не удалось прочитать список файлов ($error); будут скачаны все."
 
     override val linkTagVideo = "ВИДЕО"
+    override val linkTagAudio = "АУДИО"
     override val linkTagTorrent = "ТОРРЕНТ"
     override val linkTagFile = "ФАЙЛ"
     override val linkListMagnet = "Magnet-ссылка"

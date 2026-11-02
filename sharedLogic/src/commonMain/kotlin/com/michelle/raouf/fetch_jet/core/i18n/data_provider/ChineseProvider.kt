@@ -235,6 +235,7 @@ object ChineseProvider : AppLocalization {
         "无法读取其中的文件（${error}），将下载全部文件。"
 
     override val linkTagVideo = "视频"
+    override val linkTagAudio = "音频"
     override val linkTagTorrent = "种子"
     override val linkTagFile = "文件"
     override val linkListMagnet = "磁力链接"

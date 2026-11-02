@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.core.notification
 
-import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -9,6 +8,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 
 class DownloadForegroundService : Service() {
 
@@ -19,6 +19,7 @@ class DownloadForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        com.michelle.raouf.fetch_jet.core.filesystem.PathResolver.appContext = applicationContext
         com.tbib.kmp_localization.LocalizationManager.start()
         isRunning = true
         acquireLocks()

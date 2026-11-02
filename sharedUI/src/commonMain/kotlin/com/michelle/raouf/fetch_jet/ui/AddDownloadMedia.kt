@@ -1,8 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
-import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +36,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,13 +47,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.michelle.raouf.fetch_jet.utils.formatSecondsToDisplayFriendly
 import com.michelle.raouf.fetch_jet.utils.formatSizeDisplay
 import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
-import androidx.compose.runtime.MutableState
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun MediaQualitiesSelectionCard(
@@ -75,10 +77,7 @@ internal fun MediaQualitiesSelectionCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             val videoTitle = qualities.firstOrNull { !it.videoTitle.isNullOrBlank() }?.videoTitle
-            val isAudio = qualities.any {
-                it.qualityLabel.contains("Audio", ignoreCase = true) ||
-                        it.format in listOf("mp3", "m4a", "flac", "wav", "aac", "ogg", "opus")
-            }
+            val isAudio = qualities.isAllAudio()
             val titleIcon = if (isAudio) "🎵" else "🎬"
             val defaultTitle =
                 if (isAudio) LocalizationManager.Strings.availableAudioFormats else LocalizationManager.Strings.availableQualities
@@ -486,19 +485,7 @@ internal fun MediaInspectionSection(
                         // contains audio options, so checking "any" said "Audio" for videos).
                         val selectedQuality =
                             inspectedMediaQualities.firstOrNull { it.isSelected }
-                        val isAnyAudio =
-                            selectedQuality != null && selectedQuality.let {
-                                it.qualityLabel.contains("Audio", ignoreCase = true) ||
-                                        it.format in listOf(
-                                    "mp3",
-                                    "m4a",
-                                    "flac",
-                                    "wav",
-                                    "aac",
-                                    "ogg",
-                                    "opus"
-                                )
-                            }
+                        val isAnyAudio = selectedQuality?.isAudioOnly == true
 
                         Row(
                             modifier = Modifier

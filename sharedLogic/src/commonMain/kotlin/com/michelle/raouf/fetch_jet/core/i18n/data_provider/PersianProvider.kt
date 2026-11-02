@@ -243,6 +243,7 @@ object PersianProvider : AppLocalization {
         "خواندن فایل‌های آن ممکن نشد ($error)؛ همه فایل‌ها دانلود می‌شوند."
 
     override val linkTagVideo = "ویدیو"
+    override val linkTagAudio = "صوتی"
     override val linkTagTorrent = "تورنت"
     override val linkTagFile = "فایل"
     override val linkListMagnet = "لینک magnet"

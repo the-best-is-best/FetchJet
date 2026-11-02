@@ -241,6 +241,7 @@ object HindiProvider : AppLocalization {
         "इसकी फ़ाइलें नहीं पढ़ी जा सकीं ($error); सभी फ़ाइलें डाउनलोड होंगी।"
 
     override val linkTagVideo = "वीडियो"
+    override val linkTagAudio = "ऑडियो"
     override val linkTagTorrent = "टोरेंट"
     override val linkTagFile = "फ़ाइल"
     override val linkListMagnet = "मैग्नेट लिंक"

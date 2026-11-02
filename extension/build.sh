@@ -5,13 +5,13 @@ cd "$(dirname "$0")"
 VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' manifest.json | head -1)
 OUT=../build/extension
 rm -rf "$OUT"; mkdir -p "$OUT/chrome" "$OUT/firefox"
-FILES="background.js yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png"
-cp $FILES manifest.json platform.js "$OUT/chrome/"
-cp $FILES "$OUT/firefox/"; cp manifest.firefox.json "$OUT/firefox/manifest.json"; cp platform.firefox.js "$OUT/firefox/platform.js"
+FILES="background.js i18n yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png"
+cp -R $FILES manifest.json platform.js "$OUT/chrome/"
+cp -R $FILES "$OUT/firefox/"; cp manifest.firefox.json "$OUT/firefox/manifest.json"; cp platform.firefox.js "$OUT/firefox/platform.js"
 ( cd "$OUT/chrome"  && zip -q -r "../fetchjet-chrome-$VERSION.zip" . )
 # Store build (Edge Add-ons / Chrome Web Store): same files without "key" - the stores give
 # the extension their own ID and refuse a manifest that pins one.
-mkdir -p "$OUT/store"; cp $FILES platform.js "$OUT/store/"
+mkdir -p "$OUT/store"; cp -R $FILES platform.js "$OUT/store/"
 grep -v '"key":' manifest.json > "$OUT/store/manifest.json"
 ( cd "$OUT/store" && zip -q -r "../fetchjet-store-$VERSION.zip" . )
 ( cd "$OUT/firefox" && zip -q -r "../fetchjet-firefox-$VERSION.xpi" . )

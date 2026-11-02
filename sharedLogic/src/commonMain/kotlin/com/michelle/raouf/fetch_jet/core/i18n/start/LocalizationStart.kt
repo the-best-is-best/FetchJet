@@ -1,21 +1,21 @@
 package com.michelle.raouf.fetch_jet.core.i18n.start
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.EnglishProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.ArabicProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.ChineseProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.EnglishProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.FrenchProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.GermanProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.SpanishProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.PortugueseProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.ItalianProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.RussianProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.TurkishProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.HindiProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.IndonesianProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.ChineseProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.ItalianProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.JapaneseProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.KoreanProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.HindiProvider
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.PersianProvider
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.PortugueseProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.RussianProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.SpanishProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.TurkishProvider
 import com.tbib.kmp_localization.LocalizationManager
 import com.tbib.kmp_localization.system.getSystemFullLocale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +47,13 @@ fun LocalizationManager.start() {
     started = true
     registerProviders(*appLanguages.toTypedArray())
     setDefaultLanguage("en")
-    AppLanguage.change(AppLanguage.SYSTEM)
+    AppLanguage.change(
+        runCatching {
+            com.michelle.raouf.fetch_jet.core.settings.AppSettingsRepository()
+                .loadSettings().language
+        }
+            .getOrDefault(AppLanguage.SYSTEM)
+    )
 }
 
 object AppLanguage {

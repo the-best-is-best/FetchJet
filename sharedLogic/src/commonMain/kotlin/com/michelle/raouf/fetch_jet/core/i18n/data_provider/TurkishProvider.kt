@@ -241,6 +241,7 @@ object TurkishProvider : AppLocalization {
         "Dosyaları okunamadı ($error); hepsi indirilecek."
 
     override val linkTagVideo = "VİDEO"
+    override val linkTagAudio = "SES"
     override val linkTagTorrent = "TORRENT"
     override val linkTagFile = "DOSYA"
     override val linkListMagnet = "Magnet bağlantısı"

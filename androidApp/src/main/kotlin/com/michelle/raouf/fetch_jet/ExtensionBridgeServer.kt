@@ -7,12 +7,12 @@ import android.os.Looper
 import android.widget.Toast
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -272,6 +272,7 @@ object ExtensionBridgeServer {
                     out, r, 200,
                     """{"app":"FetchJet","platform":"android","version":"${json(version)}","bridge":2,""" +
                             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
+                            """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
                             """"endpoints":["/ping","/config","/add","/links","/download","/inspect"]}""",
                     "application/json; charset=UTF-8"
                 )

@@ -124,7 +124,7 @@ function ytBuildOptions(streams) {
     if (seen.has("av" + q)) continue;
     seen.add("av" + q);
     options.push({
-      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${v.ext.toUpperCase()} · video with sound`,
+      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${v.ext.toUpperCase()} · ${ytText("ytVideoWithSound", "video with sound")}`,
       sub: ytFmtSize(v.size), quality: q, ext: v.ext, size: v.size, duration: v.dur, url: v.url
     });
   }
@@ -135,7 +135,7 @@ function ytBuildOptions(streams) {
     if (seen.has(key)) continue;
     seen.add(key);
     options.push({
-      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${fmt} · video only (no sound)`,
+      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${fmt} · ${ytText("ytVideoOnly", "video only (no sound)")}`,
       sub: ytFmtSize(v.size), quality: q, ext: v.ext, size: v.size, duration: v.dur, url: v.url, videoOnly: true
     });
   }
@@ -146,12 +146,14 @@ function ytBuildOptions(streams) {
     if (seen.has(key)) continue;
     seen.add(key);
     options.push({
-      kind: "captured", label: `Audio only · ${a.ext.toUpperCase()}${a.abr ? " " + a.abr + "k" : ""}${a.lang ? " · " + a.lang : ""}`,
+      kind: "captured", label: `${ytText("ytAudioOnly", "Audio only")} · ${a.ext.toUpperCase()}${a.abr ? " " + a.abr + "k" : ""}${a.lang ? " · " + a.lang : ""}`,
       sub: ytFmtSize(a.size), quality: "audio", ext: a.ext, size: a.size, duration: a.dur, url: a.url, audioOnly: true
     });
   }
   return options;
 }
+
+function ytText(key, english) { return typeof fjT === "function" ? fjT(key) : english; }
 
 /** "(3) Some title - YouTube" -> "Some title", safe for file names on every OS. */
 function ytCleanTitle(title) {

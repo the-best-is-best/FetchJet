@@ -6,6 +6,7 @@
 
 // Firefox loads yt-core.js from the manifest; Chromium service workers import it here.
 // (No try/catch on purpose: a missing file must fail loudly at install, not silently later.)
+if (typeof importScripts === "function" && typeof fjT === "undefined") importScripts("i18n/i18n.js", "i18n/en.js", "i18n/ar.js", "i18n/fr.js", "i18n/de.js", "i18n/es.js", "i18n/pt.js", "i18n/it.js", "i18n/ru.js", "i18n/tr.js", "i18n/id.js", "i18n/zh.js", "i18n/ja.js", "i18n/ko.js", "i18n/hi.js", "i18n/fa.js");
 if (typeof importScripts === "function" && typeof ytParseStream === "undefined") importScripts("yt-core.js");
 
 const api = typeof browser !== "undefined" ? browser : chrome;
@@ -211,8 +212,15 @@ async function fetchAppConfig() {
     const res = await fetch(`${FETCHJET_BASE}/config`, { method: "GET", signal: controller.signal });
     clearTimeout(t);
     if (!res.ok) return null;
-    return await res.json();
+    const cfg = await res.json();
+    if (cfg && cfg.language) rememberAppLanguage(cfg.language);
+    return cfg;
   } catch (_) { return null; }
+}
+
+function rememberAppLanguage(code) {
+  fjUseLanguage(code);
+  try { Promise.resolve(api.storage.local.set({ appLanguage: code })).catch(() => {}); } catch (_) {}
 }
 
 async function cookieHeaderFor(url) {
@@ -353,10 +361,10 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
 
   const launched = await launchApp(url);
   if (!launched) {
-    await notify("FetchJet is not running and could not be started.");
+    await notify(fjT("notifyNotRunning"));
     return { ok: false, reason: "app not running" };
   }
-  await notify("Launching FetchJet...");
+  await notify(fjT("notifyLaunching"));
   if (await waitForApp()) {
     // The launcher may already have passed the URL on the command line; /add is idempotent
     // enough (duplicate check in the app) that re-sending with cookies is the safer choice.
@@ -381,12 +389,12 @@ async function sendBatchToFetchJet(items, referer = "") {
 
   if (!(await pingApp())) {
     if (!(await launchApp(requests[0].url)) || !(await waitForApp())) {
-      await notify("FetchJet is not running and could not be started.");
+      await notify(fjT("notifyNotRunning"));
       return { ok: false, reason: "app not running", count: 0 };
     }
   }
   const ok = await deliverBatch(requests);
-  if (ok) await notify(`${requests.length} link${requests.length === 1 ? "" : "s"} sent to FetchJet.`);
+  if (ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
   return { ok, count: requests.length };
 }
 
@@ -447,8 +455,8 @@ async function takeOver(item) {
     try { await api.downloads.download({ url: targetUrl }); } catch (_) {}
     return;
   }
-  const nid = await notify("Download captured and sent to FetchJet.", {
-    buttons: [{ title: "Download in browser instead" }]
+  const nid = await notify(fjT("notifyCaptured"), {
+    buttons: [{ title: fjT("btnDownloadInBrowser") }]
   });
   if (nid) {
     const map = await sessionGet(NOTIFY_KEY);
@@ -687,8 +695,8 @@ async function inspectWithApp(pageUrl) {
     const text = await res.text();
     let data = null;
     try { data = JSON.parse(text); } catch (_) { data = { error: text.trim() }; }
-    if (res.status === 403) return { resolveError: "FetchJet refused the request: reload the extension (it is older than the app)" };
-    if (!res.ok || !Array.isArray(data)) return { resolveError: (data && data.error) || `FetchJet answered HTTP ${res.status}` };
+    if (res.status === 403) return { resolveError: fjT("errRefused") };
+    if (!res.ok || !Array.isArray(data)) return { resolveError: (data && data.error) || fjT("errHttp", { status: res.status }) };
     const title = (data.find(q => q.title) || {}).title || "";
     const options = [];
     const seen = new Set();
@@ -705,10 +713,10 @@ async function inspectWithApp(pageUrl) {
         size: q.size > 0 ? q.size : 0, duration: q.duration || 0, title
       });
     }
-    if (!options.length) return { resolveError: "No downloadable formats found" };
+    if (!options.length) return { resolveError: fjT("errNoFormats") };
     return { resolved: { title, options } };
   } catch (e) {
-    return { resolveError: (await pingApp()) ? String(e && e.message || e) : "FetchJet is not running" };
+    return { resolveError: (await pingApp()) ? String(e && e.message || e) : fjT("errNotRunning") };
   } finally { clearTimeout(t); }
 }
 
@@ -782,7 +790,7 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
     if (!settings.autoResolve) return;
   }
   if (!(await appCanInspect())) {
-    if (force) { await setTabState(RES_KEY, tabId, { page, resolving: false, resolveError: "FetchJet is not running (or has no media extractor)" }); pushToTab(tabId); }
+    if (force) { await setTabState(RES_KEY, tabId, { page, resolving: false, resolveError: fjT("errNoExtractor") }); pushToTab(tabId); }
     return;
   }
   resolving.set(tabId, page);
@@ -809,7 +817,7 @@ async function itemsForTab(tabId) {
     const hasPlaylist = media.some(m => m.kind === "HLS" || m.kind === "DASH");
     const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}`
       : (res && res.openApp && !hasPlaylist ? res.page : "");
-    if (page) items.push({ kind: "openApp", label: "Open in FetchJet", sub: "Pick the quality in the app", url: page });
+    if (page) items.push({ kind: "openApp", label: fjT("itemOpenApp"), sub: fjT("itemOpenAppSub"), url: page });
   }
   if (yt) {
     const captured = typeof ytBuildOptions === "function" ? ytBuildOptions(yt.streams) : [];
@@ -818,27 +826,25 @@ async function itemsForTab(tabId) {
       items.push(...yt.resolved.options);
     } else if (captured.length) {
       items.push(...captured.map(o => ({ ...o, referer: "https://www.youtube.com/" })));
-      if (yt.resolving) items.push({ label: "Getting all qualities from FetchJet (yt-dlp)…", sub: "Captured streams are shown meanwhile", disabled: true });
+      if (yt.resolving) items.push({ label: fjT("itemGettingAll"), sub: fjT("itemGettingAllSub"), disabled: true });
     } else if (yt.resolving) {
-      items.push({ label: "Getting video qualities…", sub: /android/i.test(navigator.userAgent) ? "Up to a minute on a phone" : "This takes a few seconds", disabled: true });
+      items.push({ label: fjT("itemGetting"), sub: /android/i.test(navigator.userAgent) ? fjT("itemGettingPhone") : fjT("itemGettingDesktop"), disabled: true });
     } else if (yt.resolveError) {
-      items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
+      items.push({ label: fjT("errCantGet"), sub: yt.resolveError, disabled: true });
     } else if (yt.sabr && !(ON_IOS && yt.openApp)) {
       items.push({
-        label: "Qualities come from FetchJet (yt-dlp) for this video",
-        sub: /android/i.test(navigator.userAgent)
-          ? "Open the FetchJet app, then reload this page"
-          : "Start FetchJet (Settings → Download Tools once), then click Get qualities or reload the page",
+        label: fjT("itemFromApp"),
+        sub: /android/i.test(navigator.userAgent) ? fjT("itemFromAppPhone") : fjT("itemFromAppDesktop"),
         disabled: true
       });
     }
   }
   if (res && !yt) {
     if (res.resolved && res.resolved.options.length) { pageTitle = res.resolved.title; items.push(...res.resolved.options); }
-    else if (res.resolving) items.push({ label: "Getting video qualities…", sub: "This takes a few seconds", disabled: true });
-    else if (res.resolveError && !media.length) items.push({ label: "Can't get this video", sub: res.resolveError, disabled: true });
+    else if (res.resolving) items.push({ label: fjT("itemGetting"), sub: fjT("itemGettingDesktop"), disabled: true });
+    else if (res.resolveError && !media.length) items.push({ label: fjT("errCantGet"), sub: res.resolveError, disabled: true });
     // Captured streams are shown, but say why the page itself gave no qualities (login, geo...)
-    else if (res.resolveError) items.push({ label: "Page qualities unavailable", sub: res.resolveError, disabled: true });
+    else if (res.resolveError) items.push({ label: fjT("itemPageUnavailable"), sub: res.resolveError, disabled: true });
   }
   const resolvedFound = items.some(i => i.kind === "ytdlp");
   const resolving = !!(res && res.resolving && !yt);
@@ -856,7 +862,7 @@ async function itemsForTab(tabId) {
     const qm = isPl ? /(\d{3,4})p|[_\/-](AVC|HEVC|VP9)[_-]?(\d{2,4})|[_\/-](\d{3,4})k/i.exec(m.url) : null;
     const quality = qm ? (qm[1] ? qm[1] + "p" : (qm[3] || qm[4])) : "";
     const label = isPl
-      ? `${m.kind} stream${quality ? " · " + quality : ""} · pick the quality in FetchJet`
+      ? fjT("itemStreamPick", { kind: m.kind, quality: quality ? " · " + quality : "" })
       : `${m.kind}${m.size ? " · " + fmtBytes(m.size) : ""} · ${m.name}`;
     items.push({
       kind: "media", label, sub: m.url, quality,
@@ -993,18 +999,20 @@ function installMenus() {
   Promise.resolve(api.contextMenus.removeAll()).catch(() => {}).then(() => {
     // contextMenus.create is callback-style in every browser (also browser.* in Firefox).
     const create = (props) => { try { api.contextMenus.create(props, () => void api.runtime.lastError); } catch (_) {} };
-    create({ id: MENU.link, title: "Download link with FetchJet", contexts: ["link"] });
-    create({ id: MENU.media, title: "Download video/audio with FetchJet", contexts: ["video", "audio"] });
-    create({ id: MENU.image, title: "Download image with FetchJet", contexts: ["image"] });
-    create({ id: MENU.selectionLinks, title: "Download selected links with FetchJet", contexts: ["selection"] });
-    create({ id: MENU.allLinks, title: "Download all links on this page with FetchJet", contexts: ["page", "frame"] });
-    create({ id: MENU.page, title: "Download this page's video with FetchJet (yt-dlp)", contexts: ["page", "frame"] });
-    create({ id: MENU.pageMedia, title: "Download detected media on this page", contexts: ["action"] });
+    create({ id: MENU.link, title: fjT("menuLink"), contexts: ["link"] });
+    create({ id: MENU.media, title: fjT("menuMedia"), contexts: ["video", "audio"] });
+    create({ id: MENU.image, title: fjT("menuImage"), contexts: ["image"] });
+    create({ id: MENU.selectionLinks, title: fjT("menuSelection"), contexts: ["selection"] });
+    create({ id: MENU.allLinks, title: fjT("menuAllLinks"), contexts: ["page", "frame"] });
+    create({ id: MENU.page, title: fjT("menuPage"), contexts: ["page", "frame"] });
+    create({ id: MENU.pageMedia, title: fjT("menuPageMedia"), contexts: ["action"] });
   });
 }
 
 api.runtime.onInstalled.addListener(() => { installMenus(); updateActionBadgeForAll(); });
 api.runtime.onStartup.addListener(() => { installMenus(); updateActionBadgeForAll(); });
+fjOnLanguage(() => installMenus());
+fetchAppConfig().catch(() => {});
 
 if (api.contextMenus) {
   api.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -1036,7 +1044,7 @@ if (api.commands && api.commands.onCommand) {
     else if (command === "toggle-capture") {
       const s = await getSettings();
       await saveSettings({ enabled: !s.enabled });
-      await notify(`Download capture ${!s.enabled ? "enabled" : "disabled"}.`);
+      await notify(!s.enabled ? fjT("notifyCaptureOn") : fjT("notifyCaptureOff"));
     }
   });
 }
@@ -1051,13 +1059,13 @@ async function collectAndSendLinks(tab, { selectionOnly = false, frameId } = {})
   } catch (_) {
     // Content script not injected (page loaded before install, or no host access yet).
     try {
-      await api.scripting.executeScript({ target: { tabId: tab.id, allFrames: false }, files: ["content.js"] });
+      await api.scripting.executeScript({ target: { tabId: tab.id, allFrames: false }, files: ["i18n/i18n.js", "i18n/en.js", "i18n/ar.js", "i18n/fr.js", "i18n/de.js", "i18n/es.js", "i18n/pt.js", "i18n/it.js", "i18n/ru.js", "i18n/tr.js", "i18n/id.js", "i18n/zh.js", "i18n/ja.js", "i18n/ko.js", "i18n/hi.js", "i18n/fa.js", "content.js"] });
       const res = await api.tabs.sendMessage(tab.id, { action: "collectLinks", selectionOnly });
       links = (res && res.links) || [];
     } catch (_) {}
   }
   if (links.length === 0) {
-    await notify(selectionOnly ? "No downloadable links in the selection." : "No downloadable links found on this page.");
+    await notify(selectionOnly ? fjT("notifyNoLinksSelection") : fjT("notifyNoLinksPage"));
     return { ok: false, count: 0 };
   }
   return sendBatchToFetchJet(links, tab.url || "");
@@ -1067,7 +1075,7 @@ async function sendDetectedMedia(tabId) {
   if (tabId == null) return { ok: false, count: 0 };
   const all = await sessionGet(MEDIA_KEY);
   const items = Object.values(all[tabId] || {});
-  if (items.length === 0) { await notify("No media detected on this page yet. Start playing the video first."); return { ok: false, count: 0 }; }
+  if (items.length === 0) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
   return sendBatchToFetchJet(items.map(i => ({ url: i.url, referer: i.pageUrl, fileName: i.name })));
 }
 
@@ -1078,7 +1086,7 @@ async function sendDetectedMedia(tabId) {
 async function resolveVideo(msg, tab) {
   const items = [];
   if (msg.src && /^https?:/i.test(msg.src)) {
-    items.push({ kind: "media", label: `Video file · ${baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video"}`, sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });
+    items.push({ kind: "media", label: fjT("itemVideoFile", { name: baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video" }), sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });
   }
   if (msg.frame && tab && !msg.page) {
     // a player in a frame: what was found for the whole page is what it plays
@@ -1087,12 +1095,12 @@ async function resolveVideo(msg, tab) {
   }
   const page = msg.page || (msg.src && !msg.frame ? "" : (tab && tab.url));
   if (page && /^https?:/i.test(page)) {
-    if (!(await appCanInspect())) return items.length ? { items } : { error: "FetchJet is not running" };
+    if (!(await appCanInspect())) return items.length ? { items } : { error: fjT("errNotRunning"), notRunning: true };
     const r = await inspectWithApp(ytVideoId(page) ? `https://www.youtube.com/watch?v=${ytVideoId(page)}` : page);
     if (r.resolved && r.resolved.options.length) items.unshift(...r.resolved.options);
-    else if (!items.length) return { error: r.resolveError || "Can't get this video" };
+    else if (!items.length) return { error: r.resolveError || fjT("errCantGet") };
   }
-  return items.length ? { items } : { error: "Can't get this video" };
+  return items.length ? { items } : { error: fjT("errCantGet") };
 }
 
 /** Popup / page button: start (or redo) the yt-dlp inspection of the tab's page. */

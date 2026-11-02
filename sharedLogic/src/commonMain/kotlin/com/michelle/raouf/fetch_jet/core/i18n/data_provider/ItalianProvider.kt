@@ -247,6 +247,7 @@ object ItalianProvider : AppLocalization {
         "Impossibile leggere i file ($error); verranno scaricati tutti."
 
     override val linkTagVideo = "VIDEO"
+    override val linkTagAudio = "AUDIO"
     override val linkTagTorrent = "TORRENT"
     override val linkTagFile = "FILE"
     override val linkListMagnet = "Link magnet"

@@ -232,6 +232,7 @@ object KoreanProvider : AppLocalization {
         "파일 목록을 읽을 수 없습니다(${error}). 모든 파일을 다운로드합니다."
 
     override val linkTagVideo = "동영상"
+    override val linkTagAudio = "오디오"
     override val linkTagTorrent = "토렌트"
     override val linkTagFile = "파일"
     override val linkListMagnet = "마그넷 링크"

@@ -370,6 +370,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             val json =
                 """{"app":"FetchJet","version":"${jsonEscape(System.getProperty("jpackage.app-version") ?: "dev")}","bridge":2,""" +
                         """"mediaExtractor":${features.mediaExtractor},"torrent":${features.torrent},""" +
+                        """"language":"${jsonEscape(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
                         """"endpoints":["/ping","/config","/add","/links","/download","/inspect"]}"""
             exchange.reply(200, json, "application/json; charset=UTF-8")
         }

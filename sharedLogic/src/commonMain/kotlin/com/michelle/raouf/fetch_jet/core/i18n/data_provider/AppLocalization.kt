@@ -204,6 +204,7 @@ interface AppLocalization : LocalizationProvider {
     val readingTorrentFiles: String
     fun couldNotReadTorrentFiles(error: String): String
     val linkTagVideo: String
+    val linkTagAudio: String
     val linkTagTorrent: String
     val linkTagFile: String
     val linkListMagnet: String

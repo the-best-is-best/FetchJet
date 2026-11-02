@@ -22,11 +22,15 @@ function hide(id) { const el = $(id); if (el) el.style.display = "none"; }
 
 function fitToBrowser() {
   const p = FJ_PLATFORM;
+  fjApplyTexts(document);
   p.hidden.forEach(hide);
-  if (p.hidden.includes("cardShortcuts")) $("masterHint").textContent = "Master switch.";
-  if (p.shortcutsText) $("shortcutsHelp").textContent = p.shortcutsText;
-  else if (p.shortcutsPage) $("shortcutsHelp").replaceChildren("Change them at ", Object.assign(document.createElement("code"), { textContent: p.shortcutsPage }), ".");
-  if (p.cookiesNote) $("cookiesNote").textContent = p.cookiesNote;
+  if (p.hidden.includes("cardShortcuts")) $("masterHint").textContent = fjT("optMasterSwitch");
+  if (p.shortcutsText) $("shortcutsHelp").textContent = fjT(p.shortcutsText);
+  else if (p.shortcutsPage) {
+    const [before, after] = fjT("optShortcutsChange").split("{page}");
+    $("shortcutsHelp").replaceChildren(before || "", Object.assign(document.createElement("code"), { textContent: p.shortcutsPage }), after || "");
+  }
+  if (p.cookiesNote) $("cookiesNote").textContent = fjT(p.cookiesNote);
 }
 
 async function load() {
@@ -37,16 +41,9 @@ async function load() {
   $("extensions").value = (s.extensions || []).join(", ");
   $("excludedHosts").value = (s.excludedHosts || []).join("\n");
 
-  const r = await send({ action: "checkStatus" });
-  if (FJ_PLATFORM.status) {
-    setStatus(FJ_PLATFORM.status, "");
-  } else if (r && r.online) {
-    const c = r.config || {};
-    setStatus("Connected", ` to FetchJet ${c.version ? "v" + c.version : ""} on 127.0.0.1:28450` +
-      (c.mediaExtractor === false ? " · media extractor disabled in this edition" : ""));
-  } else {
-    setStatus("FetchJet is not running.", " Open the FetchJet app (desktop or Android), then reload this page.");
-  }
+  lastStatus = await send({ action: "checkStatus" });
+  if (lastStatus && lastStatus.config && lastStatus.config.language) fjUseLanguage(lastStatus.config.language);
+  renderStatus();
 
   if (api.permissions && api.permissions.contains) {
     try {
@@ -64,11 +61,26 @@ async function save() {
   settings.extensions = parseList($("extensions").value);
   settings.excludedHosts = parseList($("excludedHosts").value);
   await send({ action: "saveSettings", settings });
-  $("saved").textContent = "Saved";
+  $("saved").textContent = fjT("optSaved");
   setTimeout(() => { $("saved").textContent = ""; }, 2000);
 }
 
+let lastStatus = null;
+function renderStatus() {
+  const r = lastStatus;
+  if (FJ_PLATFORM.status) {
+    setStatus(fjT(FJ_PLATFORM.status), "");
+  } else if (r && r.online) {
+    const c = r.config || {};
+    setStatus(fjT("optConnectedTo"), fjT("optConnectedDetail", { version: c.version ? "v" + c.version : "" }) +
+      (c.mediaExtractor === false ? fjT("optNoExtractor") : ""));
+  } else if (r) {
+    setStatus(fjT("optNotRunningBold"), fjT("optNotRunningDetail"));
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  fjOnLanguage(() => { fitToBrowser(); renderStatus(); });
   fitToBrowser();
   load();
   $("save").addEventListener("click", save);

@@ -11,7 +11,7 @@ const FJ_PLATFORM = (() => {
     hidden: mobile ? ["rowHoldKey", "cardShortcuts"] : [],
     shortcutsPage: page,
     shortcutsText: "",
-    cookiesNote: mobile ? "Needed for downloads behind a login. Cookies go only to the FetchJet app on this phone (127.0.0.1)." : "",
+    cookiesNote: mobile ? "optCookiesHintPhone" : "",
     status: "",
     qualitiesInPopup: true,
     hint: mobile ? "" : null,

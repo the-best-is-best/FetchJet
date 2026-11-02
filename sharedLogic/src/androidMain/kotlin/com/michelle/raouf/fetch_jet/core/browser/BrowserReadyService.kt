@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.core.browser
 
-import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -13,6 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import com.tbib.kmp_localization.LocalizationManager
 
 /**
@@ -26,6 +26,7 @@ class BrowserReadyService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        com.michelle.raouf.fetch_jet.core.filesystem.PathResolver.appContext = applicationContext
         com.tbib.kmp_localization.LocalizationManager.start()
         if (intent?.action == ACTION_TURN_OFF) {
             BrowserIntegration.setKeepReadyForBrowser(false)

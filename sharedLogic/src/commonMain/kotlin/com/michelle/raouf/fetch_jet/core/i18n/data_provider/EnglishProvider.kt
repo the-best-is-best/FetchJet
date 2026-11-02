@@ -243,6 +243,7 @@ object EnglishProvider : AppLocalization {
         "Could not read its files ($error); all of them will download."
 
     override val linkTagVideo = "VIDEO"
+    override val linkTagAudio = "AUDIO"
     override val linkTagTorrent = "TORRENT"
     override val linkTagFile = "FILE"
     override val linkListMagnet = "Magnet link"

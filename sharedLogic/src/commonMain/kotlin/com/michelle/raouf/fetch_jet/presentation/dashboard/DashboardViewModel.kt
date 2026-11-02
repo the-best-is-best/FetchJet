@@ -324,6 +324,8 @@ class DashboardViewModel(
             val existing = queueRepository.allTasksFlow.value
             var added = 0
             var skipped = 0
+            val mediaPages =
+                mutableListOf<com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest>()
             val destDir =
                 _uiState.value.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
             for (req in requests) {
@@ -339,8 +341,8 @@ class DashboardViewModel(
                 }
                 val engine = engineForDirectFile(req.url)
                 if (engine == EngineType.MEDIA_STREAM) {
-                    skipped++; continue
-                } // a video page: needs the inspector
+                    mediaPages += req; continue
+                } // a video page: needs the inspector (the Add dialog's link list below)
                 val name = req.fileName.ifBlank { null }
                     ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
                     ?.let { freeFileName(destDir, it) }
@@ -355,11 +357,22 @@ class DashboardViewModel(
                     requestHeaders = req.toRequestHeaders()
                 ).onSuccess { added++ }.onFailure { skipped++ }
             }
-            _uiEffect.emit(
-                DashboardUiEffect.ShowToast(
-                    LocalizationManager.Strings.sysQueuedFromBrowser(added, skipped)
+            if (mediaPages.isNotEmpty()) {
+                val first = mediaPages.first()
+                com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+                    first.referer.ifBlank { first.url }, first.toRequestHeaders()
                 )
-            )
+                onEvent(DashboardUiEvent.OnUrlChanged(mediaPages.joinToString("\n") { it.url }))
+                onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+                com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
+            }
+            if (added > 0 || skipped > 0 || mediaPages.isEmpty()) {
+                _uiEffect.emit(
+                    DashboardUiEffect.ShowToast(
+                        LocalizationManager.Strings.sysQueuedFromBrowser(added, skipped)
+                    )
+                )
+            }
         }
     }
 

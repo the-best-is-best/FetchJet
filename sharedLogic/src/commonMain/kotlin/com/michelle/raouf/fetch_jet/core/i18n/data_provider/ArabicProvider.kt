@@ -254,6 +254,7 @@ object ArabicProvider : AppLocalization {
         "تعذّرت قراءة ملفاته ($error)؛ سيتم تنزيلها كلها."
 
     override val linkTagVideo = "فيديو"
+    override val linkTagAudio = "صوت"
     override val linkTagTorrent = "تورنت"
     override val linkTagFile = "ملف"
     override val linkListMagnet = "رابط magnet"
