@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -56,6 +54,7 @@ import com.michelle.raouf.fetch_jet.ui.DuplicateDownloadDialog
 import com.michelle.raouf.fetch_jet.ui.FileOverwriteDialog
 import com.michelle.raouf.fetch_jet.ui.RemoveConfirmationDialog
 import com.michelle.raouf.fetch_jet.ui.SideFilter
+import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
 
 /**
  * Opens a finished download with the system's default app. If the file cannot be opened
@@ -151,7 +150,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
 
     FetchJetTheme(isDarkMode = state.isDarkMode) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().clearFocusOnTapOutside(),
             color = MaterialTheme.colorScheme.background
         ) {
             BoxWithConstraints(
@@ -618,6 +617,40 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         )
                     },
                     onPlaylistUseSingleVideo = { viewModel.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo) },
+                    linkList = state.linkList,
+                    onLinkListEntryToggled = { i, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListEntryToggled(
+                                i,
+                                on
+                            )
+                        )
+                    },
+                    onLinkListSelectAll = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListSelectAll(
+                                it
+                            )
+                        )
+                    },
+                    onLinkListTorrentFileToggled = { link, file, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentFileToggled(link, file, on)
+                        )
+                    },
+                    onLinkListTorrentFilePriority = { link, file, p ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentFilePriority(link, file, p)
+                        )
+                    },
+                    onLinkListTorrentSelectAll = { link, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentSelectAll(
+                                link,
+                                on
+                            )
+                        )
+                    },
                     scheduleStartMs = state.scheduleStartMs,
                     onScheduleChanged = { viewModel.onEvent(DashboardUiEvent.OnScheduleChanged(it)) },
                     selectedConnections = state.selectedConnections,

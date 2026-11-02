@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -165,7 +163,7 @@ fun TrafficLimitSelector(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = customText,
                         onValueChange = { newValue ->
                             val sanitized = newValue.filter { it.isDigit() || it == '.' }
@@ -174,22 +172,11 @@ fun TrafficLimitSelector(
                             onSpeedChanged(calculateBytes(num, customUnit))
                         },
                         modifier = Modifier.width(130.dp),
-                        singleLine = true,
-                        placeholder = { Text("Value", fontSize = 13.sp) },
-                        leadingIcon = {
-                            Text("⚡", fontSize = 14.sp)
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
-                                alpha = 0.6f
-                            ),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            cursorColor = MaterialTheme.colorScheme.primary
+                        placeholder = "Value",
+                        leading = { Text("⚡", fontSize = 14.sp) },
+                        height = 42.dp,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                         )
                     )
 

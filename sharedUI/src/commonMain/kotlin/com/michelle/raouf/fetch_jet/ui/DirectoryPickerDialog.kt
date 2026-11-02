@@ -26,8 +26,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -86,7 +84,8 @@ fun DirectoryPickerDialog(
                 .widthIn(max = 620.dp)
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 680.dp)
-                .padding(vertical = 24.dp),
+                .padding(vertical = 24.dp)
+                .clearFocusOnTapOutside(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
@@ -268,32 +267,16 @@ fun DirectoryPickerDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                OutlinedTextField(
+                                FetchJetTextField(
                                     value = newFolderName,
                                     onValueChange = {
                                         newFolderName = it
                                         createFolderError = null
                                     },
-                                    placeholder = { Text("Folder name...", fontSize = 13.sp) },
-                                    leadingIcon = {
-                                        Text("📁", fontSize = 14.sp)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(
-                                            alpha = 0.7f
-                                        ),
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
-                                            alpha = 0.6f
-                                        ),
-                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        cursorColor = MaterialTheme.colorScheme.primary
-                                    )
+                                    placeholder = "Folder name…",
+                                    leading = { Text("📁", fontSize = 14.sp) },
+                                    height = 44.dp,
+                                    modifier = Modifier.weight(1f)
                                 )
 
                                 Button(

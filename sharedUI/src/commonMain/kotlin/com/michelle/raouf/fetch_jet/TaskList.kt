@@ -36,15 +36,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canResume
@@ -142,17 +142,20 @@ internal fun TaskListArea(
             ToolsDownloadBanner(uiState.toolDownloadName, uiState.toolDownloadFraction)
         }
         if (allTasks.isNotEmpty() && externalSearch == null) {
-            androidx.compose.material3.OutlinedTextField(
+            com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
                 value = searchQuery,
                 onValueChange = { localSearch = it },
-                placeholder = { Text("🔍 Search downloads by name…", fontSize = 13.sp) },
-                singleLine = true,
-                trailingIcon = if (searchQuery.isNotEmpty()) {
-                    { IconButton(onClick = { localSearch = "" }) { Text("✕", fontSize = 14.sp) } }
+                placeholder = "Search downloads by name…",
+                leading = { Text("🔍", fontSize = 14.sp) },
+                trailing = if (searchQuery.isNotEmpty()) {
+                    {
+                        com.michelle.raouf.fetch_jet.ui.FieldIconButton(
+                            "✕",
+                            onClick = { localSearch = "" })
+                    }
                 } else null,
-                shape = RoundedCornerShape(12.dp),
-                textStyle = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                height = 44.dp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
         }
         val tasks = shownTasks
@@ -164,6 +167,7 @@ internal fun TaskListArea(
                     checkedIds = if (all) tasks.mapTo(HashSet()) { it.id } else emptySet()
                 },
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())) },
+                onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(checkedIds.toList())) },
                 onClose = { checkedIds = emptySet() }
             )
         } else if (tasks.isNotEmpty() && showToolbar) {
@@ -483,6 +487,7 @@ internal fun SelectionBar(
     allChecked: Boolean,
     onCheckAll: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit,
     onClose: () -> Unit
 ) {
     Row(
@@ -509,6 +514,12 @@ internal fun SelectionBar(
             )
         }
         Spacer(Modifier.weight(1f))
+        OutlinedButton(
+            onClick = onExport,
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+            modifier = Modifier.height(34.dp)
+        ) { Text("Export", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
         androidx.compose.material3.Button(
             onClick = onDelete,
             shape = RoundedCornerShape(10.dp),

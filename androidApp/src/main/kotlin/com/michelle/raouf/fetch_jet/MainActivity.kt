@@ -79,6 +79,15 @@ class MainActivity : ComponentActivity() {
                 onResult(null)
             }
         }
+        com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.launcher = { onResult ->
+            torrentPickCallback = onResult
+            try {
+                torrentPicker.launch(arrayOf("text/plain", "text/*"))
+            } catch (_: Throwable) {
+                torrentPickCallback = null
+                onResult(null)
+            }
+        }
         handleIncomingIntent(intent)
         com.michelle.raouf.fetch_jet.feature.media_extractor.triggerBackgroundYtDlpUpdate(
             applicationContext

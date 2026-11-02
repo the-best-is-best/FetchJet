@@ -84,6 +84,12 @@ fun AddDownloadModalDialog(
     onPlaylistSelectAll: (Boolean) -> Unit = {},
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit = {},
+    linkList: List<com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry> = emptyList(),
+    onLinkListEntryToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onLinkListSelectAll: (Boolean) -> Unit = {},
+    onLinkListTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
+    onLinkListTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
+    onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
     selectedConnections: Int = 0,
@@ -243,14 +249,17 @@ fun AddDownloadModalDialog(
     }
 
     val isUrlValid = inputUrl.isNotBlank()
-    val isInspectionComplete = when (detectedEngine) {
+    val showsLinkList = linkList.isNotEmpty()
+    val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isInspecting }
+    val isInspectionComplete =
+        if (showsLinkList) linkList.any { it.isSelected } && !listInspecting else when (detectedEngine) {
         EngineType.BITTORRENT -> inspectedTorrentFiles.isNotEmpty() && inspectedTorrentFiles.any { it.isSelected } && inspectError == null
         EngineType.MEDIA_STREAM -> inspectMediaError == null && (
                 inspectedPlaylist?.entries?.any { it.isSelected } == true ||
                         (inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected }))
         EngineType.HTTP_DIRECT -> true
     }
-    val isInspecting = isInspectingTorrent || isInspectingMedia
+    val isInspecting = isInspectingTorrent || isInspectingMedia || listInspecting
     val hasActiveError = errorMessage != null || inspectError != null || inspectMediaError != null
     val canStartDownload =
         isUrlValid && isInspectionComplete && !isLoading && !isInspecting && !hasActiveError && isClipRangeValid
@@ -264,7 +273,8 @@ fun AddDownloadModalDialog(
                 .widthIn(min = 340.dp, max = 660.dp)
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 720.dp)
-                .padding(vertical = 12.dp),
+                .padding(vertical = 12.dp)
+                .clearFocusOnTapOutside(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
@@ -293,6 +303,17 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                if (showsLinkList) {
+                    LinkListSection(
+                        links = linkList,
+                        onToggled = onLinkListEntryToggled,
+                        onSelectAll = onLinkListSelectAll,
+                        onTorrentFileToggled = onLinkListTorrentFileToggled,
+                        onTorrentFilePriority = onLinkListTorrentFilePriority,
+                        onTorrentSelectAll = onLinkListTorrentSelectAll
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                } else {
                 EngineSelector(detectedEngine = detectedEngine, onEngineSelected = onEngineSelected)
 
                 TorrentInspectionSection(
@@ -345,6 +366,7 @@ fun AddDownloadModalDialog(
                     clipValidationErrorMessage = clipValidationErrorMessage
                 )
                 Spacer(modifier = Modifier.height(14.dp))
+                }
 
                 // When to start: now, in a while, or at a time of day
                 ScheduleStartSection(
@@ -354,7 +376,7 @@ fun AddDownloadModalDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Direct files: how many connections split the file (IDM-style pieces).
-                if (detectedEngine == EngineType.HTTP_DIRECT) {
+                if (detectedEngine == EngineType.HTTP_DIRECT && !showsLinkList) {
                     ConnectionsSection(
                         selected = selectedConnections,
                         appDefault = defaultConnections,
@@ -363,7 +385,7 @@ fun AddDownloadModalDialog(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                FileNameSection(
+                if (!showsLinkList) FileNameSection(
                     suggestedFileName = suggestedFileName,
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,
@@ -408,6 +430,7 @@ fun AddDownloadModalDialog(
                     detectedEngine = detectedEngine,
                     inspectedPlaylist = inspectedPlaylist,
                     scheduleStartMs = scheduleStartMs,
+                    linkCount = if (showsLinkList) linkList.count { it.isSelected } else 0,
                     onInspectTorrent = onInspectTorrent,
                     onInspectMedia = onInspectMedia,
                     onAddDownload = onAddDownload,

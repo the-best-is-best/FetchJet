@@ -51,9 +51,10 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.1.0"`
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.1.0`,
-  `CURRENT_PROJECT_VERSION = 3`
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.2.0"` (branch `release-v1.2.0`;
+  `master` has 1.1.0)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.2.0`,
+  `CURRENT_PROJECT_VERSION = 4`
 - `extension/manifest.json` and `manifest.firefox.json` → `3.1.0`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
@@ -261,6 +262,20 @@ Bridges:
   found update shows the dialog with "Open Microsoft Store"
   (`ms-windows-store://pdp/?productid=9NP3HJRHMPJS`). Tested inside the installed MSIX with
   `Invoke-CommandInDesktopPackage` (answer: no update for 1.1.0). It never downloads the MSI.
+- 1.2.0 several links at once: see ROADMAP-1.2.0.md item 2 (`linkList` in the UI state,
+  `extractLinks` / `addLinkList` in `DashboardAddDownload.kt`, `exportLinks` in
+  `DashboardTaskEvents.kt`, `TextFilePicker` expect/actual, `ui/AddDownloadLinkList.kt`).
+  Torrents and magnets in the list are read one by one (`inspectListedTorrents`) and show their
+  files under their row (`TorrentFilesSelectionCard`: checkbox + priority per file).
+- 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on
+  `BasicTextField`; String and `TextFieldValue` overloads). Focus = primary border + soft glow
+  (`dropShadow`), hover on desktop, optional `label`, `error`, `centered`. Buttons inside a field:
+  `FieldIconButton` (✕ ↺ 📂), `FieldChipButton` (Paste). Do not add new `OutlinedTextField`s; use
+  this. `Modifier.clearFocusOnTapOutside()` (same file) drops focus and hides the keyboard on a
+  tap outside the focused field; it is on the `App.kt` root `Surface`, the Add dialog `Card` and
+  the `DirectoryPickerDialog` `Surface`. A new `Dialog` with a field needs it on its root too (a
+  dialog is its own window). Verified on the A56 (look + keyboard closes); desktop and iOS not
+  checked yet.
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub

@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -262,20 +261,22 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
             val compact = maxWidth < 420.dp
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = hourText,
                         onValueChange = { v -> hourText = v.filter { it.isDigit() }.take(2) },
-                        label = { Text("Hour", fontSize = 11.sp) },
-                        singleLine = true,
+                        label = "Hour",
+                        centered = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(if (compact) 72.dp else 80.dp)
                     )
                     Text(" : ", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = minuteText,
                         onValueChange = { v -> minuteText = v.filter { it.isDigit() }.take(2) },
-                        label = { Text("Minute", fontSize = 11.sp) },
-                        singleLine = true,
+                        label = "Minute",
+                        centered = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(if (compact) 72.dp else 80.dp)
                     )

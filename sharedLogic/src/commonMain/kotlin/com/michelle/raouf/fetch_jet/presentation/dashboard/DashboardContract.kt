@@ -33,6 +33,17 @@ enum class TaskSortOption(val label: String) {
     NAME_ASC("Name A–Z")
 }
 
+data class LinkListEntry(
+    val url: String,
+    val engine: EngineType,
+    val isSelected: Boolean = true,
+    val isInspecting: Boolean = false,
+    val inspectError: String? = null,
+    val torrentName: String? = null,
+    val torrentFiles: List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry> = emptyList(),
+    val webSeeds: List<String> = emptyList()
+)
+
 data class FileConflictData(
     val fileName: String,
     val destinationPath: String,
@@ -139,6 +150,7 @@ data class DashboardUiState(
     val clipFastMode: Boolean = false,
     /** A playlist / channel link: its videos (null = a single video). */
     val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    val linkList: List<LinkListEntry> = emptyList(),
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
@@ -188,6 +200,24 @@ sealed interface DashboardUiEvent {
 
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
+    data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
+    data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnLinkListTorrentFileToggled(
+        val linkIndex: Int,
+        val fileIndex: Int,
+        val selected: Boolean
+    ) : DashboardUiEvent
+
+    data class OnLinkListTorrentFilePriority(
+        val linkIndex: Int,
+        val fileIndex: Int,
+        val priority: Int
+    ) : DashboardUiEvent
+
+    data class OnLinkListTorrentSelectAll(val linkIndex: Int, val selected: Boolean) :
+        DashboardUiEvent
+
+    data class OnExportLinksClicked(val taskIds: List<String>) : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
     data class OnConnectionsChanged(val connections: Int) : DashboardUiEvent
     data class OnDefaultConnectionsChanged(val connections: Int) : DashboardUiEvent

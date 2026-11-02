@@ -12,7 +12,7 @@ Ordered by priority: work top to bottom. Mark an item `[x]` when the owner has t
 
 Why first: every later fix only helps users who can update.
 
-- [ ] When the GitHub API answers 403 / 429 (rate limit, often behind a VPN), read
+- [x] When the GitHub API answers 403 / 429 (rate limit, often behind a VPN), read
   `github.com/<repo>/releases/latest` instead so the check still works.
   Done: `UpdateManager.fetchLatestFromWebPage` (tag from the redirect, files from
   `expanded_assets`, no notes). JVM test `UpdateWebPageTest` passes against GitHub.
@@ -30,7 +30,7 @@ Why first: every later fix only helps users who can update.
   "Download & install" downloaded the APK in the app and opened Android's installer (Play
   Protect prompt). The last step fails only because debug and release keys differ; GitHub
   releases all use the same key. Users on 1.1.0 get it only from their next update.
-- [ ] macOS: download the .dmg in the app, then a script waits for FetchJet to quit, mounts it
+- [x] macOS: download the .dmg in the app, then a script waits for FetchJet to quit, mounts it
   (`hdiutil attach`), replaces `/Applications/FetchJet.app` (`ditto`), detaches and opens the
   new app. A file our app downloads gets no quarantine flag, so no "could not verify" prompt.
   Done in `MacUpdater.kt` (only when `/Applications/FetchJet.app` is writable).
@@ -53,11 +53,30 @@ Why first: every later fix only helps users who can update.
 
 Why: the most visible gap against IDM / Ezoo, and small.
 
-- [ ] Paste many links (one per line, or mixed text) in the Add dialog: show them as a list with
+- [x] Paste many links (one per line, or mixed text) in the Add dialog: show them as a list with
   a checkbox each, then start all checked ones together.
-- [ ] Each link picks its own type (file, video, magnet), like the `/links` bridge does.
+- [x] Each link picks its own type (file, video, magnet), like the `/links` bridge does.
 - [ ] Import a `.txt` file of links (same list screen).
-- [ ] Export the links of the selected downloads (or all) to a `.txt` file.
+- [x] Export the links of the selected downloads (or all) to a `.txt` file.
+
+Done 2026-11-02. Two or more links in the link field (`extractLinks`, any separator, up to 500,
+duplicates dropped) replace the engine / name / connections sections with `LinkListSection`
+(📄 file, 🎬 video, 🧲 magnet, checkbox each, Select all); the button says "Download N links".
+`addLinkList` queues each with its own engine: files as they are, videos with no format (best,
+named after the video title), magnets with all files; links already in the list are skipped.
+"📄 Import .txt" (`TextFilePicker`, desktop FileDialog / Android document picker / iOS
+document picker) fills the field with the file's text. "Export" in the selection bar saves
+`FetchJet links <date time>.txt` in the downloads folder (page link for videos).
+Tested on the A56: 3 typed links (2 files + YouTube) -> list -> unchecking works -> all three
+downloaded; Export wrote the 3 links. Import needs a tap in the system picker: not tested yet.
+iOS picker code needs a Mac build. Parser test: `ExtractLinksTest`.
+Torrents in the list (owner's request): every `.torrent` / magnet link in the list is read
+right away (`inspectListedTorrents`, one at a time) and its files show under its row with the
+same `TorrentFilesSelectionCard` (checkbox + priority per file, Select all); the chosen files go
+to `enqueueTask`. While a checked torrent is being read the button waits ("Inspecting...");
+if it cannot be read the row says so and all its files download. Tested on the A56:
+sintel.torrent listed its files; a magnet with a cut tracker failed after 60 s and showed the
+message.
 
 ## 3. Arabic
 

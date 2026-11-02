@@ -24,6 +24,11 @@ internal fun DashboardViewModel.addDownload(
         return
     }
 
+    if (currentState.linkList.isNotEmpty()) {
+        addLinkList(currentState)
+        return
+    }
+
     if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
         if (currentState.inspectMediaError != null) {
             _uiState.update { it.copy(errorMessage = "Cannot start download: Video inspection failed.") }
@@ -171,6 +176,7 @@ internal fun DashboardViewModel.addDownload(
             _uiState.update {
                 it.copy(
                     inputUrl = "",
+                    linkList = emptyList(),
 
                     fileNameOverride = "",
 
@@ -262,6 +268,7 @@ internal fun DashboardViewModel.addSeveralQualities(
         _uiState.update {
             it.copy(
                 inputUrl = "",
+                linkList = emptyList(),
 
                 fileNameOverride = "",
 
@@ -348,6 +355,7 @@ internal fun DashboardViewModel.addPlaylist(
         _uiState.update {
             it.copy(
                 inputUrl = "",
+                linkList = emptyList(),
 
                 fileNameOverride = "",
 
@@ -364,5 +372,134 @@ internal fun DashboardViewModel.addPlaylist(
         }
         singleVideoUrl = null
         _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added videos from \"${playlist.title}\""))
+    }
+}
+
+internal fun extractLinks(text: String): List<String> =
+    Regex("""(?:https?://|magnet:\?)[^\s<>"'`]+""", RegexOption.IGNORE_CASE)
+        .findAll(text)
+        .map { it.value.trimEnd('.', ',', ';', ':', ')', ']', '}', '!', '?') }
+        .filter { it.length > 10 }
+        .distinct()
+        .take(500)
+        .toList()
+
+internal fun DashboardViewModel.engineForListedLink(url: String): EngineType {
+    if (url.startsWith("magnet:", ignoreCase = true)) {
+        return if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) EngineType.BITTORRENT
+        else EngineType.HTTP_DIRECT
+    }
+    val engine = engineForDirectFile(url)
+    return when {
+        engine == EngineType.MEDIA_STREAM && !com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor ->
+            EngineType.HTTP_DIRECT
+
+        engine == EngineType.BITTORRENT && !com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent ->
+            EngineType.HTTP_DIRECT
+
+        else -> engine
+    }
+}
+
+internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
+    val selected = state.linkList.filter { it.isSelected }
+    if (selected.isEmpty()) {
+        _uiState.update { it.copy(errorMessage = "Select at least one link.") }
+        return
+    }
+    val destDir =
+        state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+    _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    scope.launch {
+        val existing = queueRepository.allTasksFlow.value
+        var added = 0
+        var skipped = 0
+        for (entry in selected) {
+            if (existing.any { isSameDownload(it, entry.url) }) {
+                skipped++
+                continue
+            }
+            if (entry.torrentFiles.isNotEmpty() && entry.torrentFiles.none { it.isSelected }) {
+                skipped++
+                continue
+            }
+            queueRepository.enqueueTask(
+                url = entry.url,
+                customDestinationPath = destDir,
+                disableUpload = state.disableTorrentUpload,
+                torrentFiles = entry.torrentFiles,
+                torrentName = entry.torrentName,
+                webSeedUrls = entry.webSeeds,
+                maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
+                maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
+                forcedEngineType = entry.engine,
+                scheduledAtMs = state.scheduleStartMs
+            ).onSuccess { added++ }.onFailure { skipped++ }
+        }
+        _uiState.update {
+            it.copy(
+                inputUrl = "",
+                linkList = emptyList(),
+                fileNameOverride = "",
+                suggestedFileName = "",
+                isLoading = false,
+                isAddDialogVisible = false,
+                scheduleStartMs = 0L,
+                selectedConnections = 0,
+                scrollToTopSignal = it.scrollToTopSignal + 1
+            )
+        }
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                "Added $added download${if (added == 1) "" else "s"}" +
+                        (if (skipped > 0) " ($skipped already in the list or failed)" else "")
+            )
+        )
+    }
+}
+
+internal fun DashboardViewModel.updateListedTorrentFiles(
+    linkIndex: Int,
+    change: (List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry>) -> List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry>
+) {
+    _uiState.update { st ->
+        st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+            if (i == linkIndex) entry.copy(torrentFiles = change(entry.torrentFiles)) else entry
+        })
+    }
+}
+
+internal fun DashboardViewModel.inspectListedTorrents() {
+    val urls = _uiState.value.linkList
+        .filter { it.engine == EngineType.BITTORRENT && it.torrentFiles.isEmpty() && !it.isInspecting }
+        .map { it.url }
+    if (urls.isEmpty()) return
+    fun update(url: String, change: (LinkListEntry) -> LinkListEntry) = _uiState.update { st ->
+        st.copy(linkList = st.linkList.map { if (it.url == url) change(it) else it })
+    }
+    urls.forEach { url -> update(url) { it.copy(isInspecting = true, inspectError = null) } }
+    scope.launch {
+        for (url in urls) {
+            if (_uiState.value.linkList.none { it.url == url }) continue
+            queueRepository.torrentEngine.fetchAndParseTorrent(url)
+                .onSuccess { parsed ->
+                    update(url) {
+                        it.copy(
+                            isInspecting = false,
+                            torrentName = parsed.name,
+                            torrentFiles = parsed.files,
+                            webSeeds = parsed.webSeeds
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    update(url) {
+                        it.copy(
+                            isInspecting = false,
+                            inspectError = err.message ?: "Could not read the torrent"
+                        )
+                    }
+                }
+        }
     }
 }

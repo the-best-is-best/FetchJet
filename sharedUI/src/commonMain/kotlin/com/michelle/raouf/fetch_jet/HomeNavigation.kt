@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -299,31 +297,26 @@ internal fun FjTopBar(
     onAdd: () -> Unit
 ) {
     val searchField: @Composable (Modifier) -> Unit = { m ->
-        androidx.compose.material3.OutlinedTextField(
+        com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = {
-                Text(
-                    "Search downloads",
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            },
-            leadingIcon = {
+            placeholder = "Search downloads",
+            leading = {
                 Text(
                     "⌕",
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
-            trailingIcon = if (searchQuery.isNotEmpty()) {
-                { IconButton(onClick = { onSearchChange("") }) { Text("✕", fontSize = 13.sp) } }
+            trailing = if (searchQuery.isNotEmpty()) {
+                {
+                    com.michelle.raouf.fetch_jet.ui.FieldIconButton(
+                        "✕",
+                        onClick = { onSearchChange("") })
+                }
             } else null,
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium,
-            modifier = m.heightIn(min = 44.dp)
+            height = 44.dp,
+            modifier = m
         )
     }
     // Tablet: the title takes the bar and the search box sits under it, as on the phone.

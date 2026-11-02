@@ -59,6 +59,14 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             val defaultQualities =
 
                 emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
+            val links = extractLinks(event.url)
+            val linkList =
+                if (links.size >= 2) links.map {
+                    LinkListEntry(
+                        it,
+                        engineForListedLink(it)
+                    )
+                } else emptyList()
 
             _uiState.update {
 
@@ -66,7 +74,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
                     inputUrl = event.url,
 
-                    detectedEngine = engine,
+                    detectedEngine = if (linkList.isNotEmpty()) EngineType.HTTP_DIRECT else engine,
+                    linkList = linkList,
 
                     errorMessage = null,
 
@@ -92,6 +101,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                 )
             }
             refreshSuggestedFileName()
+            if (linkList.any { it.engine == EngineType.BITTORRENT }) inspectListedTorrents()
         }
 
         is DashboardUiEvent.OnDestinationPathChanged -> {
@@ -154,6 +164,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
                     inspectedMediaQualities = defaultQualities,
                     inspectedPlaylist = null,
+                    linkList = if (event.show) state.linkList else emptyList(),
                     scheduleStartMs = 0L,
 
                     selectedConnections = 0,
@@ -201,6 +212,28 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleClipFastMode -> {
             _uiState.update { it.copy(clipFastMode = event.enabled) }
+        }
+
+        is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+                if (i == event.index) entry.copy(isSelected = event.selected) else entry
+            })
+        }
+
+        is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.map { it.copy(isSelected = event.selected) })
+        }
+
+        is DashboardUiEvent.OnLinkListTorrentFileToggled -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { if (it.index == event.fileIndex) it.copy(isSelected = event.selected) else it }
+        }
+
+        is DashboardUiEvent.OnLinkListTorrentFilePriority -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { if (it.index == event.fileIndex) it.copy(priority = event.priority) else it }
+        }
+
+        is DashboardUiEvent.OnLinkListTorrentSelectAll -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { it.copy(isSelected = event.selected) }
         }
 
         is DashboardUiEvent.OnPlaylistEntryToggled -> _uiState.update { st ->

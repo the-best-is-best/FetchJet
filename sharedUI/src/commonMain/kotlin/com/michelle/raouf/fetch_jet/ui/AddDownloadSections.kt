@@ -21,20 +21,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -45,7 +43,6 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.getClipboardText
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.MutableState
 
 @Composable
 internal fun AddDialogHeader(onDismiss: () -> Unit) {
@@ -112,12 +109,33 @@ internal fun UrlInputSection(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Download URL / Magnet Link",
+            text = "Link",
             fontSize = 12.sp,
+            maxLines = 1,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
+        if (com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.isSupported) {
+            TextButton(
+                onClick = {
+                    com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.pick { text ->
+                        if (!text.isNullOrBlank()) {
+                            urlTextFieldValue = TextFieldValue(text, TextRange(text.length))
+                            onUrlChanged(text)
+                        }
+                    }
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "📄 Import .txt",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
         // A .torrent on this device: the chooser fills the field with its path.
         if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent &&
             com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.isSupported
@@ -145,7 +163,7 @@ internal fun UrlInputSection(
     }
     Spacer(modifier = Modifier.height(6.dp))
 
-    OutlinedTextField(
+    FetchJetTextField(
         value = urlTextFieldValue,
         onValueChange = { newValue ->
             urlTextFieldValue = newValue
@@ -153,70 +171,29 @@ internal fun UrlInputSection(
                 onUrlChanged(newValue.text)
             }
         },
-        placeholder = {
-            Text(
-                "https://... or magnet:?xt=...",
-                fontSize = 12.sp,
-                color = Color(0xFF64748B)
-            )
-        },
-        leadingIcon = {
-            Text("🔗", fontSize = 16.sp)
-        },
-        trailingIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (urlTextFieldValue.text.isNotBlank()) {
-                    IconButton(onClick = {
-                        urlTextFieldValue = TextFieldValue("", TextRange.Zero)
-                        onUrlChanged("")
-                    }) {
-                        Text(
-                            "✕",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+        placeholder = "Paste links or magnets",
+        leading = { Text("🔗", fontSize = 16.sp) },
+        trailing = {
+            if (urlTextFieldValue.text.isNotBlank()) {
+                FieldIconButton("✕", onClick = {
+                    urlTextFieldValue = TextFieldValue("", TextRange.Zero)
+                    onUrlChanged("")
+                })
+            } else {
+                FieldChipButton("📋 Paste", onClick = {
+                    coroutineScope.launch {
+                        val clip = getClipboardText()?.trim()
+                        if (!clip.isNullOrBlank()) {
+                            urlTextFieldValue = TextFieldValue(clip, TextRange(clip.length))
+                            onUrlChanged(clip)
+                        }
                     }
-                } else {
-                    TextButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                val clip = getClipboardText()?.trim()
-                                if (!clip.isNullOrBlank()) {
-                                    urlTextFieldValue =
-                                        TextFieldValue(clip, TextRange(clip.length))
-                                    onUrlChanged(clip)
-                                }
-                            }
-                        },
-                        contentPadding = PaddingValues(
-                            horizontal = 8.dp,
-                            vertical = 2.dp
-                        )
-                    ) {
-                        Text(
-                            "📋 Paste",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                })
             }
         },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                alpha = 0.35f
-            ),
-            cursorColor = MaterialTheme.colorScheme.primary
-        )
+        singleLine = false,
+        maxLines = 3,
+        modifier = Modifier.fillMaxWidth()
     )
 }
 
@@ -278,37 +255,15 @@ internal fun FileNameSection(
         Spacer(modifier = Modifier.height(6.dp))
         // Locked while the link is still being inspected: the name follows the result.
         val inspecting = isInspectingMedia || isInspectingTorrent
-        OutlinedTextField(
+        FetchJetTextField(
             value = if (inspecting && fileNameOverride.isEmpty()) "Finding the name…" else fileNameOverride.ifEmpty { suggestedFileName },
             onValueChange = { onFileNameChanged(it) },
             enabled = !inspecting,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            singleLine = true,
-            leadingIcon = { Text(if (inspecting) "⏳" else "📝", fontSize = 16.sp) },
-            trailingIcon = {
-                if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {
-                    IconButton(onClick = { onFileNameChanged("") }) {
-                        Text(
-                            "↺",
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                    alpha = 0.35f
-                ),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                    alpha = 0.35f
-                ),
-                cursorColor = MaterialTheme.colorScheme.primary
-            )
+            leading = { Text(if (inspecting) "⏳" else "📝", fontSize = 16.sp) },
+            trailing = if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {
+                { FieldIconButton("↺", onClick = { onFileNameChanged("") }) }
+            } else null
         )
         Spacer(modifier = Modifier.height(14.dp))
     }
@@ -361,7 +316,7 @@ internal fun DestinationSection(
     )
     Spacer(modifier = Modifier.height(6.dp))
 
-    OutlinedTextField(
+    FetchJetTextField(
         value = pathTextFieldValue,
         onValueChange = { newValue ->
             pathTextFieldValue = newValue
@@ -370,27 +325,8 @@ internal fun DestinationSection(
             }
         },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        singleLine = true,
-        leadingIcon = {
-            Text("📁", fontSize = 16.sp)
-        },
-        trailingIcon = {
-            IconButton(onClick = { showDirectoryPicker = true }) {
-                Text("📂", fontSize = 16.sp)
-            }
-        },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                alpha = 0.35f
-            ),
-            cursorColor = MaterialTheme.colorScheme.primary
-        )
+        leading = { Text("📁", fontSize = 16.sp) },
+        trailing = { FieldIconButton("📂", onClick = { showDirectoryPicker = true }) }
     )
     Spacer(modifier = Modifier.height(8.dp))
 
@@ -459,6 +395,7 @@ internal fun AddDialogActions(
     detectedEngine: EngineType,
     inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist?,
     scheduleStartMs: Long,
+    linkCount: Int = 0,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
     onAddDownload: () -> Unit,
@@ -534,6 +471,7 @@ internal fun AddDialogActions(
                     isInspecting -> "Inspecting..."
                     hasActiveError -> "Inspection Failed"
                     !isUrlValid -> "Enter URL"
+                    linkCount > 0 -> if (scheduleStartMs > 0L) "Schedule $linkCount links" else "Download $linkCount links"
                     !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> "Inspect Video First"
                     !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> "Inspect Torrent First"
                     !isClipRangeValid -> "Invalid Time Range"
