@@ -2,12 +2,13 @@
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
-import io.ktor.client.request.get
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
+import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
@@ -21,6 +22,16 @@ import platform.Foundation.stringWithContentsOfFile
 import platform.posix.X_OK
 import platform.posix.access
 import platform.posix.chmod
+
+internal val iosEjsCacheReady: Boolean by lazy {
+    val support =
+        NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true)
+            .firstOrNull() as? String
+    val caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)
+        .firstOrNull() as? String
+    if (caches != null) pruneEjsPlayerCache("$caches/yt-dlp")
+    support != null && ensureEjsCachePluginDir("$support/FetchJet-media-engine/yt-dlp-plugins") != null
+}
 
 fun getIosToolsDirectory(): String {
     val paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)
@@ -231,11 +242,30 @@ actual fun getMediaToolsDirectory(): String {
     return getIosToolsDirectory()
 }
 
+actual fun getJsRuntimeStatus(): JsRuntimeStatus = JsRuntimeStatus(
+    name = "WebKit (built-in)",
+    isReady = IosMediaBridgeRegistry.bridge?.statusText()?.contains("WebKit JS solver") == true
+)
+
 @OptIn(ExperimentalForeignApi::class)
-actual suspend fun downloadMediaExtractorTool(): Boolean = withContext(Dispatchers.IO) {
-    // "Download Tools" on iOS: ask the Swift bridge to boot the embedded Python engine and
-    // fetch/update the yt_dlp module. A standalone yt-dlp binary cannot run on iOS, so
-    // there is nothing else to download here.
-    val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
-    bridge.prepareEngine() == null
-}
+actual suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
+    withContext(Dispatchers.IO) {
+        // "Download Tools" on iOS: ask the Swift bridge to boot the embedded Python engine and
+        // fetch/update the yt_dlp module. A standalone yt-dlp binary cannot run on iOS, so
+        // there is nothing else to download here.
+        val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
+        onProgress(ToolDownloadProgress("yt-dlp"))
+        bridge.prepareEngine() == null &&
+                bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
+    }
+
+actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
+    withContext(Dispatchers.IO) {
+        val bridge = IosMediaBridgeRegistry.bridge ?: return@withContext false
+        if (!bridge.isAvailable() && bridge.prepareEngine() != null) return@withContext false
+        val latest = latestGitHubReleaseTag("yt-dlp/yt-dlp") ?: return@withContext false
+        val installed = Regex("yt-dlp (\\S+)").find(bridge.statusText())?.groupValues?.get(1)
+        if (installed == latest) return@withContext false
+        onProgress(ToolDownloadProgress("yt-dlp"))
+        bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
+    }

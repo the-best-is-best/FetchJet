@@ -20,7 +20,14 @@ const PROTOCOL = "fetchjet://download?url=";
 // qualities are fetched as on desktop; otherwise the page button opens the app with the link and
 // the app lists the qualities itself.
 const ON_ANDROID = /android/i.test(navigator.userAgent);
-async function androidAppAwake() { return ON_ANDROID && await pingApp(1200); }
+// Safari on iPhone / iPad: iOS suspends FetchJet while Safari is in front and the app has no
+// local server, so it is always "asleep": every link goes to the app through fetchjet://add
+// (with its cookies and referer) and the app lists the qualities itself.
+const ON_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (/Macintosh/i.test(navigator.userAgent) && (navigator.maxTouchPoints || 0) > 1);
+const APP_SLEEPS = ON_ANDROID || ON_IOS;
+const IOS_ADD = "fetchjet://add?json=";
+async function appAwake() { return !ON_IOS && ON_ANDROID && await pingApp(1200); }
 
 // ---------------------------------------------------------------------------
 // Settings
@@ -187,6 +194,7 @@ function baseName(path) {
 // ---------------------------------------------------------------------------
 
 async function pingApp(timeoutMs = 800) {
+  if (ON_IOS) return false;
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -218,7 +226,7 @@ async function cookieHeaderFor(url) {
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
-async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false }) {
+async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false }) {
   const body = {
     url,
     cookie: await cookieHeaderFor(url),
@@ -228,6 +236,7 @@ async function buildRequest({ url, referer = "", fileName = "", formatId = "", d
   };
   if (formatId) body.formatId = formatId; // quality chosen in the browser (yt-dlp format)
   if (direct) body.direct = true;         // start now, no Add dialog
+  if (openClip) body.openClip = true;     // open the Add dialog with the clip range on
   return body;
 }
 
@@ -292,6 +301,24 @@ async function launchApp(firstUrl) {
   } catch (_) { return false; }
 }
 
+/**
+ * iOS: hands one request (or a list) to the app through fetchjet://add. Safari asks "Open in
+ * FetchJet?" and the app opens with the link(s), so nothing waits for an answer here.
+ */
+async function openAppWith(payload, tabId = null) {
+  const url = IOS_ADD + encodeURIComponent(JSON.stringify(payload));
+  try {
+    let id = tabId;
+    if (id == null) {
+      const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+      id = tab && tab.id;
+    }
+    if (id != null) await api.tabs.update(id, { url });
+    else await api.tabs.create({ url, active: true });
+    return true;
+  } catch (_) { return false; }
+}
+
 async function waitForApp(maxMs = 8000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
@@ -315,9 +342,12 @@ async function notify(message, extra = {}) {
  * Main entry: hand a link to FetchJet, launching it when needed.
  * `source` is a short tag for logging ("download", "link", "menu", "popup", "media").
  */
-async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false }, source = "") {
+async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
-  const request = await buildRequest({ url, referer, fileName, formatId, direct });
+  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip });
+  if (ON_IOS) {
+    return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
+  }
 
   if (await deliverOne(request)) return { ok: true };
 
@@ -347,6 +377,7 @@ async function sendBatchToFetchJet(items, referer = "") {
   if (unique.size === 0) return { ok: false, reason: "no links", count: 0 };
   const requests = [];
   for (const it of unique.values()) requests.push(await buildRequest(it));
+  if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
   if (!(await pingApp())) {
     if (!(await launchApp(requests[0].url)) || !(await waitForApp())) {
@@ -382,6 +413,7 @@ async function shouldTake(item) {
   if (await takeBypass(targetUrl, item.url)) return false;      // "Download in browser instead"
   if (await consumeHold()) return false;                         // user held the bypass key
   if (isExcludedHost(targetUrl, settings) || isExcludedHost(item.referrer || "", settings)) return false;
+  if (!(await hasSiteAccess(item.referrer || targetUrl))) return false;
   const size = item.totalBytes > 0 ? item.totalBytes : (item.fileSize > 0 ? item.fileSize : -1);
   if (settings.minSizeKB > 0 && size >= 0 && size < settings.minSizeKB * 1024) return false;
   const fileName = baseName(item.filename);
@@ -392,6 +424,14 @@ async function shouldTake(item) {
   // App closed and auto-launch off: leave it to the browser (Ezoo behaviour).
   if (!settings.autoLaunch && !(await pingApp())) return false;
   return true;
+}
+
+async function hasSiteAccess(url) {
+  if (!api.permissions || !api.permissions.contains) return true;
+  let origin;
+  try { origin = new URL(url).origin; } catch (_) { return true; }
+  if (!/^https?:/i.test(origin)) return true;
+  try { return await api.permissions.contains({ origins: [origin + "/*"] }); } catch (_) { return true; }
 }
 
 async function takeOver(item) {
@@ -638,7 +678,11 @@ async function inspectWithApp(pageUrl) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 90000);
   try {
-    const res = await fetch(`${FETCHJET_BASE}/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers: { "X-FetchJet": "1" } });
+    // The page's cookies and referer travel with the request: sites that need a login (Udemy,
+    // Vimeo private videos...) then answer yt-dlp exactly like they answer the browser.
+    const headers = { "X-FetchJet": "1", "X-FetchJet-Referer": pageUrl };
+    try { const c = await cookieHeaderFor(pageUrl); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    const res = await fetch(`${FETCHJET_BASE}/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
     const text = await res.text();
     let data = null;
@@ -650,7 +694,9 @@ async function inspectWithApp(pageUrl) {
     const seen = new Set();
     for (const q of data) {
       if (!q.formatId) continue;
-      const label = `${q.quality || "video"} · ${(q.format || "mp4").toUpperCase()}`;
+      const fmt = (q.format || "mp4").toUpperCase();
+      // "1080p (Full HD - MP4)" already names the container: do not add "· MP4" again.
+      const label = (q.quality || "").toUpperCase().includes(fmt) ? q.quality : `${q.quality || "video"} · ${fmt}`;
       if (seen.has(label)) continue;
       seen.add(label);
       options.push({
@@ -664,6 +710,16 @@ async function inspectWithApp(pageUrl) {
   } catch (e) {
     return { resolveError: (await pingApp()) ? String(e && e.message || e) : "FetchJet is not running" };
   } finally { clearTimeout(t); }
+}
+
+/** A piece of a stream rather than a whole file: tiny, or a byte-range / segment URL. */
+function isStreamFragment(m) {
+  const u = String(m.url || "");
+  if (/[?&](bytestart|byteend|range)=/i.test(u)) return true;
+  if (/\.(m4s|ts)(\?|$)/i.test(u)) return true;
+  if (/fbcdn\.net\/.*\/m\d{2,3}\//i.test(u) && (!m.size || m.size < 8 * 1048576)) return true;
+  if (/googlevideo\.com\//i.test(u) && /[?&]range=/i.test(u)) return true;
+  return !!m.size && m.size < 512 * 1024 && !/\.(mp4|mkv|webm|mp3|m4a)(\?|$)/i.test(u);
 }
 
 function fmtBytes(n) { return typeof ytFmtSize === "function" ? ytFmtSize(n) : `${Math.round(n / 1048576)} MB`; }
@@ -680,7 +736,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
   const videoId = ytVideoId(pageUrl);
   if (!videoId) return;
   const current = await tabState(YT_KEY, tabId);
-  if (ON_ANDROID && !(await androidAppAwake())) {
+  if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.videoId === videoId && current.openApp)) {
       await setTabState(YT_KEY, tabId, { ...((current && current.videoId === videoId) ? current : { videoId, sabr: false, streams: {} }), openApp: true });
       pushToTab(tabId);
@@ -712,7 +768,7 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
   const current = await tabState(RES_KEY, tabId);
-  if (ON_ANDROID && !(await androidAppAwake())) {
+  if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
       await setTabState(RES_KEY, tabId, { page, openApp: true });
       pushToTab(tabId);
@@ -747,8 +803,12 @@ async function itemsForTab(tabId) {
   const media = Object.values(mediaAll[tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0));
   const items = [];
   let pageTitle = "";
-  if (ON_ANDROID) {
-    const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}` : (res && res.openApp ? res.page : "");
+  if (APP_SLEEPS) {
+    // A course / player page whose HLS or DASH playlist was captured (Udemy previews): the
+    // playlist downloads, the page itself usually does not (yt-dlp gets 403 there).
+    const hasPlaylist = media.some(m => m.kind === "HLS" || m.kind === "DASH");
+    const page = (yt && yt.openApp) ? `https://www.youtube.com/watch?v=${yt.videoId}`
+      : (res && res.openApp && !hasPlaylist ? res.page : "");
     if (page) items.push({ kind: "openApp", label: "Open in FetchJet", sub: "Pick the quality in the app", url: page });
   }
   if (yt) {
@@ -763,7 +823,7 @@ async function itemsForTab(tabId) {
       items.push({ label: "Getting video qualities…", sub: /android/i.test(navigator.userAgent) ? "Up to a minute on a phone" : "This takes a few seconds", disabled: true });
     } else if (yt.resolveError) {
       items.push({ label: "Can't get this video", sub: yt.resolveError, disabled: true });
-    } else if (yt.sabr) {
+    } else if (yt.sabr && !(ON_IOS && yt.openApp)) {
       items.push({
         label: "Qualities come from FetchJet (yt-dlp) for this video",
         sub: /android/i.test(navigator.userAgent)
@@ -777,13 +837,29 @@ async function itemsForTab(tabId) {
     if (res.resolved && res.resolved.options.length) { pageTitle = res.resolved.title; items.push(...res.resolved.options); }
     else if (res.resolving) items.push({ label: "Getting video qualities…", sub: "This takes a few seconds", disabled: true });
     else if (res.resolveError && !media.length) items.push({ label: "Can't get this video", sub: res.resolveError, disabled: true });
+    // Captured streams are shown, but say why the page itself gave no qualities (login, geo...)
+    else if (res.resolveError) items.push({ label: "Page qualities unavailable", sub: res.resolveError, disabled: true });
   }
   const resolvedFound = items.some(i => i.kind === "ytdlp");
+  const resolving = !!(res && res.resolving && !yt);
   for (const m of media) {
     // when yt-dlp already found the real qualities, raw streams are noise
     if (resolvedFound && (m.kind === "HLS" || m.kind === "DASH" || m.kind === "Video")) continue;
+    // while FetchJet is still working out the page's qualities, the raw streams only confuse
+    if (resolving && (m.kind === "HLS" || m.kind === "DASH" || m.kind === "Video")) continue;
+    // DASH/HLS *fragments* the player fetched (Facebook: fbcdn ".../m311/..." pieces of a few
+    // hundred KB, "bytestart=" ranges) are not files anyone wants
+    if (m.kind === "Video" && isStreamFragment(m)) continue;
+    // HLS/DASH: show the rendition (AVC_192 -> "192", 1080p, 720p...) read from the URL instead of
+    // the playlist's hash; the size of a playlist file means nothing to the user.
+    const isPl = m.kind === "HLS" || m.kind === "DASH";
+    const qm = isPl ? /(\d{3,4})p|[_\/-](AVC|HEVC|VP9)[_-]?(\d{2,4})|[_\/-](\d{3,4})k/i.exec(m.url) : null;
+    const quality = qm ? (qm[1] ? qm[1] + "p" : (qm[3] || qm[4])) : "";
+    const label = isPl
+      ? `${m.kind} stream${quality ? " · " + quality : ""} · pick the quality in FetchJet`
+      : `${m.kind}${m.size ? " · " + fmtBytes(m.size) : ""} · ${m.name}`;
     items.push({
-      kind: "media", label: `${m.kind}${m.size ? " · " + fmtBytes(m.size) : ""} · ${m.name}`, sub: m.url,
+      kind: "media", label, sub: m.url, quality,
       url: m.url, fileName: m.name, referer: m.pageUrl, size: m.size, ext: extensionOf(m.name)
     });
   }
@@ -810,12 +886,34 @@ async function clearTab(tabId) {
 }
 
 /** The user picked one item (popup or page button). */
+// One tap can reach us several times (touch + click, two badges, a retry): the same item within
+// a few seconds is sent once.
+const recentSends = new Map();
+function alreadySent(key) {
+  const now = Date.now();
+  for (const [k, t] of recentSends) if (now - t > 8000) recentSends.delete(k);
+  if (recentSends.has(key)) return true;
+  recentSends.set(key, now);
+  return false;
+}
+
 async function downloadItem(item, tab) {
   const pageUrl = (tab && tab.url) || item.referer || "";
-  const title = item.title || (tab && tab.title) || "video";
+  if (alreadySent(`${item.url}|${item.formatId || ""}|${item.openClip ? "clip" : ""}`)) return { ok: true };
+  // Prefer the page's own idea of what is playing (lesson title on course sites) over the tab
+  // title, which is the course / site name there.
+  let pageTitle = "";
+  if (!item.title && tab && tab.id != null) {
+    try { const info = await api.tabs.sendMessage(tab.id, { action: "pageInfo" }); pageTitle = (info && info.title) || ""; } catch (_) {}
+  }
+  const title = item.title || pageTitle || (tab && tab.title) || "video";
   const clean = typeof ytCleanTitle === "function" ? ytCleanTitle(title) : title;
   if (item.kind === "openApp") {
-    // Android: the app opens with the link and shows the qualities itself.
+    // Android / iOS: the app opens with the link and shows the qualities itself.
+    if (ON_IOS) {
+      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl }), tab && tab.id);
+      return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
+    }
     try {
       const t = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(item.url), active: true });
       if (t && t.id != null) setTimeout(() => api.tabs.remove(t.id).catch(() => {}), 1500);
@@ -823,8 +921,13 @@ async function downloadItem(item, tab) {
     } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
   }
   if (item.kind === "ytdlp") {
-    const fileName = `${clean}${item.quality ? " [" + item.quality + "]" : ""}.${item.ext || "mp4"}`;
-    let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl }, "quality");
+    // "1080p · Full HD · H.264" -> only "1080p" goes into the file name.
+    // "1080p (Full HD - MP4)" -> "1080p"; "Audio Only (M4A)" -> "Audio"; otherwise the first word
+    const q = item.quality || "";
+    const qm = /(\d{3,4}p|4K|8K)/i.exec(q);
+    const qTag = qm ? qm[1] : (/audio/i.test(q) ? "Audio" : q.split(/[\s(·]/)[0].trim());
+    const fileName = `${clean}${qTag ? " [" + qTag + "]" : ""}.${item.ext || "mp4"}`;
+    let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl, openClip: !!item.openClip }, "quality");
     if (!r.ok && tab) {
       // The app's cache expired: inspect again and retry once with the same label.
       const change = await inspectWithApp(item.url);
@@ -837,7 +940,14 @@ async function downloadItem(item, tab) {
     const fileName = `${clean}${item.quality ? " [" + item.quality + "]" : ""}${item.videoOnly ? " (video only)" : ""}.${item.ext || "mp4"}`;
     return sendToFetchJet({ url: item.url, referer: "https://www.youtube.com/", fileName, direct: true }, "captured");
   }
-  return sendToFetchJet({ url: item.url, referer: item.referer || pageUrl, fileName: item.fileName || "", direct: true }, "media");
+  // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
+  // (the lecture / video title), not after the playlist's hash.
+  let fileName = item.fileName || "";
+  if (item.kind === "media" && /\.(m3u8|mpd)$/i.test(fileName)) {
+    // The app lists the playlist's renditions and the user picks one there: no quality in the name.
+    fileName = `${clean}.mp4`;
+  }
+  return sendToFetchJet({ url: item.url, referer: item.referer || pageUrl, fileName, direct: true }, "media");
 }
 
 /** YouTube tab: make sure the qualities are (being) fetched, whatever brought us here. */
@@ -1014,6 +1124,7 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return collectAndSendLinks(tab, { selectionOnly: !!request.selectionOnly });
       }
       case "checkStatus": {
+        if (ON_IOS) return { online: true, ios: true, config: null };
         const online = await pingApp();
         const config = online ? await fetchAppConfig() : null;
         return { online, config };
@@ -1056,6 +1167,14 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       case "resolveVideo":
         return resolveVideo(request, sender.tab || null);
+      case "mediaSeen": {
+        // iOS: media URLs the page loaded, read by the content script (no webRequest there).
+        if (!ON_IOS || !sender.tab || sender.tab.id == null) return { ok: false };
+        for (const url of (request.urls || []).slice(0, 20)) {
+          await sniffMedia({ tabId: sender.tab.id, statusCode: 200, url, responseHeaders: [], documentUrl: sender.url || "" });
+        }
+        return { ok: true };
+      }
       case "openPanel": {
         try { await api.tabs.sendMessage(request.tabId, { action: "openPanel" }); } catch (_) {}
         return { ok: true };

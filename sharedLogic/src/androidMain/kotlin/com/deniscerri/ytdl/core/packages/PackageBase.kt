@@ -6,27 +6,15 @@
  */
 package com.deniscerri.ytdl.core.packages
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.core.ZipUtils
-import com.deniscerri.ytdl.database.models.GithubReleaseAsset
-import com.deniscerri.ytdl.util.FileUtil
-import com.google.gson.annotations.SerializedName
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.apache.commons.io.FileUtils
-import org.json.JSONObject
 import java.io.File
-import kotlin.coroutines.cancellation.CancellationException
 
 abstract class PackageBase {
     protected abstract val executableName: String      // e.g., "ffmpeg"
@@ -40,22 +28,6 @@ abstract class PackageBase {
 
     abstract val bundledVersion: String?
     var downloadedVersion: String? = null
-
-    data class PackageRelease(
-        @SerializedName(value = "tag_name")
-        var tag_name: String,
-        @SerializedName("published_at")
-        val published_at: String,
-        @SerializedName(value = "assets")
-        var assets: List<GithubReleaseAsset>,
-        @SerializedName(value = "body")
-        val body: String,
-        var version: String = "",
-        var downloadSize: Long = 0,
-        var isInstalled: Boolean = false,
-        var isBundled: Boolean = false,
-        var oldVersion: Boolean = false
-    )
 
     data class PackageLocation(
         val binDir: File,
@@ -74,15 +46,9 @@ abstract class PackageBase {
     private val packagesRoot = "packages"
     private val downloadedPackagesRoot = "downloaded_packages"
 
-
     lateinit var location: PackageLocation
 
-    companion object {
-        val sharedClient: OkHttpClient by lazy {
-            OkHttpClient.Builder()
-                .build()
-        }
-    }
+    companion object
 
     fun init(context: Context) {
         val baseDir = File(context.noBackupFilesDir, RuntimeManager.BASENAME)
@@ -203,136 +169,6 @@ abstract class PackageBase {
         )
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag", "Range")
-    suspend fun downloadReleaseApk(
-        release: PackageRelease,
-        onProgress: (Long) -> Unit
-    ): Result<File> {
-        return withContext(Dispatchers.IO) {
-            try {
-                File(FileUtil.getDefaultApksPath()).mkdirs()
-                val tempApk = File(
-                    FileUtil.getDefaultApksPath(),
-                    "${packageFolderName}_${release.version.replace(".", "")}.apk"
-                )
-                tempApk.delete()
-
-                val request = Request.Builder()
-                    .url(release.assets.first().browser_download_url)
-                    .build()
-
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    .mkdirs()
-                val response = sharedClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(Throwable(response.body?.string() ?: ""))
-                }
-
-                val body =
-                    response.body ?: return@withContext Result.failure(Throwable("Empty body"))
-                val totalBytes = body.contentLength()
-                var bytesDownloaded = 0L
-
-                body.byteStream().use { inputStream ->
-                    tempApk.outputStream().use { outputStream ->
-                        val buffer = ByteArray(8192)
-                        var bytesRead: Int
-
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            if (!isActive) throw CancellationException("Download cancelled by user")
-
-                            outputStream.write(buffer, 0, bytesRead)
-                            bytesDownloaded += bytesRead
-                            val progress = ((bytesDownloaded * 100) / totalBytes)
-                            onProgress(progress)
-                        }
-                    }
-                }
-
-                Result.success(tempApk)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
-
-    fun uninstallDownloadedRuntimeDir(context: Context): Result<Unit> {
-        return kotlin.runCatching {
-            val runtimeDir = getDownloadedDir(context)
-
-            if (runtimeDir.exists()) {
-                val deleted = runtimeDir.deleteRecursively()
-                if (!deleted) {
-                    throw Exception("Failed to delete runtime directory at ${runtimeDir.path}")
-                }
-            }
-
-            Result.success(Unit)
-        }.getOrElse {
-            Result.failure(it)
-        }
-    }
-
-    private fun applyExecutablePermissions(file: File) {
-        Runtime.getRuntime().exec(arrayOf("chmod", "-R", "755", file.absolutePath)).waitFor()
-    }
-
-    private fun saveState(context: Context, version: String) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        prefs.edit {
-            putString(downloadedVersionKey, version)
-        }
-    }
-
-    suspend fun getReleases(): Result<List<PackageRelease>> {
-        if (githubRepo.isEmpty()) return Result.success(listOf())
-
-        val request = Request.Builder()
-            .url("https://api.github.com/repos/${githubRepo}/releases")
-            .build()
-
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = sharedClient.newCall(request).execute()
-                val jsonString = response.body?.string() ?: ""
-                if (response.isSuccessful && jsonString.isNotEmpty()) {
-                    val supportedArch = getArchSuffix()
-
-                    val type =
-                        object : com.google.gson.reflect.TypeToken<List<PackageRelease>>() {}.type
-                    val releases =
-                        com.google.gson.Gson().fromJson<List<PackageRelease>>(jsonString, type)
-                            .filter {
-                                it.tag_name.contains(githubPackageName)
-                            }
-                            .onEach {
-                                // e.g. nodejs-1.0.0-arm64-v8a
-                                it.version = it.tag_name.split("-")[1]
-                                it.assets = it.assets.filter { a -> a.name.contains(supportedArch) }
-                                it.downloadSize = it.assets.first().size
-                                it.isInstalled = downloadedVersion == "v${it.version}"
-                                it.isBundled =
-                                    location.isBundled && bundledVersion == "v${it.version}"
-
-                                val bundledRaw = (bundledVersion ?: "0").ifEmpty { "0" }
-                                    .replace("[v.]".toRegex(), "").toInt()
-                                val downloadedRaw = (downloadedVersion ?: "0").ifEmpty { "0" }
-                                    .replace("[v.]".toRegex(), "").toInt()
-
-                                val latestVersion = bundledRaw.coerceAtLeast(downloadedRaw)
-                                it.oldVersion = latestVersion > it.version.replace(".", "").toInt()
-                            }
-
-                    Result.success(releases)
-                } else {
-                    Result.failure(Throwable(JSONObject(jsonString).getString("message")))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
-
     fun getDownloadedPackageAppVersion(context: Context): String? {
         if (apkPackage.isBlank()) return null
         return try {
@@ -351,23 +187,4 @@ abstract class PackageBase {
         }
     }
 
-    fun isPackageAppInstalled(context: Context): Boolean {
-        return try {
-            context.packageManager.getPackageInfo(apkPackage, 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
-
-
-    fun getArchSuffix(): String {
-        val abi = Build.SUPPORTED_ABIS[0]
-        return when {
-            abi.startsWith("arm64") -> "arm64-v8a"
-            abi.startsWith("armeabi") -> "armeabi-v7a"
-            abi.startsWith("x86_64") -> "x86_64"
-            else -> "arm64-v8a"
-        }
-    }
 }

@@ -12,6 +12,9 @@ actual object BrowserIntegration {
     actual fun setUpOnFirstRun() {}
 
     actual val canKeepReadyForBrowser: Boolean get() = false
+    actual val canPopUpOverBrowser: Boolean get() = false
+    actual fun isPopUpAllowed(): Boolean = true
+    actual fun requestPopUpPermission() {}
     actual fun isKeptReadyForBrowser(): Boolean = false
     actual fun setKeepReadyForBrowser(enabled: Boolean) {}
     actual fun restoreKeepReady() {}

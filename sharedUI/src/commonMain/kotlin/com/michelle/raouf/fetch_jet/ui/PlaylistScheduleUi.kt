@@ -360,3 +360,25 @@ private fun clock(sec: Long): String {
     return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
     else "$m:${s.toString().padStart(2, '0')}"
 }
+
+/** Connections for a direct download: Auto (app setting) or a fixed count. */
+@Composable
+fun ConnectionsSection(selected: Int, appDefault: Int, onChanged: (Int) -> Unit) {
+    Text(
+        "Connections",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        val autoLabel = if (appDefault > 0) "Auto ($appDefault)" else "Auto"
+        ChoiceChip(autoLabel, selected = selected == 0) { onChanged(0) }
+        listOf(1, 4, 8, 16, 32).forEach { n ->
+            ChoiceChip(n.toString(), selected = selected == n) { onChanged(n) }
+        }
+    }
+}

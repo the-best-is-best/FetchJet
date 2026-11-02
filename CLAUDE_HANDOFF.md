@@ -29,9 +29,8 @@ REMOVED: they embed Python 3.10 and yt-dlp now requires >= 3.11.
     - `EmbeddedPython.boot()` sets PYTHONHOME/PYTHONPATH/SSL_CERT_FILE (`iosApp/iosApp/cacert.pem`,
       Mozilla roots - the embedded OpenSSL cannot see the iOS trust store) and starts PythonKit.
     - `subprocess.Popen` is replaced by an in-process ffmpeg/ffprobe shim (stdout/stderr captured).
-    - yt_dlp module: `Application Support/FetchJet-media-engine/yt-dlp` (copied from the bundled
-      `iosApp/iosApp/yt-dlp`, 2026.10.21, which already contains yt_dlp_ejs; "Download Tools"
-      can refresh it from GitHub). Driver = parse_options -> YoutubeDL(opts) with logger +
+    - yt_dlp module: `Application Support/FetchJet-media-engine/yt-dlp`, downloaded from GitHub on
+      first start (no copy in the app bundle); auto-update at launch and "Update tools" refresh it. Driver = parse_options -> YoutubeDL(opts) with logger +
       progress hook (ported from YoutubeDL-iOS, MIT).
     - All Python runs on one serial queue (PythonKit has no GIL management).
     - Every call gets `--plugin-dirs <AppSupport>/FetchJet-media-engine/yt-dlp-plugins

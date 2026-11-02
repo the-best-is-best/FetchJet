@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.core.notification
 
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -74,11 +73,6 @@ class DownloadForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ACTION_START
-        if (action == ACTION_STOP) {
-            stopForegroundService()
-            return START_NOT_STICKY
-        }
-
         val notification = DownloadNotificationManager.buildLiveActivityNotification(this)
 
         try {
@@ -93,6 +87,12 @@ class DownloadForegroundService : Service() {
             }
             isRunning = true
         } catch (_: Throwable) {
+        }
+        awaitingForeground = false
+        if (action == ACTION_STOP || stopRequested) {
+            stopRequested = false
+            stopForegroundService()
+            return START_NOT_STICKY
         }
 
         return START_STICKY
@@ -124,6 +124,7 @@ class DownloadForegroundService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        awaitingForeground = false
         releaseLocks()
         super.onDestroy()
     }
@@ -138,7 +139,15 @@ class DownloadForegroundService : Service() {
         var isRunning: Boolean = false
             private set
 
+        @Volatile
+        private var awaitingForeground = false
+
+        @Volatile
+        private var stopRequested = false
+
         fun start(context: Context) {
+            stopRequested = false
+            awaitingForeground = true
             try {
                 val intent = Intent(context, DownloadForegroundService::class.java).apply {
                     action = ACTION_START
@@ -150,24 +159,16 @@ class DownloadForegroundService : Service() {
                 }
                 isRunning = true
             } catch (_: Throwable) {
-            }
-        }
-
-        fun updateNotification(context: Context) {
-            if (!isRunning) return
-            try {
-                val notificationManager =
-                    context.getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
-                        ?: return
-                val notification =
-                    DownloadNotificationManager.buildLiveActivityNotification(context)
-                notificationManager.notify(FOREGROUND_NOTIFICATION_ID, notification)
-            } catch (_: Throwable) {
+                awaitingForeground = false
             }
         }
 
         fun stop(context: Context) {
             isRunning = false
+            if (awaitingForeground) {
+                stopRequested = true
+                return
+            }
             // startService(ACTION_STOP) throws IllegalStateException when the app is in the
             // background on API 26+, so the service (and its wake/wifi locks) never stopped.
             // stopService() is allowed from the background.

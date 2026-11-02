@@ -8,6 +8,8 @@ package com.deniscerri.ytdl.core
 
 import android.content.Context
 import android.os.Build
+import com.deniscerri.ytdl.core.RuntimeManager.execute
+import com.deniscerri.ytdl.core.RuntimeManager.executeStreaming
 import com.deniscerri.ytdl.core.models.ExecuteException
 import com.deniscerri.ytdl.core.models.ExecuteResponse
 import com.deniscerri.ytdl.core.models.YTDLRequest
@@ -22,6 +24,8 @@ import com.deniscerri.ytdl.core.stream.StreamGobbler
 import com.deniscerri.ytdl.core.stream.StreamProcessExtractor
 import com.deniscerri.ytdl.database.models.PackageItem
 import com.deniscerri.ytdl.util.FileUtil
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ensureEjsCachePluginDir
+import com.michelle.raouf.fetch_jet.feature.media_extractor.pruneEjsPlayerCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -70,6 +74,8 @@ object RuntimeManager {
     private var OPEN_SSL_CONF: String? = null
     private var ENV_PYTHONHOME: String? = null
     private var TMPDIR: String = ""
+    private var YTDLP_CACHE_DIR: String = ""
+    private var EJS_CACHE_PLUGIN_DIR: String? = null
 
     private var NPM_CONFIG_PREFIX: String = ""
     private var NPM_CONFIG_CACHE: String = ""
@@ -171,6 +177,11 @@ object RuntimeManager {
                         pythonLocation.ldDir.absolutePath + "/usr"
                     }
                     TMPDIR = appContext.cacheDir.absolutePath
+                    YTDLP_CACHE_DIR = File(appContext.filesDir, "yt-dlp-cache").absolutePath
+                    pruneEjsPlayerCache(YTDLP_CACHE_DIR)
+                    EJS_CACHE_PLUGIN_DIR = ensureEjsCachePluginDir(
+                        File(appContext.filesDir, "fetchjet-ejs-cache-plugin").absolutePath
+                    )
 
                     NPM_CONFIG_PREFIX = File(appContext.filesDir, ".npm-global").absolutePath
                     NPM_CONFIG_CACHE = File(appContext.filesDir, ".npm-cache").absolutePath
@@ -263,15 +274,6 @@ object RuntimeManager {
                 input.copyTo(output)
             }
         }
-    }
-
-    fun reInit(context: Context) {
-        synchronized(initLock) {
-            initialized = false
-            initLatch = CountDownLatch(1)
-            init(context)
-        }
-
     }
 
     fun assertInit() {
@@ -447,7 +449,10 @@ object RuntimeManager {
             )
         }
 
-        if (!usingCacheDir) {
+        if (usingCacheDir && YTDLP_CACHE_DIR.isNotEmpty()) {
+            request.addOption("--cache-dir", YTDLP_CACHE_DIR)
+            EJS_CACHE_PLUGIN_DIR?.let { request.addOption("--plugin-dirs", it) }
+        } else {
             request.addOption("--no-cache-dir")
         }
 
@@ -461,100 +466,11 @@ object RuntimeManager {
         request: YTDLRequest,
         processId: String? = null,
         redirectErrorStream: Boolean = false,
-        usingCacheDir: Boolean = false,
+        usingCacheDir: Boolean = true,
         callback: ((Float, Long, String) -> Unit)? = null
     ): ExecuteResponse {
         val fullCommand = buildYTDLCommand(request, usingCacheDir)
         return executeImpl(fullCommand, processId, redirectErrorStream, callback = callback)
-    }
-
-    fun executePython(
-        command: String,
-        processId: String? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(pythonLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(fullCommand, processId, true, callback = callback)
-    }
-
-    fun executeNode(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(nodeLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            extraEnv = getNodeEnvironment(),
-            callback = callback
-        )
-    }
-
-    /**
-     * Env only applied to node/npm processes. Not global, so the node yt-dlp spawns for js challenges stays untouched
-     */
-    fun getNodeEnvironment(): Map<String, String> {
-        val env = mutableMapOf("HOME" to NODE_HOME)
-        val certFile = listOf(nodeLocation, pythonLocation)
-            .map { File(it.ldDir, "usr/etc/tls/cert.pem") }
-            .firstOrNull { it.exists() }
-            ?: ENV_SSL_CERT_FILE?.let { File(it) }?.takeIf { it.exists() }
-        if (certFile != null) {
-            env["SSL_CERT_FILE"] = certFile.absolutePath
-            env["NODE_EXTRA_CA_CERTS"] = certFile.absolutePath
-        }
-        if (NODE_OPTIONS.isNotEmpty()) env["NODE_OPTIONS"] = NODE_OPTIONS
-        return env
-    }
-
-    fun executeNpm(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(nodeLocation.executable.absolutePath, NPM_CLI_PATH)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            extraEnv = getNodeEnvironment(),
-            callback = callback
-        )
-    }
-
-
-    fun executeDeno(
-        command: String,
-        processId: String? = null,
-        executeDirectory: File? = null,
-        callback: ((Float, Long, String) -> Unit)? = null
-    ): ExecuteResponse {
-        assertInit()
-
-        val fullCommand = mutableListOf<String>(denoLocation.executable.absolutePath)
-        fullCommand.addAll(command.split(" "))
-        return executeImpl(
-            fullCommand,
-            processId,
-            true,
-            executeDirectory = executeDirectory,
-            callback = callback
-        )
     }
 
     fun executeImpl(
@@ -647,7 +563,7 @@ object RuntimeManager {
     fun <T> executeStreaming(
         request: YTDLRequest,
         processId: String? = null,
-        usingCacheDir: Boolean = false,
+        usingCacheDir: Boolean = true,
         outputHandler: (InputStream) -> T
     ): T {
         val fullCommand = buildYTDLCommand(request, usingCacheDir)
@@ -709,14 +625,6 @@ object RuntimeManager {
         return env
     }
 
-    fun getEnvironmentForTerminal(): MutableMap<String, String?> {
-        val env = getEnvironment().toMutableMap()
-        val homePath = FileUtil.getDefaultTerminalPath()
-        File(homePath).mkdirs()
-        env["HOME"] = homePath
-        return env
-    }
-
     @Synchronized
     @Throws(ExecuteException::class)
     fun updateYTDL(
@@ -756,22 +664,6 @@ object RuntimeManager {
 
     open class UpdateChannel(val apiUrl: String) {
         object STABLE : UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
-        object NIGHTLY :
-            UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest")
-
-        object MASTER :
-            UpdateChannel("https://api.github.com/repos/yt-dlp/yt-dlp-master-builds/releases/latest")
-
-        companion object {
-            @JvmField
-            val _STABLE: STABLE = STABLE
-
-            @JvmField
-            val _NIGHTLY: NIGHTLY = NIGHTLY
-
-            @JvmField
-            val _MASTER: MASTER = MASTER
-        }
     }
 
     @JvmStatic

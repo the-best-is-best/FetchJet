@@ -53,6 +53,7 @@
         .file:hover { border-color: var(--accent); }
         .file .sz { color: var(--muted); font-size: 12px; }
         .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: rgba(34,211,238,0.14); color: var(--accent); }
+        .tag.beta { background: rgba(251,191,36,0.16); color: var(--warn); }
         .empty, .error { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
         .error { color: var(--warn); }
         .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
@@ -108,7 +109,12 @@
             '<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div>' +
             '<div class="hint">Prefer an installer? Take the .msi or .exe below; it updates itself from GitHub.</div></div>' },
         { key: "macos",     label: "macOS",     match: function (n) { return /\.dmg$/i.test(n); },
-          hint: "Open the .dmg and drag FetchJet to Applications." },
+          hint: "For Apple Silicon Macs (M1 or newer) only; Intel Macs are not supported. Open the .dmg and drag FetchJet to Applications.",
+          noticeHtml:
+            '<div class="notice"><h3>First launch: "Apple could not verify FetchJet"</h3>' +
+            'FetchJet is not notarized by Apple yet, so macOS blocks the first launch. Open it once, close the warning, ' +
+            'then go to <b>System Settings &rarr; Privacy &amp; Security</b> and click <b>Open Anyway</b>. ' +
+            'Or run this once in Terminal:<div class="hint"><code>xattr -dr com.apple.quarantine /Applications/FetchJet.app</code></div></div>' },
         { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },
           hint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet)." },
         { key: "android",   label: "Android",   match: function (n) { return /\.apk$/i.test(n); },
@@ -169,8 +175,14 @@
         var m = /<!--\s*fetchjet-unchanged:\s*([a-z0-9,\s_-]*)-->/i.exec(r.body || "");
         return m ? m[1].split(",").map(function (x) { return x.trim().toLowerCase(); }) : [];
       }
+      function isBeta(r, key) {
+        var m = /<!--\s*fetchjet-beta:\s*([a-z0-9,\s_-]*)-->/i.exec(r.body || "");
+        if (!m) return false;
+        var list = m[1].split(",").map(function (x) { return x.trim().toLowerCase(); });
+        return list.indexOf("all") >= 0 || list.indexOf(key) >= 0;
+      }
       function cleanNotes(body) {
-        return (body || "").replace(/<!--\s*fetchjet-unchanged:[^>]*-->\s*/gi, "").trim();
+        return (body || "").replace(/<!--\s*fetchjet-(unchanged|beta):[^>]*-->\s*/gi, "").trim();
       }
       function fileLabel(name, platform) {
         if (platform === "android") {
@@ -180,6 +192,7 @@
         if (platform === "extension") return /\.xpi$/i.test(name) ? "Firefox (.xpi)" : "Chrome / Edge (.zip)";
         if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : "Installer (.exe)";
         if (platform === "linux") return /\.deb$/i.test(name) ? "Debian / Ubuntu (.deb)" : "Portable (.tar.gz)";
+        if (platform === "macos") return "Apple Silicon (.dmg)";
         return name;
       }
 
@@ -209,7 +222,8 @@
         }
         var latest = rows[0], html = "";
         var skippedIn = releases.filter(function (r) { return unchangedOf(r).indexOf(p.key) >= 0 && r.tag_name !== latest.r.tag_name && isNewerTag(r.tag_name, latest.r.tag_name); });
-        html += '<div class="latest"><div><div class="v">Latest for ' + esc(p.label) + ": " + esc(latest.r.tag_name) + '</div><div class="d">' + fmtDate(latest.r.published_at) +
+        html += '<div class="latest"><div><div class="v">Latest for ' + esc(p.label) + ": " + esc(latest.r.tag_name) +
+                (isBeta(latest.r, p.key) ? ' <span class="tag beta">beta</span>' : "") + '</div><div class="d">' + fmtDate(latest.r.published_at) +
                 (skippedIn.length ? " · newer releases (" + skippedIn.map(function (r) { return esc(r.tag_name); }).join(", ") + ") had no changes for " + esc(p.label) : "") +
                 '</div></div><div class="grow"></div>' +
                 latest.files.map(function (a) { return '<a class="btn" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + " <small>" + fmtSize(a.size) + "</small></a>"; }).join(" ") +
@@ -219,6 +233,7 @@
           var notes = cleanNotes(x.r.body);
           html += '<div class="rel" id="rel-' + esc(x.r.tag_name) + '"><div class="rel-head"><span class="v">' + esc(x.r.tag_name) + "</span>" +
                   (i === 0 ? '<span class="tag">latest</span>' : "") + (x.r.prerelease ? '<span class="tag">pre-release</span>' : "") +
+                  (isBeta(x.r, p.key) ? '<span class="tag beta">beta</span>' : "") +
                   '<span class="d">' + fmtDate(x.r.published_at) + '</span><span class="grow"></span>' +
                   (notes ? '<a class="notes" href="#" data-toggle="' + esc(x.r.tag_name) + '">what changed</a>' : "") +
                   '<a class="notes" href="' + x.r.html_url + '">on GitHub</a></div>' +

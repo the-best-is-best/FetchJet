@@ -18,6 +18,17 @@ function parseList(text, lower = true) {
   return text.split(/[\s,;]+/).map(s => s.trim().replace(/^\./, "")).filter(Boolean).map(s => lower ? s.toLowerCase() : s);
 }
 
+function hide(id) { const el = $(id); if (el) el.style.display = "none"; }
+
+function fitToBrowser() {
+  const p = FJ_PLATFORM;
+  p.hidden.forEach(hide);
+  if (p.hidden.includes("cardShortcuts")) $("masterHint").textContent = "Master switch.";
+  if (p.shortcutsText) $("shortcutsHelp").textContent = p.shortcutsText;
+  else if (p.shortcutsPage) $("shortcutsHelp").replaceChildren("Change them at ", Object.assign(document.createElement("code"), { textContent: p.shortcutsPage }), ".");
+  if (p.cookiesNote) $("cookiesNote").textContent = p.cookiesNote;
+}
+
 async function load() {
   const s = await send({ action: "getSettings" });
   for (const k of BOOLS) $(k).checked = !!s[k];
@@ -27,7 +38,9 @@ async function load() {
   $("excludedHosts").value = (s.excludedHosts || []).join("\n");
 
   const r = await send({ action: "checkStatus" });
-  if (r && r.online) {
+  if (FJ_PLATFORM.status) {
+    setStatus(FJ_PLATFORM.status, "");
+  } else if (r && r.online) {
     const c = r.config || {};
     setStatus("Connected", ` to FetchJet ${c.version ? "v" + c.version : ""} on 127.0.0.1:28450` +
       (c.mediaExtractor === false ? " · media extractor disabled in this edition" : ""));
@@ -56,6 +69,7 @@ async function save() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  fitToBrowser();
   load();
   $("save").addEventListener("click", save);
   $("resetExt").addEventListener("click", () => { $("extensions").value = DEFAULT_EXTENSIONS.join(", "); });

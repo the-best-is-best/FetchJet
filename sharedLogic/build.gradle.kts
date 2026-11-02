@@ -3,9 +3,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
+    // Java 21 everywhere: the desktop app bundles a Java 21 runtime and Android desugars it.
+    jvmToolchain(21)
+
     // A manual dependsOn() edge (jvmAndroidMain below) switches the default source-set
     // hierarchy OFF unless it is applied explicitly - without this line iosMain is never
     // compiled and every expect declaration reports "no actual for Native".
@@ -29,7 +33,7 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
+            jvmTarget = JvmTarget.JVM_21
         }
         androidResources {
             enable = true
@@ -52,6 +56,8 @@ kotlin {
 
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.kotlinx.serialization.json)
+            api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.ktor.client.core)
             implementation(libs.okio)
         }
@@ -60,6 +66,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.java)
             // "Start FetchJet when I log in" (Windows Run key, macOS LaunchAgent, Linux autostart)
             implementation(libs.auto.launch)
             // libtorrent natives for every desktop OS the app is packaged for

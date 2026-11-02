@@ -76,7 +76,7 @@ fun parseUrlFromArg(arg: String): String {
         return clean
     }
     // A .torrent file opened with FetchJet (file association / drag onto the exe).
-    val asFile = clean.removePrefix("file://").let { java.io.File(it) }
+    val asFile = clean.removePrefix("file://").let { File(it) }
     if (clean.lowercase().endsWith(".torrent") && asFile.isFile) {
         return asFile.absolutePath
     }
@@ -129,6 +129,10 @@ private const val BRIDGE_PORT = 28450
  * Last yt-dlp inspections, so the extension can list qualities (GET /inspect) and then
  * start the chosen one (POST /add with formatId) without running yt-dlp twice.
  */
+private val inspectGates = HashMap<String, Any>()
+
+/** /add requests seen in the last seconds (a click reaching us twice must not start twice). */
+private val recentAdds = HashMap<String, Long>()
 private val inspectCache = object :
     LinkedHashMap<String, Pair<Long, List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>>>(
         16,
@@ -139,20 +143,35 @@ private val inspectCache = object :
         size > 40
 }
 
-private fun inspectCached(url: String): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
-    synchronized(inspectCache) {
-        inspectCache[url]?.let { (at, list) ->
+private fun inspectCached(
+    url: String,
+    requestHeaders: Map<String, String> = emptyMap()
+): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> {
+    val key = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.canonical(url)
+    fun cached(): List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>? =
+        synchronized(inspectCache) {
+            inspectCache[key]?.let { (at, list) ->
             // Direct stream URLs expire (YouTube: ~6 h); keep results for 30 minutes.
-            if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
+                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) list else null
         }
     }
-    val fresh = kotlinx.coroutines.runBlocking {
-        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities(url)
+    cached()?.let { return it }
+    // The popup asks for the same video in two spellings at once: the second waits for the
+    // first instead of running yt-dlp twice.
+    val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
+    synchronized(gate) {
+        cached()?.let { return it }
+        val fresh = kotlinx.coroutines.runBlocking {
+            // Same path as the Add dialog: HLS first, yt-dlp with the browser's headers, then
+            // without them (Facebook serves a page yt-dlp cannot read when the login cookie is sent).
+            com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                .inspectMediaQualities(url, requestHeaders)
+        }
+        if (fresh.any { !it.formatId.isNullOrBlank() }) synchronized(inspectCache) {
+            inspectCache[key] = System.currentTimeMillis() to fresh
+        }
+        return fresh
     }
-    if (fresh.isNotEmpty()) synchronized(inspectCache) {
-        inspectCache[url] = System.currentTimeMillis() to fresh
-    }
-    return fresh
 }
 
 /** Only http(s) and magnet links may enter the queue or be handed to yt-dlp/ffmpeg. */
@@ -258,7 +277,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -291,7 +310,19 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                     return@createContext
                 }
 
-                val qualities = inspectCached(targetUrl)
+                // The extension sends the page's cookies / referer so logged-in sites (Udemy...)
+                // answer yt-dlp like they answer the browser.
+                fun hdr(name: String) = exchange.requestHeaders.getFirst(name)?.trim().orEmpty()
+                    .take(16 * 1024).filter { it != '\r' && it != '\n' }
+
+                val headers = buildMap {
+                    hdr("X-FetchJet-Cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                    hdr("X-FetchJet-Referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                }
+                com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+                    headers["Referer"] ?: targetUrl, headers
+                )
+                val qualities = inspectCached(targetUrl, headers)
 
                 fun escape(s: String): String = jsonEscape(s)
 
@@ -326,7 +357,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -366,7 +397,10 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             val formatId = getString("formatId")?.trim().orEmpty()
             val qualities = if (formatId.isNotBlank()) {
                 val list = try {
-                    inspectCached(url)
+                    inspectCached(url, buildMap {
+                        hdr("cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                        hdr("referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                    })
                 } catch (_: Exception) {
                     emptyList()
                 }
@@ -380,7 +414,8 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 userAgent = hdr("userAgent"),
                 fileName = getString("fileName")?.trim().orEmpty().take(255),
                 mediaQualities = qualities,
-                direct = (this["direct"] as? Boolean) == true
+                direct = (this["direct"] as? Boolean) == true,
+                openClip = (this["openClip"] as? Boolean) == true
             )
         }
 
@@ -390,7 +425,10 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             }
             if (requestMethod.equals("OPTIONS", ignoreCase = true)) {
                 responseHeaders.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-                responseHeaders.add("Access-Control-Allow-Headers", "Content-Type, X-FetchJet")
+                responseHeaders.add(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                )
                 reply(204, "")
                 return true
             }
@@ -424,7 +462,16 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 )
                 return@createContext
             }
-            ExternalDownloadBridge.dispatch(request)
+            val dedupeKey =
+                request.url + "|" + (obj.getString("formatId") ?: "") + "|" + request.openClip
+            val now = System.currentTimeMillis()
+            val repeat = synchronized(recentAdds) {
+                recentAdds.entries.removeAll { now - it.value > 5_000 }
+                if (recentAdds.containsKey(dedupeKey)) true else {
+                    recentAdds[dedupeKey] = now; false
+                }
+            }
+            if (!repeat) ExternalDownloadBridge.dispatch(request)
             SwingUtilities.invokeLater { onShowAndFocus() }
             exchange.reply(200, """{"ok":true}""", "application/json; charset=UTF-8")
         }
@@ -474,7 +521,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet"
+                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -585,6 +632,8 @@ fun main(rawArgs: Array<String>) {
         }
 
         remember {
+            ExternalDownloadBridge.onShowAndFocus =
+                { SwingUtilities.invokeLater { triggerFocus() } }
             // (The bridge server calls onShowAndFocus itself; the ViewModel owns onExternalRequest.)
             ExternalDownloadBridge.openInBrowserFallback = { url ->
                 try {
@@ -664,10 +713,19 @@ fun main(rawArgs: Array<String>) {
                         window.isVisible = true
                         window.toFront()
                         window.requestFocus()
-                        // Windows OS trick to steal focus and bring window to front of browser:
+                        // Windows refuses to let a background process take the foreground
+                        // (SetForegroundWindow lock). A synthetic Alt tap counts as user input
+                        // and lifts the lock; always-on-top for a moment does the rest.
+                        try {
+                            val robot = java.awt.Robot()
+                            robot.keyPress(java.awt.event.KeyEvent.VK_ALT)
+                            robot.keyRelease(java.awt.event.KeyEvent.VK_ALT)
+                        } catch (_: Throwable) {
+                        }
                         window.isAlwaysOnTop = true
                         window.toFront()
                         window.requestFocus()
+                        delay(150)
                         window.isAlwaysOnTop = false
                     } catch (e: Exception) {
                         e.printStackTrace()

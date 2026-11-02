@@ -5,6 +5,7 @@ import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.core.models.YTDLRequest
 import com.deniscerri.ytdl.util.FileUtil
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,7 +92,18 @@ private val contentLengthCache = mutableMapOf<String, Long>()
 private fun getCachedContentLength(u: String): Long {
     val clean = u.trim()
     if (clean.isBlank()) return -1L
-    return contentLengthCache.getOrPut(clean) { probeContentLength(clean) }
+    return contentLengthCache.getOrPut(clean) {
+        val started = System.currentTimeMillis()
+        probeContentLength(clean).also { len ->
+            AppLog.d {
+                "Inspect: size probe ${System.currentTimeMillis() - started}ms -> $len ${
+                    clean.substringBefore(
+                        '?'
+                    ).take(120)
+                }"
+            }
+        }
+    }
 }
 
 private fun parseTimeToSeconds(timeStr: String?): Double {
@@ -149,12 +161,17 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
     null
 }
 
-actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry> =
+actual suspend fun inspectPlatformQualities(
+    url: String,
+    requestHeaders: Map<String, String>
+): List<MediaQualityEntry> =
     withContext(Dispatchers.IO) {
         val trimmedUrl = url.trim()
+        val initStarted = System.currentTimeMillis()
         if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) {
             return@withContext emptyList()
         }
+        AppLog.d { "Inspect: runtime ready in ${System.currentTimeMillis() - initStarted}ms" }
 
         val context = PathResolver.appContext ?: return@withContext emptyList()
 
@@ -162,15 +179,46 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
         val request = YTDLRequest(trimmedUrl)
         request.addOption("-j")
         request.addOption("--no-warnings")
+        request.addOption("--no-playlist")
+        ytDlpHeaderArgs(requestHeaders, url).chunked(2)
+            .forEach { (k, v) -> request.addOption(k, v) }
         FileUtil.getCookieFile(context) { cookiePath ->
             request.addOption("--cookies", cookiePath)
         }
 
+        val timed = AppLog.verbose
+        if (timed) request.addOption("-v")
+        val startedAt = System.currentTimeMillis()
         val response = try {
-            RuntimeManager.getInstance().execute(request)
-        } catch (_: Exception) {
+            if (timed) {
+                AppLog.d { "Inspect: yt-dlp start $trimmedUrl" }
+                RuntimeManager.getInstance()
+                    .execute(request, redirectErrorStream = true) { _, _, line ->
+                        if (!line.startsWith("{")) {
+                            AppLog.d {
+                                "Inspect +${System.currentTimeMillis() - startedAt}ms ${
+                                    if (line.contains(
+                                            "Command-line config"
+                                        )
+                                    ) line else line.take(300)
+                                }"
+                            }
+                        }
+                    }
+            } else {
+                RuntimeManager.getInstance().execute(request)
+            }
+        } catch (e: Exception) {
+            if (timed) AppLog.d {
+                "Inspect: yt-dlp failed after ${System.currentTimeMillis() - startedAt}ms: ${
+                    e.message?.take(
+                        300
+                    )
+                }"
+            }
             null
         } ?: return@withContext emptyList()
+        if (timed) AppLog.d { "Inspect: yt-dlp done in ${System.currentTimeMillis() - startedAt}ms (exit ${response.exitCode})" }
 
         val output = response.out.trim()
         if (output.isBlank()) return@withContext emptyList()
@@ -187,6 +235,7 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
         val videoDuration = json.optLong("duration", 0L)
 
         val rawFormats: JSONArray = json.optJSONArray("formats") ?: JSONArray()
+        val parseStarted = System.currentTimeMillis()
         val list = mutableListOf<MediaQualityEntry>()
         val seenKeys = mutableSetOf<String>()
 
@@ -222,9 +271,6 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
 
                 else -> 0.0
             }
-            val estimatedFromBitrate = if (videoDuration > 0 && bitrateBps > 0.0) {
-                ((bitrateBps / 8.0) * videoDuration).toLong()
-            } else -1L
 
             val clenFromUrl =
                 Regex("""[?&]clen=(\d+)""").find(directUrl)?.groupValues?.get(1)?.toLongOrNull()
@@ -232,9 +278,13 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
 
             // Only expose verified exact size (filesize, URL clen, or HTTP HEAD probe).
             // Do not expose unconfirmed estimates (like 2.9 GB); let unverified streams remain Unknown (-1L)
+            val isHlsFormat = f.optString("protocol")
+                .let { it.contains("m3u8", ignoreCase = true) || it == "mhtml" } ||
+                    directUrl.contains(".m3u8", ignoreCase = true)
             val filesize = when {
                 explicitFilesize > 0L -> explicitFilesize
                 clenFromUrl > 0L -> clenFromUrl
+                isHlsFormat -> -1L
                 else -> getCachedContentLength(directUrl.ifBlank { trimmedUrl })
             }
 
@@ -339,7 +389,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     list.add(
                         MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -353,11 +405,18 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 } else if (isDirectMp4) {
                     val existing = list[existingIndex]
                     val existingIsHls = existing.directUrl.contains(".m3u8", ignoreCase = true) ||
+                            existing.directUrl.contains("/hls", ignoreCase = true) ||
+                            existing.directUrl.contains(
+                                "manifest.googlevideo",
+                                ignoreCase = true
+                            ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
                     if (existingIsHls) {
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -371,6 +430,7 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 }
             }
         }
+        AppLog.d { "Inspect: ${rawFormats.length()} formats parsed in ${System.currentTimeMillis() - parseStarted}ms" }
 
         // If list is empty (e.g. direct mp4 or single stream sites)
         if (list.isEmpty()) {
@@ -441,7 +501,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
     onProgress: (Float, Long, Long, Long, String?) -> Unit,
-    onPostProcess: ((String, Float) -> Unit)?
+    onPostProcess: ((String, Float) -> Unit)?,
+    requestHeaders: Map<String, String>
 ): Boolean = withContext(Dispatchers.IO) {
     if (!ensureRuntimeInitialized()) {
         return@withContext false
@@ -471,6 +532,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val ext = if (isAudio) "mp3" else "%(ext)s"
     val outputTemplate = File(outDir, "$cleanName.$ext").absolutePath
     request.addOption("-o", outputTemplate)
+    ytDlpHeaderArgs(requestHeaders, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
     request.addOption("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
 
     if (isAudio) {
@@ -910,7 +972,6 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
 }
 
-
 actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         val trimmedUrl = normalizePlaylistUrl(url)
@@ -930,4 +991,35 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
             null
         } ?: return@withContext null
         parsePlaylistJson(response.out)
+    }
+
+actual fun lastMediaInspectionError(): String? = null
+
+actual suspend fun runYtDlpJson(
+    url: String,
+    selector: String,
+    headers: Map<String, String>
+): String? =
+    withContext(Dispatchers.IO) {
+        val trimmedUrl = url.trim()
+        if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) return@withContext null
+        val context = PathResolver.appContext ?: return@withContext null
+        val request = YTDLRequest(trimmedUrl)
+        request.addOption("-j")
+        request.addOption("--no-warnings")
+        request.addOption("--no-playlist")
+        request.addOption("-f", selector)
+        ytDlpHeaderArgs(headers, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
+        FileUtil.getCookieFile(context) { cookiePath -> request.addOption("--cookies", cookiePath) }
+        val response = try {
+            RuntimeManager.getInstance().execute(request)
+        } catch (e: Exception) {
+            AppLog.d {
+                "runYtDlpJson: yt-dlp failed: ${
+                    e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
+                }"
+            }
+            null
+        }
+        response?.out?.trim()?.takeIf { it.isNotBlank() }
     }

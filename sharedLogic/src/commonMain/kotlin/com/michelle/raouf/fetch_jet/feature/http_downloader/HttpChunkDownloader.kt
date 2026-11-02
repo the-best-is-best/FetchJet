@@ -5,6 +5,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.http_downloader.ChunkLayout.Companion.STALL_FAIL_MS
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
@@ -41,8 +42,13 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
 import okio.buffer
+import okio.use
+import kotlin.concurrent.Volatile
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
+
+private class ServerBusyException(message: String) : Exception(message)
 
 private data class ResolvedHttpMetadata(
     val finalUrl: String,
@@ -54,32 +60,160 @@ private data class ResolvedHttpMetadata(
     val contentDisposition: String?
 )
 
-private class ChunkProgressTracker(numChunks: Int, initialBytes: List<Long>) {
-    private val downloaded = initialBytes.toLongArray()
-    private val mutex = Mutex()
+/**
+ * The live piece map of one download (IDM-style). Pieces are byte ranges; a worker that
+ * finishes its piece takes half of the biggest piece still being downloaded ([split]), so
+ * every connection stays busy until the last byte. Each piece writes its own `.partN` file;
+ * the layout is saved next to them ([manifest]) so a resume continues the same pieces.
+ */
+private class ChunkLayout(initial: List<DownloadChunk>) {
+    class Piece(val index: Int, val start: Long, initialEnd: Long, initialDownloaded: Long) {
+        @Volatile
+        var end: Long = initialEnd
+        @Volatile
+        var downloaded: Long = initialDownloaded
+        @Volatile
+        var running = false
+        @Volatile
+        var speedBytesPerSec = 0L
 
-    suspend fun update(index: Int, bytes: Long) {
-        mutex.withLock {
-            if (index in downloaded.indices) {
-                downloaded[index] = bytes
-            }
+        /** Last failure ("HTTP 429"); shown as "retrying" until the piece gets data again. */
+        @Volatile
+        var lastError: String? = null
+
+        /** Do not retry this piece before this moment (monotonic ms). */
+        @Volatile
+        var retryAtMs = 0L
+        val length: Long get() = end - start + 1
+        val isCompleted: Boolean get() = downloaded >= length
+        val remaining: Long get() = (length - downloaded).coerceAtLeast(0L)
+    }
+
+    private val mutex = Mutex()
+    private val pieces = ArrayList<Piece>()
+    private var changed = false
+    private val clock = TimeSource.Monotonic.markNow()
+    fun nowMs(): Long = clock.elapsedNow().inWholeMilliseconds
+
+    /** When any piece last received data (monotonic ms). */
+    @Volatile
+    var lastProgressMs: Long = 0L
+
+    init {
+        initial.forEach {
+            pieces.add(
+                Piece(
+                    it.chunkIndex,
+                    it.startByte,
+                    it.endByte,
+                    it.downloadedBytes
+                )
+            )
         }
     }
 
-    suspend fun getTotal(): Long {
-        return mutex.withLock { downloaded.sum() }
+    suspend fun total(): Long = mutex.withLock { pieces.sumOf { min(it.downloaded, it.length) } }
+
+    suspend fun snapshot(): List<DownloadChunk> = mutex.withLock {
+        pieces.sortedBy { it.start }.map {
+            DownloadChunk(
+                chunkIndex = it.index,
+                startByte = it.start,
+                endByte = it.end,
+                downloadedBytes = min(it.downloaded, it.length),
+                isCompleted = it.isCompleted,
+                isActive = it.running && !it.isCompleted,
+                speedBytesPerSec = if (it.running) it.speedBytesPerSec else 0L,
+                note = if (!it.isCompleted && !it.running) it.lastError else null
+            )
+        }
     }
 
-    suspend fun getChunks(chunkSpecs: List<DownloadChunk>): List<DownloadChunk> {
-        return mutex.withLock {
-            chunkSpecs.map { c ->
-                val dl =
-                    if (c.chunkIndex in downloaded.indices) downloaded[c.chunkIndex] else c.downloadedBytes
-                c.copy(
-                    downloadedBytes = dl,
-                    isCompleted = dl >= (c.endByte - c.startByte + 1)
-                )
+    /** Ordered by position, for assembling the file. */
+    suspend fun ordered(): List<Piece> = mutex.withLock { pieces.sortedBy { it.start } }
+
+    /** Next piece for a free worker: an idle unfinished one, else half of the biggest running one. */
+    suspend fun next(): Piece? = mutex.withLock {
+        val now = nowMs()
+        if (connectionCap != Int.MAX_VALUE && now - lastBusyMs >= CAP_RAISE_MS) {
+            connectionCap++; lastBusyMs = now
+        }
+        if (pieces.count { it.running } >= connectionCap) return@withLock null
+        pieces.firstOrNull { !it.running && !it.isCompleted && it.retryAtMs <= now }
+            ?.also { it.running = true }
+            ?: split()?.also { it.running = true }
+    }
+
+    /** Unfinished pieces exist that no worker holds (they are waiting out a retry delay). */
+    suspend fun hasPending(): Boolean = mutex.withLock {
+        pieces.any { !it.running && !it.isCompleted } ||
+                (connectionCap != Int.MAX_VALUE && pieces.any { it.running })
+    }
+
+    /** Give a failed piece back, to be retried after [delayMs]. */
+    suspend fun fail(piece: Piece, error: String, delayMs: Long) = mutex.withLock {
+        piece.running = false; piece.speedBytesPerSec = 0L
+        piece.lastError = error; piece.retryAtMs = nowMs() + delayMs
+    }
+
+    suspend fun serverBusy(piece: Piece, error: String) = mutex.withLock {
+        piece.running = false; piece.speedBytesPerSec = 0L
+        piece.lastError = error; piece.retryAtMs = nowMs() + BUSY_RETRY_MS
+        connectionCap = pieces.count { it.running }.coerceAtLeast(1)
+        lastBusyMs = nowMs()
+    }
+
+    private var connectionCap = Int.MAX_VALUE
+    private var lastBusyMs = 0L
+
+    private fun split(): Piece? {
+        val victim = pieces.filter { it.running && it.remaining >= MIN_SPLIT_BYTES * 2 }
+            .maxByOrNull { it.remaining } ?: return null
+        val pos = victim.start + victim.downloaded
+        val mid = pos + victim.remaining / 2
+        val piece = Piece(pieces.maxOf { it.index } + 1, mid, victim.end, 0L)
+        victim.end = mid - 1
+        pieces.add(piece)
+        changed = true
+        return piece
+    }
+
+    suspend fun release(piece: Piece) =
+        mutex.withLock { piece.running = false; piece.speedBytesPerSec = 0L }
+
+    /** Layout as text (one `index start end` per line); null when nothing changed since the last call. */
+    suspend fun manifestIfChanged(): String? = mutex.withLock {
+        if (!changed) return@withLock null
+        changed = false
+        manifestLocked()
+    }
+
+    suspend fun manifest(): String = mutex.withLock { manifestLocked() }
+
+    private fun manifestLocked() = pieces.joinToString("\n") { "${it.index} ${it.start} ${it.end}" }
+
+    companion object {
+        const val MIN_SPLIT_BYTES = 1L * 1024 * 1024
+        const val MAX_CONNECTIONS = 32
+        const val CAP_RAISE_MS = 10_000L
+        const val BUSY_RETRY_MS = 1_000L
+
+        /** Fail the download when no piece has received data for this long. */
+        const val STALL_FAIL_MS = 180_000L
+
+        /** Rebuilds a layout from [manifest] text, taking downloaded bytes from the part files. */
+        fun fromManifest(manifest: String, partSize: (Int) -> Long): List<DownloadChunk>? {
+            val chunks = manifest.lines().mapNotNull { line ->
+                val f = line.trim().split(' ')
+                if (f.size != 3) return@mapNotNull null
+                val idx = f[0].toIntOrNull() ?: return@mapNotNull null
+                val start = f[1].toLongOrNull() ?: return@mapNotNull null
+                val end = f[2].toLongOrNull() ?: return@mapNotNull null
+                val len = end - start + 1
+                val have = min(partSize(idx), len)
+                DownloadChunk(idx, start, end, have, have >= len)
             }
+            return chunks.takeIf { it.isNotEmpty() }
         }
     }
 }
@@ -279,7 +413,13 @@ class HttpChunkDownloader(
                     throw e
                 } catch (e: RangeNotHonouredException) {
                     // The server cannot do ranges at all: the parts are worthless, stream it whole.
-                    updateTaskState(taskId) { it.copy(serverSupportsResume = false) }
+                    updateTaskState(taskId) {
+                        it.copy(
+                            serverSupportsResume = false,
+                            chunks = emptyList(),
+                            currentStepText = "Single connection · ${e.message}"
+                        )
+                    }
                     cleanupTempFiles(
                         initialTask.copy(
                             fileName = targetFileName,
@@ -420,48 +560,61 @@ class HttpChunkDownloader(
         totalLength: Long
     ) {
         val destPath = cachePath
-        val numChunks = calculateOptimalChunkCount(totalLength)
-        val chunkSize = totalLength / numChunks
         val destOkioPath = destPath.toPath()
+        val manifestPath = "$destPath.chunks".toPath()
+        fun partPath(index: Int) = "${destPath}.part$index".toPath()
+        fun partSize(index: Int): Long =
+            if (FileSystem.SYSTEM.exists(partPath(index))) FileSystem.SYSTEM.metadataOrNull(
+                partPath(
+                    index
+                )
+            )?.size ?: 0L else 0L
 
         try {
-            destOkioPath.parent?.let { parentDir ->
-                FileSystem.SYSTEM.createDirectories(parentDir)
-            }
+            destOkioPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
         } catch (_: Exception) {
         }
 
-        val chunkSpecs = mutableListOf<DownloadChunk>()
-        for (i in 0 until numChunks) {
-            val start = i * chunkSize
-            val end = if (i == numChunks - 1) totalLength - 1 else (start + chunkSize - 1)
-            val partPath = "${destPath}.part$i".toPath()
-            val existingSize = if (FileSystem.SYSTEM.exists(partPath)) {
-                FileSystem.SYSTEM.metadataOrNull(partPath)?.size ?: 0L
-            } else 0L
+        val connections = connectionsFor(taskId, totalLength)
 
-            val isCompleted = existingSize >= (end - start + 1)
-            chunkSpecs.add(
-                DownloadChunk(
-                    chunkIndex = i,
-                    startByte = start,
-                    endByte = end,
-                    downloadedBytes = min(existingSize, end - start + 1),
-                    isCompleted = isCompleted
+        // Resume the saved piece map if there is one; otherwise start with equal pieces.
+        // (Parts without a map come from an older version, which always split equally.)
+        val resumed = try {
+            if (FileSystem.SYSTEM.exists(manifestPath))
+                ChunkLayout.fromManifest(
+                    FileSystem.SYSTEM.read(manifestPath) { readUtf8() },
+                    ::partSize
                 )
-            )
+            else null
+        } catch (_: Exception) {
+            null
+        }
+        val initialChunks = resumed ?: run {
+            val n =
+                if (FileSystem.SYSTEM.exists(partPath(0))) calculateOptimalChunkCount(totalLength) else connections
+            val chunkSize = totalLength / n
+            (0 until n).map { i ->
+                val start = i * chunkSize
+                val end = if (i == n - 1) totalLength - 1 else start + chunkSize - 1
+                val have = min(partSize(i), end - start + 1)
+                DownloadChunk(i, start, end, have, have >= end - start + 1)
+            }
+        }
+        val layout = ChunkLayout(initialChunks)
+        try {
+            FileSystem.SYSTEM.write(manifestPath) { writeUtf8(layout.manifest()) }
+        } catch (_: Exception) {
         }
 
-        val initialTotal = chunkSpecs.sumOf { it.downloadedBytes }
-        val tracker = ChunkProgressTracker(numChunks, chunkSpecs.map { it.downloadedBytes })
-
+        val initialTotal = layout.total()
         updateTaskState(taskId) {
             it.copy(
                 status = DownloadStatus.DOWNLOADING,
                 totalBytes = totalLength,
                 downloadedBytes = initialTotal,
                 progress = if (totalLength > 0) initialTotal.toFloat() / totalLength.toFloat() else 0f,
-                chunks = chunkSpecs
+                chunks = initialChunks,
+                connections = connections
             )
         }
 
@@ -473,13 +626,11 @@ class HttpChunkDownloader(
             while (isActive) {
                 delay(200)
                 val nowMs = startMark.elapsedNow().inWholeMilliseconds
-                val currentTotal = tracker.getTotal()
+                val currentTotal = layout.total()
                 val speed = speedometer.recordSample(nowMs, currentTotal)
-
                 val prog =
                     if (totalLength > 0) currentTotal.toFloat() / totalLength.toFloat() else 0f
-                val currentChunks = tracker.getChunks(chunkSpecs)
-
+                val currentChunks = layout.snapshot()
                 updateTaskState(taskId) { t ->
                     t.copy(
                         downloadedBytes = currentTotal,
@@ -488,103 +639,121 @@ class HttpChunkDownloader(
                         chunks = currentChunks
                     )
                 }
-            }
-        }
-
-        val taskRateLimiter =
-            com.michelle.raouf.fetch_jet.core.network.RateLimiter {
-                speedLimitProvider(taskId)
-            }
-
-        // Children of the task coroutine: pause()/cancel() on the task job cancels every
-        // chunk. With scope.async they outlived the task and a resume appended to the same
-        // .partN files while the old workers were still writing -> corrupted parts.
-        coroutineScope {
-        val chunkJobs = chunkSpecs.map { chunk ->
-            async {
-                if (chunk.isCompleted) return@async
-
-                val partPath = "${destPath}.part${chunk.chunkIndex}".toPath()
-
-                fetchWithRetry {
-                    val existingPartSize = if (FileSystem.SYSTEM.exists(partPath)) {
-                        FileSystem.SYSTEM.metadataOrNull(partPath)?.size ?: 0L
-                    } else 0L
-                    var currentDownloaded =
-                        min(existingPartSize, chunk.endByte - chunk.startByte + 1)
-                    val currentStartByte = chunk.startByte + currentDownloaded
-                    val endByte = chunk.endByte
-
-                    if (currentStartByte > endByte) {
-                        tracker.update(chunk.chunkIndex, currentDownloaded)
-                        return@fetchWithRetry
-                    }
-
-                    client.prepareGet(url) {
-                        applyDownloadHeaders(url, taskHeaders(taskId, url))
-                        header(HttpHeaders.Range, "bytes=$currentStartByte-$endByte")
-                    }.execute { response ->
-                        // A server that ignores Range answers 200 with the WHOLE file; appending
-                        // that to a part would corrupt it. Ranged requests must get 206.
-                        if (response.status.value != 206) {
-                            throw RangeNotHonouredException("Chunk ${chunk.chunkIndex} failed with HTTP ${response.status.value} (server did not honour Range)")
-                        }
-
-                        val channel: ByteReadChannel = response.bodyAsChannel()
-                        val fileSink = FileSystem.SYSTEM.appendingSink(partPath).buffer()
-                        val buffer = ByteArray(64 * 1024)
-
-                        try {
-                            while (!channel.isClosedForRead) {
-                                val read = channel.readAvailable(buffer, 0, buffer.size)
-                                if (read <= 0) break
-
-                                fileSink.write(buffer, 0, read)
-                                currentDownloaded += read
-                                tracker.update(chunk.chunkIndex, currentDownloaded)
-                                taskRateLimiter.acquire(read)
-                            }
-                            tracker.update(chunk.chunkIndex, currentDownloaded)
-                            fileSink.flush()
-                        } finally {
-                            fileSink.close()
-                        }
+                layout.manifestIfChanged()?.let { m ->
+                    try {
+                        FileSystem.SYSTEM.write(manifestPath) { writeUtf8(m) }
+                    } catch (_: Exception) {
                     }
                 }
             }
         }
 
-        try {
-            chunkJobs.awaitAll()
-        } finally {
-            tickerJob.cancel()
-        }
+        val taskRateLimiter =
+            com.michelle.raouf.fetch_jet.core.network.RateLimiter { speedLimitProvider(taskId) }
+
+        // Children of the task coroutine: pause()/cancel() on the task job cancels every
+        // worker. With scope.async they outlived the task and a resume appended to the same
+        // .partN files while the old workers were still writing -> corrupted parts.
+        coroutineScope {
+            layout.lastProgressMs = layout.nowMs()
+            val workers = (0 until connections).map {
+                async {
+                    var backoff = 1_000L
+                    while (true) {
+                        val piece = layout.next()
+                        if (piece == null) {
+                            // Nothing free right now: pieces waiting out a retry delay, or all done.
+                            if (!layout.hasPending()) break
+                            delay(300); continue
+                        }
+                        try {
+                            downloadPiece(
+                                taskId,
+                                url,
+                                piece,
+                                partPath(piece.index),
+                                taskRateLimiter,
+                                layout
+                            )
+                            layout.release(piece)
+                            backoff = 1_000L
+                        } catch (e: CancellationException) {
+                            layout.release(piece); throw e
+                        } catch (e: RangeNotHonouredException) {
+                            layout.release(piece); throw e
+                        } catch (e: ServerBusyException) {
+                            val stalledMs = layout.nowMs() - layout.lastProgressMs
+                            if (stalledMs > STALL_FAIL_MS) throw Exception(
+                                "No data for ${stalledMs / 1000}s · ${shortError(e)}"
+                            )
+                            layout.serverBusy(piece, shortError(e))
+                            delay(ChunkLayout.BUSY_RETRY_MS.milliseconds)
+                        } catch (e: Exception) {
+                            // 429 / 503 / a dropped connection: the server will not take this
+                            // connection right now. Hand the piece back, wait, try again; the
+                            // other connections keep going. Only a download that gets no data at
+                            // all for a long time fails.
+                            val stalledMs = layout.nowMs() - layout.lastProgressMs
+                            if (stalledMs > STALL_FAIL_MS) throw Exception(
+                                "No data for ${stalledMs / 1000}s · ${
+                                    shortError(
+                                        e
+                                    )
+                                }"
+                            )
+                            layout.fail(piece, shortError(e), backoff)
+                            delay(backoff.milliseconds)
+                            backoff = (backoff * 2).coerceAtMost(20_000L)
+                        }
+                    }
+                }
+            }
+            try {
+                workers.awaitAll()
+            } finally {
+                tickerJob.cancel()
+            }
         }
 
-        // Merge chunk parts into final target file
+        // Assemble the pieces in byte order (a part may hold a few bytes past its piece when
+        // the piece was split while it was writing: copy exactly the piece length).
+        val finalPieces = layout.ordered()
         val finalSink = FileSystem.SYSTEM.sink(destOkioPath).buffer()
         try {
-            for (i in 0 until numChunks) {
-                val partPath = "${destPath}.part$i".toPath()
-                if (FileSystem.SYSTEM.exists(partPath)) {
-                    val partSource = FileSystem.SYSTEM.source(partPath).buffer()
-                    try {
-                        finalSink.writeAll(partSource)
-                    } finally {
-                        partSource.close()
+            for (piece in finalPieces) {
+                val pp = partPath(piece.index)
+                if (!FileSystem.SYSTEM.exists(pp)) throw Exception("Piece ${piece.index} is missing")
+                val src = FileSystem.SYSTEM.source(pp).buffer()
+                try {
+                    var left = piece.length
+                    val buf = ByteArray(256 * 1024)
+                    while (left > 0) {
+                        val n = src.read(buf, 0, min(buf.size.toLong(), left).toInt())
+                        if (n <= 0) break
+                        finalSink.write(buf, 0, n)
+                        left -= n
                     }
-                    FileSystem.SYSTEM.delete(partPath)
+                } finally {
+                    src.close()
                 }
             }
             finalSink.flush()
         } finally {
             finalSink.close()
         }
+        for (piece in finalPieces) try {
+            FileSystem.SYSTEM.delete(partPath(piece.index))
+        } catch (_: Exception) {
+        }
+        try {
+            FileSystem.SYSTEM.delete(manifestPath)
+        } catch (_: Exception) {
+        }
 
         // Never report a short file as finished.
         val assembledSize = FileSystem.SYSTEM.metadataOrNull(destOkioPath)?.size ?: 0L
         if (totalLength > 0 && assembledSize != totalLength) {
-            throw Exception("Assembled file is $assembledSize bytes, expected $totalLength (a chunk is missing)")
+            throw Exception("Assembled file is $assembledSize bytes, expected $totalLength (a piece is missing)")
         }
 
         // Copy assembled file from cache to final destination
@@ -599,6 +768,14 @@ class HttpChunkDownloader(
         FileSystem.SYSTEM.copy(destOkioPath, finalOkioPath)
         destOkioPath.parent?.let { deleteRecursively(it) }
 
+        val doneChunks = layout.snapshot().map {
+            it.copy(
+                isCompleted = true,
+                isActive = false,
+                downloadedBytes = it.endByte - it.startByte + 1,
+                speedBytesPerSec = 0L
+            )
+        }
         updateTaskState(taskId) {
             it.copy(
                 status = DownloadStatus.COMPLETED,
@@ -606,14 +783,115 @@ class HttpChunkDownloader(
                 totalBytes = totalLength,
                 progress = 1.0f,
                 downloadSpeedBytesPerSec = 0L,
-                chunks = chunkSpecs.map { c ->
-                    c.copy(
-                        isCompleted = true,
-                        downloadedBytes = c.endByte - c.startByte + 1
-                    )
-                }
+                chunks = doneChunks
             )
         }
+    }
+
+    /** Downloads one piece into its part file, stopping at the piece's (possibly shrinking) end. */
+    private suspend fun downloadPiece(
+        taskId: String,
+        url: String,
+        piece: ChunkLayout.Piece,
+        partPath: okio.Path,
+        rateLimiter: com.michelle.raouf.fetch_jet.core.network.RateLimiter,
+        layout: ChunkLayout
+    ) {
+        run {
+            val existing =
+                if (FileSystem.SYSTEM.exists(partPath)) FileSystem.SYSTEM.metadataOrNull(partPath)?.size
+                    ?: 0L else 0L
+            // The part file is the truth for how much of the piece is on disk.
+            piece.downloaded = min(existing, piece.length)
+            if (piece.downloaded < existing) {
+                // Part is longer than the piece (split happened while writing): trim it.
+                trimFile(partPath, piece.downloaded)
+            }
+            if (piece.isCompleted) return@run
+            val from = piece.start + piece.downloaded
+            val to = piece.end
+
+            client.prepareGet(url) {
+                applyDownloadHeaders(url, taskHeaders(taskId, url))
+                header(HttpHeaders.Range, "bytes=$from-$to")
+            }.execute { response ->
+                // A server that ignores Range answers 200 with the WHOLE file; appending
+                // that to a part would corrupt it. Ranged requests must get 206.
+                if (response.status.value == 200) {
+                    throw RangeNotHonouredException("Piece ${piece.index}: server answered 200 to a Range request (no ranges)")
+                }
+                if (response.status.value == 429 || response.status.value == 503) {
+                    throw ServerBusyException("Piece ${piece.index}: HTTP ${response.status.value}")
+                }
+                if (response.status.value != 206) {
+                    // 416 / 429 / 5xx: a transient problem, worth the retries.
+                    throw Exception("Piece ${piece.index}: HTTP ${response.status.value}")
+                }
+                val channel: ByteReadChannel = response.bodyAsChannel()
+                val sink = FileSystem.SYSTEM.appendingSink(partPath).buffer()
+                val buffer = ByteArray(64 * 1024)
+                var windowStart = TimeSource.Monotonic.markNow()
+                var windowBytes = 0L
+                try {
+                    while (!channel.isClosedForRead) {
+                        val read = channel.readAvailable(buffer, 0, buffer.size)
+                        if (read <= 0) break
+                        // The end may have moved closer (another worker took the tail of this piece).
+                        val allowed = piece.length - piece.downloaded
+                        if (allowed <= 0) break
+                        val n = min(read.toLong(), allowed).toInt()
+                        sink.write(buffer, 0, n)
+                        piece.downloaded += n
+                        piece.lastError = null
+                        layout.lastProgressMs = layout.nowMs()
+                        windowBytes += n
+                        val elapsed = windowStart.elapsedNow().inWholeMilliseconds
+                        if (elapsed >= 1000) {
+                            piece.speedBytesPerSec = windowBytes * 1000 / elapsed
+                            windowStart = TimeSource.Monotonic.markNow(); windowBytes = 0
+                        }
+                        rateLimiter.acquire(n)
+                        if (piece.isCompleted) break
+                    }
+                    sink.flush()
+                } finally {
+                    sink.close()
+                }
+            }
+        }
+    }
+
+    private fun shortError(e: Exception): String =
+        (e.message ?: e::class.simpleName ?: "error").substringBefore('\n').take(60)
+
+    private fun trimFile(path: okio.Path, keep: Long) {
+        try {
+            val tmp = "$path.trim".toPath()
+            FileSystem.SYSTEM.source(path).buffer().use { src ->
+                FileSystem.SYSTEM.sink(tmp).buffer().use { out ->
+                    var left = keep
+                    val buf = ByteArray(256 * 1024)
+                    while (left > 0) {
+                        val n = src.read(buf, 0, min(buf.size.toLong(), left).toInt())
+                        if (n <= 0) break
+                        out.write(buf, 0, n); left -= n
+                    }
+                }
+            }
+            FileSystem.SYSTEM.atomicMove(tmp, path)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Connections for this task: its own setting, else the app setting, else by file size. */
+    private fun connectionsFor(taskId: String, totalLength: Long): Int {
+        val task = tasksState.value[taskId]
+        val wanted = task?.maxConnections?.takeIf { it > 0 }
+            ?: com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.connections.value.takeIf { it > 0 }
+            ?: calculateOptimalChunkCount(totalLength)
+        // No point in more pieces than 512 KB each.
+        val byPieceSize = (totalLength / (512L * 1024)).toInt().coerceAtLeast(1)
+        return wanted.coerceIn(1, ChunkLayout.MAX_CONNECTIONS).coerceAtMost(byPieceSize)
     }
 
     private suspend fun downloadSingleStream(
@@ -979,13 +1257,19 @@ class HttpChunkDownloader(
         val cacheDir = pathResolver.getTempDirectory()
         // Parts are written to <temp>/task_<id>/<name>.partN (see executeDownload).
         val cachePath = "$cacheDir/task_${task.id}/${task.fileName}"
-        for (i in 0..8) {
-            val partPath = "${cachePath}.part$i".toPath()
-            try {
-                if (FileSystem.SYSTEM.exists(partPath)) {
-                    FileSystem.SYSTEM.delete(partPath)
+        val name = task.fileName
+        try {
+            val dir = "$cacheDir/task_${task.id}".toPath()
+            FileSystem.SYSTEM.list(dir).forEach { p ->
+                val n = p.name
+                if (n.startsWith("$name.part") || n == "$name.chunks") FileSystem.SYSTEM.delete(p)
+            }
+        } catch (_: Exception) {
+            for (i in 0..ChunkLayout.MAX_CONNECTIONS * 4) {
+                try {
+                    FileSystem.SYSTEM.delete("${cachePath}.part$i".toPath())
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
             }
         }
     }

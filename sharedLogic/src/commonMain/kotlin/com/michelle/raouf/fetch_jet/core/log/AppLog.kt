@@ -1,7 +1,5 @@
 package com.michelle.raouf.fetch_jet.core.log
 
-import com.michelle.raouf.fetch_jet.core.log.AppLog.verbose
-
 
 /**
  * Diagnostic logging switch. Errors are always printed; the chatty lines (torrent peer

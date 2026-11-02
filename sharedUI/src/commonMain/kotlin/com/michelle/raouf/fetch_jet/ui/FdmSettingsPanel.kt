@@ -2,7 +2,6 @@ package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,12 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -38,14 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
-import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.getPlatform
@@ -53,7 +45,7 @@ import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
 
 /** The pages of Settings, in the order of the side list. */
-private enum class SettingsSection(val title: String, val glyph: String, val blurb: String) {
+internal enum class SettingsSection(val title: String, val glyph: String, val blurb: String) {
     GENERAL("General", "◐", "Look of the app and how it starts"),
     DOWNLOADS("Downloads", "↓", "Where files go and how many run at once"),
     BROWSER("Browser extension", "⧉", "Send links and videos from your browser to FetchJet"),
@@ -80,12 +72,24 @@ fun FdmSettingsPanel(
     ytDlpStatus: String,
     isYtDlpInstalled: Boolean,
     isFfmpegInstalled: Boolean,
+    jsRuntimeName: String = "",
+    isJsRuntimeReady: Boolean = true,
     toolsDirectoryPath: String,
     torrentEngineStatus: String = "",
     isTorrentEngineReady: Boolean = true,
     isDownloadingYtDlp: Boolean,
+    toolDownloadName: String? = null,
+    toolDownloadFraction: Float? = null,
+    monitorClipboard: Boolean = false,
+    clipboardVideoPages: Boolean = false,
+    sortIntoFolders: Boolean = false,
+    defaultConnections: Int = 0,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
+    onMonitorClipboardChanged: (Boolean) -> Unit = {},
+    onClipboardVideoPagesChanged: (Boolean) -> Unit = {},
+    onSortIntoFoldersChanged: (Boolean) -> Unit = {},
+    onDefaultConnectionsChanged: (Int) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
     onGlobalDownloadSpeedLimitChanged: (Long) -> Unit,
@@ -95,11 +99,12 @@ fun FdmSettingsPanel(
     onApplySettings: () -> Unit
 ) {
     val isJvm = getPlatform().isJvm
+    val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
     val sections = SettingsSection.entries.filter {
         when (it) {
-            SettingsSection.MEDIA -> isJvm
+            SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
             SettingsSection.TORRENT -> AppFeatures.torrent
             SettingsSection.UPDATES -> updateState.supported
             else -> true
@@ -142,14 +147,22 @@ fun FdmSettingsPanel(
             SettingsSection.GENERAL -> GeneralPage(
                 isDarkMode,
                 unitKey,
+                monitorClipboard,
+                clipboardVideoPages,
                 onThemeToggled,
-                onSpeedDisplayUnitChanged
+                onSpeedDisplayUnitChanged,
+                onMonitorClipboardChanged,
+                onClipboardVideoPagesChanged
             )
 
             SettingsSection.DOWNLOADS -> DownloadsPage(
                 destinationPath,
+                sortIntoFolders,
+                defaultConnections,
                 pathResolver,
-                onDestinationPathChanged
+                onDestinationPathChanged,
+                onSortIntoFoldersChanged,
+                onDefaultConnectionsChanged
             )
 
             SettingsSection.SPEED -> SpeedPage(
@@ -158,8 +171,9 @@ fun FdmSettingsPanel(
             )
 
             SettingsSection.MEDIA -> MediaToolsPage(
-                ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, toolsDirectoryPath,
-                isDownloadingYtDlp, pathResolver, onDownloadYtDlpClicked
+                ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,
+                if (isIos) "" else toolsDirectoryPath, isDownloadingYtDlp, toolDownloadName, toolDownloadFraction,
+                pathResolver, onDownloadYtDlpClicked
             )
 
             SettingsSection.TORRENT -> TorrentPage(
@@ -277,7 +291,7 @@ fun FdmSettingsPanel(
 }
 
 @Composable
-private fun PageHeader(s: SettingsSection) {
+internal fun PageHeader(s: SettingsSection) {
     Text(s.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(4.dp))
     Text(
@@ -289,7 +303,7 @@ private fun PageHeader(s: SettingsSection) {
 }
 
 @Composable
-private fun SectionNavItem(
+internal fun SectionNavItem(
     s: SettingsSection,
     hint: String,
     hintColor: Color?,
@@ -349,360 +363,3 @@ private fun SectionNavItem(
 }
 
 // ---------------------------------------------------------------- pages
-
-@Composable
-private fun GeneralPage(
-    isDarkMode: Boolean,
-    unitKey: String,
-    onThemeToggled: () -> Unit,
-    onSpeedDisplayUnitChanged: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = "Appearance") {
-            SettingRow("Theme", "Light or dark look for every screen") {
-                SegmentedPicker(
-                    options = listOf(false, true),
-                    selected = isDarkMode,
-                    label = { if (it) "Dark" else "Light" },
-                    onSelect = { if (it != isDarkMode) onThemeToggled() }
-                )
-            }
-            SettingDivider()
-            SettingRow(
-                "Speed shown in",
-                "Bytes (MB/s) like file sizes, or bits (Mbps) like your internet plan"
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
-            ) {
-                SegmentedPicker(
-                    options = listOf("MB/s", "KB/s", "Mbps", "Kbps"),
-                    selected = unitKey,
-                    label = { it },
-                    onSelect = onSpeedDisplayUnitChanged
-                )
-            }
-        }
-        if (StartupLauncher.isSupported) StartupSettingsCard()
-    }
-}
-
-@Composable
-private fun DownloadsPage(
-    destinationPath: String,
-    pathResolver: PathResolver,
-    onDestinationPathChanged: (String) -> Unit
-) {
-    val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
-    var showDirectoryPicker by remember { mutableStateOf(false) }
-    if (showDirectoryPicker) {
-        DirectoryPickerDialog(
-            initialPath = destinationPath,
-            pathResolver = pathResolver,
-            onDirectorySelected = { selected ->
-                onDestinationPathChanged(selected)
-                showDirectoryPicker = false
-            },
-            onDismissRequest = { showDirectoryPicker = false }
-        )
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(
-            title = "Save location",
-            footer = "New downloads go here unless you pick another folder when adding them."
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = destinationPath,
-                    onValueChange = onDestinationPathChanged,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    placeholder = { Text("Folder path") },
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                    )
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { showDirectoryPicker = true },
-                        shape = RoundedCornerShape(10.dp)
-                    ) { Text("Choose folder…", fontWeight = FontWeight.SemiBold) }
-                    if (pathResolver.isOpenFolderSupported()) {
-                        OutlinedButton(
-                            onClick = { pathResolver.openDirectoryInExplorer(destinationPath) },
-                            shape = RoundedCornerShape(10.dp)
-                        ) { Text("Open") }
-                    }
-                    if (destinationPath != defaultDownloads) {
-                        OutlinedButton(
-                            onClick = { onDestinationPathChanged(defaultDownloads) },
-                            shape = RoundedCornerShape(10.dp)
-                        ) { Text("Use Downloads") }
-                    }
-                }
-            }
-        }
-        QueueSettingsCard()
-    }
-}
-
-@Composable
-private fun SpeedPage(
-    downloadLimit: Long,
-    uploadLimit: Long,
-    onDownloadLimit: (Long) -> Unit,
-    onUploadLimit: (Long) -> Unit
-) {
-    val ios = getPlatform().name.startsWith("iOS", ignoreCase = true)
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(
-            footer = "Applied right away and shared between the downloads that are running." +
-                    if (ios) " On iOS, HTTP downloads already running in the background keep their speed; " +
-                            "the limit applies to the ones started after it." else ""
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                TrafficLimitSelector(
-                    title = "Download",
-                    speedBytesPerSec = downloadLimit,
-                    onSpeedChanged = onDownloadLimit
-                )
-            }
-            SettingDivider()
-            Column(modifier = Modifier.padding(16.dp)) {
-                TrafficLimitSelector(
-                    title = "Upload (torrents)",
-                    speedBytesPerSec = uploadLimit,
-                    onSpeedChanged = onUploadLimit
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaToolsPage(
-    ytDlpStatus: String,
-    isYtDlpInstalled: Boolean,
-    isFfmpegInstalled: Boolean,
-    toolsDirectoryPath: String,
-    isDownloadingYtDlp: Boolean,
-    pathResolver: PathResolver,
-    onDownloadYtDlpClicked: () -> Unit
-) {
-    val ready = isYtDlpInstalled && isFfmpegInstalled
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = "Tools") {
-            SettingRow("yt-dlp", "Finds the video and audio on YouTube and other sites") {
-                if (isYtDlpInstalled) StatusLabel("Ready", StatusCompleted)
-                else StatusLabel("Missing", MaterialTheme.colorScheme.error)
-            }
-            SettingDivider()
-            SettingRow("FFmpeg", "Joins video + audio (1080p and up), cuts clips, makes MP3") {
-                if (isFfmpegInstalled) StatusLabel("Ready", StatusCompleted)
-                else StatusLabel("Missing · up to 720p", StatusPaused)
-            }
-            if (toolsDirectoryPath.isNotBlank()) {
-                SettingDivider()
-                SettingRow(
-                    title = "Tools folder",
-                    subtitle = toolsDirectoryPath,
-                    onClick = { pathResolver.openDirectoryInExplorer(toolsDirectoryPath) }
-                ) {
-                    Text(
-                        "Open",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val content: @Composable () -> Unit = {
-                if (isDownloadingYtDlp) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (ready) "Updating…" else "Downloading tools…")
-                } else {
-                    Text(
-                        if (ready) "Update tools" else "Download the tools",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            if (ready) {
-                OutlinedButton(
-                    onClick = onDownloadYtDlpClicked,
-                    enabled = !isDownloadingYtDlp,
-                    shape = RoundedCornerShape(10.dp)
-                ) { content() }
-            } else {
-                Button(
-                    onClick = onDownloadYtDlpClicked,
-                    enabled = !isDownloadingYtDlp,
-                    shape = RoundedCornerShape(10.dp)
-                ) { content() }
-            }
-        }
-        if (ytDlpStatus.isNotBlank()) {
-            Text(
-                ytDlpStatus,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun TorrentPage(
-    disableTorrentUpload: Boolean,
-    onDisableTorrentUploadToggled: (Boolean) -> Unit,
-    showEngine: Boolean,
-    isTorrentEngineReady: Boolean,
-    torrentEngineStatus: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = "Sharing") {
-            SettingSwitch(
-                title = "Download only (don't upload)",
-                subtitle = "Saves your upload bandwidth and data quota. Some trackers download slower for peers that don't share.",
-                checked = disableTorrentUpload,
-                onChange = onDisableTorrentUploadToggled
-            )
-        }
-        if (showEngine) {
-            SettingsGroup(title = "Engine") {
-                SettingRow(
-                    title = "libtorrent",
-                    subtitle = torrentEngineStatus.ifBlank { null }
-                ) {
-                    if (isTorrentEngineReady) StatusLabel("Ready", StatusCompleted)
-                    else StatusLabel("Not ready", MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------- helpers
-
-private fun folderName(path: String): String =
-    path.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\').ifBlank { path }
-
-private fun limitText(bytes: Long): String =
-    if (bytes >= 1024L * 1024L) {
-        val mb = bytes.toDouble() / (1024.0 * 1024.0)
-        (if (mb == mb.toLong().toDouble()) mb.toLong()
-            .toString() else ((mb * 10).toLong() / 10.0).toString()) + " MB/s"
-    } else "${bytes / 1024L} KB/s"
-
-// ---------------------------------------------------------------- browser extension
-
-private const val AMO_URL = "https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/"
-private const val EDGE_STORE_URL =
-    "https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj"
-private const val MANUAL_INSTALL_URL = "https://the-best-is-best.github.io/FetchJet/#extension"
-
-/**
- * Where to get the extension for each browser (like FDM's "Browser Integration"). The stores
- * keep it updated; Chrome has no store listing, so it gets the .zip with the developer-mode steps.
- */
-@Composable
-private fun BrowserExtensionPage(isDesktop: Boolean) {
-    val uri = LocalUriHandler.current
-
-    @Composable
-    fun storeButton(text: String, url: String, primary: Boolean = true) {
-        if (primary) Button(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
-            Text(text, fontWeight = FontWeight.SemiBold)
-        } else OutlinedButton(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
-            Text(text, fontWeight = FontWeight.SemiBold)
-        }
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(
-            title = "Install",
-            footer = "With the extension, a \"Download with FetchJet\" button shows on videos and links, " +
-                    "and the browser can hand its downloads to FetchJet. It talks only to this app on your device."
-        ) {
-            if (isDesktop) {
-                val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
-                if (bi.canAddToEdgeAutomatically) {
-                    // Windows: the registry hand-off, like IDM. Edge asks to turn it on.
-                    var registered by remember { mutableStateOf(bi.isEdgeRegistered()) }
-                    var note by remember { mutableStateOf<String?>(null) }
-                    SettingRow(
-                        "Microsoft Edge",
-                        note
-                            ?: if (registered) "Added · restart Edge and click \"Turn on extension\" when it asks"
-                            else "From Microsoft Edge Add-ons · updates by itself"
-                    ) {
-                        if (registered) storeButton(
-                            "Open in Edge store",
-                            EDGE_STORE_URL,
-                            primary = false
-                        )
-                        else Button(onClick = {
-                            bi.addToEdge()
-                                .onSuccess {
-                                    registered = true; note =
-                                    "Done: restart Edge, it will ask to turn FetchJet on."
-                                }
-                                .onFailure { uri.openUri(EDGE_STORE_URL) }
-                        }, shape = RoundedCornerShape(10.dp)) {
-                            Text(
-                                "Add to Edge",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                } else {
-                    SettingRow(
-                        "Microsoft Edge",
-                        "From Microsoft Edge Add-ons · updates by itself"
-                    ) {
-                        storeButton("Add to Edge", EDGE_STORE_URL)
-                    }
-                }
-                SettingDivider()
-                SettingRow("Firefox", "From Firefox Add-ons · updates by itself") {
-                    storeButton("Add to Firefox", AMO_URL)
-                }
-                SettingDivider()
-                SettingRow(
-                    "Chrome, Brave, Opera, Vivaldi",
-                    "Not in the Chrome Web Store: install the .zip in developer mode (steps on the page). It does not update by itself."
-                ) {
-                    storeButton("Get the .zip", MANUAL_INSTALL_URL, primary = false)
-                }
-            } else {
-                SettingRow(
-                    "Firefox for Android",
-                    "Open this in Firefox on this phone. Links you send go straight to this app."
-                ) {
-                    storeButton("Add to Firefox", AMO_URL)
-                }
-                val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
-                if (bi.canKeepReadyForBrowser) {
-                    var keepReady by remember { mutableStateOf(bi.isKeptReadyForBrowser()) }
-                    SettingDivider()
-                    SettingSwitch(
-                        title = "Keep ready for the browser",
-                        subtitle = if (keepReady)
-                            "Video qualities show right in Firefox. A quiet notification stays while this is on."
-                        else
-                            "Off: Firefox opens FetchJet and you pick the quality here. On: qualities show in Firefox (keeps a notification).",
-                        checked = keepReady,
-                        onChange = { keepReady = it; bi.setKeepReadyForBrowser(it) }
-                    )
-                }
-            }
-        }
-    }
-}

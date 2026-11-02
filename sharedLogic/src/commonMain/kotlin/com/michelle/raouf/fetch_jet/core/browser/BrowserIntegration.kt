@@ -39,4 +39,12 @@ expect object BrowserIntegration {
 
     /** Called at app start: starts the service again if the user turned the option on. */
     fun restoreKeepReady()
+
+    /**
+     * Android 10+: an app in the background may not open its own screen unless it may
+     * "display over other apps". Without it a link from Firefox only shows a notification.
+     */
+    val canPopUpOverBrowser: Boolean
+    fun isPopUpAllowed(): Boolean
+    fun requestPopUpPermission()
 }

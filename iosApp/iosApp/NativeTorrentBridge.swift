@@ -1,32 +1,24 @@
-#if canImport(LibTorrent)
+#if canImport(FJTorrent)
 import Foundation
 import SharedUI
-import LibTorrent
+import FJTorrent
 
-/// BitTorrent engine for iOS (FULL edition): libtorrent-rasterbar through the LibTorrent-Swift
-/// wrapper (the one iTorrent uses), exposed to Kotlin via `IosTorrentBridge`.
+/// BitTorrent engine for iOS (FULL edition): libtorrent-rasterbar through FetchJet's own
+/// Objective-C++ wrapper (iosApp/FJTorrent), exposed to Kotlin via `IosTorrentBridge`.
 ///
 /// Kotlin's `TorrentDownloader` owns task state and polls `progress()`; this class only maps
 /// its calls onto one shared libtorrent session. libtorrent runs in-process, so transfers only
 /// progress while the app is in the foreground.
-///
-/// Rate limits: the wrapper has no per-torrent limit API, so the strictest per-task limits are
-/// applied session-wide (and "disable upload" becomes a 1 B/s global upload cap while such a
-/// task exists).
 public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
 
-    // MARK: - State
-
     private struct Entry {
-        var handle: TorrentHandle
-        var disableUpload: Bool
-        var downloadLimit: Int64
-        var uploadLimit: Int64
+        var key: String
+        var fileCount: Int
     }
 
     private let lock = NSRecursiveLock()
     private var entries: [String: Entry] = [:]
-    private var session: Session?
+    private var session: TorrentSession?
     private var sessionError: String?
     private var lastErrorText: String?
 
@@ -41,8 +33,6 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         super.init()
     }
 
-    // MARK: - IosTorrentBridge
-
     public func isAvailable() -> Bool {
         lock.lock(); defer {
             lock.unlock()
@@ -55,7 +45,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
 
     public func statusText() -> String {
         if isAvailable() {
-            return "Ready: libtorrent \(LibTorrent.Version.libtorrentVersion) (in-app)"
+            return "Ready: libtorrent \(TorrentSession.libtorrentVersion) (in-app)"
         }
         return "BitTorrent engine failed to start: \(sessionError ?? "unknown error")"
     }
@@ -72,72 +62,45 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
             return nil
         }
 
-        // .torrent bytes: parse locally, nothing to fetch.
         if let data = torrentData {
-            guard let file = TorrentFile(with: data) else {
+            guard let info = try? TorrentSession.info(torrentData: data) else {
                 return fail("Invalid or corrupted .torrent file")
             }
-            return Self.metadata(name: file.name, hashes: file.infoHashes, files: file.files, data: data)
+            return Self.metadata(info)
         }
 
-        guard let magnetText = magnetUri, let url = URL(string: magnetText),
-              let magnet = MagnetURI(with: url)
-        else {
+        guard let magnet = magnetUri, magnet.lowercased().hasPrefix("magnet:") else {
             return fail("Invalid magnet link")
         }
 
-        // Fetch into a scratch storage; the real download is added later by `add`.
         let scratch = engineDirectory.appendingPathComponent("metadata-scratch", isDirectory: true)
         try? FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
-        let storageId = registerStorage(path: scratch.path)
 
-        // Reuse a handle that is already in the session (e.g. a task that is downloading).
-        let existing = session.torrentsMap[magnet.infoHashes]
-        let handle: TorrentHandle
+        let existing = session.find(magnet: magnet)
+        let key: String
         if let existing {
-            handle = existing
+            key = existing
         } else {
-            guard let added = session.addTorrent(magnet, to: storageId) else {
-                return fail("libtorrent rejected the magnet link")
+            do {
+                key = try session.add(magnet: magnet, savePath: scratch.path)
+            } catch {
+                return fail("libtorrent rejected the magnet link: \(error.localizedDescription)")
             }
-            handle = added
         }
 
         let deadline = Date().addingTimeInterval(TimeInterval(max(10, Int(timeoutSeconds))))
-        var snapshot = handle.snapshot
-        while !snapshot.hasMetadata && Date() < deadline {
+        var info = session.info(key)
+        while info == nil && Date() < deadline {
             Thread.sleep(forTimeInterval: 0.5)
-            handle.updateSnapshot()
-            snapshot = handle.snapshot
+            info = session.info(key)
         }
-        guard snapshot.hasMetadata else {
-            if existing == nil {
-                session.removeTorrent(handle, deleteFiles: true)
-            }
+        if existing == nil {
+            session.remove(key, deleteFiles: true)
+        }
+        guard let info else {
             return fail("No peers answered within \(timeoutSeconds) s. Check the link or your network.")
         }
-
-        // The wrapper writes <torrentsPath>/<hash>.torrent once metadata arrives.
-        let torrentPath = session.torrentFilePath(forInfoHashes: handle.infoHashes)
-        var data: Data?
-        let fileDeadline = Date().addingTimeInterval(10)
-        while data == nil && Date() < fileDeadline {
-            data = FileManager.default.contents(atPath: torrentPath)
-            if data == nil {
-                Thread.sleep(forTimeInterval: 0.2)
-            }
-        }
-        let files = snapshot.files
-        let name = snapshot.name
-        let hashes = handle.infoHashes
-        if existing == nil {
-            // Metadata only: do not keep downloading into the scratch folder.
-            session.removeTorrent(handle, deleteFiles: true)
-        }
-        guard let data else {
-            return fail("Metadata received but the .torrent file could not be read")
-        }
-        return Self.metadata(name: name, hashes: hashes, files: files, data: data)
+        return Self.metadata(info)
     }
 
     public func add(
@@ -154,56 +117,42 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         guard let session = sessionOrFail() else {
             return false
         }
-        guard let file = TorrentFile(with: torrentData) else {
+        guard let info = try? TorrentSession.info(torrentData: torrentData) else {
             _ = fail("Invalid or corrupted .torrent file")
             return false
         }
         try? FileManager.default.createDirectory(atPath: savePath, withIntermediateDirectories: true)
 
-        let fileCount = file.files.count
-        let plan = Self.priorityPlan(fileCount: fileCount, selected: selected,
-                                     priorityIndexes: priorityIndexes, priorityValues: priorityValues)
+        let priorities = Self.priorities(fileCount: info.fileCount, selected: selected,
+                                         priorityIndexes: priorityIndexes, priorityValues: priorityValues)
+        let upload = disableUpload ? Int64(32 * 1024) : uploadLimitBytesPerSec
 
         lock.lock(); defer {
             lock.unlock()
         }
-        // Resume after pause: the torrent is still in the session.
-        if var entry = entries[taskId], entry.handle.snapshot.isValid {
-            entry.disableUpload = disableUpload
-            entry.downloadLimit = downloadLimitBytesPerSec
-            entry.uploadLimit = uploadLimitBytesPerSec
-            entries[taskId] = entry
-            Self.applyPlan(plan, to: entry.handle)
-            applyGlobalLimits()
-            entry.handle.resume()
+        if let entry = entries[taskId], session.status(entry.key) != nil {
+            session.setFilePriorities(priorities, for: entry.key)
+            session.setLimits(download: downloadLimitBytesPerSec, upload: upload, for: entry.key)
+            session.resume(entry.key)
             return true
         }
         entries.removeValue(forKey: taskId)
 
-        let handle: TorrentHandle
-        if let existing = session.torrentsMap[file.infoHashes] {
-            // Same torrent already in the session (e.g. left over from a metadata fetch).
-            handle = existing
-            Self.applyPlan(plan, to: handle)
+        let key: String
+        if let existing = session.find(torrentData: torrentData) {
+            key = existing
+            session.setFilePriorities(priorities, for: key)
         } else {
-            // The wrapper's intended flow: priorities go on the TorrentFile and become
-            // add_torrent_params.file_priorities, so libtorrent starts with the right set.
-            for (prio, indexes) in plan where !indexes.isEmpty {
-                file.setFilesPriority(prio, at: indexes.map {
-                    NSNumber(value: $0)
-                })
-            }
-            let storageId = registerStorage(path: savePath)
-            guard let added = session.addTorrent(file, to: storageId) else {
-                _ = fail("libtorrent did not accept the torrent")
+            do {
+                key = try session.add(torrentData: torrentData, savePath: savePath, filePriorities: priorities)
+            } catch {
+                _ = fail("libtorrent did not accept the torrent: \(error.localizedDescription)")
                 return false
             }
-            handle = added
         }
-        entries[taskId] = Entry(handle: handle, disableUpload: disableUpload,
-                                downloadLimit: downloadLimitBytesPerSec, uploadLimit: uploadLimitBytesPerSec)
-        applyGlobalLimits()
-        handle.resume()
+        entries[taskId] = Entry(key: key, fileCount: info.fileCount)
+        session.setLimits(download: downloadLimitBytesPerSec, upload: upload, for: key)
+        session.resume(key)
         return true
     }
 
@@ -211,14 +160,18 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         lock.lock(); defer {
             lock.unlock()
         }
-        entries[taskId]?.handle.pause()
+        if let key = entries[taskId]?.key {
+            session?.pause(key)
+        }
     }
 
     public func resume(taskId: String) {
         lock.lock(); defer {
             lock.unlock()
         }
-        entries[taskId]?.handle.resume()
+        if let key = entries[taskId]?.key {
+            session?.resume(key)
+        }
     }
 
     public func remove(taskId: String, deleteFiles: Bool) {
@@ -228,8 +181,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         guard let entry = entries.removeValue(forKey: taskId) else {
             return
         }
-        session?.removeTorrent(entry.handle, deleteFiles: deleteFiles)
-        applyGlobalLimits()
+        session?.remove(entry.key, deleteFiles: deleteFiles)
     }
 
     public func setFileSelection(taskId: String, selected: [KotlinInt],
@@ -240,40 +192,30 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         guard let entry = entries[taskId] else {
             return
         }
-        let count = entry.handle.snapshot.files.count
-        Self.applyPlan(Self.priorityPlan(fileCount: count, selected: selected,
-                                         priorityIndexes: priorityIndexes, priorityValues: priorityValues),
-                       to: entry.handle)
+        session?.setFilePriorities(Self.priorities(fileCount: entry.fileCount, selected: selected,
+                                                   priorityIndexes: priorityIndexes, priorityValues: priorityValues),
+                                   for: entry.key)
     }
 
     public func setLimits(taskId: String, downloadLimitBytesPerSec: Int64, uploadLimitBytesPerSec: Int64) {
         lock.lock(); defer {
             lock.unlock()
         }
-        guard var entry = entries[taskId] else {
+        guard let entry = entries[taskId] else {
             return
         }
-        entry.downloadLimit = downloadLimitBytesPerSec
-        entry.uploadLimit = uploadLimitBytesPerSec
-        entries[taskId] = entry
-        applyGlobalLimits()
+        session?.setLimits(download: downloadLimitBytesPerSec, upload: uploadLimitBytesPerSec, for: entry.key)
     }
 
     public func progress(taskId: String) -> IosTorrentProgress? {
         lock.lock(); defer {
             lock.unlock()
         }
-        guard let entry = entries[taskId] else {
-            return nil
-        }
-        entry.handle.updateSnapshot()
-        let s = entry.handle.snapshot
-        guard s.isValid else {
+        guard let entry = entries[taskId], let s = session?.status(entry.key) else {
             return nil
         }
 
         let stateText: String
-        var error: String?
         switch s.state {
         case .checkingFiles: stateText = "Checking files"
         case .checkingResumeData: stateText = "Checking resume data"
@@ -281,32 +223,25 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         case .downloading: stateText = "Downloading"
         case .finished: stateText = "Finished"
         case .seeding: stateText = "Seeding"
-        case .paused: stateText = "Paused"
-        case .storageError:
-            stateText = "Storage error"
-            error = "Cannot write to the download folder"
-        @unknown default: stateText = "Connecting"
-        }
-        if s.isStorageMissing {
-            error = "Download folder is missing"
+        default: stateText = "Connecting"
         }
 
         return IosTorrentProgress(
-            downloadedBytes: Int64(s.totalWantedDone),
-            wantedBytes: Int64(s.totalWanted),
-            downloadRate: Int64(s.downloadRate),
-            uploadRate: Int64(s.uploadRate),
-            peers: Int32(s.numberOfPeers),
-            seeds: Int32(s.numberOfSeeds),
+            downloadedBytes: s.totalWantedDone,
+            wantedBytes: s.totalWanted,
+            downloadRate: s.downloadRate,
+            uploadRate: s.uploadRate,
+            peers: s.peers,
+            seeds: s.seeds,
             isFinished: s.isFinished,
-            isSeeding: s.isSeed,
+            isSeeding: s.isSeeding,
             isPaused: s.isPaused,
             hasMetadata: s.hasMetadata,
-            fileProgress: s.files.map {
-                KotlinLong(value: Int64($0.downloaded))
+            fileProgress: s.fileProgress.map {
+                KotlinLong(value: $0.int64Value)
             },
-            stateText: stateText,
-            error: error
+            stateText: s.isPaused ? "Paused" : (s.errorMessage != nil ? "Error" : stateText),
+            error: s.errorMessage
         )
     }
 
@@ -315,13 +250,11 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
             lock.unlock()
         }
         entries.removeAll()
-        session?.pause()
+        session?.shutdown()
         session = nil
     }
 
-    // MARK: - Session
-
-    private func sessionOrFail() -> Session? {
+    private func sessionOrFail() -> TorrentSession? {
         lock.lock(); defer {
             lock.unlock()
         }
@@ -335,79 +268,27 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         return nil
     }
 
-    /// Creates the libtorrent session (DHT, LSD, UPnP/NAT-PMP, uTP, encryption enabled).
-    private func startSession() -> Session? {
-        let fm = FileManager.default
-        let downloads = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Torrents", isDirectory: true)
-        let torrents = engineDirectory.appendingPathComponent("torrents", isDirectory: true)
-        let resume = engineDirectory.appendingPathComponent("fastresume", isDirectory: true)
-        for dir in [downloads, torrents, resume] {
-            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
-
-        let settings = Session.Settings()
-        settings.agentName = "FetchJet/1.0 libtorrent/\(LibTorrent.Version.libtorrentVersion)"
-        settings.peerFingerprint = "-FJ1000-"
-        settings.preallocateStorage = false
-        settings.maxActiveTorrents = 20
-        settings.maxDownloadingTorrents = 10
-        settings.maxUploadingTorrents = 10
-        settings.maxDownloadSpeed = 0
-        settings.maxUploadSpeed = 0
-        settings.isDhtEnabled = true
-        settings.isLsdEnabled = true
-        settings.isUtpEnabled = true
-        settings.isUpnpEnabled = true
-        settings.isNatEnabled = true
-        settings.encryptionPolicy = .enabled
-        settings.validateHttpsTrackers = false
-        // Random port: 6881 is the one every client tries first.
+    private func startSession() -> TorrentSession? {
         let port = Int.random(in: 20000...59999)
-        settings.port = port
-        settings.portBindRetries = 10
-        settings.outgoingInterfaces = ""
-        settings.listenInterfaces = "0.0.0.0:\(port),[::]:\(port)"
-        settings.proxyType = .none
-        settings.proxyHostname = ""
-        settings.proxyHostPort = 0
-        settings.proxyAuthRequired = false
-        settings.proxyUsername = ""
-        settings.proxyPassword = ""
-        settings.proxyPeerConnections = false
-
-        let s = Session(downloads, torrentsPath: torrents, fastResumePath: resume,
-                        settings: settings, storages: [:])
-        session = s
-        sessionError = nil
-        NSLog("[torrent] libtorrent %@ session started", LibTorrent.Version.libtorrentVersion)
-        return s
+        do {
+            let s = try TorrentSession(
+                listenPort: port,
+                userAgent: "FetchJet/1.0 libtorrent/\(TorrentSession.libtorrentVersion)",
+                peerFingerprint: "-FJ1000-"
+            )
+            session = s
+            sessionError = nil
+            NSLog("[torrent] libtorrent %@ session started", TorrentSession.libtorrentVersion)
+            return s
+        } catch {
+            sessionError = error.localizedDescription
+            return nil
+        }
     }
 
-    /// Every save folder is a "storage" for the wrapper; register one per path.
-    private func registerStorage(path: String) -> UUID {
-        guard let session else {
-            return UUID()
-        }
-        var storages = session.storages
-        if let existing = storages.values.first(where: { $0.url.path == path }) {
-            return existing.uuid
-        }
-        let model = StorageModel()
-        model.uuid = UUID()
-        model.name = (path as NSString).lastPathComponent
-        model.url = URL(fileURLWithPath: path, isDirectory: true)
-        model.pathBookmark = Data()
-        model.resolved = true
-        model.allowed = true
-        storages[model.uuid] = model
-        session.storages = storages
-        return model.uuid
-    }
-
-    /// Kotlin's selection + priority maps -> file indexes grouped per libtorrent priority.
-    private static func priorityPlan(fileCount: Int, selected: [KotlinInt],
-                                     priorityIndexes: [KotlinInt], priorityValues: [KotlinInt]) -> [FileEntry.Priority: [Int]] {
+    /// Kotlin's selection + priority maps -> one libtorrent priority per file index.
+    private static func priorities(fileCount: Int, selected: [KotlinInt],
+                                   priorityIndexes: [KotlinInt], priorityValues: [KotlinInt]) -> [NSNumber] {
         let selectedSet = Set(selected.map {
             $0.intValue
         })
@@ -415,75 +296,30 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         for (k, v) in zip(priorityIndexes, priorityValues) {
             prio[k.intValue] = v.intValue
         }
-        var plan: [FileEntry.Priority: [Int]] = [.dontDownload: [], .lowPriority: [], .defaultPriority: [], .topPriority: []]
-        for i in 0..<fileCount {
-            let p: FileEntry.Priority
+        return (0..<fileCount).map { i in
+            let p: FJFilePriority
             if !selectedSet.contains(i) {
                 p = .dontDownload
             } else if (prio[i] ?? 0) > 0 {
-                p = .topPriority
+                p = .top
             } else if (prio[i] ?? 0) < 0 {
-                p = .lowPriority
+                p = .low
             } else {
-                p = .defaultPriority
+                p = .default
             }
-            plan[p, default: []].append(i)
-        }
-        return plan
-    }
-
-    /// Applies a plan to a live handle. Guarded: libtorrent throws (and would abort the app)
-    /// when the handle is not ready yet; a failed call is retried by the next refresh.
-    private static func applyPlan(_ plan: [FileEntry.Priority: [Int]], to handle: TorrentHandle) {
-        ObjCatch.try {
-            for (prio, indexes) in plan where !indexes.isEmpty {
-                handle.setFilesPriority(prio, at: indexes.map {
-                    NSNumber(value: $0)
-                })
-            }
+            return NSNumber(value: p.rawValue)
         }
     }
 
-    /// The wrapper only has session-wide limits: apply the strictest active per-task values.
-    private func applyGlobalLimits() {
-        guard let session else {
-            return
-        }
-        let downs = entries.values.map {
-            $0.downloadLimit
-        }
-        .filter {
-            $0 > 0
-        }
-        let ups = entries.values.map {
-            $0.uploadLimit
-        }
-        .filter {
-            $0 > 0
-        }
-        let noUpload = entries.values.contains {
-            $0.disableUpload
-        }
-        let settings = session.settings
-        settings.maxDownloadSpeed = UInt(downs.min() ?? 0)
-        // "Download only" keeps a 32 KB/s trickle: at 1 B/s peers choke us and the
-        // download crawls (same value as the desktop/Android engine).
-        settings.maxUploadSpeed = noUpload ? 32 * 1024 : UInt(ups.min() ?? 0)
-        session.settings = settings
-    }
-
-    private static func metadata(name: String, hashes: TorrentHashes, files: [FileEntry], data: Data) -> IosTorrentMetadata {
-        var total: Int64 = 0
-        let infos: [IosTorrentFileInfo] = files.map { f in
-            total += Int64(f.size)
-            return IosTorrentFileInfo(index: f.index, path: f.path, size: Int64(f.size))
-        }
-        return IosTorrentMetadata(
-            name: name,
-            infoHash: (hashes.best as NSData).hex(),
-            totalSize: total,
-            files: infos,
-            torrentData: data
+    private static func metadata(_ info: FJTorrentInfo) -> IosTorrentMetadata {
+        IosTorrentMetadata(
+            name: info.name,
+            infoHash: info.infoHash,
+            totalSize: info.totalSize,
+            files: info.files.map {
+                IosTorrentFileInfo(index: Int32($0.index), path: $0.path, size: $0.size)
+            },
+            torrentData: info.torrentData
         )
     }
 

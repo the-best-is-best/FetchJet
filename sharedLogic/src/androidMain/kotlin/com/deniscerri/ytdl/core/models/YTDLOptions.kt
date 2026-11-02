@@ -41,12 +41,6 @@ class YTDLOptions {
         return this
     }
 
-    fun getArgument(option: String): String? {
-        if (!options.containsKey(option)) return null
-        val argument = options[option]!![0]
-        return argument.ifEmpty { null }
-    }
-
     fun getArguments(option: String): List<String>? {
         return if (!options.containsKey(option)) null else options[option]
     }

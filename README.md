@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>One download manager for everything: files, videos, playlists and torrents.</b><br>
-  Windows · macOS · Linux · Android · iOS · Chrome / Edge / Firefox extension
+  Windows · macOS (Apple Silicon) · Linux · Android · iOS · Chrome / Edge / Firefox extension
 </p>
 
 <p align="center">
@@ -45,15 +45,15 @@
 **👉 [Downloads page](https://the-best-is-best.github.io/FetchJet/)** – every version for every
 platform, with the right file highlighted for your device.
 
-| Platform              | File                                                                                                | Notes                                                              |
-|-----------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| Windows 10 / 11       | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.    |
-| macOS 12+             | `.dmg`                                                                                              | Drag FetchJet to Applications.                                     |
-| Linux                 | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.        |
-| Android 8+            | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.   |
-| iOS 16+               | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly.                              |
-| Chrome / Edge / Brave | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked). |
-| Firefox               | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                  |
+| Platform                  | File                                                                                                | Notes                                                                          |
+|---------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Windows 10 / 11           | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                |
+| macOS 12+ (Apple Silicon) | `-arm64.dmg`                                                                                        | M1 or newer only; Intel Macs are not supported. Drag FetchJet to Applications. |
+| Linux                     | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                    |
+| Android 8+                | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.               |
+| iOS 16+                   | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly.                                          |
+| Chrome / Edge / Brave     | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).             |
+| Firefox                   | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                              |
 
 ---
 

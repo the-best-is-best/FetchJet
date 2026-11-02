@@ -13,7 +13,9 @@ data class ExternalDownloadRequest(
      */
     val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     /** Start right away with the default folder instead of opening the Add dialog. */
-    val direct: Boolean = false
+    val direct: Boolean = false,
+    /** The extension's scissors button: open the Add dialog with this quality and the clip range on. */
+    val openClip: Boolean = false
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {
@@ -41,6 +43,16 @@ object ExternalDownloadBridge {
     var onExternalBatch: ((List<ExternalDownloadRequest>) -> Unit)? = null
 
     var openInBrowserFallback: ((String) -> Unit)? = null
+
+    /**
+     * Brings the app in front of whatever the user is looking at (the browser, usually).
+     * Set by each platform's entry point; called when a link arrives from the extension, the
+     * clipboard or a fetchjet:// URL.
+     */
+    var onShowAndFocus: (() -> Unit)? = null
+    fun showAndFocus() {
+        onShowAndFocus?.invoke()
+    }
 
     fun dispatch(url: String, cookie: String = "") = dispatch(ExternalDownloadRequest(url, cookie))
 

@@ -100,7 +100,19 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
             ensureJsSolverPlugin()
             return nil
         }
-        if preparing { stateLock.unlock(); return "Engine is still starting, try again in a moment" }
+        if preparing {
+            stateLock.unlock()
+            while true {
+                Thread.sleep(forTimeInterval: 0.2)
+                stateLock.lock()
+                if !preparing {
+                    let outcome = ready ? nil : (lastError ?? "Media engine failed to start")
+                    stateLock.unlock()
+                    return outcome
+                }
+                stateLock.unlock()
+            }
+        }
         preparing = true
         stateLock.unlock()
 
@@ -442,18 +454,11 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
     }
 
     /// Returns the path of the yt_dlp zip to put on sys.path. Uses the copy already in
-    /// Application Support, else the one shipped in the app bundle (iosApp/iosApp/yt-dlp),
-    /// else downloads the latest release.
+    /// Application Support, else downloads the latest release (auto-update refreshes it).
     private static func ensureYtDlpModule() throws -> String {
         let fm = FileManager.default
         let dest = ytDlpModuleFile
         if fm.fileExists(atPath: dest.path) {
-            return dest.path
-        }
-        if let bundled = Bundle.main.url(forResource: "yt-dlp", withExtension: nil),
-           fm.fileExists(atPath: bundled.path) {
-            try? fm.removeItem(at: dest)
-            try fm.copyItem(at: bundled, to: dest)
             return dest.path
         }
         try downloadFile(from: ytDlpDownloadURL, to: dest)
@@ -462,16 +467,18 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
 
     /// "Download Tools" also refreshes yt-dlp to the latest release (takes effect on next launch,
     /// since a loaded module cannot be swapped inside a running interpreter).
-    public func updateYtDlpModule() -> String? {
+    public func updateYtDlpModule(progressCallback: (any IosToolDownloadProgressCallback)?) -> String? {
         do {
-            try Self.downloadFile(from: Self.ytDlpDownloadURL, to: Self.ytDlpModuleFile)
+            try Self.downloadFile(from: Self.ytDlpDownloadURL, to: Self.ytDlpModuleFile) { fraction in
+                progressCallback?.onProgress(fraction: fraction)
+            }
             return nil
         } catch {
             return Self.describe(error)
         }
     }
 
-    private static func downloadFile(from url: URL, to dest: URL) throws {
+    private static func downloadFile(from url: URL, to dest: URL, progress: ((Float) -> Void)? = nil) throws {
         let sem = DispatchSemaphore(value: 0)
         var outcome: Result<Void, Error> = .failure(NSError(domain: "FetchJet", code: -1))
         let task = URLSession.shared.downloadTask(with: url) { tmp, response, error in
@@ -496,8 +503,19 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
                 outcome = .failure(error)
             }
         }
+        var lastPercent = -1
+        let observation = progress.map { report in
+            task.progress.observe(\.fractionCompleted) { p, _ in
+                let percent = Int(p.fractionCompleted * 100)
+                if percent != lastPercent {
+                    lastPercent = percent
+                    report(Float(p.fractionCompleted))
+                }
+            }
+        }
         task.resume()
         sem.wait()
+        observation?.invalidate()
         try outcome.get()
     }
 
@@ -573,7 +591,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         // Progress goes through the hook, never through stdout parsing here.
         if !out.contains("--newline") { out.insert("--newline", at: 0) }
-        if Self.jsSolverInstalled, !out.contains("--plugin-dirs") {
+        if Self.jsSolverInstalled, !out.contains(Self.pluginsDirectory.path) {
             out.insert(contentsOf: ["--plugin-dirs", Self.pluginsDirectory.path], at: 0)
         }
         if !out.contains("--remote-components") {

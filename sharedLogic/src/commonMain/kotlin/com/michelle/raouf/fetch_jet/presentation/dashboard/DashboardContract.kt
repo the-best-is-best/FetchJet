@@ -83,16 +83,28 @@ data class DashboardUiState(
     val isInspectingMedia: Boolean = false,
 
     val inspectedMediaTitle: String? = null,
+    /** Name FetchJet would give the file (shown in the Add dialog's "File name" box). */
+    val suggestedFileName: String = "",
+    /** What the user typed in that box; empty = use [suggestedFileName]. */
+    val fileNameOverride: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
 
     val inspectMediaError: String? = null,
 
     val removeConfirmationTaskId: String? = null,
+    val removeConfirmationTaskIds: List<String> = emptyList(),
     /** A browser-sent file link the user just dismissed; asks "download it in the browser instead?" */
     val browserFallbackUrl: String? = null,
+    /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
+    val clipboardOfferUrl: String? = null,
+    /** Bumped when a download was just added: the list scrolls to the top to show it. */
+    val scrollToTopSignal: Int = 0,
+    /** Behaviour settings (Settings > General / Downloads), mirrored from BehaviorSettings. */
+    val monitorClipboard: Boolean = false,
+    val clipboardVideoPages: Boolean = false,
+    val sortIntoFolders: Boolean = false,
 
-    val cancelConfirmationTaskId: String? = null,
     val duplicateTaskAlert: DownloadTask? = null,
     val fileConflictAlert: FileConflictData? = null,
 
@@ -107,10 +119,15 @@ data class DashboardUiState(
     val ytDlpStatus: String = "",
 
     val isDownloadingYtDlp: Boolean = false,
+    val toolDownloadName: String? = null,
+    val toolDownloadFraction: Float? = null,
 
     val isYtDlpInstalled: Boolean = true,
 
     val isFfmpegInstalled: Boolean = true,
+
+    val jsRuntimeName: String = "",
+    val isJsRuntimeReady: Boolean = true,
 
     val toolsDirectoryPath: String = "",
     val torrentEngineStatus: String = "",
@@ -126,6 +143,10 @@ data class DashboardUiState(
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
     val scheduleStartMs: Long = 0L,
+    /** Connections for this direct download (0 = app setting / automatic). */
+    val selectedConnections: Int = 0,
+    /** App-wide default connections per direct download (Settings > Downloads); 0 = automatic. */
+    val defaultConnections: Int = 0,
     val mediaDurationSeconds: Long = 0L,
     val speedDisplayUnit: String = "MB/s"
 )
@@ -139,6 +160,7 @@ sealed interface DashboardUiEvent {
     data class OnUrlChanged(val url: String) : DashboardUiEvent
 
     data class OnDestinationPathChanged(val path: String) : DashboardUiEvent
+    data class OnFileNameChanged(val name: String) : DashboardUiEvent
 
     data class OnDisableTorrentUploadToggled(val disable: Boolean) : DashboardUiEvent
 
@@ -167,6 +189,8 @@ sealed interface DashboardUiEvent {
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
+    data class OnConnectionsChanged(val connections: Int) : DashboardUiEvent
+    data class OnDefaultConnectionsChanged(val connections: Int) : DashboardUiEvent
     data object OnPauseAllClicked : DashboardUiEvent
     data object OnResumeAllClicked : DashboardUiEvent
 
@@ -181,6 +205,8 @@ sealed interface DashboardUiEvent {
     data class OnCancelClicked(val taskId: String) : DashboardUiEvent
 
     data class OnRemoveClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnRemoveSelectedClicked(val taskIds: List<String>) : DashboardUiEvent
 
     data class OnConfirmRemoveClicked(val deleteFile: Boolean) : DashboardUiEvent
 
@@ -200,6 +226,12 @@ sealed interface DashboardUiEvent {
     data class OnSortChanged(val sort: TaskSortOption) : DashboardUiEvent
     data object OnConfirmBrowserFallback : DashboardUiEvent
     data object OnDismissBrowserFallback : DashboardUiEvent
+    data class OnClipboardLink(val url: String) : DashboardUiEvent
+    data object OnClipboardOfferAccepted : DashboardUiEvent
+    data object OnClipboardOfferDismissed : DashboardUiEvent
+    data class OnMonitorClipboardChanged(val on: Boolean) : DashboardUiEvent
+    data class OnClipboardVideoPagesChanged(val on: Boolean) : DashboardUiEvent
+    data class OnSortIntoFoldersChanged(val on: Boolean) : DashboardUiEvent
 
     data object OnInspectTorrentClicked : DashboardUiEvent
 

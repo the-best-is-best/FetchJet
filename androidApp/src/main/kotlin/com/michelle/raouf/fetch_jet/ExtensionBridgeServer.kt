@@ -11,7 +11,6 @@ import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
-import com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformQualities
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -177,7 +176,7 @@ object ExtensionBridgeServer {
         reply(
             out, r, 204, "", extra = mapOf(
                 "Access-Control-Allow-Methods" to methods,
-                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet"
+                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
             )
         )
 
@@ -210,23 +209,41 @@ object ExtensionBridgeServer {
 
     // ---- inspection cache (same as desktop) ------------------------------------------------
 
+    private val inspectGates = HashMap<String, Any>()
+
+    /** /add requests seen in the last seconds (a tap reaching us twice must not start twice). */
+    private val recentAdds = HashMap<String, Long>()
     private val inspectCache =
         object : LinkedHashMap<String, Pair<Long, List<MediaQualityEntry>>>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, List<MediaQualityEntry>>>?) =
                 size > 40
         }
 
-    private fun inspectCached(url: String): List<MediaQualityEntry> {
-        synchronized(inspectCache) {
-            inspectCache[url]?.let { (at, list) ->
-                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) return list
+    private fun inspectCached(
+        url: String,
+        requestHeaders: Map<String, String> = emptyMap()
+    ): List<MediaQualityEntry> {
+        val key = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.canonical(url)
+        fun cached(): List<MediaQualityEntry>? = synchronized(inspectCache) {
+            inspectCache[key]?.let { (at, list) ->
+                if (System.currentTimeMillis() - at < 30 * 60 * 1000L && list.isNotEmpty()) list else null
             }
         }
-        val fresh = runBlocking { inspectPlatformQualities(url) }
-        if (fresh.isNotEmpty()) synchronized(inspectCache) {
-            inspectCache[url] = System.currentTimeMillis() to fresh
+        cached()?.let { return it }
+        // The popup asks for the same video in two spellings at once: the second waits for
+        // the first instead of running yt-dlp twice.
+        val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
+        synchronized(gate) {
+            cached()?.let { return it }
+            val fresh = runBlocking {
+                com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                    .inspectMediaQualities(url, requestHeaders)
+            }
+            if (fresh.isNotEmpty()) synchronized(inspectCache) {
+                inspectCache[key] = System.currentTimeMillis() to fresh
+            }
+            return fresh
         }
-        return fresh
     }
 
     // ---- routes -----------------------------------------------------------------------------
@@ -277,7 +294,16 @@ object ExtensionBridgeServer {
                     )
                 }
                 try {
-                    val list = inspectCached(url).joinToString(",", "[", "]") { q ->
+                    val headers = buildMap {
+                        r.header("X-FetchJet-Cookie")?.takeIf { it.isNotBlank() }
+                            ?.let { put("Cookie", it) }
+                        r.header("X-FetchJet-Referer")?.takeIf { it.isNotBlank() }
+                            ?.let { put("Referer", it) }
+                    }
+                    com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
+                        headers["Referer"] ?: url, headers
+                    )
+                    val list = inspectCached(url, headers).joinToString(",", "[", "]") { q ->
                         """{"index":${q.index},"quality":"${json(q.qualityLabel)}","format":"${
                             json(
                                 q.format
@@ -338,7 +364,16 @@ object ExtensionBridgeServer {
                             "application/json; charset=UTF-8"
                         )
                     }
-                    deliver { ExternalDownloadBridge.dispatch(req) }
+                    val dedupeKey =
+                        req.url + "|" + (obj.getString("formatId") ?: "") + "|" + req.openClip
+                    val now = System.currentTimeMillis()
+                    val repeat = synchronized(recentAdds) {
+                        recentAdds.entries.removeAll { now - it.value > 5_000 }
+                        if (recentAdds.containsKey(dedupeKey)) true else {
+                            recentAdds[dedupeKey] = now; false
+                        }
+                    }
+                    if (!repeat) deliver { ExternalDownloadBridge.dispatch(req) }
                     reply(out, r, 200, """{"ok":true}""", "application/json; charset=UTF-8")
                 } else {
                     @Suppress("UNCHECKED_CAST")
@@ -415,7 +450,10 @@ object ExtensionBridgeServer {
         val formatId = getString("formatId")?.trim().orEmpty()
         val qualities = if (formatId.isNotBlank()) {
             val list = try {
-                inspectCached(url)
+                inspectCached(url, buildMap {
+                    hdr("cookie").takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+                    hdr("referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+                })
             } catch (_: Exception) {
                 emptyList()
             }
@@ -429,7 +467,8 @@ object ExtensionBridgeServer {
             userAgent = hdr("userAgent"),
             fileName = getString("fileName")?.trim().orEmpty().take(255),
             mediaQualities = qualities,
-            direct = (this["direct"] as? Boolean) == true
+            direct = (this["direct"] as? Boolean) == true,
+            openClip = (this["openClip"] as? Boolean) == true
         )
     }
 
@@ -441,16 +480,57 @@ object ExtensionBridgeServer {
     private fun deliver(action: () -> Unit) {
         main.post {
             action()
-            try {
-                appContext.startActivity(
-                    Intent(appContext, MainActivity::class.java).addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    )
-                )
-            } catch (_: Exception) {
+            val open = Intent(appContext, MainActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+            // Android 10+ blocks opening a screen from the background unless the app may
+            // "display over other apps" (Settings > Browser extension > Pop up). Otherwise a
+            // notification brings the user over.
+            val canPopUp = android.os.Build.VERSION.SDK_INT < 29 ||
+                    android.provider.Settings.canDrawOverlays(appContext)
+            if (canPopUp) {
+                try {
+                    appContext.startActivity(open)
+                } catch (_: Exception) {
+                }
+                Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
+            } else {
+                showOpenNotification(open)
             }
-            Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun showOpenNotification(open: Intent) {
+        try {
+            val nm =
+                appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                nm.createNotificationChannel(
+                    android.app.NotificationChannel(
+                        LINK_CHANNEL, "Links from the browser",
+                        android.app.NotificationManager.IMPORTANCE_HIGH
+                    ).apply { description = "Tap to open the link FetchJet just received" }
+                )
+            }
+            val pi = android.app.PendingIntent.getActivity(
+                appContext, 7001, open,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            val n = androidx.core.app.NotificationCompat.Builder(appContext, LINK_CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Link received")
+                .setContentText("Tap to open it in FetchJet")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setCategory(androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .setFullScreenIntent(pi, true)
+                .build()
+            nm.notify(7001, n)
+        } catch (_: Exception) {
+        }
+    }
+
+    private const val LINK_CHANNEL = "fetchjet_links"
 }

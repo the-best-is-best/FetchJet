@@ -34,15 +34,6 @@ class YTDLRequest {
         return this
     }
 
-    fun addCommands(commands: List<String>): YTDLRequest {
-        customCommandList.addAll(commands)
-        return this
-    }
-
-    fun getOption(option: String): String? {
-        return options.getArgument(option)
-    }
-
     fun getArguments(option: String): List<String?>? {
         return options.getArguments(option)
     }

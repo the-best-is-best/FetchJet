@@ -56,7 +56,8 @@ internal object TorrentNativeLoader {
                 arch.contains("aarch64") || arch.contains("arm64") -> listOf("arm64", "aarch64")
                 else -> listOf("x86_64", "amd64", "x64")
             }
-            return primary + listOf("x86_64", "arm64", "")
+            // Only this CPU's library: another CPU's file cannot load and hides the real reason.
+            return primary + ""
         }
 
     fun installedNative(toolsDir: File): File? {
@@ -167,7 +168,10 @@ internal object TorrentNativeLoader {
             var entry = zis.nextEntry
             while (entry != null) {
                 val name = entry.name.substringAfterLast('/')
-                if (!entry.isDirectory && name == nativeFileName && entry.name.startsWith("lib/")) {
+                val dir = entry.name.removePrefix("lib/").substringBeforeLast('/', "")
+                if (!entry.isDirectory && name == nativeFileName && entry.name.startsWith("lib/") &&
+                    dir in archDirs
+                ) {
                     val tmp = File(toolsDir, target.name + ".tmp")
                     tmp.outputStream().use { zis.copyTo(it) }
                     Files.move(

@@ -9,7 +9,7 @@ private val cached: AppEdition by lazy {
 
 actual fun currentAppEdition(): AppEdition = cached
 
-// libtorrent via the Swift NativeTorrentBridge (LibTorrent-Swift), registered at startup in
+// libtorrent via the Swift NativeTorrentBridge (FJTorrent wrapper), registered at startup in
 // the FULL edition.
 actual fun platformSupportsTorrent(): Boolean =
     com.michelle.raouf.fetch_jet.feature.torrent_engine.IosTorrentBridgeRegistry.bridge != null

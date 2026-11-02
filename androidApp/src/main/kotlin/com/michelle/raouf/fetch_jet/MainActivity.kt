@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
     ) { _ -> }
 
     // "Open .torrent file" in the Add dialog: the system document picker.
-    private var torrentPickCallback: ((android.net.Uri?) -> Unit)? = null
+    private var torrentPickCallback: ((Uri?) -> Unit)? = null
     private val torrentPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
         PathResolver.appContext = applicationContext
         DownloadNotificationManager.setContext(applicationContext)
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        // Debug / verbose builds only: a log file and the "Save log" button. Release builds
+        // have neither.
+        if (BuildConfig.DEBUG || BuildConfig.VERBOSE_LOGS) com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
         // Lets the FetchJet extension in Firefox for Android send links to this app.
         ExtensionBridgeServer.start(applicationContext)
         // "Keep ready for the browser" (Settings > Browser): restart its service if it is on.
@@ -164,27 +167,6 @@ class MainActivity : ComponentActivity() {
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
                 permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.READ_MEDIA_VIDEO
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
-            }
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.READ_MEDIA_AUDIO
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
-            }
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.READ_MEDIA_IMAGES
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_IMAGES)
             }
         } else {
             if (ContextCompat.checkSelfPermission(

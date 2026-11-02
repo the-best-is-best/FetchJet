@@ -1,4 +1,4 @@
-﻿@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class)
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
@@ -92,151 +92,6 @@ private suspend fun resolveEffectiveMediaUrl(url: String): String {
         }
     } catch (_: Exception) {
         current
-    }
-}
-
-private suspend fun extractDirectSocialMediaStreams(url: String): List<MediaQualityEntry> {
-    return try {
-        val effectiveUrl = resolveEffectiveMediaUrl(url)
-        val domain = effectiveUrl.lowercase()
-        val response = probeClient.get(effectiveUrl) {
-            header(HttpHeaders.UserAgent, DESKTOP_USER_AGENT)
-            header(
-                HttpHeaders.Accept,
-                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-            )
-            if (domain.contains("facebook.com") || domain.contains("fb.watch")) {
-                header("Referer", "https://www.facebook.com/")
-                header("Origin", "https://www.facebook.com")
-            } else if (domain.contains("instagram.com")) {
-                header("Referer", "https://www.instagram.com/")
-            }
-        }
-        val body = response.bodyAsText()
-        val list = mutableListOf<MediaQualityEntry>()
-
-        val titleMatch = Regex("""<title>([^<]+)</title>""", RegexOption.IGNORE_CASE).find(body)
-            ?: Regex(
-                """<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']""",
-                RegexOption.IGNORE_CASE
-            ).find(body)
-        val rawTitle = titleMatch?.groupValues?.get(1)?.trim()
-        val videoTitle = if (!rawTitle.isNullOrBlank()) decodeUnicodeEscapes(rawTitle) else null
-
-        if (domain.contains("facebook.com") || domain.contains("fb.watch")) {
-            val hdPatterns = listOf(
-                Regex("""["']playable_url_quality_hd["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""["']browser_native_hd_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""hd_src\s*:\s*["']([^"']+)["']"""),
-                Regex("""hd_src_no_ratelimit\s*:\s*["']([^"']+)["']""")
-            )
-            val sdPatterns = listOf(
-                Regex("""["']playable_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""["']browser_native_sd_url["']\s*:\s*["']([^"']+)["']"""),
-                Regex("""sd_src\s*:\s*["']([^"']+)["']"""),
-                Regex("""sd_src_no_ratelimit\s*:\s*["']([^"']+)["']"""),
-                Regex("""video_src\s*:\s*["']([^"']+)["']"""),
-                Regex(
-                    """<meta\s+property=["']og:video(?::secure_url)?["']\s+content=["']([^"']+)["']""",
-                    RegexOption.IGNORE_CASE
-                ),
-                Regex("""(https?:\\?/\\?/[^"'\s]*fbcdn\.net[^"'\s]*\.mp4[^"'\s]*)"""),
-                Regex("""(https?:\\?/\\?/[^"'\s]*video[^"'\s]*\.fbcdn\.net[^"'\s]*)""")
-            )
-
-            var hdUrl: String? = null
-            for (p in hdPatterns) {
-                val m = p.find(body)
-                if (m != null) {
-                    val cleaned = cleanEscapedUrl(m.groupValues[1])
-                    if (cleaned.isNotBlank()) {
-                        hdUrl = cleaned
-                        break
-                    }
-                }
-            }
-
-            var sdUrl: String? = null
-            for (p in sdPatterns) {
-                val m = p.find(body)
-                if (m != null) {
-                    val cleaned = cleanEscapedUrl(m.groupValues[1])
-                    if (cleaned.isNotBlank() && cleaned != hdUrl) {
-                        sdUrl = cleaned
-                        break
-                    }
-                }
-            }
-
-            if (hdUrl != null) {
-                val size = probeContentLength(hdUrl)
-                list.add(
-                    MediaQualityEntry(
-                        index = 0,
-                        qualityLabel = "HD Quality (720p - MP4)",
-                        directUrl = hdUrl,
-                        format = "mp4",
-                        size = size,
-                        isSelected = true,
-                        formatId = "hd",
-                        originalUrl = url,
-                        videoTitle = videoTitle ?: "Facebook Video HD",
-                        durationSeconds = 0L
-                    )
-                )
-            }
-
-            if (sdUrl != null) {
-                val size = probeContentLength(sdUrl)
-                list.add(
-                    MediaQualityEntry(
-                        index = 0,
-                        qualityLabel = "SD Quality (480p - MP4)",
-                        directUrl = sdUrl,
-                        format = "mp4",
-                        size = size,
-                        isSelected = list.isEmpty(),
-                        formatId = "sd",
-                        originalUrl = url,
-                        videoTitle = videoTitle ?: "Facebook Video SD",
-                        durationSeconds = 0L
-                    )
-                )
-            }
-        } else {
-            val ogVideoMatch = Regex(
-                """<meta\s+property=["']og:video(?::secure_url)?["']\s+content=["']([^"']+)["']""",
-                RegexOption.IGNORE_CASE
-            ).find(body)
-                ?: Regex(
-                    """<meta\s+name=["']twitter:player:stream["']\s+content=["']([^"']+)["']""",
-                    RegexOption.IGNORE_CASE
-                ).find(body)
-                ?: Regex("""(https?:\\?/\\?/[^"'\s]+\.mp4[^"'\s]*)""").find(body)
-            if (ogVideoMatch != null) {
-                val videoUrl = cleanEscapedUrl(ogVideoMatch.groupValues[1])
-                if (videoUrl.isNotBlank() && videoUrl.startsWith("http")) {
-                    val size = probeContentLength(videoUrl)
-                    list.add(
-                        MediaQualityEntry(
-                            index = 0,
-                            qualityLabel = "Best Quality (MP4)",
-                            directUrl = videoUrl,
-                            format = "mp4",
-                            size = size,
-                            isSelected = true,
-                            formatId = "best",
-                            originalUrl = url,
-                            videoTitle = videoTitle,
-                            durationSeconds = 0L
-                        )
-                    )
-                }
-            }
-        }
-        list
-    } catch (_: Exception) {
-        emptyList()
     }
 }
 
@@ -400,7 +255,6 @@ private fun probeMediaDurationWithFfmpeg(url: String): Long {
     return (hours * 3600L) + (minutes * 60L) + seconds
 }
 
-
 /**
  * iOS cannot spawn processes, so yt-dlp only works through the Swift bridge once it runs
  * Python in-process. Until that bridge reports available, fail immediately with a clear
@@ -413,6 +267,7 @@ private fun requireIosMediaEngine() {
             "Media extraction is not available on iOS yet. It needs the in-app Python engine (coming in a later build)."
         )
     }
+    iosEjsCacheReady
 }
 
 actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dispatchers.IO) {
@@ -470,7 +325,10 @@ private fun getLongFromMap(map: Map<*, *>?, key: String): Long? {
     return v.toString().toDoubleOrNull()?.toLong()
 }
 
-actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry> =
+actual suspend fun inspectPlatformQualities(
+    url: String,
+    requestHeaders: Map<String, String>
+): List<MediaQualityEntry> =
     withContext(Dispatchers.IO) {
         requireIosMediaEngine()
         val trimmedUrl = url.trim()
@@ -482,6 +340,7 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
             "--no-playlist",   // a watch?v=...&list=... link is one video, not the whole mix
             "--geo-bypass"
         )
+        args.addAll(ytDlpHeaderArgs(requestHeaders, url))
         getIosCookieFile()?.let { cookiePath ->
             args.add("--cookies")
             args.add(cookiePath)
@@ -564,9 +423,17 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
             val clenFromUrl =
                 Regex("""[?&]clen=(\d+)""").find(directUrl)?.groupValues?.get(1)?.toLongOrNull()
                     ?: -1L
+            val isHlsFormat = (getStringFromMap(f, "protocol") ?: "").let {
+                it.contains(
+                    "m3u8",
+                    ignoreCase = true
+                ) || it == "mhtml"
+            } ||
+                    directUrl.contains(".m3u8", ignoreCase = true)
             val filesize = when {
                 explicitFilesize > 0L -> explicitFilesize
                 clenFromUrl > 0L -> clenFromUrl
+                isHlsFormat -> -1L
                 else -> getCachedContentLength(directUrl.ifBlank { trimmedUrl })
             }
 
@@ -679,7 +546,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                     list.add(
                         MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -693,11 +562,18 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                 } else if (isDirectMp4) {
                     val existing = list[existingIndex]
                     val existingIsHls = existing.directUrl.contains(".m3u8", ignoreCase = true) ||
+                            existing.directUrl.contains("/hls", ignoreCase = true) ||
+                            existing.directUrl.contains(
+                                "manifest.googlevideo",
+                                ignoreCase = true
+                            ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
                     if (existingIsHls) {
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
-                            qualityLabel = label,
+                            qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                label
+                            ),
                             directUrl = directUrl.ifBlank { trimmedUrl },
                             format = ext,
                             size = filesize,
@@ -770,7 +646,9 @@ actual suspend fun inspectPlatformQualities(url: String): List<MediaQualityEntry
                         list.add(
                             MediaQualityEntry(
                                 index = 0,
-                                qualityLabel = label,
+                                qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
+                                    label
+                                ),
                                 directUrl = trimmedUrl,
                                 format = ext,
                                 size = size,
@@ -830,7 +708,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     speedLimitBytesPerSec: Long,
     speedLimitProvider: (() -> Long)?,
     onProgress: (Float, Long, Long, Long, String?) -> Unit,
-    onPostProcess: ((String, Float) -> Unit)?
+    onPostProcess: ((String, Float) -> Unit)?,
+    requestHeaders: Map<String, String>
 ): Boolean = withContext(Dispatchers.IO) {
     requireIosMediaEngine()
     val bridge = IosMediaBridgeRegistry.bridge
@@ -839,7 +718,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     if (!isBridgeAvailable && ytdlp == null) return@withContext false
     val python = getExistingPythonBinary()
     val ffmpeg = getExistingFfmpegBinary()
-    val hasFfmpeg = ffmpeg != null
+    // The in-app engine runs ffmpeg in-process (Swift's Popen shim): there is no binary to find,
+    // but yt-dlp can still merge video + audio and cut sections.
+    val hasFfmpeg = ffmpeg != null || isBridgeAvailable
 
     val outDir = destinationDir.toPath()
     try {
@@ -880,6 +761,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     val rawArgs = mutableListOf<String>()
     rawArgs.add("-o")
     rawArgs.add(outputTemplate)
+    rawArgs.addAll(ytDlpHeaderArgs(requestHeaders, url))
 
     if (isAudio) {
         if (hasFfmpeg) {
@@ -917,8 +799,10 @@ actual suspend fun downloadMediaWithPlatformTool(
                 rawArgs.add("--merge-output-format")
                 rawArgs.add("mp4")
             }
-            rawArgs.add("--ffmpeg-location")
-            rawArgs.add(ffmpeg.substringBeforeLast('/'))
+            if (ffmpeg != null) {
+                rawArgs.add("--ffmpeg-location")
+                rawArgs.add(ffmpeg.substringBeforeLast('/'))
+            }
         }
     }
 
@@ -971,14 +855,8 @@ actual suspend fun downloadMediaWithPlatformTool(
     rawArgs.add("--progress-template"); rawArgs.add("download:[download] %(progress._default_template)s FJBYTES=%(progress.downloaded_bytes)s")
     rawArgs.add("--no-playlist")
     rawArgs.add("--geo-bypass")
-    if (url.contains("youtube.com", ignoreCase = true) || url.contains(
-            "youtu.be",
-            ignoreCase = true
-        )
-    ) {
-        rawArgs.add("--extractor-args")
-        rawArgs.add("youtube:player_client=android,web")
-    }
+    // (No forced youtube:player_client, as on desktop: "android" now gets SABR-only formats and
+    // left only 360p format 18, so a 4K pick silently downloaded 360p.)
     getIosCookieFile()?.let { cookiePath ->
         rawArgs.add("--cookies")
         rawArgs.add(cookiePath)
@@ -1345,7 +1223,6 @@ private suspend fun runCancellableOnBridge(
     }
 }
 
-
 actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         requireIosMediaEngine()
@@ -1364,4 +1241,29 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
             runYtDlpCapture(args)
         }
         output?.let { parsePlaylistJson(it) }
+    }
+
+actual fun lastMediaInspectionError(): String? = null
+
+actual suspend fun runYtDlpJson(
+    url: String,
+    selector: String,
+    headers: Map<String, String>
+): String? =
+    withContext(Dispatchers.IO) {
+        val trimmedUrl = url.trim()
+        if (trimmedUrl.isEmpty()) return@withContext null
+        val args =
+            mutableListOf("-j", "--no-warnings", "--no-playlist", "--geo-bypass", "-f", selector)
+        args.addAll(ytDlpHeaderArgs(headers, url))
+        getIosCookieFile()?.let { args.add("--cookies"); args.add(it) }
+        args.add(trimmedUrl)
+        val bridge = IosMediaBridgeRegistry.bridge
+        try {
+            if (bridge != null && bridge.isAvailable()) bridge.captureYtDlp(args) else runYtDlpCapture(
+                args
+            )
+        } catch (_: Exception) {
+            null
+        }
     }

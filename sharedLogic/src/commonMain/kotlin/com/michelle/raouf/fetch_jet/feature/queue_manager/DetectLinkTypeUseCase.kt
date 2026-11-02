@@ -24,7 +24,9 @@ class DetectLinkTypeUseCase {
             "twitch.tv", "dailymotion.com", "dai.ly", "bilibili.com", "rumble.com",
             "googlevideo.com", "pipedapi.kavin.rocks", "cobalt.tools",
             "soundcloud.com", "bandcamp.com", "reddit.com", "vk.com", "odysee.com",
-            "streamable.com", "ok.ru", "pinterest.com", "bitchute.com"
+            "streamable.com", "ok.ru", "pinterest.com", "bitchute.com",
+            // course sites: yt-dlp knows their players; the extension passes the login cookies
+            "udemy.com", "coursera.org", "linkedin.com", "skillshare.com"
         )
         // Exact host or sub-domain only: "x.com" must not catch dropbox.com / box.com.
         val isMediaHost = host.isNotEmpty() && mediaDomains.any { d -> host == d || host.endsWith(".$d") }

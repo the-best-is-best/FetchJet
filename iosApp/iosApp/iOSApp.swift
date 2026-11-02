@@ -61,7 +61,7 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let bridge = LiveActivityBridge()
     private let mediaBridge = NativeMediaExtractorBridge()
-    #if FETCHJET_FULL && canImport(LibTorrent)
+    #if FETCHJET_FULL && canImport(FJTorrent)
     private let torrentBridge = NativeTorrentBridge()
     #endif
 
@@ -71,7 +71,7 @@ struct iOSApp: App {
         Task { @MainActor in
             LiveActivityManager.shared.endStaleActivities()
         }
-        #if FETCHJET_FULL && canImport(LibTorrent)
+        #if FETCHJET_FULL && canImport(FJTorrent)
         IosTorrentBridgeRegistry.shared.bridge = torrentBridge
         #endif
     }
@@ -79,8 +79,12 @@ struct iOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                // A .torrent opened from Files / Safari / Mail, or a magnet: link.
+                // A .torrent opened from Files / Safari / Mail, a magnet: link, or a
+                // fetchjet:// link from the Safari extension.
                 .onOpenURL { url in
+                    if IosFetchJetLinks.shared.handle(link: url.absoluteString) {
+                        return
+                    }
                     let target: String?
                     if url.isFileURL {
                         target = TorrentFilePicker.shared.importTorrent(url: url)

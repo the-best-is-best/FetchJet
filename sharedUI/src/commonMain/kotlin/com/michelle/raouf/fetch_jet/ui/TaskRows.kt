@@ -2,7 +2,9 @@ package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -223,7 +228,11 @@ fun TaskRow(
     selected: Boolean,
     speedDisplayUnit: String,
     onClick: () -> Unit,
-    onQuickAction: (RowAction) -> Unit
+    onQuickAction: (RowAction) -> Unit,
+    checked: Boolean = false,
+    selectionMode: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
     val name = decodeUnicodeText(task.fileName.ifBlank {
         task.url.substringBefore('?').substringAfterLast('/')
@@ -247,7 +256,10 @@ fun TaskRow(
             shape = shape,
             color = container,
             border = border,
-            modifier = Modifier.fillMaxWidth().clip(shape).clickable(onClick = onClick)
+            modifier = Modifier.fillMaxWidth().clip(shape).combinedClickable(
+                onClick = { if (selectionMode) onCheckedChange(!checked) else onClick() },
+                onLongClick = onLongClick
+            )
         ) {
             if (wide) {
                 Row(
@@ -255,6 +267,11 @@ fun TaskRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Checkbox(
+                        checked = checked,
+                        onCheckedChange = onCheckedChange,
+                        modifier = Modifier.size(24.dp)
+                    )
                     KindSquare(tag, 34)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -309,6 +326,14 @@ fun TaskRow(
             } else {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectionMode) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = onCheckedChange,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
                         KindSquare(tag, 40)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -329,7 +354,7 @@ fun TaskRow(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        QuickActionButton(action, 44) { onQuickAction(action) }
+                        if (!selectionMode) QuickActionButton(action, 44) { onQuickAction(action) }
                     }
                     if (task.status != DownloadStatus.COMPLETED) {
                         Spacer(modifier = Modifier.height(10.dp))
@@ -343,15 +368,30 @@ fun TaskRow(
 
 /** Header of the wide list: the column names above the rows. */
 @Composable
-fun TaskRowsHeader() {
+fun TaskRowsHeader(
+    allChecked: Boolean = false,
+    someChecked: Boolean = false,
+    onCheckAll: (Boolean) -> Unit = {}
+) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         if (maxWidth < 720.dp) return@BoxWithConstraints
         val style = MaterialTheme.typography.labelSmall
         val color = MaterialTheme.colorScheme.onSurfaceVariant
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 58.dp, end = 12.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            TriStateCheckbox(
+                state = when {
+                    allChecked -> ToggleableState.On
+                    someChecked -> ToggleableState.Indeterminate
+                    else -> ToggleableState.Off
+                },
+                onClick = { onCheckAll(!allChecked) },
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(34.dp))
             Text(
                 "NAME",
                 style = style,

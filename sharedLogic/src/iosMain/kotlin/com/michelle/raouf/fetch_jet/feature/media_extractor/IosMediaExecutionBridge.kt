@@ -15,6 +15,13 @@ fun interface IosMediaLineCallback {
 }
 
 /**
+ * Download progress (0.0 to 1.0) of a tool file such as the yt_dlp module.
+ */
+fun interface IosToolDownloadProgressCallback {
+    fun onProgress(fraction: Float)
+}
+
+/**
  * Native iOS bridge interface to be implemented in Swift (via SPM / Frameworks: FFmpegKit, PythonKit, AVFoundation, etc.)
  * matching Android's ytdlnis / ffmpeg / aria2c architecture.
  */
@@ -30,6 +37,8 @@ interface IosMediaExecutionBridge {
      * @return null on success, otherwise an error message.
      */
     fun prepareEngine(): String?
+
+    fun updateYtDlpModule(progressCallback: IosToolDownloadProgressCallback?): String?
 
     /**
      * Executes yt-dlp arguments with real-time progress callbacks.
