@@ -296,7 +296,7 @@ Bridges:
 
 ## Release plan
 
-- **1.1.0 is not released yet** (the extension store reviews were still pending). A
+- 1.1.0 history: a
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
   its work (clean code, kotlinx.serialization, multi-select delete) in 1.1.0 itself, since 1.1.0
   never reached users. The branch was deleted (local only, never pushed). On 2026-11-02
@@ -306,9 +306,14 @@ Bridges:
   official multiplatform libraries (kotlinx.serialization, navigationevent, Compose), and
   `iosMain` / Swift were not touched. The next Mac build confirms it; it does not block the
   commit (owner's decision, 2026-11-02).
-- Draft release. The owner runs workflow_dispatch: version `1.1.0`, all platforms, `stores` on,
-  `beta` empty (2026-11-02). The draft must be published before `/releases/latest` (the app's
-  update check) sees it. v1.0.0 and v1.0.1 are marked GitHub "Pre-release".
+- **1.1.0 released 2026-11-02** (run #48 from `master`, all platforms, `stores` on, `beta` empty),
+  published as a normal release. Publishing created the `v1.1.0` tag, and the tag push started
+  run #49, which rebuilt the published release (`--clobber` deletes each file before uploading
+  it again, so files were missing for a while). `build.yml` now skips a tag push when the
+  release already exists. Uploads in all build jobs run in parallel (one `gh release upload`
+  per file). Microsoft Store: MSIX 1.1.0 submitted (replaces 1.0.1; `runFullTrust` warning is
+  normal, justified in Submission options). Edge Add-ons: new extension version submitted with
+  certification notes (tester needs the FetchJet desktop app). Both under review.
 - Stability (2026-11-01): all platforms are stable: Windows, macOS, Linux, Android, iOS and the
   Chrome / Edge / Firefox / Safari extension. Android re-tested on the A56 over wireless adb after
   the dead-code cleanup (direct 10 MB, YouTube with merged video+audio, Sintel torrent 123 MB, no
