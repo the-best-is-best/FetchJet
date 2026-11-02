@@ -91,6 +91,10 @@ extension\build.ps1
   (1-128 MB) work from Egypt. thinkbroadband returns 403 for Egyptian IPs (server-side block, do
   not try to get around it). Hetzner `*-speed.hetzner.com` allows one connection per IP (429 for
   the rest): good for testing the 429 handling, bad for speed tests.
+- Git submodule `packages/kmp-localization` (project `:kmpLocalization`). After a clone or a pull
+  that adds it, run `git submodule update --init --recursive`, else every Gradle build fails with
+  "Configuring project ':kmpLocalization' without an existing directory" (in Xcode this shows only
+  as "Command PhaseScriptExecution failed with a nonzero exit code").
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
   An incremental build does not re-embed `FetchJetSafariExtension.appex` into `FetchJet.app` when
   only `extension/` JS changed: rsync `Debug-iphonesimulator/FetchJetSafariExtension.appex` into
@@ -104,6 +108,12 @@ extension\build.ps1
   bandwidth service (KNDBWM) helped only half the time. After the owner switched to the Wi-Fi
   network "Mesho_5G 2", Windows and WSL both upload a steady ~15 Mbit/s. Cause not proven (the
   old Wi-Fi network and/or Killer software). Slow release uploads from Windows = check this first.
+- Testing an in-app update on the Mac: back up `/Applications/FetchJet.app`, set `APP_VERSION`
+  to an older version (e.g. `1.0.9`), `./gradlew :desktopApp:createDistributable`, set it back,
+  `ditto desktopApp/build/compose/binaries/main/app/FetchJet.app /Applications/FetchJet.app`.
+  To get the update dialog at start without clicking Settings, set `lastCheckedMs=0` in
+  `~/.fetch_jet/updates.properties` (the auto check runs at most twice a day). The update files
+  land in `$TMPDIR/FetchJetDownloads/fetchjet-update/` (`fetchjet-update.log`).
 - Self-hosted Mac runner: `~/actions-runner`, installed as a launchd service
   (`./svc.sh start|stop|status`, or `./run.sh` in a terminal).
 
@@ -164,7 +174,7 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   with sha256 check). Auto-update compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
   ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.
-- Android: python/ffmpeg/QuickJS/aria2c are bundled as `.so` (Android 10+ cannot run downloaded
+- Android: python/ffmpeg/QuickJS are bundled as `.so` (Android 10+ cannot run downloaded
   binaries, so they can only change with a new APK). yt-dlp (a Python zip, data not a binary) ships
   in
   `res/raw/ytdlp` (copied there by CI) and is auto-updated at start; the owner chose to keep it
@@ -172,37 +182,24 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
   `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
   `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
-- iOS Python: being changed (see the open task below). Was 3.13; tried 3.14.10 (BeeWare
-  `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS, built for Python 3.14), pinned in
-  `scripts/ios-prepare-frameworks.sh` (owner's choice,
-  2026-11-02: the stable one). Until then the app embedded 3.13 while the payload was built for
-  3.14, so curl_cffi was skipped (CI warning) and impersonation sites could 403 on iOS. The script
-  now replaces a cached Python / payload of another version (the self-hosted Mac had 3.13).
-  SwiftCurlCffi v0.17.0 = Python 3.15 + curl_cffi 0.17 (needs yt-dlp 2026.10.26+): bump
-  PY_VERSION, PY_BUILD and CC_TAG together. The Swift bridge is version-agnostic (finds
-  `python3.*`, uses only PyGILState_* / PyEval_SaveThread). The "Install Python Runtime" Xcode
-  phase now deletes any `python/lib/python3.*` in the app that is not the embedded version
-  (BeeWare's install_python never removed the old one, so an incremental build would ship both).
-  The prepare script was run on Windows against a fake cached 3.13 + 3.15 payload: it replaced
-  both, "payload ready (0.16.3)", second run does nothing. Not yet built in Xcode/CI with 3.14.
-  With 3.14 the simulator crashed (EXC_BAD_ACCESS in PythonKit's `PyObject_CallObject`, engine
-  stuck at "Preparing engine"): PythonKit took the borrowed `args` / `kwargs` of Swift callbacks
-  (`PythonFunction`, `PythonInstanceMethod`: our yt-dlp logger, progress hook, cancel check,
-  Popen bridge) with `consuming`, one release too many per call; 3.13 tolerated it. PythonKit is
-  now vendored at `iosApp/PythonKit` (local Swift package, upstream commit fe7d973, Apache-2.0,
-  fix described in its README) instead of the remote `main` branch. Re-tested on the simulator
-  with 3.14: STILL crashes the same way (Thread 19 EXC_BAD_ACCESS at 0x105e98eb800ab inside
-  `PyObject_CallObject`, engine stuck at "Preparing engine…", YouTube too, so not curl_cffi).
-  No backtrace yet. Suspect next: the WebKit JS plugin `yt-dlp-apple-webkit-jsi` (ctypes +
-  JavaScriptCore; upstream issue #2 "Segfaults on certain python/darwin versions"). **Open task for
-  the Mac session (2026-11-02):** the script is set to Python 3.15.2 (`3.15`,
-  `b3`, curl_cffi `v0.17.0`) to try before going back to 3.13 (`3.13`, `b18`, any CC_TAG: the
-  payload is skipped). Steps: Clean Build Folder, build for the simulator, run YouTube
-  `https://www.youtube.com/watch?v=jNQXAC9IVRw` then `https://9gag.com/gag/ae5Ag7B`; on a crash
-  get `bt 40` (lldb) or the .ips crash report, find the real frame, fix it, then decide 3.15 /
-  3.14 / 3.13 with the owner.
-  Test for curl_cffi: inspect https://9gag.com/gag/ae5Ag7B (or a kick.com video); the log must
-  NOT say "no impersonate target is available".
+- iOS Python: **3.14.10** (BeeWare `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS,
+  built for Python 3.14), pinned in `scripts/ios-prepare-frameworks.sh` (owner's choice,
+  2026-11-02). Before, the app embedded 3.13 while the payload was built for 3.14, so curl_cffi was
+  skipped and impersonation sites could 403. The script replaces a cached Python / payload of
+  another version. SwiftCurlCffi v0.17.0 = Python 3.15 + curl_cffi 0.17: bump PY_VERSION,
+  PY_BUILD and CC_TAG together. The Swift bridge is version-agnostic (finds `python3.*`, uses only
+  PyGILState_* / PyEval_SaveThread). The "Install Python Runtime" Xcode phase deletes any
+  `python/lib/python3.*` in the app that is not the embedded version. An earlier 3.14 build crashed
+  on the simulator (EXC_BAD_ACCESS in PythonKit's `PyObject_CallObject`, engine stuck at
+  "Preparing engine"): PythonKit took the borrowed `args` / `kwargs` of Swift callbacks with
+  `consuming` (one release too many); PythonKit is now vendored at `iosApp/PythonKit` (local Swift
+  package, upstream fe7d973, Apache-2.0, fix in its README). **Verified 2026-11-02 on the Mac
+  simulator (iPhone 17), clean build with 3.14.10:** log `engine ready: yt-dlp 2026.10.26 on
+  Python 3.14.10, curl_cffi 0.16.3`; YouTube `jNQXAC9IVRw` listed 15 formats and downloaded;
+  9gag `ae5Ag7B` (Media engine) listed 3 formats and downloaded 1.9 MB; no "no impersonate target"
+  warning, no crash report. Not exercised: a YouTube format that needs the ffmpeg merge, a real
+  iPhone. Test for curl_cffi: inspect https://9gag.com/gag/ae5Ag7B (pick Media: the link is
+  detected as Direct); the log must NOT say "no impersonate target is available".
 - iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
   `EJSBaseJCP` subclass). Auto-update calls Swift `updateYtDlpModule()` (takes effect next launch).
   deno is impossible on iOS (no JIT for apps, no subprocess).

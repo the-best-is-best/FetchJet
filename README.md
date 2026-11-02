@@ -26,17 +26,17 @@
 
 |                                    |                                                                                                                                                                              |
 |------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ⚡ **Fast HTTP downloads**         | Files are split into chunks and fetched in parallel, resumed after a pause or a crash, and the exact downloaded bytes are shown – no jumping sizes.                          |
+| ⚡ **Fast HTTP downloads**          | Files are split into chunks and fetched in parallel, resumed after a pause or a crash, and the exact downloaded bytes are shown – no jumping sizes.                          |
 | 🎬 **Videos from 1000+ sites**     | YouTube, Vimeo, TikTok, Twitter/X, Instagram, Twitch, SoundCloud… Pick the quality (up to 4K / 8K), or just the audio as MP3.                                                |
 | ✂️ **Clip, don't download it all** | Choose a start and end time. FetchJet fetches only that part, or grabs the whole video at full speed and cuts it locally – your choice.                                      |
 | 📃 **Playlists & channels**        | Paste a playlist link, tick the videos you want, pick one quality for all of them.                                                                                           |
 | 🧲 **Torrents & magnets**          | Built-in libtorrent engine. Choose files inside the torrent, set priorities, disable uploading. Torrents with web seeds (e.g. archive.org) download over HTTP at full speed. |
-| 🗂️ **Queue & schedule**            | Decide how many downloads run at once; the rest wait in line. Schedule a download for tonight at 2:00 AM.                                                                    |
+| 🗂️ **Queue & schedule**           | Decide how many downloads run at once; the rest wait in line. Schedule a download for tonight at 2:00 AM.                                                                    |
 | 🧭 **Browser extension**           | A **Download with FetchJet** button on video pages and links; the app opens with the quality list ready.                                                                     |
 | 🔁 **Resume-aware**                | FetchJet tells you whether a link can resume *before* you pause it.                                                                                                          |
 | 🔔 **Live progress**               | Android live notification and iOS Live Activity with speed and time left.                                                                                                    |
 | 🌗 **One UI everywhere**           | Sidebar on desktop, rail on tablets, bottom bar on phones. Dark and light.                                                                                                   |
-| 🔄 **Auto-update**                 | Checks for new versions; Windows installs them for you.                                                                                                                      |
+| 🔄 **Auto-update**                 | Checks for new versions and installs them from inside the app on Windows, macOS, Linux and Android; the Microsoft Store build is updated by the Store.                       |
 
 ---
 
@@ -45,15 +45,16 @@
 **👉 [Downloads page](https://the-best-is-best.github.io/FetchJet/)** – every version for every
 platform, with the right file highlighted for your device.
 
-| Platform                  | File                                                                                                | Notes                                                                          |
-|---------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| Windows 10 / 11           | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                |
-| macOS 12+ (Apple Silicon) | `-arm64.dmg`                                                                                        | M1 or newer only; Intel Macs are not supported. Drag FetchJet to Applications. |
-| Linux                     | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                    |
-| Android 8+                | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.               |
-| iOS 16+                   | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly.                                          |
-| Chrome / Edge / Brave     | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).             |
-| Firefox                   | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                              |
+| Platform                                | File                                                                                                | Notes                                                                           |
+|-----------------------------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
+| macOS 12+ (Apple Silicon)               | `-arm64.dmg`                                                                                        | M1 or newer only. Drag FetchJet to Applications (in-app updates need it there). |
+| Linux                                   | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                     |
+| Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.                |
+| iOS 16+                                 | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly. Includes the Safari extension.            |
+| Chrome / Edge / Brave / Opera / Vivaldi | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).              |
+| Safari (iPhone / iPad)                  | inside the `.ipa`                                                                                   | Turn it on in Settings › Safari › Extensions. Qualities are listed in the app.  |
+| Firefox                                 | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                               |
 
 ---
 

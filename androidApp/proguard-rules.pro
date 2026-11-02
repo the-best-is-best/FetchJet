@@ -28,7 +28,7 @@
 -keep class com.google.gson.reflect.TypeToken { *; }
 -dontwarn com.google.gson.**
 
-# youtubedl-android / ffmpeg / aria2c wrappers (JNI + reflection)
+# youtubedl-android / ffmpeg wrappers (JNI + reflection)
 -keep class com.yausername.** { *; }
 -keep class io.github.junkfood02.** { *; }
 -dontwarn com.yausername.**

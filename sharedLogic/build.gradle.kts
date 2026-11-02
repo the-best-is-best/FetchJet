@@ -84,7 +84,6 @@ kotlin {
             implementation(libs.androidx.preference.ktx)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.ffmpeg)
-            implementation(libs.aria2c)
             implementation(libs.ytdlnis.packages.python)
             implementation(libs.ytdlnis.packages.bash)
             implementation(libs.commons.io)

@@ -18,8 +18,6 @@ internal class StreamProcessExtractor(
     private val callback: ((Float, Long, String) -> Unit)?
 ) : Thread() {
     private val p = Pattern.compile("\\[download\\]\\s+(\\d+\\.\\d)% .* ETA (\\d+):(\\d+)")
-    private val pAria2c =
-        Pattern.compile("\\[#\\w{6}.*\\((\\d*\\.*\\d+)%\\).*?((\\d+)m)*((\\d+)s)*]")
     private val pFFmpeg = Pattern.compile("size=.*")
     private var progress = PERCENT
     private var eta = ETA
@@ -71,11 +69,6 @@ internal class StreamProcessExtractor(
             return matcher.group(GROUP_PERCENT)!!.toFloat().also { progress = it }
         }
 
-        val mAria2c = pAria2c.matcher(line)
-        if (mAria2c.find()) {
-            return mAria2c.group(1)!!.toFloat().also { progress = it }
-        }
-
         val mFFmpeg = pFFmpeg.matcher(line)
         if (mFFmpeg.find()) {
             return 99f.also { progress = it }
@@ -89,13 +82,7 @@ internal class StreamProcessExtractor(
         if (matcher.find()) return convertToSeconds(
             matcher.group(GROUP_MINUTES),
             matcher.group(GROUP_SECONDS)
-        ).also { eta = it.toLong() }.toLong() else {
-            val mAria2c = pAria2c.matcher(line)
-            if (mAria2c.find()) return convertToSeconds(
-                mAria2c.group(3),
-                mAria2c.group(5)
-            ).also { eta = it.toLong() }.toLong()
-        }
+        ).also { eta = it.toLong() }.toLong()
         return eta
     }
 
