@@ -294,7 +294,7 @@
 			mainGroup = 83C726E80E5A1CEE8F3E957F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */,
+				41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */,
 				41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */,
 				B20000000000000000000008 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Support" */,
 				B30000000000000000000008 /* XCRemoteSwiftPackageReference "OpenSSL" */,
@@ -826,15 +826,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pvieito/PythonKit.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = PythonKit;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/kewlbear/FFmpeg-iOS-Lame";
@@ -864,7 +863,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		41F731513092206B00EE47F8 /* PythonKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */;
+			package = 41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */;
 			productName = PythonKit;
 		};
 		41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */ = {

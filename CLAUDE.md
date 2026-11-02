@@ -172,8 +172,9 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
   `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
   `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
-- iOS Python: 3.14.10 (BeeWare `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS,
-  built for Python 3.14), both pinned in `scripts/ios-prepare-frameworks.sh` (owner's choice,
+- iOS Python: being changed (see the open task below). Was 3.13; tried 3.14.10 (BeeWare
+  `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS, built for Python 3.14), pinned in
+  `scripts/ios-prepare-frameworks.sh` (owner's choice,
   2026-11-02: the stable one). Until then the app embedded 3.13 while the payload was built for
   3.14, so curl_cffi was skipped (CI warning) and impersonation sites could 403 on iOS. The script
   now replaces a cached Python / payload of another version (the self-hosted Mac had 3.13).
@@ -184,6 +185,22 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   (BeeWare's install_python never removed the old one, so an incremental build would ship both).
   The prepare script was run on Windows against a fake cached 3.13 + 3.15 payload: it replaced
   both, "payload ready (0.16.3)", second run does nothing. Not yet built in Xcode/CI with 3.14.
+  With 3.14 the simulator crashed (EXC_BAD_ACCESS in PythonKit's `PyObject_CallObject`, engine
+  stuck at "Preparing engine"): PythonKit took the borrowed `args` / `kwargs` of Swift callbacks
+  (`PythonFunction`, `PythonInstanceMethod`: our yt-dlp logger, progress hook, cancel check,
+  Popen bridge) with `consuming`, one release too many per call; 3.13 tolerated it. PythonKit is
+  now vendored at `iosApp/PythonKit` (local Swift package, upstream commit fe7d973, Apache-2.0,
+  fix described in its README) instead of the remote `main` branch. Re-tested on the simulator
+  with 3.14: STILL crashes the same way (Thread 19 EXC_BAD_ACCESS at 0x105e98eb800ab inside
+  `PyObject_CallObject`, engine stuck at "Preparing engine…", YouTube too, so not curl_cffi).
+  No backtrace yet. Suspect next: the WebKit JS plugin `yt-dlp-apple-webkit-jsi` (ctypes +
+  JavaScriptCore; upstream issue #2 "Segfaults on certain python/darwin versions"). **Open task for
+  the Mac session (2026-11-02):** the script is set to Python 3.15.2 (`3.15`,
+  `b3`, curl_cffi `v0.17.0`) to try before going back to 3.13 (`3.13`, `b18`, any CC_TAG: the
+  payload is skipped). Steps: Clean Build Folder, build for the simulator, run YouTube
+  `https://www.youtube.com/watch?v=jNQXAC9IVRw` then `https://9gag.com/gag/ae5Ag7B`; on a crash
+  get `bt 40` (lldb) or the .ips crash report, find the real frame, fix it, then decide 3.15 /
+  3.14 / 3.13 with the owner.
   Test for curl_cffi: inspect https://9gag.com/gag/ae5Ag7B (or a kick.com video); the log must
   NOT say "no impersonate target is available".
 - iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
