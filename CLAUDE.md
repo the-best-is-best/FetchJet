@@ -172,6 +172,14 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
   `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
   `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
+- iOS Python: 3.14.10 (BeeWare `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS,
+  built for Python 3.14), both pinned in `scripts/ios-prepare-frameworks.sh` (owner's choice,
+  2026-11-02: the stable one). Until then the app embedded 3.13 while the payload was built for
+  3.14, so curl_cffi was skipped (CI warning) and impersonation sites could 403 on iOS. The script
+  now replaces a cached Python / payload of another version (the self-hosted Mac had 3.13).
+  SwiftCurlCffi v0.17.0 = Python 3.15 + curl_cffi 0.17 (needs yt-dlp 2026.10.26+): bump
+  PY_VERSION, PY_BUILD and CC_TAG together. The Swift bridge is version-agnostic (finds
+  `python3.*`, uses only PyGILState_* / PyEval_SaveThread). Not yet built or run with 3.14.
 - iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
   `EJSBaseJCP` subclass). Auto-update calls Swift `updateYtDlpModule()` (takes effect next launch).
   deno is impossible on iOS (no JIT for apps, no subprocess).
@@ -290,7 +298,8 @@ Bridges:
   compile (letters continue the name): use
   `${n}`. Verified on the A56: Arabic + RTL (home, settings, a live download, toast and
   notification in Arabic), choice kept after a restart; Chinese on screen (back to LTR). Not
-  checked: the other 13 languages on screen, desktop, iOS build.
+  checked: the other 13 languages on screen, desktop. iOS build (CI "Build unsigned IPA") passed
+  2026-11-02 with these changes.
 - 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on
   `BasicTextField`; String and `TextFieldValue` overloads). Focus = primary border + soft glow
   (`dropShadow`), hover on desktop, optional `label`, `error`, `centered`. Buttons inside a field:
