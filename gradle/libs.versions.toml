@@ -29,6 +29,9 @@ gson = "2.15.0"
 preference-ktx = "1.2.1"
 okhttp3 = "5.5.1"
 
+androidx-testRunner = "1.7.0"
+androidx-testCore = "1.7.0"
+
 [libraries]
 navigationevent-compose = { module = "org.jetbrains.androidx.navigationevent:navigationevent-compose", version.ref = "navigationevent" }
 auto-launch = { module = "io.github.vinceglb:auto-launch", version.ref = "autoLaunch" }
@@ -78,6 +81,10 @@ libtorrent4j-android-arm = { module = "org.libtorrent4j:libtorrent4j-android-arm
 libtorrent4j-android-x86 = { module = "org.libtorrent4j:libtorrent4j-android-x86", version.ref = "libtorrent4j" }
 libtorrent4j-android-x64 = { module = "org.libtorrent4j:libtorrent4j-android-x86_64", version.ref = "libtorrent4j" }
 
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+androidx-runner = { module = "androidx.test:runner", version.ref = "androidx-testRunner" }
+androidx-core = { module = "androidx.test:core", version.ref = "androidx-testCore" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -86,3 +93,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+androidLint = { id = "com.android.lint", version.ref = "agp" }

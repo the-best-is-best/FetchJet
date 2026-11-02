@@ -36,3 +36,7 @@ include(":androidApp")
 include(":desktopApp")
 include(":sharedLogic")
 include(":sharedUI")
+
+
+include(":kmpLocalization")
+project(":kmpLocalization").projectDir = file("packages/kmp-localization/kmpLocalization")
