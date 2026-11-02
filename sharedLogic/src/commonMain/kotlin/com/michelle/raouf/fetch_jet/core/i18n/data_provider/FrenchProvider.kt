@@ -618,6 +618,22 @@ object FrenchProvider : AppLocalization {
     override fun startupCouldNotChange(message: String) =
         "Impossible de modifier le paramètre : $message"
 
+    override val whenDoneGroup = "Quand les téléchargements sont terminés"
+    override val whenDoneHint =
+        "Pour cette session seulement. Vous avez d'abord 60 secondes pour annuler."
+    override val whenDoneNothing = "Ne rien faire"
+    override val whenDoneExit = "Quitter FetchJet"
+    override val whenDoneSleep = "Mettre en veille"
+    override val whenDoneShutDown = "Éteindre"
+    override val whenDoneTitle = "Tous les téléchargements sont terminés"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet se fermera dans ${seconds} s."
+    override fun whenDoneSleepIn(seconds: Int) =
+        "L'ordinateur se mettra en veille dans ${seconds} s."
+
+    override fun whenDoneShutDownIn(seconds: Int) = "L'ordinateur s'éteindra dans ${seconds} s."
+    override val whenDoneNow = "Maintenant"
+    override fun whenDoneBanner(action: String) = "Fin des téléchargements : ${action}"
+    override fun whenDoneFailed(message: String) = "Impossible : ${message}"
     override val sysTabAllDownloads = "Tous les téléchargements"
     override val sysTabActive = "En cours"
     override val sysTabCompleted = "Terminés"

@@ -483,6 +483,19 @@ interface AppLocalization : LocalizationProvider {
     val startupStartHiddenHint: String
     val startupStartAtLoginHint: String
     fun startupCouldNotChange(message: String): String
+    val whenDoneGroup: String
+    val whenDoneHint: String
+    val whenDoneNothing: String
+    val whenDoneExit: String
+    val whenDoneSleep: String
+    val whenDoneShutDown: String
+    val whenDoneTitle: String
+    fun whenDoneExitIn(seconds: Int): String
+    fun whenDoneSleepIn(seconds: Int): String
+    fun whenDoneShutDownIn(seconds: Int): String
+    val whenDoneNow: String
+    fun whenDoneBanner(action: String): String
+    fun whenDoneFailed(message: String): String
     val sysTabAllDownloads: String
     val sysTabActive: String
     val sysTabCompleted: String

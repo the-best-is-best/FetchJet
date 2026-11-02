@@ -607,6 +607,23 @@ object GermanProvider : AppLocalization {
     override fun startupCouldNotChange(message: String) =
         "Einstellung konnte nicht geändert werden: $message"
 
+    override val whenDoneGroup = "Wenn alle Downloads fertig sind"
+    override val whenDoneHint = "Nur für diese Sitzung. Vorher haben Sie 60 Sekunden zum Abbrechen."
+    override val whenDoneNothing = "Nichts tun"
+    override val whenDoneExit = "FetchJet beenden"
+    override val whenDoneSleep = "Energie sparen"
+    override val whenDoneShutDown = "Herunterfahren"
+    override val whenDoneTitle = "Alle Downloads fertig"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet wird in ${seconds} s beendet."
+    override fun whenDoneSleepIn(seconds: Int) =
+        "Der Computer geht in ${seconds} s in den Energiesparmodus."
+
+    override fun whenDoneShutDownIn(seconds: Int) =
+        "Der Computer wird in ${seconds} s heruntergefahren."
+
+    override val whenDoneNow = "Jetzt"
+    override fun whenDoneBanner(action: String) = "Nach den Downloads: ${action}"
+    override fun whenDoneFailed(message: String) = "Nicht möglich: ${message}"
     override val sysTabAllDownloads = "Alle Downloads"
     override val sysTabActive = "Aktiv"
     override val sysTabCompleted = "Abgeschlossen"

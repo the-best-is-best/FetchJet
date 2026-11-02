@@ -31,10 +31,10 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
+import com.tbib.kmp_localization.LocalizationManager
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -130,6 +130,7 @@ internal fun GeneralPage(
             }
         }
         if (StartupLauncher.isSupported) StartupSettingsCard()
+        WhenDoneSettingsCard()
     }
 }
 

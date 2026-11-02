@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet
 
-import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,7 +14,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.rememberWindowState
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
@@ -23,6 +22,7 @@ import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import com.tbib.kmp_localization.LocalizationManager
 import fetchjet.sharedui.generated.resources.Res
 import fetchjet.sharedui.generated.resources.ic_fetchjet_logo
 import kotlinx.coroutines.delay
@@ -657,10 +657,13 @@ fun main(rawArgs: Array<String>) {
                 }
             }
             startLocalHttpServer(triggerFocus)
+            com.michelle.raouf.fetch_jet.core.power.WhenDone.onExitApp =
+                { SwingUtilities.invokeLater { exitApplication() } }
         }
 
         val activeTasksMap by DownloadNotificationManager.activeTasks.collectAsState()
         val language by com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.collectAsState()
+        val whenDone by com.michelle.raouf.fetch_jet.core.power.WhenDone.action.collectAsState()
 
         val trayTooltip = remember(activeTasksMap, language) {
             if (activeTasksMap.isEmpty()) {
@@ -695,6 +698,17 @@ fun main(rawArgs: Array<String>) {
                     Item(LocalizationManager.Strings.desktopTrayShowApp, onClick = {
                         triggerFocus()
                     })
+                    Menu(LocalizationManager.Strings.whenDoneGroup) {
+                        com.michelle.raouf.fetch_jet.core.power.WhenDoneAction.entries.forEach { choice ->
+                            CheckboxItem(
+                                com.michelle.raouf.fetch_jet.ui.whenDoneLabel(choice),
+                                checked = whenDone == choice,
+                                onCheckedChange = {
+                                    com.michelle.raouf.fetch_jet.core.power.WhenDone.choose(choice)
+                                }
+                            )
+                        }
+                    }
                     Separator()
                     Item(LocalizationManager.Strings.desktopTrayCloseApp, onClick = {
                         exitApplication()

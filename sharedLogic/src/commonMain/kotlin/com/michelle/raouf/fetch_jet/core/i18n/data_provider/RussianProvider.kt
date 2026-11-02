@@ -594,6 +594,21 @@ object RussianProvider : AppLocalization {
         "Запланированные загрузки и очередь продолжают работу, а расширение браузера всегда находит приложение."
 
     override fun startupCouldNotChange(message: String) = "Не удалось изменить настройку: $message"
+    override val whenDoneGroup = "Когда загрузки завершатся"
+    override val whenDoneHint = "Только для этого сеанса. Перед этим будет 60 секунд на отмену."
+    override val whenDoneNothing = "Ничего не делать"
+    override val whenDoneExit = "Выйти из FetchJet"
+    override val whenDoneSleep = "Спящий режим"
+    override val whenDoneShutDown = "Выключить"
+    override val whenDoneTitle = "Все загрузки завершены"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet закроется через ${seconds} с."
+    override fun whenDoneSleepIn(seconds: Int) =
+        "Компьютер перейдёт в спящий режим через ${seconds} с."
+
+    override fun whenDoneShutDownIn(seconds: Int) = "Компьютер выключится через ${seconds} с."
+    override val whenDoneNow = "Сейчас"
+    override fun whenDoneBanner(action: String) = "После загрузок: ${action}"
+    override fun whenDoneFailed(message: String) = "Не удалось: ${message}"
     override val sysTabAllDownloads = "Все загрузки"
     override val sysTabActive = "Активные"
     override val sysTabCompleted = "Завершённые"

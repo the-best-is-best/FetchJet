@@ -593,6 +593,21 @@ object ItalianProvider : AppLocalization {
     override fun startupCouldNotChange(message: String) =
         "Impossibile modificare l'impostazione: $message"
 
+    override val whenDoneGroup = "Al termine dei download"
+    override val whenDoneHint = "Solo per questa sessione. Prima avrai 60 secondi per annullare."
+    override val whenDoneNothing = "Non fare nulla"
+    override val whenDoneExit = "Esci da FetchJet"
+    override val whenDoneSleep = "Sospendi"
+    override val whenDoneShutDown = "Spegni"
+    override val whenDoneTitle = "Tutti i download sono terminati"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet si chiuderà tra ${seconds} s."
+    override fun whenDoneSleepIn(seconds: Int) =
+        "Il computer andrà in sospensione tra ${seconds} s."
+
+    override fun whenDoneShutDownIn(seconds: Int) = "Il computer si spegnerà tra ${seconds} s."
+    override val whenDoneNow = "Ora"
+    override fun whenDoneBanner(action: String) = "Al termine dei download: ${action}"
+    override fun whenDoneFailed(message: String) = "Impossibile: ${message}"
     override val sysTabAllDownloads = "Tutti i download"
     override val sysTabActive = "Attivi"
     override val sysTabCompleted = "Completati"

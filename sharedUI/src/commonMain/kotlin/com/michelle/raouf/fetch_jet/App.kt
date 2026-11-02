@@ -701,6 +701,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             // New FetchJet version: automatic check on start + "what's new" dialog
             com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
+            com.michelle.raouf.fetch_jet.ui.WhenDoneDialogHost()
+
             // A link just copied (clipboard watcher): download it?
             state.clipboardOfferUrl?.let { url ->
                 ClipboardOfferDialog(

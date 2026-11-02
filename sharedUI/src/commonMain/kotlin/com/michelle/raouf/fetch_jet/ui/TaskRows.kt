@@ -2,7 +2,6 @@ package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,14 +20,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
@@ -47,6 +48,7 @@ import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 
 /**
  * Compact list rows (the redesign): a download is one line - kind, name, state, progress,
@@ -242,8 +244,11 @@ fun TaskRow(
     checked: Boolean = false,
     selectionMode: Boolean = false,
     onCheckedChange: (Boolean) -> Unit = {},
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    onCtrlClick: (() -> Unit)? = null,
+    onShiftClick: (() -> Unit)? = null
 ) {
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val name = decodeUnicodeText(task.fileName.ifBlank {
         task.url.substringBefore('?').substringAfterLast('/')
     }).trim()
@@ -267,7 +272,16 @@ fun TaskRow(
             color = container,
             border = border,
             modifier = Modifier.fillMaxWidth().clip(shape).combinedClickable(
-                onClick = { if (selectionMode) onCheckedChange(!checked) else onClick() },
+                onClick = {
+                    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+                    val keys = windowInfo.keyboardModifiers
+                    when {
+                        (keys.isCtrlPressed || keys.isMetaPressed) && onCtrlClick != null -> onCtrlClick()
+                        keys.isShiftPressed && onShiftClick != null -> onShiftClick()
+                        selectionMode -> onCheckedChange(!checked)
+                        else -> onClick()
+                    }
+                },
                 onLongClick = onLongClick
             )
         ) {

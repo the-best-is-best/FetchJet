@@ -57,7 +57,7 @@ Why: the most visible gap against IDM / Ezoo, and small.
 - [x] Paste many links (one per line, or mixed text) in the Add dialog: show them as a list with
   a checkbox each, then start all checked ones together.
 - [x] Each link picks its own type (file, video, magnet), like the `/links` bridge does.
-- [ ] Import a `.txt` file of links (same list screen). Tested: A56, Mac desktop, iOS simulator.
+- [x] Import a `.txt` file of links (same list screen). Tested: A56, Mac desktop, iOS simulator.
 - [x] Export the links of the selected downloads (or all) to a `.txt` file.
 
 Done 2026-11-02. Two or more links in the link field (`extractLinks`, any separator, up to 500,
@@ -104,24 +104,46 @@ itself in the UI not re-run (screen locked); it calls the same `inspectMediaQual
 
 Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after the quick wins.
 
-- [ ] Move the UI text to the owner's `kmpLocalization` library (not Compose resources):
+- [x] Move the UI text to the owner's `kmpLocalization` library (not Compose resources):
   ~570 strings in `AppLocalization`, one `XxxProvider` per language. Done 2026-11-02, builds on
   desktop + Android.
-- [ ] Arabic + 13 more languages (fr de es pt it ru tr id zh ja ko hi fa), right-to-left for
+- [x] Arabic + 13 more languages (fr de es pt it ru tr id zh ja ko hi fa), right-to-left for
   ar/fa, language setting (System / each language) in Settings > General. Arabic tested on the
   A56 (RTL, saved after restart) and on the Mac desktop (home, Add dialog, link list RTL; sizes
   stay left-to-right). Owner to review the Arabic wording; iOS build on the Mac.
 
 ## 4. When downloads finish (desktop)
 
-- [ ] Option: do nothing / exit FetchJet / sleep / shut down the computer when all downloads
+- [x] Option: do nothing / exit FetchJet / sleep / shut down the computer when all downloads
   finish. 60 s countdown with Cancel before sleep or shut down.
 - [ ] Windows, macOS, Linux. Not on Android / iOS.
 
+Done 2026-11-02. Owner-tested on Windows: Exit FetchJet (countdown dialog, Cancel, Now). Sleep /
+shut down not run on purpose (they really turn the computer off). `core/power/WhenDone.kt` (choice,
+countdown, trigger: the
+last running download leaves QUEUED/CONNECTING/DOWNLOADING and at least one of them COMPLETED;
+pausing everything does not trigger; a new download during the countdown stops it). The choice
+is not saved (this session only) and goes back to "Do nothing" after it runs or on Cancel.
+Commands in `SystemPower.jvm.kt`: Windows `shutdown /s /t 0` and PowerShell
+`SetSuspendState('Suspend')`; macOS `pmset sleepnow` and `osascript ... System Events to shut
+down` (may ask for Automation permission the first time: test on the Mac); Linux `systemctl
+suspend|poweroff`. UI: Settings > General card, tray submenu, a banner above the list with
+Cancel, and the countdown dialog (Cancel / Now) that brings the window forward. Unit test
+`WhenDoneTest` (4 cases) passes.
+
 ## 5. Keyboard selection (desktop)
 
-- [ ] Ctrl+click, Shift+click (range), Ctrl+A, Delete key, Esc to clear, on top of the
+- [x] Ctrl+click, Shift+click (range), Ctrl+A, Delete key, Esc to clear, on top of the
   checkboxes added in 1.1.0.
+
+Done 2026-11-02. Owner-tested on Windows: Shift+click range, Ctrl+click toggle, Ctrl+A, Esc.
+Kept in commonMain on purpose (a keyboard on a phone or tablet works too). `TaskList.kt`: the list
+column is focusable and takes
+the keys (`onKeyEvent`, so a focused search field keeps its own Ctrl+A / Delete); Ctrl/Cmd+A
+checks every shown row (collapsed groups excluded), Esc clears, Delete (or Cmd+Backspace) opens
+the remove dialog for the checked rows, or for the open row when none is checked. `TaskRow`
+reads `LocalWindowInfo.keyboardModifiers`: Ctrl/Cmd+click toggles a row, Shift+click checks the
+range from the last clicked row in the order shown.
 
 ## 6. Network settings
 
@@ -137,7 +159,7 @@ Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after 
 
 ## Checks still open from 1.1.0 (owner, any time)
 
-- [ ] iOS: build 1.1.0 on the Mac (clean code, kotlinx.serialization, navigationevent).
+- [x] iOS: build 1.1.0 on the Mac (clean code, kotlinx.serialization, navigationevent).
 - [ ] Microsoft Store MSIX: starts with Windows by default (install, open once, restart).
 - [ ] Edge Android listing: waiting for Microsoft's answer. Edge iOS: not tested.
 - [x] Udemy logged in on a real iPhone: counted as done (owner's decision, no iPhone; works on

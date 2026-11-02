@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +39,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +55,6 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canResume
@@ -61,6 +69,7 @@ import com.michelle.raouf.fetch_jet.ui.TaskRow
 import com.michelle.raouf.fetch_jet.ui.TaskRowsHeader
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
@@ -134,16 +143,57 @@ internal fun TaskListArea(
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
     }
     val selectionMode = checkedIds.isNotEmpty()
+    var anchorId by remember { mutableStateOf<String?>(null) }
+    val listFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val desktop = remember { com.michelle.raouf.fetch_jet.getPlatform().isJvm }
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = selectionMode,
         onBackCompleted = { checkedIds = emptySet() }
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val tasks = shownTasks
+    val shownOrder = if (grouped) {
+        taskStateGroups(tasks).filter { collapsedGroups[it.key] != true }.flatMap { it.tasks }
+    } else tasks
+    Column(
+        modifier = if (!desktop) Modifier.fillMaxSize() else Modifier.fillMaxSize()
+            .focusRequester(listFocus)
+            .focusable()
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when {
+                    e.key == Key.A && (e.isCtrlPressed || e.isMetaPressed) -> {
+                        checkedIds = shownOrder.mapTo(HashSet()) { it.id }
+                        true
+                    }
+
+                    e.key == Key.Escape && selectionMode -> {
+                        checkedIds = emptySet()
+                        true
+                    }
+
+                    e.key == Key.Delete || (e.key == Key.Backspace && e.isMetaPressed) -> {
+                        when {
+                            selectionMode -> viewModel.onEvent(
+                                DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())
+                            )
+
+                            selectedTaskId != null -> viewModel.onEvent(
+                                DashboardUiEvent.OnRemoveClicked(selectedTaskId)
+                            )
+                        }
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+    ) {
         if (uiState.isDownloadingYtDlp && uiState.toolDownloadName != null) {
             ToolsDownloadBanner(uiState.toolDownloadName, uiState.toolDownloadFraction)
         }
+        com.michelle.raouf.fetch_jet.ui.WhenDoneBanner()
         if (allTasks.isNotEmpty() && externalSearch == null) {
             com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
                 value = searchQuery,
@@ -161,7 +211,6 @@ internal fun TaskListArea(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
         }
-        val tasks = shownTasks
         if (selectionMode) {
             SelectionBar(
                 count = checkedIds.size,
@@ -232,11 +281,33 @@ internal fun TaskListArea(
                     task = task,
                     selected = task.id == selectedTaskId,
                     speedDisplayUnit = speedDisplayUnit,
-                    onClick = { onSelect(task.id) },
+                    onClick = {
+                        anchorId = task.id
+                        if (desktop) listFocus.requestFocus()
+                        onSelect(task.id)
+                    },
                     checked = task.id in checkedIds,
                     selectionMode = selectionMode,
                     onCheckedChange = { on ->
+                        anchorId = task.id
+                        if (desktop) listFocus.requestFocus()
                         checkedIds = if (on) checkedIds + task.id else checkedIds - task.id
+                    },
+                    onCtrlClick = if (!desktop) null else {
+                        anchorId = task.id
+                        listFocus.requestFocus()
+                        checkedIds =
+                            if (task.id in checkedIds) checkedIds - task.id else checkedIds + task.id
+                    },
+                    onShiftClick = if (!desktop) null else {
+                        listFocus.requestFocus()
+                        val ids = shownOrder.map { it.id }
+                        val from = ids.indexOf(anchorId ?: selectedTaskId).takeIf { it >= 0 } ?: 0
+                        val to = ids.indexOf(task.id)
+                        if (to >= 0) {
+                            checkedIds =
+                                checkedIds + ids.subList(minOf(from, to), maxOf(from, to) + 1)
+                        }
                     },
                     onLongClick = { checkedIds = checkedIds + task.id },
                     onQuickAction = { action ->

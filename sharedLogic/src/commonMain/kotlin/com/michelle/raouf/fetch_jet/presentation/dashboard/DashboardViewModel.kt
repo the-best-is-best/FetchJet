@@ -409,6 +409,8 @@ class DashboardViewModel(
 
             queueRepository.allTasksFlow.collect { tasks ->
 
+                com.michelle.raouf.fetch_jet.core.power.WhenDone.onTasks(tasks, scope)
+
                 _uiState.update { state ->
 
                     val filtered = filterTasks(tasks, state.selectedTab, state.sortOption)

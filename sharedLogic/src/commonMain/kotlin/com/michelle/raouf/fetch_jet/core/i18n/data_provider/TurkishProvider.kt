@@ -583,6 +583,21 @@ object TurkishProvider : AppLocalization {
         "Zamanlanmış ve kuyruktaki indirmeler devam eder, tarayıcı eklentisi de uygulamayı her zaman bulur."
 
     override fun startupCouldNotChange(message: String) = "Ayar değiştirilemedi: $message"
+    override val whenDoneGroup = "İndirmeler bitince"
+    override val whenDoneHint = "Yalnızca bu oturum için. Önce iptal etmek için 60 saniyeniz olur."
+    override val whenDoneNothing = "Hiçbir şey yapma"
+    override val whenDoneExit = "FetchJet'ten çık"
+    override val whenDoneSleep = "Uyku"
+    override val whenDoneShutDown = "Bilgisayarı kapat"
+    override val whenDoneTitle = "Tüm indirmeler bitti"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet ${seconds} sn içinde kapanacak."
+    override fun whenDoneSleepIn(seconds: Int) =
+        "Bilgisayar ${seconds} sn içinde uyku moduna geçecek."
+
+    override fun whenDoneShutDownIn(seconds: Int) = "Bilgisayar ${seconds} sn içinde kapanacak."
+    override val whenDoneNow = "Şimdi"
+    override fun whenDoneBanner(action: String) = "İndirmeler bitince: ${action}"
+    override fun whenDoneFailed(message: String) = "Yapılamadı: ${message}"
     override val sysTabAllDownloads = "Tüm indirmeler"
     override val sysTabActive = "Etkin"
     override val sysTabCompleted = "Tamamlanan"

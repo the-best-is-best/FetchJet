@@ -407,6 +407,16 @@ Bridges:
   the `DirectoryPickerDialog` `Surface`. A new `Dialog` with a field needs it on its root too (a
   dialog is its own window). Verified on the A56 (look + keyboard closes); desktop and iOS not
   checked yet.
+- 1.2.0 "When downloads finish" (desktop, ROADMAP item 4): `core/power/WhenDone.kt` +
+  `SystemPower` (expect/actual, jvm only) + `ui/WhenDoneUi.kt` (Settings > General card, banner
+  above the list, countdown dialog) + tray submenu in `main.kt`. Per session, not saved. Unit test
+  `WhenDoneTest`. Owner-tested on Windows with Exit; sleep / shut down not run on purpose; macOS
+  shut down via System Events may need Automation
+  permission (Mac test).
+- 1.2.0 keyboard selection in the task list (ROADMAP item 5): Ctrl/Cmd+click, Shift+click range,
+  Ctrl/Cmd+A, Delete, Esc (`TaskList.kt` `onKeyEvent` on the focusable list column, `TaskRow`
+  `onCtrlClick` / `onShiftClick` via `LocalWindowInfo.keyboardModifiers`). In commonMain on
+  purpose (owner: a keyboard on a phone works too). Owner-tested on Windows.
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
