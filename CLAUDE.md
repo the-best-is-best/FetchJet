@@ -179,7 +179,13 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   now replaces a cached Python / payload of another version (the self-hosted Mac had 3.13).
   SwiftCurlCffi v0.17.0 = Python 3.15 + curl_cffi 0.17 (needs yt-dlp 2026.10.26+): bump
   PY_VERSION, PY_BUILD and CC_TAG together. The Swift bridge is version-agnostic (finds
-  `python3.*`, uses only PyGILState_* / PyEval_SaveThread). Not yet built or run with 3.14.
+  `python3.*`, uses only PyGILState_* / PyEval_SaveThread). The "Install Python Runtime" Xcode
+  phase now deletes any `python/lib/python3.*` in the app that is not the embedded version
+  (BeeWare's install_python never removed the old one, so an incremental build would ship both).
+  The prepare script was run on Windows against a fake cached 3.13 + 3.15 payload: it replaced
+  both, "payload ready (0.16.3)", second run does nothing. Not yet built in Xcode/CI with 3.14.
+  Test for curl_cffi: inspect https://9gag.com/gag/ae5Ag7B (or a kick.com video); the log must
+  NOT say "no impersonate target is available".
 - iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
   `EJSBaseJCP` subclass). Auto-update calls Swift `updateYtDlpModule()` (takes effect next launch).
   deno is impossible on iOS (no JIT for apps, no subprocess).
