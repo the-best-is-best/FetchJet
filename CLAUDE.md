@@ -225,6 +225,12 @@ Bridges:
   `OnRemoveSelectedClicked(ids)` → `removeConfirmationTaskIds` → the same `RemoveConfirmationDialog`
   (with count and "also delete files"). Tested on the A56 (long-press, tap, back, Select all +
   Delete).
+- MSIX (Store build): the startup task is now `Enabled="true"` (owner's decision, 2026-11-02),
+  so FetchJet starts at login by default, hidden in the tray (`looksLikeLoginStart`). Windows
+  runs it only after the user opened the app once; the user turns it off in Settings > Apps >
+  Startup or Task Manager. The MSI / macOS / Linux builds stay opt-in (AutoLaunch toggle).
+  Owner-verified on the previous MSIX (task enabled by hand in Task Manager > Startup apps):
+  FetchJet starts at login. Not yet tested: the new default (on without touching it).
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
