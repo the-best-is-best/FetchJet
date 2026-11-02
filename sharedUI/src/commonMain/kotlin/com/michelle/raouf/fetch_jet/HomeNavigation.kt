@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
@@ -97,20 +99,36 @@ internal fun FdmBottomNavigation(
                     .height(58.dp)
             ) {
                 val items = listOfNotNull(
-                    Triple(DashboardTab.ALL, "All", "📥" to allCount),
-                    Triple(DashboardTab.ACTIVE, "Active", "⚡" to activeCount),
-                    Triple(DashboardTab.COMPLETED, "Done", "✅" to completedCount),
+                    Triple(
+                        DashboardTab.ALL,
+                        LocalizationManager.Strings.homeTabAll,
+                        "📥" to allCount
+                    ),
+                    Triple(
+                        DashboardTab.ACTIVE,
+                        LocalizationManager.Strings.homeTabActive,
+                        "⚡" to activeCount
+                    ),
+                    Triple(
+                        DashboardTab.COMPLETED,
+                        LocalizationManager.Strings.homeTabDone,
+                        "✅" to completedCount
+                    ),
                     if (AppFeatures.torrent) Triple(
                         DashboardTab.TORRENT,
-                        "Torrent",
+                        LocalizationManager.Strings.homeTabTorrent,
                         "🧲" to torrentCount
                     ) else null,
                     if (AppFeatures.mediaExtractor) Triple(
                         DashboardTab.MEDIA,
-                        "Media",
+                        LocalizationManager.Strings.homeTabMedia,
                         "🎬" to mediaCount
                     ) else null,
-                    Triple(DashboardTab.SETTINGS, "Settings", "⚙️" to 0)
+                    Triple(
+                        DashboardTab.SETTINGS,
+                        LocalizationManager.Strings.homeSettings,
+                        "⚙️" to 0
+                    )
                 )
 
                 items.forEach { (tab, label, iconBadge) ->
@@ -221,7 +239,7 @@ internal fun FjSidebar(
                     .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             )
             Text(
-                "TYPE",
+                LocalizationManager.Strings.homeSidebarTypeHeader,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -239,7 +257,12 @@ internal fun FjSidebar(
                 ) { onSelect(f) }
             }
             Spacer(modifier = Modifier.weight(1f))
-            FjSidebarItem("Settings", null, settingsSelected, onSettings)
+            FjSidebarItem(
+                LocalizationManager.Strings.homeSettings,
+                null,
+                settingsSelected,
+                onSettings
+            )
         }
     }
 }
@@ -300,7 +323,7 @@ internal fun FjTopBar(
         com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = "Search downloads",
+            placeholder = LocalizationManager.Strings.homeSearchDownloadsPlaceholder,
             leading = {
                 Text(
                     "⌕",
@@ -360,7 +383,13 @@ internal fun FjTopBar(
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier = Modifier.height(44.dp)
-                ) { Text("+  Add", fontWeight = FontWeight.Bold, maxLines = 1) }
+                ) {
+                    Text(
+                        "+  ${LocalizationManager.Strings.homeAdd}",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
             }
             if (showSearch) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -415,7 +444,7 @@ internal fun FjTopBar(
             contentPadding = PaddingValues(horizontal = 18.dp),
             modifier = Modifier.height(44.dp)
         ) {
-            Text("+  Add download", fontWeight = FontWeight.Bold)
+            Text("+  ${LocalizationManager.Strings.homeAddDownload}", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -478,17 +507,17 @@ internal fun FjPhoneHeader(
                 if (showListActions) {
                     val unfinished = tasks.filter { it.status != DownloadStatus.COMPLETED }
                     DropdownMenuItem(
-                        text = { Text("Pause all") },
+                        text = { Text(LocalizationManager.Strings.homePauseAll) },
                         enabled = anyPausable(unfinished),
                         onClick = { open = false; onPauseAll() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Resume all") },
+                        text = { Text(LocalizationManager.Strings.homeResumeAll) },
                         enabled = anyResumable(unfinished),
                         onClick = { open = false; onResumeAll() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Sort: ${sortOption.label}  " + if (sortOpen) "▴" else "▾") },
+                        text = { Text("${LocalizationManager.Strings.homeSortBy(sortOption.label)}  " + if (sortOpen) "▴" else "▾") },
                         onClick = { sortOpen = !sortOpen }
                     )
                     if (sortOpen) {
@@ -507,7 +536,7 @@ internal fun FjPhoneHeader(
                     HorizontalDivider()
                 }
                 DropdownMenuItem(
-                    text = { Text(if (isDarkMode) "Light theme" else "Dark theme") },
+                    text = { Text(if (isDarkMode) LocalizationManager.Strings.homeLightTheme else LocalizationManager.Strings.homeDarkTheme) },
                     onClick = { open = false; onThemeToggled() }
                 )
             }
@@ -544,11 +573,11 @@ internal fun FjRail(
             )
             Spacer(modifier = Modifier.height(10.dp))
             listOf(
-                SideFilter.ALL to "All",
-                SideFilter.DOWNLOADING to "Active",
-                SideFilter.WAITING to "Waiting",
-                SideFilter.COMPLETED to "Done",
-                SideFilter.FAILED to "Failed"
+                SideFilter.ALL to LocalizationManager.Strings.homeTabAll,
+                SideFilter.DOWNLOADING to LocalizationManager.Strings.homeTabActive,
+                SideFilter.WAITING to LocalizationManager.Strings.homeFilterWaiting,
+                SideFilter.COMPLETED to LocalizationManager.Strings.homeTabDone,
+                SideFilter.FAILED to LocalizationManager.Strings.homeFilterFailed
             ).forEach { (f, label) ->
                 FjRailItem(
                     label,
@@ -557,7 +586,13 @@ internal fun FjRail(
                 ) { onSelect(f) }
             }
             Spacer(modifier = Modifier.weight(1f))
-            FjRailItem("Settings", null, settingsSelected, glyph = "⚙", onClick = onSettings)
+            FjRailItem(
+                LocalizationManager.Strings.homeSettings,
+                null,
+                settingsSelected,
+                glyph = "⚙",
+                onClick = onSettings
+            )
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -70,6 +72,11 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
         }
 
+        is DashboardUiEvent.OnLanguageChanged -> {
+            com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(event.choice)
+            persistCurrentSettings()
+        }
+
         DashboardUiEvent.OnThemeToggled -> {
 
             _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
@@ -122,7 +129,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
                         .getOrElse { Result.failure(it) }
                 val torrentStatus2 =
                     runCatching { queueRepository.torrentEngine.engineStatus() }
-                        .getOrElse { "BitTorrent engine error: ${it.message}" }
+                        .getOrElse { LocalizationManager.Strings.sysTorrentEngineError(it.message.toString()) }
                 val torrentReady2 = torrentInstall.isSuccess ||
                         runCatching { queueRepository.torrentEngine.isSupported }.getOrDefault(
                             false
@@ -162,7 +169,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
                         toolsDirectoryPath = toolsDir,
                         torrentEngineStatus = torrentInstall.exceptionOrNull()?.let { e ->
-                            "BitTorrent engine install failed: ${e.message}"
+                            LocalizationManager.Strings.sysTorrentEngineInstallFailed(e.message.toString())
                         } ?: torrentStatus2,
                         isTorrentEngineReady = torrentReady2
 
@@ -172,7 +179,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
                 val msg =
 
-                    if (success) "Media tools downloaded successfully!" else "Failed to download media tools"
+                    if (success) LocalizationManager.Strings.sysMediaToolsDownloaded else LocalizationManager.Strings.sysMediaToolsDownloadFailed
 
                 _uiEffect.emit(DashboardUiEffect.ShowToast(msg))
 

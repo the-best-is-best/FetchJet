@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import java.io.File
 
@@ -43,7 +45,7 @@ actual object PlatformUpdater {
                 )
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-            error("allow \"Install unknown apps\" for FetchJet, then tap Install again.")
+            error(LocalizationManager.Strings.sysAllowUnknownAppsThenInstall)
         }
         val uri =
             FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", File(installerPath))

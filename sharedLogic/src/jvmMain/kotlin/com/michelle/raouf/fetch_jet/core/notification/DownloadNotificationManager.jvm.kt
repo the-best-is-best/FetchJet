@@ -1,5 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.core.notification
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +32,7 @@ actual class DownloadNotificationManager actual constructor() {
         if (progressPercent >= 100 || speedText.equals("Completed", ignoreCase = true)) {
             _activeTasks.update { it - taskId }
         } else {
-            val name = fileName.ifBlank { "Downloading File" }
+            val name = fileName.ifBlank { LocalizationManager.Strings.sysDownloadingFileFallback }
             _activeTasks.update {
                 it + (taskId to JvmTaskProgress(
                     taskId,

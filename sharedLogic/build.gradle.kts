@@ -60,6 +60,7 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.ktor.client.core)
             implementation(libs.okio)
+            api(project(":kmpLocalization"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
@@ -88,13 +90,13 @@ fun DuplicateDownloadDialog(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Download Already Exists",
+                            text = LocalizationManager.Strings.duplicateDialogTitle,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "This item is already in your download queue",
+                            text = LocalizationManager.Strings.duplicateDialogSubtitle,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -155,7 +157,7 @@ fun DuplicateDownloadDialog(
                                 colors = CardDefaults.cardColors(containerColor = statusBg)
                             ) {
                                 Text(
-                                    text = "Status: ${task.status.name}",
+                                    text = LocalizationManager.Strings.duplicateDialogStatus(task.status.name),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -193,7 +195,7 @@ fun DuplicateDownloadDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Would you like to resume the existing download or start over from scratch?",
+                    text = LocalizationManager.Strings.duplicateDialogQuestion,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -212,7 +214,7 @@ fun DuplicateDownloadDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
-                            "▶️ Resume Existing",
+                            "▶️ ${LocalizationManager.Strings.duplicateDialogResumeExisting}",
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
@@ -228,7 +230,10 @@ fun DuplicateDownloadDialog(
                         ),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
                     ) {
-                        Text("🔄 Re-download (Start Fresh)", fontWeight = FontWeight.Medium)
+                        Text(
+                            "🔄 ${LocalizationManager.Strings.duplicateDialogRedownload}",
+                            fontWeight = FontWeight.Medium
+                        )
                     }
 
                     TextButton(
@@ -236,7 +241,7 @@ fun DuplicateDownloadDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "Cancel",
+                            LocalizationManager.Strings.cancel,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )

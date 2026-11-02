@@ -2,6 +2,8 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -91,6 +93,7 @@ class DashboardViewModel(
         observeBehaviorSettings()
 
         val savedSettings = settingsRepository.loadSettings()
+        com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
 
         _uiState.update {
             it.copy(
@@ -145,7 +148,9 @@ class DashboardViewModel(
 
                 globalUploadSpeedLimitBytes = s.globalUploadSpeedLimitBytes,
 
-                speedDisplayUnit = s.speedDisplayUnit
+                speedDisplayUnit = s.speedDisplayUnit,
+
+                language = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.choice
 
             )
 
@@ -289,10 +294,21 @@ class DashboardViewModel(
                 forcedEngineType = engine,
                 requestHeaders = request.toRequestHeaders()
             ).onSuccess { task ->
-                _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
+                _uiEffect.emit(
+                    DashboardUiEffect.ShowToast(
+                        LocalizationManager.Strings.sysStartedDownload(
+                            task.fileName.ifBlank { task.url })
+                    )
+                )
                 _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
             }.onFailure { error ->
-                _uiEffect.emit(DashboardUiEffect.ShowToast("Could not start download: ${error.message ?: "unknown error"}"))
+                _uiEffect.emit(
+                    DashboardUiEffect.ShowToast(
+                        LocalizationManager.Strings.sysCouldNotStartDownload(
+                            error.message ?: LocalizationManager.Strings.sysUnknownError
+                        )
+                    )
+                )
             }
         }
     }
@@ -340,8 +356,7 @@ class DashboardViewModel(
             }
             _uiEffect.emit(
                 DashboardUiEffect.ShowToast(
-                    "Queued $added download${if (added == 1) "" else "s"} from the browser" +
-                            (if (skipped > 0) " ($skipped skipped)" else "")
+                    LocalizationManager.Strings.sysQueuedFromBrowser(added, skipped)
                 )
             )
         }
@@ -434,7 +449,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
         }
@@ -447,7 +462,7 @@ class DashboardViewModel(
 
         if (url.isBlank()) {
 
-            _uiState.update { it.copy(inspectError = "Please enter a torrent or magnet link first") }
+            _uiState.update { it.copy(inspectError = LocalizationManager.Strings.sysEnterTorrentOrMagnetFirst) }
 
             return
 
@@ -487,7 +502,8 @@ class DashboardViewModel(
 
                             isInspectingTorrent = false,
 
-                            inspectError = err.message ?: "Failed to parse torrent metadata"
+                            inspectError = err.message
+                                ?: LocalizationManager.Strings.sysFailedToParseTorrentMetadata
 
                         )
 
@@ -505,7 +521,7 @@ class DashboardViewModel(
 
         if (url.isBlank()) {
 
-            _uiState.update { it.copy(inspectMediaError = "Please enter a media URL first") }
+            _uiState.update { it.copy(inspectMediaError = LocalizationManager.Strings.sysEnterMediaUrlFirst) }
 
             return
 
@@ -563,8 +579,12 @@ class DashboardViewModel(
                             inspectMediaError = com.michelle.raouf.fetch_jet.feature.media_extractor
                                 .lastMediaInspectionError()
                                 ?.removePrefix("ERROR:")?.trim()
-                                ?.let { "Unable to fetch video formats: $it" }
-                                ?: "Unable to fetch video formats. Please verify the URL or check your internet connection."
+                                ?.let {
+                                    LocalizationManager.Strings.sysUnableToFetchFormatsWithReason(
+                                        it
+                                    )
+                                }
+                                ?: LocalizationManager.Strings.sysUnableToFetchFormats
                         )
                     }
                 } else {
@@ -597,7 +617,8 @@ class DashboardViewModel(
                         isInspectingMedia = false,
                         inspectedMediaQualities = emptyList(),
                         inspectedPlaylist = null,
-                        inspectMediaError = e.message ?: "Failed to inspect media qualities"
+                        inspectMediaError = e.message
+                            ?: LocalizationManager.Strings.sysFailedToInspectMediaQualities
                     )
                 }
             }

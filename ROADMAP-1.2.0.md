@@ -82,8 +82,12 @@ message.
 
 Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after the quick wins.
 
-- [ ] Move the UI text (~350 strings in ~20 files) to Compose string resources.
-- [ ] Arabic translation and right-to-left layout. Language setting (system / English / Arabic).
+- [ ] Move the UI text to the owner's `kmpLocalization` library (not Compose resources):
+  ~570 strings in `AppLocalization`, one `XxxProvider` per language. Done 2026-11-02, builds on
+  desktop + Android.
+- [ ] Arabic + 13 more languages (fr de es pt it ru tr id zh ja ko hi fa), right-to-left for
+  ar/fa, language setting (System / each language) in Settings > General. Arabic tested on the
+  A56 (RTL, saved after restart). Owner to review the Arabic wording; iOS build on the Mac.
 
 ## 4. When downloads finish (desktop)
 

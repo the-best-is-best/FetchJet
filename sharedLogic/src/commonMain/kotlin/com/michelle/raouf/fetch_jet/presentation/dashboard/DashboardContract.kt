@@ -1,6 +1,9 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
+
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -8,29 +11,48 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 
 
-enum class DashboardTab(val title: String) {
+enum class DashboardTab {
 
-    ALL("All Downloads"),
+    ALL,
 
-    ACTIVE("Active"),
+    ACTIVE,
 
-    COMPLETED("Completed"),
+    COMPLETED,
 
-    TORRENT("BitTorrent"),
+    TORRENT,
 
-    MEDIA("Media Extractor"),
+    MEDIA,
 
-    SETTINGS("Settings")
+    SETTINGS;
+
+    val title: String
+        get() = when (this) {
+            ALL -> LocalizationManager.Strings.sysTabAllDownloads
+            ACTIVE -> LocalizationManager.Strings.sysTabActive
+            COMPLETED -> LocalizationManager.Strings.sysTabCompleted
+            TORRENT -> "BitTorrent"
+            MEDIA -> LocalizationManager.Strings.sysTabMediaExtractor
+            SETTINGS -> LocalizationManager.Strings.sysTabSettings
+        }
 
 }
 
 
-enum class TaskSortOption(val label: String) {
-    DATE_DESC("Newest first"),
-    DATE_ASC("Oldest first"),
-    SIZE_DESC("Largest first"),
-    SIZE_ASC("Smallest first"),
-    NAME_ASC("Name A–Z")
+enum class TaskSortOption {
+    DATE_DESC,
+    DATE_ASC,
+    SIZE_DESC,
+    SIZE_ASC,
+    NAME_ASC;
+
+    val label: String
+        get() = when (this) {
+            DATE_DESC -> LocalizationManager.Strings.sysSortNewestFirst
+            DATE_ASC -> LocalizationManager.Strings.sysSortOldestFirst
+            SIZE_DESC -> LocalizationManager.Strings.sysSortLargestFirst
+            SIZE_ASC -> LocalizationManager.Strings.sysSortSmallestFirst
+            NAME_ASC -> LocalizationManager.Strings.sysSortNameAz
+        }
 }
 
 data class LinkListEntry(
@@ -225,6 +247,7 @@ sealed interface DashboardUiEvent {
     data object OnResumeAllClicked : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
+    data class OnLanguageChanged(val choice: String) : DashboardUiEvent
 
     data object OnAddDownloadClicked : DashboardUiEvent
 

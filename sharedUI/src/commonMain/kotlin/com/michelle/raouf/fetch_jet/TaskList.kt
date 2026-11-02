@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canResume
@@ -69,8 +71,9 @@ internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
-                text = "Updating media tools · $tool" + (fraction?.let { " ${(it * 100).toInt()}%" }
-                    ?: "…"),
+                text = LocalizationManager.Strings.homeUpdatingMediaTools(
+                    tool.orEmpty(),
+                    fraction?.let { (it * 100).toInt() }),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
@@ -145,7 +148,7 @@ internal fun TaskListArea(
             com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
                 value = searchQuery,
                 onValueChange = { localSearch = it },
-                placeholder = "Search downloads by name…",
+                placeholder = LocalizationManager.Strings.homeSearchDownloadsByNamePlaceholder,
                 leading = { Text("🔍", fontSize = 14.sp) },
                 trailing = if (searchQuery.isNotEmpty()) {
                     {
@@ -189,12 +192,14 @@ internal fun TaskListArea(
                     Text("📥", fontSize = 48.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No downloads match \"${searchQuery.trim()}\"" else "No tasks in this view",
+                        text = if (searchQuery.isNotBlank()) LocalizationManager.Strings.homeNoDownloadsMatch(
+                            searchQuery.trim()
+                        ) else LocalizationManager.Strings.homeNoTasksInView,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (searchQuery.isNotBlank()) "Try another name" else "Add a download to get started",
+                        text = if (searchQuery.isNotBlank()) LocalizationManager.Strings.homeTryAnotherName else LocalizationManager.Strings.homeAddDownloadToGetStarted,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -354,18 +359,25 @@ internal fun QueueStatusBar(
     ) {
         val style = MaterialTheme.typography.labelMedium
         val color = MaterialTheme.colorScheme.onSurfaceVariant
-        Text("$running downloading · $waiting waiting", style = style, color = color, maxLines = 1)
         Text(
-            "Queue: " + if (maxAtOnce <= 0) "no limit" else "$maxAtOnce at a time",
+            LocalizationManager.Strings.homeDownloadingWaitingSummary(running, waiting),
             style = style,
             color = color,
             maxLines = 1
         )
         Text(
-            "Speed limit: " + if (globalLimitBytes > 0) formatSpeed(
-                globalLimitBytes,
-                speedDisplayUnit
-            ) else "off",
+            LocalizationManager.Strings.homeQueueStatus(maxAtOnce),
+            style = style,
+            color = color,
+            maxLines = 1
+        )
+        Text(
+            LocalizationManager.Strings.homeSpeedLimitStatus(
+                if (globalLimitBytes > 0) formatSpeed(
+                    globalLimitBytes,
+                    speedDisplayUnit
+                ) else null
+            ),
             style = style, color = color
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -399,17 +411,27 @@ internal fun taskStateGroups(tasks: List<DownloadTask>): List<TaskStateGroup> {
         TaskStateGroup(
             "run",
             "⬇",
-            "Downloading",
+            LocalizationManager.Strings.homeGroupDownloading,
             downloading
         ) { MaterialTheme.colorScheme.primary },
         TaskStateGroup(
             "wait",
             "⏳",
-            "Waiting",
+            LocalizationManager.Strings.homeGroupWaiting,
             waiting
         ) { MaterialTheme.colorScheme.onSurfaceVariant },
-        TaskStateGroup("stop", "⏸", "Paused & failed", stopped) { StatusPaused },
-        TaskStateGroup("done", "✓", "Completed", completed) { MaterialTheme.colorScheme.tertiary }
+        TaskStateGroup(
+            "stop",
+            "⏸",
+            LocalizationManager.Strings.homeGroupPausedFailed,
+            stopped
+        ) { StatusPaused },
+        TaskStateGroup(
+            "done",
+            "✓",
+            LocalizationManager.Strings.homeGroupCompleted,
+            completed
+        ) { MaterialTheme.colorScheme.tertiary }
     ).filter { it.tasks.isNotEmpty() }
 }
 
@@ -441,14 +463,26 @@ internal fun ListToolbar(
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.height(34.dp)
-        ) { Text("⏸  Pause all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) {
+            Text(
+                "⏸  ${LocalizationManager.Strings.homePauseAll}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         OutlinedButton(
             onClick = onResumeAll,
             enabled = anyResumable(tasks),
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.height(34.dp)
-        ) { Text("▶  Resume all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) {
+            Text(
+                "▶  ${LocalizationManager.Strings.homeResumeAll}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Spacer(Modifier.weight(1f))
         var open by remember { mutableStateOf(false) }
         Box {
@@ -458,7 +492,7 @@ internal fun ListToolbar(
                 contentPadding = PaddingValues(horizontal = 10.dp)
             ) {
                 Text(
-                    "Sort: ${sortOption.label}  ▾",
+                    "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -501,14 +535,18 @@ internal fun SelectionBar(
                 fontSize = 14.sp
             )
         }
-        Text("$count selected", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            LocalizationManager.Strings.homeSelectedCount(count),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         androidx.compose.material3.TextButton(
             onClick = { onCheckAll(!allChecked) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
             Text(
-                if (allChecked) "Select none" else "Select all",
+                if (allChecked) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -519,7 +557,13 @@ internal fun SelectionBar(
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.height(34.dp)
-        ) { Text("Export", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) {
+            Text(
+                LocalizationManager.Strings.homeExport,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         androidx.compose.material3.Button(
             onClick = onDelete,
             shape = RoundedCornerShape(10.dp),
@@ -530,7 +574,7 @@ internal fun SelectionBar(
             modifier = Modifier.height(34.dp)
         ) {
             Text(
-                "🗑  Delete",
+                "🗑  ${LocalizationManager.Strings.delete}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onError

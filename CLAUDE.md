@@ -267,6 +267,30 @@ Bridges:
   `DashboardTaskEvents.kt`, `TextFilePicker` expect/actual, `ui/AddDownloadLinkList.kt`).
   Torrents and magnets in the list are read one by one (`inspectListedTorrents`) and show their
   files under their row (`TorrentFilesSelectionCard`: checkbox + priority per file).
+- 1.2.0 languages (owner's library `kmpLocalization`, git submodule `packages/kmp-localization`,
+  owner's private repo; CI checks it out with secret `SUBMODULE_TOKEN`; FetchJet's
+  `libs.versions.toml` + root `build.gradle.kts` carry the catalog names it needs). Use it the
+  library's way (owner's rule, do not add layers): one `interface AppLocalization :
+  LocalizationProvider` with every string (`core/i18n/data_provider/AppLocalization.kt`), one
+  `object XxxProvider : AppLocalization` per language in the same folder (15: en ar fr de es pt it
+  ru tr id zh ja ko hi fa), text read as `LocalizationManager.Strings.x`, and
+  `LocalizationManager.start()` (`core/i18n/start/LocalizationStart.kt`) called at every entry:
+  `MainActivity.onCreate`, desktop `main`, iOS `MainViewController`, and the two Android services
+  (START_STICKY can restart them without the activity; `start()` runs once). The library is not
+  observable, so `AppLanguage` (same file) keeps the saved choice (`language=` in
+  settings.properties, "system" = device language) and a StateFlow; `App.kt` and the desktop tray
+  re-compose on it (`key`) and set RTL for ar/fa. Settings > General > Language. A new string =
+  add it to `AppLocalization`, then the build fails until every provider has it. Engine step /
+  status texts (`currentStepText`, `speedText`, `postProcessLabel`, torrent states, `ytDlpStatus`)
+  stay English in the engines and in tasks_cache.json (code compares them) and are translated only
+  where shown, by `localizeStep()` (`core/i18n/start/StepText.kt`, ~55 texts, `step*` members);
+  an unknown text passes through unchanged. Sizes and speeds from `utils/Formatters.kt` are wrapped
+  in `ltr()` (Unicode isolate) so "6.41 MB/s" does not flip in Arabic. Still English: free-form
+  error tails / exception messages, units, brand names. In Kotlin, `"$n个"` / `"$nرابط"` does not
+  compile (letters continue the name): use
+  `${n}`. Verified on the A56: Arabic + RTL (home, settings, a live download, toast and
+  notification in Arabic), choice kept after a restart; Chinese on screen (back to LTR). Not
+  checked: the other 13 languages on screen, desktop, iOS build.
 - 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on
   `BasicTextField`; String and `TextFieldValue` overloads). Focus = primary border + soft glow
   (`dropShadow`), hover on desktop, optional `label`, `error`, `centered`. Buttons inside a field:

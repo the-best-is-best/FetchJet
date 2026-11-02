@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.engine.DownloadEngine
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -362,7 +364,8 @@ class MediaStreamDownloader(
                 if (it.status == DownloadStatus.PAUSED) it
                 else it.copy(
                     status = DownloadStatus.ERROR,
-                    errorMessage = e.message ?: "Download failed due to network exception",
+                    errorMessage = e.message
+                        ?: LocalizationManager.Strings.sysDownloadFailedNetwork,
                     downloadSpeedBytesPerSec = 0L
                 )
             }

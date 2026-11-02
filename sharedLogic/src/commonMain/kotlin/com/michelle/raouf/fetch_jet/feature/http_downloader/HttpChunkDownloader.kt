@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -453,7 +455,7 @@ class HttpChunkDownloader(
             updateTaskState(taskId) {
                 it.copy(
                     status = DownloadStatus.ERROR,
-                    errorMessage = e.message ?: "Download failed",
+                    errorMessage = e.message ?: LocalizationManager.Strings.sysDownloadFailed,
                     downloadSpeedBytesPerSec = 0L
                 )
             }

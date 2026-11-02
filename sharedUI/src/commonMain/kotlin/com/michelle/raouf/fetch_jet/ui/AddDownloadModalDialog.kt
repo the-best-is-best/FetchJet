@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
@@ -168,9 +170,18 @@ fun AddDownloadModalDialog(
 
     val clipValidationErrorMessage = when {
         !isClipRangeEnabled -> null
-        isStartAfterEnd -> "Start time (${clipStartTime.ifBlank { "00:00" }}) must be before end time (${clipEndTime.ifBlank { fullVideoDurationHhMm }})"
-        isEndExceedingVideo -> "End time (${clipEndTime.ifBlank { fullVideoDurationHhMm }}) exceeds video duration ($fullVideoDurationHhMm)"
-        isStartExceedingVideo -> "Start time exceeds video duration ($fullVideoDurationHhMm)"
+        isStartAfterEnd -> LocalizationManager.Strings.clipStartAfterEnd(
+            clipStartTime.ifBlank { "00:00" },
+            clipEndTime.ifBlank { fullVideoDurationHhMm })
+
+        isEndExceedingVideo -> LocalizationManager.Strings.clipEndExceedsVideo(
+            clipEndTime.ifBlank { fullVideoDurationHhMm },
+            fullVideoDurationHhMm
+        )
+
+        isStartExceedingVideo -> LocalizationManager.Strings.clipStartExceedsVideo(
+            fullVideoDurationHhMm
+        )
         else -> null
     }
 
@@ -184,7 +195,7 @@ fun AddDownloadModalDialog(
             mediaDurationSeconds
         }
         TimeRangePickerDialog(
-            title = "⏱️ Set Start Time (From)",
+            title = "⏱️ ${LocalizationManager.Strings.setStartTimeTitle}",
             initialHhMm = clipStartTime.ifBlank { "00:00" },
             maxDurationSeconds = maxForStart.coerceAtLeast(0L),
             minTimeSeconds = 0L,
@@ -200,7 +211,7 @@ fun AddDownloadModalDialog(
 
     if (showEndTimePicker) {
         TimeRangePickerDialog(
-            title = "⏱️ Set End Time (To)",
+            title = "⏱️ ${LocalizationManager.Strings.setEndTimeTitle}",
             initialHhMm = clipEndTime.ifBlank { fullVideoDurationHhMm },
             maxDurationSeconds = mediaDurationSeconds,
             minTimeSeconds = currentStartSec,

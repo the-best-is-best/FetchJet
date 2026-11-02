@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,7 +46,7 @@ internal fun LinkListSection(
     val allSelected = selected == links.size
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "$selected of ${links.size} links",
+            LocalizationManager.Strings.selectedOfLinks(selected, links.size),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -52,7 +54,7 @@ internal fun LinkListSection(
         )
         TextButton(onClick = { onSelectAll(!allSelected) }) {
             Text(
-                if (allSelected) "Select none" else "Select all",
+                if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -86,7 +88,7 @@ internal fun LinkListSection(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Reading the torrent's files…",
+                                    LocalizationManager.Strings.readingTorrentFiles,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -113,7 +115,7 @@ internal fun LinkListSection(
                             )
 
                             link.inspectError != null -> Text(
-                                "Could not read its files (${link.inspectError}); all of them will download.",
+                                LocalizationManager.Strings.couldNotReadTorrentFiles(link.inspectError.orEmpty()),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -128,9 +130,9 @@ internal fun LinkListSection(
 @Composable
 private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
     val (tag, tagColor) = when (link.engine) {
-        EngineType.MEDIA_STREAM -> "VIDEO" to Color(0xFFE879F9)
-        EngineType.BITTORRENT -> "TORRENT" to Color(0xFF34D399)
-        EngineType.HTTP_DIRECT -> "FILE" to Color(0xFF38BDF8)
+        EngineType.MEDIA_STREAM -> LocalizationManager.Strings.linkTagVideo to Color(0xFFE879F9)
+        EngineType.BITTORRENT -> LocalizationManager.Strings.linkTagTorrent to Color(0xFF34D399)
+        EngineType.HTTP_DIRECT -> LocalizationManager.Strings.linkTagFile to Color(0xFF38BDF8)
     }
     Row(
         modifier = Modifier
@@ -176,7 +178,14 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
 private fun linkTitle(url: String): String {
     if (url.startsWith("magnet:", ignoreCase = true)) {
         val name = url.substringAfter("dn=", "").substringBefore('&')
-        return decodeUnicodeText(percentDecode(name.replace('+', ' '))).ifBlank { "Magnet link" }
+        return decodeUnicodeText(
+            percentDecode(
+                name.replace(
+                    '+',
+                    ' '
+                )
+            )
+        ).ifBlank { LocalizationManager.Strings.linkListMagnet }
     }
     val path =
         url.substringBefore('#').substringBefore('?').substringAfter("://").substringAfter('/', "")
@@ -185,7 +194,7 @@ private fun linkTitle(url: String): String {
     return when {
         host.contains("youtube.com") || host.contains("youtu.be") -> {
             val id = url.substringAfter("v=", "").substringBefore('&').ifBlank { last }
-            "YouTube video $id"
+            LocalizationManager.Strings.linkListYouTubeVideo(id)
         }
 
         last.isNotBlank() -> decodeUnicodeText(last)

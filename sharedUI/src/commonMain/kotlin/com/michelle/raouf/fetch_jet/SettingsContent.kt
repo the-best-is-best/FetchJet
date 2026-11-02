@@ -90,6 +90,7 @@ internal fun SettingsContentView(
             )
         },
         onDownloadYtDlpClicked = { viewModel.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked) },
+        onLanguageChanged = { viewModel.onEvent(DashboardUiEvent.OnLanguageChanged(it)) },
         onApplySettings = { viewModel.onEvent(DashboardUiEvent.OnApplySettingsClicked) }
     )
 }

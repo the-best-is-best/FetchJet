@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.feature.queue_manager
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -293,7 +295,7 @@ class QueueManagerRepository(
             // Keep it visible with the reason instead of losing it.
             val failed = fresh.copy(
                 status = DownloadStatus.ERROR,
-                errorMessage = e.message ?: "Could not start"
+                errorMessage = e.message ?: LocalizationManager.Strings.sysCouldNotStart
             )
             when (fresh.engineType) {
                 EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(failed)

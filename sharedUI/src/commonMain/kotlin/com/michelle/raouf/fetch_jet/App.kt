@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
@@ -148,6 +150,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
     }
 
+    val language by com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.collectAsState()
+    androidx.compose.runtime.key(language) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalLayoutDirection provides
+                    if (com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
+                    else androidx.compose.ui.unit.LayoutDirection.Ltr
+        ) {
     FetchJetTheme(isDarkMode = state.isDarkMode) {
         Surface(
             modifier = Modifier.fillMaxSize().clearFocusOnTapOutside(),
@@ -178,7 +187,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                             onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
-                            title = if (state.selectedTab == DashboardTab.SETTINGS) "Settings" else "Downloads"
+                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
                         )
 
                         Box(
@@ -293,7 +302,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                 FjTopBar(
                                     showSearch = state.selectedTab != DashboardTab.SETTINGS,
                                     compact = isMedium,
-                                    title = if (state.selectedTab == DashboardTab.SETTINGS) "Settings" else sideFilter.label,
+                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else sideFilter.label,
                                     searchQuery = searchQuery,
                                     onSearchChange = { searchQuery = it },
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
@@ -732,6 +741,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             ) {
                 androidx.compose.material3.SnackbarHost(snackbarHostState)
             }
+        }
+    }
         }
     }
 }

@@ -6,6 +6,8 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
@@ -494,7 +496,11 @@ object ExtensionBridgeServer {
                     appContext.startActivity(open)
                 } catch (_: Exception) {
                 }
-                Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    appContext,
+                    LocalizationManager.Strings.sysSentToFetchJet,
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 showOpenNotification(open)
             }
@@ -508,9 +514,9 @@ object ExtensionBridgeServer {
             if (android.os.Build.VERSION.SDK_INT >= 26) {
                 nm.createNotificationChannel(
                     android.app.NotificationChannel(
-                        LINK_CHANNEL, "Links from the browser",
+                        LINK_CHANNEL, LocalizationManager.Strings.sysLinksChannelName,
                         android.app.NotificationManager.IMPORTANCE_HIGH
-                    ).apply { description = "Tap to open the link FetchJet just received" }
+                    ).apply { description = LocalizationManager.Strings.sysLinksChannelDescription }
                 )
             }
             val pi = android.app.PendingIntent.getActivity(
@@ -519,8 +525,8 @@ object ExtensionBridgeServer {
             )
             val n = androidx.core.app.NotificationCompat.Builder(appContext, LINK_CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle("Link received")
-                .setContentText("Tap to open it in FetchJet")
+                .setContentTitle(LocalizationManager.Strings.sysLinkReceivedTitle)
+                .setContentText(LocalizationManager.Strings.sysLinkReceivedText)
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)

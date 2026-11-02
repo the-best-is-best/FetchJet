@@ -2,6 +2,8 @@
 
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -28,7 +30,7 @@ private class IosTorrentBackend : TorrentBackend {
     override val isSupported: Boolean get() = bridge?.isAvailable() == true
 
     override fun engineStatus(): String =
-        bridge?.statusText() ?: "BitTorrent engine is not available in this build"
+        bridge?.statusText() ?: LocalizationManager.Strings.sysTorrentEngineNotAvailable
 
     override suspend fun installEngine(): Result<Unit> =
         if (isSupported) Result.success(Unit)

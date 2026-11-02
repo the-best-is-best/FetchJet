@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
 
@@ -41,25 +44,37 @@ internal fun MediaToolsPage(
 ) {
     val ready = isYtDlpInstalled && isFfmpegInstalled
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = "Tools") {
-            SettingRow("yt-dlp", "Finds the video and audio on YouTube and other sites") {
-                if (isYtDlpInstalled) StatusLabel("Ready", StatusCompleted)
-                else StatusLabel("Missing", MaterialTheme.colorScheme.error)
+        SettingsGroup(title = LocalizationManager.Strings.mediaToolsGroup) {
+            SettingRow("yt-dlp", LocalizationManager.Strings.ytDlpHint) {
+                if (isYtDlpInstalled) StatusLabel(
+                    LocalizationManager.Strings.settingsReady,
+                    StatusCompleted
+                )
+                else StatusLabel(
+                    LocalizationManager.Strings.settingsMissing,
+                    MaterialTheme.colorScheme.error
+                )
             }
             SettingDivider()
-            SettingRow("FFmpeg", "Joins video + audio (1080p and up), cuts clips, makes MP3") {
-                if (isFfmpegInstalled) StatusLabel("Ready", StatusCompleted)
-                else StatusLabel("Missing · up to 720p", StatusPaused)
+            SettingRow("FFmpeg", LocalizationManager.Strings.ffmpegHint) {
+                if (isFfmpegInstalled) StatusLabel(
+                    LocalizationManager.Strings.settingsReady,
+                    StatusCompleted
+                )
+                else StatusLabel(LocalizationManager.Strings.ffmpegMissing, StatusPaused)
             }
             if (jsRuntimeName.isNotBlank()) {
                 SettingDivider()
                 SettingRow(
-                    "JS runtime · $jsRuntimeName",
-                    "Solves YouTube's checks so every quality shows up, faster"
+                    LocalizationManager.Strings.jsRuntimeTitle(jsRuntimeName),
+                    LocalizationManager.Strings.jsRuntimeHint
                 ) {
-                    if (isJsRuntimeReady) StatusLabel("Ready", StatusCompleted)
+                    if (isJsRuntimeReady) StatusLabel(
+                        LocalizationManager.Strings.settingsReady,
+                        StatusCompleted
+                    )
                     else StatusLabel(
-                        "Missing · press ${if (isYtDlpInstalled && isFfmpegInstalled) "Update tools" else "Download the tools"}",
+                        LocalizationManager.Strings.missingPress(if (isYtDlpInstalled && isFfmpegInstalled) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools),
                         StatusPaused
                     )
                 }
@@ -67,12 +82,12 @@ internal fun MediaToolsPage(
             if (toolsDirectoryPath.isNotBlank()) {
                 SettingDivider()
                 SettingRow(
-                    title = "Tools folder",
+                    title = LocalizationManager.Strings.mediaToolsFolder,
                     subtitle = toolsDirectoryPath,
                     onClick = { pathResolver.openDirectoryInExplorer(toolsDirectoryPath) }
                 ) {
                     Text(
-                        "Open",
+                        LocalizationManager.Strings.open,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -86,14 +101,20 @@ internal fun MediaToolsPage(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         when {
-                            toolDownloadName == null -> if (ready) "Updating…" else "Downloading tools…"
-                            toolDownloadFraction == null -> "Downloading $toolDownloadName…"
-                            else -> "Downloading $toolDownloadName… ${(toolDownloadFraction * 100).toInt()}%"
+                            toolDownloadName == null -> if (ready) LocalizationManager.Strings.mediaUpdatingTools else LocalizationManager.Strings.mediaDownloadingTools
+                            toolDownloadFraction == null -> LocalizationManager.Strings.mediaDownloadingTool(
+                                toolDownloadName
+                            )
+
+                            else -> LocalizationManager.Strings.mediaDownloadingToolPercent(
+                                toolDownloadName,
+                                (toolDownloadFraction * 100).toInt()
+                            )
                         }
                     )
                 } else {
                     Text(
-                        if (ready) "Update tools" else "Download the tools",
+                        if (ready) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -124,7 +145,7 @@ internal fun MediaToolsPage(
         }
         if (ytDlpStatus.isNotBlank()) {
             Text(
-                ytDlpStatus,
+                localizeStep(ytDlpStatus),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

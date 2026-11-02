@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -67,14 +69,16 @@ internal object TorrentNativeLoader {
 
     /** Human-readable state for the Settings screen. */
     fun status(toolsDir: File): String {
-        if (isAndroid) return "Ready: BitTorrent engine built in"
+        if (isAndroid) return LocalizationManager.Strings.sysTorrentEngineBuiltIn
         loadResult?.let { r ->
-            return if (r.isSuccess) "Ready: BitTorrent engine (libtorrent $LIBTORRENT4J_VERSION)"
-            else "BitTorrent engine failed to load: ${r.exceptionOrNull()?.message}"
+            return if (r.isSuccess) LocalizationManager.Strings.sysTorrentEngineReadyVersion(
+                LIBTORRENT4J_VERSION
+            )
+            else LocalizationManager.Strings.sysTorrentEngineFailedToLoad(r.exceptionOrNull()?.message.toString())
         }
         return if (installedNative(toolsDir) != null || findBundledResource() != null)
-            "Ready: BitTorrent engine available (loads on first torrent)"
-        else "BitTorrent engine missing. Click 'Download Tools' below."
+            LocalizationManager.Strings.sysTorrentEngineAvailable
+        else LocalizationManager.Strings.sysTorrentEngineMissing
     }
 
     fun isAvailable(toolsDir: File): Boolean =

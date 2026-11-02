@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
@@ -96,12 +98,17 @@ fun parsePlaylistJson(output: String): MediaPlaylist? {
         )
     }
     if (entries.isEmpty()) return null
-    val title = root.getString("title")?.trim()?.ifBlank { null } ?: "Playlist"
+    val title = root.getString("title")?.trim()?.ifBlank { null }
+        ?: LocalizationManager.Strings.sysPlaylistFallbackTitle
     return MediaPlaylist(title, entries)
 }
 
 /** Choices offered for a whole playlist (the formats of every video are not inspected). */
-enum class PlaylistQuality(val label: String, val formatSelector: String, val extension: String) {
+enum class PlaylistQuality(
+    private val baseLabel: String,
+    val formatSelector: String,
+    val extension: String
+) {
     BEST("Best", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best", "mp4"),
     P1080(
         "1080p",
@@ -123,5 +130,12 @@ enum class PlaylistQuality(val label: String, val formatSelector: String, val ex
         "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360]/best",
         "mp4"
     ),
-    AUDIO("Audio only", "bestaudio[ext=m4a]/bestaudio", "m4a")
+    AUDIO("Audio only", "bestaudio[ext=m4a]/bestaudio", "m4a");
+
+    val label: String
+        get() = when (this) {
+            BEST -> LocalizationManager.Strings.sysPlaylistQualityBest
+            AUDIO -> LocalizationManager.Strings.sysPlaylistQualityAudioOnly
+            else -> baseLabel
+        }
 }

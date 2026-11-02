@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -313,7 +315,7 @@ class IosBackgroundHttpEngine(
                 updateTask(id) {
                     it.copy(
                         status = DownloadStatus.ERROR,
-                        errorMessage = "Could not save file to $destDir"
+                        errorMessage = LocalizationManager.Strings.sysCouldNotSaveFileTo(destDir)
                     )
                 }
                 return

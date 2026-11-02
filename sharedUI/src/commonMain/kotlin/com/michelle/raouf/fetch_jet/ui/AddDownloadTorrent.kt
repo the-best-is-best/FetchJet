@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,8 +65,8 @@ internal fun TorrentInspectionSection(
         Spacer(modifier = Modifier.height(12.dp))
         if (isInspectingTorrent) {
             InspectionLoadingBanner(
-                title = "Inspecting Torrent Metadata...",
-                subtitle = "Fetching file manifest and peers"
+                title = LocalizationManager.Strings.inspectingTorrent,
+                subtitle = LocalizationManager.Strings.inspectingTorrentHint
             )
         } else if (inspectError != null) {
             Card(
@@ -85,7 +87,7 @@ internal fun TorrentInspectionSection(
                         Text("⚠️", fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Torrent Inspection Failed",
+                            text = LocalizationManager.Strings.torrentInspectionFailed,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -105,7 +107,7 @@ internal fun TorrentInspectionSection(
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Text(
-                            "🔄 Retry Inspection",
+                            "🔄 ${LocalizationManager.Strings.addRetryInspection}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onError
@@ -125,7 +127,7 @@ internal fun TorrentInspectionSection(
                 )
             ) {
                 Text(
-                    "🧲 Inspect Torrent Files",
+                    "🧲 ${LocalizationManager.Strings.inspectTorrentFiles}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
@@ -165,7 +167,7 @@ internal fun TorrentLeechToggle(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "Disable Torrent Upload (Leech-Only Mode)",
+                text = LocalizationManager.Strings.disableTorrentUpload,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -198,7 +200,7 @@ internal fun TorrentFilesSelectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = torrentName ?: "Torrent Files",
+                    text = torrentName ?: LocalizationManager.Strings.torrentFiles,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -213,7 +215,7 @@ internal fun TorrentFilesSelectionCard(
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        if (files.all { it.isSelected }) "Deselect All" else "Select All",
+                        if (files.all { it.isSelected }) LocalizationManager.Strings.addDeselectAll else LocalizationManager.Strings.addSelectAll,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -278,9 +280,9 @@ internal fun TorrentFilesSelectionCard(
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             val priorityLabel = when (file.priority) {
-                                1 -> "High"
-                                -1 -> "Low"
-                                else -> "Normal"
+                                1 -> LocalizationManager.Strings.torrentPriorityHigh
+                                -1 -> LocalizationManager.Strings.torrentPriorityLow
+                                else -> LocalizationManager.Strings.torrentPriorityNormal
                             }
                             val priorityColor = when (file.priority) {
                                 1 -> Color(0xFFEF4444)

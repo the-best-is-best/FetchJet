@@ -1,5 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -16,9 +18,9 @@ actual fun getMediaExtractorToolStatus(): String {
     val ffmpeg = getExistingFfmpegBinary()
 
     return when {
-        ytdlp != null && (ffmpeg != null || isSystemFfmpegInstalled()) -> "Ready: yt-dlp & ffmpeg installed (Full 1080p+ support)"
-        ytdlp != null -> "Ready: yt-dlp installed (No ffmpeg - 720p limit)"
-        else -> "Not Installed. Click 'Download Tools' below."
+        ytdlp != null && (ffmpeg != null || isSystemFfmpegInstalled()) -> LocalizationManager.Strings.sysToolsReadyYtDlpFfmpeg
+        ytdlp != null -> LocalizationManager.Strings.sysToolsReadyYtDlpNoFfmpeg
+        else -> LocalizationManager.Strings.sysToolsNotInstalled
     }
 }
 

@@ -11,7 +11,8 @@ data class AppSettings(
     val isDarkMode: Boolean = true,
     val globalDownloadSpeedLimitBytes: Long = 0L,
     val globalUploadSpeedLimitBytes: Long = 0L,
-    val speedDisplayUnit: String = "MB/s"
+    val speedDisplayUnit: String = "MB/s",
+    val language: String = "system"
 )
 
 class AppSettingsRepository(
@@ -27,6 +28,7 @@ class AppSettingsRepository(
         var dlLimit = 0L
         var ulLimit = 0L
         var speedUnit = "MB/s"
+        var language = "system"
 
         try {
             if (FileSystem.SYSTEM.exists(settingsFile)) {
@@ -46,6 +48,7 @@ class AppSettingsRepository(
                         "globalDownloadSpeedLimitBytes" -> dlLimit = value.toLongOrNull() ?: 0L
                         "globalUploadSpeedLimitBytes" -> ulLimit = value.toLongOrNull() ?: 0L
                         "speedDisplayUnit" -> if (value.isNotBlank()) speedUnit = value
+                        "language" -> if (value.isNotBlank()) language = value
                     }
                 }
             }
@@ -65,7 +68,8 @@ class AppSettingsRepository(
             isDarkMode = darkMode,
             globalDownloadSpeedLimitBytes = dlLimit,
             globalUploadSpeedLimitBytes = ulLimit,
-            speedDisplayUnit = normalizedSpeedUnit
+            speedDisplayUnit = normalizedSpeedUnit,
+            language = language
         )
     }
 
@@ -80,6 +84,7 @@ class AppSettingsRepository(
                 writeUtf8("globalDownloadSpeedLimitBytes=${settings.globalDownloadSpeedLimitBytes}\n")
                 writeUtf8("globalUploadSpeedLimitBytes=${settings.globalUploadSpeedLimitBytes}\n")
                 writeUtf8("speedDisplayUnit=${settings.speedDisplayUnit}\n")
+                writeUtf8("language=${settings.language}\n")
             }
         } catch (_: Exception) {
         }

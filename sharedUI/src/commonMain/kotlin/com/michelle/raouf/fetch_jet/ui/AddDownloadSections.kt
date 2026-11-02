@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -65,13 +67,13 @@ internal fun AddDialogHeader(onDismiss: () -> Unit) {
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Add New Download",
+                    text = LocalizationManager.Strings.addDialogTitle,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Enter link to start downloading",
+                    text = LocalizationManager.Strings.addDialogSubtitle,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -109,7 +111,7 @@ internal fun UrlInputSection(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Link",
+            text = LocalizationManager.Strings.addLinkLabel,
             fontSize = 12.sp,
             maxLines = 1,
             fontWeight = FontWeight.SemiBold,
@@ -129,7 +131,7 @@ internal fun UrlInputSection(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
-                    "📄 Import .txt",
+                    "📄 ${LocalizationManager.Strings.addImportTxt}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -153,7 +155,7 @@ internal fun UrlInputSection(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
-                    "📂 Open .torrent file",
+                    "📂 ${LocalizationManager.Strings.openTorrentFile}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -171,7 +173,7 @@ internal fun UrlInputSection(
                 onUrlChanged(newValue.text)
             }
         },
-        placeholder = "Paste links or magnets",
+        placeholder = LocalizationManager.Strings.urlPlaceholder,
         leading = { Text("🔗", fontSize = 16.sp) },
         trailing = {
             if (urlTextFieldValue.text.isNotBlank()) {
@@ -180,7 +182,7 @@ internal fun UrlInputSection(
                     onUrlChanged("")
                 })
             } else {
-                FieldChipButton("📋 Paste", onClick = {
+                FieldChipButton("📋 ${LocalizationManager.Strings.addPaste}", onClick = {
                     coroutineScope.launch {
                         val clip = getClipboardText()?.trim()
                         if (!clip.isNullOrBlank()) {
@@ -201,7 +203,7 @@ internal fun UrlInputSection(
 internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (EngineType) -> Unit) {
     // Engine Selector
     Text(
-        text = "Download Engine",
+        text = LocalizationManager.Strings.addDownloadEngine,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface
@@ -212,14 +214,14 @@ internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (Engin
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         EngineChoiceChip(
-            label = "⚡ Direct",
+            label = "⚡ ${LocalizationManager.Strings.engineDirect}",
             isSelected = detectedEngine == EngineType.HTTP_DIRECT,
             onClick = { onEngineSelected(EngineType.HTTP_DIRECT) },
             modifier = Modifier.weight(1f)
         )
         if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) {
             EngineChoiceChip(
-                label = "🎬 Media",
+                label = "🎬 ${LocalizationManager.Strings.engineMedia}",
                 isSelected = detectedEngine == EngineType.MEDIA_STREAM,
                 onClick = { onEngineSelected(EngineType.MEDIA_STREAM) },
                 modifier = Modifier.weight(1f)
@@ -227,7 +229,7 @@ internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (Engin
         }
         if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) {
             EngineChoiceChip(
-                label = "🧲 Torrent",
+                label = "🧲 ${LocalizationManager.Strings.engineTorrent}",
                 isSelected = detectedEngine == EngineType.BITTORRENT,
                 onClick = { onEngineSelected(EngineType.BITTORRENT) },
                 modifier = Modifier.weight(1f)
@@ -247,7 +249,7 @@ internal fun FileNameSection(
     // File name: what FetchJet will call the file, editable.
     if (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank()) {
         Text(
-            text = "File name",
+            text = LocalizationManager.Strings.addFileNameLabel,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
@@ -256,7 +258,7 @@ internal fun FileNameSection(
         // Locked while the link is still being inspected: the name follows the result.
         val inspecting = isInspectingMedia || isInspectingTorrent
         FetchJetTextField(
-            value = if (inspecting && fileNameOverride.isEmpty()) "Finding the name…" else fileNameOverride.ifEmpty { suggestedFileName },
+            value = if (inspecting && fileNameOverride.isEmpty()) LocalizationManager.Strings.findingName else fileNameOverride.ifEmpty { suggestedFileName },
             onValueChange = { onFileNameChanged(it) },
             enabled = !inspecting,
             modifier = Modifier.fillMaxWidth(),
@@ -309,7 +311,7 @@ internal fun DestinationSection(
         }
     }
     Text(
-        text = "Save Destination Directory",
+        text = LocalizationManager.Strings.saveDestination,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface
@@ -337,7 +339,7 @@ internal fun DestinationSection(
     ) {
         QuickFolderButton(
             icon = "📥",
-            label = "Downloads",
+            label = LocalizationManager.Strings.quickFolderDownloads,
             onClick = {
                 pathTextFieldValue =
                     TextFieldValue(defaultDownloads, TextRange(defaultDownloads.length))
@@ -347,7 +349,7 @@ internal fun DestinationSection(
         )
         QuickFolderButton(
             icon = "📄",
-            label = "Documents",
+            label = LocalizationManager.Strings.quickFolderDocuments,
             onClick = {
                 pathTextFieldValue =
                     TextFieldValue(defaultDocs, TextRange(defaultDocs.length))
@@ -361,7 +363,7 @@ internal fun DestinationSection(
         ) || defaultDesktop.contains("Documents", ignoreCase = true)
         QuickFolderButton(
             icon = if (isMobile) "🎬" else "💻",
-            label = if (isMobile) "Media" else "Desktop",
+            label = if (isMobile) LocalizationManager.Strings.quickFolderMedia else LocalizationManager.Strings.quickFolderDesktop,
             onClick = {
                 if (isMobile) {
                     val created =
@@ -424,7 +426,11 @@ internal fun AddDialogActions(
                 contentColor = MaterialTheme.colorScheme.onSurface
             )
         ) {
-            Text("Cancel", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(
+                LocalizationManager.Strings.cancel,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
         Spacer(modifier = Modifier.width(10.dp))
 
@@ -439,7 +445,7 @@ internal fun AddDialogActions(
                 )
             ) {
                 Text(
-                    "🔄 Retry Inspect",
+                    "🔄 ${LocalizationManager.Strings.addRetryInspect}",
                     color = MaterialTheme.colorScheme.onError,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
@@ -467,21 +473,26 @@ internal fun AddDialogActions(
 
             Text(
                 text = when {
-                    isLoading -> "Starting..."
-                    isInspecting -> "Inspecting..."
-                    hasActiveError -> "Inspection Failed"
-                    !isUrlValid -> "Enter URL"
-                    linkCount > 0 -> if (scheduleStartMs > 0L) "Schedule $linkCount links" else "Download $linkCount links"
-                    !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> "Inspect Video First"
-                    !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> "Inspect Torrent First"
-                    !isClipRangeValid -> "Invalid Time Range"
+                    isLoading -> LocalizationManager.Strings.addStarting
+                    isInspecting -> LocalizationManager.Strings.addInspecting
+                    hasActiveError -> LocalizationManager.Strings.addInspectionFailed
+                    !isUrlValid -> LocalizationManager.Strings.addEnterUrl
+                    linkCount > 0 -> if (scheduleStartMs > 0L) LocalizationManager.Strings.scheduleLinks(
+                        linkCount
+                    ) else LocalizationManager.Strings.downloadLinks(linkCount)
+
+                    !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> LocalizationManager.Strings.inspectVideoFirst
+                    !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> LocalizationManager.Strings.inspectTorrentFirst
+                    !isClipRangeValid -> LocalizationManager.Strings.invalidTimeRange
                     inspectedPlaylist != null && detectedEngine == EngineType.MEDIA_STREAM -> {
                         val n = inspectedPlaylist.entries.count { it.isSelected }
-                        if (scheduleStartMs > 0L) "Schedule $n videos" else "Download $n videos"
+                        if (scheduleStartMs > 0L) LocalizationManager.Strings.scheduleVideos(n) else LocalizationManager.Strings.downloadVideos(
+                            n
+                        )
                     }
 
-                    scheduleStartMs > 0L -> "Schedule Download"
-                    else -> "Start Download"
+                    scheduleStartMs > 0L -> LocalizationManager.Strings.addScheduleDownload
+                    else -> LocalizationManager.Strings.addStartDownload
                 },
                 // On the cyan primary button the readable text colour is onPrimary
                 // (black in the dark theme), not onSurface (white).

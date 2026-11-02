@@ -1,5 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,7 +42,7 @@ fun TrafficLimitSelector(
     onSpeedChanged: (Long) -> Unit
 ) {
     val presets = listOf(
-        "Unlimited (Max)" to 0L,
+        LocalizationManager.Strings.speedLimitUnlimited to 0L,
         "512 KB/s" to 512L * 1024L,
         "1 MB/s" to 1024L * 1024L,
         "5 MB/s" to 5L * 1024L * 1024L,
@@ -98,7 +100,7 @@ fun TrafficLimitSelector(
                 fontWeight = FontWeight.SemiBold
             )
             val currentLabel = when {
-                speedBytesPerSec <= 0L -> "No Limit (Max Speed)"
+                speedBytesPerSec <= 0L -> LocalizationManager.Strings.speedLimitNoLimit
                 speedBytesPerSec >= 1024L * 1024L -> {
                     val mb = speedBytesPerSec.toDouble() / (1024.0 * 1024.0)
                     val formatted = if (mb == mb.toLong().toDouble()) mb.toLong()
@@ -143,7 +145,7 @@ fun TrafficLimitSelector(
                         onSpeedChanged(calculateBytes(2.0, customUnit))
                     }
                 },
-                label = { Text("Custom...", fontSize = 12.sp) }
+                label = { Text(LocalizationManager.Strings.speedLimitCustom, fontSize = 12.sp) }
             )
         }
 
@@ -172,7 +174,7 @@ fun TrafficLimitSelector(
                             onSpeedChanged(calculateBytes(num, customUnit))
                         },
                         modifier = Modifier.width(130.dp),
-                        placeholder = "Value",
+                        placeholder = LocalizationManager.Strings.speedLimitValue,
                         leading = { Text("⚡", fontSize = 14.sp) },
                         height = 42.dp,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(

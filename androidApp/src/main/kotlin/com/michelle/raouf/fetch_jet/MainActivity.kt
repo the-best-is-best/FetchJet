@@ -1,5 +1,6 @@
 ﻿package com.michelle.raouf.fetch_jet
 
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.tbib.kmp_localization.LocalizationManager.start()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
                 android.graphics.Color.TRANSPARENT,

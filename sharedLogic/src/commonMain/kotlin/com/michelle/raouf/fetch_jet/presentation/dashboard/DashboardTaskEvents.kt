@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
@@ -249,9 +251,22 @@ internal fun DashboardViewModel.exportLinks(taskIds: List<String>) {
                 )
             }
         }.onSuccess {
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Saved ${links.size} link${if (links.size == 1) "" else "s"} to $path"))
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysSavedLinks(
+                        links.size,
+                        path
+                    )
+                )
+            )
         }.onFailure { e ->
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Could not save the links: ${e.message ?: "error"}"))
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysCouldNotSaveLinks(
+                        e.message ?: LocalizationManager.Strings.sysErrorFallback
+                    )
+                )
+            )
         }
     }
 }

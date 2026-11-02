@@ -1,17 +1,20 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.deniscerri.ytdl.core.RuntimeManager
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 actual fun getMediaExtractorToolStatus(): String {
-    val context = PathResolver.appContext ?: return "Installed & Ready (Built-in)"
+    val context =
+        PathResolver.appContext ?: return LocalizationManager.Strings.sysToolsInstalledBuiltIn
     return try {
         val ver = RuntimeManager.versionName(context)
-        if (!ver.isNullOrBlank()) "yt-dlp $ver (Ready)" else "Installed & Ready (Built-in)"
+        if (!ver.isNullOrBlank()) LocalizationManager.Strings.sysYtDlpVersionReady(ver) else LocalizationManager.Strings.sysToolsInstalledBuiltIn
     } catch (_: Exception) {
-        "Installed & Ready (Built-in)"
+        LocalizationManager.Strings.sysToolsInstalledBuiltIn
     }
 }
 

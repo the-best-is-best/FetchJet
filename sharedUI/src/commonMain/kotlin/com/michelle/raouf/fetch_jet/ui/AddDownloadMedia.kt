@@ -1,5 +1,8 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,7 +80,8 @@ internal fun MediaQualitiesSelectionCard(
                         it.format in listOf("mp3", "m4a", "flac", "wav", "aac", "ogg", "opus")
             }
             val titleIcon = if (isAudio) "🎵" else "🎬"
-            val defaultTitle = if (isAudio) "Available Audio Formats" else "Available Qualities"
+            val defaultTitle =
+                if (isAudio) LocalizationManager.Strings.availableAudioFormats else LocalizationManager.Strings.availableQualities
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -99,7 +103,7 @@ internal fun MediaQualitiesSelectionCard(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            "Select All",
+                            LocalizationManager.Strings.addSelectAll,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -109,7 +113,7 @@ internal fun MediaQualitiesSelectionCard(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            "Clear",
+                            LocalizationManager.Strings.addClearSelection,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -118,7 +122,10 @@ internal fun MediaQualitiesSelectionCard(
             }
 
             Text(
-                text = "Selected: ${qualities.count { it.isSelected }} of ${qualities.size} available",
+                text = LocalizationManager.Strings.selectedOfAvailable(
+                    qualities.count { it.isSelected },
+                    qualities.size
+                ),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -184,7 +191,10 @@ internal fun MediaQualitiesSelectionCard(
                                     formatSecondsToDisplayFriendly(quality.durationSeconds)
                                 }" else ""
                                 Text(
-                                    text = "Format: ${quality.format.uppercase()}$sizeText$durText",
+                                    text = LocalizationManager.Strings.qualityFormatLine(
+                                        quality.format.uppercase(),
+                                        "$sizeText$durText"
+                                    ),
                                     fontSize = 10.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -320,8 +330,8 @@ internal fun MediaInspectionSection(
         Spacer(modifier = Modifier.height(12.dp))
         if (isInspectingMedia) {
             InspectionLoadingBanner(
-                title = "Inspecting Video Qualities...",
-                subtitle = "Scanning available video resolutions and audio streams"
+                title = LocalizationManager.Strings.inspectingVideoQualities,
+                subtitle = LocalizationManager.Strings.inspectingVideoQualitiesHint
             )
         } else if (inspectMediaError != null) {
             Card(
@@ -342,7 +352,7 @@ internal fun MediaInspectionSection(
                         Text("⚠️", fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Video Inspection Failed",
+                            text = LocalizationManager.Strings.videoInspectionFailed,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -362,7 +372,7 @@ internal fun MediaInspectionSection(
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Text(
-                            "🔄 Retry Inspection",
+                            "🔄 ${LocalizationManager.Strings.addRetryInspection}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onError
@@ -381,14 +391,14 @@ internal fun MediaInspectionSection(
                     val preparing = isDownloadingYtDlp ||
                             ytDlpStatus.startsWith("Preparing", ignoreCase = true)
                     Text(
-                        text = if (preparing) "⏳ Media engine is starting..." else "⚠️ Media engine is not ready",
+                        text = if (preparing) "⏳ ${LocalizationManager.Strings.mediaEngineStarting}" else "⚠️ ${LocalizationManager.Strings.mediaEngineNotReady}",
                         color = if (preparing) Color(0xFFFDE68A) else MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = ytDlpStatus.ifBlank { "Video stream extraction requires yt-dlp installed or embedded." },
+                        text = localizeStep(ytDlpStatus).ifBlank { LocalizationManager.Strings.mediaEngineRequiresYtDlp },
                         color = Color(0xFFFEE2E2),
                         fontSize = 11.sp
                     )
@@ -405,9 +415,9 @@ internal fun MediaInspectionSection(
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Preparing engine...", fontSize = 12.sp)
+                            Text(LocalizationManager.Strings.preparingEngine, fontSize = 12.sp)
                         } else {
-                            Text("Download / Start media engine", fontSize = 12.sp)
+                            Text(LocalizationManager.Strings.startMediaEngine, fontSize = 12.sp)
                         }
                     }
                 }
@@ -443,7 +453,7 @@ internal fun MediaInspectionSection(
                 )
             ) {
                 Text(
-                    if (isInputAudio) "🎵 Inspect & Select Audio Formats" else "🎬 Inspect & Select Video Quality",
+                    if (isInputAudio) "🎵 ${LocalizationManager.Strings.inspectAudioFormats}" else "🎬 ${LocalizationManager.Strings.inspectVideoQuality}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
@@ -489,7 +499,6 @@ internal fun MediaInspectionSection(
                                     "opus"
                                 )
                             }
-                        val mediaTypeLabel = if (isAnyAudio) "Audio" else "Video"
 
                         Row(
                             modifier = Modifier
@@ -503,13 +512,15 @@ internal fun MediaInspectionSection(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "Clip $mediaTypeLabel Section (Optional)",
+                                        text = LocalizationManager.Strings.clipSectionTitle(
+                                            isAnyAudio
+                                        ),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Download a specific time range only",
+                                        text = LocalizationManager.Strings.clipSectionHint,
                                         fontSize = 10.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -544,15 +555,15 @@ internal fun MediaInspectionSection(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "⏱️ $mediaTypeLabel Duration: ${
-                                                clockText(
-                                                    mediaDurationSeconds
+                                            text = "⏱️ ${
+                                                LocalizationManager.Strings.mediaDurationFullRange(
+                                                    isAnyAudio,
+                                                    clockText(mediaDurationSeconds),
+                                                    formatSecondsToDisplayFriendly(
+                                                        mediaDurationSeconds
+                                                    )
                                                 )
-                                            } (${
-                                                formatSecondsToDisplayFriendly(
-                                                    mediaDurationSeconds
-                                                )
-                                            }) - Full range selected by default",
+                                            }",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.primary
@@ -593,7 +604,7 @@ internal fun MediaInspectionSection(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "Start Time (From)",
+                                                text = LocalizationManager.Strings.clipStartTimeFrom,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isStartHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -644,7 +655,7 @@ internal fun MediaInspectionSection(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "End Time (To)",
+                                                text = LocalizationManager.Strings.clipEndTimeTo,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isEndHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -714,11 +725,10 @@ internal fun MediaInspectionSection(
                             ) {
                                 if (mediaDurationSeconds > 0) {
                                     QuickTimeChip(
-                                        label = "Full ${if (isAnyAudio) "Audio" else "Video"} (${
-                                            clockText(
-                                                mediaDurationSeconds
-                                            )
-                                        })",
+                                        label = LocalizationManager.Strings.fullMediaChip(
+                                            isAnyAudio,
+                                            clockText(mediaDurationSeconds)
+                                        ),
                                         onClick = {
                                             onClipStartTimeChanged("00:00")
                                             onClipEndTimeChanged(fullVideoDurationHhMm)
@@ -727,7 +737,7 @@ internal fun MediaInspectionSection(
                                 }
                                 if (mediaDurationSeconds <= 0L || mediaDurationSeconds >= 300L) {
                                     QuickTimeChip(
-                                        label = "First 5 min",
+                                        label = LocalizationManager.Strings.clipFirst5Min,
                                         onClick = {
                                             onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
                                             "00:05:00"
@@ -736,7 +746,7 @@ internal fun MediaInspectionSection(
                                 }
                                 if (mediaDurationSeconds <= 0L || mediaDurationSeconds >= 900L) {
                                     QuickTimeChip(
-                                        label = "First 15 min",
+                                        label = LocalizationManager.Strings.clipFirst15Min,
                                         onClick = {
                                             onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
                                             "00:15:00"
@@ -745,7 +755,7 @@ internal fun MediaInspectionSection(
                                 }
                                 if (mediaDurationSeconds <= 0L || mediaDurationSeconds >= 1800L) {
                                     QuickTimeChip(
-                                        label = "First 30 min",
+                                        label = LocalizationManager.Strings.clipFirst30Min,
                                         onClick = {
                                             onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
                                             "00:30:00"
@@ -754,7 +764,7 @@ internal fun MediaInspectionSection(
                                 }
                                 if (mediaDurationSeconds <= 0L || mediaDurationSeconds >= 3600L) {
                                     QuickTimeChip(
-                                        label = "First 1 hour",
+                                        label = LocalizationManager.Strings.clipFirst1Hour,
                                         onClick = {
                                             onClipStartTimeChanged("00:00:00"); onClipEndTimeChanged(
                                             "01:00:00"
@@ -768,7 +778,7 @@ internal fun MediaInspectionSection(
                             // changed with its state was confusing).
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "How to download the clip",
+                                text = LocalizationManager.Strings.clipModeTitle,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -782,23 +792,30 @@ internal fun MediaInspectionSection(
                             ) {
                                 ClipModeOption(
                                     selected = !clipFastMode,
-                                    title = "✂️ Only the clip",
+                                    title = "✂️ ${LocalizationManager.Strings.clipOnlyTitle}",
                                     lines = listOf(
-                                        "Downloads only the part you chose",
-                                        "Slower: YouTube limits the speed",
-                                        "Pause starts the clip over"
+                                        LocalizationManager.Strings.clipOnlyLine1,
+                                        LocalizationManager.Strings.clipOnlyLine2,
+                                        LocalizationManager.Strings.clipOnlyLine3
                                     ),
                                     onClick = { onToggleClipFastMode(false) },
                                     modifier = Modifier.weight(1f)
                                 )
                                 ClipModeOption(
                                     selected = clipFastMode,
-                                    title = "⚡ Full $mediaTypeLabel, then cut",
+                                    title = "⚡ ${
+                                        LocalizationManager.Strings.fullThenCutTitle(
+                                            isAnyAudio
+                                        )
+                                    }",
                                     lines = listOf(
-                                        "Downloads the whole $mediaTypeLabel$fullSizeText",
-                                        "Faster: full speed",
-                                        "Then keeps only your part",
-                                        "Pause / resume works"
+                                        LocalizationManager.Strings.fullThenCutLine1(
+                                            isAnyAudio,
+                                            fullSizeText
+                                        ),
+                                        LocalizationManager.Strings.fullThenCutLine2,
+                                        LocalizationManager.Strings.fullThenCutLine3,
+                                        LocalizationManager.Strings.fullThenCutLine4
                                     ),
                                     onClick = { onToggleClipFastMode(true) },
                                     modifier = Modifier.weight(1f)

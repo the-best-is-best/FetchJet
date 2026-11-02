@@ -1,0 +1,779 @@
+package com.michelle.raouf.fetch_jet.core.i18n.data_provider
+
+object PersianProvider : AppLocalization {
+    override val localeCode = "fa"
+    override val languageName = "فارسی"
+    override val ok = "تأیید"
+    override val cancel = "لغو"
+    override val close = "بستن"
+    override val save = "ذخیره"
+    override val delete = "حذف"
+    override val remove = "برداشتن"
+    override val open = "باز کردن"
+    override val copy = "کپی"
+    override val copied = "کپی شد"
+    override val retry = "تلاش دوباره"
+    override val pause = "توقف"
+    override val resume = "ادامه"
+    override val apply = "اعمال"
+    override val reset = "بازنشانی"
+    override val yes = "بله"
+    override val no = "خیر"
+    override val back = "بازگشت"
+    override val done = "انجام شد"
+    override val selectAll = "انتخاب همه"
+    override val selectNone = "لغو انتخاب همه"
+    override val language = "زبان"
+    override val languageHint = "زبان همه صفحه‌ها. «سیستم» از زبان دستگاه شما پیروی می‌کند."
+    override val systemLanguage = "سیستم"
+    override val homeSettings = "تنظیمات"
+    override val homeDownloads = "دانلودها"
+
+    override val homeTabAll = "همه"
+    override val homeTabActive = "فعال"
+    override val homeTabDone = "تمام‌شده"
+    override val homeTabTorrent = "تورنت"
+    override val homeTabMedia = "رسانه"
+    override val homeSidebarTypeHeader = "نوع"
+    override val homeSearchDownloadsPlaceholder = "جستجوی دانلودها"
+    override val homeAdd = "افزودن"
+    override val homeAddDownload = "افزودن دانلود"
+    override val homePauseAll = "توقف همه"
+    override val homeResumeAll = "ادامه همه"
+    override fun homeSortBy(option: String) = "مرتب‌سازی: $option"
+    override val homeLightTheme = "پوسته روشن"
+    override val homeDarkTheme = "پوسته تیره"
+
+    override fun homeUpdatingMediaTools(tool: String, percent: Int?) =
+        "در حال به‌روزرسانی ابزارهای رسانه · $tool" + (percent?.let { " $it%" } ?: "…")
+
+    override val homeSearchDownloadsByNamePlaceholder = "جستجوی دانلودها بر اساس نام…"
+    override fun homeNoDownloadsMatch(query: String) = "هیچ دانلودی با «$query» پیدا نشد"
+    override val homeNoTasksInView = "موردی در این بخش نیست"
+    override val homeTryAnotherName = "نام دیگری را امتحان کنید"
+    override val homeAddDownloadToGetStarted = "برای شروع یک دانلود اضافه کنید"
+    override fun homeDownloadingWaitingSummary(running: Int, waiting: Int) =
+        "$running در حال دانلود · $waiting در انتظار"
+
+    override fun homeQueueStatus(maxAtOnce: Int) =
+        "صف: " + if (maxAtOnce <= 0) "بدون محدودیت" else "$maxAtOnce همزمان"
+
+    override fun homeSpeedLimitStatus(limit: String?) = "محدودیت سرعت: " + (limit ?: "خاموش")
+    override val homeGroupDownloading = "در حال دانلود"
+    override val homeGroupWaiting = "در انتظار"
+    override val homeGroupPausedFailed = "متوقف و ناموفق"
+    override val homeGroupCompleted = "کامل‌شده"
+    override fun homeSelectedCount(count: Int) = "$count انتخاب شده"
+    override val homeExport = "خروجی گرفتن"
+
+    override fun homeStartsAt(time: String) = "شروع: $time"
+    override val homeWaitingInQueue = "در انتظار در صف"
+    override fun homeWaitingInQueuePosition(position: Int) = "در انتظار در صف (#$position)"
+    override val homeConnecting = "در حال اتصال…"
+    override val homeStarting = "در حال شروع…"
+    override fun homeTimeLeft(eta: String) = "$eta مانده"
+    override fun homePausedState(percent: Int, restartsOnResume: Boolean) =
+        "متوقف · $percent%" + if (restartsOnResume) " · با ادامه، از اول شروع می‌شود" else ""
+
+    override fun homeFailedState(message: String?) = "ناموفق: " + (message ?: "خطا")
+    override fun homeCompletedState(size: String?) = "کامل شد" + (size?.let { " · $it" } ?: "")
+    override val homeStartNow = "شروع اکنون"
+    override val homeColumnName = "نام"
+    override val homeColumnSize = "حجم"
+    override val homeColumnProgress = "پیشرفت"
+    override val homeColumnSpeed = "سرعت"
+    override val homeColumnLeft = "باقی‌مانده"
+    override val homeFilterAllDownloads = "همه دانلودها"
+    override val homeFilterDownloading = "در حال دانلود"
+    override val homeFilterWaiting = "در انتظار"
+    override val homeFilterPaused = "متوقف"
+    override val homeFilterCompleted = "کامل‌شده"
+    override val homeFilterFailed = "ناموفق"
+    override val homeFilterMedia = "ویدیو و صدا"
+    override val homeFilterFiles = "فایل‌ها"
+    override val homeFilterTorrents = "تورنت‌ها"
+
+    override val homeCantResumeTitle = "این دانلود قابل ادامه نیست"
+    override val homeCantResumeClipText =
+        "کلیپ‌هایی که هنگام دانلود برش می‌خورند نمی‌توانند از جای توقف ادامه دهند. " +
+                "اگر الان متوقف کنید، با ادامه دادن، کلیپ از اول شروع می‌شود."
+    override val homeCantResumeServerText =
+        "سرور از ادامه دانلود پشتیبانی نمی‌کند. اگر الان متوقف کنید، با ادامه دادن، " +
+                "دانلود از اول شروع می‌شود."
+    override val homePauseAnyway = "در هر صورت متوقف کن"
+    override val homeKeepDownloading = "ادامه دانلود"
+    override val homeMagnetLink = "لینک magnet"
+    override val homeClipboardOfferTitle = "لینکی را که کپی کردید دانلود شود؟"
+    override val homeClipboardOfferHint =
+        "این را در تنظیمات > عمومی > زیر نظر داشتن کلیپ‌بورد خاموش کنید."
+    override val homeDownload = "دانلود"
+    override val homeNotNow = "الان نه"
+    override val homeBrowserFallbackTitle = "به‌جای آن در مرورگر دانلود شود؟"
+    override val homeBrowserFallbackText =
+        "این فایل را در FetchJet لغو کردید. مرورگر هنگام سپردن لینک، دانلود خودش را " +
+                "متوقف کرد؛ پس فقط اگر آن را برگردانید ادامه پیدا می‌کند."
+    override val homeDownloadInBrowser = "دانلود در مرورگر"
+    override val homeNoDiscard = "نه، دور بینداز"
+
+    override val homeQueueTitle = "صف"
+    override val homeQueueFooter =
+        "دانلودهای اضافه منتظر می‌مانند و وقتی یکی تمام شد، خودشان به ترتیب قدیمی‌ترین شروع می‌شوند. " +
+                "«شروع اکنون» روی یک دانلود در انتظار، صف را رد می‌کند."
+    override val homeDownloadsAtSameTime = "دانلودهای همزمان"
+    override val homeNoLimit = "بدون محدودیت"
+    override fun homeAtATime(count: Int) = "$count همزمان"
+
+    override val homePiecesLabel = "قطعه‌ها"
+    override fun homeSegmentsCount(count: Int) = "$count بخش"
+    override fun homePiecesCount(count: Int) = "$count قطعه"
+    override fun homeActiveCount(count: Int) = "$count فعال"
+    override fun homeWaitingCount(count: Int) = "$count در انتظار"
+    override fun homeDoneCount(count: Int) = "$count تمام‌شده"
+    override fun homeSegmentsProgress(finished: Int, total: Int, downloading: String?) =
+        "بخش‌ها $finished/$total" + (downloading?.let { " · در حال دانلود $it" } ?: "")
+
+    override fun homeRetryingNote(note: String?) = "$note · تلاش دوباره"
+    override fun clipStartAfterEnd(start: String, end: String) =
+        "زمان شروع ($start) باید قبل از زمان پایان ($end) باشد"
+
+    override fun clipEndExceedsVideo(end: String, duration: String) =
+        "زمان پایان ($end) از مدت ویدیو ($duration) بیشتر است"
+
+    override fun clipStartExceedsVideo(duration: String) =
+        "زمان شروع از مدت ویدیو ($duration) بیشتر است"
+
+    override val setStartTimeTitle = "تنظیم زمان شروع (از)"
+    override val setEndTimeTitle = "تنظیم زمان پایان (تا)"
+    override val addDialogTitle = "افزودن دانلود جدید"
+    override val addDialogSubtitle = "برای شروع دانلود لینک را وارد کنید"
+    override val addLinkLabel = "لینک"
+    override val addImportTxt = "وارد کردن .txt"
+    override val openTorrentFile = "باز کردن فایل .torrent"
+    override val urlPlaceholder = "لینک‌ها یا magnet را اینجا بچسبانید"
+    override val addPaste = "چسباندن"
+    override val addDownloadEngine = "موتور دانلود"
+    override val engineDirect = "مستقیم"
+    override val engineMedia = "رسانه"
+    override val engineTorrent = "تورنت"
+    override val addFileNameLabel = "نام فایل"
+    override val findingName = "در حال یافتن نام…"
+    override val saveDestination = "پوشه مقصد ذخیره"
+    override val quickFolderDownloads = "دانلودها"
+    override val quickFolderDocuments = "اسناد"
+    override val quickFolderMedia = "رسانه"
+    override val quickFolderDesktop = "دسکتاپ"
+    override val addRetryInspect = "بررسی دوباره"
+    override val addStarting = "در حال شروع..."
+    override val addInspecting = "در حال بررسی..."
+    override val addInspectionFailed = "بررسی ناموفق بود"
+    override val addEnterUrl = "لینک را وارد کنید"
+    override fun scheduleLinks(n: Int) = "زمان‌بندی $n لینک"
+    override fun downloadLinks(n: Int) = "دانلود $n لینک"
+    override val inspectVideoFirst = "اول ویدیو را بررسی کنید"
+    override val inspectTorrentFirst = "اول تورنت را بررسی کنید"
+    override val invalidTimeRange = "بازه زمانی نامعتبر"
+    override fun scheduleVideos(n: Int) = "زمان‌بندی $n ویدیو"
+    override fun downloadVideos(n: Int) = "دانلود $n ویدیو"
+    override val addScheduleDownload = "زمان‌بندی دانلود"
+    override val addStartDownload = "شروع دانلود"
+    override val availableAudioFormats = "فرمت‌های صوتی موجود"
+    override val availableQualities = "کیفیت‌های موجود"
+    override val addSelectAll = "انتخاب همه"
+    override val addClearSelection = "پاک کردن"
+    override fun selectedOfAvailable(selected: Int, total: Int) =
+        "انتخاب‌شده: $selected از $total مورد موجود"
+
+    override fun qualityFormatLine(format: String, details: String) = "فرمت: $format$details"
+    override val inspectingVideoQualities = "در حال بررسی کیفیت‌های ویدیو..."
+    override val inspectingVideoQualitiesHint =
+        "در حال جستجوی رزولوشن‌های ویدیو و جریان‌های صوتی موجود"
+    override val videoInspectionFailed = "بررسی ویدیو ناموفق بود"
+    override val addRetryInspection = "بررسی دوباره"
+    override val mediaEngineStarting = "موتور رسانه در حال راه‌اندازی است..."
+    override val mediaEngineNotReady = "موتور رسانه آماده نیست"
+    override val mediaEngineRequiresYtDlp =
+        "برای استخراج ویدیو، yt-dlp باید نصب یا داخل برنامه باشد."
+    override val preparingEngine = "در حال آماده‌سازی موتور..."
+    override val startMediaEngine = "دانلود / راه‌اندازی موتور رسانه"
+    override val inspectAudioFormats = "بررسی و انتخاب فرمت صوتی"
+    override val inspectVideoQuality = "بررسی و انتخاب کیفیت ویدیو"
+    override fun clipSectionTitle(isAudio: Boolean) =
+        if (isAudio) "برش بخشی از صدا (اختیاری)" else "برش بخشی از ویدیو (اختیاری)"
+
+    override val clipSectionHint = "فقط یک بازه زمانی مشخص دانلود شود"
+    override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
+        "مدت ${if (isAudio) "صدا" else "ویدیو"}: $clock ($friendly) - به‌طور پیش‌فرض کل بازه انتخاب شده است"
+
+    override val clipStartTimeFrom = "زمان شروع (از)"
+    override val clipEndTimeTo = "زمان پایان (تا)"
+    override fun fullMediaChip(isAudio: Boolean, duration: String) =
+        if (isAudio) "کل صدا ($duration)" else "کل ویدیو ($duration)"
+
+    override val clipFirst5Min = "۵ دقیقه اول"
+    override val clipFirst15Min = "۱۵ دقیقه اول"
+    override val clipFirst30Min = "۳۰ دقیقه اول"
+    override val clipFirst1Hour = "۱ ساعت اول"
+    override val clipModeTitle = "کلیپ چطور دانلود شود"
+    override val clipOnlyTitle = "فقط کلیپ"
+    override val clipOnlyLine1 = "فقط بخشی که انتخاب کردید دانلود می‌شود"
+    override val clipOnlyLine2 = "کندتر: YouTube سرعت را محدود می‌کند"
+    override val clipOnlyLine3 = "توقف، کلیپ را از اول شروع می‌کند"
+    override fun fullThenCutTitle(isAudio: Boolean) =
+        if (isAudio) "کل صدا، سپس برش" else "کل ویدیو، سپس برش"
+
+    override fun fullThenCutLine1(isAudio: Boolean, sizeText: String) =
+        if (isAudio) "کل صدا دانلود می‌شود$sizeText" else "کل ویدیو دانلود می‌شود$sizeText"
+
+    override val fullThenCutLine2 = "سریع‌تر: با حداکثر سرعت"
+    override val fullThenCutLine3 = "سپس فقط بخش شما نگه داشته می‌شود"
+    override val fullThenCutLine4 = "توقف / ادامه کار می‌کند"
+    override val inspectingTorrent = "در حال بررسی اطلاعات تورنت..."
+    override val inspectingTorrentHint = "در حال دریافت فهرست فایل‌ها و همتاها"
+    override val torrentInspectionFailed = "بررسی تورنت ناموفق بود"
+    override val inspectTorrentFiles = "بررسی فایل‌های تورنت"
+    override val disableTorrentUpload = "غیرفعال کردن آپلود تورنت (فقط دانلود)"
+    override val torrentFiles = "فایل‌های تورنت"
+    override val addDeselectAll = "لغو انتخاب همه"
+    override val torrentPriorityHigh = "بالا"
+    override val torrentPriorityLow = "پایین"
+    override val torrentPriorityNormal = "عادی"
+    override fun selectedOfLinks(selected: Int, total: Int) = "$selected از $total لینک"
+    override val readingTorrentFiles = "در حال خواندن فایل‌های تورنت…"
+    override fun couldNotReadTorrentFiles(error: String) =
+        "خواندن فایل‌های آن ممکن نشد ($error)؛ همه فایل‌ها دانلود می‌شوند."
+
+    override val linkTagVideo = "ویدیو"
+    override val linkTagTorrent = "تورنت"
+    override val linkTagFile = "فایل"
+    override val linkListMagnet = "لینک magnet"
+    override fun linkListYouTubeVideo(id: String) = "ویدیوی YouTube $id"
+    override fun playlistSummary(videos: Int, selected: Int) =
+        "لیست پخش · $videos ویدیو · $selected انتخاب‌شده"
+
+    override val qualityForAllVideos = "کیفیت برای همه ویدیوها"
+    override val qualityForAllVideosHint =
+        "اگر ویدیویی این کیفیت را نداشته باشد، نزدیک‌ترین کیفیت پایین‌تر انتخاب می‌شود."
+    override val downloadOnlyThisVideo = "به‌جای آن فقط همین ویدیو دانلود شود"
+    override val whenToStart = "زمان شروع"
+    override val scheduleNow = "اکنون"
+    override val scheduleIn30Min = "۳۰ دقیقه دیگر"
+    override val scheduleIn1Hour = "۱ ساعت دیگر"
+    override val scheduleAtTime = "در ساعت مشخص…"
+    override val scheduleDayLabel = "روز"
+    override val scheduleToday = "امروز"
+    override val scheduleTomorrow = "فردا"
+    override val scheduleIn2Days = "۲ روز دیگر"
+    override val scheduleIn3Days = "۳ روز دیگر"
+    override val scheduleInAWeek = "یک هفته دیگر"
+    override val scheduleTimePassed =
+        "این ساعت امروز گذشته است. ساعت دیرتر یا روز دیگری انتخاب کنید."
+    override val scheduleHourLabel = "ساعت"
+    override val scheduleMinuteLabel = "دقیقه"
+    override val scheduleSet = "تنظیم"
+    override val scheduleSetTime = "تنظیم ساعت"
+    override fun scheduleStartsAt(time: String) = "شروع: $time (FetchJet باید در حال اجرا باشد)"
+    override val addConnectionsTitle = "اتصال‌ها"
+    override val connectionsAuto = "خودکار"
+    override fun connectionsAutoWithDefault(n: Int) = "خودکار ($n)"
+    override fun pickerExceedsVideo(duration: String) = "بیشتر از مدت ویدیو ($duration)"
+    override fun pickerMustBeAfterStart(start: String) = "باید بعد از زمان شروع ($start) باشد"
+    override val pickerStartZero = "شروع (00:00)"
+    override val pickerHours = "ساعت"
+    override val pickerMinutes = "دقیقه"
+    override val pickerSeconds = "ثانیه"
+    override fun pickerSelectedTime(time: String, summary: String) =
+        "زمان انتخاب‌شده: $time ($summary)"
+
+    override fun pickerEndOfVideo(time: String) = "پایان ویدیو ($time)"
+    override fun pickerMin(time: String) = "حداقل ($time)"
+    override fun pickerApply(time: String) = "اعمال ($time)"
+    override val pickerInvalidTime = "زمان نامعتبر"
+    override val dirPickerSelectFolder = "انتخاب پوشه"
+    override val dirPickerUp = "بالا"
+    override fun dirPickerSubfolders(n: Int) = "زیرپوشه‌ها ($n)"
+    override val dirPickerHiddenOn = "پنهان‌ها: نمایش"
+    override val dirPickerHiddenOff = "پنهان‌ها: عدم نمایش"
+    override val dirPickerNewFolder = "پوشه جدید"
+    override val dirPickerFolderName = "نام پوشه…"
+    override val dirPickerCreateFailed = "ساخت پوشه ناموفق بود"
+    override val dirPickerCreate = "ساختن"
+    override val dirPickerNoSubfolders =
+        "این پوشه زیرپوشه‌ای ندارد.\nفایل‌ها مستقیماً همین‌جا ذخیره می‌شوند."
+    override val dirPickerHiddenTag = "(پنهان)"
+    override val speedLimitUnlimited = "نامحدود (حداکثر)"
+    override val speedLimitNoLimit = "بدون محدودیت (حداکثر سرعت)"
+    override val speedLimitCustom = "سفارشی..."
+    override val speedLimitValue = "مقدار"
+    override val scheduleAm = "ق.ظ"
+    override val schedulePm = "ب.ظ"
+    override val detailsChipMedia = "رسانه"
+    override val detailsChipTorrent = "تورنت"
+    override val detailsChipFile = "فایل"
+    override val detailsChipResumable = "قابل ادامه"
+    override val detailsChipNoResume = "بدون ادامه"
+    override fun detailsClipChip(start: String, end: String?, cutAfterDownload: Boolean) =
+        "کلیپ $start–${end ?: "پایان"}" + if (cutAfterDownload) " · برش پس از دانلود" else ""
+
+    override fun detailsTorrentFiles(selected: Int, total: Int) =
+        "فایل‌های تورنت ($selected انتخاب‌شده از $total)"
+
+    override val detailsPriorityHigh = "بالا"
+    override val detailsPriorityLow = "پایین"
+    override val detailsPriorityNormal = "عادی"
+    override val detailsStatusCompleted = "کامل‌شده"
+    override val detailsStatusPaused = "متوقف"
+    override val detailsStatusFailed = "ناموفق"
+    override val detailsStatusWaiting = "در انتظار"
+    override val detailsStatusQueued = "در صف"
+    override val detailsStatusNotStarted = "شروع نشده"
+    override val detailsUnknownSize = "نامشخص"
+    override val detailsMergingAudioVideo = "در حال ادغام صدا و ویدیو..."
+    override fun detailsTorrentSpeedUploadDisabled(download: String) =
+        "دانلود: $download (آپلود غیرفعال)"
+
+    override fun detailsTorrentSpeed(download: String, upload: String) =
+        "دانلود: $download | آپلود: $upload"
+
+    override val detailsConnecting = "در حال اتصال..."
+    override fun detailsStartsAt(time: String) = "شروع: $time"
+    override fun detailsWaitingInQueuePosition(position: Int) = "در انتظار در صف (#$position)"
+    override val detailsWaitingInQueue = "در انتظار در صف"
+    override val detailsDownloaded = "دانلودشده"
+    override val detailsSpeed = "سرعت"
+    override val detailsState = "وضعیت"
+    override val detailsTimeLeft = "زمان باقی‌مانده"
+    override val detailsAdded = "افزوده‌شده"
+    override val detailsSavedTo = "ذخیره در"
+    override val detailsSource = "منبع"
+    override val detailsPage = "صفحه"
+    override val detailsOpenFile = "باز کردن فایل"
+    override val detailsOpenFolder = "باز کردن پوشه"
+    override val detailsStartNow = "شروع اکنون"
+    override val detailsRemoveFromList = "حذف از فهرست"
+    override val detailsCancelDownload = "لغو دانلود"
+    override val detailsHeaderDownload = "دانلود"
+    override val detailsHeaderDetails = "جزئیات"
+    override fun detailsAddedToday(clock: String) = "امروز $clock"
+    override fun detailsAddedYesterday(clock: String) = "دیروز $clock"
+
+    override fun removeDialogTitle(count: Int) =
+        if (count > 1) "حذف $count دانلود" else "حذف دانلود"
+
+    override fun removeDialogMessage(count: Int) =
+        if (count > 1) "آیا مطمئن هستید که می‌خواهید این $count دانلود را حذف کنید؟"
+        else "آیا مطمئن هستید که می‌خواهید این دانلود را حذف کنید؟"
+
+    override val removeDialogAlsoDeleteFiles = "فایل‌های دانلودشده از دیسک هم پاک شوند"
+
+    override val duplicateDialogTitle = "این دانلود از قبل وجود دارد"
+    override val duplicateDialogSubtitle = "این مورد از قبل در صف دانلود شما هست"
+    override fun duplicateDialogStatus(status: String) = "وضعیت: $status"
+    override val duplicateDialogQuestion =
+        "می‌خواهید دانلود موجود را ادامه دهید یا از اول شروع کنید؟"
+    override val duplicateDialogResumeExisting = "ادامه دانلود موجود"
+    override val duplicateDialogRedownload = "دانلود دوباره (از اول)"
+
+    override val overwriteDialogTitle = "این فایل از قبل وجود دارد"
+    override val overwriteDialogSubtitle = "فایلی با همین نام در مقصد وجود دارد"
+    override val overwriteDialogFileNameLabel = "نام فایل: "
+    override val overwriteDialogFolderLabel = "پوشه: "
+    override val overwriteDialogNewCopyLabel = "نسخه جدید: "
+    override val overwriteDialogQuestion =
+        "می‌خواهید این دانلود را به‌عنوان نسخه جدید ذخیره کنید یا روی فایل موجود بنویسید؟"
+
+    override fun overwriteDialogSaveAsCopy(name: String) = "ذخیره به‌عنوان نسخه جدید ($name)"
+    override val overwriteDialogOverwriteExisting = "جایگزینی فایل موجود"
+
+    override val desktopWindowTagline = "دانلودر پرسرعت با چند موتور"
+    override val desktopTrayIdleTooltip = "FetchJet - در پس‌زمینه در حال اجرا"
+    override val desktopTrayDownloadsHeader = "دانلودهای FetchJet:"
+    override fun desktopTrayMore(count: Int) = "+$count مورد دیگر"
+    override val desktopTrayShowApp = "نمایش برنامه"
+    override val desktopTrayCloseApp = "بستن برنامه"
+    override val sectionGeneral = "عمومی"
+    override val sectionGeneralBlurb = "ظاهر برنامه و نحوه اجرای آن"
+    override val sectionDownloads = "دانلودها"
+    override val sectionDownloadsBlurb = "محل ذخیره فایل‌ها و تعداد دانلودهای همزمان"
+    override val sectionBrowser = "افزونه مرورگر"
+    override val sectionBrowserBlurb = "ارسال لینک‌ها و ویدیوها از مرورگر به FetchJet"
+    override val sectionSpeed = "محدودیت سرعت"
+    override val sectionSpeedBlurb = "محدود کردن پهنای باندی که FetchJet مصرف می‌کند"
+    override val sectionMedia = "ابزارهای رسانه"
+    override val sectionMediaBlurb = "yt-dlp و FFmpeg برای سایت‌های ویدیویی"
+    override val sectionTorrent = "BitTorrent"
+    override val sectionTorrentBlurb = "همتاها، آپلود و موتور تورنت"
+    override val sectionUpdates = "به‌روزرسانی‌ها"
+    override val sectionUpdatesBlurb = "نسخه شما و نسخه‌های جدید"
+    override val summaryNoQueueLimit = "بدون محدودیت"
+    override fun summaryAtATime(n: Int) = "$n همزمان"
+    override val summaryNoSpeedLimit = "بدون محدودیت"
+    override val summarySetupNeeded = "نیاز به راه‌اندازی"
+    override val summaryUploadingOff = "آپلود خاموش"
+    override val summaryUploadingOn = "آپلود روشن"
+    override fun summaryVersionAvailable(version: String) = "نسخه $version موجود است"
+    override fun summaryVersion(version: String) = "نسخه $version"
+    override val changesSavedAutomatically = "تغییرات به‌طور خودکار ذخیره می‌شوند."
+    override val settingsAllSettings = "همه تنظیمات"
+
+    override val clipboardGroup = "کلیپ‌بورد"
+    override val clipboardFooter =
+        "هر جا لینک یک فایل (zip، mp4، pdf، apk…) یا لینک magnet را کپی کنید، FetchJet می‌پرسد که دانلودش کند یا نه."
+    override val watchClipboard = "زیر نظر داشتن کلیپ‌بورد"
+    override val watchClipboardOn = "روشن · لینک فایل‌های کپی‌شده برای دانلود پیشنهاد می‌شوند"
+    override val settingOff = "خاموش"
+    override val alsoVideoPages = "صفحه‌های ویدیو هم"
+    override val alsoVideoPagesHint =
+        "لینک‌های YouTube، Facebook، TikTok، Vimeo… هم پیشنهاد می‌شوند (نه فقط فایل‌ها)"
+    override val diagnosticsGroup = "عیب‌یابی"
+    override fun logSavedTo(path: String) =
+        "ذخیره شد: $path — هنگام گزارش مشکل این فایل را بفرستید."
+
+    override val diagnosticsFooter =
+        "گزارش برنامه (کارهایی که yt-dlp و موتورها انجام دادند) را در پوشه دانلودها ذخیره می‌کند."
+    override val saveLogToDownloads = "ذخیره گزارش در دانلودها"
+    override val logCouldNotSave = "ذخیره نشد"
+    override val appearanceGroup = "ظاهر"
+    override val themeTitle = "پوسته"
+    override val themeHint = "ظاهر روشن یا تیره برای همه صفحه‌ها"
+    override val settingsThemeDark = "تیره"
+    override val settingsThemeLight = "روشن"
+    override val speedShownIn = "واحد نمایش سرعت"
+    override val speedShownInHint =
+        "بایت (MB/s) مثل حجم فایل‌ها، یا بیت (Mbps) مثل سرعت اینترنت شما"
+
+    override val saveLocationGroup = "محل ذخیره"
+    override val saveLocationFooter =
+        "دانلودهای جدید اینجا ذخیره می‌شوند، مگر هنگام افزودن پوشه دیگری انتخاب کنید."
+    override val settingsFolderPath = "مسیر پوشه"
+    override val settingsChooseFolder = "انتخاب پوشه…"
+    override val settingsUseDownloads = "استفاده از دانلودها"
+    override val settingsConnectionsGroup = "اتصال‌ها"
+    override val connectionsFooter =
+        "یک دانلود مستقیم به چند قطعه تقسیم می‌شود. هر قطعه یک اتصال است؛ وقتی یکی تمام شد، نصف بزرگ‌ترین قطعه باقی‌مانده را برمی‌دارد تا هیچ‌کدام بیکار نماند. حالت خودکار بر اساس حجم فایل انتخاب می‌کند (4–8). بعضی سرورها تعداد اتصال هر کاربر را محدود می‌کنند."
+    override val settingsConnectionsPerDownload = "اتصال برای هر دانلود"
+    override val settingsConnectionsAuto = "خودکار"
+    override val organizeGroup = "مرتب‌سازی"
+    override val organizeFooter =
+        "زیرپوشه‌ها داخل محل ذخیره ساخته می‌شوند: Video، Music، Archives، Documents، Programs، Images، Torrents."
+    override val sortIntoFolders = "مرتب‌سازی در پوشه‌ها بر اساس نوع"
+    override val sortIntoFoldersOn = "روشن · مثلاً Downloads/Video/lecture.mp4"
+    override val sortIntoFoldersOff = "خاموش · همه چیز مستقیم داخل پوشه می‌رود"
+
+    override val speedLimitsFooter =
+        "بلافاصله اعمال می‌شود و بین دانلودهای در حال اجرا تقسیم می‌شود."
+    override val speedLimitsFooterIos =
+        "بلافاصله اعمال می‌شود و بین دانلودهای در حال اجرا تقسیم می‌شود. در iOS، دانلودهای HTTP که از قبل در پس‌زمینه در حال اجرا هستند سرعت خود را حفظ می‌کنند؛ محدودیت روی دانلودهایی اعمال می‌شود که بعد از آن شروع شوند."
+    override val speedLimitDownload = "دانلود"
+    override val speedLimitUploadTorrents = "آپلود (تورنت‌ها)"
+
+    override val torrentSharingGroup = "اشتراک‌گذاری"
+    override val downloadOnlyNoUpload = "فقط دانلود (بدون آپلود)"
+    override val downloadOnlyNoUploadHint =
+        "پهنای باند آپلود و حجم اینترنت شما را حفظ می‌کند. بعضی ترکرها برای همتاهایی که اشتراک نمی‌گذارند کندتر دانلود می‌دهند."
+    override val torrentEngineGroup = "موتور"
+    override val settingsReady = "آماده"
+    override val settingsNotReady = "آماده نیست"
+
+    override val extInstallGroup = "نصب"
+    override val extensionInstallFooter =
+        "با این افزونه، دکمه «دانلود با FetchJet» روی ویدیوها و لینک‌ها نمایش داده می‌شود و مرورگر می‌تواند دانلودهایش را به FetchJet بسپارد. افزونه فقط با همین برنامه روی دستگاه شما ارتباط دارد."
+    override val edgeAddedHint =
+        "اضافه شد · Edge را دوباره باز کنید و وقتی پرسید روی «Turn on extension» بزنید"
+    override val edgeFromStoreHint = "از Microsoft Edge Add-ons · خودش به‌روز می‌شود"
+    override val openInEdgeStore = "باز کردن در فروشگاه Edge"
+    override val edgeAddedNote =
+        "انجام شد: Edge را دوباره باز کنید، برای روشن کردن FetchJet سؤال می‌کند."
+    override val extAddToEdge = "افزودن به Edge"
+    override val firefoxFromStoreHint = "از Firefox Add-ons · خودش به‌روز می‌شود"
+    override val extAddToFirefox = "افزودن به Firefox"
+    override val chromeZipHint =
+        "در Chrome Web Store نیست: فایل .zip را در حالت توسعه‌دهنده نصب کنید (مراحل در صفحه). خودش به‌روز نمی‌شود."
+    override val getTheZip = "دریافت .zip"
+    override val firefoxAndroidHint =
+        "این را در Firefox همین گوشی باز کنید. لینک‌هایی که می‌فرستید مستقیم به این برنامه می‌آیند."
+    override val keepReadyForBrowser = "آماده نگه داشتن برای مرورگر"
+    override val keepReadyOn =
+        "کیفیت‌های ویدیو مستقیم در Firefox نمایش داده می‌شوند. تا وقتی این روشن است یک اعلان بی‌صدا می‌ماند."
+    override val keepReadyOff =
+        "خاموش: Firefox برنامه FetchJet را باز می‌کند و کیفیت را اینجا انتخاب می‌کنید. روشن: کیفیت‌ها در Firefox نمایش داده می‌شوند (یک اعلان می‌ماند)."
+    override val popUpOverBrowser = "باز شدن روی مرورگر"
+    override val popUpOverBrowserOn = "روشن · وقتی Firefox لینکی بفرستد، FetchJet خودش باز می‌شود"
+    override val popUpOverBrowserOff =
+        "خاموش · به‌جای آن یک اعلان نمایش داده می‌شود؛ برای اجازه «نمایش روی برنامه‌های دیگر» ضربه بزنید"
+
+    override val mediaToolsGroup = "ابزارها"
+    override val ytDlpHint = "ویدیو و صدا را در YouTube و سایت‌های دیگر پیدا می‌کند"
+    override val settingsMissing = "موجود نیست"
+    override val ffmpegHint =
+        "ویدیو و صدا را ادغام می‌کند (1080p به بالا)، کلیپ برش می‌دهد، MP3 می‌سازد"
+    override val ffmpegMissing = "موجود نیست · تا 720p"
+    override fun jsRuntimeTitle(name: String) = "محیط اجرای JS · $name"
+    override val jsRuntimeHint =
+        "بررسی‌های YouTube را حل می‌کند تا همه کیفیت‌ها سریع‌تر نمایش داده شوند"
+
+    override fun missingPress(button: String) = "موجود نیست · روی $button بزنید"
+    override val mediaToolsFolder = "پوشه ابزارها"
+    override val mediaUpdatingTools = "در حال به‌روزرسانی…"
+    override val mediaDownloadingTools = "در حال دانلود ابزارها…"
+    override fun mediaDownloadingTool(name: String) = "در حال دانلود $name…"
+    override fun mediaDownloadingToolPercent(name: String, percent: Int) =
+        "در حال دانلود $name… $percent%"
+
+    override val mediaUpdateTools = "به‌روزرسانی ابزارها"
+    override val mediaDownloadTheTools = "دانلود ابزارها"
+
+    override val updateNewVersionAvailable = "نسخه جدید موجود است"
+    override fun updateVersionLine(version: String, current: String) =
+        "FetchJet $version  ·  نسخه شما $current"
+
+    override val updateWhatsNew = "تازه‌ها"
+    override val updateNoReleaseNotes = "یادداشت انتشاری وجود ندارد."
+    override fun downloadingUpdate(percent: Int) = "در حال دانلود به‌روزرسانی… $percent%"
+    override val updateDownloadedAndroid =
+        "به‌روزرسانی دانلود شد. Android از شما می‌خواهد نصب را تأیید کنید؛ دانلودهایتان در فهرست می‌مانند."
+    override val updateDownloadedDesktop =
+        "به‌روزرسانی دانلود شد. FetchJet بسته می‌شود، آن را نصب می‌کند و دوباره باز می‌شود. دانلودهای در حال اجرا متوقف می‌شوند و قابل ادامه هستند."
+    override val storeInstallsItselfOpenNow =
+        "Microsoft Store آن را خودش نصب می‌کند. برای به‌روزرسانی همین حالا Store را باز کنید."
+    override val updateInstall = "نصب"
+    override val updateRestartAndUpdate = "راه‌اندازی مجدد و به‌روزرسانی"
+    override val updateDownloading = "در حال دانلود…"
+    override val updateDownloadAndInstall = "دانلود و نصب"
+    override val updateOpenMicrosoftStore = "باز کردن Microsoft Store"
+    override fun updateDownloadWithSize(size: String) = "دانلود $size"
+    override val updateOpenReleasePage = "باز کردن صفحه انتشار"
+    override val updateSkipThisVersion = "رد کردن این نسخه"
+    override val updateLater = "بعداً"
+    override fun versionIsAvailable(version: String) = "نسخه $version موجود است"
+    override val youHaveLatest = "نسخه نصب‌شده شما آخرین نسخه است"
+    override val updateSeeWhatsNew = "دیدن تازه‌ها"
+    override val updateChecking = "در حال بررسی…"
+    override val updateCheckNow = "بررسی اکنون"
+    override val checkUpdatesAutomatically = "بررسی خودکار به‌روزرسانی"
+    override val checkUpdatesAutomaticallyHint =
+        "هنگام شروع FetchJet نسخه جدید را جستجو می‌کند (حداکثر دو بار در روز)."
+    override val downloadUpdatesAutomatically = "دانلود خودکار به‌روزرسانی‌ها"
+    override val downloadUpdatesAutomaticallyHintAndroid =
+        "نسخه جدید را در پس‌زمینه دانلود می‌کند؛ شما فقط نصب را تأیید می‌کنید."
+    override val downloadUpdatesAutomaticallyHint =
+        "نسخه جدید را در پس‌زمینه دانلود می‌کند؛ شما فقط راه‌اندازی مجدد را تأیید می‌کنید."
+    override val installingUpdates = "نصب به‌روزرسانی‌ها"
+    override val installingUpdatesStore =
+        "Microsoft Store نسخه‌های جدید را خودش نصب می‌کند؛ FetchJet هنگام انتشار نسخه جدید به شما خبر می‌دهد."
+    override val installingUpdatesManual =
+        "روی این دستگاه، FetchJet انتشار نسخه جدید را خبر می‌دهد و لینک آن را می‌دهد؛ نصب با خود شماست."
+    override val updateReleaseNotes = "یادداشت‌های انتشار"
+    override val updateReleaseNotesHint = "همه نسخه‌ها و تغییراتشان"
+    override val installHintReleasePage = "برای دانلود نسخه جدید، صفحه انتشار را باز کنید."
+    override val installHintApk =
+        "فایل APK را دانلود و باز کنید تا به‌روزرسانی روی همین نسخه نصب شود."
+    override val installHintIpa =
+        "فایل .ipa را دانلود کنید و مثل نصب FetchJet، با AltStore / Sideloadly نصبش کنید."
+    override val installHintDmg =
+        "فایل .dmg را دانلود و باز کنید و FetchJet را به Applications بکشید (جایگزین نسخه قدیمی)."
+    override val installHintDeb =
+        "فایل .deb را دانلود و نصب کنید (دوبار کلیک، یا sudo apt install ./file.deb)."
+    override val installHintOther = "نسخه جدید را دانلود کنید و روی همین نسخه نصبش کنید."
+
+    override val startupGroup = "اجرای خودکار"
+    override val startupStoreFooter =
+        "نسخه Store را Windows اجرا می‌کند: FetchJet را در Settings > Apps > Startup روشن کنید."
+    override val startupStartAtLogin = "اجرای FetchJet هنگام ورود به سیستم"
+    override val startupManagedByWindows = "مدیریت‌شده توسط Windows"
+    override val startupOpenWindowsSettings = "باز کردن تنظیمات Windows"
+    override val startupStartHidden = "اجرای پنهان در سینی سیستم"
+    override val startupStartHiddenHint =
+        "هنگام اجرا در ورود به سیستم، به‌جای باز کردن پنجره در سینی سیستم بماند."
+    override val startupStartAtLoginHint =
+        "دانلودهای زمان‌بندی‌شده و صف ادامه پیدا می‌کنند و افزونه مرورگر همیشه برنامه را پیدا می‌کند."
+
+    override fun startupCouldNotChange(message: String) = "تغییر تنظیم ممکن نشد: $message"
+    override val sysTabAllDownloads = "همه دانلودها"
+    override val sysTabActive = "فعال"
+    override val sysTabCompleted = "کامل‌شده"
+    override val sysTabMediaExtractor = "استخراج رسانه"
+    override val sysTabSettings = "تنظیمات"
+    override val sysSortNewestFirst = "جدیدترین اول"
+    override val sysSortOldestFirst = "قدیمی‌ترین اول"
+    override val sysSortLargestFirst = "بزرگ‌ترین اول"
+    override val sysSortSmallestFirst = "کوچک‌ترین اول"
+    override val sysSortNameAz = "نام (الفبایی)"
+    override val sysEnterValidUrlOrMagnet = "لطفاً یک لینک یا لینک magnet معتبر وارد کنید"
+    override val sysCannotStartVideoInspectionFailed =
+        "شروع دانلود ممکن نیست: بررسی ویدیو ناموفق بود."
+    override val sysCannotStartTorrentInspectionFailed =
+        "شروع دانلود ممکن نیست: بررسی تورنت ناموفق بود یا هیچ فایلی انتخاب نشده است."
+    override val sysClipEndExceedsDuration = "زمان پایان کلیپ از مدت ویدیو بیشتر است."
+    override val sysClipStartAfterEnd = "زمان شروع کلیپ باید قبل از زمان پایان باشد."
+    override fun sysStartedDownload(name: String) = "دانلود شروع شد: $name"
+    override val sysFailedToQueueDownload = "افزودن دانلود به صف ناموفق بود"
+    override fun sysQualitiesNotAdded(count: Int) = "$count کیفیت اضافه نشد."
+    override fun sysAddedQualityDownloads(count: Int, title: String) =
+        "$count دانلود از «$title» اضافه شد"
+
+    override val sysSelectAtLeastOnePlaylistVideo = "دست‌کم یک ویدیو از لیست پخش را انتخاب کنید."
+    override fun sysVideosNotAdded(count: Int) = "$count ویدیو اضافه نشد."
+    override fun sysAddedPlaylistVideos(count: Int, playlistTitle: String) =
+        "$count ویدیو از «$playlistTitle» اضافه شد"
+
+    override val sysSelectAtLeastOneLink = "دست‌کم یک لینک را انتخاب کنید."
+    override fun sysAddedLinkDownloads(added: Int, skipped: Int) =
+        "$added دانلود اضافه شد" + (if (skipped > 0) " ($skipped مورد از قبل در فهرست بود یا ناموفق شد)" else "")
+
+    override val sysCouldNotReadTorrent = "خواندن تورنت ممکن نشد"
+    override fun sysCouldNotStartDownload(reason: String) = "شروع دانلود ممکن نشد: $reason"
+    override val sysUnknownError = "خطای ناشناخته"
+    override fun sysQueuedFromBrowser(added: Int, skipped: Int) =
+        "$added دانلود از مرورگر به صف اضافه شد" + (if (skipped > 0) " ($skipped مورد رد شد)" else "")
+
+    override val sysEnterTorrentOrMagnetFirst = "لطفاً اول یک تورنت یا لینک magnet وارد کنید"
+    override val sysFailedToParseTorrentMetadata = "خواندن اطلاعات تورنت ناموفق بود"
+    override val sysEnterMediaUrlFirst = "لطفاً اول لینک رسانه را وارد کنید"
+    override fun sysUnableToFetchFormatsWithReason(reason: String) =
+        "دریافت فرمت‌های ویدیو ممکن نشد: $reason"
+
+    override val sysUnableToFetchFormats =
+        "دریافت فرمت‌های ویدیو ممکن نشد. لینک یا اتصال اینترنت خود را بررسی کنید."
+    override val sysFailedToInspectMediaQualities = "بررسی کیفیت‌های رسانه ناموفق بود"
+    override fun sysTorrentEngineError(message: String) = "خطای موتور BitTorrent: $message"
+    override fun sysTorrentEngineInstallFailed(message: String) =
+        "نصب موتور BitTorrent ناموفق بود: $message"
+
+    override val sysMediaToolsDownloaded = "ابزارهای رسانه با موفقیت دانلود شدند!"
+    override val sysMediaToolsDownloadFailed = "دانلود ابزارهای رسانه ناموفق بود"
+    override val sysMediaToolsUpdated = "ابزارهای رسانه به‌روز شدند"
+    override fun sysSavedLinks(count: Int, path: String) = "$count لینک در $path ذخیره شد"
+    override fun sysCouldNotSaveLinks(reason: String) = "ذخیره لینک‌ها ممکن نشد: $reason"
+    override val sysErrorFallback = "خطا"
+    override val sysDownloadFailed = "دانلود ناموفق بود"
+    override val sysDownloadFailedNetwork = "دانلود به دلیل خطای شبکه ناموفق بود"
+    override val sysCouldNotStart = "شروع ممکن نشد"
+    override val sysUnknownErrorCapital = "خطای ناشناخته"
+    override fun sysCouldNotSaveFileTo(dir: String) = "ذخیره فایل در $dir ممکن نشد"
+    override val sysPlaylistFallbackTitle = "لیست پخش"
+    override val sysPlaylistQualityBest = "بهترین"
+    override val sysPlaylistQualityAudioOnly = "فقط صدا"
+    override val sysToolsReadyYtDlpFfmpeg =
+        "آماده: yt-dlp و ffmpeg نصب هستند (پشتیبانی کامل از 1080p به بالا)"
+    override val sysToolsReadyYtDlpNoFfmpeg = "آماده: yt-dlp نصب است (بدون ffmpeg - حداکثر 720p)"
+    override val sysToolsNotInstalled = "نصب نشده. روی «دانلود ابزارها» در پایین بزنید."
+    override val sysToolsInstalledBuiltIn = "نصب و آماده (داخلی)"
+    override fun sysYtDlpVersionReady(version: String) = "yt-dlp $version (آماده)"
+    override val sysMediaEngineBridgeNotRegistered = "پل موتور رسانه ثبت نشده است"
+    override val sysWebKitBuiltIn = "WebKit (داخلی)"
+    override val sysTorrentEngineBuiltIn = "آماده: موتور BitTorrent داخلی"
+    override fun sysTorrentEngineReadyVersion(version: String) =
+        "آماده: موتور BitTorrent (libtorrent $version)"
+
+    override fun sysTorrentEngineFailedToLoad(message: String) =
+        "بارگذاری موتور BitTorrent ناموفق بود: $message"
+
+    override val sysTorrentEngineAvailable =
+        "آماده: موتور BitTorrent موجود است (با اولین تورنت بارگذاری می‌شود)"
+    override val sysTorrentEngineMissing =
+        "موتور BitTorrent موجود نیست. روی «دانلود ابزارها» در پایین بزنید."
+    override val sysTorrentEngineNotAvailable = "موتور BitTorrent در این نسخه موجود نیست"
+    override fun sysCouldNotStartInstaller(message: String) = "اجرای نصب‌کننده ممکن نشد: $message"
+    override val sysCheckingForUpdates = "در حال بررسی به‌روزرسانی…"
+    override val sysNoPublishedRelease = "هنوز نسخه‌ای منتشر نشده است."
+    override fun sysVersionNoChangesForDevice(version: String, current: String) =
+        "نسخه $version تغییری برای این دستگاه ندارد؛ آخرین نسخه برای آن را دارید ($current)."
+
+    override fun sysVersionAvailable(version: String) = "نسخه $version موجود است."
+    override fun sysUpToDate(current: String) = "برنامه به‌روز است ($current)."
+    override fun sysCouldNotCheckForUpdates(reason: String) = "بررسی به‌روزرسانی ممکن نشد: $reason"
+    override val sysNetworkError = "خطای شبکه"
+    override val sysUpdateNoInstallerForSystem =
+        "دانلود به‌روزرسانی ناموفق بود: این نسخه نصب‌کننده‌ای برای این سیستم ندارد."
+
+    override fun sysDownloadingAsset(name: String) = "در حال دانلود $name…"
+    override fun sysVersionReadyToInstall(version: String) = "نسخه $version آماده نصب است."
+    override fun sysUpdateDownloadFailed(message: String) =
+        "دانلود به‌روزرسانی ناموفق بود: $message"
+
+    override val sysAllowUnknownAppsThenInstall =
+        "اجازه «نصب برنامه‌های ناشناس» را به FetchJet بدهید، سپس دوباره روی نصب بزنید."
+    override val sysDownloadsChannelName = "دانلودهای FetchJet"
+    override val sysDownloadsChannelDescription = "نمایش زنده پیشرفت دانلودها"
+    override val sysNotificationAppTitle = "دانلودر FetchJet"
+    override val sysAppRunningInBackground = "برنامه در پس‌زمینه در حال اجراست"
+    override val sysNotificationDownloadsFallback = "دانلودها"
+    override fun sysFilesDownloading(count: Int) = "$count فایل در حال دانلود"
+    override fun sysPercentActive(percent: Int, count: Int) = "$percent% • $count فعال"
+    override fun sysActiveCount(count: Int) = "$count فعال"
+    override fun sysDownloadCompleteSize(size: String) = "دانلود کامل شد • $size"
+    override fun sysMoreDownloading(count: Int) = "+ $count مورد دیگر در حال دانلود"
+    override val sysComplete = "کامل شد"
+    override fun sysNotificationDownloadsTitle(speed: String) = "دانلودهای FetchJet ($speed)"
+    override fun sysDownloadingPercent(count: Int, percent: Int) =
+        "$count در حال دانلود • $percent%"
+
+    override val sysDownloadTaskFallback = "دانلود"
+    override val sysBrowserReadyTitle = "FetchJet برای مرورگر شما آماده است"
+    override val sysBrowserReadyText = "کیفیت‌های ویدیو مستقیم در Firefox نمایش داده می‌شوند"
+    override val sysTurnOff = "خاموش کردن"
+    override val sysBrowserReadyChannelName = "افزونه مرورگر"
+    override val sysBrowserReadyChannelDescription =
+        "تا وقتی FetchJet برای افزونه مرورگر آماده است نمایش داده می‌شود"
+    override val sysDownloadingFileFallback = "در حال دانلود فایل"
+    override val sysUnknownSize = "نامشخص"
+    override val sysStatusCompleted = "کامل‌شده"
+    override val sysStatusDownloading = "در حال دانلود"
+    override val sysDownloadCompleteTitle = "دانلود کامل شد"
+    override fun sysFinishedDownloading(size: String) = "دانلود تمام شد • $size"
+    override val sysSentToFetchJet = "به FetchJet فرستاده شد"
+    override val sysLinksChannelName = "لینک‌های مرورگر"
+    override val sysLinksChannelDescription =
+        "برای باز کردن لینکی که FetchJet همین الان دریافت کرد ضربه بزنید"
+    override val sysLinkReceivedTitle = "لینک دریافت شد"
+    override val sysLinkReceivedText = "برای باز کردن آن در FetchJet ضربه بزنید"
+
+    override val stepCompleted = "کامل‌شده"
+    override val stepSeeding = "در حال سید"
+    override val stepFetchingMetadata = "در حال دریافت فراداده"
+    override val stepConnectingToPeers = "در حال اتصال به همتاها"
+    override val stepCheckingFiles = "در حال بررسی فایل‌ها"
+    override val stepCheckingResumeData = "در حال بررسی داده‌های ادامه"
+    override val stepDownloading = "در حال دانلود"
+    override val stepFinished = "پایان‌یافته"
+    override val stepConnecting = "در حال اتصال"
+    override val stepPaused = "متوقف‌شده"
+    override val stepError = "خطا"
+    override val stepResolvingStreams = "در حال یافتن جریان‌ها"
+    override val stepDownloadingParts = "در حال دانلود بخش‌ها"
+    override val stepPreparingDownload = "در حال آماده‌سازی دانلود"
+    override val stepClippingVideo = "در حال برش ویدیو"
+    override val stepDownloadingMedia = "در حال دانلود رسانه"
+    override val stepAlreadyDownloaded = "قبلاً دانلود شده"
+    override val stepDownloadingVideo = "در حال دانلود ویدیو"
+    override val stepDownloadingAudio = "در حال دانلود صدا"
+    override val stepMergingAudioVideo = "در حال ادغام صدا و ویدیو"
+    override val stepConvertingToMp3 = "در حال تبدیل به MP3"
+    override val stepCuttingClip = "در حال برش کلیپ"
+    override val stepSavingToFolder = "در حال ذخیره در پوشه"
+    override val stepFinalizingVideo = "در حال نهایی‌سازی ویدیو"
+    override val stepConvertingVideo = "در حال تبدیل ویدیو"
+    override val stepRepackagingVideo = "در حال بسته‌بندی دوباره ویدیو"
+    override val stepYtDlpFallback = "جایگزین yt-dlp"
+    override val stepNotPlainStream = "جریان ساده نیست"
+    override val stepSingleConnection = "اتصال تکی"
+    override val stepServerNoRanges = "سرور از بازه‌ها پشتیبانی نمی‌کند"
+    override val stepAgeRestrictedExpiredCookies =
+        "محدودیت سنی: کوکی‌های منقضی در فایل‌ها > FetchJet"
+    override val stepAgeRestrictedPlaceCookies =
+        "محدودیت سنی: cookies.txt را در فایل‌ها > FetchJet بگذارید"
+    override val stepPreparingMediaEngine =
+        "در حال آماده‌سازی موتور رسانه داخلی (اجرای Python، بارگیری yt-dlp)"
+    override val stepMediaEngineNotStarted =
+        "موتور رسانه شروع نشده است. روی «دانلود ابزارها» بزنید."
+
+    override fun stepNumber(step: Int, total: Int) = "مرحله ${step} از ${total}"
+    override fun stepSavingAs(ext: String) = "در حال ذخیره با پسوند .${ext}"
+    override fun stepJoiningParts(count: Int) = "در حال ادغام ${count} بخش در MP4"
+    override fun stepNoDataFor(seconds: Int) = "${seconds} ثانیه بدون داده"
+    override fun stepPeers(peers: Int, seeds: Int) = "${peers} همتا (${seeds} سید)"
+    override fun stepDownloadingFrom(host: String) = "در حال دانلود از ${host}"
+    override fun stepMediaEngineNotReady(error: String) = "موتور رسانه آماده نیست: ${error}"
+    override fun stepTorrentEngineFailed(error: String) = "موتور BitTorrent اجرا نشد: ${error}"
+    override fun stepReadyWith(details: String) = "آماده: ${details}"
+}

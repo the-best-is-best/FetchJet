@@ -34,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
@@ -86,34 +89,41 @@ private fun etaText(seconds: Long): String = when {
 fun taskStateLine(task: DownloadTask, speedUnit: String): String {
     val pct = (task.progress.coerceIn(0f, 1f) * 100).toInt()
     if (task.waitingInQueue) {
-        return if (task.scheduledAtMs > currentEpochMs()) "Starts ${formatLocalSchedule(task.scheduledAtMs)}"
-        else if (task.queuePosition > 0) "Waiting in queue (#${task.queuePosition})" else "Waiting in queue"
+        return if (task.scheduledAtMs > currentEpochMs()) LocalizationManager.Strings.homeStartsAt(
+            formatLocalSchedule(task.scheduledAtMs)
+        )
+        else if (task.queuePosition > 0) LocalizationManager.Strings.homeWaitingInQueuePosition(task.queuePosition) else LocalizationManager.Strings.homeWaitingInQueue
     }
     // (A property of another module's class is not smart-cast: read it once.)
     val postLabel = task.postProcessLabel
-    if (postLabel != null) return postLabel
+    if (postLabel != null) return localizeStep(postLabel)
     return when {
-        task.status == DownloadStatus.CONNECTING -> "Connecting…"
-        task.status == DownloadStatus.QUEUED -> "Starting…"
+        task.status == DownloadStatus.CONNECTING -> LocalizationManager.Strings.homeConnecting
+        task.status == DownloadStatus.QUEUED -> LocalizationManager.Strings.homeStarting
         task.status == DownloadStatus.DOWNLOADING -> buildString {
             append("$pct%")
             task.currentStepText?.takeIf { it.startsWith("Step") }
-                ?.let { append(" · ").append(it.substringBefore(" (")) }
+                ?.let { append(" · ").append(localizeStep(it.substringBefore(" ("))) }
             if (task.downloadSpeedBytesPerSec > 0) append(" · ").append(
                 formatSpeed(
                     task.downloadSpeedBytesPerSec,
                     speedUnit
                 )
             )
-            task.etaSeconds()?.let { append(" · ").append(etaText(it)).append(" left") }
+            task.etaSeconds()
+                ?.let { append(" · ").append(LocalizationManager.Strings.homeTimeLeft(etaText(it))) }
         }
 
         task.status == DownloadStatus.PAUSED ->
-            "Paused · $pct%" + if (task.canResume() == false) " · restarts on resume" else ""
+            LocalizationManager.Strings.homePausedState(pct, task.canResume() == false)
 
-        task.status == DownloadStatus.ERROR -> "Failed: " + (task.errorMessage ?: "error")
+        task.status == DownloadStatus.ERROR -> LocalizationManager.Strings.homeFailedState(task.errorMessage?.let {
+            localizeStep(
+                it
+            )
+        })
         task.status == DownloadStatus.COMPLETED ->
-            "Completed" + if (task.totalBytes > 0) " · ${formatBytes(task.totalBytes)}" else ""
+            LocalizationManager.Strings.homeCompletedState(if (task.totalBytes > 0) formatBytes(task.totalBytes) else null)
 
         else -> task.status.name.lowercase().replaceFirstChar { it.uppercase() }
     }
@@ -193,10 +203,10 @@ private fun QuickActionButton(action: RowAction, sizeDp: Int, onClick: () -> Uni
         Spacer(modifier = Modifier.width(sizeDp.dp)); return
     }
     val label = when (action) {
-        RowAction.PAUSE -> "Pause"
-        RowAction.RESUME -> "Resume"
-        RowAction.START_NOW -> "Start now"
-        RowAction.OPEN -> "Open"
+        RowAction.PAUSE -> LocalizationManager.Strings.pause
+        RowAction.RESUME -> LocalizationManager.Strings.resume
+        RowAction.START_NOW -> LocalizationManager.Strings.homeStartNow
+        RowAction.OPEN -> LocalizationManager.Strings.open
         RowAction.NONE -> ""
     }
     val glyph = when (action) {
@@ -393,35 +403,35 @@ fun TaskRowsHeader(
             )
             Spacer(modifier = Modifier.width(34.dp))
             Text(
-                "NAME",
+                LocalizationManager.Strings.homeColumnName,
                 style = style,
                 color = color,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "SIZE",
+                LocalizationManager.Strings.homeColumnSize,
                 style = style,
                 color = color,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(76.dp)
             )
             Text(
-                "PROGRESS",
+                LocalizationManager.Strings.homeColumnProgress,
                 style = style,
                 color = color,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(140.dp)
             )
             Text(
-                "SPEED",
+                LocalizationManager.Strings.homeColumnSpeed,
                 style = style,
                 color = color,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(84.dp)
             )
             Text(
-                "LEFT",
+                LocalizationManager.Strings.homeColumnLeft,
                 style = style,
                 color = color,
                 fontWeight = FontWeight.Bold,
@@ -433,16 +443,29 @@ fun TaskRowsHeader(
 }
 
 /** Sidebar filters of the wide layout: by state, then by type. */
-enum class SideFilter(val label: String) {
-    ALL("All downloads"),
-    DOWNLOADING("Downloading"),
-    WAITING("Waiting"),
-    PAUSED("Paused"),
-    COMPLETED("Completed"),
-    FAILED("Failed"),
-    MEDIA("Video & audio"),
-    FILES("Files"),
-    TORRENTS("Torrents");
+enum class SideFilter {
+    ALL,
+    DOWNLOADING,
+    WAITING,
+    PAUSED,
+    COMPLETED,
+    FAILED,
+    MEDIA,
+    FILES,
+    TORRENTS;
+
+    val label: String
+        get() = when (this) {
+            ALL -> LocalizationManager.Strings.homeFilterAllDownloads
+            DOWNLOADING -> LocalizationManager.Strings.homeFilterDownloading
+            WAITING -> LocalizationManager.Strings.homeFilterWaiting
+            PAUSED -> LocalizationManager.Strings.homeFilterPaused
+            COMPLETED -> LocalizationManager.Strings.homeFilterCompleted
+            FAILED -> LocalizationManager.Strings.homeFilterFailed
+            MEDIA -> LocalizationManager.Strings.homeFilterMedia
+            FILES -> LocalizationManager.Strings.homeFilterFiles
+            TORRENTS -> LocalizationManager.Strings.homeFilterTorrents
+        }
 
     fun matches(t: DownloadTask): Boolean = when (this) {
         ALL -> true

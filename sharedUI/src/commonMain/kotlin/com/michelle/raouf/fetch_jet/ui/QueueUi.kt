@@ -10,6 +10,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 
 /** Settings: how many downloads run at the same time (the rest wait in the queue). */
@@ -19,13 +21,14 @@ fun QueueSettingsCard() {
     val max by repository.maxConcurrentDownloads.collectAsState()
 
     SettingsGroup(
-        title = "Queue",
-        footer = "Extra downloads wait and start by themselves, oldest first, when one finishes. " +
-                "\"Start now\" on a waiting download skips the queue."
+        title = LocalizationManager.Strings.homeQueueTitle,
+        footer = LocalizationManager.Strings.homeQueueFooter
     ) {
         SettingRow(
-            title = "Downloads at the same time",
-            subtitle = if (max <= 0) "No limit" else "$max at a time"
+            title = LocalizationManager.Strings.homeDownloadsAtSameTime,
+            subtitle = if (max <= 0) LocalizationManager.Strings.homeNoLimit else LocalizationManager.Strings.homeAtATime(
+                max
+            )
         )
         Box(
             modifier = Modifier
@@ -36,7 +39,7 @@ fun QueueSettingsCard() {
             SegmentedPicker(
                 options = listOf(1, 2, 3, 4, 5, 8, 0),
                 selected = max,
-                label = { if (it == 0) "No limit" else it.toString() },
+                label = { if (it == 0) LocalizationManager.Strings.homeNoLimit else it.toString() },
                 onSelect = { repository.setMaxConcurrentDownloads(it) }
             )
         }

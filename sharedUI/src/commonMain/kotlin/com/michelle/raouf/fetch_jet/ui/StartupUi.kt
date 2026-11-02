@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
 import com.michelle.raouf.fetch_jet.core.startup.StartupPreferences
 import kotlinx.coroutines.launch
@@ -25,22 +27,25 @@ fun StartupSettingsCard() {
         val uri = androidx.compose.ui.platform.LocalUriHandler.current
         var startHidden by remember { mutableStateOf(StartupPreferences.startHidden) }
         SettingsGroup(
-            title = "Startup",
-            footer = "The Store version is started by Windows: turn FetchJet on under Settings > Apps > Startup."
+            title = LocalizationManager.Strings.startupGroup,
+            footer = LocalizationManager.Strings.startupStoreFooter
         ) {
             SettingRow(
-                title = "Start FetchJet when you log in",
-                subtitle = "Managed by Windows",
+                title = LocalizationManager.Strings.startupStartAtLogin,
+                subtitle = LocalizationManager.Strings.startupManagedByWindows,
                 onClick = { uri.openUri(settingsUri) }
             ) {
                 androidx.compose.material3.OutlinedButton(onClick = { uri.openUri(settingsUri) }) {
-                    Text("Open Windows settings", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        LocalizationManager.Strings.startupOpenWindowsSettings,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
             SettingDivider()
             SettingSwitch(
-                title = "Start hidden in the tray",
-                subtitle = "When started at login, stay in the tray instead of opening the window.",
+                title = LocalizationManager.Strings.startupStartHidden,
+                subtitle = LocalizationManager.Strings.startupStartHiddenHint,
                 checked = startHidden,
                 onChange = { startHidden = it; StartupPreferences.startHidden = it }
             )
@@ -59,10 +64,10 @@ fun StartupSettingsCard() {
         busy = false
     }
 
-    SettingsGroup(title = "Startup") {
+    SettingsGroup(title = LocalizationManager.Strings.startupGroup) {
         SettingSwitch(
-            title = "Start FetchJet when you log in",
-            subtitle = "Scheduled and queued downloads continue, and the browser extension always finds the app.",
+            title = LocalizationManager.Strings.startupStartAtLogin,
+            subtitle = LocalizationManager.Strings.startupStartAtLoginHint,
             checked = enabled,
             enabled = !busy,
             onChange = { want ->
@@ -70,7 +75,10 @@ fun StartupSettingsCard() {
                 error = null
                 scope.launch {
                     StartupLauncher.setEnabled(want)
-                        .onFailure { error = "Could not change the setting: ${it.message}" }
+                        .onFailure {
+                            error =
+                                LocalizationManager.Strings.startupCouldNotChange(it.message.toString())
+                        }
                     enabled = StartupLauncher.isEnabled()
                     busy = false
                 }
@@ -78,8 +86,8 @@ fun StartupSettingsCard() {
         )
         SettingDivider()
         SettingSwitch(
-            title = "Start hidden in the tray",
-            subtitle = "When started at login, stay in the tray instead of opening the window.",
+            title = LocalizationManager.Strings.startupStartHidden,
+            subtitle = LocalizationManager.Strings.startupStartHiddenHint,
             checked = startHidden,
             enabled = enabled && !busy,
             onChange = {

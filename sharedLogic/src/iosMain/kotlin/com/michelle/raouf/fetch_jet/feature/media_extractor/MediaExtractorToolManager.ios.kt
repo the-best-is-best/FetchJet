@@ -2,6 +2,8 @@
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -228,7 +230,7 @@ fun getExistingFfmpegBinary(): String? {
 
 actual fun getMediaExtractorToolStatus(): String {
     val bridge = IosMediaBridgeRegistry.bridge
-        ?: return "Media engine bridge not registered"
+        ?: return LocalizationManager.Strings.sysMediaEngineBridgeNotRegistered
     return bridge.statusText()
 }
 
@@ -243,7 +245,7 @@ actual fun getMediaToolsDirectory(): String {
 }
 
 actual fun getJsRuntimeStatus(): JsRuntimeStatus = JsRuntimeStatus(
-    name = "WebKit (built-in)",
+    name = LocalizationManager.Strings.sysWebKitBuiltIn,
     isReady = IosMediaBridgeRegistry.bridge?.statusText()?.contains("WebKit JS solver") == true
 )
 

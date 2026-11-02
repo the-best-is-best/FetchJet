@@ -2,10 +2,14 @@
 
 import kotlin.math.round
 
+fun ltr(text: String): String = if (text.isEmpty()) text else "\u2066$text\u2069"
+
 /**
  * Formats a raw byte count into human-readable digital storage units (B, KB, MB, GB, TB).
  */
-fun formatBytes(bytes: Long): String {
+fun formatBytes(bytes: Long): String = ltr(formatBytesPlain(bytes))
+
+private fun formatBytesPlain(bytes: Long): String {
     if (bytes <= 0L) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
     var value = bytes.toDouble()
@@ -21,7 +25,9 @@ fun formatBytes(bytes: Long): String {
 /**
  * Formats size in bytes specifically for media stream choices (KB/MB).
  */
-fun formatSizeDisplay(sizeBytes: Long): String {
+fun formatSizeDisplay(sizeBytes: Long): String = ltr(formatSizeDisplayPlain(sizeBytes))
+
+private fun formatSizeDisplayPlain(sizeBytes: Long): String {
     if (sizeBytes <= 0L) return ""
     val mb = sizeBytes.toDouble() / (1024.0 * 1024.0)
     return if (mb >= 1.0) {
@@ -36,7 +42,10 @@ fun formatSizeDisplay(sizeBytes: Long): String {
 /**
  * Formats a raw transfer speed (bytes/sec) according to the user's preferred display unit.
  */
-fun formatSpeed(bytesPerSec: Long, unit: String = "MB/s"): String {
+fun formatSpeed(bytesPerSec: Long, unit: String = "MB/s"): String =
+    ltr(formatSpeedPlain(bytesPerSec, unit))
+
+private fun formatSpeedPlain(bytesPerSec: Long, unit: String): String {
     val normalizedUnit = when (unit) {
         "BYTES_PER_SEC" -> "MB/s"
         "BITS_PER_SEC" -> "Mbps"

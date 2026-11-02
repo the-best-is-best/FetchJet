@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.core.update
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.edition.AppEdition
 import com.michelle.raouf.fetch_jet.core.edition.currentAppEdition
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
@@ -87,6 +89,8 @@ data class UpdateState(
     val showDialog: Boolean = false,
     /** Result line for the settings page: "You're up to date", an error... */
     val message: String? = null,
+    val messageIsInstallError: Boolean = false,
+    val messageIsError: Boolean = false,
     /** 0..1 while the installer downloads, -1 otherwise. */
     val downloadProgress: Float = -1f,
     /** Installer downloaded and waiting for "Restart & update". */
@@ -189,7 +193,13 @@ object UpdateManager {
         val path = s.installerPath
         if (path != null && FileSystem.SYSTEM.exists(path.toPath())) {
             PlatformUpdater.launchInstallerAndExit(path).onFailure { e ->
-                _state.update { it.copy(message = "Could not start the installer: ${e.message}") }
+                _state.update {
+                    it.copy(
+                        message = LocalizationManager.Strings.sysCouldNotStartInstaller(
+                            e.message.toString()
+                        ), messageIsInstallError = true
+                    )
+                }
             }
             return
         }
@@ -202,7 +212,9 @@ object UpdateManager {
         _state.update {
             it.copy(
                 checking = true,
-                message = if (manual) "Checking for updates…" else it.message
+                message = if (manual) LocalizationManager.Strings.sysCheckingForUpdates else it.message,
+                messageIsInstallError = if (manual) false else it.messageIsInstallError,
+                messageIsError = if (manual) false else it.messageIsError
             )
         }
         val result = runCatching { fetchLatestRelease() }
@@ -222,12 +234,17 @@ object UpdateManager {
                     available = if (newer) latest else null,
                     showDialog = newer && !skipped,
                     message = when {
-                        latest == null -> "No published release yet."
-                        unchangedHere -> "Version ${latest!!.version} has no changes for this device; " +
-                                "you have the latest build for it ($APP_VERSION)."
-                        newer -> "Version ${latest.version} is available."
-                        else -> "You're up to date ($APP_VERSION)."
-                    }
+                        latest == null -> LocalizationManager.Strings.sysNoPublishedRelease
+                        unchangedHere -> LocalizationManager.Strings.sysVersionNoChangesForDevice(
+                            latest!!.version,
+                            APP_VERSION
+                        )
+
+                        newer -> LocalizationManager.Strings.sysVersionAvailable(latest.version)
+                        else -> LocalizationManager.Strings.sysUpToDate(APP_VERSION)
+                    },
+                    messageIsInstallError = false,
+                    messageIsError = false
                 )
             }
             save()
@@ -239,7 +256,11 @@ object UpdateManager {
             _state.update {
                 it.copy(
                     checking = false,
-                    message = if (manual) "Could not check for updates: ${e.message ?: "network error"}" else it.message
+                    message = if (manual) LocalizationManager.Strings.sysCouldNotCheckForUpdates(
+                        e.message ?: LocalizationManager.Strings.sysNetworkError
+                    ) else it.message,
+                    messageIsInstallError = if (manual) false else it.messageIsInstallError,
+                    messageIsError = if (manual) true else it.messageIsError
                 )
             }
         }
@@ -337,11 +358,23 @@ object UpdateManager {
         if (!PlatformUpdater.canInstallInApp) return
         if (downloadJob?.isActive == true) return
         val asset = PlatformUpdater.pickAsset(release.assets) ?: run {
-            _state.update { it.copy(message = "Update download failed: this release has no installer for this system.") }
+            _state.update {
+                it.copy(
+                    message = LocalizationManager.Strings.sysUpdateNoInstallerForSystem,
+                    messageIsInstallError = true
+                )
+            }
             return
         }
         downloadJob = scope.launch {
-            _state.update { it.copy(downloadProgress = 0f, message = "Downloading ${asset.name}…") }
+            _state.update {
+                it.copy(
+                    downloadProgress = 0f,
+                    message = LocalizationManager.Strings.sysDownloadingAsset(asset.name),
+                    messageIsInstallError = false,
+                    messageIsError = false
+                )
+            }
             val dir = "${pathResolver.getTempDirectory()}/fetchjet-update".toPath()
             val target = dir / asset.name
             val part = dir / "${asset.name}.part"
@@ -382,7 +415,9 @@ object UpdateManager {
                         downloadProgress = -1f,
                         installerPath = target.toString(),
                         showDialog = true,
-                        message = "Version ${release.version} is ready to install."
+                        message = LocalizationManager.Strings.sysVersionReadyToInstall(release.version),
+                        messageIsInstallError = false,
+                        messageIsError = false
                     )
                 }
                 if (installWhenDone) installNow()
@@ -394,7 +429,8 @@ object UpdateManager {
                 _state.update {
                     it.copy(
                         downloadProgress = -1f,
-                        message = "Update download failed: ${e.message}"
+                        message = LocalizationManager.Strings.sysUpdateDownloadFailed(e.message.toString()),
+                        messageIsInstallError = true
                     )
                 }
             }

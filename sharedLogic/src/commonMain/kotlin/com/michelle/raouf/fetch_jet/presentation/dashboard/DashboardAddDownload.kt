@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -15,7 +17,7 @@ internal fun DashboardViewModel.addDownload(
     val currentState = _uiState.value
     val url = currentState.inputUrl
     if (url.isBlank()) {
-        _uiState.update { it.copy(errorMessage = "Please enter a valid URL or Magnet link") }
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysEnterValidUrlOrMagnet) }
         return
     }
 
@@ -31,14 +33,14 @@ internal fun DashboardViewModel.addDownload(
 
     if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
         if (currentState.inspectMediaError != null) {
-            _uiState.update { it.copy(errorMessage = "Cannot start download: Video inspection failed.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysCannotStartVideoInspectionFailed) }
             return
         }
     }
 
     if (currentState.detectedEngine == EngineType.BITTORRENT) {
         if (currentState.inspectError != null || currentState.inspectedTorrentFiles.isEmpty() || !currentState.inspectedTorrentFiles.any { it.isSelected }) {
-            _uiState.update { it.copy(errorMessage = "Cannot start download: Torrent inspection failed or no files selected.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysCannotStartTorrentInspectionFailed) }
             return
         }
     }
@@ -61,11 +63,11 @@ internal fun DashboardViewModel.addDownload(
 
     if (isClippingActive) {
         if (mediaDur > 0L && !isClipEndAtEnd && clipEndSec > mediaDur) {
-            _uiState.update { it.copy(errorMessage = "Clip end time exceeds video duration.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipEndExceedsDuration) }
             return
         }
         if (clipEndSec > 0L && clipStartSec >= clipEndSec) {
-            _uiState.update { it.copy(errorMessage = "Clip start time must be before end time.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipStartAfterEnd) }
             return
         }
     }
@@ -199,13 +201,19 @@ internal fun DashboardViewModel.addDownload(
                     mediaDurationSeconds = 0L
                 )
             }
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysStartedDownload(
+                        task.fileName.ifBlank { task.url })
+                )
+            )
             _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
         }.onFailure { error ->
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Failed to queue download"
+                    errorMessage = error.message
+                        ?: LocalizationManager.Strings.sysFailedToQueueDownload
                 )
             }
         }
@@ -285,10 +293,19 @@ internal fun DashboardViewModel.addSeveralQualities(
                 scheduleStartMs = 0L,
                 selectedConnections = 0,
                 mediaDurationSeconds = 0L,
-                errorMessage = if (failed > 0) "$failed quality(s) could not be added." else null
+                errorMessage = if (failed > 0) LocalizationManager.Strings.sysQualitiesNotAdded(
+                    failed
+                ) else null
             )
         }
-        _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added downloads of \"$title\""))
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                LocalizationManager.Strings.sysAddedQualityDownloads(
+                    added,
+                    title
+                )
+            )
+        )
     }
 }
 
@@ -303,7 +320,7 @@ internal fun DashboardViewModel.addPlaylist(
 ) {
     val selected = playlist.entries.filter { it.isSelected }
     if (selected.isEmpty()) {
-        _uiState.update { it.copy(errorMessage = "Select at least one video of the playlist.") }
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOnePlaylistVideo) }
         return
     }
     val quality = state.playlistQuality
@@ -367,11 +384,18 @@ internal fun DashboardViewModel.addPlaylist(
                 inspectedMediaTitle = null,
                 scheduleStartMs = 0L,
                 selectedConnections = 0,
-                errorMessage = if (failed > 0) "$failed video(s) could not be added." else null
+                errorMessage = if (failed > 0) LocalizationManager.Strings.sysVideosNotAdded(failed) else null
             )
         }
         singleVideoUrl = null
-        _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added videos from \"${playlist.title}\""))
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                LocalizationManager.Strings.sysAddedPlaylistVideos(
+                    added,
+                    playlist.title
+                )
+            )
+        )
     }
 }
 
@@ -404,7 +428,7 @@ internal fun DashboardViewModel.engineForListedLink(url: String): EngineType {
 internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
     val selected = state.linkList.filter { it.isSelected }
     if (selected.isEmpty()) {
-        _uiState.update { it.copy(errorMessage = "Select at least one link.") }
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOneLink) }
         return
     }
     val destDir =
@@ -451,8 +475,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         }
         _uiEffect.emit(
             DashboardUiEffect.ShowToast(
-                "Added $added download${if (added == 1) "" else "s"}" +
-                        (if (skipped > 0) " ($skipped already in the list or failed)" else "")
+                LocalizationManager.Strings.sysAddedLinkDownloads(added, skipped)
             )
         )
     }
@@ -496,7 +519,8 @@ internal fun DashboardViewModel.inspectListedTorrents() {
                     update(url) {
                         it.copy(
                             isInspecting = false,
-                            inspectError = err.message ?: "Could not read the torrent"
+                            inspectError = err.message
+                                ?: LocalizationManager.Strings.sysCouldNotReadTorrent
                         )
                     }
                 }

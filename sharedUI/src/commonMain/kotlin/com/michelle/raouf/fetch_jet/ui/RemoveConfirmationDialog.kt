@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 fun RemoveConfirmationDialog(
@@ -36,7 +38,7 @@ fun RemoveConfirmationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (count > 1) "Remove $count Downloads" else "Remove Download",
+                text = LocalizationManager.Strings.removeDialogTitle(count),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -47,7 +49,7 @@ fun RemoveConfirmationDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = if (count > 1) "Are you sure you want to remove these $count download tasks?" else "Are you sure you want to remove this download task?",
+                    text = LocalizationManager.Strings.removeDialogMessage(count),
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -63,7 +65,7 @@ fun RemoveConfirmationDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Also delete downloaded file(s) from disk",
+                        text = LocalizationManager.Strings.removeDialogAlsoDeleteFiles,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -77,12 +79,12 @@ fun RemoveConfirmationDialog(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("Remove", color = MaterialTheme.colorScheme.onError)
+                Text(LocalizationManager.Strings.remove, color = MaterialTheme.colorScheme.onError)
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(LocalizationManager.Strings.cancel)
             }
         }
     )
