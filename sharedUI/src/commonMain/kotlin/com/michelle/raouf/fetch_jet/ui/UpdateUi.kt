@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.michelle.raouf.fetch_jet.core.update.AppRelease
+import com.michelle.raouf.fetch_jet.core.update.MICROSOFT_STORE_PAGE
 import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
@@ -54,7 +55,8 @@ fun UpdateDialogHost() {
 @Composable
 private fun UpdateDialog(state: UpdateState, release: AppRelease) {
     val uriHandler = LocalUriHandler.current
-    val asset = PlatformUpdater.pickAsset(release.assets)
+    val fromStore = PlatformUpdater.updatesFromStore
+    val asset = if (fromStore) null else PlatformUpdater.pickAsset(release.assets)
     val downloading = state.downloadProgress >= 0f
     val ready = state.installerPath != null
 
@@ -119,7 +121,10 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     ready -> {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "The update is downloaded. FetchJet will close, install it and open again. " +
+                            if (PlatformUpdater.platformKey == "android")
+                                "The update is downloaded. Android asks you to confirm the install; " +
+                                        "your downloads stay in the list."
+                            else "The update is downloaded. FetchJet will close, install it and open again. " +
                                     "Running downloads are paused and can be resumed.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -129,7 +134,8 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     !state.canInstallInApp -> {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            installHint(asset?.name),
+                            if (fromStore) "Microsoft Store installs it by itself. Open the Store to update now."
+                            else installHint(asset?.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -152,7 +158,7 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     onClick = { UpdateManager.installNow() },
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Restart & update")
+                    Text(if (PlatformUpdater.platformKey == "android") "Install" else "Restart & update")
                 }
 
                 state.canInstallInApp && asset != null -> Button(
@@ -160,6 +166,14 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     enabled = !downloading,
                     shape = RoundedCornerShape(10.dp)
                 ) { Text(if (downloading) "Downloading…" else "Download & install") }
+
+                fromStore -> Button(
+                    onClick = {
+                        uriHandler.openUri(MICROSOFT_STORE_PAGE)
+                        UpdateManager.dismiss()
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text("Open Microsoft Store") }
 
                 else -> Button(
                     onClick = {
@@ -241,7 +255,9 @@ fun UpdatesSettingsCard() {
         if (state.canInstallInApp) {
             SettingSwitch(
                 title = "Download updates automatically",
-                subtitle = "Downloads a new version in the background; you only confirm the restart.",
+                subtitle = if (PlatformUpdater.platformKey == "android")
+                    "Downloads a new version in the background; you only confirm the install."
+                else "Downloads a new version in the background; you only confirm the restart.",
                 checked = state.autoInstall,
                 enabled = state.autoCheck,
                 onChange = { UpdateManager.setAutoInstall(it) }
@@ -249,7 +265,9 @@ fun UpdatesSettingsCard() {
         } else {
             SettingRow(
                 title = "Installing updates",
-                subtitle = "On this device FetchJet tells you about a new version and links to it; you install it."
+                subtitle = if (PlatformUpdater.updatesFromStore)
+                    "Microsoft Store installs new versions by itself; FetchJet tells you when one is out."
+                else "On this device FetchJet tells you about a new version and links to it; you install it."
             )
         }
         SettingDivider()

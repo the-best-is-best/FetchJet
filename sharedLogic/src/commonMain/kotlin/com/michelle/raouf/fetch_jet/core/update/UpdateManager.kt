@@ -128,7 +128,7 @@ object UpdateManager {
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
     init {
-        val supported = currentAppEdition() != AppEdition.STORE && !PlatformUpdater.updatesFromStore
+        val supported = currentAppEdition() != AppEdition.STORE
         val saved = load()
         _state.value = UpdateState(
             supported = supported,
@@ -246,12 +246,25 @@ object UpdateManager {
     }
 
     private suspend fun fetchLatestRelease(): AppRelease? {
+        if (PlatformUpdater.updatesFromStore) {
+            val version = PlatformUpdater.latestStoreVersion() ?: APP_VERSION
+            return AppRelease(
+                version = version,
+                tag = "v$version",
+                title = "FetchJet $version",
+                notes = "",
+                pageUrl = MICROSOFT_STORE_PAGE,
+                publishedAt = "",
+                assets = emptyList()
+            )
+        }
         val response =
             client.get("https://api.github.com/repos/$UPDATE_REPOSITORY/releases/latest") {
                 header("Accept", "application/vnd.github+json")
                 header("User-Agent", "FetchJet/$APP_VERSION")
             }
         if (response.status.value == 404) return null // nothing published yet
+        if (response.status.value == 403 || response.status.value == 429) return fetchLatestFromWebPage()
         if (!response.status.isSuccess()) throw Exception("GitHub answered HTTP ${response.status.value}")
         @Suppress("UNCHECKED_CAST")
         val json = MiniJson.parse(response.bodyAsText()) as? Map<String, Any?>
@@ -272,6 +285,43 @@ object UpdateManager {
             pageUrl = json.getString("html_url")
                 ?: "https://github.com/$UPDATE_REPOSITORY/releases/latest",
             publishedAt = json.getString("published_at").orEmpty(),
+            assets = assets
+        )
+    }
+
+    internal suspend fun fetchLatestFromWebPage(): AppRelease? {
+        val latest = client.get("https://github.com/$UPDATE_REPOSITORY/releases/latest") {
+            header("User-Agent", "FetchJet/$APP_VERSION")
+        }
+        if (latest.status.value == 404) return null
+        if (!latest.status.isSuccess()) throw Exception("GitHub answered HTTP ${latest.status.value}")
+        val pageUrl = latest.call.request.url.toString()
+        val tag =
+            pageUrl.substringAfter("/releases/tag/", "").substringBefore('?').substringBefore('#')
+        if (tag.isBlank()) return null
+        val assetsHtml =
+            client.get("https://github.com/$UPDATE_REPOSITORY/releases/expanded_assets/$tag") {
+                header("User-Agent", "FetchJet/$APP_VERSION")
+            }.bodyAsText()
+        val assets = Regex("""href="(/$UPDATE_REPOSITORY/releases/download/[^"]+)"""")
+            .findAll(assetsHtml)
+            .map { it.groupValues[1] }
+            .distinct()
+            .map { path ->
+                ReleaseAsset(
+                    path.substringAfterLast('/'),
+                    "https://github.com$path",
+                    0L
+                )
+            }
+            .toList()
+        return AppRelease(
+            version = tag.trim().removePrefix("v").removePrefix("V"),
+            tag = tag,
+            title = "FetchJet $tag",
+            notes = "",
+            pageUrl = pageUrl,
+            publishedAt = "",
             assets = assets
         )
     }
@@ -371,6 +421,8 @@ object UpdateManager {
         }
     }
 }
+
+const val MICROSOFT_STORE_PAGE = "ms-windows-store://pdp/?productid=9NP3HJRHMPJS"
 
 /** true when [candidate] is a later version than [current] ("1.2.0" > "1.1.9", "1.0.0" > "1.0.0-beta"). */
 fun isNewer(candidate: String, current: String): Boolean {

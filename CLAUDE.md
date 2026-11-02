@@ -236,6 +236,21 @@ Bridges:
   Startup or Task Manager. The MSI / macOS / Linux builds stay opt-in (AutoLaunch toggle).
   Owner-verified on the previous MSIX (task enabled by hand in Task Manager > Startup apps):
   FetchJet starts at login. Not yet tested: the new default (on without touching it).
+- 1.2.0 updates (branch `release-v1.2.0`): `UpdateManager` falls back to the release web pages
+  (`fetchLatestFromWebPage`) when the API answers 403/429. In-app install on every platform:
+  Android opens the system installer (tested on the A56 up to the installer), macOS swaps
+  `/Applications/FetchJet.app` from the downloaded .dmg, Linux installs the .deb with `pkexec`
+  or swaps the portable folder (script run after the app quits, `fetchjet-update.sh/.log` next
+  to the download). macOS and the Linux .deb path still need a real test. Windows MSI in-app
+  update verified 2026-11-02: a local 1.0.9 MSI found 1.1.0, downloaded it, restarted into
+  1.1.0 (test MSI uninstalled after; the Store MSIX and `~/.fetch_jet` were untouched).
+  The Store MSIX asks the Store, not GitHub (owner's request), so it never announces a version
+  Microsoft has not approved yet: `PlatformUpdater.latestStoreVersion()` runs PowerShell with
+  WinRT `StoreContext.GetAppAndOptionalStorePackageUpdatesAsync` (works because child processes
+  of the MSIX keep its package identity; outside the package it just answers "no update"). A
+  found update shows the dialog with "Open Microsoft Store"
+  (`ms-windows-store://pdp/?productid=9NP3HJRHMPJS`). Tested inside the installed MSIX with
+  `Invoke-CommandInDesktopPackage` (answer: no update for 1.1.0). It never downloads the MSI.
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
@@ -295,6 +310,9 @@ Bridges:
    iPhone: works (2026-11-01).
 
 ## Release plan
+
+- **1.2.0:** branch `release-v1.2.0` (from `master`, 2026-11-02). Ordered work list:
+  `ROADMAP-1.2.0.md`. When the owner asks what is next, take the first unchecked item there.
 
 - 1.1.0 history: a
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
