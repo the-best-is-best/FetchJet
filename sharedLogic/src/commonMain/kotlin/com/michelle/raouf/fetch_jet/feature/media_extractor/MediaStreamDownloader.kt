@@ -2,18 +2,17 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.engine.DownloadEngine
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
@@ -34,9 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
-import okio.use
 import kotlin.coroutines.coroutineContext
-import kotlin.time.TimeSource
 
 class MediaStreamDownloader(
 
@@ -162,6 +159,7 @@ class MediaStreamDownloader(
     }
 
     internal suspend fun executeMediaDownload(taskId: String) {
+        MediaToolsLock.awaitIdle()
         var initialTask = tasksState.value[taskId] ?: return
         if (!coroutineContext.isActive || tasksState.value[taskId]?.status == DownloadStatus.PAUSED) {
             return
@@ -494,6 +492,7 @@ class MediaStreamDownloader(
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }
 
+        MediaToolsLock.awaitIdle()
         val effectiveUrl = resolveEffectiveMediaUrl(url)
 
         val list = mutableListOf<MediaQualityEntry>()

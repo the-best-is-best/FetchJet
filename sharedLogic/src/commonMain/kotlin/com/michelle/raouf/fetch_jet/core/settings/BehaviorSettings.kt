@@ -1,7 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
-import com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -230,7 +229,10 @@ object ClipboardLinks {
         "streamable.com",
         "ok.ru",
         "vk.com",
-        "odysee.com"
+        "odysee.com",
+        "9gag.com",
+        "kick.com",
+        "mixcloud.com"
     )
 
     fun downloadableUrl(text: String?, videoPages: Boolean = false): String? {

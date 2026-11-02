@@ -9,7 +9,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.update
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -63,7 +62,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnHls(
     outputFile = cacheTargetPath.toString(),
     parallel = initialTask.maxConnections.takeIf { it > 0 }
         ?: com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.connections.value.takeIf { it > 0 }
-        ?: 6,
+        ?: 16,
     isCancelled = { tasksState.value[taskId]?.status == DownloadStatus.PAUSED },
     onPieces = { pieces, workers ->
         updateTaskState(taskId) {

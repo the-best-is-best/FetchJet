@@ -18,7 +18,9 @@ data class ResolvedStream(
 data class ResolvedMedia(
     val title: String?,
     val streams: List<ResolvedStream>,
-    val durationSeconds: Long
+    val durationSeconds: Long,
+    val hlsUrl: String? = null,
+    val hlsHeaders: Map<String, String> = emptyMap()
 )
 
 /**
@@ -48,7 +50,8 @@ object DirectMediaResolver {
             return null
         }
         val parsed = parse(json)
-        if (parsed != null) return parsed
+        if (parsed != null && parsed.hlsUrl == null) return parsed
+        val hlsOnly = parsed
         com.michelle.raouf.fetch_jet.core.log.AppLog.d { "DirectMediaResolver: not a plain stream (-f $sel): $lastReject" }
         // The chosen format is an HLS/DASH manifest (Android's yt-dlp often picks the iOS
         // client's m3u8 itags): ask for the same picture size as plain https files instead.
@@ -59,15 +62,15 @@ object DirectMediaResolver {
                 h > 0 -> "bestvideo[height<=$h][protocol^=http]+bestaudio[protocol^=http]/best[height<=$h][protocol^=http]"
                 else -> "bestvideo[protocol^=http]+bestaudio[protocol^=http]/best[protocol^=http]"
             }
-            val json2 = runYtDlpJson(url, httpsSel, headers) ?: return null
-            val parsed2 = parse(json2)
+            val json2 = runYtDlpJson(url, httpsSel, headers) ?: return hlsOnly
+            val parsed2 = parse(json2)?.takeIf { it.hlsUrl == null }
             com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                 if (parsed2 != null) "DirectMediaResolver: https formats found with -f $httpsSel"
                 else "DirectMediaResolver: still no plain stream (-f $httpsSel): $lastReject"
             }
-            return parsed2
+            return parsed2 ?: hlsOnly
         }
-        return null
+        return hlsOnly
     }
 
     /** Why the last [parse] said no (for the log), and the rejected format's height. */
@@ -89,6 +92,19 @@ object DirectMediaResolver {
         val chosen: List<Map<String, Any?>> = root.getObjectArray("requested_formats")
             ?.takeIf { it.isNotEmpty() }
             ?: listOf(root)
+        if (chosen.size == 1) {
+            val f = chosen[0]
+            val protocol = (f.getString("protocol") ?: "").lowercase()
+            val u = f.getString("url")
+            if (protocol.startsWith("m3u8") && u != null && u.startsWith("http")) {
+                lastReject = "protocol=$protocol format=${f.getString("format_id")}"
+                lastRejectHeight = (f["height"] as? Number)?.toInt() ?: 0
+                val hdrs = (f["http_headers"] as? Map<String, Any?>)
+                    ?.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }?.toMap()
+                    ?: emptyMap()
+                return ResolvedMedia(title, emptyList(), duration, hlsUrl = u, hlsHeaders = hdrs)
+            }
+        }
         val streams = chosen.map { f ->
             val protocol = (f.getString("protocol") ?: "https").lowercase()
             lastRejectHeight = (f["height"] as? Number)?.toInt() ?: 0

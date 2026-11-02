@@ -3,12 +3,12 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -71,7 +71,8 @@ class DashboardViewModel(
     /** The playlist link for which the user chose "download only this video". */
     internal var singleVideoUrl: String? = null
 
-    internal val toolsMutex = kotlinx.coroutines.sync.Mutex()
+    internal val toolsMutex =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.MediaToolsLock.mutex
 
     internal fun reportToolProgress(p: com.michelle.raouf.fetch_jet.feature.media_extractor.ToolDownloadProgress) {
         _uiState.update {

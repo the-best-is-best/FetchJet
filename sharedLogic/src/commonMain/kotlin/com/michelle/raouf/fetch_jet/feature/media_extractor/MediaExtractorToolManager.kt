@@ -4,6 +4,8 @@ import com.michelle.raouf.fetch_jet.core.network.createStreamHttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 expect fun getMediaExtractorToolStatus(): String
 expect suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress) -> Unit = {}): Boolean
@@ -15,6 +17,14 @@ expect fun getMediaToolsDirectory(): String
 data class JsRuntimeStatus(val name: String, val isReady: Boolean)
 
 expect fun getJsRuntimeStatus(): JsRuntimeStatus
+
+object MediaToolsLock {
+    val mutex = Mutex()
+
+    suspend fun awaitIdle() {
+        if (mutex.isLocked) mutex.withLock { }
+    }
+}
 
 data class ToolDownloadProgress(val tool: String, val fraction: Float? = null)
 

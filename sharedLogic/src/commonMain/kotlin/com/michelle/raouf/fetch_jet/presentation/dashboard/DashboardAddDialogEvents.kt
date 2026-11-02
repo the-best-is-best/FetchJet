@@ -48,9 +48,16 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         }
 
         is DashboardUiEvent.OnUrlChanged -> {
+            val links = extractLinks(event.url)
+            val inputUrl = links.singleOrNull()
+                ?.takeIf {
+                    event.url.trim().any { c -> c.isWhitespace() } &&
+                            event.url.length - _uiState.value.inputUrl.length > 1
+                }
+                ?: event.url
 
             // App Store edition: media and torrent engines are not shipped.
-            val engine = when (val detected = detectLinkTypeUseCase(event.url)) {
+            val engine = when (val detected = detectLinkTypeUseCase(inputUrl)) {
                 EngineType.MEDIA_STREAM -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) detected else EngineType.HTTP_DIRECT
                 EngineType.BITTORRENT -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) detected else EngineType.HTTP_DIRECT
                 else -> detected
@@ -59,7 +66,6 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             val defaultQualities =
 
                 emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
-            val links = extractLinks(event.url)
             val linkList =
                 if (links.size >= 2) links.map {
                     LinkListEntry(
@@ -72,7 +78,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
                 it.copy(
 
-                    inputUrl = event.url,
+                    inputUrl = inputUrl,
 
                     detectedEngine = if (linkList.isNotEmpty()) EngineType.HTTP_DIRECT else engine,
                     linkList = linkList,

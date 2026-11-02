@@ -53,6 +53,19 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         }
         return false
     }
+    resolved.hlsUrl?.let { hlsUrl ->
+        com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: own HLS engine for the chosen format" }
+        updateTaskState(taskId) {
+            if (it.status == DownloadStatus.PAUSED) it else it.copy(currentStepText = "Downloading parts…")
+        }
+        return downloadWithOwnHls(
+            taskId,
+            task.copy(requestHeaders = resolved.hlsHeaders + headersUsed),
+            hlsUrl,
+            cacheDir,
+            cacheTargetPath.toPath()
+        )
+    }
     // video first, then audio
     val streams = resolved.streams.sortedByDescending { it.hasVideo }
     val connections = task.maxConnections.takeIf { it > 0 }

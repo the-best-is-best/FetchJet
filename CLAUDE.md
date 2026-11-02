@@ -55,7 +55,7 @@ Version constants:
   `master` has 1.1.0)
 - `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.2.0`,
   `CURRENT_PROJECT_VERSION = 4`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.1.0`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.1.1`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
 
@@ -320,6 +320,46 @@ Bridges:
   notification in Arabic), choice kept after a restart; Chinese on screen (back to LTR). Not
   checked: the other 13 languages on screen, desktop. iOS build (CI "Build unsigned IPA") passed
   2026-11-02 with these changes.
+- 1.2.0 media fixes (2026-11-02, A56):
+    - 9gag.com, kick.com, mixcloud.com detected as Media (`DetectLinkTypeUseCase`, clipboard
+      `videoHosts`); soundcloud.com already was. The extension's `VIDEO_PAGE` list was not changed.
+    - `MediaToolsLock` (`MediaExtractorToolManager.kt`, shared with the view model's tool updates):
+      inspection and media downloads wait while yt-dlp is being updated (a SoundCloud inspect right
+      after a fresh install failed during the update).
+    - A single HLS format (SoundCloud audio, `protocol=m3u8_native`) now goes to FetchJet's own
+      `HlsDownloader` (`DirectMediaResolver` returns `hlsUrl`, `downloadWithOwnEngine` hands it
+      over)
+      instead of yt-dlp's one-segment-at-a-time download. HLS default parallel 6 -> 16 (PC test on
+      SoundCloud segments: 6 = 2.7 MB/s, 16 = 5.0, 24 = 4.0). A56: 62 MB / 510 segments in 29 s (8 s
+      of it resolving); before, minutes. YouTube still tries https formats first.
+    - Pasted / shared text with exactly one link ("Listen to ... on #SoundCloud
+      https://...") keeps
+      only the link (`OnUrlChanged`), only when the text grew by more than one character at once, so
+      typing is not touched. Owner-verified on the A56: SoundCloud Share -> Copy -> Paste leaves
+      only the link.
+    - `/links` skips video pages on purpose (they need the inspector); test media with `/add`.
+- 1.2.0 file split (pure move, same package, `private` -> `internal` where another file needs
+  it; owner's request, 2026-11-02):
+    - `HttpChunkDownloader.kt` 1316 -> 254 (class API only) + `HttpChunkLayout.kt`,
+      `HttpChunkSpeedometer.kt`, `HttpChunkModels.kt`, `HttpChunkWorkers.kt` (download loop, piece
+      workers, single stream), `HttpChunkUrls.kt` (metadata probe, redirects),
+      `HttpChunkHeaders.kt`,
+      `HttpChunkRetry.kt`, `HttpChunkFileNames.kt`, `HttpChunkFiles.kt`.
+    - `MediaStreamExtractorPlatform.jvm.kt` 1530 -> 107 + `MediaInspect.jvm.kt`,
+      `MediaYtDlpDownload.jvm.kt`, `MediaThrottlingProxy.jvm.kt`, `MediaToolPaths.jvm.kt`.
+    - `….android.kt` 1025 -> 114 + `MediaInspect.android.kt`, `MediaDownload.android.kt`.
+    - `….ios.kt` 1270 -> 93 + `MediaInspect.ios.kt`, `MediaYtDlpDownload.ios.kt`,
+      `MediaYtDlpRun.ios.kt` (iOS not compiled on Windows: needs a Mac build).
+    - One real fix in the move: `resolveUrl` (relative redirects) gave `https://a.com/a.com/dir/x`
+      for `Location: x` and broke `//host/path`; now correct.
+    - Desktop + Android build; A56: 64 MB direct download OK after the split.
+    - Follow-ups done: unused iOS `resolveEffectiveMediaUrl` / `cleanEscapedUrl` / user agent
+      removed; size/speed units of yt-dlp progress lines now go through `ytDlpUnitMultiplier` /
+      `ytDlpUnitPrefixMultiplier` (`MediaUnits.kt`, same results as the old copies); Android
+      `contentLengthCache` is a ConcurrentHashMap cleared above 500 entries; extension `VIDEO_PAGE`
+      has 9gag `/gag/` and kick `/videos|clips/` pages, extension version 3.1.1 (not uploaded).
+      A56 after all of it: 64 MB direct, YouTube `jNQXAC9IVRw` (own engine, https streams),
+      SoundCloud (own HLS) all completed.
 - 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on
   `BasicTextField`; String and `TextFieldValue` overloads). Focus = primary border + soft glow
   (`dropShadow`), hover on desktop, optional `label`, `error`, `centered`. Buttons inside a field:

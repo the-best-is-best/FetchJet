@@ -282,7 +282,8 @@
     /(twitter|x)\.com\/[^/]+\/status\//i, /vimeo\.com\/\d+/i, /player\.vimeo\.com\/video\//i,
     /dailymotion\.com\/(video\/|embed\/video\/)/i, /dai\.ly\//i, /reddit\.com\/r\/[^/]+\/comments\//i,
     /twitch\.tv\/(videos\/|[^/]+\/clip\/)/i, /clips\.twitch\.tv\//i, /pinterest\.[a-z.]+\/pin\//i,
-    /snapchat\.com\/(spotlight|add)\//i, /linkedin\.com\/(posts|feed\/update)\//i, /streamable\.com\//i, /rumble\.com\//i, /odysee\.com\//i
+    /snapchat\.com\/(spotlight|add)\//i, /linkedin\.com\/(posts|feed\/update)\//i, /streamable\.com\//i, /rumble\.com\//i, /odysee\.com\//i,
+    /9gag\.com\/gag\//i, /kick\.com\/[^/]+\/(videos|clips)\//i
   ];
   const isVideoPage = (u) => VIDEO_PAGE.some(r => r.test(u));
   // In feeds (Facebook, Instagram, X...) many videos share a page: the post link next to the video.
