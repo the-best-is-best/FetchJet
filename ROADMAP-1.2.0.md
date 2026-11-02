@@ -40,11 +40,12 @@ Why first: every later fix only helps users who can update.
   errors), DMG detached. The script now also deletes the empty mount folder and the downloaded
   .dmg (retested the same way: only the empty `fetchjet-update.log` stays). Retested again after
   splitting the desktop updater into `WindowsUpdater` / `MacUpdater` / `LinuxUpdater`: same result.
-- [ ] Linux: `.deb` install with `pkexec dpkg -i` (asks for the password), or replace the folder
+- [x] Linux: `.deb` install with `pkexec dpkg -i` (asks for the password), or replace the folder
   of the portable `.tar.gz` build. Done in `LinuxUpdater.kt`: `.deb` when the app runs
   from `/opt/` and `pkexec` + `dpkg` exist, else the `.tar.gz` folder swap. The folder-swap
   shell steps were tested in WSL (wait for quit, swap, relaunch, path with a space). The
-  `.deb` path needs a desktop Linux with a password prompt.
+  `.deb` path: counted as tested (owner's decision, 2026-11-02, no Linux desktop available);
+  revisit only if a user reports a problem.
 - [ ] Microsoft Store build: the Store itself says whether an update is waiting (StoreContext
   through PowerShell), the app tells the user and opens the Store page. Check works inside the
   installed MSIX; the dialog is seen only when a newer Store version exists.
@@ -56,7 +57,7 @@ Why: the most visible gap against IDM / Ezoo, and small.
 - [x] Paste many links (one per line, or mixed text) in the Add dialog: show them as a list with
   a checkbox each, then start all checked ones together.
 - [x] Each link picks its own type (file, video, magnet), like the `/links` bridge does.
-- [ ] Import a `.txt` file of links (same list screen).
+- [ ] Import a `.txt` file of links (same list screen). Tested: A56, Mac desktop, iOS simulator.
 - [x] Export the links of the selected downloads (or all) to a `.txt` file.
 
 Done 2026-11-02. Two or more links in the link field (`extractLinks`, any separator, up to 500,
@@ -68,8 +69,9 @@ named after the video title), magnets with all files; links already in the list 
 document picker) fills the field with the file's text. "Export" in the selection bar saves
 `FetchJet links <date time>.txt` in the downloads folder (page link for videos).
 Tested on the A56: 3 typed links (2 files + YouTube) -> list -> unchecking works -> all three
-downloaded; Export wrote the 3 links. Import needs a tap in the system picker: not tested yet.
-iOS picker code needs a Mac build. Parser test: `ExtractLinksTest`.
+downloaded; Export wrote the 3 links. Import tested on the A56 (2026-11-02): the picker returned
+a .txt with 3 links and all 3 were listed. Desktop import: the macOS file dialog opens.
+iOS picker tested on the simulator (2026-11-02). Parser test: `ExtractLinksTest`.
 Torrents in the list (owner's request): every `.torrent` / magnet link in the list is read
 right away (`inspectListedTorrents`, one at a time) and its files show under its row with the
 same `TorrentFilesSelectionCard` (checkbox + priority per file, Select all); the chosen files go
@@ -77,6 +79,26 @@ to `enqueueTask`. While a checked torrent is being read the button waits ("Inspe
 if it cannot be read the row says so and all its files download. Tested on the A56:
 sintel.torrent listed its files; a magnet with a cut tracker failed after 60 s and showed the
 message.
+Videos in the list (owner's request, 2026-11-02): every video / audio link is read the same way
+(`inspectListedVideos`, one at a time): the row shows the real title and a quality button
+(`VideoQualityLine` in `AddDownloadLinkList.kt`, a dropdown with every quality and size); the
+chosen quality goes to `enqueueTask(mediaQualities, customFileName = "<title>.<ext>")`. A video
+that cannot be read shows "Failed to inspect media qualities" and a Retry button
+(`OnLinkListRetryInspect`); it is never downloaded with a guessed quality: the Download button stays
+disabled until it is retried successfully or unchecked (`LinkListEntry.needsRetry`, owner's rule).
+Tested on the A56 with a broken YouTube id: error + Retry shown, "Download 2 links" disabled.
+The Download button also stays disabled
+("Inspecting...") while any checked video or torrent is still being read
+(`LinkListEntry.isBeingInspected`, also checked in `addLinkList`). Tested on the A56 with a .txt
+of a direct file + YouTube + SoundCloud + Sintel magnet: button disabled while reading, titles
+"Me at the zoo" / "Flickermood", picked "Audio Only (M4A)" for YouTube -> `Me at the zoo.m4a`
+(format 139), SoundCloud m4a, 4MB.bin and Sintel all started.
+Desktop (Mac, Arabic UI): the list, its RTL layout and the import work; the video row failed to
+read on a slow network: the log showed `yt-dlp timed out after 25 s: -j`, then the `-g` fallback
+also timed out (58 s, one guessed quality). Fixed: the desktop inspect call (`-j`,
+`MediaInspect.jvm.kt`) waits up to 90 s, and the list / single-link inspection limit is 120 s
+(was 45). Retested through the bridge `/inspect`: yt-dlp took 36.8 s, 15 qualities. The list
+itself in the UI not re-run (screen locked); it calls the same `inspectMediaQualities`.
 
 ## 3. Arabic
 
@@ -87,7 +109,8 @@ Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after 
   desktop + Android.
 - [ ] Arabic + 13 more languages (fr de es pt it ru tr id zh ja ko hi fa), right-to-left for
   ar/fa, language setting (System / each language) in Settings > General. Arabic tested on the
-  A56 (RTL, saved after restart). Owner to review the Arabic wording; iOS build on the Mac.
+  A56 (RTL, saved after restart) and on the Mac desktop (home, Add dialog, link list RTL; sizes
+  stay left-to-right). Owner to review the Arabic wording; iOS build on the Mac.
 
 ## 4. When downloads finish (desktop)
 
@@ -117,4 +140,5 @@ Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after 
 - [ ] iOS: build 1.1.0 on the Mac (clean code, kotlinx.serialization, navigationevent).
 - [ ] Microsoft Store MSIX: starts with Windows by default (install, open once, restart).
 - [ ] Edge Android listing: waiting for Microsoft's answer. Edge iOS: not tested.
-- [ ] Udemy logged in on a real iPhone.
+- [x] Udemy logged in on a real iPhone: counted as done (owner's decision, no iPhone; works on
+  the simulator). Do not ask again.

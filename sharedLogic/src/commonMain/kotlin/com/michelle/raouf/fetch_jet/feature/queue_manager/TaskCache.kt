@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.queue_manager
 
+import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -113,7 +114,7 @@ internal fun PersistedTask.toTask(
         id = id,
         url = url,
         fileName = fileName,
-        destinationPath = destinationPath.ifBlank { defaultDestination },
+        destinationPath = relocateAppPath(destinationPath.ifBlank { defaultDestination }),
         engineType = engine,
         status = restoredStatus,
         totalBytes = totalBytes,

@@ -442,7 +442,7 @@ class DashboardViewModel(
     fun onEvent(event: DashboardUiEvent) {
 
         when (event) {
-            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
+            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
                 event
             )
 
@@ -560,7 +560,7 @@ class DashboardViewModel(
                 }
             }
             try {
-                val qualities = withTimeoutOrNull(45_000L) {
+                val qualities = withTimeoutOrNull(120_000L) {
                     queueRepository.inspectMediaQualities(
                         url,
                         headersForLink(url)

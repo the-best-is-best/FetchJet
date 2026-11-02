@@ -1,10 +1,11 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -427,6 +428,7 @@ internal fun DashboardViewModel.engineForListedLink(url: String): EngineType {
 
 internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
     val selected = state.linkList.filter { it.isSelected }
+    if (selected.any { it.isBeingInspected || it.needsRetry }) return
     if (selected.isEmpty()) {
         _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOneLink) }
         return
@@ -447,9 +449,16 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 skipped++
                 continue
             }
+            val quality = entry.mediaQualities.firstOrNull { it.isSelected }
+            val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
+                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + quality.format.ifBlank { "mp4" }
+            else null
             queueRepository.enqueueTask(
                 url = entry.url,
                 customDestinationPath = destDir,
+                customFileName = videoName,
+                mediaQualities = entry.mediaQualities,
+                requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
                 disableUpload = state.disableTorrentUpload,
                 torrentFiles = entry.torrentFiles,
                 torrentName = entry.torrentName,
@@ -489,6 +498,42 @@ internal fun DashboardViewModel.updateListedTorrentFiles(
         st.copy(linkList = st.linkList.mapIndexed { i, entry ->
             if (i == linkIndex) entry.copy(torrentFiles = change(entry.torrentFiles)) else entry
         })
+    }
+}
+
+/**
+ * Video links in the list: their title and qualities are read one at a time, so each row can show
+ * the real name and offer a quality. A video that cannot be read must be retried (or unchecked)
+ * before the list can start.
+ */
+internal fun DashboardViewModel.inspectListedVideos() {
+    val urls = _uiState.value.linkList
+        .filter { it.engine == EngineType.MEDIA_STREAM && it.mediaQualities.isEmpty() && !it.isInspectingMedia }
+        .map { it.url }
+    if (urls.isEmpty()) return
+    fun update(url: String, change: (LinkListEntry) -> LinkListEntry) = _uiState.update { st ->
+        st.copy(linkList = st.linkList.map { if (it.url == url) change(it) else it })
+    }
+    urls.forEach { url -> update(url) { it.copy(isInspectingMedia = true, mediaInspectFailed = false) } }
+    scope.launch {
+        for (url in urls) {
+            if (_uiState.value.linkList.none { it.url == url }) continue
+            val qualities = try {
+                withTimeoutOrNull(120_000L) {
+                    queueRepository.inspectMediaQualities(url, headersForLink(url))
+                } ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            update(url) {
+                it.copy(
+                    isInspectingMedia = false,
+                    mediaInspectFailed = qualities.isEmpty(),
+                    mediaTitle = qualities.firstOrNull { q -> !q.videoTitle.isNullOrBlank() }?.videoTitle,
+                    mediaQualities = qualities
+                )
+            }
+        }
     }
 }
 

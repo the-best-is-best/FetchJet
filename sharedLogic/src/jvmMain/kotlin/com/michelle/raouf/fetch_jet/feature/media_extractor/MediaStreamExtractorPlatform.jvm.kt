@@ -49,12 +49,16 @@ internal fun runYtDlp(args: List<String>, timeoutSec: Long = 25L): String? {
             }
         }
         readerThread.start()
+        val startedAt = System.currentTimeMillis()
         val finished = process.waitFor(timeoutSec, TimeUnit.SECONDS)
         if (!finished) {
             process.destroyForcibly()
             readerThread.interrupt()
+            lastYtDlpError = "yt-dlp took longer than $timeoutSec s"
+            AppLog.e("yt-dlp timed out after $timeoutSec s: ${args.firstOrNull { it.startsWith("-") && it.length == 2 } ?: ""}")
             return null
         }
+        AppLog.d { "yt-dlp finished in ${System.currentTimeMillis() - startedAt} ms" }
         readerThread.join(2000)
         val output = outputBuilder.toString().trim()
         if (process.exitValue() == 0 && output.isNotBlank()) {

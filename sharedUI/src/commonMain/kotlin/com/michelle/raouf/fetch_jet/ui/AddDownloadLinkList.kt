@@ -1,7 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,12 +14,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,9 +33,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
+import com.michelle.raouf.fetch_jet.utils.formatBytes
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun LinkListSection(
@@ -40,7 +48,9 @@ internal fun LinkListSection(
     onSelectAll: (Boolean) -> Unit,
     onTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     onTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
-    onTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> }
+    onTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
+    onQualitySelected: (Int, Int) -> Unit = { _, _ -> },
+    onRetryInspect: (Int) -> Unit = {}
 ) {
     val selected = links.count { it.isSelected }
     val allSelected = selected == links.size
@@ -72,6 +82,14 @@ internal fun LinkListSection(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 }
                 LinkRow(link) { onToggled(index, it) }
+                if (link.engine == EngineType.MEDIA_STREAM && link.isSelected) {
+                    VideoQualityLine(link, onRetry = { onRetryInspect(index) }) {
+                        onQualitySelected(
+                            index,
+                            it
+                        )
+                    }
+                }
                 if (link.engine == EngineType.BITTORRENT && link.isSelected) {
                     Column(
                         modifier = Modifier.padding(
@@ -149,7 +167,7 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
         Spacer(modifier = Modifier.width(4.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                linkTitle(link.url),
+                link.mediaTitle?.let { decodeUnicodeText(it) } ?: linkTitle(link.url),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -174,6 +192,83 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
         }
     }
 }
+
+@Composable
+private fun VideoQualityLine(link: LinkListEntry, onRetry: () -> Unit, onSelected: (Int) -> Unit) {
+    Box(modifier = Modifier.padding(start = 48.dp, end = 12.dp, bottom = 8.dp)) {
+        when {
+            link.isInspectingMedia -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    LocalizationManager.Strings.inspectingVideoQualities,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            link.mediaQualities.isNotEmpty() -> {
+                var open by remember { mutableStateOf(false) }
+                val current = link.mediaQualities.firstOrNull { it.isSelected }
+                    ?: link.mediaQualities.first()
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    ),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                    modifier = Modifier.clickable { open = true }
+                ) {
+                    Text(
+                        qualityText(current) + "  ▾",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    link.mediaQualities.forEach { q ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    qualityText(q),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (q.index == current.index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                open = false
+                                onSelected(q.index)
+                            }
+                        )
+                    }
+                }
+            }
+
+            link.mediaInspectFailed -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    LocalizationManager.Strings.sysFailedToInspectMediaQualities,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onRetry) {
+                    Text(
+                        LocalizationManager.Strings.retry,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun qualityText(q: MediaQualityEntry): String =
+    q.qualityLabel + if (q.size > 0L) " · " + formatBytes(q.size) else ""
 
 private fun linkTitle(url: String): String {
     if (url.startsWith("magnet:", ignoreCase = true)) {

@@ -43,7 +43,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
@@ -57,6 +56,7 @@ import com.michelle.raouf.fetch_jet.ui.FileOverwriteDialog
 import com.michelle.raouf.fetch_jet.ui.RemoveConfirmationDialog
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
+import com.tbib.kmp_localization.LocalizationManager
 
 /**
  * Opens a finished download with the system's default app. If the file cannot be opened
@@ -650,6 +650,16 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onLinkListTorrentFilePriority = { link, file, p ->
                         viewModel.onEvent(
                             DashboardUiEvent.OnLinkListTorrentFilePriority(link, file, p)
+                        )
+                    },
+                    onLinkListQualitySelected = { link, quality ->
+                        viewModel.onEvent(DashboardUiEvent.OnLinkListQualitySelected(link, quality))
+                    },
+                    onLinkListRetryInspect = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListRetryInspect(
+                                it
+                            )
                         )
                     },
                     onLinkListTorrentSelectAll = { link, on ->

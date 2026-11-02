@@ -92,6 +92,8 @@ fun AddDownloadModalDialog(
     onLinkListTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     onLinkListTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
+    onLinkListQualitySelected: (Int, Int) -> Unit = { _, _ -> },
+    onLinkListRetryInspect: (Int) -> Unit = {},
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
     selectedConnections: Int = 0,
@@ -261,9 +263,9 @@ fun AddDownloadModalDialog(
 
     val isUrlValid = inputUrl.isNotBlank()
     val showsLinkList = linkList.isNotEmpty()
-    val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isInspecting }
+    val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isBeingInspected }
     val isInspectionComplete =
-        if (showsLinkList) linkList.any { it.isSelected } && !listInspecting else when (detectedEngine) {
+        if (showsLinkList) linkList.any { it.isSelected } && !listInspecting && linkList.none { it.isSelected && it.needsRetry } else when (detectedEngine) {
         EngineType.BITTORRENT -> inspectedTorrentFiles.isNotEmpty() && inspectedTorrentFiles.any { it.isSelected } && inspectError == null
         EngineType.MEDIA_STREAM -> inspectMediaError == null && (
                 inspectedPlaylist?.entries?.any { it.isSelected } == true ||
@@ -321,7 +323,9 @@ fun AddDownloadModalDialog(
                         onSelectAll = onLinkListSelectAll,
                         onTorrentFileToggled = onLinkListTorrentFileToggled,
                         onTorrentFilePriority = onLinkListTorrentFilePriority,
-                        onTorrentSelectAll = onLinkListTorrentSelectAll
+                        onTorrentSelectAll = onLinkListTorrentSelectAll,
+                        onQualitySelected = onLinkListQualitySelected,
+                        onRetryInspect = onLinkListRetryInspect
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                 } else {

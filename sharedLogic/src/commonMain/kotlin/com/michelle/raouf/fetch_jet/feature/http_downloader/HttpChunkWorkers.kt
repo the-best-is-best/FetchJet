@@ -230,15 +230,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
 
     // Copy assembled file from cache to final destination
-    val finalOkioPath = finalDestPath.toPath()
-    try {
-        finalOkioPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-    } catch (_: Exception) {
-    }
-    if (FileSystem.SYSTEM.exists(finalOkioPath)) {
-        FileSystem.SYSTEM.delete(finalOkioPath)
-    }
-    FileSystem.SYSTEM.copy(destOkioPath, finalOkioPath)
+    val savedPath = copyIntoPlace(destOkioPath, finalDestPath.toPath())
     destOkioPath.parent?.let { deleteRecursively(it) }
 
     val doneChunks = layout.snapshot().map {
@@ -251,6 +243,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
     updateTaskState(taskId) {
         it.copy(
+            fileName = savedPath.name,
             status = DownloadStatus.COMPLETED,
             downloadedBytes = totalLength,
             totalBytes = totalLength,
@@ -461,19 +454,12 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
             }
 
             // Copy completed file from cache to final destination
-            val finalOkioPath = finalDestPath.toPath()
-            try {
-                finalOkioPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            } catch (_: Exception) {
-            }
-            if (FileSystem.SYSTEM.exists(finalOkioPath)) {
-                FileSystem.SYSTEM.delete(finalOkioPath)
-            }
-            FileSystem.SYSTEM.copy(targetOkioPath, finalOkioPath)
+            val savedPath = copyIntoPlace(targetOkioPath, finalDestPath.toPath())
             targetOkioPath.parent?.let { deleteRecursively(it) }
 
             updateTaskState(taskId) {
                 it.copy(
+                    fileName = savedPath.name,
                     status = DownloadStatus.COMPLETED,
                     downloadedBytes = if (totalLength > 0) totalLength else downloaded,
                     totalBytes = if (totalLength > 0) totalLength else downloaded,

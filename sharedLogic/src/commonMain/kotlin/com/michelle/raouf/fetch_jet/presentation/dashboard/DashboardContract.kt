@@ -62,9 +62,19 @@ data class LinkListEntry(
     val isInspecting: Boolean = false,
     val inspectError: String? = null,
     val torrentName: String? = null,
-    val torrentFiles: List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry> = emptyList(),
-    val webSeeds: List<String> = emptyList()
-)
+    val torrentFiles: List<TorrentFileEntry> = emptyList(),
+    val webSeeds: List<String> = emptyList(),
+    val isInspectingMedia: Boolean = false,
+    val mediaInspectFailed: Boolean = false,
+    val mediaTitle: String? = null,
+    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList()
+) {
+    /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
+    val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
+
+    /** A video whose qualities could not be read: the user retries it or unchecks it. */
+    val needsRetry: Boolean get() = engine == EngineType.MEDIA_STREAM && mediaInspectFailed
+}
 
 data class FileConflictData(
     val fileName: String,
@@ -238,6 +248,11 @@ sealed interface DashboardUiEvent {
 
     data class OnLinkListTorrentSelectAll(val linkIndex: Int, val selected: Boolean) :
         DashboardUiEvent
+
+    data class OnLinkListQualitySelected(val linkIndex: Int, val qualityIndex: Int) :
+        DashboardUiEvent
+
+    data class OnLinkListRetryInspect(val linkIndex: Int) : DashboardUiEvent
 
     data class OnExportLinksClicked(val taskIds: List<String>) : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent

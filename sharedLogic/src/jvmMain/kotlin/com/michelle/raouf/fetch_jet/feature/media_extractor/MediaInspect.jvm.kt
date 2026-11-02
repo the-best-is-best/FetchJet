@@ -119,7 +119,8 @@ actual suspend fun inspectPlatformQualities(
                 "-j",
                 "--no-warnings",
                 "--no-playlist"
-            ) + ytDlpHeaderArgs(requestHeaders, url) + listOf("--", url)
+            ) + ytDlpHeaderArgs(requestHeaders, url) + listOf("--", url),
+            timeoutSec = 90L
         )
             ?: return emptyList()
 

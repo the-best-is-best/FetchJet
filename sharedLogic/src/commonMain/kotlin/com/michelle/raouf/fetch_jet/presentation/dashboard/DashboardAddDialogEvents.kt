@@ -108,6 +108,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             }
             refreshSuggestedFileName()
             if (linkList.any { it.engine == EngineType.BITTORRENT }) inspectListedTorrents()
+            if (linkList.any { it.engine == EngineType.MEDIA_STREAM }) inspectListedVideos()
         }
 
         is DashboardUiEvent.OnDestinationPathChanged -> {
@@ -229,6 +230,15 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { st ->
             st.copy(linkList = st.linkList.map { it.copy(isSelected = event.selected) })
         }
+
+        is DashboardUiEvent.OnLinkListQualitySelected -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+                if (i != event.linkIndex) entry
+                else entry.copy(mediaQualities = entry.mediaQualities.map { it.copy(isSelected = it.index == event.qualityIndex) })
+            })
+        }
+
+        is DashboardUiEvent.OnLinkListRetryInspect -> inspectListedVideos()
 
         is DashboardUiEvent.OnLinkListTorrentFileToggled -> updateListedTorrentFiles(event.linkIndex) { files ->
             files.map { if (it.index == event.fileIndex) it.copy(isSelected = event.selected) else it }

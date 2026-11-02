@@ -276,7 +276,9 @@ Bridges:
   (`DesktopInstall.runShellAfterExit`, `shellQuote`, `firstAsset`). Change one OS = edit its file.
   macOS in-app update verified 2026-11-02 on the Mac (local 1.0.9 in `/Applications` -> 1.1.0,
   swapped and reopened by itself, data kept; the script also deletes the temp mount folder and
-  the .dmg). Linux `.deb` path still needs a real test. Release notes without the API: CI uploads
+  the .dmg). Linux `.deb` path counted as tested (owner's decision, no Linux desktop): do not
+  list it as an open test again; revisit only on a user report. Release notes without the API: CI
+  uploads
   `release-notes.md` with each release (markers included); the web-page fallback reads it, or the
   notes text on the release page (`notesFromReleasePage`) for releases without it. The API
   limit is 60 checks/hour per IP: repeated update tests use it up (then the fallback runs).
@@ -353,6 +355,42 @@ Bridges:
     - One real fix in the move: `resolveUrl` (relative redirects) gave `https://a.com/a.com/dir/x`
       for `Location: x` and broke `//host/path`; now correct.
     - Desktop + Android build; A56: 64 MB direct download OK after the split.
+  - Mac check 2026-11-02 (after the split): iOS builds (Gradle + Xcode) and on the simulator:
+    YouTube 720p WEBM merged by ffmpeg (VP9 + Opus, 3:33), SoundCloud `forss/flickermood`
+    (full 3:33 m4a, ~8 s), 9gag, YouTube 240p. The SoundCloud log line `ERROR: [soundcloud] ...
+      Requested format is not available` is expected and harmless: `DirectMediaResolver.resolve`
+    gets an HLS format, then asks for a plain https one (`bestaudio[protocol^=http]`); SoundCloud
+    has none, so yt-dlp says so and the HLS link goes to FetchJet's own `HlsDownloader`
+    (common code, so the same line can appear on every platform).
+  - iOS gives the app a new data container on reinstall, and the saved download folder
+    (`destinationPath` in settings.properties and in each task) kept the old absolute path: on
+    the simulator files were written into the old container (a real iPhone would refuse).
+    `relocateAppPath` (`core/filesystem/AppContainerPath.kt`, expect/actual: iOS rebases
+    `.../Containers/Data/Application/<UUID>` onto `NSHomeDirectory()`, JVM/Android return the
+    path) is applied when settings and tasks are loaded. Verified on the simulator: after two
+    reinstalls the Add dialog shows the current container and the file lands there. Counted as
+    tested (owner's decision): no real iPhone; revisit only if a user reports a save problem.
+  - Direct downloads failed with "failed to delete <file>" when a file with the same name was
+    made by an earlier install of the app (Android scoped storage: owned by the old uid).
+    `copyIntoPlace` (`HttpChunkFiles.kt`) now saves as `name (1).ext` then, like the media
+    path's `moveIntoPlace`, and the task's `fileName` follows. Verified on the A56: with the old
+    `1MB.bin` / `2MB.bin` in Download, both completed as `1MB (1).bin` / `2MB (1).bin`.
+  - Android import `.txt` verified on the A56: the system picker returned the file and its 3
+    links (2 files + 1 YouTube) were listed and started. Desktop import (macOS file dialog) also
+    works (owner picked the file). iOS import verified on the simulator: the document picker
+    shows only .txt files as selectable; a file in the app's Documents (visible in Files under
+    FetchJet) filled the list with its 2 links. The automation tools may not drive the macOS Open
+    panel.
+  - Link list videos: title + quality picker per row, Download disabled while any checked video
+    or torrent is read and while a checked video failed (Retry button, never a guessed best).
+    See ROADMAP-1.2.0.md item 2. A56-tested. Desktop inspect timeouts raised (slow network:
+    yt-dlp `-j` took 25-37 s and was killed at 25 s): `-j` waits 90 s, list / single-link limit
+    120 s. `runYtDlp` now logs `yt-dlp timed out after N s: -j` and (verbose) the run time.
+    Verified through the bridge `/inspect` (36.8 s, 15 qualities).
+  - Arabic on the Mac desktop: RTL home, Add dialog and link list OK. Test trick: write
+    `language=ar` into `~/.fetch_jet/settings.properties` and restart (remove it after).
+    `gradlew :desktopApp:run` rebuilds the jars under a running dev app: quit the old window
+    first, or clicks hit `ClassNotFoundException` (seen with `DashboardUiEvent$OnTabSelected`).
     - Follow-ups done: unused iOS `resolveEffectiveMediaUrl` / `cleanEscapedUrl` / user agent
       removed; size/speed units of yt-dlp progress lines now go through `ytDlpUnitMultiplier` /
       `ytDlpUnitPrefixMultiplier` (`MediaUnits.kt`, same results as the old copies); Android
@@ -493,7 +531,8 @@ All done and pushed (`a751617` + the Udemy preview fix):
 
 Udemy works on the simulator (owner-tested 2026-11-01). Safari extension (appex bundle id
 `<app>.SafariExtension`) sideloaded and working on the owner's real iPhone (2026-11-01). Video
-download and torrent also work there. Not confirmed on a real iPhone yet: Udemy logged in. No App
+download and torrent also work there. Udemy logged in on a real iPhone: counted as done (owner's
+decision, do not ask again). No App
 Store release is
 planned (owner's decision: a YouTube/media downloader is rejected there), iOS ships sideloaded only.
 

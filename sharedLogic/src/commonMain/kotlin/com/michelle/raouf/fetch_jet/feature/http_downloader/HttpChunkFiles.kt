@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
+import com.michelle.raouf.fetch_jet.feature.media_extractor.freePathNextTo
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -42,6 +43,23 @@ internal fun HttpChunkDownloader.cleanupTempFiles(task: DownloadTask) {
             }
         }
     }
+}
+
+/**
+ * Copies the finished file to the user's folder. A file with the same name that cannot be
+ * deleted (Android: made by an earlier install of the app) keeps its place and the download is
+ * saved as `name (1).ext`. Returns the path it was saved to.
+ */
+internal fun copyIntoPlace(from: okio.Path, target: okio.Path): okio.Path {
+    try {
+        target.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+    } catch (_: Exception) {
+    }
+    val to = if (FileSystem.SYSTEM.exists(target) &&
+        runCatching { FileSystem.SYSTEM.delete(target) }.isFailure
+    ) freePathNextTo(target) else target
+    FileSystem.SYSTEM.copy(from, to)
+    return to
 }
 
 internal fun deleteRecursively(path: okio.Path) {

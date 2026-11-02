@@ -1,6 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -40,7 +41,8 @@ class AppSettingsRepository(
                     val key = trimmed.substringBefore("=").trim()
                     val value = trimmed.substringAfter("=").trim()
                     when (key) {
-                        "destinationPath" -> if (value.isNotBlank()) destination = value
+                        "destinationPath" -> if (value.isNotBlank()) destination =
+                            relocateAppPath(value)
                         "disableTorrentUpload" -> disableUpload =
                             value.toBooleanStrictOrNull() ?: false
 
