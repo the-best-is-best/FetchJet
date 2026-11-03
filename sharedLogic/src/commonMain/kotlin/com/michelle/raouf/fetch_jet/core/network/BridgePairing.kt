@@ -121,15 +121,12 @@ object BridgePairing {
 
     private fun save(plainToken: String) {
         try {
+            val text = json.encodeToString(
+                BridgeFile.serializer(),
+                BridgeFile(Secrets.protect(plainToken), legacyOrigins.value.sorted())
+            )
             file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) {
-                writeUtf8(
-                    json.encodeToString(
-                        BridgeFile.serializer(),
-                        BridgeFile(Secrets.protect(plainToken), legacyOrigins.value.sorted())
-                    )
-                )
-            }
+            FileSystem.SYSTEM.write(file) { writeUtf8(text) }
         } catch (_: Throwable) {
         }
     }

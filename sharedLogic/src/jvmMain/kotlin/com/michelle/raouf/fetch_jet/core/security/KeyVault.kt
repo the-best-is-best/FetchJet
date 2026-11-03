@@ -26,10 +26,12 @@ internal object KeyVaultTools {
     fun run(vararg command: String, input: String = ""): Result {
         val p = ProcessBuilder(*command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
         p.outputStream.use { it.write(input.toByteArray()) }
-        val out = p.inputStream.bufferedReader().readText()
+        // Wait before reading: readText() blocks until the tool exits, so a keyring that shows
+        // an unlock / new-password prompt nobody answers would hang the app (and the bridge).
         if (!p.waitFor(15, TimeUnit.SECONDS)) {
             p.destroyForcibly(); error("${command.first()} timed out")
         }
+        val out = p.inputStream.bufferedReader().readText()
         return Result(p.exitValue(), out.trim())
     }
 

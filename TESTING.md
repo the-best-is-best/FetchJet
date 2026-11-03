@@ -49,8 +49,8 @@ curl -s -X POST $B/pair -H 'X-FetchJet: 1' -H 'X-FetchJet-Pairing: 1' -H 'Origin
   `legacyOrigins`, later links pass.
 - Clean up: delete `bridge.json` if a test printed the token (the app makes a new one).
 
-Status: Mac curl + Firefox, A56 curl, Windows curl + Edge (unpacked, owner). Open: Chrome, old store
-extension.
+Status: Mac curl + Firefox, A56 curl, Windows curl + Edge (unpacked, owner), Linux (WSL) curl.
+Open: Chrome, old store extension, a browser on Linux.
 
 ## 2. Saved passwords encrypted (`network.json`)
 
@@ -74,8 +74,16 @@ Key per platform: macOS Keychain item `FetchJet` / `secrets-key`; Windows DPAPI 
 alias `fetchjet_secrets`; iOS Keychain, or `Library/Application Support/fetchjet-secrets.key` when
 the app has no signing identity (unsigned dev build: the Keychain answers -34018).
 
-Status: Mac, iOS simulator (key file path), A56, Windows (DPAPI). Open: a real iPhone (Keychain
-path).
+Linux: test both key paths. With `secret-tool` and an unlocked keyring the app writes
+`secrets.where` (no `secrets.key`); without a working keyring (`secret-tool` missing, or a
+Secret Service with no unlocked login keyring: `store` then waits for a password prompt, the app
+gives up after 15 s) it writes `secrets.key` mode 600. WSL: `printf pw | gnome-keyring-daemon
+--replace --unlock --components=secrets --daemonize` makes an unlocked keyring. A plain
+`network.json` is encrypted the first time the network settings are used (a download is
+enough), not always right at start.
+
+Status: Mac, iOS simulator (key file path), A56, Windows (DPAPI), Linux (WSL, keyring and key
+file). Open: a real iPhone (Keychain path).
 
 ## 3. Task list encrypted (`tasks_cache.json`)
 
@@ -88,7 +96,7 @@ Restart the app: every task is still listed and resumes (its link was decrypted)
 from before encryption: after the first start both `tasks_cache.json` and `.bak` are encrypted
 (`grep -c '"url":"http' tasks_cache.json.bak` -> 0).
 
-Status: Mac, iOS simulator, Windows (also the `.bak` of a plain list).
+Status: Mac, iOS simulator, Windows (also the `.bak` of a plain list), Linux.
 
 ## 4. Cookies and redirects
 
@@ -103,7 +111,7 @@ cat /tmp/redirect.log
 Expected: `host=localhost:18300 path=/c1.bin cookie=None` (another site: no cookie, no login)
 and `path=/k1.bin cookie=sess=SECRET2` (same site: kept).
 
-Status: Mac, Windows.
+Status: Mac, Windows, Linux.
 
 ## 5. Logs hide secrets
 
@@ -114,8 +122,8 @@ Status: Mac, Windows.
 - iOS: `[yt-dlp] run:` lines in the console show `--proxy http://***@...` and `Cookie:***`.
 
 Status: the redaction code checked on the Mac with sample lines; A56 log clean (non-verbose);
-Windows verbose: 0 hits (the direct engine logs no link; a media `/add` with a secret query,
-cookie and referer logs `?sig=…` and `headers=[Cookie, Referer]`).
+Windows and Linux verbose: 0 hits (the direct engine logs no link; a media `/add` with a secret
+query, cookie and referer logs `?sig=…` and `headers=[Cookie, Referer]`).
 
 ## 6. yt-dlp command line (desktop)
 
@@ -129,7 +137,9 @@ The config file is mode 600 in the app's temp folder and is gone when yt-dlp exi
 Windows: `Get-CimInstance Win32_Process -Filter "Name='yt-dlp.exe'" | Select CommandLine` while
 an inspect runs (poll every 150 ms); the config file is in `%TEMP%\FetchJetDownloads`.
 
-Status: Mac, Windows (cookie and proxy login).
+Linux: `tr '\0' ' ' < /proc/<pid>/cmdline` of `yt-dlp_linux` while it runs.
+
+Status: Mac, Windows (cookie and proxy login), Linux (cookie).
 
 ## 7. Update signing
 
@@ -158,7 +168,14 @@ A SoundCloud / YouTube inspect is then a few seconds. The first run after unpack
 Mac (macOS checks the new files once). Windows:
 `%USERPROFILE%\.fetch_jet\tools\yt-dlp-dir\yt-dlp.exe`.
 
-Status: Mac, Windows (`--version` 0.46 s, one-file 1.8 s).
+Status: Mac, Windows (`--version` 0.46 s, one-file 1.8 s), Linux (WSL, fresh install: `--version`
+0.3-0.4 s).
+
+WSL notes: run the app from a copy of the repo inside WSL (rsync without `build/` and
+`.gradle/`, then `sed -i 's/\r$//' gradlew`), so the Linux build does not mix with the Windows
+build folders. If the app's window stays empty in WSLg, `wsl --shutdown` and start it again
+(a WSLg problem, not the app's). `pkill -f compose.application` typed inside `bash -c '...'`
+kills that shell too: put it in a script file.
 
 ## 9. Other checks
 

@@ -223,6 +223,26 @@ Done (not committed):
   yt-dlp command line (`Win32_Process`) shows only `--config-locations`, no cookie or proxy
   password, the `.conf` is gone after exit.
 
+- [x] Linux, TESTING.md 1-6 (2026-11-03, WSL2 Ubuntu 26.04 + WSLg, dev build): pairing (401 on
+  every endpoint without / with a wrong token, web origin 403, Allow -> token, `"paired":true`);
+  both key paths: `secret-tool` + an unlocked login keyring (`secrets.where` = secret-service,
+  no `secrets.key`, key in the keyring) and no working keyring (`secrets.key` mode 600); in both
+  the saved site login answered `auth-ok` before and after a restart; task links encrypted
+  (`.bak` too), tasks kept after a restart; cookie / login dropped on a redirect to another
+  site; `app.log` clean; yt-dlp command line (`/proc/<pid>/cmdline`) shows only
+  `--config-locations`, `/tmp/FetchJetDownloads` is 700 and the `.conf` is gone after exit.
+- [x] Fixed on Linux 2026-11-03: `KeyVaultTools.run` read the tool's output before
+  `waitFor(15 s)`, and the read blocks until the tool exits, so the timeout never applied: with
+  a Secret Service but no unlocked login keyring, `secret-tool store` waits for a
+  "new keyring password" prompt and the app hung (the first bridge call never answered). Now it
+  waits first, then reads; after 15 s the key goes to the key file. Same code runs
+  `/usr/bin/security` (macOS) and PowerShell (Windows). Also `BridgePairing.save` opened
+  `bridge.json` (emptying it) before encrypting the token: a hang or a kill in between left an
+  empty file and a new token (every extension had to pair again). Now the text is built first.
+  Note: on desktop a plain `network.json` is encrypted the first time the network settings are
+  used (Settings, a download, a tool check), not always right at start (only matters for files
+  written by hand: `network.json` is new in 1.2.0 and always written encrypted).
+
 Open, owner's decision:
 
 - [x] Update signing with the owner's own key (free; no Apple / Windows certificate, owner has
@@ -285,7 +305,9 @@ Open, owner's decision:
   `_internal`) by itself ~10 s after start, the one-file `yt-dlp.exe` deleted. `--version`
   0.46 s (one-file 1.8 s; Windows does not have the Mac's 17-36 s), SoundCloud `-j` 1.8 s (one-file
   3.0 s); app inspect of a track 2.3 s, a set 11.5 s.
-- [ ] Linux not run yet.
+- [x] Linux verified 2026-11-03 (WSL2 Ubuntu 26.04, WSLg, x86_64): a fresh install put
+  `tools/yt-dlp-dir` (`yt-dlp_linux` + `_internal`) in place ~5 s after start; `--version`
+  0.3-0.4 s, SoundCloud `-j` 2.2 s, app inspect 2.8 s.
 
 ## 7. Clean-up and older backlog
 
