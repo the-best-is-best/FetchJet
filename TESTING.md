@@ -49,7 +49,8 @@ curl -s -X POST $B/pair -H 'X-FetchJet: 1' -H 'X-FetchJet-Pairing: 1' -H 'Origin
   `legacyOrigins`, later links pass.
 - Clean up: delete `bridge.json` if a test printed the token (the app makes a new one).
 
-Status: Mac curl + Firefox, A56 curl. Open: Edge / Chrome, old store extension, Windows.
+Status: Mac curl + Firefox, A56 curl, Windows curl + Edge (unpacked, owner). Open: Chrome, old store
+extension.
 
 ## 2. Saved passwords encrypted (`network.json`)
 
@@ -73,7 +74,8 @@ Key per platform: macOS Keychain item `FetchJet` / `secrets-key`; Windows DPAPI 
 alias `fetchjet_secrets`; iOS Keychain, or `Library/Application Support/fetchjet-secrets.key` when
 the app has no signing identity (unsigned dev build: the Keychain answers -34018).
 
-Status: Mac, iOS simulator (key file path), A56. Open: Windows, a real iPhone (Keychain path).
+Status: Mac, iOS simulator (key file path), A56, Windows (DPAPI). Open: a real iPhone (Keychain
+path).
 
 ## 3. Task list encrypted (`tasks_cache.json`)
 
@@ -82,9 +84,11 @@ grep -o '"url":"[^"]\{0,14\}' ~/.fetch_jet/tasks_cache.json | sort -u      # fje
 grep -o '"hdrCookie":"[^"]\{0,14\}' ~/.fetch_jet/tasks_cache.json | sort -u
 ```
 
-Restart the app: every task is still listed and resumes (its link was decrypted).
+Restart the app: every task is still listed and resumes (its link was decrypted). A task list
+from before encryption: after the first start both `tasks_cache.json` and `.bak` are encrypted
+(`grep -c '"url":"http' tasks_cache.json.bak` -> 0).
 
-Status: Mac, iOS simulator.
+Status: Mac, iOS simulator, Windows (also the `.bak` of a plain list).
 
 ## 4. Cookies and redirects
 
@@ -99,7 +103,7 @@ cat /tmp/redirect.log
 Expected: `host=localhost:18300 path=/c1.bin cookie=None` (another site: no cookie, no login)
 and `path=/k1.bin cookie=sess=SECRET2` (same site: kept).
 
-Status: Mac.
+Status: Mac, Windows.
 
 ## 5. Logs hide secrets
 
@@ -109,7 +113,9 @@ Status: Mac.
   `sess=FJSECRETCOOKIE` (verbose build), then `grep -c FJSECRET ~/.fetch_jet/logs/app.log` -> 0.
 - iOS: `[yt-dlp] run:` lines in the console show `--proxy http://***@...` and `Cookie:***`.
 
-Status: the redaction code checked on the Mac with sample lines; A56 log clean (non-verbose).
+Status: the redaction code checked on the Mac with sample lines; A56 log clean (non-verbose);
+Windows verbose: 0 hits (the direct engine logs no link; a media `/add` with a secret query,
+cookie and referer logs `?sig=…` and `headers=[Cookie, Referer]`).
 
 ## 6. yt-dlp command line (desktop)
 
@@ -120,8 +126,10 @@ ps -axww -o args | grep '[y]t-dlp'     # must show --config-locations <file>, no
 ```
 
 The config file is mode 600 in the app's temp folder and is gone when yt-dlp exits.
+Windows: `Get-CimInstance Win32_Process -Filter "Name='yt-dlp.exe'" | Select CommandLine` while
+an inspect runs (poll every 150 ms); the config file is in `%TEMP%\FetchJetDownloads`.
 
-Status: Mac.
+Status: Mac, Windows (cookie and proxy login).
 
 ## 7. Update signing
 
@@ -150,7 +158,7 @@ A SoundCloud / YouTube inspect is then a few seconds. The first run after unpack
 Mac (macOS checks the new files once). Windows:
 `%USERPROFILE%\.fetch_jet\tools\yt-dlp-dir\yt-dlp.exe`.
 
-Status: Mac. Open: Windows.
+Status: Mac, Windows (`--version` 0.46 s, one-file 1.8 s).
 
 ## 9. Other checks
 

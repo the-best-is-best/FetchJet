@@ -207,7 +207,21 @@ Done (not committed):
 - [x] Android Keystore on the A56 (2026-11-03, debug build): a plain `network.json` was
   encrypted at start, no decrypt error after restarts, and the saved site login answered
   `auth-ok` (127.0.0.1 through `adb reverse`).
-- [ ] Windows DPAPI not run yet: test that a saved proxy password still works after a restart.
+- [x] Windows DPAPI (2026-11-03, dev build): a plain `network.json` was encrypted at start
+  (`fjenc1:`), `.fetch_jet\secrets.key` is a DPAPI blob, the saved site login answered
+  `auth-ok` before and after a restart; the owner's real saved login was encrypted too.
+- [x] Fixed on Windows 2026-11-03: `tasks_cache.json.bak` kept the plain links and cookies of a
+  task list from before encryption (the first save copied the old file as the backup).
+  `QueueManagerRepository` now writes the new, encrypted list as the backup when the old file
+  is plain. Checked: a plain 10-task list -> main file and `.bak` both encrypted, 10 tasks.
+- [x] Windows, the rest of TESTING.md (2026-11-03): bridge pairing with curl (no / wrong token
+  401 on every endpoint, web origin 403, Allow -> 64-hex token, encrypted in `bridge.json`,
+  `/config` `"paired":true` with the token); owner-tested in Edge with the unpacked
+  `build/extension/chrome` (links from SoundCloud reached the app after Allow); task links
+  encrypted after a restart; cookie and login dropped on a redirect to another site, kept on the
+  same site; `app.log` has no cookie / query / token (`sig=…`, `headers=[Cookie, Referer]`);
+  yt-dlp command line (`Win32_Process`) shows only `--config-locations`, no cookie or proxy
+  password, the `.conf` is gone after exit.
 
 Open, owner's decision:
 
@@ -267,7 +281,11 @@ Open, owner's decision:
   copy deleted); `--version` 0.3-0.5 s (was 17-36 s); owner: SoundCloud inspect fast now. The
   first run of freshly unpacked files takes ~16 s (macOS checks them once), so the install's
   start check waits up to 180 s (with 30 s it failed while the app was starting).
-- [ ] Windows and Linux not run yet.
+- [x] Windows verified 2026-11-03: the app switched to `tools\yt-dlp-dir` (`yt-dlp.exe` +
+  `_internal`) by itself ~10 s after start, the one-file `yt-dlp.exe` deleted. `--version`
+  0.46 s (one-file 1.8 s; Windows does not have the Mac's 17-36 s), SoundCloud `-j` 1.8 s (one-file
+  3.0 s); app inspect of a track 2.3 s, a set 11.5 s.
+- [ ] Linux not run yet.
 
 ## 7. Clean-up and older backlog
 

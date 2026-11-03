@@ -890,7 +890,14 @@ class QueueManagerRepository(
                         // The file being replaced was readable (we loaded it): keep it as the backup.
                         if (FileSystem.SYSTEM.exists(persistencePath)) {
                             try {
-                                FileSystem.SYSTEM.copy(persistencePath, backupPath)
+                                // A file from before encryption holds plain links and cookies:
+                                // the backup gets the new (encrypted) list instead.
+                                val old = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+                                if (old.contains("\"url\":\"http")) {
+                                    FileSystem.SYSTEM.write(backupPath) { writeUtf8(jsonArray) }
+                                } else {
+                                    FileSystem.SYSTEM.copy(persistencePath, backupPath)
+                                }
                             } catch (_: Exception) {
                             }
                         }
