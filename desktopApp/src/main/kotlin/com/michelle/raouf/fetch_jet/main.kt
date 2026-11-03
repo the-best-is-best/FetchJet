@@ -15,6 +15,7 @@ import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.rememberWindowState
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.start
+import com.michelle.raouf.fetch_jet.core.network.BridgePairing
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
@@ -102,6 +103,7 @@ fun isAnotherInstanceRunning(): Boolean {
                 val c2 = URI("http://127.0.0.1:$BRIDGE_PORT/show").toURL().openConnection() as HttpURLConnection
                 c2.connectTimeout = 500; c2.readTimeout = 500
                 c2.setRequestProperty("X-FetchJet", "1")
+                c2.setRequestProperty(BridgePairing.TOKEN_HEADER, BridgePairing.token)
                 c2.responseCode
             } catch (_: Exception) {}
         }
@@ -120,6 +122,7 @@ fun trySendToRunningInstance(url: String): Boolean {
         conn.readTimeout = 800
         conn.requestMethod = "GET"
         conn.setRequestProperty("X-FetchJet", "1")
+        conn.setRequestProperty(BridgePairing.TOKEN_HEADER, BridgePairing.token)
         conn.responseCode in 200..299
     } catch (_: Exception) {
         false
@@ -205,6 +208,31 @@ private fun isTrustedRequest(exchange: HttpExchange): Boolean {
             origin.startsWith("extension://")
 }
 
+private const val BRIDGE_ALLOWED_HEADERS =
+    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing"
+
+/**
+ * The app's token ([BridgePairing]), or an old extension the user allowed. Otherwise 401: an
+ * extension from before 1.2.0 (it does not send `X-FetchJet-Pairing`) makes the app ask once.
+ */
+private fun HttpExchange.isAuthorized(onShowAndFocus: () -> Unit): Boolean {
+    if (BridgePairing.isPaired(requestHeaders.getFirst(BridgePairing.TOKEN_HEADER))) return true
+    val origin = requestHeaders.getFirst("Origin")
+    if (BridgePairing.isLegacyAllowed(origin)) return true
+    if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
+        requestHeaders.getFirst("X-FetchJet-Pairing").isNullOrBlank()
+    ) {
+        Thread(
+            { kotlinx.coroutines.runBlocking { BridgePairing.ask(origin, legacy = true) } },
+            "bridge-pair"
+        )
+            .apply { isDaemon = true }.start()
+        SwingUtilities.invokeLater { onShowAndFocus() }
+    }
+    reply(401, "pairing required")
+    return false
+}
+
 private fun HttpExchange.reply(
     status: Int,
     body: String,
@@ -244,7 +272,16 @@ private fun installCrashLog() {
         logDir.mkdirs()
         val logFile = File(logDir, "app.log")
         if (logFile.length() > 2L * 1024 * 1024) logFile.delete()
-        val out = PrintStream(FileOutputStream(logFile, true), true, "UTF-8")
+        // Cookies, logins and link tokens never reach the file.
+        val out = PrintStream(
+            com.michelle.raouf.fetch_jet.core.log.RedactingOutputStream(
+                FileOutputStream(
+                    logFile,
+                    true
+                )
+            ),
+            true, "UTF-8"
+        )
         System.setOut(out)
         System.setErr(out)
         println("---- FetchJet started ${java.time.LocalDateTime.now()} (java ${System.getProperty("java.version")}) ----")
@@ -281,7 +318,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                    BRIDGE_ALLOWED_HEADERS
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -291,6 +328,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             if (exchange.requestHeaders.getFirst("X-FetchJet").isNullOrBlank()) {
                 exchange.reply(403, "missing X-FetchJet header"); return@createContext
             }
+            if (!exchange.isAuthorized(onShowAndFocus)) return@createContext
             try {
                 val query = exchange.requestURI.query ?: ""
                 var targetUrl = ""
@@ -324,7 +362,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                     hdr("X-FetchJet-Referer").takeIf { it.isNotBlank() }?.let { put("Referer", it) }
                 }
                 com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
-                    headers["Referer"] ?: targetUrl, headers
+                    targetUrl, headers
                 )
                 val qualities = inspectCached(targetUrl, headers)
 
@@ -361,7 +399,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                    BRIDGE_ALLOWED_HEADERS
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -371,8 +409,45 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 """{"app":"FetchJet","version":"${jsonEscape(System.getProperty("jpackage.app-version") ?: "dev")}","bridge":2,""" +
                         """"mediaExtractor":${features.mediaExtractor},"torrent":${features.torrent},""" +
                         """"language":"${jsonEscape(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
-                        """"endpoints":["/ping","/config","/add","/links","/download","/inspect"]}"""
+                        """"pairing":true,"paired":${
+                            BridgePairing.isPaired(
+                                exchange.requestHeaders.getFirst(
+                                    BridgePairing.TOKEN_HEADER
+                                )
+                            )
+                        },""" +
+                        """"endpoints":["/ping","/config","/pair","/add","/links","/download","/inspect"]}"""
             exchange.reply(200, json, "application/json; charset=UTF-8")
+        }
+
+        /**
+         * POST /pair from the FetchJet extension: the app asks the user ("Allow this browser
+         * extension?") and answers {"token": ...}; the extension sends it with every request.
+         * The request waits for the answer (up to 2 minutes).
+         */
+        server.createContext("/pair") { exchange ->
+            if (!isTrustedRequest(exchange)) {
+                exchange.reply(403, "forbidden"); return@createContext
+            }
+            if (exchange.requestMethod.equals("OPTIONS", ignoreCase = true)) {
+                exchange.responseHeaders.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+                exchange.responseHeaders.add("Access-Control-Allow-Headers", BRIDGE_ALLOWED_HEADERS)
+                exchange.reply(204, "")
+                return@createContext
+            }
+            val origin = exchange.requestHeaders.getFirst("Origin")
+            if (!exchange.requestMethod.equals("POST", ignoreCase = true) ||
+                exchange.requestHeaders.getFirst("X-FetchJet").isNullOrBlank() ||
+                origin == null || !BridgePairing.isExtensionOrigin(origin)
+            ) {
+                exchange.reply(403, "forbidden"); return@createContext
+            }
+            SwingUtilities.invokeLater { onShowAndFocus() }
+            val allowed =
+                kotlinx.coroutines.runBlocking { BridgePairing.ask(origin, legacy = false) }
+            if (allowed) exchange.reply(
+                200, """{"token":"${BridgePairing.token}"}""", "application/json; charset=UTF-8"
+            ) else exchange.reply(403, "refused")
         }
 
         /**
@@ -432,7 +507,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 responseHeaders.add("Access-Control-Allow-Methods", "POST, OPTIONS")
                 responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                    BRIDGE_ALLOWED_HEADERS
                 )
                 reply(204, "")
                 return true
@@ -443,7 +518,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             if (requestHeaders.getFirst("X-FetchJet").isNullOrBlank()) {
                 reply(403, "missing X-FetchJet header"); return true
             }
-            return false
+            return !isAuthorized(onShowAndFocus)
         }
 
         server.createContext("/add") { exchange ->
@@ -514,6 +589,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
         server.createContext("/show") { exchange ->
             if (!isTrustedRequest(exchange)) { exchange.reply(403, "forbidden"); return@createContext }
             if (exchange.requestHeaders.getFirst("X-FetchJet").isNullOrBlank()) { exchange.reply(403, "missing X-FetchJet header"); return@createContext }
+            if (!exchange.isAuthorized(onShowAndFocus)) return@createContext
             SwingUtilities.invokeLater { onShowAndFocus() }
             exchange.reply(200, "OK")
         }
@@ -526,7 +602,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 exchange.responseHeaders.add("Access-Control-Allow-Methods", "GET, OPTIONS")
                 exchange.responseHeaders.add(
                     "Access-Control-Allow-Headers",
-                    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                    BRIDGE_ALLOWED_HEADERS
                 )
                 exchange.reply(204, "")
                 return@createContext
@@ -534,6 +610,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             if (exchange.requestHeaders.getFirst("X-FetchJet").isNullOrBlank()) {
                 exchange.reply(403, "missing X-FetchJet header"); return@createContext
             }
+            if (!exchange.isAuthorized(onShowAndFocus)) return@createContext
             val query = exchange.requestURI.query ?: ""
             var url = ""
             var cookie = ""
@@ -575,7 +652,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
 
 fun main(rawArgs: Array<String>) {
     installCrashLog()
-    com.tbib.kmp_localization.LocalizationManager.start()
+    LocalizationManager.start()
     // Baked in at build time (-Dfetchjet.verboseLogs) or switched on for one run with the
     // environment variable, e.g. to collect a bug report from a release build.
     com.michelle.raouf.fetch_jet.core.log.AppLog.verbose =
@@ -583,6 +660,18 @@ fun main(rawArgs: Array<String>) {
             ?: System.getProperty("fetchjet.verboseLogs")?.trim()?.equals("true", ignoreCase = true)
                     ?: false
     println("Verbose logs: ${com.michelle.raouf.fetch_jet.core.log.AppLog.verbose}")
+    // A run from Gradle / Android Studio is a plain `java` process: macOS put the Java icon in
+    // the Dock. The installed app has its own icon (launcher.icns); this one is for those runs.
+    try {
+        if (java.awt.Taskbar.isTaskbarSupported() &&
+            java.awt.Taskbar.getTaskbar().isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)
+        ) {
+            Thread.currentThread().contextClassLoader.getResource("launcher.png")?.let {
+                java.awt.Taskbar.getTaskbar().iconImage = javax.imageio.ImageIO.read(it)
+            }
+        }
+    } catch (_: Throwable) {
+    }
     // First run on Windows: tell Edge about the FetchJet extension (like IDM); Edge then
     // asks the user to turn it on.
     Thread(

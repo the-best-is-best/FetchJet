@@ -121,6 +121,8 @@
 
   document.addEventListener("click", (event) => {
     if (!settings.enabled || !settings.captureLinks) return;
+    // Only the user's own clicks: a page script's a.click() must not send links with cookies.
+    if (!event.isTrusted) return;
     if (event.button !== 0) return;
     let target = event.target;
     while (target && target.tagName !== "A") target = target.parentElement;

@@ -127,7 +127,7 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest =
             { request -> handleExternalRequest(request) }
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =
-            { requests -> handleExternalBatch(requests) }
+            { requests, review -> handleExternalBatch(requests, review) }
 
     }
 
@@ -161,9 +161,11 @@ class DashboardViewModel(
 
     /** One link from the browser: open the Add dialog pre-filled, remember its headers. */
     fun handleExternalRequest(request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
-        // Keep the site's login for links of the same site added by hand later.
+        // Keep the site's login for links of the same site added by hand later. The cookie is
+        // the link host's (extension: cookieHeaderFor(url)), so it is filed under the link, not
+        // the page: a page on another site must never get it.
         com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
-            request.referer.ifBlank { request.url }, request.toRequestHeaders()
+            request.url, request.toRequestHeaders()
         )
         if (request.openClip && request.mediaQualities.isNotEmpty()) {
             openClipDialog(request)
@@ -317,9 +319,13 @@ class DashboardViewModel(
     /**
      * "Download all links" from the browser: every link is queued straight away as a plain
      * HTTP download into the default folder (a dialog per link would be unusable). Links the
-     * app already has are skipped.
+     * app already has are skipped. [review]: nothing starts, every link opens in the Add
+     * dialog's list (links a web page could have sent).
      */
-    fun handleExternalBatch(requests: List<com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest>) {
+    fun handleExternalBatch(
+        requests: List<com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest>,
+        review: Boolean = false
+    ) {
         scope.launch {
             val existing = queueRepository.allTasksFlow.value
             var added = 0
@@ -340,7 +346,7 @@ class DashboardViewModel(
                     skipped++; continue
                 }
                 val engine = engineForDirectFile(req.url)
-                if (engine == EngineType.MEDIA_STREAM) {
+                if (review || engine == EngineType.MEDIA_STREAM) {
                     mediaPages += req; continue
                 } // a video page: needs the inspector (the Add dialog's link list below)
                 val name = req.fileName.ifBlank { null }
@@ -360,7 +366,7 @@ class DashboardViewModel(
             if (mediaPages.isNotEmpty()) {
                 val first = mediaPages.first()
                 com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
-                    first.referer.ifBlank { first.url }, first.toRequestHeaders()
+                    first.url, first.toRequestHeaders()
                 )
                 onEvent(DashboardUiEvent.OnUrlChanged(mediaPages.joinToString("\n") { it.url }))
                 onEvent(DashboardUiEvent.OnToggleAddDialog(true))

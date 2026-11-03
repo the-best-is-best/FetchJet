@@ -1,6 +1,7 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-02. Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
+Last updated: 2026-11-03. Read this first, then `README.md`, `TESTING.md` (how to re-run the
+manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
 ## Owner rules (follow strictly)
@@ -81,7 +82,8 @@ extension\build.ps1
   `adb install -r` fails if the installed app was signed with another key (release / Windows debug):
   ask before `adb uninstall`, it wipes the app data. Bridge from the Mac:
   `adb forward tcp:28451 tcp:28450`,
-  then POST `/add` with header `X-FetchJet: 1`. Permission dialogs on the phone are the owner's to
+  then POST `/add` with header `X-FetchJet: 1` and the pairing token (`X-FetchJet-Token`, see Bridge
+  pairing). Permission dialogs on the phone are the owner's to
   tap. POST `/links` (JSON array of `{url, fileName}`) queues downloads directly, no dialog (desktop
   port 28450 too). The UI can be driven with `adb shell input tap` + `uiautomator dump`
   (set `MSYS_NO_PATHCONV=1` in Git Bash); the header shows the total speed (`↓ 10.5 MB/s`).
@@ -170,8 +172,9 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   `getJsRuntimeStatus()`, `latestGitHubReleaseTag(repo)`. Progress goes to
   `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
   `ToolsDownloadBanner` above the home list.
-- Desktop: tools in `~/.fetch_jet/tools` (yt-dlp, ffmpeg pinned 4.4.1, deno from denoland releases
-  with sha256 check). Auto-update compares `--version` with the latest GitHub tag. Every yt-dlp call
+- Desktop: tools in `~/.fetch_jet/tools` (yt-dlp as the unpacked build in `tools/yt-dlp-dir`,
+  see ROADMAP 6c; ffmpeg pinned 4.4.1, deno from denoland releases with sha256 check). Auto-update
+  compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
   ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.
 - Android: python/ffmpeg/QuickJS are bundled as `.so` (Android 10+ cannot run downloaded
@@ -490,8 +493,15 @@ Bridges:
   or `openAppConnection`, never a bare client. Not on iOS torrents (FJTorrent would need a new
   method + xcframework rebuild). Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
   login, basic-auth site) was used on Windows; see ROADMAP item 6.
-- **Mac to-do for item 6 (network), not built on a Mac yet (2026-11-03).** Windows and the A56
-  are verified (see ROADMAP item 6). iOS files changed, never compiled:
+- **Item 6 (network) on iOS: done on the Mac simulator (2026-11-03), see ROADMAP item 6.** It
+  compiled with no change. Results: HTTP / SOCKS5 proxy with login, YouTube through the proxy,
+  site login, wrong password fails. Fixed there: site logins skipped by the background engine
+  (`IosHybridHttpEngine.hasSiteLogin` -> foreground), and a links `.txt` taken as a cookies file
+  (`looksLikeNetscapeCookies` in `MediaExtractorToolManager.ios.kt`). The simulator's background
+  download daemon (`nsurlsessiond`) can break ("connection to background transfer daemon
+  invalidated", every background task "unknown error"): then direct downloads with no proxy /
+  login / limit fail in the simulator only; test those on the foreground path or reset the
+  simulator. Files that were changed for item 6 on iOS:
   `iosMain/.../core/network/NetworkSettings.ios.kt` (new: Darwin proxy dictionary with HTTPS
   keys and SOCKS user/password, `handleChallenge` for the HTTP proxy login),
   `StreamHttpClient.ios.kt`, `IosHybridHttpEngine.kt` (proxy on -> foreground engine, the
@@ -517,9 +527,44 @@ Bridges:
        it = a new `FJTorrent` method + Swift bridge + rebuild the xcframework, owner's call).
        Web seeds (HTTP) of a torrent do use it.
     6. Update ROADMAP item 6 and this note with the result.
-- Open (found 2026-11-03, not fixed): libtorrent on desktop / Android sends no tracker
-  announce at all, even without a proxy (no tracker alert, nothing at a proxy; the Ubuntu 26.10
-  tracker answers curl with peers). Torrents find peers through DHT only. Not looked into yet.
+- Security (2026-11-03, ROADMAP item 6b): passwords and task cookies are stored encrypted
+  through `core/security/Secrets.kt` (`Secrets.protect` / `reveal`, `fjenc1:` prefix; a value
+  the device cannot open stays as it is on disk). A new secret written to disk = `Secrets`.
+  Platform key: `SecretBox.android.kt` (Keystore), `SecretBox.ios.kt` + `KeyFile.ios.kt`
+  (Keychain; errSecMissingEntitlement -34018 = app without signing identity, e.g. the unsigned
+  dev / CI build or some sideload tools -> key file), `jvmMain/.../core/security/`
+  `MacKeyVault.kt` / `WindowsKeyVault.kt` / `LinuxKeyVault.kt`. The Mac test run created the
+  Keychain item `FetchJet` / `secrets-key`. iOS settings folder is now Application Support
+  (moved from Documents once). Every app client gets `RedirectCookieGuard` via
+  `useNetworkSettings()`. `SiteCookieJar.remember` takes the link URL, never the referer.
+- Update signing (2026-11-03): every release file needs `<file>.sig` from CI (secret
+  `UPDATE_SIGNING_KEY`, `scripts/sign-release-file.sh`); the in-app updater refuses unsigned
+  files. Losing the private key = installed apps cannot update themselves; rotate by adding the
+  new public key to `UPDATE_PUBLIC_KEYS` in a release signed with the old one. Log files pass
+  through `LogRedact` (cookies, logins, URL query values hidden): a log you need with full URLs
+  must come from logcat / the console, not the file.
+- Bridge pairing (2026-11-03): every bridge endpoint that acts (`/add`, `/links`, `/inspect`,
+  `/download`, `/show`) needs `X-FetchJet-Token` (`BridgePairing`); the extension gets it from
+  `POST /pair` after the user taps Allow in the app. Testing the bridge with curl now needs the
+  token: pair with `-H 'Origin: chrome-extension://x' -H 'X-FetchJet-Pairing: 1'` on `/pair` and
+  tap Allow, or a new endpoint call returns 401. A new endpoint = add it to the token check
+  (desktop `isAuthorized`, Android `TOKEN_PATHS`) and to `BRIDGE_ALLOWED_HEADERS` / `preflight`.
+- Fixed 2026-11-03: libtorrent on desktop / Android sent no announce to a torrent's own
+  trackers. Cause: libtorrent4j 2.1.0 is libtorrent 2.1, where a .torrent's trackers and web seeds
+  live in `add_torrent_params`, not in `TorrentInfo`; `session.download(ti, ...)` passes only
+  `TorrentInfo`, so they were dropped (only the 7 public trackers the app adds were left).
+  `Libtorrent4jBackend.trackersAndWebSeeds` reads them with `load_torrent_parsed` and adds them
+  to the handle (`addTracker` / `addUrlSeed`). Verified on the Mac desktop with a local fake
+  tracker: before, the torrent's tracker was missing from the list and got nothing; after, it got
+  the announce at once (`127.0.0.1:18100=ok`). Magnets: `fetchMagnet` writes the file from the
+  full params (`write_torrent_file_buf`), so the magnet's `tr=` trackers come back the same way
+  (code read, not run). Public trackers, WARP off: a self-made 16 KB torrent (no web seed, so
+  nothing downloads) whose own trackers were `udp://tracker.bittor.pw:1337` and
+  `udp://tracker.qu.ax:6969` got `ok` from both, first in the list, plus 6 of the app's 7.
+  Trackers that fail here also fail from the Mac with curl / a raw UDP packet (opentrackr TCP
+  1337 refused, gbitt.info no DNS, tiny-vps and openbittorrent no answer): the network, not the
+  app. The verbose `trackers:` log now reports the best endpoint (it showed the first one,
+  usually the `127.0.0.1` listen socket, which always fails). Android builds; not run on the A56.
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub

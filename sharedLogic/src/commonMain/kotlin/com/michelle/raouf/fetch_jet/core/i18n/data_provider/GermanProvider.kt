@@ -112,6 +112,13 @@ object GermanProvider : AppLocalization {
         "Abschalten unter Einstellungen > Allgemein > Zwischenablage überwachen."
     override val homeDownload = "Herunterladen"
     override val homeNotNow = "Nicht jetzt"
+    override val bridgePairTitle = "Diese Browsererweiterung zulassen?"
+    override val bridgePairText =
+        "Eine Browsererweiterung möchte Links an FetchJet senden. Erlauben Sie das nur, wenn Sie die FetchJet-Erweiterung gerade installiert oder zurückgesetzt haben."
+    override val bridgePairOldText =
+        "Eine ältere FetchJet-Erweiterung möchte Links senden. Erlauben Sie es, wenn es Ihre ist; nach einem Update der Erweiterung entfällt diese Frage."
+    override val bridgePairAllow = "Zulassen"
+    override val bridgePairBlock = "Blockieren"
     override val homeBrowserFallbackTitle = "Stattdessen im Browser herunterladen?"
     override val homeBrowserFallbackText =
         "Du hast diese Datei in FetchJet abgebrochen. Der Browser hat seinen eigenen Download beendet, " +

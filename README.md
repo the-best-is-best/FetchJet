@@ -138,6 +138,10 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
 FetchJet talks only to the sites you download from, to GitHub (for update checks) and – for Firefox
 signing in CI – to Mozilla. No analytics, no accounts.
 
+Saved passwords, cookies and download links are stored encrypted with your system's key store
+(Keychain, Android Keystore, Windows DPAPI). The browser extension has to be allowed once in the
+app before it can send links, and updates are installed only when they carry FetchJet's signature.
+
 ---
 
 ## Building from source
@@ -178,6 +182,10 @@ hand and tick only the platforms that changed. See `.github/workflows/build.yml`
 
 Set `fetchjet.verboseLogs=true` in `gradle.properties` (or the `FETCHJET_VERBOSE_LOGS` env var) for
 a build with detailed engine logs; on desktop the log is at `~/.fetch_jet/logs/app.log`.
+
+Manual tests (bridge pairing, encrypted settings, cookies and redirects, update signing, yt-dlp
+start time) with the commands to run them: [TESTING.md](TESTING.md). Release files are signed
+for the in-app updater with the `UPDATE_SIGNING_KEY` repository secret.
 
 </details>
 

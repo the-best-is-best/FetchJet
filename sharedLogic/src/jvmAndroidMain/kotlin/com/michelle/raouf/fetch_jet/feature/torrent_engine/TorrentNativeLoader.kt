@@ -93,8 +93,14 @@ internal object TorrentNativeLoader {
         if (isAndroid) return Result.success("android")
         loadResult?.let { return it }
         val result = runCatching {
-            val native = installedNative(toolsDir)
-                ?: extractBundled(toolsDir)
+            // The copy inside the app first, written fresh each start: a library already in the
+            // (user-writable) tools folder could have been replaced by another program.
+            val native = (try {
+                extractBundled(toolsDir)
+            } catch (_: Exception) {
+                null
+            })
+                ?: installedNative(toolsDir)
                 ?: throw IllegalStateException(
                     "The libtorrent native library ($nativeFileName) is not bundled in this build. " +
                             "Open Settings and click 'Download Tools'."

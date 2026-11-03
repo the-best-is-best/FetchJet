@@ -112,6 +112,13 @@ object PortugueseProvider : AppLocalization {
         "Desative em Configurações > Geral > Monitorar a área de transferência."
     override val homeDownload = "Baixar"
     override val homeNotNow = "Agora não"
+    override val bridgePairTitle = "Permitir esta extensão do navegador?"
+    override val bridgePairText =
+        "Uma extensão do navegador pede para enviar links ao FetchJet. Permita apenas se você acabou de instalar ou redefinir a extensão FetchJet."
+    override val bridgePairOldText =
+        "Uma extensão antiga do FetchJet quer enviar links. Permita se for sua; atualizar a extensão evita esta pergunta."
+    override val bridgePairAllow = "Permitir"
+    override val bridgePairBlock = "Bloquear"
     override val homeBrowserFallbackTitle = "Baixar no navegador?"
     override val homeBrowserFallbackText =
         "Você cancelou este arquivo no FetchJet. O navegador parou o próprio download ao " +

@@ -112,6 +112,13 @@ object ItalianProvider : AppLocalization {
         "Puoi disattivarlo in Impostazioni > Generali > Controlla gli appunti."
     override val homeDownload = "Scarica"
     override val homeNotNow = "Non ora"
+    override val bridgePairTitle = "Consentire questa estensione del browser?"
+    override val bridgePairText =
+        "Un'estensione del browser chiede di inviare link a FetchJet. Consentilo solo se hai appena installato o reimpostato l'estensione FetchJet."
+    override val bridgePairOldText =
+        "Una vecchia estensione FetchJet vuole inviare link. Consentilo se è tua; aggiornando l'estensione questa domanda non comparirà più."
+    override val bridgePairAllow = "Consenti"
+    override val bridgePairBlock = "Blocca"
     override val homeBrowserFallbackTitle = "Scaricare invece nel browser?"
     override val homeBrowserFallbackText =
         "Hai annullato questo file in FetchJet. Il browser ha fermato il suo download quando " +

@@ -232,6 +232,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
@@ -242,6 +243,9 @@ jobs:
             case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*|*universal*) FILES+=("$f");; esac
           done
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -295,11 +299,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -383,11 +391,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi desktopApp/build/msix/*.msix )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -437,11 +449,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/dmg-out/*-arm64.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -506,11 +522,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( build/ios/FetchJet-full.ipa )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No iOS files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -617,6 +637,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
@@ -624,6 +645,9 @@ jobs:
           # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
           FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip build/extension/*.xpi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 

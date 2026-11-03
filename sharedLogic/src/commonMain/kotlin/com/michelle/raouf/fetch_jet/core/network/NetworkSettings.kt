@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.core.network
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs
+import com.michelle.raouf.fetch_jet.core.security.Secrets
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
@@ -70,13 +72,18 @@ private data class NetworkFile(
 )
 
 /**
- * Proxy and saved site logins (settings folder, network.json). Every HTTP client of the app is
+ * Proxy and saved site logins (settings folder, network.json; passwords encrypted by [Secrets]). Every HTTP client of the app is
  * built through [NetworkClient] and [useNetworkSettings], so a change applies to downloads
  * started afterwards; yt-dlp gets [ytDlpArgs], libtorrent its proxy settings.
  */
 object NetworkSettings {
     private val file get() = "${PathResolver().getSettingsDirectory()}/network.json".toPath()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyPrint = true }
+
+    /** Encrypted passwords this device cannot open (key gone): written back unchanged. */
+    private var lockedProxyPassword: String? = null
+    private val lockedLogins = mutableMapOf<String, String>()
+    private var plainOnDisk = false
 
     private val loaded = load()
     private val _proxy = MutableStateFlow(loaded.proxy)
@@ -89,19 +96,30 @@ object NetworkSettings {
     private val _revision = MutableStateFlow(0)
     val revision: StateFlow<Int> = _revision.asStateFlow()
 
+    init {
+        // A network.json from before 1.2.0 has the passwords in plain text: encrypt them now.
+        if (plainOnDisk) save()
+    }
+
     fun setProxy(p: ProxySettings) {
+        val old = _proxy.value
+        if (p.password.isNotEmpty() || p.host.trim() != old.host || p.user.trim() != old.user) {
+            lockedProxyPassword = null
+        }
         _proxy.value = p.copy(host = p.host.trim(), user = p.user.trim()); save()
     }
 
     fun saveLogin(login: SiteLogin) {
         val site = SiteLogin.cleanSite(login.site)
         if (site.isEmpty()) return
+        lockedLogins.remove(site)
         _logins.value = _logins.value.filterNot { SiteLogin.cleanSite(it.site) == site } +
                 login.copy(site = site, user = login.user.trim())
         save()
     }
 
     fun removeLogin(site: String) {
+        lockedLogins.remove(site)
         _logins.value = _logins.value.filterNot { it.site == site }; save()
     }
 
@@ -122,26 +140,45 @@ object NetworkSettings {
         return if (p.isOn) listOf("--proxy", p.url()) else emptyList()
     }
 
-    private fun load(): NetworkFile = try {
-        if (!FileSystem.SYSTEM.exists(file)) NetworkFile()
-        else json.decodeFromString(
-            NetworkFile.serializer(),
-            FileSystem.SYSTEM.read(file) { readUtf8() })
-    } catch (_: Throwable) {
-        NetworkFile()
+    private fun load(): NetworkFile {
+        val stored = try {
+            if (!FileSystem.SYSTEM.exists(file)) return NetworkFile()
+            json.decodeFromString(
+                NetworkFile.serializer(),
+                FileSystem.SYSTEM.read(file) { readUtf8() })
+        } catch (_: Throwable) {
+            return NetworkFile()
+        }
+
+        fun open(text: String, onLocked: () -> Unit): String {
+            if (text.isNotEmpty() && !Secrets.isProtected(text)) plainOnDisk = true
+            return Secrets.reveal(text) ?: "".also { onLocked() }
+        }
+
+        val proxy = stored.proxy.let { p ->
+            p.copy(password = open(p.password) { lockedProxyPassword = p.password })
+        }
+        val logins = stored.logins.map { l ->
+            l.copy(password = open(l.password) { lockedLogins[l.site] = l.password })
+        }
+        return NetworkFile(proxy, logins)
     }
 
     private fun save() {
         _revision.value++
+        val p = _proxy.value
+        val onDisk = NetworkFile(
+            p.copy(password = lockedProxyPassword?.takeIf { p.password.isEmpty() }
+                ?: Secrets.protect(p.password)),
+            _logins.value.map { l ->
+                l.copy(password = lockedLogins[l.site]?.takeIf { l.password.isEmpty() }
+                    ?: Secrets.protect(l.password))
+            }
+        )
         try {
             file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
             FileSystem.SYSTEM.write(file) {
-                writeUtf8(
-                    json.encodeToString(
-                        NetworkFile.serializer(),
-                        NetworkFile(_proxy.value, _logins.value)
-                    )
-                )
+                writeUtf8(json.encodeToString(NetworkFile.serializer(), onDisk))
             }
         } catch (_: Throwable) {
         }
@@ -173,8 +210,9 @@ private val PlainHttpProxyLogin = createClientPlugin("FetchJetProxyLogin") {
     }
 }
 
-/** Proxy (with its login, through the platform engine) and the saved site logins. */
+/** Proxy (with its login, through the platform engine), the saved site logins, no Cookie across sites on a redirect. */
 fun HttpClientConfig<*>.useNetworkSettings() {
+    install(RedirectCookieGuard)
     install(SiteLogins)
     install(PlainHttpProxyLogin)
     @Suppress("UNCHECKED_CAST")

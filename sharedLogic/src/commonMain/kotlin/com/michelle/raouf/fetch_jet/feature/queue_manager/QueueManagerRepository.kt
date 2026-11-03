@@ -2,7 +2,6 @@ package com.michelle.raouf.fetch_jet.feature.queue_manager
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -11,6 +10,7 @@ import com.michelle.raouf.fetch_jet.feature.http_downloader.HttpDownloadEngine
 import com.michelle.raouf.fetch_jet.feature.http_downloader.createHttpEngine
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaStreamDownloader
 import com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDownloader
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -877,6 +877,7 @@ class QueueManagerRepository(
                         // emission can be the empty initial state before the restore lands.
                         if (hasSeenTasks && FileSystem.SYSTEM.exists(persistencePath)) {
                             FileSystem.SYSTEM.delete(persistencePath)
+                            FileSystem.SYSTEM.delete(backupPath, mustExist = false)
                         }
                     } else {
                         hasSeenTasks = true

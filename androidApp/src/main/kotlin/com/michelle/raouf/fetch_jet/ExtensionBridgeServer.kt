@@ -7,6 +7,7 @@ import android.os.Looper
 import android.widget.Toast
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.BridgePairing
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
@@ -38,6 +39,7 @@ import java.util.concurrent.Executors
 object ExtensionBridgeServer {
     private const val PORT = 28450
     private const val MAX_BODY = 4 * 1024 * 1024
+    private val TOKEN_PATHS = setOf("/inspect", "/add", "/links", "/download", "/show")
 
     @Volatile
     private var started = false
@@ -159,7 +161,7 @@ object ExtensionBridgeServer {
     ) {
         val bytes = body.toByteArray(Charsets.UTF_8)
         val reason = when (status) {
-            200 -> "OK"; 204 -> "No Content"; 400 -> "Bad Request"; 403 -> "Forbidden"
+            200 -> "OK"; 204 -> "No Content"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 403 -> "Forbidden"
             404 -> "Not Found"; 405 -> "Method Not Allowed"; 409 -> "Conflict"; else -> "Error"
         }
         val sb = StringBuilder("HTTP/1.1 $status $reason\r\n")
@@ -178,7 +180,7 @@ object ExtensionBridgeServer {
         reply(
             out, r, 204, "", extra = mapOf(
                 "Access-Control-Allow-Methods" to methods,
-                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing"
             )
         )
 
@@ -250,10 +252,46 @@ object ExtensionBridgeServer {
 
     // ---- routes -----------------------------------------------------------------------------
 
+    /**
+     * The app's token ([BridgePairing]) or an old extension the user allowed. An extension from
+     * before 1.2.0 (no `X-FetchJet-Pairing`) makes the app ask once; any other app on the phone
+     * gets 401.
+     */
+    private fun authorized(r: Req): Boolean {
+        if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER))) return true
+        val origin = r.header("Origin")
+        if (BridgePairing.isLegacyAllowed(origin)) return true
+        if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
+            r.header("X-FetchJet-Pairing").isNullOrBlank()
+        ) {
+            Thread({ runBlocking { BridgePairing.ask(origin, legacy = true) } }, "bridge-pair")
+                .apply { isDaemon = true }.start()
+            deliver(toast = false) {}
+        }
+        return false
+    }
+
     private fun route(r: Req, out: OutputStream) {
         if (!trusted(r)) return reply(out, r, 403, "forbidden")
         val isOptions = r.method == "OPTIONS"
+        if (!isOptions && r.path in TOKEN_PATHS && !authorized(r)) {
+            return reply(out, r, 401, "pairing required")
+        }
         when (r.path) {
+            "/pair" -> {
+                if (isOptions) return preflight(out, r, "POST, OPTIONS")
+                val origin = r.header("Origin")
+                if (r.method != "POST" || r.header("X-FetchJet").isNullOrBlank() ||
+                    origin == null || !BridgePairing.isExtensionOrigin(origin)
+                ) return reply(out, r, 403, "forbidden")
+                deliver(toast = false) {}
+                val allowed = runBlocking { BridgePairing.ask(origin, legacy = false) }
+                if (allowed) reply(
+                    out, r, 200, """{"token":"${BridgePairing.token}"}""",
+                    "application/json; charset=UTF-8"
+                ) else reply(out, r, 403, "refused")
+            }
+
             "/ping" -> if (isOptions) preflight(out, r, "GET, OPTIONS") else reply(
                 out,
                 r,
@@ -273,7 +311,14 @@ object ExtensionBridgeServer {
                     """{"app":"FetchJet","platform":"android","version":"${json(version)}","bridge":2,""" +
                             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
                             """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
-                            """"endpoints":["/ping","/config","/add","/links","/download","/inspect"]}""",
+                            """"pairing":true,"paired":${
+                                BridgePairing.isPaired(
+                                    r.header(
+                                        BridgePairing.TOKEN_HEADER
+                                    )
+                                )
+                            },""" +
+                            """"endpoints":["/ping","/config","/pair","/add","/links","/download","/inspect"]}""",
                     "application/json; charset=UTF-8"
                 )
             }
@@ -304,7 +349,7 @@ object ExtensionBridgeServer {
                             ?.let { put("Referer", it) }
                     }
                     com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
-                        headers["Referer"] ?: url, headers
+                        url, headers
                     )
                     val list = inspectCached(url, headers).joinToString(",", "[", "]") { q ->
                         """{"index":${q.index},"quality":"${json(q.qualityLabel)}","format":"${
@@ -480,7 +525,7 @@ object ExtensionBridgeServer {
      * may refuse to start an activity from the background (Android 10+); the toast then tells
      * the user the link is waiting in FetchJet.
      */
-    private fun deliver(action: () -> Unit) {
+    private fun deliver(toast: Boolean = true, action: () -> Unit) {
         main.post {
             action()
             val open = Intent(appContext, MainActivity::class.java).addFlags(
@@ -497,7 +542,7 @@ object ExtensionBridgeServer {
                     appContext.startActivity(open)
                 } catch (_: Exception) {
                 }
-                Toast.makeText(
+                if (toast) Toast.makeText(
                     appContext,
                     LocalizationManager.Strings.sysSentToFetchJet,
                     Toast.LENGTH_SHORT

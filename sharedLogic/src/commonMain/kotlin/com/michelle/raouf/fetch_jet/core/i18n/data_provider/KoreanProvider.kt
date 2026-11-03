@@ -105,6 +105,13 @@ object KoreanProvider : AppLocalization {
     override val homeClipboardOfferHint = "설정 > 일반 > 클립보드 감시에서 끌 수 있습니다."
     override val homeDownload = "다운로드"
     override val homeNotNow = "나중에"
+    override val bridgePairTitle = "이 브라우저 확장 프로그램을 허용할까요?"
+    override val bridgePairText =
+        "브라우저 확장 프로그램이 FetchJet에 링크를 보내려고 합니다. FetchJet 확장 프로그램을 방금 설치했거나 재설정한 경우에만 허용하세요."
+    override val bridgePairOldText =
+        "이전 버전의 FetchJet 확장 프로그램이 링크를 보내려고 합니다. 본인 것이라면 허용하세요. 확장 프로그램을 업데이트하면 더 이상 묻지 않습니다."
+    override val bridgePairAllow = "허용"
+    override val bridgePairBlock = "차단"
     override val homeBrowserFallbackTitle = "대신 브라우저에서 다운로드할까요?"
     override val homeBrowserFallbackText = "FetchJet에서 이 파일을 취소했습니다. 브라우저는 링크를 넘길 때 자체 다운로드를 " +
             "중단했으므로, 다시 보내야만 계속됩니다."

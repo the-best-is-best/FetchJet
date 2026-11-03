@@ -1,9 +1,9 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.media_extractor
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.deniscerri.ytdl.core.RuntimeManager
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -57,3 +57,5 @@ actual fun getJsRuntimeStatus(): JsRuntimeStatus = JsRuntimeStatus(
         RuntimeManager.initialized && RuntimeManager.quickJsLocation.isAvailable
     }.getOrDefault(false)
 )
+
+internal actual val toolUpdateSwapsAtomically: Boolean = false

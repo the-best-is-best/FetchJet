@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.queue_manager
 
 import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
+import com.michelle.raouf.fetch_jet.core.security.Secrets
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -69,7 +70,7 @@ internal object TaskCache {
 
 internal fun DownloadTask.toPersisted() = PersistedTask(
     id = id,
-    url = url,
+    url = sealed(url),
     fileName = fileName,
     destinationPath = destinationPath,
     engineType = engineType.name,
@@ -79,7 +80,7 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     progress = progress,
     createdAtEpochMs = createdAtEpochMs,
     formatId = formatId.orEmpty(),
-    originalUrl = originalUrl.orEmpty(),
+    originalUrl = sealed(originalUrl.orEmpty()),
     clipStart = clipStart.orEmpty(),
     clipEnd = clipEnd.orEmpty(),
     currentStepText = currentStepText.orEmpty(),
@@ -89,7 +90,7 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     serverSupportsResume = serverSupportsResume?.toString().orEmpty(),
     maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
     maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
-    hdrCookie = requestHeaders["Cookie"].orEmpty(),
+    hdrCookie = sealed(requestHeaders["Cookie"].orEmpty()),
     hdrReferer = requestHeaders["Referer"].orEmpty(),
     hdrUserAgent = requestHeaders["User-Agent"].orEmpty(),
     torrentFiles = torrentFiles.joinToString(";") {
@@ -112,7 +113,7 @@ internal fun PersistedTask.toTask(
     }
     return DownloadTask(
         id = id,
-        url = url,
+        url = Secrets.reveal(url) ?: url,
         fileName = fileName,
         destinationPath = relocateAppPath(destinationPath.ifBlank { defaultDestination }),
         engineType = engine,
@@ -122,7 +123,7 @@ internal fun PersistedTask.toTask(
         progress = progress,
         createdAtEpochMs = createdAtEpochMs,
         formatId = formatId.ifBlank { null },
-        originalUrl = originalUrl.ifBlank { null },
+        originalUrl = (Secrets.reveal(originalUrl) ?: originalUrl).ifBlank { null },
         clipStart = clipStart.ifBlank { null },
         clipEnd = clipEnd.ifBlank { null },
         clipByCutting = clipByCutting,
@@ -134,7 +135,7 @@ internal fun PersistedTask.toTask(
         maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
         maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
         requestHeaders = buildMap {
-            hdrCookie.ifBlank { null }?.let { put("Cookie", it) }
+            Secrets.reveal(hdrCookie)?.ifBlank { null }?.let { put("Cookie", it) }
             hdrReferer.ifBlank { null }?.let { put("Referer", it) }
             hdrUserAgent.ifBlank { null }?.let { put("User-Agent", it) }
         },
@@ -153,4 +154,16 @@ internal fun PersistedTask.toTask(
         scheduledAtMs = scheduledAtMs,
         maxConnections = maxConnections
     )
+}
+
+// Links (signed tokens, session ids) and cookies are stored encrypted. The cache is written
+// every second: encrypt each value once, not on every write.
+private val sealedValues = mutableMapOf<String, String>()
+
+private fun sealed(value: String): String {
+    if (value.isEmpty()) return ""
+    return sealedValues[value] ?: Secrets.protect(value).also {
+        if (sealedValues.size > 2000) sealedValues.clear()
+        sealedValues[value] = it
+    }
 }

@@ -1,17 +1,17 @@
 package com.michelle.raouf.fetch_jet.core.update
 
-import com.michelle.raouf.fetch_jet.core.network.NetworkClient
-import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.edition.AppEdition
 import com.michelle.raouf.fetch_jet.core.edition.currentAppEdition
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
+import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
@@ -40,7 +40,12 @@ import okio.SYSTEM
 import okio.buffer
 import okio.use
 
-data class ReleaseAsset(val name: String, val url: String, val size: Long)
+/** [sha256]: GitHub's `digest` of the file (lower-case hex), "" when unknown (web-page fallback). */
+data class ReleaseAsset(val name: String, val url: String, val size: Long, val sha256: String = "")
+
+/** Only files of FetchJet's own releases are downloaded and installed. */
+internal const val RELEASE_DOWNLOAD_PREFIX =
+    "https://github.com/$UPDATE_REPOSITORY/releases/download/"
 
 data class AppRelease(
     val version: String,
@@ -299,8 +304,11 @@ object UpdateManager {
             @Suppress("UNCHECKED_CAST")
             val m = a as? Map<String, Any?> ?: return@mapNotNull null
             val name = m.getString("name") ?: return@mapNotNull null
-            val url = m.getString("browser_download_url") ?: return@mapNotNull null
-            ReleaseAsset(name, url, m.getLong("size") ?: 0L)
+            val url = m.getString("browser_download_url")
+                ?.takeIf { it.startsWith(RELEASE_DOWNLOAD_PREFIX) } ?: return@mapNotNull null
+            val sha = m.getString("digest").orEmpty().lowercase()
+                .takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:").orEmpty()
+            ReleaseAsset(name, url, m.getLong("size") ?: 0L, sha)
         }
         return AppRelease(
             version = tag.trim().removePrefix("v").removePrefix("V"),
@@ -329,16 +337,16 @@ object UpdateManager {
             client.get("https://github.com/$UPDATE_REPOSITORY/releases/expanded_assets/$tag") {
                 header("User-Agent", "FetchJet/$APP_VERSION")
             }.bodyAsText()
+        // The page shows each file's digest too ("Copy to clipboard digest for <name>").
+        val digests = Regex("""digest for ([^"]+)" type="button" value="sha256:([0-9a-f]{64})"""")
+            .findAll(assetsHtml).associate { it.groupValues[1] to it.groupValues[2] }
         val assets = Regex("""href="(/$UPDATE_REPOSITORY/releases/download/[^"]+)"""")
             .findAll(assetsHtml)
             .map { it.groupValues[1] }
             .distinct()
             .map { path ->
-                ReleaseAsset(
-                    path.substringAfterLast('/'),
-                    "https://github.com$path",
-                    0L
-                )
+                val name = path.substringAfterLast('/')
+                ReleaseAsset(name, "https://github.com$path", 0L, digests[name].orEmpty())
             }
             .toList()
         val notes = assets.firstOrNull { it.name == RELEASE_NOTES_FILE }?.let { file ->
@@ -392,7 +400,8 @@ object UpdateManager {
                     val channel = response.bodyAsChannel()
                     val buffer = ByteArray(64 * 1024)
                     var done = 0L
-                    FileSystem.SYSTEM.sink(part).buffer().use { sink ->
+                    val hashing = okio.HashingSink.sha256(FileSystem.SYSTEM.sink(part))
+                    hashing.buffer().use { sink ->
                         while (isActive && !channel.isClosedForRead) {
                             val n = channel.readAvailable(buffer, 0, buffer.size)
                             if (n <= 0) break
@@ -409,6 +418,20 @@ object UpdateManager {
                         }
                     }
                     if (total > 0L && done < total) throw Exception("download interrupted")
+                    // GitHub's own SHA-256 of the file: a changed or broken download is not installed.
+                    if (asset.sha256.isNotEmpty() && hashing.hash.hex() != asset.sha256) {
+                        throw Exception("checksum does not match the release")
+                    }
+                }
+                // Signed by FetchJet's own key in CI (<file>.sig): a file that GitHub serves but
+                // was not built by the owner's release workflow is never installed.
+                val sigAsset = release.assets.firstOrNull { it.name == "${asset.name}.sig" }
+                    ?: throw Exception("the release file is not signed")
+                val sig = client.get(sigAsset.url) {
+                    header("User-Agent", "FetchJet/$APP_VERSION")
+                }.bodyAsText()
+                if (!verifyUpdateSignature(part.toString(), sig)) {
+                    throw Exception("the release file signature is not valid")
                 }
                 if (FileSystem.SYSTEM.exists(target)) FileSystem.SYSTEM.delete(target)
                 FileSystem.SYSTEM.atomicMove(part, target)

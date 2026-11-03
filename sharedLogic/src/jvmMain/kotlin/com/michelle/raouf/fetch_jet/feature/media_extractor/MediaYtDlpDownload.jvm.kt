@@ -161,8 +161,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     command.add(url)
 
     val process: Process
+    val secrets = YtDlpSecretArgs.split(command)
     try {
-        val processBuilder = ProcessBuilder(command)
+        val processBuilder = ProcessBuilder(secrets.command)
             .redirectErrorStream(true)
         // yt-dlp on Windows writes the pipe in the console code page: titles in Arabic and other
         // scripts arrived garbled (and so did the file paths in its progress lines).
@@ -181,7 +182,9 @@ actual suspend fun downloadMediaWithPlatformTool(
         }
 
         process = processBuilder.start()
+        secrets.deleteWhenDone(process)
     } catch (e: Exception) {
+        secrets.deleteNow()
         try {
             proxy?.close()
         } catch (_: Exception) {

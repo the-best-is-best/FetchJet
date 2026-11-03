@@ -108,6 +108,13 @@ object TurkishProvider : AppLocalization {
         "Bunu Ayarlar > Genel > Panoyu izle bölümünden kapatabilirsiniz."
     override val homeDownload = "İndir"
     override val homeNotNow = "Şimdi değil"
+    override val bridgePairTitle = "Bu tarayıcı uzantısına izin verilsin mi?"
+    override val bridgePairText =
+        "Bir tarayıcı uzantısı FetchJet'e bağlantı göndermek istiyor. Yalnızca FetchJet uzantısını yeni kurduysanız veya sıfırladıysanız izin verin."
+    override val bridgePairOldText =
+        "Eski bir FetchJet uzantısı bağlantı göndermek istiyor. Sizinse izin verin; uzantıyı güncellemek bu soruyu ortadan kaldırır."
+    override val bridgePairAllow = "İzin ver"
+    override val bridgePairBlock = "Engelle"
     override val homeBrowserFallbackTitle = "Bunun yerine tarayıcıda indirilsin mi?"
     override val homeBrowserFallbackText =
         "Bu dosyayı FetchJet'te iptal ettiniz. Tarayıcı, bağlantıyı devrederken kendi " +

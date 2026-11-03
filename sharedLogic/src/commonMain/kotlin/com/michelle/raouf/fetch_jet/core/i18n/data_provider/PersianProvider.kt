@@ -108,6 +108,13 @@ object PersianProvider : AppLocalization {
         "این را در تنظیمات > عمومی > زیر نظر داشتن کلیپ‌بورد خاموش کنید."
     override val homeDownload = "دانلود"
     override val homeNotNow = "الان نه"
+    override val bridgePairTitle = "به این افزونهٔ مرورگر اجازه داده شود؟"
+    override val bridgePairText =
+        "یک افزونهٔ مرورگر می‌خواهد پیوند به FetchJet بفرستد. فقط اگر همین حالا افزونهٔ FetchJet را نصب یا بازنشانی کرده‌اید اجازه دهید."
+    override val bridgePairOldText =
+        "یک افزونهٔ قدیمی FetchJet می‌خواهد پیوند بفرستد. اگر مال شماست اجازه دهید؛ با به‌روزرسانی افزونه این پرسش دیگر نمی‌آید."
+    override val bridgePairAllow = "اجازه"
+    override val bridgePairBlock = "مسدود کردن"
     override val homeBrowserFallbackTitle = "به‌جای آن در مرورگر دانلود شود؟"
     override val homeBrowserFallbackText =
         "این فایل را در FetchJet لغو کردید. مرورگر هنگام سپردن لینک، دانلود خودش را " +

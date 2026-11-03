@@ -109,6 +109,13 @@ object JapaneseProvider : AppLocalization {
     override val homeClipboardOfferHint = "設定 > 一般 > クリップボードを監視 でオフにできます。"
     override val homeDownload = "ダウンロード"
     override val homeNotNow = "今はしない"
+    override val bridgePairTitle = "このブラウザ拡張機能を許可しますか？"
+    override val bridgePairText =
+        "ブラウザ拡張機能が FetchJet へのリンク送信を求めています。FetchJet 拡張機能をインストールまたはリセットした直後の場合のみ許可してください。"
+    override val bridgePairOldText =
+        "古い FetchJet 拡張機能がリンクを送信しようとしています。ご自身のものなら許可してください。拡張機能を更新するとこの確認は不要になります。"
+    override val bridgePairAllow = "許可"
+    override val bridgePairBlock = "ブロック"
     override val homeBrowserFallbackTitle = "代わりにブラウザでダウンロードしますか？"
     override val homeBrowserFallbackText =
         "FetchJet でこのファイルをキャンセルしました。ブラウザはリンクを渡した時点で" +

@@ -114,10 +114,7 @@ fun getIosCookieFile(): String? {
                 if (size in 10..5_000_000) {
                     val content =
                         NSString.stringWithContentsOfFile(fullPath, NSUTF8StringEncoding, null)
-                    if (content != null && (content.contains("youtube.com") || content.contains("google.com") || content.contains(
-                            "Netscape HTTP Cookie File"
-                        ))
-                    ) {
+                    if (content != null && looksLikeNetscapeCookies(content)) {
                         return fullPath
                     }
                 }
@@ -126,6 +123,14 @@ fun getIosCookieFile(): String? {
     }
 
     return null
+}
+
+private fun looksLikeNetscapeCookies(content: String): Boolean {
+    if (content.contains("# Netscape HTTP Cookie File") || content.contains("# HTTP Cookie File")) return true
+    return content.lineSequence().any { line ->
+        val fields = line.removePrefix("#HttpOnly_").split('\t')
+        fields.size == 7 && (fields[1] == "TRUE" || fields[1] == "FALSE")
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -271,3 +276,5 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
         onProgress(ToolDownloadProgress("yt-dlp"))
         bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
     }
+
+internal actual val toolUpdateSwapsAtomically: Boolean = true

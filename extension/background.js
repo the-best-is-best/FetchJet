@@ -205,6 +205,76 @@ async function pingApp(timeoutMs = 800) {
   } catch (_) { return false; }
 }
 
+// ---- pairing --------------------------------------------------------------------------
+// The app answers only requests that carry its secret token (X-FetchJet-Token). The first
+// time, POST /pair makes the app ask the user "Allow this browser extension?"; the token is
+// kept in storage.local. X-FetchJet-Pairing tells the app this extension knows how to pair.
+
+let appToken = null;
+let pairing = null;
+
+async function loadAppToken() {
+  if (appToken !== null) return appToken;
+  try {
+    const got = await api.storage.local.get("appToken");
+    appToken = (got && got.appToken) || "";
+  } catch (_) { appToken = ""; }
+  return appToken;
+}
+
+async function appHeaders(extra = {}) {
+  const headers = { "X-FetchJet": "1", "X-FetchJet-Pairing": "1", ...extra };
+  const token = await loadAppToken();
+  if (token) headers["X-FetchJet-Token"] = token;
+  return headers;
+}
+
+/** Asks the app for its token (the user answers in the app). One request at a time. */
+function pairWithApp() {
+  if (ON_IOS) return Promise.resolve(false);
+  if (pairing) return pairing;
+  pairing = (async () => {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 125000);
+    try {
+      const res = await fetch(`${FETCHJET_BASE}/pair`, {
+        method: "POST",
+        headers: { "X-FetchJet": "1", "X-FetchJet-Pairing": "1" },
+        signal: controller.signal
+      });
+      if (!res.ok) return false;
+      const body = await res.json();
+      if (!body || !body.token) return false;
+      appToken = body.token;
+      try { await api.storage.local.set({ appToken }); } catch (_) {}
+      return true;
+    } catch (_) { return false; }
+    finally { clearTimeout(t); pairing = null; }
+  })();
+  return pairing;
+}
+
+/** fetch() to the app with the token; on 401 pairs once and tries again. */
+async function appFetch(path, init = {}, timeoutMs = 0) {
+  const send = async () => {
+    const controller = new AbortController();
+    const t = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    if (init.signal) init.signal.addEventListener("abort", () => controller.abort());
+    try {
+      return await fetch(`${FETCHJET_BASE}${path}`, {
+        ...init,
+        headers: await appHeaders(init.headers || {}),
+        signal: controller.signal
+      });
+    } finally { if (t) clearTimeout(t); }
+  };
+  const res = await send();
+  if (res.status !== 401) return res;
+  appToken = "";
+  try { await api.storage.local.remove("appToken"); } catch (_) {}
+  return (await pairWithApp()) ? await send() : res;
+}
+
 async function fetchAppConfig() {
   try {
     const controller = new AbortController();
@@ -249,16 +319,11 @@ async function buildRequest({ url, referer = "", fileName = "", formatId = "", d
 }
 
 async function postJson(path, body, timeoutMs = 2500) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(`${FETCHJET_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-FetchJet": "1" },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-  } finally { clearTimeout(t); }
+  return appFetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }, timeoutMs);
 }
 
 /** Sends one link; compatible with older app builds that only know GET /download. */
@@ -269,8 +334,8 @@ async function deliverOne(request) {
     if (res.status === 409) return false; // quality gone: the caller re-inspects
     if (res.ok) return true;
     if (res.status === 404) {
-      const legacy = `${FETCHJET_BASE}/download?url=${encodeURIComponent(request.url)}&cookie=${encodeURIComponent(request.cookie || "")}`;
-      const r2 = await fetch(legacy, { method: "GET", headers: { "X-FetchJet": "1" } });
+      const legacy = `/download?url=${encodeURIComponent(request.url)}&cookie=${encodeURIComponent(request.cookie || "")}`;
+      const r2 = await appFetch(legacy, { method: "GET" });
       return r2.ok;
     }
     return false;
@@ -688,9 +753,9 @@ async function inspectWithApp(pageUrl) {
   try {
     // The page's cookies and referer travel with the request: sites that need a login (Udemy,
     // Vimeo private videos...) then answer yt-dlp exactly like they answer the browser.
-    const headers = { "X-FetchJet": "1", "X-FetchJet-Referer": pageUrl };
+    const headers = { "X-FetchJet-Referer": pageUrl };
     try { const c = await cookieHeaderFor(pageUrl); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
-    const res = await fetch(`${FETCHJET_BASE}/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
+    const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
     const text = await res.text();
     let data = null;

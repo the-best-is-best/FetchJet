@@ -712,6 +712,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            // A browser extension asks to use the local bridge (desktop / Android).
+            val pairing by com.michelle.raouf.fetch_jet.core.network.BridgePairing.pending
+                .collectAsState()
+            pairing?.let { request ->
+                BridgePairingDialog(request) {
+                    com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(it)
+                }
+            }
+
             // "Download in browser instead?" (only for plain file links sent by the extension)
             state.browserFallbackUrl?.let { url ->
                 BrowserFallbackDialog(

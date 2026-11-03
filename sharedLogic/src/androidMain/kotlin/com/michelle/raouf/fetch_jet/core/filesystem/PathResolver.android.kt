@@ -69,7 +69,9 @@ actual class PathResolver actual constructor() {
 
     actual fun sanitizeFileName(fileName: String): String {
         val decoded = decodeUnicodeEscapes(fileName)
-        val cleaned = decoded.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim()
+        var cleaned = decoded.replace(Regex("[\\\\/:*?\"<>|\u0000-\u001f]"), "_").trim()
+        // "." and ".." would point at the folder or its parent (Content-Disposition is untrusted)
+        if (cleaned.trim('.').isEmpty()) cleaned = ""
         val ext = cleaned.substringAfterLast(".", "")
         val nameWithoutExt = if (ext.isNotEmpty()) cleaned.substringBeforeLast(".") else cleaned
         val truncatedName =

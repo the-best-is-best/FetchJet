@@ -3,17 +3,13 @@ package com.michelle.raouf.fetch_jet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -139,6 +135,46 @@ internal fun BrowserFallbackDialog(url: String, onConfirm: () -> Unit, onDismiss
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
                 Text(LocalizationManager.Strings.homeNoDiscard)
+            }
+        }
+    )
+}
+
+/** A browser extension asks to use FetchJet's local bridge ([BridgePairing]). */
+@Composable
+internal fun BridgePairingDialog(
+    request: com.michelle.raouf.fetch_jet.core.network.BridgePairing.Request,
+    onAnswer: (Boolean) -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onAnswer(false) },
+        shape = RoundedCornerShape(18.dp),
+        title = { Text(LocalizationManager.Strings.bridgePairTitle, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    if (request.legacy) LocalizationManager.Strings.bridgePairOldText
+                    else LocalizationManager.Strings.bridgePairText,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    request.origin,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onAnswer(true) }, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairAllow)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = { onAnswer(false) }, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairBlock)
             }
         }
     )

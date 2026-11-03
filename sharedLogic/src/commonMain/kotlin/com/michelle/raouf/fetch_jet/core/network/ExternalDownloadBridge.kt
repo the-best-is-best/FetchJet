@@ -39,8 +39,11 @@ object ExternalDownloadBridge {
         }
     private val pending = mutableListOf<ExternalDownloadRequest>()
 
-    /** Several links at once ("Download all links"): queued directly, no dialog per link. */
-    var onExternalBatch: ((List<ExternalDownloadRequest>) -> Unit)? = null
+    /**
+     * Several links at once ("Download all links"): queued directly, no dialog per link. With
+     * `review` (links any web page can send, iOS fetchjet://) they open in the Add dialog's list.
+     */
+    var onExternalBatch: ((List<ExternalDownloadRequest>, Boolean) -> Unit)? = null
 
     var openInBrowserFallback: ((String) -> Unit)? = null
 
@@ -64,12 +67,16 @@ object ExternalDownloadBridge {
         if (handler != null) handler(clean) else pending.add(clean)
     }
 
-    fun dispatchBatch(requests: List<ExternalDownloadRequest>) {
+    fun dispatchBatch(requests: List<ExternalDownloadRequest>, review: Boolean = false) {
         val clean = requests.map { it.copy(url = it.url.trim()) }.filter { it.url.isNotBlank() }
         if (clean.isEmpty()) return
         println("ExternalDownloadBridge: dispatched a batch of ${clean.size} URLs")
         val handler = onExternalBatch
-        if (handler != null) handler(clean) else clean.forEach { onExternalRequest?.invoke(it) }
+        if (handler != null) handler(clean, review) else clean.forEach {
+            onExternalRequest?.invoke(
+                it
+            )
+        }
     }
 
     fun triggerFallback(url: String) {

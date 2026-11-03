@@ -33,9 +33,13 @@ internal fun runYtDlp(args: List<String>, timeoutSec: Long = 25L): String? {
         // and `>` in the URL, which is a command-injection hole reachable from any web page).
         command.add(executableFile.absolutePath)
         command.addAll(args)
-        val process = ProcessBuilder(command)
-            .redirectErrorStream(true)
-            .start()
+        val secrets = YtDlpSecretArgs.split(command)
+        val process = try {
+            ProcessBuilder(secrets.command).redirectErrorStream(true).start()
+        } catch (e: Exception) {
+            secrets.deleteNow(); throw e
+        }
+        secrets.deleteWhenDone(process)
         val outputBuilder = StringBuilder()
         val readerThread = Thread {
             try {

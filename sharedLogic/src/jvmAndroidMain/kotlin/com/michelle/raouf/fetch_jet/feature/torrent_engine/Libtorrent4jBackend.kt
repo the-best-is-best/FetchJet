@@ -1,9 +1,9 @@
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
-import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.core.network.ProxyKind
 import com.michelle.raouf.fetch_jet.core.network.ProxySettings
+import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +18,11 @@ import org.libtorrent4j.TorrentFlags
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
+import org.libtorrent4j.Vectors
+import org.libtorrent4j.swig.bdecode_node
+import org.libtorrent4j.swig.error_code
+import org.libtorrent4j.swig.libtorrent
+import org.libtorrent4j.swig.load_torrent_limits
 import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.torrent_flags_t
 import java.io.File
@@ -281,6 +286,14 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
             ?: throw IllegalStateException("libtorrent did not accept the torrent")
         th.unsetFlags(TorrentFlags.AUTO_MANAGED)   // we decide when it runs, not the queue
         th.prioritizeFiles(prio)
+        // libtorrent 2.1 keeps a .torrent's trackers and web seeds out of TorrentInfo, so
+        // adding it from TorrentInfo alone drops them: put them back first.
+        try {
+            val (ownTrackers, ownSeeds) = trackersAndWebSeeds(torrentBytes)
+            ownTrackers.forEach { th.addTracker(AnnounceEntry(it)) }
+            ownSeeds.forEach { th.addUrlSeed(it) }
+        } catch (_: Throwable) {
+        }
         // A .torrent file often carries one dead tracker (or none): the public ones plus a
         // DHT announce are what get the first peers quickly.
         try {
@@ -294,6 +307,22 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         entries[taskId] = Entry(th, ti, disableUpload)
         setLimits(taskId, downloadLimitBytesPerSec, uploadLimitBytesPerSec)
         th.resume()
+    }
+
+    /** The `announce` / `announce-list` trackers and `url-list` web seeds of a .torrent file. */
+    private fun trackersAndWebSeeds(torrentBytes: ByteArray): Pair<List<String>, List<String>> {
+        val buffer = Vectors.bytes2byte_vector(torrentBytes)
+        val node = bdecode_node()
+        val ec = error_code()
+        if (bdecode_node.bdecode(
+                buffer,
+                node,
+                ec
+            ) != 0 || ec.value() != 0
+        ) return emptyList<String>() to emptyList()
+        val params = libtorrent.load_torrent_parsed(node, ec, load_torrent_limits())
+        if (ec.value() != 0) return emptyList<String>() to emptyList()
+        return Vectors.string_vector2list(params.trackers) to Vectors.string_vector2list(params.url_seeds)
     }
 
     private fun buildPriorities(
@@ -404,7 +433,10 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
             val trackers = try {
                 e.handle.trackers().joinToString(" | ") { t ->
                     val eps = t.endpoints()
-                    val msg = eps.firstOrNull()?.let { ep ->
+                    val best = eps.firstOrNull { it.infohashV1().isWorking }
+                        ?: eps.firstOrNull { it.infohashV1().fails().toInt() == 0 }
+                        ?: eps.firstOrNull()
+                    val msg = best?.let { ep ->
                         val ih = ep.infohashV1()
                         val m = ih.message()
                         when {

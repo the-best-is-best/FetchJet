@@ -1,6 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.core.filesystem
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSCharacterSet
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -112,14 +113,21 @@ actual class PathResolver actual constructor() {
         return getDownloadsDirectory()
     }
 
+    /**
+     * Application Support/settings: not in Documents, which the Files app and Finder file
+     * sharing show (`UIFileSharingEnabled`). Before 1.2.0 it was Documents/settings: moved once.
+     */
     actual fun getSettingsDirectory(): String {
-        val docs = getDownloadsDirectory()
-        val dir = "$docs/settings"
+        val support = (NSSearchPathForDirectoriesInDomains(
+            NSApplicationSupportDirectory, NSUserDomainMask, true
+        ).firstOrNull() as? String) ?: return "${getDownloadsDirectory()}/settings"
+        val dir = "$support/settings"
         val fileManager = NSFileManager.defaultManager
         if (!fileManager.fileExistsAtPath(dir)) {
-            try {
+            fileManager.createDirectoryAtPath(support, true, null, null)
+            val old = "${getDownloadsDirectory()}/settings"
+            if (!fileManager.fileExistsAtPath(old) || !fileManager.moveItemAtPath(old, dir, null)) {
                 fileManager.createDirectoryAtPath(dir, true, null, null)
-            } catch (_: Exception) {
             }
         }
         return dir
@@ -140,7 +148,9 @@ actual class PathResolver actual constructor() {
 
     actual fun sanitizeFileName(fileName: String): String {
         val decoded = decodeUnicodeEscapes(fileName)
-        val cleaned = decoded.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim()
+        var cleaned = decoded.replace(Regex("[\\\\/:*?\"<>|\u0000-\u001f]"), "_").trim()
+        // "." and ".." would point at the folder or its parent (Content-Disposition is untrusted)
+        if (cleaned.trim('.').isEmpty()) cleaned = ""
         val ext = cleaned.substringAfterLast(".", "")
         val nameWithoutExt = if (ext.isNotEmpty()) cleaned.substringBeforeLast(".") else cleaned
         val truncatedName =

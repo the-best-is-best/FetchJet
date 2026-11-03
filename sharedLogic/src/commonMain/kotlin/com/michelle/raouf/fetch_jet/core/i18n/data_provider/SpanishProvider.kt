@@ -113,6 +113,13 @@ object SpanishProvider : AppLocalization {
         "Desactívalo en Ajustes > General > Vigilar el portapapeles."
     override val homeDownload = "Descargar"
     override val homeNotNow = "Ahora no"
+    override val bridgePairTitle = "¿Permitir esta extensión del navegador?"
+    override val bridgePairText =
+        "Una extensión del navegador quiere enviar enlaces a FetchJet. Permítelo solo si acabas de instalar o restablecer la extensión de FetchJet."
+    override val bridgePairOldText =
+        "Una extensión antigua de FetchJet quiere enviar enlaces. Permítelo si es tuya; al actualizar la extensión ya no se preguntará."
+    override val bridgePairAllow = "Permitir"
+    override val bridgePairBlock = "Bloquear"
     override val homeBrowserFallbackTitle = "¿Descargar en el navegador?"
     override val homeBrowserFallbackText =
         "Cancelaste este archivo en FetchJet. El navegador detuvo su propia descarga al " +

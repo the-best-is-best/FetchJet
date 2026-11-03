@@ -108,6 +108,13 @@ object HindiProvider : AppLocalization {
         "इसे सेटिंग्स > सामान्य > क्लिपबोर्ड पर नज़र रखें में बंद करें।"
     override val homeDownload = "डाउनलोड करें"
     override val homeNotNow = "अभी नहीं"
+    override val bridgePairTitle = "क्या इस ब्राउज़र एक्सटेंशन को अनुमति दें?"
+    override val bridgePairText =
+        "एक ब्राउज़र एक्सटेंशन FetchJet को लिंक भेजना चाहता है। अनुमति तभी दें जब आपने अभी FetchJet एक्सटेंशन इंस्टॉल या रीसेट किया हो।"
+    override val bridgePairOldText =
+        "एक पुराना FetchJet एक्सटेंशन लिंक भेजना चाहता है। अगर यह आपका है तो अनुमति दें; एक्सटेंशन अपडेट करने पर यह सवाल नहीं आएगा।"
+    override val bridgePairAllow = "अनुमति दें"
+    override val bridgePairBlock = "ब्लॉक करें"
     override val homeBrowserFallbackTitle = "इसके बजाय ब्राउज़र में डाउनलोड करें?"
     override val homeBrowserFallbackText =
         "आपने यह फ़ाइल FetchJet में रद्द कर दी। लिंक सौंपते समय ब्राउज़र ने अपना डाउनलोड " +

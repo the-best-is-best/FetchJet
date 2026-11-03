@@ -116,6 +116,13 @@ object FrenchProvider : AppLocalization {
         "Désactivez ceci dans Paramètres > Général > Surveiller le presse-papiers."
     override val homeDownload = "Télécharger"
     override val homeNotNow = "Plus tard"
+    override val bridgePairTitle = "Autoriser cette extension de navigateur ?"
+    override val bridgePairText =
+        "Une extension de navigateur demande à envoyer des liens à FetchJet. Autorisez-la seulement si vous venez d'installer ou de réinitialiser l'extension FetchJet."
+    override val bridgePairOldText =
+        "Une ancienne extension FetchJet veut envoyer des liens. Autorisez-la si c'est la vôtre ; mettre l'extension à jour évite cette question."
+    override val bridgePairAllow = "Autoriser"
+    override val bridgePairBlock = "Bloquer"
     override val homeBrowserFallbackTitle = "Télécharger plutôt dans le navigateur ?"
     override val homeBrowserFallbackText =
         "Vous avez annulé ce fichier dans FetchJet. Le navigateur a arrêté son propre téléchargement " +

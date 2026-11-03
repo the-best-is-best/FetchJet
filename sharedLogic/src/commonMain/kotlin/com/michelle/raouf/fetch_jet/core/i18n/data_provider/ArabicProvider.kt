@@ -110,6 +110,13 @@ object ArabicProvider : AppLocalization {
     override val homeClipboardOfferHint = "يمكنك إيقاف هذا من الإعدادات > عام > مراقبة الحافظة."
     override val homeDownload = "تنزيل"
     override val homeNotNow = "ليس الآن"
+    override val bridgePairTitle = "هل تسمح لإضافة المتصفح هذه؟"
+    override val bridgePairText =
+        "إضافة متصفح تطلب إرسال روابط إلى FetchJet. اسمح لها فقط إذا ثبّت إضافة FetchJet أو أعدت ضبطها للتو."
+    override val bridgePairOldText =
+        "إضافة FetchJet قديمة تريد إرسال روابط. اسمح لها إذا كانت إضافتك؛ تحديث الإضافة يلغي هذا السؤال."
+    override val bridgePairAllow = "السماح"
+    override val bridgePairBlock = "حظر"
     override val homeBrowserFallbackTitle = "هل تريد التنزيل في المتصفح بدلًا من ذلك؟"
     override val homeBrowserFallbackText =
         "لقد ألغيت هذا الملف في FetchJet. أوقف المتصفح تنزيله عندما سلّم الرابط، " +

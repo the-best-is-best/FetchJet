@@ -110,6 +110,13 @@ object RussianProvider : AppLocalization {
         "Это можно отключить: Настройки > Общие > Следить за буфером обмена."
     override val homeDownload = "Скачать"
     override val homeNotNow = "Не сейчас"
+    override val bridgePairTitle = "Разрешить это расширение браузера?"
+    override val bridgePairText =
+        "Расширение браузера хочет отправлять ссылки в FetchJet. Разрешайте, только если вы только что установили или сбросили расширение FetchJet."
+    override val bridgePairOldText =
+        "Старое расширение FetchJet хочет отправлять ссылки. Разрешите, если оно ваше; после обновления расширения этот вопрос больше не появится."
+    override val bridgePairAllow = "Разрешить"
+    override val bridgePairBlock = "Заблокировать"
     override val homeBrowserFallbackTitle = "Скачать в браузере?"
     override val homeBrowserFallbackText =
         "Вы отменили этот файл в FetchJet. Браузер остановил свою загрузку, когда " +

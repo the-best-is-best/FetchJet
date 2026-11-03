@@ -105,6 +105,13 @@ object ChineseProvider : AppLocalization {
     override val homeClipboardOfferHint = "可在 设置 > 常规 > 监视剪贴板 中关闭此功能。"
     override val homeDownload = "下载"
     override val homeNotNow = "暂不"
+    override val bridgePairTitle = "允许此浏览器扩展吗？"
+    override val bridgePairText =
+        "有浏览器扩展请求向 FetchJet 发送链接。只有在您刚安装或重置 FetchJet 扩展时才允许。"
+    override val bridgePairOldText =
+        "旧版 FetchJet 扩展想要发送链接。如果是您的扩展请允许；更新扩展后将不再询问。"
+    override val bridgePairAllow = "允许"
+    override val bridgePairBlock = "阻止"
     override val homeBrowserFallbackTitle = "改用浏览器下载？"
     override val homeBrowserFallbackText =
         "你在 FetchJet 中取消了此文件。浏览器在转交链接时已停止自己的下载，" +

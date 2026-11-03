@@ -98,6 +98,11 @@ interface AppLocalization : LocalizationProvider {
     val homeDownload: String
     val homeNotNow: String
     val homeBrowserFallbackTitle: String
+    val bridgePairTitle: String
+    val bridgePairText: String
+    val bridgePairOldText: String
+    val bridgePairAllow: String
+    val bridgePairBlock: String
     val homeBrowserFallbackText: String
     val homeDownloadInBrowser: String
     val homeNoDiscard: String

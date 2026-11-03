@@ -108,6 +108,13 @@ object EnglishProvider : AppLocalization {
         "Turn this off in Settings > General > Watch the clipboard."
     override val homeDownload = "Download"
     override val homeNotNow = "Not now"
+    override val bridgePairTitle = "Allow this browser extension?"
+    override val bridgePairText =
+        "A browser extension asks to send links to FetchJet. Allow it only if you just installed or reset the FetchJet extension."
+    override val bridgePairOldText =
+        "An older FetchJet extension wants to send links. Allow it if it is yours; updating the extension makes this question unnecessary."
+    override val bridgePairAllow = "Allow"
+    override val bridgePairBlock = "Block"
     override val homeBrowserFallbackTitle = "Download in browser instead?"
     override val homeBrowserFallbackText =
         "You cancelled this file in FetchJet. The browser stopped its own download when it " +

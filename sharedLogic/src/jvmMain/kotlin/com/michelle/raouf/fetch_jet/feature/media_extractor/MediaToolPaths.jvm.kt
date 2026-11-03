@@ -14,7 +14,25 @@ fun getToolsDir(): File {
 }
 
 
+/** Folder of the unpacked yt-dlp build (`yt-dlp_<os>.zip`): the program + `_internal/`. */
+internal fun ytDlpFolder(): File = File(getToolsDir(), "yt-dlp-dir")
+
+internal fun ytDlpFolderBinary(): File? =
+    listOf(
+        "yt-dlp.exe",
+        "yt-dlp_macos",
+        "yt-dlp_linux",
+        "yt-dlp_linux_aarch64",
+        "yt-dlp_linux_armv7l"
+    )
+        .map { File(ytDlpFolder(), it) }
+        .firstOrNull { it.isFile && it.canExecute() }
+
 fun getExistingYtDlpBinary(): File? {
+
+    // The unpacked ("onedir") build first: it starts in about a second, while the one-file
+    // build unpacks itself into a temp folder on every run (17-36 s on a Mac).
+    ytDlpFolderBinary()?.let { return it }
 
     val isWin = System.getProperty("os.name").lowercase().contains("win")
 

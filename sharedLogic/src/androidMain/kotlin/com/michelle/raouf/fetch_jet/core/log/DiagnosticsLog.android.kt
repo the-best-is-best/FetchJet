@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -29,7 +30,13 @@ actual object DiagnosticsLog {
             if (f.length() > 2L * 1024 * 1024) f.delete()
             val origOut = System.out
             val origErr = System.err
-            val file = FileOutputStream(f, true)
+            // Cookies, logins and link tokens never reach the file (it can be exported).
+            val file = RedactingOutputStream(
+                FileOutputStream(
+                    f,
+                    true
+                )
+            )
 
             class Tee(private val a: OutputStream, private val b: OutputStream) : OutputStream() {
                 override fun write(b1: Int) {

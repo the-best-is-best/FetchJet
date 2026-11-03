@@ -109,6 +109,13 @@ object IndonesianProvider : AppLocalization {
     override val homeClipboardOfferHint = "Matikan ini di Pengaturan > Umum > Pantau papan klip."
     override val homeDownload = "Unduh"
     override val homeNotNow = "Nanti saja"
+    override val bridgePairTitle = "Izinkan ekstensi browser ini?"
+    override val bridgePairText =
+        "Sebuah ekstensi browser meminta mengirim tautan ke FetchJet. Izinkan hanya jika Anda baru memasang atau mengatur ulang ekstensi FetchJet."
+    override val bridgePairOldText =
+        "Ekstensi FetchJet versi lama ingin mengirim tautan. Izinkan jika itu milik Anda; memperbarui ekstensi membuat pertanyaan ini tidak muncul lagi."
+    override val bridgePairAllow = "Izinkan"
+    override val bridgePairBlock = "Blokir"
     override val homeBrowserFallbackTitle = "Unduh di browser saja?"
     override val homeBrowserFallbackText =
         "Anda membatalkan file ini di FetchJet. Browser menghentikan unduhannya sendiri saat " +
