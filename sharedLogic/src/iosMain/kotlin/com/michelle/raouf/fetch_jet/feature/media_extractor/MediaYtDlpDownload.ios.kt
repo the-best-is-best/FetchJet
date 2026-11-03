@@ -499,7 +499,11 @@ actual suspend fun downloadMediaWithPlatformTool(
             if (ytdlp != null) {
                 cmdList.add(escapeShellArg(ytdlp))
             }
-            cmdList.addAll(rawArgs.map { escapeShellArg(it) })
+            cmdList.addAll((com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + rawArgs).map {
+                escapeShellArg(
+                    it
+                )
+            })
             executeCommandStreaming(cmdList.joinToString(" ")) { rawLine ->
                 lineHandler(rawLine)
             }
@@ -561,7 +565,10 @@ private suspend fun runCancellableOnBridge(
         }
     }
     try {
-        bridge.executeYtDlpCancellable(runId, args) { _, _, line -> onLine(line) }
+        bridge.executeYtDlpCancellable(
+            runId,
+            com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args
+        ) { _, _, line -> onLine(line) }
     } finally {
         finished = true
         watchdog.cancel()

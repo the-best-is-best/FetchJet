@@ -73,7 +73,7 @@ internal object YTDLUpdater {
         var connection: HttpURLConnection? = null
         return try {
             val url = URL(apiUrl)
-            connection = url.openConnection() as HttpURLConnection
+            connection = com.michelle.raouf.fetch_jet.core.network.openAppConnection(url)
             connection.requestMethod = "GET"
             connection.connectTimeout = 10000
             connection.readTimeout = 10000

@@ -147,8 +147,29 @@ range from the last clicked row in the order shown.
 
 ## 6. Network settings
 
-- [ ] Proxy (HTTP / SOCKS, with user and password), used by downloads, yt-dlp and torrents.
-- [ ] Saved logins per site (HTTP basic auth) for downloads that ask for a user and password.
+- [x] Proxy (HTTP / SOCKS, with user and password), used by downloads, yt-dlp and torrents.
+- [x] Saved logins per site (HTTP basic auth) for downloads that ask for a user and password.
+
+  Built 2026-11-03 (Settings > Network, `core/network/NetworkSettings.kt`, saved in
+  `network.json`). Checked on Windows against a local test proxy: HTTP and SOCKS5 with login (wrong
+  password refused), the JDK stream client and OkHttp, yt-dlp `--proxy`, a basic-auth
+  site (401 without the login, 200 with it). A56 (2026-11-03, phone -> PC over `adb reverse`):
+  through WARP SOCKS5 the downloaded `api.ipify.org` said 104.28.245.1 (Cloudflare) and a 32 MB
+  file completed; through the test HTTP proxy with login: direct file, basic-auth site, YouTube
+  inspect + download (`www.youtube.com`, `googlevideo.com` CONNECTs), the Settings page (Off /
+  SOCKS5 / Remove, live apply). Torrents: two leaks found and fixed: with an HTTP proxy libtorrent
+  sent DHT / LSD / uTP around it (now off while an HTTP proxy is on), and web seeds used a plain
+  `HttpURLConnection` (now the app's client, through the proxy, verified: Debian web seed via the
+  proxy with login). WARP's SOCKS5 has no UDP (UDP ASSOCIATE answers 07), so magnets find no
+  peers through WARP; libtorrent does send UDP through a SOCKS5 proxy that has it. Not seen: a
+  tracker announce through the proxy (the Debian tracker does not answer from Egypt at all).
+  Owner-verified site login on a real account (2026-11-03): a private GitHub repo file
+  (`raw.githubusercontent.com`, user + fine-grained token) downloads with the saved login.
+  Found while testing, not fixed: libtorrent (desktop / Android) sends no tracker announce at
+  all, even without a proxy (Ubuntu 26.10 tracker answers curl with peers); torrents get their
+  peers from DHT only.
+  Not checked: iOS (iOS torrents do not use the proxy; iOS direct downloads use the foreground
+  engine while a proxy is on).
 
 ## 7. Clean-up and older backlog
 

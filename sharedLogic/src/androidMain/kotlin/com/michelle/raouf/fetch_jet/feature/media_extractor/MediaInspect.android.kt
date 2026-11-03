@@ -38,7 +38,7 @@ private fun probeContentLength(url: String): Long {
     val safe = safeEncodeUrl(url)
     return try {
         val uri = java.net.URI(safe).toURL()
-        val conn = uri.openConnection() as java.net.HttpURLConnection
+        val conn = com.michelle.raouf.fetch_jet.core.network.openAppConnection(uri)
         conn.requestMethod = "HEAD"
         conn.connectTimeout = 4000
         conn.readTimeout = 4000

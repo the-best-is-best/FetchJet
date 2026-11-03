@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
@@ -26,21 +28,26 @@ import okio.Path.Companion.toPath
 import okio.SYSTEM
 
 class HttpChunkDownloader(
-    internal val client: HttpClient = HttpClient {
-        install(HttpRedirect) {
-            checkHttpMethod = false
-        }
-        install(HttpTimeout) {
-            requestTimeoutMillis = null
-            connectTimeoutMillis = 60_000L
-            socketTimeoutMillis = 60_000L
-        }
-    },
     internal val pathResolver: PathResolver = PathResolver(),
     internal val speedLimitProvider: (String) -> Long = { 0L }
 ) : HttpDownloadEngine {
 
     override val engineType: EngineType = EngineType.HTTP_DIRECT
+
+    private val clients = NetworkClient {
+        HttpClient {
+            install(HttpRedirect) {
+                checkHttpMethod = false
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = null
+                connectTimeoutMillis = 60_000L
+                socketTimeoutMillis = 60_000L
+            }
+            useNetworkSettings()
+        }
+    }
+    internal val client: HttpClient get() = clients.current
 
     internal val tasksState = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
     private val activeJobs = mutableMapOf<String, Job>()

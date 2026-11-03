@@ -497,6 +497,27 @@ interface AppLocalization : LocalizationProvider {
     val whenDoneNow: String
     fun whenDoneBanner(action: String): String
     fun whenDoneFailed(message: String): String
+    val sectionNetwork: String
+    val sectionNetworkBlurb: String
+    val netProxyGroup: String
+    val netProxyOff: String
+    val netProxyHost: String
+    val netProxyPort: String
+    val netProxyUser: String
+    val netProxyPassword: String
+    val netUser: String
+    val netSave: String
+    val netSaved: String
+    val netProxyHint: String
+    val netProxyHintIos: String
+    val netProxyBadPort: String
+    val netLoginsGroup: String
+    val netLoginsHint: String
+    val netLoginSite: String
+    val netLoginAdd: String
+    val netLoginsEmpty: String
+    val netRemove: String
+    fun netLoginsCount(n: Int): String
     val sysTabAllDownloads: String
     val sysTabActive: String
     val sysTabCompleted: String

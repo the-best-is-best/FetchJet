@@ -57,7 +57,7 @@ private val isX86_32 = osArch in setOf("x86", "i386", "i486", "i586", "i686")
 
 /** Opens an HTTPS connection with timeouts and a status check (a 404 page is not a binary). */
 private fun openConnection(url: String): HttpURLConnection {
-    val conn = URI(url).toURL().openConnection() as HttpURLConnection
+    val conn = com.michelle.raouf.fetch_jet.core.network.openAppConnection(URI(url).toURL())
     conn.connectTimeout = CONNECT_TIMEOUT_MS
     conn.readTimeout = READ_TIMEOUT_MS
     conn.instanceFollowRedirects = true

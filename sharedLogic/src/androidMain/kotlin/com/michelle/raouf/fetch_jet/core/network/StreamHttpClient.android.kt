@@ -35,6 +35,7 @@ actual fun createStreamHttpClient(): HttpClient = HttpClient(OkHttp) {
         connectTimeoutMillis = 60_000L
         socketTimeoutMillis = 60_000L
     }
+    useNetworkSettings()
 }
 
 actual fun rawProbeForDiagnostics(url: String, userAgent: String): String = ""

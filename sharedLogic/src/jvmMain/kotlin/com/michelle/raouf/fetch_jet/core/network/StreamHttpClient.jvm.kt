@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.core.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
 import java.net.http.HttpClient as JdkHttpClient
@@ -11,16 +12,28 @@ import java.net.http.HttpClient as JdkHttpClient
  * OkHttp (same URL, same headers, HTTP/1.1) while the very same request through
  * java.net.http got 206 — whatever the CDN keys on, this stack passes.
  */
-actual fun createStreamHttpClient(): HttpClient = HttpClient(Java) {
-    engine {
-        protocolVersion = JdkHttpClient.Version.HTTP_1_1
+actual fun createStreamHttpClient(): HttpClient {
+    val proxy = NetworkSettings.proxy.value
+    if (proxy.isOn && proxy.kind == ProxyKind.SOCKS5) return HttpClient(OkHttp) {
+        engine { config { protocols(listOf(okhttp3.Protocol.HTTP_1_1)) } }
+        streamDefaults()
     }
+    return HttpClient(Java) {
+        engine {
+            protocolVersion = JdkHttpClient.Version.HTTP_1_1
+        }
+        streamDefaults()
+    }
+}
+
+private fun io.ktor.client.HttpClientConfig<*>.streamDefaults() {
     install(HttpRedirect) { checkHttpMethod = false }
     install(HttpTimeout) {
         requestTimeoutMillis = null
         connectTimeoutMillis = 60_000L
         socketTimeoutMillis = 60_000L
     }
+    useNetworkSettings()
 }
 
 actual fun rawProbeForDiagnostics(url: String, userAgent: String): String = try {

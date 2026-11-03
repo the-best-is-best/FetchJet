@@ -71,7 +71,11 @@ fun runYtDlpCapture(args: List<String>): String? {
         cmdList.add(escapeShellArg(python))
     }
     cmdList.add(escapeShellArg(ytdlp))
-    cmdList.addAll(args.map { escapeShellArg(it) })
+    cmdList.addAll((com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args).map {
+        escapeShellArg(
+            it
+        )
+    })
 
     val fullCmd = cmdList.joinToString(" ")
     val sb = StringBuilder()

@@ -72,6 +72,7 @@ fun ytDlpRuntimeArgs(): List<String> = buildList {
     add("node")
     add("--cache-dir")
     add(getYtDlpCacheDir().absolutePath)
+    addAll(com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs())
 }
 
 @Volatile

@@ -19,6 +19,7 @@ actual fun createStreamHttpClient(): HttpClient = HttpClient(Darwin) {
         connectTimeoutMillis = 60_000L
         socketTimeoutMillis = 60_000L
     }
+    useNetworkSettings()
 }
 
 actual fun rawProbeForDiagnostics(url: String, userAgent: String): String = ""

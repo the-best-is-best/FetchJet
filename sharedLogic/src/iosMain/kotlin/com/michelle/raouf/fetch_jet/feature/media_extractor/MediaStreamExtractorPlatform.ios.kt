@@ -34,7 +34,7 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
     val output = if (bridge != null && bridge.isAvailable()) {
         // In-process engine only: when it fails, surface its error instead of falling back to a
         // (never working on iOS) popen of a yt-dlp binary, whose shell noise used to look like output.
-        bridge.captureYtDlp(args)
+        bridge.captureYtDlp(com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args)
     } else {
         runYtDlpCapture(args)
     }
@@ -60,7 +60,7 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         val output = if (bridge != null && bridge.isAvailable()) {
-            bridge.captureYtDlp(args)
+            bridge.captureYtDlp(com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args)
         } else {
             runYtDlpCapture(args)
         }
@@ -84,7 +84,7 @@ actual suspend fun runYtDlpJson(
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         try {
-            if (bridge != null && bridge.isAvailable()) bridge.captureYtDlp(args) else runYtDlpCapture(
+            if (bridge != null && bridge.isAvailable()) bridge.captureYtDlp(com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args) else runYtDlpCapture(
                 args
             )
         } catch (_: Exception) {

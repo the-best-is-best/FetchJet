@@ -2,6 +2,7 @@
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import io.ktor.client.HttpClient
@@ -14,7 +15,10 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSNumber
 
-private val probeClient by lazy { HttpClient() }
+private val probeClients = com.michelle.raouf.fetch_jet.core.network.NetworkClient {
+    HttpClient { useNetworkSettings() }
+}
+private val probeClient get() = probeClients.current
 
 private suspend fun probeContentLength(urlStr: String): Long {
     val clean = urlStr.trim()
@@ -114,7 +118,7 @@ actual suspend fun inspectPlatformQualities(
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         val output = if (bridge != null && bridge.isAvailable()) {
-            bridge.captureYtDlp(args)
+            bridge.captureYtDlp(com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs() + args)
         } else {
             runYtDlpCapture(args)
         }

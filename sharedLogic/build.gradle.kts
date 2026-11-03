@@ -49,6 +49,7 @@ kotlin {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.libtorrent4j.core)
+                implementation(libs.ktor.client.okhttp)
             }
         }
         jvmMain.get().dependsOn(jvmAndroidMain)

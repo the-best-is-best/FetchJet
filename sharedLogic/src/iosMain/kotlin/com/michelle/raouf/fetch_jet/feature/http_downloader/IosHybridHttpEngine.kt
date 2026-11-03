@@ -96,7 +96,9 @@ class IosHybridHttpEngine(
                 else -> null
             }
             val decided = existing ?: onDisk
-                ?: if (create && speedLimitProvider(taskId) > 0L) Owner.FOREGROUND else Owner.BACKGROUND
+            ?: if (create && (speedLimitProvider(taskId) > 0L ||
+                        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn)
+            ) Owner.FOREGROUND else Owner.BACKGROUND
             owners[taskId] = decided
             decided
         }

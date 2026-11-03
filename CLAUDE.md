@@ -469,6 +469,57 @@ Bridges:
   Ctrl/Cmd+A, Delete, Esc (`TaskList.kt` `onKeyEvent` on the focusable list column, `TaskRow`
   `onCtrlClick` / `onShiftClick` via `LocalWindowInfo.keyboardModifiers`). In commonMain on
   purpose (owner: a keyboard on a phone works too). Owner-tested on Windows.
+- 1.2.0 network settings (ROADMAP item 6): Settings > Network (`ui/NetworkSettingsUi.kt`),
+  `core/network/NetworkSettings.kt` (`network.json` in the settings folder, password in plain
+  text). Every app HTTP client is built in a `NetworkClient { ... useNetworkSettings() }` (rebuilt
+  after a change: applies to downloads started later). `useNetworkSettings` sets the ktor proxy,
+  sends `Authorization: Basic` to saved sites (and sub-domains) and `Proxy-Authorization` for
+  plain http; `applyProxyLogin` (expect/actual) answers the HTTPS tunnel login: OkHttp
+  `proxyAuthenticator`, JDK `authenticator` + `jdk.http.auth.tunneling.disabledSchemes=""`,
+  SOCKS5 login via the default `java.net.Authenticator` (`JvmProxyLogin`). The JDK engine has no
+  SOCKS, so the desktop stream client uses OkHttp while a SOCKS5 proxy is on. The JVM default
+  ktor engine is OkHttp (checked). iOS Darwin: ktor sends only http:// through an HTTP proxy, so
+  the proxy dictionary (HTTPS keys, SOCKS user) is set by hand. yt-dlp gets `--proxy` (desktop
+  `ytDlpRuntimeArgs`, Android `RuntimeManager.buildYTDLCommand`, iOS every bridge / popen call);
+  libtorrent4j `proxy_type` etc. (`Libtorrent4jBackend.applyProxy`, live; with an HTTP proxy
+  DHT / LSD / uTP are turned off, they would go around it). Every `HttpURLConnection` (web seeds,
+  size probes, tool downloads, yt-dlp updater, native loader) opens through `openAppConnection`
+  (`jvmAndroidMain/.../core/network/ProxiedConnection.kt`); web seeds use the ktor client
+  (`streamUrlWithClient`, common) while a proxy is on, because Android's `HttpURLConnection`
+  did not answer the proxy's 407. A new network call = `NetworkClient` / `useNetworkSettings`
+  or `openAppConnection`, never a bare client. Not on iOS torrents (FJTorrent would need a new
+  method + xcframework rebuild). Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
+  login, basic-auth site) was used on Windows; see ROADMAP item 6.
+- **Mac to-do for item 6 (network), not built on a Mac yet (2026-11-03).** Windows and the A56
+  are verified (see ROADMAP item 6). iOS files changed, never compiled:
+  `iosMain/.../core/network/NetworkSettings.ios.kt` (new: Darwin proxy dictionary with HTTPS
+  keys and SOCKS user/password, `handleChallenge` for the HTTP proxy login),
+  `StreamHttpClient.ios.kt`, `IosHybridHttpEngine.kt` (proxy on -> foreground engine, the
+  background NSURLSession ignores it), `MediaInspect.ios.kt` (size probes),
+  `MediaStreamExtractorPlatform.ios.kt` / `MediaYtDlpDownload.ios.kt` / `MediaYtDlpRun.ios.kt`
+  (`NetworkSettings.ytDlpArgs()` before every yt-dlp call), `TorrentStreamer.ios.kt` (now calls
+  the common `streamUrlWithClient`). Steps on the Mac:
+    1. `./gradlew :sharedLogic:compileKotlinIosSimulatorArm64`, fix compile errors (likely spots:
+       `handleChallenge` lambda types, `NSURLCredential.credentialWithUser`, `isProxy()`), then
+       the Xcode build and the simulator.
+    2. Test proxy: `python3 scripts/network-test/test_proxies.py /tmp/proxies.log` on the Mac (HTTP
+       proxy `127.0.0.1:18080`, SOCKS5 `127.0.0.1:11080`, both user `fj` password `secret`;
+       a basic-auth site `http://127.0.0.1:18090/x.bin` user `site` password `pw`; every request
+       is written to the log). The simulator's 127.0.0.1 is the Mac itself.
+    3. In the app, Settings > Network: HTTP proxy with the login, then download
+       `https://media.githubusercontent.com/media/inventer-dev/speed-test-files/main/8MB.bin`
+       and a YouTube video (`jNQXAC9IVRw`); the log must show `HTTP-PROXY OK CONNECT
+     media.githubusercontent.com`, `www.youtube.com`, `googlevideo.com`. Then SOCKS5 (log:
+       `SOCKS OK ...`). A wrong password must fail. Proxy Off: nothing in the log.
+    4. Site login: proxy Off, save `127.0.0.1` / `site` / `pw`, download the 18090 link (log:
+       `SITE ... auth-ok`); without the login it fails with 401.
+    5. Known gaps on iOS: torrents do not use the proxy (FJTorrent has no proxy setting; adding
+       it = a new `FJTorrent` method + Swift bridge + rebuild the xcframework, owner's call).
+       Web seeds (HTTP) of a torrent do use it.
+    6. Update ROADMAP item 6 and this note with the result.
+- Open (found 2026-11-03, not fixed): libtorrent on desktop / Android sends no tracker
+  announce at all, even without a proxy (no tracker alert, nothing at a proxy; the Ubuntu 26.10
+  tracker answers curl with peers). Torrents find peers through DHT only. Not looked into yet.
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub

@@ -198,7 +198,7 @@ internal object TorrentNativeLoader {
     }
 
     private fun open(url: String): HttpURLConnection {
-        val c = URI(url).toURL().openConnection() as HttpURLConnection
+        val c = com.michelle.raouf.fetch_jet.core.network.openAppConnection(URI(url).toURL())
         c.connectTimeout = 15_000
         c.readTimeout = 60_000
         c.instanceFollowRedirects = true

@@ -1,7 +1,13 @@
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
+import com.michelle.raouf.fetch_jet.core.network.ProxyKind
+import com.michelle.raouf.fetch_jet.core.network.ProxySettings
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.Priority
@@ -114,6 +120,41 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
                 sm.applySettings(sp)
             } catch (_: Throwable) {
             }
+            proxyScope.launch {
+                NetworkSettings.proxy.collect { applyProxy(sm, it) }
+            }
+        }
+    }
+
+    private val proxyScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /** Peers, trackers and web seeds through the app's proxy (SOCKS5 or HTTP, with login). */
+    private fun applyProxy(sm: SessionManager, p: ProxySettings) {
+        try {
+            val type = when {
+                !p.isOn -> settings_pack.proxy_type_t.none
+                p.kind == ProxyKind.SOCKS5 && p.hasLogin -> settings_pack.proxy_type_t.socks5_pw
+                p.kind == ProxyKind.SOCKS5 -> settings_pack.proxy_type_t.socks5
+                p.hasLogin -> settings_pack.proxy_type_t.http_pw
+                else -> settings_pack.proxy_type_t.http
+            }
+            val sp = SettingsPack()
+            sp.setInteger(settings_pack.int_types.proxy_type.swigValue(), type.swigValue())
+            sp.setString(settings_pack.string_types.proxy_hostname.swigValue(), p.host)
+            sp.setInteger(settings_pack.int_types.proxy_port.swigValue(), p.port)
+            sp.setString(settings_pack.string_types.proxy_username.swigValue(), p.user)
+            sp.setString(settings_pack.string_types.proxy_password.swigValue(), p.password)
+            sp.setBoolean(settings_pack.bool_types.proxy_hostnames.swigValue(), true)
+            sp.setBoolean(settings_pack.bool_types.proxy_peer_connections.swigValue(), true)
+            sp.setBoolean(settings_pack.bool_types.proxy_tracker_connections.swigValue(), true)
+            // An HTTP proxy carries TCP only: DHT, local discovery and uTP would go around it.
+            val udp = !(p.isOn && p.kind == ProxyKind.HTTP)
+            sp.setBoolean(settings_pack.bool_types.enable_dht.swigValue(), udp)
+            sp.setBoolean(settings_pack.bool_types.enable_lsd.swigValue(), udp)
+            sp.setBoolean(settings_pack.bool_types.enable_outgoing_utp.swigValue(), udp)
+            sp.setBoolean(settings_pack.bool_types.enable_incoming_utp.swigValue(), udp)
+            sm.applySettings(sp)
+        } catch (_: Throwable) {
         }
     }
 

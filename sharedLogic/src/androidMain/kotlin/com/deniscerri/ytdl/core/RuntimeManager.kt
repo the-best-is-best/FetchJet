@@ -443,6 +443,9 @@ object RuntimeManager {
             request.addOption("--no-cache-dir")
         }
 
+        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs().chunked(2)
+            .forEach { (k, v) -> request.addOption(k, v) }
+
         return mutableListOf(
             pythonLocation.executable.absolutePath,
             ytdlpPath!!.absolutePath

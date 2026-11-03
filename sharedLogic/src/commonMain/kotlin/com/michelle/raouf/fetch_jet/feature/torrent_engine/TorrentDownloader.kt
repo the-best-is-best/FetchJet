@@ -1,5 +1,6 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
@@ -150,6 +151,7 @@ class TorrentDownloader(
                 connectTimeoutMillis = 15_000
                 socketTimeoutMillis = 30_000
             }
+            useNetworkSettings()
         }
         try {
             val safeUrl = url.replace(" ", "%20")

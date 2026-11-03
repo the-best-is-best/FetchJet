@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.core.update
 
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.edition.AppEdition
@@ -116,14 +118,16 @@ object UpdateManager {
     private val pathResolver = PathResolver()
     private val settingsFile get() = "${pathResolver.getSettingsDirectory()}/updates.properties".toPath()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val client by lazy {
+    private val clients = NetworkClient {
         HttpClient {
             install(HttpTimeout) {
                 connectTimeoutMillis = 20_000L
                 socketTimeoutMillis = 60_000L
             }
+            useNetworkSettings()
         }
     }
+    private val client get() = clients.current
     private var checkJob: Job? = null
     private var downloadJob: Job? = null
     private var started = false

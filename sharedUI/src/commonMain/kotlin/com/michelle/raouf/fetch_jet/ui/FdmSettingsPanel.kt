@@ -42,6 +42,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
@@ -52,6 +53,7 @@ internal enum class SettingsSection(val glyph: String) {
     DOWNLOADS("↓"),
     BROWSER("⧉"),
     SPEED("≋"),
+    NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
     UPDATES("↻");
@@ -62,6 +64,7 @@ internal enum class SettingsSection(val glyph: String) {
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
             BROWSER -> LocalizationManager.Strings.sectionBrowser
             SPEED -> LocalizationManager.Strings.sectionSpeed
+            NETWORK -> LocalizationManager.Strings.sectionNetwork
             MEDIA -> LocalizationManager.Strings.sectionMedia
             TORRENT -> LocalizationManager.Strings.sectionTorrent
             UPDATES -> LocalizationManager.Strings.sectionUpdates
@@ -73,6 +76,7 @@ internal enum class SettingsSection(val glyph: String) {
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
             BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
             SPEED -> LocalizationManager.Strings.sectionSpeedBlurb
+            NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
             MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
             TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
             UPDATES -> LocalizationManager.Strings.sectionUpdatesBlurb
@@ -127,6 +131,8 @@ fun FdmSettingsPanel(
     val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
+    val netProxy by NetworkSettings.proxy.collectAsState()
+    val netLogins by NetworkSettings.logins.collectAsState()
     val sections = SettingsSection.entries.filter {
         when (it) {
             SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
@@ -158,6 +164,9 @@ fun FdmSettingsPanel(
                 ) else null,
                 if (globalUploadSpeedLimitBytes > 0) "↑ " + limitText(globalUploadSpeedLimitBytes) else null
             ).joinToString("  ") to StatusPaused
+
+        SettingsSection.NETWORK -> networkSummary(netProxy, netLogins.size) to
+                (if (netProxy.isOn) StatusCompleted else null)
 
         SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
@@ -201,6 +210,8 @@ fun FdmSettingsPanel(
                 globalDownloadSpeedLimitBytes, globalUploadSpeedLimitBytes,
                 onGlobalDownloadSpeedLimitChanged, onGlobalUploadSpeedLimitChanged
             )
+
+            SettingsSection.NETWORK -> NetworkPage(isIos)
 
             SettingsSection.MEDIA -> MediaToolsPage(
                 ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,

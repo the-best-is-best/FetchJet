@@ -57,6 +57,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -85,7 +86,8 @@ internal fun FetchJetTextField(
     shape: Shape = RoundedCornerShape(12.dp),
     textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     val interaction = remember { MutableInteractionSource() }
     FieldFrame(label, error, enabled, interaction, shape, modifier) { style, cursor, focused ->
@@ -100,6 +102,7 @@ internal fun FetchJetTextField(
             cursorBrush = cursor,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
+            visualTransformation = visualTransformation,
             interactionSource = interaction,
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
