@@ -430,12 +430,11 @@ object ExtensionBridgeServer {
                         // sends the browser to the background, where Android slows its page
                         // down (a minute per 12 lectures). Count quietly, open with the list.
                         ExternalDownloadBridge.dispatch(req)
-                        if (reading.first == 0 && reading.second > 0) Toast.makeText(
-                            appContext,
-                            LocalizationManager.Strings.readingCourseLectures(0, reading.second),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else deliver { ExternalDownloadBridge.dispatch(req) }
+                        showReadingProgress(reading.first, reading.second)
+                    } else deliver {
+                        if (req.playlist != null || req.readingFailed.isNotBlank()) endReadingProgress()
+                        ExternalDownloadBridge.dispatch(req)
+                    }
                     reply(out, r, 200, """{"ok":true}""", "application/json; charset=UTF-8")
                 } else {
                     @Suppress("UNCHECKED_CAST")
@@ -610,4 +609,45 @@ object ExtensionBridgeServer {
     }
 
     private const val LINK_CHANNEL = "fetchjet_links"
+    private const val READING_ID = 7002
+    private var lastReadingToastMs = 0L
+
+    /**
+     * "Reading the course lectures: 48 / 172" while the browser reads a course: a toast over
+     * the browser (at most every 2.5 s, toasts queue up) and a quiet notification with a bar.
+     */
+    private fun showReadingProgress(done: Int, total: Int) {
+        if (total <= 0) return
+        val text = LocalizationManager.Strings.readingCourseLectures(done, total)
+        val now = System.currentTimeMillis()
+        if (done == 0 || now - lastReadingToastMs >= 2_500L) {
+            lastReadingToastMs = now
+            Toast.makeText(appContext, text, Toast.LENGTH_SHORT).show()
+        }
+        try {
+            val n = androidx.core.app.NotificationCompat.Builder(
+                appContext,
+                com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager.CHANNEL_ID
+            )
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(text)
+                .setContentText(LocalizationManager.Strings.readingCourseLecturesHint)
+                .setProgress(total, done, false)
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .setSilent(true)
+                .build()
+            androidx.core.app.NotificationManagerCompat.from(appContext).notify(READING_ID, n)
+        } catch (_: SecurityException) {
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun endReadingProgress() {
+        lastReadingToastMs = 0L
+        try {
+            androidx.core.app.NotificationManagerCompat.from(appContext).cancel(READING_ID)
+        } catch (_: Exception) {
+        }
+    }
 }

@@ -680,11 +680,21 @@ function clearMediaForTab(tabId) {
   });
 }
 
+/**
+ * The badge changes only when its number does: every captured video piece used to set it again
+ * (twice a second on a playing course), and Firefox for Android redraws the extension's menu
+ * entry each time, so a tap on it could be lost and the popup did not open.
+ */
+const shownBadges = new Map();
 function updateBadge(tabId, count) {
   if (!api.action) return;
+  const text = count > 0 ? String(count) : "";
+  if (shownBadges.get(tabId) === text) return;
+  const first = !shownBadges.has(tabId);
+  shownBadges.set(tabId, text);
   try {
-    api.action.setBadgeText({ tabId, text: count > 0 ? String(count) : "" }).catch(() => {});
-    api.action.setBadgeBackgroundColor({ tabId, color: "#6366f1" }).catch(() => {});
+    api.action.setBadgeText({ tabId, text }).catch(() => {});
+    if (first) api.action.setBadgeBackgroundColor({ tabId, color: "#6366f1" }).catch(() => {});
   } catch (_) {}
 }
 
@@ -1190,7 +1200,7 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   }
   if (info.url || info.status === "loading" || info.status === "complete") ensureYoutubeResolved(tabId, url);
 });
-api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}); });
+api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}).then(() => shownBadges.delete(tabId)); });
 
 // ---------------------------------------------------------------------------
 // 3. Context menus & keyboard commands
