@@ -41,7 +41,9 @@ internal data class PersistedTask(
     val torrentFiles: String = "",
     val webSeeds: String = "",
     val scheduledAtMs: Long = 0L,
-    val maxConnections: Int = 0
+    val maxConnections: Int = 0,
+    val expectedChecksum: String = "",
+    val checksumVerified: String = ""
 )
 
 internal object TaskCache {
@@ -100,7 +102,9 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     },
     webSeeds = webSeedUrls.joinToString(" "),
     scheduledAtMs = scheduledAtMs,
-    maxConnections = maxConnections
+    maxConnections = maxConnections,
+    expectedChecksum = expectedChecksum.orEmpty(),
+    checksumVerified = checksumVerified?.toString().orEmpty()
 )
 
 internal fun PersistedTask.toTask(
@@ -155,7 +159,9 @@ internal fun PersistedTask.toTask(
         } ?: emptyList(),
         webSeedUrls = webSeeds.split(' ').filter { it.isNotBlank() },
         scheduledAtMs = scheduledAtMs,
-        maxConnections = maxConnections
+        maxConnections = maxConnections,
+        expectedChecksum = expectedChecksum.ifBlank { null },
+        checksumVerified = checksumVerified.toBooleanStrictOrNull()
     )
 }
 

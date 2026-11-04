@@ -543,6 +543,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     fileNameOverride = state.fileNameOverride,
                     sortIntoFolders = state.sortIntoFolders,
                     onFileNameChanged = { viewModel.onEvent(DashboardUiEvent.OnFileNameChanged(it)) },
+                    checksumInput = state.checksumInput,
+                    onChecksumChanged = { viewModel.onEvent(DashboardUiEvent.OnChecksumChanged(it)) },
                     onDestinationPathChanged = {
                         viewModel.onEvent(
                             DashboardUiEvent.OnDestinationPathChanged(

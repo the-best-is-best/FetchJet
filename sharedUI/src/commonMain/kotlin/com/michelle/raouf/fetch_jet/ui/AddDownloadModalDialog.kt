@@ -63,6 +63,8 @@ fun AddDownloadModalDialog(
     fileNameOverride: String = "",
     sortIntoFolders: Boolean = false,
     onFileNameChanged: (String) -> Unit = {},
+    checksumInput: String = "",
+    onChecksumChanged: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
@@ -285,6 +287,7 @@ fun AddDownloadModalDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        ProvideSafeClipboard {
         Card(
             modifier = Modifier
                 .widthIn(min = 340.dp, max = 660.dp)
@@ -416,6 +419,15 @@ fun AddDownloadModalDialog(
                     onFileNameChanged = onFileNameChanged
                 )
 
+                // Optional checksum to verify the finished file (direct download only: a media
+                // file is re-encoded / merged, so a published checksum would never match it).
+                if (!showsLinkList && inspectedPlaylist == null &&
+                    detectedEngine == EngineType.HTTP_DIRECT
+                ) ChecksumSection(
+                    value = checksumInput,
+                    onValueChange = onChecksumChanged
+                )
+
                 DestinationSection(
                     destinationPath = destinationPath,
                     pathField = pathFieldState,
@@ -460,6 +472,7 @@ fun AddDownloadModalDialog(
                     onDismiss = onDismiss
                 )
             }
+        }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -7,6 +8,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.NativeClipboard
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.Window
@@ -870,7 +875,30 @@ fun main(rawArgs: Array<String>) {
                 }
             }
 
-            App()
+            val baseClipboard = LocalClipboard.current
+            val safeClipboard = remember(baseClipboard) {
+                object : Clipboard {
+                    override suspend fun getClipEntry(): ClipEntry? =
+                        try {
+                            baseClipboard.getClipEntry()
+                        } catch (_: Throwable) {
+                            null
+                        }
+
+                    override suspend fun setClipEntry(clipEntry: ClipEntry?) {
+                        try {
+                            baseClipboard.setClipEntry(clipEntry)
+                        } catch (_: Throwable) {
+                        }
+                    }
+
+                    override val nativeClipboard: NativeClipboard
+                        get() = baseClipboard.nativeClipboard
+                }
+            }
+            CompositionLocalProvider(LocalClipboard provides safeClipboard) {
+                App()
+            }
         }
     }
 }

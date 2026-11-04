@@ -1,7 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +40,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.getClipboardText
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -269,6 +269,31 @@ internal fun FileNameSection(
         )
         Spacer(modifier = Modifier.height(14.dp))
     }
+}
+
+@Composable
+internal fun ChecksumSection(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Text(
+        text = LocalizationManager.Strings.checksumLabel,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    FetchJetTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = LocalizationManager.Strings.checksumHint,
+        modifier = Modifier.fillMaxWidth(),
+        leading = { Text("#️⃣", fontSize = 16.sp) },
+        trailing = if (value.isNotBlank()) {
+            { FieldIconButton("✕", onClick = { onValueChange("") }) }
+        } else null
+    )
+    Spacer(modifier = Modifier.height(14.dp))
 }
 
 @Composable

@@ -54,3 +54,31 @@ bridge is loopback-only today, so it needs a real transport and its own security
   cookies, file name, chosen quality). Handle the device being offline (queue and retry).
 - [ ] Security review before it ships (same bar as the bridge pairing review): no un-consented
   sends, no way for a device on the LAN to push downloads without pairing.
+
+## 5. Audio format conversion (medium)
+
+Why: let the user grab the best-quality audio and get it as any format they want (MP3 for the car,
+FLAC to keep, etc.) without a second tool. Moved out of 1.2.0 (2026-11-04, owner's decision): the
+diff was getting large and it needs the HLS path fixed, so it is not a quick win.
+
+Current state in `master`/1.2.0: the own-engine path (`MediaOwnEngine.downloadWithOwnEngine`) has a
+latent MP3-only branch (`audioTarget && targetExt == "mp3"`) reached only if the output file name
+ends in `.mp3`; there is **no UI** to pick a format. An earlier generalized attempt (an
+`audioEncoderArgs(ext)` helper for mp3/m4a/opus/ogg/flac/wav, a "Convert to" chip picker in the Add
+dialog's `FileNameSection`, and `audioConvertTo` / `audioOriginal` i18n strings in all 15 providers)
+was reverted from the 1.2.0 branch and should be redone here.
+
+- [ ] When the selected quality is audio-only, show a "Convert to" picker whose default is
+  **Original** (the native format that downloads — no re-encode, no quality loss), plus
+  MP3 · M4A · OPUS · FLAC · WAV · OGG. The app downloads best-quality audio and converts with
+  ffmpeg.
+- [ ] Generalize the own-engine convert step to `audioEncoderArgs(targetExt)` (libmp3lame -q:a 2,
+  aac 192k, libopus 160k, libvorbis -q:a 5, flac, pcm_s16le); keep the atomic-move fast path when
+  the source extension already equals the target.
+- [ ] **Fix the HLS path** (`HlsDownloader`, used by SoundCloud): today it only does `-c copy` into
+  the output container, so a chosen audio format is ignored. Add a transcode-to-target-extension
+  step (or a post-merge convert) so conversion works for HLS audio too. Verify on SoundCloud.
+- [ ] Offer the picker in the link-list and playlist views as well (a global "Convert all to"
+  control that rewrites each selected audio track's output extension), per the owner's request.
+- [ ] i18n: `audioConvertTo` / `audioOriginal` (and any new strings) in `AppLocalization` + all 15
+  providers.

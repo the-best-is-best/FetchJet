@@ -129,6 +129,8 @@ data class DashboardUiState(
     val suggestedFileName: String = "",
     /** What the user typed in that box; empty = use [suggestedFileName]. */
     val fileNameOverride: String = "",
+    /** Optional checksum the user typed to verify the finished file (sha256 / md5 hex). */
+    val checksumInput: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
 
@@ -216,6 +218,7 @@ sealed interface DashboardUiEvent {
 
     data class OnDestinationPathChanged(val path: String) : DashboardUiEvent
     data class OnFileNameChanged(val name: String) : DashboardUiEvent
+    data class OnChecksumChanged(val value: String) : DashboardUiEvent
 
     data class OnDisableTorrentUploadToggled(val disable: Boolean) : DashboardUiEvent
 

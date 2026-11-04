@@ -47,6 +47,10 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(fileNameOverride = event.name) }
         }
 
+        is DashboardUiEvent.OnChecksumChanged -> {
+            _uiState.update { it.copy(checksumInput = event.value) }
+        }
+
         is DashboardUiEvent.OnUrlChanged -> {
             val links = extractLinks(event.url)
             val inputUrl = links.singleOrNull()
@@ -103,6 +107,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     selectedConnections = 0,
                     mediaDurationSeconds = 0L,
                     fileNameOverride = "",
+                    checksumInput = "",
                     suggestedFileName = ""
                 )
             }

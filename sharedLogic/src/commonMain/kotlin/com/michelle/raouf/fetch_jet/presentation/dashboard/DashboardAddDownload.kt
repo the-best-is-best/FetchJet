@@ -171,7 +171,8 @@ internal fun DashboardViewModel.addDownload(
             clipByCutting = isActualSubClip && currentState.clipFastMode,
             requestHeaders = headersForLink(url),
             scheduledAtMs = currentState.scheduleStartMs,
-            maxConnections = currentState.selectedConnections
+            maxConnections = currentState.selectedConnections,
+            expectedChecksum = currentState.checksumInput
         ).onSuccess { task ->
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()
@@ -183,6 +184,7 @@ internal fun DashboardViewModel.addDownload(
                     linkList = emptyList(),
 
                     fileNameOverride = "",
+                    checksumInput = "",
 
                     suggestedFileName = "",
                     isLoading = false,

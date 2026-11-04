@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -67,6 +65,7 @@ import com.michelle.raouf.fetch_jet.theme.StatusPaused
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun DownloadTaskItem(
@@ -515,7 +514,7 @@ internal fun DownloadTaskItem(
                 modifier = Modifier.padding(top = 3.dp)
             )
 
-            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            val clipboard = LocalClipboard.current
             listOf(
                 LocalizationManager.Strings.detailsSource to task.url,
                 LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
@@ -538,7 +537,13 @@ internal fun DownloadTaskItem(
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .clickable {
-                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
+                                    runCatching {
+                                        clipboard.setText(
+                                            androidx.compose.ui.text.AnnotatedString(
+                                                link
+                                            )
+                                        )
+                                    }
                                 }
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -554,6 +559,39 @@ internal fun DownloadTaskItem(
                         )
                     }
                 }
+
+            if (!task.expectedChecksum.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                val verdictIcon: String
+                val verdictText: String
+                val verdictColor: Color
+                when (task.checksumVerified) {
+                    true -> {
+                        verdictIcon = "✅"
+                        verdictText = LocalizationManager.Strings.checksumVerified
+                        verdictColor = Color(0xFF2E7D32)
+                    }
+
+                    false -> {
+                        verdictIcon = "❌"
+                        verdictText = LocalizationManager.Strings.checksumMismatch
+                        verdictColor = MaterialTheme.colorScheme.error
+                    }
+
+                    null -> {
+                        verdictIcon = "⏳"
+                        verdictText = LocalizationManager.Strings.checksumChecking
+                        verdictColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                }
+                Text(
+                    text = "$verdictIcon $verdictText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = verdictColor,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
 

@@ -271,7 +271,13 @@ Open, owner's decision:
   the secret the upload steps fail on purpose. Checked: openssl signature verifies with the
   app's Java code, one changed byte fails it. 1.1.0 and older have no signature check, so the
   first release that is enforced is the update after 1.2.0.
-- [ ] macOS / Windows "unknown developer" warnings stay (needs paid certificates).
+- [x] macOS / Windows "unknown developer" warning — owner's decision, no paid certificates.
+  Windows ships through the Microsoft Store (MSIX), which Microsoft signs, so Store users see no
+  SmartScreen "unknown publisher" warning (the standalone MSI / portable ZIP on GitHub still shows
+  it, as they are outside the Store). macOS keeps the Gatekeeper warning; the user opens the app
+  once with right-click -> Open, or System Settings -> Privacy & Security -> "Open Anyway". Owner
+  won't buy certificates ($99/yr Apple, ~$100-400/yr Windows code-signing). Not a blocker: the app
+  installs and runs after that one click.
 - [x] Bridge pairing token (owner chose it): `core/network/BridgePairing.kt`. Desktop and Android
   bridges need `X-FetchJet-Token` on `/add`, `/links`, `/inspect`, `/download`, `/show` (401
   "pairing required" without it; `/ping`, `/config` stay open, `/config` says `"pairing":true`
@@ -458,16 +464,24 @@ ideas moved to `ROADMAP-1.3.0.md`.
   `SettingsPages.kt`, 5 i18n strings × 15 languages. Built desktop + Android; shown working on
   Windows 2026-11-04 (picked High=20 MB/s, turtle→512 KB/s, settings presets edit + Mbps↔MB/s
   conversion 20 Mbps = 2.3 MB/s all correct). Owner to try it; not checked on Android/iOS screens.
-- [ ] Verify a finished file's checksum: an optional sha256 / md5 field per download; after it
-  completes, hash the file and show OK / mismatch. The sha256 code already exists (tool downloads,
-  `MessageDigest` in `MediaExtractorToolManager.jvm.kt`); add a field in the Add dialog, store it
-  on the task, and a post-complete compare step in common code (one hasher, expect/actual if
-  needed on Android/iOS).
-- [ ] "Audio only -> MP3": when the user picks audio, download the best audio (already supported:
-  `isAudioOnly` / `isAllAudio`) and offer an MP3 convert as a final ffmpeg step
-  (`-vn -acodec libmp3lame`). First confirm the bundled ffmpeg has libmp3lame on each platform
-  (ffbinaries 4.4.1, ffmpeg-static, Android/iOS builds); if a platform's build lacks it, keep the
-  original audio there and note it.
+- [x] Verify a finished file's checksum: an optional sha256 / md5 field per download; after it
+  completes, hash the file and show OK / mismatch. Done 2026-11-04: an optional "Checksum (optional)
+  " field in the Add dialog (shown only for the Direct engine — media files are
+  re-encoded so a checksum would never match, torrents verify per-piece already). The value is
+  parsed by `core/util/ChecksumUtil.kt` (okio `HashingSource`; accepts `sha256:`/`md5:` prefixes or
+  a bare hex whose length picks the algorithm, 64=sha256 / 32=md5 / 40=sha1), stored on the task
+  (`DownloadTask.expectedChecksum`, persisted in `tasks_cache.json`). After a task completes,
+  `QueueManagerRepository.observeChecksumVerification()` hashes the file off the engine-owned flow
+  and overlays `checksumVerified` into `allTasksFlow` (no mutation of engine tasks). TaskDetails
+  shows the verdict: OK (green), mismatch (red), or verifying. Unit test `ChecksumUtilTest`
+  (jvmTest). Verified live on Windows (correct sha256 -> green). All code is commonMain + okio,
+  no Swift / iosMain touched; needs a Mac build to confirm iOS. Not committed yet (owner commits).
+- [~] "Audio only -> MP3" / audio format conversion: **moved to 1.3.0** (owner's decision,
+  2026-11-04 — the diff was getting large, kept 1.2.0 focused). The started work was reverted from
+  this branch; see ROADMAP-1.3.0.md item 5 for the full plan. Nothing audio-conversion remains in
+  the 1.2.0 working tree (verified: `AddDownloadMedia.kt` untouched, no `audioConvertTo` /
+  `--audio-format` / `libmp3lame` added in code). The pre-existing latent MP3 path and
+  `stepConvertingToMp3` string stay as they were.
 
 ## Checks still open from 1.1.0 (owner, any time)
 

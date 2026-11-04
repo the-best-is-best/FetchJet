@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.feature.queue_manager
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
+import com.michelle.raouf.fetch_jet.core.util.verifyFileChecksum
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -305,7 +306,11 @@ class QueueManagerRepository(
         }
     }
 
-    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+    /** Checksum verdicts overlaid onto the engine tasks (true = match, false = mismatch). */
+    private val _checksumResults = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private val checksumVerifyingIds = mutableSetOf<String>()
+
+    private val baseTasksFlow: kotlinx.coroutines.flow.Flow<List<DownloadTask>> = combine(
         httpEngine.getAllTasksFlow(),
         torrentEngine.getAllTasksFlow(),
         mediaEngine.getAllTasksFlow(),
@@ -337,6 +342,14 @@ class QueueManagerRepository(
         }
         (engineTasks + waiting)
             .sortedByDescending { it.createdAtEpochMs }
+    }
+
+    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+        baseTasksFlow,
+        _checksumResults
+    ) { tasks, results ->
+        if (results.isEmpty()) tasks
+        else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -348,6 +361,7 @@ class QueueManagerRepository(
 
     init {
         observeTasksForNotifications()
+        observeChecksumVerification()
         loadAndRestoreTasks()
         observeTasksForPersistence()
         // Starts queued / scheduled downloads when a slot frees up or their time comes.
@@ -412,6 +426,33 @@ class QueueManagerRepository(
         }
     }
 
+    /**
+     * When a download with a user-supplied checksum finishes, hash the file once and publish the
+     * verdict (true = match, false = mismatch) into [_checksumResults], which allTasksFlow overlays.
+     * Runs once per task; a restored task that already has a stored verdict is left alone.
+     */
+    private fun observeChecksumVerification() {
+        scope.launch {
+            allTasksFlow.collect { tasks ->
+                tasks.forEach { task ->
+                    val needsCheck = task.status == DownloadStatus.COMPLETED &&
+                            !task.expectedChecksum.isNullOrBlank() &&
+                            task.checksumVerified == null &&
+                            task.id !in _checksumResults.value &&
+                            task.id !in checksumVerifyingIds
+                    if (needsCheck) {
+                        checksumVerifyingIds.add(task.id)
+                        val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
+                        scope.launch {
+                            val ok = verifyFileChecksum(path, task.expectedChecksum)
+                            if (ok != null) _checksumResults.update { it + (task.id to ok) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun inspectMediaQualities(
         url: String,
         requestHeaders: Map<String, String> = emptyMap()
@@ -455,7 +496,8 @@ class QueueManagerRepository(
         scheduledAtMs: Long = 0L,
         /** Connections for a direct download; 0 = app setting / automatic. */
         maxConnections: Int = 0,
-        pairedAudioUrl: String? = null
+        pairedAudioUrl: String? = null,
+        expectedChecksum: String? = null
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -555,7 +597,8 @@ class QueueManagerRepository(
             requestHeaders = requestHeaders.filterKeys { it.isNotBlank() }
                 .filterValues { it.isNotBlank() },
             scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
-            maxConnections = maxConnections.coerceIn(0, 32)
+            maxConnections = maxConnections.coerceIn(0, 32),
+            expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() }
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump

@@ -1,7 +1,5 @@
 ﻿package com.michelle.raouf.fetch_jet.ui
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 fun DirectoryPickerDialog(
@@ -81,6 +81,7 @@ fun DirectoryPickerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        ProvideSafeClipboard {
         Surface(
             modifier = Modifier
                 .widthIn(max = 620.dp)
@@ -439,6 +440,7 @@ fun DirectoryPickerDialog(
                     }
                 }
             }
+        }
         }
     }
 }
