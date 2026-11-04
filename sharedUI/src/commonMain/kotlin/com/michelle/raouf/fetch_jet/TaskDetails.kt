@@ -43,7 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -514,7 +514,7 @@ internal fun DownloadTaskItem(
                 modifier = Modifier.padding(top = 3.dp)
             )
 
-            val clipboard = LocalClipboard.current
+            val clipboard = LocalClipboardManager.current
             listOf(
                 LocalizationManager.Strings.detailsSource to task.url,
                 LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
