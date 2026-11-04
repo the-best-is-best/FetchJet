@@ -26,17 +26,23 @@
 
 |                                    |                                                                                                                                                                              |
 |------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ⚡ **Fast HTTP downloads**          | Files are split into chunks and fetched in parallel, resumed after a pause or a crash, and the exact downloaded bytes are shown – no jumping sizes.                          |
+| ⚡ **Fast HTTP downloads**         | Files are split into chunks and fetched in parallel, resumed after a pause or a crash, and the exact downloaded bytes are shown – no jumping sizes.                          |
 | 🎬 **Videos from 1000+ sites**     | YouTube, Vimeo, TikTok, Twitter/X, Instagram, Twitch, SoundCloud… Pick the quality (up to 4K / 8K), or just the audio as MP3.                                                |
 | ✂️ **Clip, don't download it all** | Choose a start and end time. FetchJet fetches only that part, or grabs the whole video at full speed and cuts it locally – your choice.                                      |
 | 📃 **Playlists & channels**        | Paste a playlist link, tick the videos you want, pick one quality for all of them.                                                                                           |
 | 🧲 **Torrents & magnets**          | Built-in libtorrent engine. Choose files inside the torrent, set priorities, disable uploading. Torrents with web seeds (e.g. archive.org) download over HTTP at full speed. |
-| 🗂️ **Queue & schedule**           | Decide how many downloads run at once; the rest wait in line. Schedule a download for tonight at 2:00 AM.                                                                    |
+| 🗂️ **Queue & schedule**            | Decide how many downloads run at once; the rest wait in line. Schedule a download for tonight at 2:00 AM.                                                                    |
 | 🧭 **Browser extension**           | A **Download with FetchJet** button on video pages and links; the app opens with the quality list ready.                                                                     |
 | 🔁 **Resume-aware**                | FetchJet tells you whether a link can resume *before* you pause it.                                                                                                          |
 | 🔔 **Live progress**               | Android live notification and iOS Live Activity with speed and time left.                                                                                                    |
 | 🌗 **One UI everywhere**           | Sidebar on desktop, rail on tablets, bottom bar on phones. Dark and light.                                                                                                   |
 | 🔄 **Auto-update**                 | Checks for new versions and installs them from inside the app on Windows, macOS, Linux and Android; the Microsoft Store build is updated by the Store.                       |
+| 🧮 **Checksum check**              | Paste a sha256 or md5 next to a direct download; when it finishes FetchJet hashes the file and shows ✅ *verified* or ❌ *mismatch* in its details.                          |
+| 📋 **Many links at once**          | Paste a whole list or import a `.txt`; every link – files, videos and torrents – becomes its own download, each with its own quality or file picker.                         |
+| 🚦 **Speed limit**                 | Cap the total download speed from the header, with your own presets and a one-tap slow "turtle" mode; the limit is shared live between all running downloads.                |
+| 🌐 **Proxy & site login**          | Route everything through an HTTP or SOCKS5 proxy (with username / password), and send Basic-auth logins to sites that need them – Settings → Network.                        |
+| 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
+| 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
 
 ---
 
@@ -130,6 +136,21 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
   click.
 - **Settings → General** can start FetchJet with the system (hidden in the tray), so scheduled
   downloads and the extension always find it.
+- **Checksum (optional)** in the Add dialog: paste the sha256 or md5 a site lists next to a direct
+  link. When the download finishes, its details show ✅ *Checksum verified* or ❌ *Checksum mismatch*.
+- **Settings → General → Language** switches between 15 languages; Arabic and Persian flip the whole
+  UI to right-to-left.
+- The **speed badge** in the header caps the total download speed; edit the presets in **Settings →
+  Speed**, or tap the turtle for an instant slow mode.
+- **Settings → Network** routes downloads through an HTTP or SOCKS5 proxy and stores per-site
+  logins.
+- **When downloads finish** (desktop, above the list or in the tray) can sleep, shut down or quit
+  the
+  computer once the queue is empty.
+- Paste a **list of links** or use **Import .txt** in the Add dialog to queue many downloads at
+  once;
+  select several finished items with the checkboxes (or long-press on a phone) to delete them
+  together.
 
 ---
 
