@@ -173,7 +173,8 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
   `ToolsDownloadBanner` above the home list.
 - Desktop: tools in `~/.fetch_jet/tools` (yt-dlp as the unpacked build in `tools/yt-dlp-dir`,
-  see ROADMAP 6c; ffmpeg pinned 4.4.1, deno from denoland releases with sha256 check). Auto-update
+  see ROADMAP 6c; ffmpeg pinned 4.4.1 with a per-OS sha256 check, deno from denoland releases
+  with sha256 check). Auto-update
   compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
   ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.

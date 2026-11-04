@@ -297,7 +297,10 @@ Open, owner's decision:
   1.1.0 cannot read a 1.2.0 task list any more (downgrade only).
 - [x] libtorrent: the library inside the app is written to the tools folder at every start and
   loaded from there (before, a file already in that user-writable folder was loaded as is).
-- [ ] ffmpeg (ffbinaries) download has no checksum (needs one download per OS to pin the hash).
+- [x] ffmpeg (ffbinaries) download now verifies a pinned sha256 per OS/CPU asset (`ffbinariesSha256`
+  in `MediaExtractorToolManager.jvm.kt`, v4.4.1 release assets are immutable):
+  a mismatch or a missing pinned hash throws and the zip is deleted, like the deno and
+  Apple-Silicon ffmpeg paths already did. Hashes computed 2026-11-04 from the v4.4.1 release.
 
 ## 6c. yt-dlp start time on desktop (2026-11-03)
 

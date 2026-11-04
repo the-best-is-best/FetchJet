@@ -302,6 +302,16 @@ private val ffbinariesAsset: String = when {
     else -> "linux-64"
 }
 
+private val ffbinariesSha256: Map<String, String> = mapOf(
+    "win-64" to "d1124593b7453fc54dd90ca3819dc82c22ffa957937f33dd650082f1a495b10e",
+    "osx-64" to "e08c670fcbdc2e627aa4c0d0c5ee1ef20e82378af2f14e4e7ae421a148bd49af",
+    "linux-64" to "4348301b0d5e18174925e2022da1823aebbdb07282bbe9adb64b2485e1ef2df7",
+    "linux-arm-64" to "7d57e730cc34208743cc1a97134541656ecd2c3adcdfad450dedb61d465857da",
+    "linux-armhf-32" to "a43e9f7fa74721d686a0f9035bb8b96039a1eaf35b62cdbc28334ab99a7d9273",
+    "linux-armel-32" to "1b439820d0f54ed97a68334e28eb07fcfe97776bf061f1ed2a9b16d8c1b9150b",
+    "linux-32" to "a292731806fe3733b9e2281edba881d1035e4018599577174a54e275c0afc931"
+)
+
 private fun installNativeArmFfmpeg(
     toolsDir: File,
     asset: String,
@@ -357,9 +367,15 @@ private fun installFfmpeg(toolsDir: File, onProgress: (ToolDownloadProgress) -> 
     }
     val ffmpegZipUrl =
         "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-$ffbinariesAsset.zip"
+    val expected = ffbinariesSha256[ffbinariesAsset]
+        ?: throw IllegalStateException("no pinned ffmpeg checksum for $ffbinariesAsset")
     val zipFile = File(toolsDir, "ffmpeg.zip")
     try {
-        downloadTo(ffmpegZipUrl, zipFile) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
+        val actual =
+            downloadTo(ffmpegZipUrl, zipFile) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
+        if (actual != expected) {
+            throw IllegalStateException("ffmpeg checksum mismatch (expected $expected, got $actual)")
+        }
         val ffmpegFileName = if (isWin) "ffmpeg.exe" else "ffmpeg"
         if (!unzipOne(zipFile, ffmpegFileName, toolsDir)) {
             System.err.println("ffmpeg archive did not contain $ffmpegFileName; yt-dlp will work without merging (720p limit)")
