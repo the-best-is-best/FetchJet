@@ -15,10 +15,10 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.tbib.kmp_localization.LocalizationManager
-import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -46,6 +46,12 @@ actual class DownloadNotificationManager actual constructor() {
         private val taskDataMap = ConcurrentHashMap<String, LiveTaskItem>()
 
         private var lastUpdateTime = 0L
+
+        /** show / cancel never interleave: a cancel cannot be undone by a notify in flight. */
+        private val lock = Any()
+
+        /** A download is still on the card (the service, restarted by Android, checks this). */
+        fun hasActiveTasks(): Boolean = taskOrderList.any { taskDataMap[it]?.isCompleted == false }
 
         @Volatile
         var appContext: Context? = null
@@ -365,8 +371,25 @@ actual class DownloadNotificationManager actual constructor() {
         Companion.setContext(ctx)
     }
 
-    @SuppressLint("MissingPermission")
     actual fun showOrUpdateNotification(
+        taskId: String,
+        fileName: String,
+        progressPercent: Int,
+        speedText: String,
+        downloadedBytes: Long,
+        totalBytes: Long
+    ) {
+        synchronized(lock) {
+            showLocked(taskId, fileName, progressPercent, speedText, downloadedBytes, totalBytes)
+        }
+    }
+
+    actual fun cancelNotification(taskId: String) {
+        synchronized(lock) { cancelLocked(taskId) }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun showLocked(
         taskId: String,
         fileName: String,
         progressPercent: Int,
@@ -441,7 +464,7 @@ actual class DownloadNotificationManager actual constructor() {
         }
     }
 
-    actual fun cancelNotification(taskId: String) {
+    private fun cancelLocked(taskId: String) {
         val ctx = getEffectiveContext() ?: return
         taskOrderList.remove(taskId)
         taskDataMap.remove(taskId)

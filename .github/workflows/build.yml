@@ -637,7 +637,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
@@ -645,9 +644,8 @@ jobs:
           # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
           FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip build/extension/*.xpi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
-          # Every file gets <file>.sig: the in-app updater installs only signed files.
-          bash scripts/sign-release-file.sh "${FILES[@]}"
-          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
+          # No <file>.sig here: the in-app updater never installs the extension (Firefox checks
+          # Mozilla's own signature inside the .xpi, Chrome / Edge install from their stores).
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 

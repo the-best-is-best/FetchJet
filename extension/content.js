@@ -521,7 +521,7 @@
     if (!list.length) { box.appendChild(el("div", { class: "msg", text: byKind(b.video, "lookingVideo", "lookingAudio") })); return; }
     const title = (list.find(m => m.title) || {}).title || cleanTitle();
     box.appendChild(el("div", { class: "head", title, text: title }));
-    const files = usable.filter(m => m.kind === "media");
+    const files = usable.filter(m => m.kind === "media" && !m.stream);
     if (files.length >= 2) {
       const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: fjT("downloadAllFiles", { n: files.length }) })));
       row.addEventListener("click", () => files.forEach((m, i) => setTimeout(() => download(b, m), i * 300)));

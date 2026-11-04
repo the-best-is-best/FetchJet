@@ -2,6 +2,17 @@ import SwiftUI
 import SharedUI
 
 final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {
+    /// Each `Task` below may run out of order: the number taken here, in call order, lets
+    /// the manager drop an update that arrives after the download's end (it re-opened the
+    /// activity with the last speed).
+    private static let seqLock = NSLock()
+    private static var seq: UInt64 = 0
+    private static func nextSeq() -> UInt64 {
+        seqLock.lock(); defer { seqLock.unlock() }
+        seq += 1
+        return seq
+    }
+
     func onUpdateProgress(
         taskId: String,
         fileName: String,
@@ -13,8 +24,10 @@ final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {
         totalBytesStr: String,
         statusText: String
     ) {
+        let order = Self.nextSeq()
         Task { @MainActor in
             LiveActivityManager.shared.startOrUpdateLiveActivity(
+                order: order,
                 taskId: taskId,
                 fileName: fileName,
                 engineType: engineType,
@@ -32,8 +45,9 @@ final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {
     }
 
     func onEnd(taskId: String, completed: Bool) {
+        let order = Self.nextSeq()
         Task { @MainActor in
-            LiveActivityManager.shared.endLiveActivity(taskId: taskId, completed: completed)
+            LiveActivityManager.shared.endLiveActivity(order: order, taskId: taskId, completed: completed)
         }
     }
 }

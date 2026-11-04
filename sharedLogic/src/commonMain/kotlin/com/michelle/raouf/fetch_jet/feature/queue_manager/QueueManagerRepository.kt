@@ -403,10 +403,9 @@ class QueueManagerRepository(
                                 totalBytes = task.totalBytes
                             )
                         }
-                    } else if (task.status == DownloadStatus.PAUSED || task.status == DownloadStatus.ERROR) {
-                        if (activeRunningTaskIds.remove(task.id)) {
-                            notificationManager.cancelNotification(task.id)
-                        }
+                    } else if (activeRunningTaskIds.remove(task.id)) {
+                        // Paused, failed, back in line (QUEUED / IDLE): no longer downloading.
+                        notificationManager.cancelNotification(task.id)
                     }
                 }
             }
@@ -598,8 +597,6 @@ class QueueManagerRepository(
         }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
-        notificationManager.cancelNotification(taskId)
-        activeRunningTaskIds.remove(taskId)
         return when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.pause(taskId)
             EngineType.BITTORRENT -> torrentEngine.pause(taskId)
@@ -630,10 +627,6 @@ class QueueManagerRepository(
         }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
-        notificationManager.cancelNotification(taskId)
-        activeRunningTaskIds.remove(taskId)
-        completedNotifiedTaskIds.remove(taskId)
-
         when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.cancel(taskId)
             EngineType.BITTORRENT -> torrentEngine.cancel(taskId)

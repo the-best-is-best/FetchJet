@@ -9,8 +9,17 @@ class LiveActivityManager: ObservableObject {
     private var currentActivity: Activity<DownloadActivityAttributes>?
     /// Downloads currently represented by the (single) activity; it ends when this empties.
     private var activeTaskIds: Set<String> = []
+    /// Newest call handled per download (LiveActivityBridge numbers them in call order).
+    private var lastOrder: [String: UInt64] = [:]
+
+    private func isStale(_ order: UInt64, _ taskId: String) -> Bool {
+        if let last = lastOrder[taskId], order < last { return true }
+        lastOrder[taskId] = order
+        return false
+    }
 
     func startOrUpdateLiveActivity(
+        order: UInt64,
         taskId: String,
         fileName: String,
         engineType: String,
@@ -21,6 +30,7 @@ class LiveActivityManager: ObservableObject {
         totalBytesStr: String,
         statusText: String
     ) {
+        if isStale(order, taskId) { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print("LiveActivityManager: Live Activities are not enabled.")
             return
@@ -62,7 +72,8 @@ class LiveActivityManager: ObservableObject {
     /// Called per task. The activity is dismissed only once no tracked download is left:
     /// right away for pause/cancel, after a few seconds for a completed download so the
     /// "Completed" state is actually seen on the Lock Screen / Dynamic Island.
-    func endLiveActivity(taskId: String, completed: Bool) {
+    func endLiveActivity(order: UInt64, taskId: String, completed: Bool) {
+        if isStale(order, taskId) { return }
         activeTaskIds.remove(taskId)
         guard activeTaskIds.isEmpty, let activity = currentActivity else {
             return

@@ -944,10 +944,14 @@ async function itemsForTab(tabId) {
       ? fjT("itemStreamPick", { kind: m.kind, quality: quality ? " · " + quality : "" })
       : `${m.kind}${m.size ? " · " + fmtBytes(m.size) : ""} · ${m.name}`;
     items.push({
-      kind: "media", label, sub: m.url, quality,
-      url: m.url, fileName: m.name, referer: m.pageUrl, size: m.size, ext: extensionOf(m.name)
+      kind: "media", label, sub: m.url, quality, stream: isPl,
+      url: m.url, fileName: m.name, referer: m.pageUrl, size: isPl ? 0 : m.size, ext: extensionOf(m.name)
     });
   }
+  // A player loads its main playlist and then one rendition of it: both are the same video.
+  // The main one (no quality in its address) lets FetchJet offer every quality: keep only it.
+  const mainStream = items.find(i => i.stream && !i.quality);
+  if (mainStream) for (let i = items.length - 1; i >= 0; i--) if (items[i].stream && items[i] !== mainStream) items.splice(i, 1);
   const list = await listUrlForTab(tabId);
   if (list) items.unshift({ kind: "playlist", label: fjT("itemPlaylist"), sub: fjT("itemPlaylistSub"), url: list.url });
   const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;

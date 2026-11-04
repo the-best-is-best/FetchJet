@@ -423,7 +423,19 @@ object ExtensionBridgeServer {
                             recentAdds[dedupeKey] = now; false
                         }
                     }
-                    if (!repeat) deliver { ExternalDownloadBridge.dispatch(req) }
+                    val reading = req.reading
+                    if (repeat) Unit
+                    else if (reading != null) main.post {
+                        // The browser reads the course page by page: opening FetchJet over it
+                        // sends the browser to the background, where Android slows its page
+                        // down (a minute per 12 lectures). Count quietly, open with the list.
+                        ExternalDownloadBridge.dispatch(req)
+                        if (reading.first == 0 && reading.second > 0) Toast.makeText(
+                            appContext,
+                            LocalizationManager.Strings.readingCourseLectures(0, reading.second),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else deliver { ExternalDownloadBridge.dispatch(req) }
                     reply(out, r, 200, """{"ok":true}""", "application/json; charset=UTF-8")
                 } else {
                     @Suppress("UNCHECKED_CAST")

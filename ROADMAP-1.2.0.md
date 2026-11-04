@@ -376,6 +376,12 @@ Open, owner's decision:
   ids (no names): a list where most entries have no name (`PlaylistEntry.titled`) opens as the
   link list instead (each track read with its name and quality), folder = the list's title.
   Owner-verified in Edge (2026-11-04) on "Related tracks".
+  Android (A56, Firefox, 2026-11-04): the course works. Each `reading` ping used to open
+  FetchJet over the browser (`deliver()` + "Sent" toast): Android then slows the backgrounded
+  page and two chunks took 61 s and 43 s. `ExtensionBridgeServer` now dispatches `reading`
+  pings quietly (one toast "Reading the course lectures: 0 / N"); the app opens with the list.
+  Owner-verified: fast. Firefox for Android has no extension context menu (popup and page
+  button only).
 - [x] Merge a captured video-only + audio-only pair inside the app.
   Done 2026-11-04. Only the extension's captured YouTube streams were ever split (shown before
   the app's qualities arrive, or with "Ask FetchJet for video qualities automatically" off); the

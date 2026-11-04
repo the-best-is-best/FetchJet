@@ -71,55 +71,81 @@ function isWebPage(url) {
   return !!url && /^(https?|ftp):/i.test(url);
 }
 
+/** A short, plain name for the kind of item (no "HLS", "yt-dlp"...). */
+function badgeOf(it) {
+  if (it.kind === "playlist" || it.kind === "course") return { cls: "list", text: fjT("badgeList") };
+  if ((it.kind === "ytdlp" || it.kind === "captured") && /^audio/i.test(it.label || "")) return { cls: "audio", text: fjT("badgeAudio") };
+  if (it.kind === "ytdlp" || it.kind === "captured") return { cls: "video", text: fjT("badgeVideo") };
+  if (it.stream) return { cls: "stream", text: fjT("badgeStream") };
+  if (/^(mp3|m4a|aac|flac|wav|ogg|opus|wma)$/i.test(it.ext || "") || /^Audio/.test(it.label || "")) return { cls: "audio", text: fjT("badgeAudio") };
+  if (/^(mp4|mkv|webm|mov|avi|m4v|ts|flv)$/i.test(it.ext || "") || /^Video/.test(it.label || "")) return { cls: "video", text: fjT("badgeVideo") };
+  return { cls: "file", text: fjT("badgeFile") };
+}
+
+async function downloadFromPopup(btn, it, extra = {}, okText = "popupSent") {
+  btn.disabled = true; flash(fjT(extra.openClip ? "popupOpening" : "popupSending"));
+  const res = await send({ action: "downloadItem", item: { ...it, ...extra }, tabId: currentTab.id });
+  if (res && res.ok) flash(fjT(okText)); else flash(fjT("couldNotSendParen", { reason: fjReason(res && res.reason) }), true, 4000);
+  btn.disabled = false;
+}
+
+function mediaRow(it, hero) {
+  const row = document.createElement("div");
+  row.className = "media" + (it.disabled ? " off" : "") + (hero ? " hero" : "");
+  const b = badgeOf(it);
+  const badge = document.createElement("span"); badge.className = `kind ${b.cls}`; badge.textContent = it.disabled ? "…" : b.text;
+  const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
+  name.textContent = it.label;
+  if (it.sub && it.kind !== "media") { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = it.sub; name.appendChild(sub); }
+  const size = document.createElement("span"); size.className = "size"; size.dir = "ltr";
+  size.textContent = it.kind === "media" && !it.stream ? human(it.size) : "";
+  row.append(badge, name, size);
+  if (!it.disabled) {
+    const btn = document.createElement("button");
+    btn.className = "small primary"; btn.style.flex = "0 0 auto"; btn.textContent = "⬇"; btn.title = fjT("popupDownloadWith");
+    btn.addEventListener("click", () => downloadFromPopup(btn, it));
+    row.appendChild(btn);
+    if (it.kind === "ytdlp") {
+      const cut = document.createElement("button");
+      cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = fjT("clipTitle");
+      cut.addEventListener("click", () => downloadFromPopup(cut, it, { openClip: true }, "popupOpened"));
+      row.appendChild(cut);
+    }
+  }
+  return row;
+}
+
 async function loadMedia() {
   if (!currentTab) return;
   const r = await send({ action: "getItems", tabId: currentTab.id });
   const items = (r && r.items) || [];
   const list = $("mediaList");
   list.replaceChildren();
-  const files = items.filter(i => i.kind === "media");
+  // "Download all" only for real files: stream playlists of one video are not several files.
+  const files = items.filter(i => i.kind === "media" && !i.stream);
   $("allMediaBtn").style.display = files.length > 1 ? "" : "none";
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
     empty.textContent = !FJ_PLATFORM.qualitiesInPopup ? fjT("popupEmptyNoQualities") : fjT("popupEmpty");
     list.appendChild(empty);
+    $("sendPageBtn").classList.add("primary");
     return;
   }
-  for (const it of items) {
-    const row = document.createElement("div");
-    row.className = "media" + (it.disabled ? " off" : "");
-    const kind = it.kind === "ytdlp" ? "yt-dlp" : it.kind === "captured" ? "stream" : (it.kind === "playlist" || it.kind === "course") ? "list" : (it.label.split(" ")[0] || "file");
-    const badge = document.createElement("span"); badge.className = `kind ${it.kind || ""} ${kind}`; badge.textContent = it.disabled ? "…" : kind;
-    const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
-    name.textContent = it.label;
-    if (it.sub && it.kind !== "media") { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = it.sub; name.appendChild(sub); }
-    const size = document.createElement("span"); size.className = "size"; size.dir = "ltr"; size.textContent = it.kind === "media" ? human(it.size) : "";
-    row.append(badge, name, size);
-    if (!it.disabled) {
-      const btn = document.createElement("button");
-      btn.className = "small primary"; btn.style.flex = "0 0 auto"; btn.textContent = "⬇"; btn.title = fjT("popupDownloadWith");
-      btn.addEventListener("click", async () => {
-        btn.disabled = true; flash(fjT("popupSending"));
-        const res = await send({ action: "downloadItem", item: it, tabId: currentTab.id });
-        if (res && res.ok) flash(fjT("popupSent")); else flash(fjT("couldNotSendParen", { reason: fjReason(res && res.reason) }), true, 4000);
-        btn.disabled = false;
-      });
-      row.appendChild(btn);
-      if (it.kind === "ytdlp") {
-        const cut = document.createElement("button");
-        cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = fjT("clipTitle");
-        cut.addEventListener("click", async () => {
-          cut.disabled = true; flash(fjT("popupOpening"));
-          const res = await send({ action: "downloadItem", item: { ...it, openClip: true }, tabId: currentTab.id });
-          if (res && res.ok) flash(fjT("popupOpened")); else flash(fjT("couldNotSendParen", { reason: fjReason(res && res.reason) }), true, 4000);
-          cut.disabled = false;
-        });
-        row.appendChild(cut);
-      }
-    }
-    list.appendChild(row);
+  // What the user most likely wants goes first, on its own: the whole course / list, else the
+  // best quality FetchJet found. Everything else sits under "More options".
+  const usable = items.filter(i => !i.disabled);
+  const hero = usable.find(i => i.kind === "course" || i.kind === "playlist") ||
+    usable.find(i => i.kind === "ytdlp") || (usable.length === 1 ? usable[0] : null);
+  $("sendPageBtn").classList.toggle("primary", !hero);
+  if (hero) list.appendChild(mediaRow(hero, true));
+  const rest = items.filter(i => i !== hero);
+  if (hero && rest.length) {
+    const more = document.createElement("div");
+    more.className = "more"; more.textContent = fjT("popupMoreOptions");
+    list.appendChild(more);
   }
+  for (const it of rest) list.appendChild(mediaRow(it, false));
 }
 
 function renderSwitches() {
