@@ -691,6 +691,14 @@ All done and pushed (`a751617` + the Udemy preview fix):
    no forced client. Verified: 4K clip "Only the clip" = 3840x2160, 33 s, with audio; "Full video,
    then cut" = exact 11 s (cut by the app's own ffmpeg step, not CutPlugin).
 
+8. 1.2.0 check (2026-11-04, after the playlist / folders / course reading work): build OK
+   with no change; Live Activity ends within ~0.1 s of "Pause all" (3 times) and shows
+   "Completed" ~4 s; SoundCloud set and YouTube playlist land in their "Save in folder"
+   folder; Safari popup fits the phone width. Fixed: the default download folder became the
+   container root (see ROADMAP-1.2.0.md item 7). The simulator's `nsurlsessiond` stayed
+   broken after a simulator reboot and an app reinstall: test with a speed limit on (the
+   foreground engine) instead.
+
 Udemy works on the simulator (owner-tested 2026-11-01). Safari extension (appex bundle id
 `<app>.SafariExtension`) sideloaded and working on the owner's real iPhone (2026-11-01). Video
 download and torrent also work there. Udemy logged in on a real iPhone: counted as done (owner's

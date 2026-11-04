@@ -301,7 +301,7 @@ internal fun DestinationSection(
         // on the path (ours, from before) is replaced, never stacked.
         val base =
             com.michelle.raouf.fetch_jet.core.settings.FileCategory.stripTypeFolders(
-                destinationPath
+                destinationPath, listOf(defaultDownloads, defaultDocs, defaultDesktop)
             )
         val sep = if (base.contains('\\')) "\\" else "/"
         val full = if (typeFolder != null) base + sep + typeFolder else base

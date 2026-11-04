@@ -386,6 +386,23 @@ Open, owner's decision:
   A56 system log, 172 lectures: notification up 11.5 s, toasts ~3 s apart, list opened with
   folder = the course title. Also on the A56: "Pause all" hides the download card within 2 s
   (service stopped), twice in a row; a SoundCloud set landed in `Download/Media/Soulhack/`.
+  iOS (Mac simulator, iPhone 17, 2026-11-04): Gradle + Xcode build with no change. Live
+  Activity (`LiveActivityBridge.nextSeq` + `LiveActivityManager.isStale`): 128 MB at 1 MB/s,
+  "Pause all" three times (with Resume all between): each time ActivityKit logged "Ending
+  activity" within ~0.1 s of the tap and no update came after it; the island was empty on the
+  home screen. A completed download: last update and end in the same ms, "Completed" stayed
+  ~4 s, then dismissed. SoundCloud `forss/sets/soulhack` opened as the link list (11 tracks,
+  "Save in folder" = Soulhack), 2 tracks landed in `<folder>/Soulhack/`. YouTube playlist
+  "countdown 10 seconds": card with "Save in folder" = the title, 2 videos at 360p (AV1 + AAC)
+  in `Documents/countdown 10 seconds/`. Safari popup on a YouTube page: fills the width,
+  readable, no sideways scroll (no course item: Safari has no `/config`).
+  Fixed there: on iOS the Add dialog saved the container root as the download folder
+  (`stripTypeFolders` took the app's `Documents` for the "Documents" type folder), so files
+  landed outside Documents (not in Files; a real iPhone may refuse the root). It now stops at
+  the system Downloads / Documents / Desktop folders (`stripTypeFolders(path, keep)`, also
+  for a desktop download folder named Documents), and iOS `relocateAppPath` turns a saved
+  container root back into `Documents` (checked: the old saved root showed as `.../Documents`
+  after the update). Deleting tasks with their files leaves the empty playlist folder.
 - [x] Merge a captured video-only + audio-only pair inside the app.
   Done 2026-11-04. Only the extension's captured YouTube streams were ever split (shown before
   the app's qualities arrive, or with "Ask FetchJet for video qualities automatically" off); the
