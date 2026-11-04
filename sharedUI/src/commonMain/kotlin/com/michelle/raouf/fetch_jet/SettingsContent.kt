@@ -1,8 +1,6 @@
 package com.michelle.raouf.fetch_jet
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
@@ -21,6 +19,12 @@ internal fun SettingsContentView(
         globalDownloadSpeedLimitBytes = state.globalDownloadSpeedLimitBytes,
         globalUploadSpeedLimitBytes = state.globalUploadSpeedLimitBytes,
         speedDisplayUnit = state.speedDisplayUnit,
+        speedPresetLowBytes = state.speedPresetLowBytes,
+        speedPresetLowUnit = state.speedPresetLowUnit,
+        speedPresetMediumBytes = state.speedPresetMediumBytes,
+        speedPresetMediumUnit = state.speedPresetMediumUnit,
+        speedPresetHighBytes = state.speedPresetHighBytes,
+        speedPresetHighUnit = state.speedPresetHighUnit,
         ytDlpStatus = state.ytDlpStatus,
         isYtDlpInstalled = state.isYtDlpInstalled,
         isFfmpegInstalled = state.isFfmpegInstalled,
@@ -88,6 +92,9 @@ internal fun SettingsContentView(
                     it
                 )
             )
+        },
+        onSpeedPresetChanged = { preset, bytes, unit ->
+            viewModel.onEvent(DashboardUiEvent.OnSpeedPresetChanged(preset, bytes, unit))
         },
         onDownloadYtDlpClicked = { viewModel.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked) },
         onLanguageChanged = { viewModel.onEvent(DashboardUiEvent.OnLanguageChanged(it)) },

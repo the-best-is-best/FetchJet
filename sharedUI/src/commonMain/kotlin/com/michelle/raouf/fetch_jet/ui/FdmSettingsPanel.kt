@@ -39,20 +39,19 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
-import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
+import com.tbib.kmp_localization.LocalizationManager
 
 /** The pages of Settings, in the order of the side list. */
 internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
     BROWSER("⧉"),
-    SPEED("≋"),
     NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
@@ -63,7 +62,6 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneral
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
             BROWSER -> LocalizationManager.Strings.sectionBrowser
-            SPEED -> LocalizationManager.Strings.sectionSpeed
             NETWORK -> LocalizationManager.Strings.sectionNetwork
             MEDIA -> LocalizationManager.Strings.sectionMedia
             TORRENT -> LocalizationManager.Strings.sectionTorrent
@@ -75,7 +73,6 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneralBlurb
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
             BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
-            SPEED -> LocalizationManager.Strings.sectionSpeedBlurb
             NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
             MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
             TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
@@ -97,6 +94,12 @@ fun FdmSettingsPanel(
     globalDownloadSpeedLimitBytes: Long,
     globalUploadSpeedLimitBytes: Long,
     speedDisplayUnit: String = "MB/s",
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetLowUnit: String = "KB/s",
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetMediumUnit: String = "MB/s",
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    speedPresetHighUnit: String = "MB/s",
     ytDlpStatus: String,
     isYtDlpInstalled: Boolean,
     isFfmpegInstalled: Boolean,
@@ -124,6 +127,7 @@ fun FdmSettingsPanel(
     onGlobalDownloadSpeedLimitChanged: (Long) -> Unit,
     onGlobalUploadSpeedLimitChanged: (Long) -> Unit,
     onSpeedDisplayUnitChanged: (String) -> Unit = {},
+    onSpeedPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> },
     onDownloadYtDlpClicked: () -> Unit,
     onApplySettings: () -> Unit
 ) {
@@ -155,15 +159,6 @@ fun FdmSettingsPanel(
                 (if (maxAtOnce <= 0) LocalizationManager.Strings.summaryNoQueueLimit else LocalizationManager.Strings.summaryAtATime(
                     maxAtOnce
                 )) to null
-
-        SettingsSection.SPEED ->
-            if (globalDownloadSpeedLimitBytes <= 0 && globalUploadSpeedLimitBytes <= 0) LocalizationManager.Strings.summaryNoSpeedLimit to null
-            else listOfNotNull(
-                if (globalDownloadSpeedLimitBytes > 0) "↓ " + limitText(
-                    globalDownloadSpeedLimitBytes
-                ) else null,
-                if (globalUploadSpeedLimitBytes > 0) "↑ " + limitText(globalUploadSpeedLimitBytes) else null
-            ).joinToString("  ") to StatusPaused
 
         SettingsSection.NETWORK -> networkSummary(netProxy, netLogins.size) to
                 (if (netProxy.isOn) StatusCompleted else null)
@@ -203,12 +198,11 @@ fun FdmSettingsPanel(
                 pathResolver,
                 onDestinationPathChanged,
                 onSortIntoFoldersChanged,
-                onDefaultConnectionsChanged
-            )
-
-            SettingsSection.SPEED -> SpeedPage(
-                globalDownloadSpeedLimitBytes, globalUploadSpeedLimitBytes,
-                onGlobalDownloadSpeedLimitChanged, onGlobalUploadSpeedLimitChanged
+                onDefaultConnectionsChanged,
+                speedPresetLowBytes, speedPresetLowUnit,
+                speedPresetMediumBytes, speedPresetMediumUnit,
+                speedPresetHighBytes, speedPresetHighUnit,
+                onSpeedPresetChanged
             )
 
             SettingsSection.NETWORK -> NetworkPage(isIos)
@@ -221,6 +215,7 @@ fun FdmSettingsPanel(
 
             SettingsSection.TORRENT -> TorrentPage(
                 disableTorrentUpload, onDisableTorrentUploadToggled,
+                globalUploadSpeedLimitBytes, onGlobalUploadSpeedLimitChanged,
                 showEngine = isJvm, isTorrentEngineReady, torrentEngineStatus
             )
 

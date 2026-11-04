@@ -303,6 +303,12 @@ object KoreanProvider : AppLocalization {
     override val dirPickerNoSubfolders = "이 폴더에는 하위 폴더가 없습니다.\n파일이 여기에 바로 저장됩니다."
     override val dirPickerHiddenTag = "(숨김)"
     override val speedLimitUnlimited = "무제한 (최대)"
+    override val speedPresetsTitle = "속도 프리셋"
+    override val speedPresetsFooter =
+        "높음, 보통, 낮음 각각의 속도를 설정하세요. 헤더에서 빠르게 선택할 수 있습니다. 거북이는 항상 512 KB/s입니다."
+    override val speedPresetHigh = "높음"
+    override val speedPresetMedium = "보통"
+    override val speedPresetLow = "낮음"
     override val speedLimitNoLimit = "제한 없음 (최대 속도)"
     override val speedLimitCustom = "직접 입력..."
     override val speedLimitValue = "값"

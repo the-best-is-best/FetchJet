@@ -322,6 +322,12 @@ object TurkishProvider : AppLocalization {
         "Bu klasörde alt klasör yok.\nDosyalar doğrudan buraya kaydedilecek."
     override val dirPickerHiddenTag = "(gizli)"
     override val speedLimitUnlimited = "Sınırsız (en yüksek)"
+    override val speedPresetsTitle = "Hız ön ayarları"
+    override val speedPresetsFooter =
+        "Yüksek, Orta ve Düşük için bir hız belirleyin. Üst çubuktan hızlıca birini seçin; kaplumbağa her zaman 512 KB/s."
+    override val speedPresetHigh = "Yüksek"
+    override val speedPresetMedium = "Orta"
+    override val speedPresetLow = "Düşük"
     override val speedLimitNoLimit = "Sınır yok (en yüksek hız)"
     override val speedLimitCustom = "Özel..."
     override val speedLimitValue = "Değer"

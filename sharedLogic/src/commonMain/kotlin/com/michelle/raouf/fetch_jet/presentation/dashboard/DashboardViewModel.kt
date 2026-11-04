@@ -105,7 +105,13 @@ class DashboardViewModel(
                 isDarkMode = savedSettings.isDarkMode,
                 globalDownloadSpeedLimitBytes = savedSettings.globalDownloadSpeedLimitBytes,
                 globalUploadSpeedLimitBytes = savedSettings.globalUploadSpeedLimitBytes,
-                speedDisplayUnit = savedSettings.speedDisplayUnit
+                speedDisplayUnit = savedSettings.speedDisplayUnit,
+                speedPresetLowBytes = savedSettings.speedPresetLowBytes,
+                speedPresetLowUnit = savedSettings.speedPresetLowUnit,
+                speedPresetMediumBytes = savedSettings.speedPresetMediumBytes,
+                speedPresetMediumUnit = savedSettings.speedPresetMediumUnit,
+                speedPresetHighBytes = savedSettings.speedPresetHighBytes,
+                speedPresetHighUnit = savedSettings.speedPresetHighUnit
             )
         }
 
@@ -153,7 +159,14 @@ class DashboardViewModel(
 
                 speedDisplayUnit = s.speedDisplayUnit,
 
-                language = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.choice
+                language = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.choice,
+
+                speedPresetLowBytes = s.speedPresetLowBytes,
+                speedPresetLowUnit = s.speedPresetLowUnit,
+                speedPresetMediumBytes = s.speedPresetMediumBytes,
+                speedPresetMediumUnit = s.speedPresetMediumUnit,
+                speedPresetHighBytes = s.speedPresetHighBytes,
+                speedPresetHighUnit = s.speedPresetHighUnit
 
             )
 
@@ -560,7 +573,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
         }

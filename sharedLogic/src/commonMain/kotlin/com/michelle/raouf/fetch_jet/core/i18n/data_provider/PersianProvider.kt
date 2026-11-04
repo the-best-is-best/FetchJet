@@ -324,6 +324,12 @@ object PersianProvider : AppLocalization {
         "این پوشه زیرپوشه‌ای ندارد.\nفایل‌ها مستقیماً همین‌جا ذخیره می‌شوند."
     override val dirPickerHiddenTag = "(پنهان)"
     override val speedLimitUnlimited = "نامحدود (حداکثر)"
+    override val speedPresetsTitle = "پیش‌تنظیم‌های سرعت"
+    override val speedPresetsFooter =
+        "برای زیاد، متوسط و کم یک سرعت تعیین کنید. از بالا به‌سرعت یکی را انتخاب کنید؛ لاک‌پشت همیشه ۵۱۲ کیلوبایت/ث است."
+    override val speedPresetHigh = "زیاد"
+    override val speedPresetMedium = "متوسط"
+    override val speedPresetLow = "کم"
     override val speedLimitNoLimit = "بدون محدودیت (حداکثر سرعت)"
     override val speedLimitCustom = "سفارشی..."
     override val speedLimitValue = "مقدار"

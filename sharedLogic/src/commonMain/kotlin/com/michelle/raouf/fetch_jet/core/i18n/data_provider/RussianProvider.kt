@@ -329,6 +329,12 @@ object RussianProvider : AppLocalization {
         "В этой папке нет вложенных папок.\nФайлы будут сохранены прямо сюда."
     override val dirPickerHiddenTag = "(скрытая)"
     override val speedLimitUnlimited = "Без ограничений (макс.)"
+    override val speedPresetsTitle = "Предустановки скорости"
+    override val speedPresetsFooter =
+        "Задайте скорость для «Высокая», «Средняя» и «Низкая». Быстро выберите одну в шапке; черепаха всегда 512 КБ/с."
+    override val speedPresetHigh = "Высокая"
+    override val speedPresetMedium = "Средняя"
+    override val speedPresetLow = "Низкая"
     override val speedLimitNoLimit = "Без ограничений (макс. скорость)"
     override val speedLimitCustom = "Своё значение..."
     override val speedLimitValue = "Значение"

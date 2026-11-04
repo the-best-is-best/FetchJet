@@ -323,6 +323,12 @@ object JapaneseProvider : AppLocalization {
         "このフォルダーにはサブフォルダーがありません。\nファイルはここに直接保存されます。"
     override val dirPickerHiddenTag = "（隠し）"
     override val speedLimitUnlimited = "無制限（最大）"
+    override val speedPresetsTitle = "速度プリセット"
+    override val speedPresetsFooter =
+        "高・中・低それぞれに速度を設定します。ヘッダーからすばやく選べます。カメは常に 512 KB/s です。"
+    override val speedPresetHigh = "高"
+    override val speedPresetMedium = "中"
+    override val speedPresetLow = "低"
     override val speedLimitNoLimit = "制限なし（最高速度）"
     override val speedLimitCustom = "カスタム..."
     override val speedLimitValue = "値"

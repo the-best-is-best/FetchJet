@@ -336,6 +336,12 @@ object GermanProvider : AppLocalization {
         "Keine Unterordner in diesem Verzeichnis.\nDateien werden direkt hier gespeichert."
     override val dirPickerHiddenTag = "(versteckt)"
     override val speedLimitUnlimited = "Unbegrenzt (Max.)"
+    override val speedPresetsTitle = "Geschwindigkeits-Voreinstellungen"
+    override val speedPresetsFooter =
+        "Lege eine Geschwindigkeit für Hoch, Mittel und Niedrig fest. Wähle schnell eine in der Kopfzeile; die Schildkröte ist immer 512 KB/s."
+    override val speedPresetHigh = "Hoch"
+    override val speedPresetMedium = "Mittel"
+    override val speedPresetLow = "Niedrig"
     override val speedLimitNoLimit = "Kein Limit (volles Tempo)"
     override val speedLimitCustom = "Eigener Wert..."
     override val speedLimitValue = "Wert"

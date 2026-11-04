@@ -53,13 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 import fetchjet.sharedui.generated.resources.Res
 import fetchjet.sharedui.generated.resources.ic_fetchjet_logo
 import org.jetbrains.compose.resources.painterResource
@@ -304,6 +304,96 @@ internal fun FjSidebarItem(label: String, count: Int?, selected: Boolean, onClic
     }
 }
 
+private const val TURTLE_BYTES = 512L * 1024L
+
+/**
+ * Header speed control: a fixed-512 KB/s turtle toggle plus a mode chip that picks one of the
+ * named presets (Unlimited / Low / Medium / High) right away, without opening Settings. Stays
+ * compact so it fits a phone header.
+ */
+@Composable
+private fun SpeedControl(
+    limitBytes: Long,
+    lowBytes: Long,
+    mediumBytes: Long,
+    highBytes: Long,
+    onPick: (Long) -> Unit
+) {
+    val turtleActive = limitBytes == TURTLE_BYTES
+    val modeLabel = when (limitBytes) {
+        0L -> "∞"
+        lowBytes -> LocalizationManager.Strings.speedPresetLow
+        mediumBytes -> LocalizationManager.Strings.speedPresetMedium
+        highBytes -> LocalizationManager.Strings.speedPresetHigh
+        else -> com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(limitBytes)
+    }
+    val capped = limitBytes > 0L && !turtleActive
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (turtleActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                    else Color.Transparent
+                )
+                .clickable { onPick(if (turtleActive) 0L else TURTLE_BYTES) }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🐢", fontSize = 18.sp)
+        }
+
+        var open by remember { mutableStateOf(false) }
+        Box {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (capped) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
+                    .clickable { open = true }
+                    .padding(horizontal = 9.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modeLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (capped) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+                Text(" ▾", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                val options = listOf(
+                    0L to LocalizationManager.Strings.speedLimitUnlimited,
+                    lowBytes to "${LocalizationManager.Strings.speedPresetLow}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(lowBytes)
+                    }",
+                    mediumBytes to "${LocalizationManager.Strings.speedPresetMedium}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(mediumBytes)
+                    }",
+                    highBytes to "${LocalizationManager.Strings.speedPresetHigh}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(highBytes)
+                    }"
+                )
+                options.forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = { Text(if (value == limitBytes) "$label  ✓" else label) },
+                        onClick = { open = false; onPick(value) }
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Wide-layout top bar: search, live speeds, theme, Add download. */
 @Composable
 internal fun FjTopBar(
@@ -316,6 +406,11 @@ internal fun FjTopBar(
     totalUlSpeed: Long,
     speedDisplayUnit: String,
     isDarkMode: Boolean,
+    downloadLimitBytes: Long = 0L,
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    onPickDownloadLimit: (Long) -> Unit = {},
     onThemeToggled: () -> Unit,
     onAdd: () -> Unit
 ) {
@@ -371,6 +466,13 @@ internal fun FjTopBar(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
+                )
+                SpeedControl(
+                    downloadLimitBytes,
+                    speedPresetLowBytes,
+                    speedPresetMediumBytes,
+                    speedPresetHighBytes,
+                    onPickDownloadLimit
                 )
                 IconButton(onClick = onThemeToggled) {
                     Text(
@@ -435,6 +537,13 @@ internal fun FjTopBar(
                 )
             }
         }
+        SpeedControl(
+            downloadLimitBytes,
+            speedPresetLowBytes,
+            speedPresetMediumBytes,
+            speedPresetHighBytes,
+            onPickDownloadLimit
+        )
         IconButton(onClick = onThemeToggled) {
             Text(if (isDarkMode) "☀" else "☾", fontSize = 18.sp)
         }
@@ -459,6 +568,11 @@ internal fun FjPhoneHeader(
     speedDisplayUnit: String,
     sortOption: TaskSortOption,
     isDarkMode: Boolean,
+    downloadLimitBytes: Long = 0L,
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    onPickDownloadLimit: (Long) -> Unit = {},
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onSort: (TaskSortOption) -> Unit,
@@ -493,6 +607,13 @@ internal fun FjPhoneHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        SpeedControl(
+            downloadLimitBytes,
+            speedPresetLowBytes,
+            speedPresetMediumBytes,
+            speedPresetHighBytes,
+            onPickDownloadLimit
+        )
         var open by remember { mutableStateOf(false) }
         var sortOpen by remember { mutableStateOf(false) }
         Box {

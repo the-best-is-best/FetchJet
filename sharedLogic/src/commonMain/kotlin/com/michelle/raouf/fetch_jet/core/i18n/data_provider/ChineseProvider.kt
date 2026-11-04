@@ -308,6 +308,12 @@ object ChineseProvider : AppLocalization {
     override val dirPickerNoSubfolders = "此目录中没有子文件夹。\n文件将直接保存在这里。"
     override val dirPickerHiddenTag = "（隐藏）"
     override val speedLimitUnlimited = "不限速（最快）"
+    override val speedPresetsTitle = "速度预设"
+    override val speedPresetsFooter =
+        "为「高」「中」「低」各设置一个速度。在顶部快速选择其一；乌龟始终为 512 KB/s。"
+    override val speedPresetHigh = "高"
+    override val speedPresetMedium = "中"
+    override val speedPresetLow = "低"
     override val speedLimitNoLimit = "不限速（最快速度）"
     override val speedLimitCustom = "自定义..."
     override val speedLimitValue = "数值"

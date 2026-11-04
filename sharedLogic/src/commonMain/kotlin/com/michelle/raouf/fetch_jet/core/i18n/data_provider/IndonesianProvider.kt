@@ -325,6 +325,12 @@ object IndonesianProvider : AppLocalization {
         "Tidak ada subfolder di direktori ini.\nFile akan disimpan langsung di sini."
     override val dirPickerHiddenTag = "(tersembunyi)"
     override val speedLimitUnlimited = "Tanpa batas (maks)"
+    override val speedPresetsTitle = "Prasetel kecepatan"
+    override val speedPresetsFooter =
+        "Atur kecepatan untuk Tinggi, Sedang, dan Rendah. Pilih salah satu dengan cepat dari header; kura-kura selalu 512 KB/s."
+    override val speedPresetHigh = "Tinggi"
+    override val speedPresetMedium = "Sedang"
+    override val speedPresetLow = "Rendah"
     override val speedLimitNoLimit = "Tanpa batas (kecepatan maks)"
     override val speedLimitCustom = "Kustom..."
     override val speedLimitValue = "Nilai"

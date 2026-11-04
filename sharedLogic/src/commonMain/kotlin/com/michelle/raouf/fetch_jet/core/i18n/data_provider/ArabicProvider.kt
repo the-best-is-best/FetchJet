@@ -338,6 +338,12 @@ object ArabicProvider : AppLocalization {
     override val dirPickerNoSubfolders = "لا توجد مجلدات فرعية هنا.\nسيتم حفظ الملفات هنا مباشرة."
     override val dirPickerHiddenTag = "(مخفي)"
     override val speedLimitUnlimited = "غير محدود (أقصى سرعة)"
+    override val speedPresetsTitle = "سرعات جاهزة"
+    override val speedPresetsFooter =
+        "حدّد سرعة لكل من عالية ومتوسطة ومنخفضة. اختَر واحدة بسرعة من الأعلى؛ السلحفاة دائمًا 512 ك.ب/ث."
+    override val speedPresetHigh = "عالية"
+    override val speedPresetMedium = "متوسطة"
+    override val speedPresetLow = "منخفضة"
     override val speedLimitNoLimit = "بلا حد (أقصى سرعة)"
     override val speedLimitCustom = "مخصص..."
     override val speedLimitValue = "القيمة"

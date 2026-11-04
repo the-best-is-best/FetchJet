@@ -193,8 +193,18 @@ data class DashboardUiState(
     /** App-wide default connections per direct download (Settings > Downloads); 0 = automatic. */
     val defaultConnections: Int = 0,
     val mediaDurationSeconds: Long = 0L,
-    val speedDisplayUnit: String = "MB/s"
+    val speedDisplayUnit: String = "MB/s",
+    /** Named quick speed presets (Settings > Speed), picked fast from the header. */
+    val speedPresetLowBytes: Long = 256L * 1024,
+    val speedPresetLowUnit: String = "KB/s",
+    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    val speedPresetHighUnit: String = "MB/s"
 )
+
+/** Which named quick speed preset a setting refers to. */
+enum class SpeedPreset { LOW, MEDIUM, HIGH }
 
 
 sealed interface DashboardUiEvent {
@@ -218,6 +228,10 @@ sealed interface DashboardUiEvent {
     data class OnGlobalUploadSpeedLimitChanged(val limitBytesPerSec: Long) : DashboardUiEvent
 
     data class OnSpeedDisplayUnitChanged(val unit: String) : DashboardUiEvent
+
+    /** Edit one named quick preset's speed (Settings > Speed). */
+    data class OnSpeedPresetChanged(val preset: SpeedPreset, val bytes: Long, val unit: String) :
+        DashboardUiEvent
 
     data object OnApplySettingsClicked : DashboardUiEvent
 

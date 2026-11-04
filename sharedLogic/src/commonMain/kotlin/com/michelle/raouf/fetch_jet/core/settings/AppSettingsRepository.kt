@@ -13,7 +13,13 @@ data class AppSettings(
     val globalDownloadSpeedLimitBytes: Long = 0L,
     val globalUploadSpeedLimitBytes: Long = 0L,
     val speedDisplayUnit: String = "MB/s",
-    val language: String = "system"
+    val language: String = "system",
+    val speedPresetLowBytes: Long = 256L * 1024,
+    val speedPresetLowUnit: String = "KB/s",
+    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    val speedPresetHighUnit: String = "MB/s"
 )
 
 class AppSettingsRepository(
@@ -30,6 +36,12 @@ class AppSettingsRepository(
         var ulLimit = 0L
         var speedUnit = "MB/s"
         var language = "system"
+        var lowBytes = 256L * 1024
+        var lowUnit = "KB/s"
+        var mediumBytes = 5L * 1024 * 1024
+        var mediumUnit = "MB/s"
+        var highBytes = 20L * 1024 * 1024
+        var highUnit = "MB/s"
 
         try {
             if (FileSystem.SYSTEM.exists(settingsFile)) {
@@ -51,6 +63,14 @@ class AppSettingsRepository(
                         "globalUploadSpeedLimitBytes" -> ulLimit = value.toLongOrNull() ?: 0L
                         "speedDisplayUnit" -> if (value.isNotBlank()) speedUnit = value
                         "language" -> if (value.isNotBlank()) language = value
+                        "speedPresetLowBytes" -> lowBytes = value.toLongOrNull() ?: lowBytes
+                        "speedPresetLowUnit" -> if (value.isNotBlank()) lowUnit = value
+                        "speedPresetMediumBytes" -> mediumBytes =
+                            value.toLongOrNull() ?: mediumBytes
+
+                        "speedPresetMediumUnit" -> if (value.isNotBlank()) mediumUnit = value
+                        "speedPresetHighBytes" -> highBytes = value.toLongOrNull() ?: highBytes
+                        "speedPresetHighUnit" -> if (value.isNotBlank()) highUnit = value
                     }
                 }
             }
@@ -71,7 +91,13 @@ class AppSettingsRepository(
             globalDownloadSpeedLimitBytes = dlLimit,
             globalUploadSpeedLimitBytes = ulLimit,
             speedDisplayUnit = normalizedSpeedUnit,
-            language = language
+            language = language,
+            speedPresetLowBytes = lowBytes,
+            speedPresetLowUnit = lowUnit,
+            speedPresetMediumBytes = mediumBytes,
+            speedPresetMediumUnit = mediumUnit,
+            speedPresetHighBytes = highBytes,
+            speedPresetHighUnit = highUnit
         )
     }
 
@@ -87,6 +113,12 @@ class AppSettingsRepository(
                 writeUtf8("globalUploadSpeedLimitBytes=${settings.globalUploadSpeedLimitBytes}\n")
                 writeUtf8("speedDisplayUnit=${settings.speedDisplayUnit}\n")
                 writeUtf8("language=${settings.language}\n")
+                writeUtf8("speedPresetLowBytes=${settings.speedPresetLowBytes}\n")
+                writeUtf8("speedPresetLowUnit=${settings.speedPresetLowUnit}\n")
+                writeUtf8("speedPresetMediumBytes=${settings.speedPresetMediumBytes}\n")
+                writeUtf8("speedPresetMediumUnit=${settings.speedPresetMediumUnit}\n")
+                writeUtf8("speedPresetHighBytes=${settings.speedPresetHighBytes}\n")
+                writeUtf8("speedPresetHighUnit=${settings.speedPresetHighUnit}\n")
             }
         } catch (_: Exception) {
         }

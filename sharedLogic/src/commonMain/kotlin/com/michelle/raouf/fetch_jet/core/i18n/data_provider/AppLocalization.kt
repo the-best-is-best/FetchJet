@@ -271,6 +271,11 @@ interface AppLocalization : LocalizationProvider {
     val dirPickerNoSubfolders: String
     val dirPickerHiddenTag: String
     val speedLimitUnlimited: String
+    val speedPresetsTitle: String
+    val speedPresetsFooter: String
+    val speedPresetHigh: String
+    val speedPresetMedium: String
+    val speedPresetLow: String
     val speedLimitNoLimit: String
     val speedLimitCustom: String
     val speedLimitValue: String

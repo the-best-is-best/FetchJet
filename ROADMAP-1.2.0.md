@@ -444,12 +444,20 @@ languages, encrypted storage (they store plain text), torrents, and the secure t
 bridge. The items below are the cheap wins that use tools FetchJet already has; the medium/large
 ideas moved to `ROADMAP-1.3.0.md`.
 
-- [ ] Quick speed-limit toggle (the "turtle", like FDM / qBittorrent): one tap caps every running
-  download at a saved throttle value, one more tap is Unlimited, without opening Settings. The
-  engine is ready: `_globalDownloadSpeedLimit` in `QueueManagerRepository` already applies live
-  (verified on the A56). Needs a button (desktop header + the bottom bar, phone top bar) and one
-  saved "throttle" value in settings; reuse `speedLimitUnlimited` and the total-speed readout that
-  the header already shows.
+- [x] Quick speed control in the header (the "turtle" + named presets, FDM-inspired but our own
+  design): the header (desktop and phone) has a fixed-512 KB/s turtle toggle (🐢, one tap on/off)
+  next to a mode chip that opens a menu — Unlimited / Low / Medium / High — each showing its speed
+  and applied right away without opening Settings. The three presets High / Medium / Low are each
+  configurable in Settings > Speed limits > Speed presets with a number field + a unit switcher
+  (KB/s, MB/s, Kbps, Mbps; bits = ÷8), responsive (FlowRow) so it wraps on a phone. Defaults
+  High 20 MB/s, Medium 5 MB/s, Low 256 KB/s; the turtle is always 512 KB/s. Stored in
+  settings.properties (`speedPreset{Low,Medium,High}{Bytes,Unit}`), state + `OnSpeedPresetChanged`
+  in the dashboard; the header reuses `OnGlobalDownloadSpeedLimitChanged` and the live
+  `_globalDownloadSpeedLimit`. Editing the active preset re-applies it live. Files: `SpeedControl`
+  in `HomeNavigation.kt`, `SpeedPresetRow.kt` / `SpeedPresetUi.kt`, `SpeedPage` in
+  `SettingsPages.kt`, 5 i18n strings × 15 languages. Built desktop + Android; shown working on
+  Windows 2026-11-04 (picked High=20 MB/s, turtle→512 KB/s, settings presets edit + Mbps↔MB/s
+  conversion 20 Mbps = 2.3 MB/s all correct). Owner to try it; not checked on Android/iOS screens.
 - [ ] Verify a finished file's checksum: an optional sha256 / md5 field per download; after it
   completes, hash the file and show OK / mismatch. The sha256 code already exists (tool downloads,
   `MessageDigest` in `MediaExtractorToolManager.jvm.kt`); add a field in the Add dialog, store it

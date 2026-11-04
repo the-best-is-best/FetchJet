@@ -321,6 +321,12 @@ object HindiProvider : AppLocalization {
         "इस फ़ोल्डर में कोई सब-फ़ोल्डर नहीं है।\nफ़ाइलें सीधे यहीं सेव होंगी।"
     override val dirPickerHiddenTag = "(छिपा हुआ)"
     override val speedLimitUnlimited = "असीमित (अधिकतम)"
+    override val speedPresetsTitle = "गति प्रीसेट"
+    override val speedPresetsFooter =
+        "उच्च, मध्यम और निम्न के लिए गति तय करें। हेडर से तेज़ी से चुनें; कछुआ हमेशा 512 KB/s रहता है।"
+    override val speedPresetHigh = "उच्च"
+    override val speedPresetMedium = "मध्यम"
+    override val speedPresetLow = "निम्न"
     override val speedLimitNoLimit = "कोई सीमा नहीं (अधिकतम स्पीड)"
     override val speedLimitCustom = "कस्टम..."
     override val speedLimitValue = "मान"

@@ -33,7 +33,6 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
-import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.tbib.kmp_localization.LocalizationManager
 import kotlin.time.Duration.Companion.milliseconds
@@ -143,7 +142,14 @@ internal fun DownloadsPage(
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
     onSortIntoFoldersChanged: (Boolean) -> Unit,
-    onDefaultConnectionsChanged: (Int) -> Unit
+    onDefaultConnectionsChanged: (Int) -> Unit,
+    lowBytes: Long = 256L * 1024,
+    lowUnit: String = "KB/s",
+    mediumBytes: Long = 5L * 1024 * 1024,
+    mediumUnit: String = "MB/s",
+    highBytes: Long = 20L * 1024 * 1024,
+    highUnit: String = "MB/s",
+    onPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> }
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     var showDirectoryPicker by remember { mutableStateOf(false) }
@@ -226,6 +232,52 @@ internal fun DownloadsPage(
             }
         }
         SettingsGroup(
+            title = LocalizationManager.Strings.speedPresetsTitle,
+            footer = LocalizationManager.Strings.speedPresetsFooter
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetHigh,
+                    bytes = highBytes,
+                    unit = highUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.HIGH,
+                            b, u
+                        )
+                    }
+                )
+            }
+            SettingDivider()
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetMedium,
+                    bytes = mediumBytes,
+                    unit = mediumUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.MEDIUM,
+                            b, u
+                        )
+                    }
+                )
+            }
+            SettingDivider()
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetLow,
+                    bytes = lowBytes,
+                    unit = lowUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.LOW,
+                            b, u
+                        )
+                    }
+                )
+            }
+        }
+        SettingsGroup(
             title = LocalizationManager.Strings.organizeGroup,
             footer = LocalizationManager.Strings.organizeFooter
         ) {
@@ -241,25 +293,17 @@ internal fun DownloadsPage(
 }
 
 @Composable
-internal fun SpeedPage(
-    downloadLimit: Long,
+internal fun TorrentPage(
+    disableTorrentUpload: Boolean,
+    onDisableTorrentUploadToggled: (Boolean) -> Unit,
     uploadLimit: Long,
-    onDownloadLimit: (Long) -> Unit,
-    onUploadLimit: (Long) -> Unit
+    onUploadLimit: (Long) -> Unit,
+    showEngine: Boolean,
+    isTorrentEngineReady: Boolean,
+    torrentEngineStatus: String
 ) {
-    val ios = getPlatform().name.startsWith("iOS", ignoreCase = true)
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(
-            footer = if (ios) LocalizationManager.Strings.speedLimitsFooterIos else LocalizationManager.Strings.speedLimitsFooter
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                TrafficLimitSelector(
-                    title = LocalizationManager.Strings.speedLimitDownload,
-                    speedBytesPerSec = downloadLimit,
-                    onSpeedChanged = onDownloadLimit
-                )
-            }
-            SettingDivider()
+        SettingsGroup {
             Column(modifier = Modifier.padding(16.dp)) {
                 TrafficLimitSelector(
                     title = LocalizationManager.Strings.speedLimitUploadTorrents,
@@ -268,18 +312,6 @@ internal fun SpeedPage(
                 )
             }
         }
-    }
-}
-
-@Composable
-internal fun TorrentPage(
-    disableTorrentUpload: Boolean,
-    onDisableTorrentUploadToggled: (Boolean) -> Unit,
-    showEngine: Boolean,
-    isTorrentEngineReady: Boolean,
-    torrentEngineStatus: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(title = LocalizationManager.Strings.torrentSharingGroup) {
             SettingSwitch(
                 title = LocalizationManager.Strings.downloadOnlyNoUpload,

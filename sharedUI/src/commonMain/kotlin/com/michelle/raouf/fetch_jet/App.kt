@@ -183,6 +183,17 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             speedDisplayUnit = state.speedDisplayUnit,
                             sortOption = state.sortOption,
                             isDarkMode = state.isDarkMode,
+                            downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
+                            speedPresetLowBytes = state.speedPresetLowBytes,
+                            speedPresetMediumBytes = state.speedPresetMediumBytes,
+                            speedPresetHighBytes = state.speedPresetHighBytes,
+                            onPickDownloadLimit = {
+                                viewModel.onEvent(
+                                    DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
+                                        it
+                                    )
+                                )
+                            },
                             onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPauseAllClicked) },
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
@@ -309,6 +320,17 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                     totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                                     speedDisplayUnit = state.speedDisplayUnit,
                                     isDarkMode = state.isDarkMode,
+                                    downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
+                                    speedPresetLowBytes = state.speedPresetLowBytes,
+                                    speedPresetMediumBytes = state.speedPresetMediumBytes,
+                                    speedPresetHighBytes = state.speedPresetHighBytes,
+                                    onPickDownloadLimit = {
+                                        viewModel.onEvent(
+                                            DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
+                                                it
+                                            )
+                                        )
+                                    },
                                     onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
                                     onAdd = {
                                         viewModel.onEvent(

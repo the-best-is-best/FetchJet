@@ -324,6 +324,12 @@ object EnglishProvider : AppLocalization {
         "No subfolders in this directory.\nFiles will be saved directly here."
     override val dirPickerHiddenTag = "(hidden)"
     override val speedLimitUnlimited = "Unlimited (Max)"
+    override val speedPresetsTitle = "Speed presets"
+    override val speedPresetsFooter =
+        "Set a speed for High, Medium and Low. Pick one quickly from the header; the turtle is always 512 KB/s."
+    override val speedPresetHigh = "High"
+    override val speedPresetMedium = "Medium"
+    override val speedPresetLow = "Low"
     override val speedLimitNoLimit = "No Limit (Max Speed)"
     override val speedLimitCustom = "Custom..."
     override val speedLimitValue = "Value"

@@ -337,6 +337,12 @@ object SpanishProvider : AppLocalization {
         "No hay subcarpetas en esta carpeta.\nLos archivos se guardarán aquí directamente."
     override val dirPickerHiddenTag = "(oculta)"
     override val speedLimitUnlimited = "Ilimitada (máx.)"
+    override val speedPresetsTitle = "Preajustes de velocidad"
+    override val speedPresetsFooter =
+        "Define una velocidad para Alta, Media y Baja. Elige una rápidamente desde la cabecera; la tortuga siempre es 512 KB/s."
+    override val speedPresetHigh = "Alta"
+    override val speedPresetMedium = "Media"
+    override val speedPresetLow = "Baja"
     override val speedLimitNoLimit = "Sin límite (velocidad máx.)"
     override val speedLimitCustom = "Personalizado..."
     override val speedLimitValue = "Valor"

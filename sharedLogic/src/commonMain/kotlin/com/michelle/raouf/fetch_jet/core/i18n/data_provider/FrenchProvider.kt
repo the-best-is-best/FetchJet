@@ -342,6 +342,12 @@ object FrenchProvider : AppLocalization {
         "Aucun sous-dossier ici.\nLes fichiers seront enregistrés directement dans ce dossier."
     override val dirPickerHiddenTag = "(caché)"
     override val speedLimitUnlimited = "Illimitée (max)"
+    override val speedPresetsTitle = "Préréglages de vitesse"
+    override val speedPresetsFooter =
+        "Définissez une vitesse pour Élevée, Moyenne et Basse. Choisissez-en une rapidement depuis l’en-tête ; la tortue est toujours à 512 Ko/s."
+    override val speedPresetHigh = "Élevée"
+    override val speedPresetMedium = "Moyenne"
+    override val speedPresetLow = "Basse"
     override val speedLimitNoLimit = "Sans limite (vitesse max)"
     override val speedLimitCustom = "Personnalisée..."
     override val speedLimitValue = "Valeur"

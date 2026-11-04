@@ -328,6 +328,12 @@ object ItalianProvider : AppLocalization {
         "Nessuna sottocartella qui.\nI file verranno salvati direttamente in questa cartella."
     override val dirPickerHiddenTag = "(nascosta)"
     override val speedLimitUnlimited = "Illimitata (max)"
+    override val speedPresetsTitle = "Preimpostazioni di velocità"
+    override val speedPresetsFooter =
+        "Imposta una velocità per Alta, Media e Bassa. Scegline una rapidamente dall’intestazione; la tartaruga è sempre 512 KB/s."
+    override val speedPresetHigh = "Alta"
+    override val speedPresetMedium = "Media"
+    override val speedPresetLow = "Bassa"
     override val speedLimitNoLimit = "Nessun limite (velocità max)"
     override val speedLimitCustom = "Personalizzato..."
     override val speedLimitValue = "Valore"

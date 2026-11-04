@@ -1,8 +1,8 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -59,6 +59,41 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnSpeedDisplayUnitChanged -> {
             _uiState.update { it.copy(speedDisplayUnit = event.unit) }
+            persistCurrentSettings()
+        }
+
+        is DashboardUiEvent.OnSpeedPresetChanged -> {
+            val current = _uiState.value
+            val oldBytes = when (event.preset) {
+                SpeedPreset.LOW -> current.speedPresetLowBytes
+                SpeedPreset.MEDIUM -> current.speedPresetMediumBytes
+                SpeedPreset.HIGH -> current.speedPresetHighBytes
+            }
+            _uiState.update {
+                when (event.preset) {
+                    SpeedPreset.LOW -> it.copy(
+                        speedPresetLowBytes = event.bytes,
+                        speedPresetLowUnit = event.unit
+                    )
+
+                    SpeedPreset.MEDIUM -> it.copy(
+                        speedPresetMediumBytes = event.bytes,
+                        speedPresetMediumUnit = event.unit
+                    )
+
+                    SpeedPreset.HIGH -> it.copy(
+                        speedPresetHighBytes = event.bytes,
+                        speedPresetHighUnit = event.unit
+                    )
+                }
+            }
+            // If this preset is the one currently capping downloads, apply the new value live.
+            if (event.bytes != oldBytes &&
+                _uiState.value.globalDownloadSpeedLimitBytes == oldBytes
+            ) {
+                _uiState.update { it.copy(globalDownloadSpeedLimitBytes = event.bytes) }
+                queueRepository.setGlobalDownloadSpeedLimit(event.bytes)
+            }
             persistCurrentSettings()
         }
 
