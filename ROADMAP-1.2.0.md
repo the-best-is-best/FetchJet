@@ -381,7 +381,11 @@ Open, owner's decision:
   page and two chunks took 61 s and 43 s. `ExtensionBridgeServer` now dispatches `reading`
   pings quietly (one toast "Reading the course lectures: 0 / N"); the app opens with the list.
   Owner-verified: fast. Firefox for Android has no extension context menu (popup and page
-  button only).
+  button only). While it reads, Android shows a toast with the count (at most every 2.5 s) and
+  a quiet notification with a bar (id 7002, cancelled when the list or an error arrives).
+  A56 system log, 172 lectures: notification up 11.5 s, toasts ~3 s apart, list opened with
+  folder = the course title. Also on the A56: "Pause all" hides the download card within 2 s
+  (service stopped), twice in a row; a SoundCloud set landed in `Download/Media/Soulhack/`.
 - [x] Merge a captured video-only + audio-only pair inside the app.
   Done 2026-11-04. Only the extension's captured YouTube streams were ever split (shown before
   the app's qualities arrive, or with "Ask FetchJet for video qualities automatically" off); the
