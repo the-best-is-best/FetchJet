@@ -60,6 +60,8 @@ class DashboardViewModel(
     internal var pendingExternalUrl: String? = null
     internal var pendingExternalHeaders: Map<String, String> = emptyMap()
     internal var pendingExternalFileName: String? = null
+    internal var pendingExternalPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
+        null
 
     /** Quality the extension chose for a clip: re-applied when the dialog's own inspection finishes. */
     internal var pendingSelectedFormatId: String? = null
@@ -178,8 +180,22 @@ class DashboardViewModel(
         pendingExternalUrl = request.url
         pendingExternalHeaders = request.toRequestHeaders()
         pendingExternalFileName = request.fileName.ifBlank { null }
+        pendingExternalPlaylist = request.playlist
         onEvent(DashboardUiEvent.OnUrlChanged(request.url))
         onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+        request.playlist?.let { playlist ->
+            _uiState.update {
+                it.copy(
+                    detectedEngine = EngineType.MEDIA_STREAM,
+                    isInspectingMedia = false,
+                    inspectedPlaylist = playlist,
+                    inspectedMediaQualities = emptyList(),
+                    inspectedMediaTitle = playlist.title,
+                    inspectMediaError = null,
+                    isClipRangeEnabled = false
+                )
+            }
+        }
     }
 
     /**
@@ -229,7 +245,7 @@ class DashboardViewModel(
             val selected = qualities.firstOrNull { it.isSelected } ?: qualities.firstOrNull()
             val rawName = request.fileName.ifBlank {
                 val title = selected?.videoTitle
-                if (!title.isNullOrBlank()) "$title.${selected.format.ifBlank { "mp4" } ?: "mp4"}" else ""
+                if (!title.isNullOrBlank()) "$title.${selected.format.ifBlank { "mp4" }}" else ""
             }
             val fileName = (overrideFileName ?: rawName).ifBlank { null }
                 ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
@@ -556,11 +572,12 @@ class DashboardViewModel(
         scope.launch {
             _uiState.update { it.copy(isInspectingMedia = true, inspectMediaError = null) }
             // A playlist / channel link: list its videos (unless the user chose "only this video").
-            if (url != singleVideoUrl && com.michelle.raouf.fetch_jet.feature.media_extractor.looksLikePlaylistUrl(
+            val readByBrowser = pendingExternalPlaylist?.takeIf { pendingExternalUrl == url }
+            if (url != singleVideoUrl && (readByBrowser != null || com.michelle.raouf.fetch_jet.feature.media_extractor.looksLikePlaylistUrl(
                     url
-                )
+                ))
             ) {
-                val playlist = try {
+                val playlist = readByBrowser ?: try {
                     withTimeoutOrNull(90_000L) {
                         queueRepository.inspectPlaylist(
                             url,
@@ -570,7 +587,7 @@ class DashboardViewModel(
                 } catch (_: Exception) {
                     null
                 }
-                if (playlist != null && playlist.entries.size >= 2 && _uiState.value.inputUrl == url) {
+                if (playlist != null && (playlist.entries.size >= 2 || playlist === readByBrowser) && _uiState.value.inputUrl == url) {
                     _uiState.update {
                         it.copy(
                             isInspectingMedia = false,

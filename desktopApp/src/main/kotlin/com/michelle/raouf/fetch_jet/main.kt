@@ -409,7 +409,7 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 """{"app":"FetchJet","version":"${jsonEscape(System.getProperty("jpackage.app-version") ?: "dev")}","bridge":2,""" +
                         """"mediaExtractor":${features.mediaExtractor},"torrent":${features.torrent},""" +
                         """"language":"${jsonEscape(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
-                        """"pairing":true,"pairedMerge":true,"paired":${
+                        """"pairing":true,"pairedMerge":true,"coursePlaylist":true,"paired":${
                             BridgePairing.isPaired(
                                 exchange.requestHeaders.getFirst(
                                     BridgePairing.TOKEN_HEADER
@@ -496,7 +496,10 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 mediaQualities = qualities,
                 direct = (this["direct"] as? Boolean) == true,
                 openClip = (this["openClip"] as? Boolean) == true,
-                audioUrl = getString("audioUrl")?.trim().orEmpty()
+                audioUrl = getString("audioUrl")?.trim().orEmpty(),
+                playlist = com.michelle.raouf.fetch_jet.feature.media_extractor.parseExternalPlaylist(
+                    this["playlist"]
+                )
             )
         }
 

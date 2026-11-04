@@ -17,7 +17,9 @@ data class ExternalDownloadRequest(
     /** The extension's scissors button: open the Add dialog with this quality and the clip range on. */
     val openClip: Boolean = false,
     /** [url] is a captured video-only stream and this its audio: download both, merge them. */
-    val audioUrl: String = ""
+    val audioUrl: String = "",
+    /** The videos of [url] as the extension read them (a Udemy course): listed without yt-dlp. */
+    val playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {

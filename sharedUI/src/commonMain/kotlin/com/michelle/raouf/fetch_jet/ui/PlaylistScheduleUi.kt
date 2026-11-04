@@ -1,7 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -41,12 +39,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
+import com.tbib.kmp_localization.LocalizationManager
 
 /** The videos of a playlist with checkboxes and one quality for all of them. */
 @Composable
@@ -99,30 +99,32 @@ fun PlaylistSelectionCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                LocalizationManager.Strings.qualityForAllVideos,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                PlaylistQuality.entries.forEach { q ->
-                    ChoiceChip(
-                        label = q.label,
-                        selected = q == quality,
-                        onClick = { onQualityChanged(q) })
+            if (!playlist.fromBrowser) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    LocalizationManager.Strings.qualityForAllVideos,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PlaylistQuality.entries.forEach { q ->
+                        ChoiceChip(
+                            label = q.label,
+                            selected = q == quality,
+                            onClick = { onQualityChanged(q) })
+                    }
                 }
+                Text(
+                    text = LocalizationManager.Strings.qualityForAllVideosHint,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
-            Text(
-                text = LocalizationManager.Strings.qualityForAllVideosHint,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
-            )
 
             Spacer(modifier = Modifier.height(8.dp))
             Surface(

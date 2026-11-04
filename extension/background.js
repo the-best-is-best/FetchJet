@@ -277,6 +277,8 @@ async function appFetch(path, init = {}, timeoutMs = 0) {
 
 /** The app downloads a captured video-only stream together with its audio and merges them. */
 let appMerges = false;
+/** The app lists a course the extension read (`playlist` in the request) without yt-dlp. */
+let appCourses = false;
 
 async function fetchAppConfig() {
   try {
@@ -288,6 +290,7 @@ async function fetchAppConfig() {
     const cfg = await res.json();
     if (cfg && cfg.language) rememberAppLanguage(cfg.language);
     appMerges = !!(cfg && cfg.pairedMerge);
+    appCourses = !!(cfg && cfg.coursePlaylist);
     return cfg;
   } catch (_) { return null; }
 }
@@ -308,7 +311,7 @@ async function cookieHeaderFor(url) {
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
-async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "" }) {
+async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null }) {
   const body = {
     url,
     cookie: await cookieHeaderFor(url),
@@ -320,6 +323,7 @@ async function buildRequest({ url, referer = "", fileName = "", formatId = "", d
   if (direct) body.direct = true;         // start now, no Add dialog
   if (openClip) body.openClip = true;     // open the Add dialog with the clip range on
   if (audioUrl && isValidDownloadUrl(audioUrl)) body.audioUrl = audioUrl; // video-only + its audio: merged in the app
+  if (playlist) body.playlist = playlist; // the videos, already read here (Udemy course)
   return body;
 }
 
@@ -420,9 +424,9 @@ async function notify(message, extra = {}) {
  * Main entry: hand a link to FetchJet, launching it when needed.
  * `source` is a short tag for logging ("download", "link", "menu", "popup", "media").
  */
-async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "" }, source = "") {
+async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
-  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl });
+  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist });
   if (ON_IOS) {
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
@@ -941,7 +945,79 @@ async function itemsForTab(tabId) {
   }
   const list = await listUrlForTab(tabId);
   if (list) items.unshift({ kind: "playlist", label: fjT("itemPlaylist"), sub: fjT("itemPlaylistSub"), url: list.url });
+  const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;
+  if (course) items.unshift({ kind: "course", label: fjT("itemCourse"), sub: fjT("itemCourseSub"), url: course.url });
   return { items, title: pageTitle };
+}
+
+/** A Udemy course page (`udemy.com/course/<name>/...`, business sub-domains too). */
+async function udemyCourseForTab(tabId) {
+  let pageUrl = "";
+  try { pageUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) { return null; }
+  const m = /^https:\/\/([\w-]+\.)?udemy\.com\/course\/([^/?#]+)/i.exec(pageUrl);
+  if (!m) return null;
+  return { url: `https://${m[1] || ""}udemy.com/course/${m[2]}/`, slug: m[2] };
+}
+
+/**
+ * Runs in the Udemy page (its own origin and login, like Udemy's player): the course's
+ * lectures and the stream link of each one. DRM lectures have no usable link and are counted.
+ */
+async function readUdemyCourseInPage(slug) {
+  const headers = { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" };
+  const get = async (path) => {
+    const r = await fetch(path.startsWith("http") ? path : location.origin + path, { credentials: "include", headers });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  };
+  try {
+    const html = document.documentElement.innerHTML;
+    const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
+    let id = found ? found[1] : "";
+    let title = "";
+    try {
+      const c = await get(`/api-2.0/courses/${id || encodeURIComponent(slug)}/?fields[course]=id,title`);
+      id = String(c.id || id); title = c.title || "";
+    } catch (e) { if (!id) throw e; }
+    const query = "?page_size=1000&fields[lecture]=title,object_index,asset&fields[chapter]=title,object_index&fields[asset]=asset_type";
+    let page;
+    try { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${query}`); }
+    catch (_) { page = await get(`/api-2.0/courses/${id}/cached-subscriber-curriculum-items/${query}`); }
+    let items = page.results || [];
+    while (page.next) { page = await get(page.next); items = items.concat(page.results || []); }
+    const lectures = items.filter(e => e._class === "lecture" &&
+      (!e.asset || (e.asset.asset_type || e.asset.assetType) === "Video"));
+    const entries = new Array(lectures.length).fill(null);
+    let drm = 0, failed = 0, next = 0;
+    const pick = (asset) => {
+      const all = [].concat(asset.media_sources || [],
+        (asset.stream_urls && asset.stream_urls.Video) || [],
+        (asset.download_urls && asset.download_urls.Video) || []);
+      const srcOf = (x) => (x && (x.src || x.file)) || "";
+      const hls = all.find(x => /mpegurl/i.test(x.type || "") || /\.m3u8(\?|$)/i.test(srcOf(x)));
+      if (hls) return srcOf(hls);
+      const files = all.filter(x => /^https?:/i.test(srcOf(x)) && !/dash/i.test(x.type || "") && !/\.mpd(\?|$)/i.test(srcOf(x)))
+        .sort((a, b) => (parseInt(b.label, 10) || 0) - (parseInt(a.label, 10) || 0));
+      return files.length ? srcOf(files[0]) : "";
+    };
+    const worker = async () => {
+      while (next < lectures.length) {
+        const i = next++;
+        const lec = lectures[i];
+        try {
+          const d = await get(`/api-2.0/users/me/subscribed-courses/${id}/lectures/${lec.id}/?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`);
+          const url = d.asset ? pick(d.asset) : "";
+          if (url) entries[i] = { title: `${String(i + 1).padStart(3, "0")} - ${d.title || lec.title || ""}`, url };
+          else if (d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length)) drm++;
+          else failed++;
+        } catch (_) { failed++; }
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    return { title, entries: entries.filter(Boolean), drm, failed };
+  } catch (e) {
+    return { error: (e && e.message) || "error" };
+  }
 }
 
 /**
@@ -1002,6 +1078,23 @@ async function downloadItem(item, tab) {
   if (item.kind === "playlist") {
     // The app's Add dialog lists the videos; the user picks them and the quality there.
     return sendToFetchJet({ url: item.url, referer: pageUrl }, "playlist");
+  }
+  if (item.kind === "course") {
+    const course = tab && tab.id != null ? await udemyCourseForTab(tab.id) : null;
+    if (!course) return { ok: false, reason: fjT("courseFailed", { reason: "" }) };
+    await notify(fjT("courseReading"));
+    let read;
+    try {
+      const [res] = await api.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", func: readUdemyCourseInPage, args: [course.slug] });
+      read = res && res.result;
+    } catch (e) { read = { error: (e && e.message) || "" }; }
+    if (!read || read.error || !read.entries.length) {
+      const reason = read && read.drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: read && read.error ? `(${read.error})` : "" });
+      await notify(reason);
+      return { ok: false, reason };
+    }
+    if (read.drm) await notify(fjT("courseDrm", { n: read.drm }));
+    return sendToFetchJet({ url: course.url, referer: pageUrl, playlist: { title: read.title || clean, entries: read.entries } }, "course");
   }
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.

@@ -176,6 +176,7 @@ internal fun DashboardViewModel.addDownload(
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()
             pendingExternalFileName = null
+            pendingExternalPlaylist = null
             _uiState.update {
                 it.copy(
                     inputUrl = "",
@@ -274,6 +275,7 @@ internal fun DashboardViewModel.addSeveralQualities(
         pendingExternalUrl = null
         pendingExternalHeaders = emptyMap()
         pendingExternalFileName = null
+        pendingExternalPlaylist = null
         _uiState.update {
             it.copy(
                 inputUrl = "",
@@ -324,7 +326,8 @@ internal fun DashboardViewModel.addPlaylist(
         _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOnePlaylistVideo) }
         return
     }
-    val quality = state.playlistQuality
+    val quality = if (playlist.fromBrowser)
+        com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST else state.playlistQuality
     val destDir =
         state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -348,6 +351,14 @@ internal fun DashboardViewModel.addPlaylist(
                 fileName = "$base ($n).$ext"
             }
             usedNames.add(fileName.lowercase())
+            // A course the extension read (Udemy) lists the lectures' own streams: an HLS
+            // playlist goes to the own HLS engine (best rendition), a file is a plain download.
+            val hls = playlist.fromBrowser &&
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(
+                        entry.url
+                    )
+            val file =
+                playlist.fromBrowser && !hls && engineForDirectFile(entry.url) == EngineType.HTTP_DIRECT
             val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
                 index = 0,
                 qualityLabel = quality.label,
@@ -355,7 +366,7 @@ internal fun DashboardViewModel.addPlaylist(
                 format = quality.extension,
                 size = -1L,
                 isSelected = true,
-                formatId = quality.formatSelector,
+                formatId = if (hls) com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.FORMAT_ID else quality.formatSelector,
                 originalUrl = entry.url,
                 videoTitle = entry.title,
                 durationSeconds = entry.durationSeconds
@@ -364,10 +375,11 @@ internal fun DashboardViewModel.addPlaylist(
                 url = entry.url,
                 customDestinationPath = destDir,
                 customFileName = fileName,
-                mediaQualities = listOf(pseudoQuality),
+                mediaQualities = if (file) emptyList() else listOf(pseudoQuality),
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
-                forcedEngineType = EngineType.MEDIA_STREAM,
-                scheduledAtMs = state.scheduleStartMs
+                forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
+                scheduledAtMs = state.scheduleStartMs,
+                requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap()
             ).onSuccess { added++ }.onFailure { failed++ }
         }
         _uiState.update {

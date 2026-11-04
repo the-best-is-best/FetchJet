@@ -17,7 +17,9 @@ data class PlaylistEntry(
 
 data class MediaPlaylist(
     val title: String,
-    val entries: List<PlaylistEntry>
+    val entries: List<PlaylistEntry>,
+    /** Read by the browser extension: the entries are the videos' own stream links. */
+    val fromBrowser: Boolean = false
 )
 
 /**
@@ -58,6 +60,32 @@ fun looksLikePlaylistUrl(url: String): Boolean {
                 "/user/"
             ))) ||
             (u.contains("soundcloud.com") && u.contains("/sets/"))
+}
+
+/**
+ * A list the browser extension already read (a Udemy course: `{title, entries: [{title, url}]}`
+ * in the request's `playlist`), shown like a playlist without asking yt-dlp.
+ */
+fun parseExternalPlaylist(raw: Any?): MediaPlaylist? {
+    @Suppress("UNCHECKED_CAST")
+    val root = raw as? Map<String, Any?> ?: return null
+    val entries = (root["entries"] as? List<*>).orEmpty().take(2000).mapNotNull { e ->
+        @Suppress("UNCHECKED_CAST")
+        val m = e as? Map<String, Any?> ?: return@mapNotNull null
+        val url = m.getString("url")?.trim().orEmpty()
+        if (!url.startsWith("https://", true) && !url.startsWith(
+                "http://",
+                true
+            )
+        ) return@mapNotNull null
+        m.getString("title")?.trim().orEmpty().take(200) to url
+    }.mapIndexed { i, (title, url) ->
+        PlaylistEntry(index = i, title = title.ifBlank { "Video ${i + 1}" }, url = url)
+    }
+    if (entries.isEmpty()) return null
+    val title = root.getString("title")?.trim()?.take(200)?.ifBlank { null }
+        ?: LocalizationManager.Strings.sysPlaylistFallbackTitle
+    return MediaPlaylist(title, entries, fromBrowser = true)
 }
 
 /** Parses yt-dlp's `-J --flat-playlist` answer. */
