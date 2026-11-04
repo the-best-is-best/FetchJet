@@ -130,6 +130,11 @@ down` (may ask for Automation permission the first time: test on the Mac); Linux
 suspend|poweroff`. UI: Settings > General card, tray submenu, a banner above the list with
 Cancel, and the countdown dialog (Cancel / Now) that brings the window forward. Unit test
 `WhenDoneTest` (4 cases) passes.
+macOS (2026-11-04, dev run on the owner's Mac): Sleep works. 8 MB download finished -> countdown
+dialog -> at 0 the log printed `WhenDone: pmset sleepnow` and `pmset -g log` shows "Software
+Sleep" at that second; woken with the keyboard after 11 s, the app was still running with the
+download completed and the choice back on "Do nothing". Shut down via System Events: not run yet.
+Cancel on the Mac: not clicked (the automation tool cannot press buttons in that dialog).
 
 ## 5. Keyboard selection (desktop)
 

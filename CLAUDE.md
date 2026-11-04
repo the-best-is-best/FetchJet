@@ -465,8 +465,9 @@ Bridges:
 - 1.2.0 "When downloads finish" (desktop, ROADMAP item 4): `core/power/WhenDone.kt` +
   `SystemPower` (expect/actual, jvm only) + `ui/WhenDoneUi.kt` (Settings > General card, banner
   above the list, countdown dialog) + tray submenu in `main.kt`. Per session, not saved. Unit test
-  `WhenDoneTest`. Owner-tested on Windows with Exit; sleep / shut down not run on purpose; macOS
-  shut down via System Events may need Automation
+  `WhenDoneTest`. Owner-tested on Windows with Exit; macOS Sleep (`pmset sleepnow`) verified on the
+  Mac
+  2026-11-04 (ROADMAP item 4); macOS shut down via System Events not run yet, may need Automation
   permission (Mac test).
 - 1.2.0 keyboard selection in the task list (ROADMAP item 5): Ctrl/Cmd+click, Shift+click range,
   Ctrl/Cmd+A, Delete, Esc (`TaskList.kt` `onKeyEvent` on the focusable list column, `TaskRow`
