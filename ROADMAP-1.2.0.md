@@ -434,6 +434,33 @@ Open, owner's decision:
   for the app's qualities instead): today the merge rarely gets a chance on YouTube. Kept on
   the owner's decision (it costs nothing and works when a page plays plain stream links).
 
+## 8. New features vs Ezoo (2026-11-04)
+
+Ezoo Download 1.0.9 was compared feature by feature: FetchJet already matches or beats every item
+in its README (32 connections, resume, extension, video/audio + playlists, type folders,
+queue/schedule/shutdown-when-done, global and per-file speed limit, page grabber, link lists,
+multi-select, languages). FetchJet is ahead on platforms (they are Windows-only), 15 vs 8
+languages, encrypted storage (they store plain text), torrents, and the secure token+pairing
+bridge. The items below are the cheap wins that use tools FetchJet already has; the medium/large
+ideas moved to `ROADMAP-1.3.0.md`.
+
+- [ ] Quick speed-limit toggle (the "turtle", like FDM / qBittorrent): one tap caps every running
+  download at a saved throttle value, one more tap is Unlimited, without opening Settings. The
+  engine is ready: `_globalDownloadSpeedLimit` in `QueueManagerRepository` already applies live
+  (verified on the A56). Needs a button (desktop header + the bottom bar, phone top bar) and one
+  saved "throttle" value in settings; reuse `speedLimitUnlimited` and the total-speed readout that
+  the header already shows.
+- [ ] Verify a finished file's checksum: an optional sha256 / md5 field per download; after it
+  completes, hash the file and show OK / mismatch. The sha256 code already exists (tool downloads,
+  `MessageDigest` in `MediaExtractorToolManager.jvm.kt`); add a field in the Add dialog, store it
+  on the task, and a post-complete compare step in common code (one hasher, expect/actual if
+  needed on Android/iOS).
+- [ ] "Audio only -> MP3": when the user picks audio, download the best audio (already supported:
+  `isAudioOnly` / `isAllAudio`) and offer an MP3 convert as a final ffmpeg step
+  (`-vn -acodec libmp3lame`). First confirm the bundled ffmpeg has libmp3lame on each platform
+  (ffbinaries 4.4.1, ffmpeg-static, Android/iOS builds); if a platform's build lacks it, keep the
+  original audio there and note it.
+
 ## Checks still open from 1.1.0 (owner, any time)
 
 - [x] iOS: build 1.1.0 on the Mac (clean code, kotlinx.serialization, navigationevent).
