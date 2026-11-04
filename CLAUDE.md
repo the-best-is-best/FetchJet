@@ -467,8 +467,9 @@ Bridges:
   above the list, countdown dialog) + tray submenu in `main.kt`. Per session, not saved. Unit test
   `WhenDoneTest`. Owner-tested on Windows with Exit; macOS Sleep (`pmset sleepnow`) verified on the
   Mac
-  2026-11-04 (ROADMAP item 4); macOS shut down via System Events not run yet, may need Automation
-  permission (Mac test).
+  2026-11-04 (ROADMAP item 4); macOS shut down via System Events also verified there (the Mac
+  turned off; owner-verified); the installed .app may still ask for Automation permission the first
+  time.
 - 1.2.0 keyboard selection in the task list (ROADMAP item 5): Ctrl/Cmd+click, Shift+click range,
   Ctrl/Cmd+A, Delete, Esc (`TaskList.kt` `onKeyEvent` on the focusable list column, `TaskRow`
   `onCtrlClick` / `onShiftClick` via `LocalWindowInfo.keyboardModifiers`). In commonMain on
