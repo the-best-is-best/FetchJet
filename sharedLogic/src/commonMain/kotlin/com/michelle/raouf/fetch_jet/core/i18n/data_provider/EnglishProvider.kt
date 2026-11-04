@@ -115,6 +115,13 @@ object EnglishProvider : AppLocalization {
         "An older FetchJet extension wants to send links. Allow it if it is yours; updating the extension makes this question unnecessary."
     override val bridgePairAllow = "Allow"
     override val bridgePairBlock = "Block"
+    override val extConnectionsGroup = "Browser connections"
+    override val extConnectionsFooter =
+        "Browser extensions you have allowed or blocked from sending links to FetchJet."
+    override val extAllowedLabel = "Allowed"
+    override val extBlockedLabel = "Blocked"
+    override val extRevoke = "Revoke"
+    override val extUnblock = "Unblock"
     override val homeBrowserFallbackTitle = "Download in browser instead?"
     override val homeBrowserFallbackText =
         "You cancelled this file in FetchJet. The browser stopped its own download when it " +

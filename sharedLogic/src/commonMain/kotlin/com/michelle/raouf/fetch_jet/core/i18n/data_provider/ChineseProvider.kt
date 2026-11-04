@@ -112,6 +112,12 @@ object ChineseProvider : AppLocalization {
         "旧版 FetchJet 扩展想要发送链接。如果是您的扩展请允许；更新扩展后将不再询问。"
     override val bridgePairAllow = "允许"
     override val bridgePairBlock = "阻止"
+    override val extConnectionsGroup = "浏览器连接"
+    override val extConnectionsFooter = "您已允许或已阻止向 FetchJet 发送链接的浏览器扩展。"
+    override val extAllowedLabel = "已允许"
+    override val extBlockedLabel = "已阻止"
+    override val extRevoke = "撤销"
+    override val extUnblock = "解除阻止"
     override val homeBrowserFallbackTitle = "改用浏览器下载？"
     override val homeBrowserFallbackText =
         "你在 FetchJet 中取消了此文件。浏览器在转交链接时已停止自己的下载，" +

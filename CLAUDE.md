@@ -549,6 +549,18 @@ Bridges:
   token: pair with `-H 'Origin: chrome-extension://x' -H 'X-FetchJet-Pairing: 1'` on `/pair` and
   tap Allow, or a new endpoint call returns 401. A new endpoint = add it to the token check
   (desktop `isAuthorized`, Android `TOKEN_PATHS`) and to `BRIDGE_ALLOWED_HEADERS` / `preflight`.
+  Pairing-dialog hardening (2026-11-04): a local program can fake a browser `Origin`, so it could
+  pop the "Allow?" dialog. `BridgePairing` now shows at most one dialog at a time (a request from
+  another origin while one is up is refused, not queued) and ignores a repeat for the same origin
+  for 8 s after the last one closed, so a program cannot flood the user into tapping Allow. The
+  dialog's prominent button is **Block** (Allow is the secondary/outlined one). Tapping Block
+  remembers the origin (`blockedOrigins` in `bridge.json`, encrypted alongside the token) and it is
+  refused silently afterwards; tapping outside is a one-time "no". Allowed (legacy) and blocked
+  origins are listed in Settings > Browser extension (`BrowserConnectionsGroup`), with Revoke /
+  Unblock (`BridgePairing.revokeAllowed` / `unblock`). Every refusal is `println`-logged. Review
+  2026-11-04 found no un-consented, no-token exploit: web pages are blocked by the custom-header +
+  CORS gate, `/download` writes to disk (no echo back, so no SSRF exfil), bind is loopback-only, and
+  the token compare is constant-time.
 - Fixed 2026-11-03: libtorrent on desktop / Android sent no announce to a torrent's own
   trackers. Cause: libtorrent4j 2.1.0 is libtorrent 2.1, where a .torrent's trackers and web seeds
   live in `add_torrent_params`, not in `TorrentInfo`; `session.download(ti, ...)` passes only

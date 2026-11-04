@@ -116,6 +116,13 @@ object IndonesianProvider : AppLocalization {
         "Ekstensi FetchJet versi lama ingin mengirim tautan. Izinkan jika itu milik Anda; memperbarui ekstensi membuat pertanyaan ini tidak muncul lagi."
     override val bridgePairAllow = "Izinkan"
     override val bridgePairBlock = "Blokir"
+    override val extConnectionsGroup = "Koneksi browser"
+    override val extConnectionsFooter =
+        "Ekstensi browser yang Anda izinkan atau blokir untuk mengirim tautan ke FetchJet."
+    override val extAllowedLabel = "Diizinkan"
+    override val extBlockedLabel = "Diblokir"
+    override val extRevoke = "Cabut"
+    override val extUnblock = "Buka blokir"
     override val homeBrowserFallbackTitle = "Unduh di browser saja?"
     override val homeBrowserFallbackText =
         "Anda membatalkan file ini di FetchJet. Browser menghentikan unduhannya sendiri saat " +

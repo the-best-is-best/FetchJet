@@ -115,6 +115,13 @@ object PersianProvider : AppLocalization {
         "یک افزونهٔ قدیمی FetchJet می‌خواهد پیوند بفرستد. اگر مال شماست اجازه دهید؛ با به‌روزرسانی افزونه این پرسش دیگر نمی‌آید."
     override val bridgePairAllow = "اجازه"
     override val bridgePairBlock = "مسدود کردن"
+    override val extConnectionsGroup = "اتصال‌های مرورگر"
+    override val extConnectionsFooter =
+        "افزونه‌های مرورگری که اجازه ارسال پیوند به FetchJet را به آن‌ها داده‌اید یا مسدود کرده‌اید."
+    override val extAllowedLabel = "مجاز"
+    override val extBlockedLabel = "مسدود"
+    override val extRevoke = "لغو اجازه"
+    override val extUnblock = "رفع مسدودیت"
     override val homeBrowserFallbackTitle = "به‌جای آن در مرورگر دانلود شود؟"
     override val homeBrowserFallbackText =
         "این فایل را در FetchJet لغو کردید. مرورگر هنگام سپردن لینک، دانلود خودش را " +

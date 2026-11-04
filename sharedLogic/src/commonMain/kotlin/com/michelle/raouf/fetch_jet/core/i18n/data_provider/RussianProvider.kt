@@ -117,6 +117,13 @@ object RussianProvider : AppLocalization {
         "Старое расширение FetchJet хочет отправлять ссылки. Разрешите, если оно ваше; после обновления расширения этот вопрос больше не появится."
     override val bridgePairAllow = "Разрешить"
     override val bridgePairBlock = "Заблокировать"
+    override val extConnectionsGroup = "Подключения браузера"
+    override val extConnectionsFooter =
+        "Расширения браузера, которым вы разрешили или запретили отправлять ссылки в FetchJet."
+    override val extAllowedLabel = "Разрешено"
+    override val extBlockedLabel = "Заблокировано"
+    override val extRevoke = "Отозвать"
+    override val extUnblock = "Разблокировать"
     override val homeBrowserFallbackTitle = "Скачать в браузере?"
     override val homeBrowserFallbackText =
         "Вы отменили этот файл в FetchJet. Браузер остановил свою загрузку, когда " +

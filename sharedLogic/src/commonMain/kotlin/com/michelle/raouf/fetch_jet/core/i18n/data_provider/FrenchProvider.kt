@@ -123,6 +123,13 @@ object FrenchProvider : AppLocalization {
         "Une ancienne extension FetchJet veut envoyer des liens. Autorisez-la si c'est la vôtre ; mettre l'extension à jour évite cette question."
     override val bridgePairAllow = "Autoriser"
     override val bridgePairBlock = "Bloquer"
+    override val extConnectionsGroup = "Connexions du navigateur"
+    override val extConnectionsFooter =
+        "Extensions de navigateur que vous avez autorisées ou bloquées pour envoyer des liens à FetchJet."
+    override val extAllowedLabel = "Autorisée"
+    override val extBlockedLabel = "Bloquée"
+    override val extRevoke = "Révoquer"
+    override val extUnblock = "Débloquer"
     override val homeBrowserFallbackTitle = "Télécharger plutôt dans le navigateur ?"
     override val homeBrowserFallbackText =
         "Vous avez annulé ce fichier dans FetchJet. Le navigateur a arrêté son propre téléchargement " +

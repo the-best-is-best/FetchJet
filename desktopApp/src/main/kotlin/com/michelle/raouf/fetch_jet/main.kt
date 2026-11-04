@@ -220,6 +220,7 @@ private fun HttpExchange.isAuthorized(onShowAndFocus: () -> Unit): Boolean {
     val origin = requestHeaders.getFirst("Origin")
     if (BridgePairing.isLegacyAllowed(origin)) return true
     if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
+        !BridgePairing.isBlocked(origin) &&
         requestHeaders.getFirst("X-FetchJet-Pairing").isNullOrBlank()
     ) {
         Thread(

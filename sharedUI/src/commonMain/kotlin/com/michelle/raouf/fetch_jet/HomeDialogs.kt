@@ -144,10 +144,12 @@ internal fun BrowserFallbackDialog(url: String, onConfirm: () -> Unit, onDismiss
 @Composable
 internal fun BridgePairingDialog(
     request: com.michelle.raouf.fetch_jet.core.network.BridgePairing.Request,
-    onAnswer: (Boolean) -> Unit
+    onAllow: () -> Unit,
+    onBlock: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     androidx.compose.material3.AlertDialog(
-        onDismissRequest = { onAnswer(false) },
+        onDismissRequest = onDismiss,
         shape = RoundedCornerShape(18.dp),
         title = { Text(LocalizationManager.Strings.bridgePairTitle, fontWeight = FontWeight.Bold) },
         text = {
@@ -167,14 +169,16 @@ internal fun BridgePairingDialog(
                 )
             }
         },
+        // Block is the prominent button: a reflexive tap lands on the safe choice. Allow is
+        // secondary, so letting an extension in is a deliberate act.
         confirmButton = {
-            Button(onClick = { onAnswer(true) }, shape = RoundedCornerShape(10.dp)) {
-                Text(LocalizationManager.Strings.bridgePairAllow)
+            Button(onClick = onBlock, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairBlock)
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = { onAnswer(false) }, shape = RoundedCornerShape(10.dp)) {
-                Text(LocalizationManager.Strings.bridgePairBlock)
+            OutlinedButton(onClick = onAllow, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairAllow)
             }
         }
     )

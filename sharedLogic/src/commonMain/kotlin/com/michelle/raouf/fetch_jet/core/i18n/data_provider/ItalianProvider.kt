@@ -119,6 +119,13 @@ object ItalianProvider : AppLocalization {
         "Una vecchia estensione FetchJet vuole inviare link. Consentilo se è tua; aggiornando l'estensione questa domanda non comparirà più."
     override val bridgePairAllow = "Consenti"
     override val bridgePairBlock = "Blocca"
+    override val extConnectionsGroup = "Connessioni del browser"
+    override val extConnectionsFooter =
+        "Estensioni del browser a cui hai consentito o impedito di inviare link a FetchJet."
+    override val extAllowedLabel = "Consentita"
+    override val extBlockedLabel = "Bloccata"
+    override val extRevoke = "Revoca"
+    override val extUnblock = "Sblocca"
     override val homeBrowserFallbackTitle = "Scaricare invece nel browser?"
     override val homeBrowserFallbackText =
         "Hai annullato questo file in FetchJet. Il browser ha fermato il suo download quando " +

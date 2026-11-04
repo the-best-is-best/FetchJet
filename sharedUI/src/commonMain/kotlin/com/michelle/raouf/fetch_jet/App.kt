@@ -732,9 +732,16 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             val pairing by com.michelle.raouf.fetch_jet.core.network.BridgePairing.pending
                 .collectAsState()
             pairing?.let { request ->
-                BridgePairingDialog(request) {
-                    com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(it)
-                }
+                BridgePairingDialog(
+                    request,
+                    onAllow = { com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(true) },
+                    onBlock = { com.michelle.raouf.fetch_jet.core.network.BridgePairing.block() },
+                    onDismiss = {
+                        com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(
+                            false
+                        )
+                    }
+                )
             }
 
             // "Download in browser instead?" (only for plain file links sent by the extension)

@@ -115,6 +115,13 @@ object HindiProvider : AppLocalization {
         "एक पुराना FetchJet एक्सटेंशन लिंक भेजना चाहता है। अगर यह आपका है तो अनुमति दें; एक्सटेंशन अपडेट करने पर यह सवाल नहीं आएगा।"
     override val bridgePairAllow = "अनुमति दें"
     override val bridgePairBlock = "ब्लॉक करें"
+    override val extConnectionsGroup = "ब्राउज़र कनेक्शन"
+    override val extConnectionsFooter =
+        "वे ब्राउज़र एक्सटेंशन जिन्हें आपने FetchJet को लिंक भेजने की अनुमति दी या रोका है।"
+    override val extAllowedLabel = "अनुमत"
+    override val extBlockedLabel = "अवरुद्ध"
+    override val extRevoke = "रद्द करें"
+    override val extUnblock = "अनब्लॉक करें"
     override val homeBrowserFallbackTitle = "इसके बजाय ब्राउज़र में डाउनलोड करें?"
     override val homeBrowserFallbackText =
         "आपने यह फ़ाइल FetchJet में रद्द कर दी। लिंक सौंपते समय ब्राउज़र ने अपना डाउनलोड " +

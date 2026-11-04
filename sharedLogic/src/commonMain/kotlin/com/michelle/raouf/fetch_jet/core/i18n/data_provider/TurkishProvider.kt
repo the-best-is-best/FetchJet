@@ -115,6 +115,13 @@ object TurkishProvider : AppLocalization {
         "Eski bir FetchJet uzantısı bağlantı göndermek istiyor. Sizinse izin verin; uzantıyı güncellemek bu soruyu ortadan kaldırır."
     override val bridgePairAllow = "İzin ver"
     override val bridgePairBlock = "Engelle"
+    override val extConnectionsGroup = "Tarayıcı bağlantıları"
+    override val extConnectionsFooter =
+        "FetchJet'e bağlantı göndermesine izin verdiğiniz veya engellediğiniz tarayıcı uzantıları."
+    override val extAllowedLabel = "İzin verildi"
+    override val extBlockedLabel = "Engellendi"
+    override val extRevoke = "İzni kaldır"
+    override val extUnblock = "Engeli kaldır"
     override val homeBrowserFallbackTitle = "Bunun yerine tarayıcıda indirilsin mi?"
     override val homeBrowserFallbackText =
         "Bu dosyayı FetchJet'te iptal ettiniz. Tarayıcı, bağlantıyı devrederken kendi " +

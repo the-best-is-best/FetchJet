@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -441,13 +442,52 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
                 }
             }
         }
+        BrowserConnectionsGroup()
+    }
+}
+
+/**
+ * Extensions the user allowed or blocked at the pairing dialog ([BridgePairing]). Shown so the
+ * user can see what got in and revoke it, or let a blocked origin ask again. Hidden when empty.
+ */
+@Composable
+private fun BrowserConnectionsGroup() {
+    val pairing = com.michelle.raouf.fetch_jet.core.network.BridgePairing
+    val allowed by pairing.legacyAllowed.collectAsState()
+    val blocked by pairing.blocked.collectAsState()
+    if (allowed.isEmpty() && blocked.isEmpty()) return
+    SettingsGroup(
+        title = LocalizationManager.Strings.extConnectionsGroup,
+        footer = LocalizationManager.Strings.extConnectionsFooter
+    ) {
+        var first = true
+        allowed.sorted().forEach { origin ->
+            if (!first) SettingDivider()
+            first = false
+            SettingRow(origin, LocalizationManager.Strings.extAllowedLabel) {
+                OutlinedButton(
+                    onClick = { pairing.revokeAllowed(origin) },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.extRevoke) }
+            }
+        }
+        blocked.sorted().forEach { origin ->
+            if (!first) SettingDivider()
+            first = false
+            SettingRow(origin, LocalizationManager.Strings.extBlockedLabel) {
+                OutlinedButton(
+                    onClick = { pairing.unblock(origin) },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.extUnblock) }
+            }
+        }
     }
 }
 
 @Composable
 private fun LanguageSettingsCard(onLanguageChanged: (String) -> Unit) {
     val i18n = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
-    val s = com.tbib.kmp_localization.LocalizationManager.Strings
+    val s = LocalizationManager.Strings
     var open by remember { mutableStateOf(false) }
     val current = i18n.choice
     val currentName = if (current == i18n.SYSTEM) "${s.systemLanguage} (${s.languageName})"

@@ -262,6 +262,7 @@ object ExtensionBridgeServer {
         val origin = r.header("Origin")
         if (BridgePairing.isLegacyAllowed(origin)) return true
         if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
+            !BridgePairing.isBlocked(origin) &&
             r.header("X-FetchJet-Pairing").isNullOrBlank()
         ) {
             Thread({ runBlocking { BridgePairing.ask(origin, legacy = true) } }, "bridge-pair")

@@ -112,6 +112,12 @@ object KoreanProvider : AppLocalization {
         "이전 버전의 FetchJet 확장 프로그램이 링크를 보내려고 합니다. 본인 것이라면 허용하세요. 확장 프로그램을 업데이트하면 더 이상 묻지 않습니다."
     override val bridgePairAllow = "허용"
     override val bridgePairBlock = "차단"
+    override val extConnectionsGroup = "브라우저 연결"
+    override val extConnectionsFooter = "FetchJet으로 링크 전송을 허용하거나 차단한 브라우저 확장 프로그램입니다."
+    override val extAllowedLabel = "허용됨"
+    override val extBlockedLabel = "차단됨"
+    override val extRevoke = "해제"
+    override val extUnblock = "차단 해제"
     override val homeBrowserFallbackTitle = "대신 브라우저에서 다운로드할까요?"
     override val homeBrowserFallbackText = "FetchJet에서 이 파일을 취소했습니다. 브라우저는 링크를 넘길 때 자체 다운로드를 " +
             "중단했으므로, 다시 보내야만 계속됩니다."

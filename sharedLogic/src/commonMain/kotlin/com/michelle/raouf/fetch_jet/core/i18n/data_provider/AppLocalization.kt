@@ -103,6 +103,12 @@ interface AppLocalization : LocalizationProvider {
     val bridgePairOldText: String
     val bridgePairAllow: String
     val bridgePairBlock: String
+    val extConnectionsGroup: String
+    val extConnectionsFooter: String
+    val extAllowedLabel: String
+    val extBlockedLabel: String
+    val extRevoke: String
+    val extUnblock: String
     val homeBrowserFallbackText: String
     val homeDownloadInBrowser: String
     val homeNoDiscard: String

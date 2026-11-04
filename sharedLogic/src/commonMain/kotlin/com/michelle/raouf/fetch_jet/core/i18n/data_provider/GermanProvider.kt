@@ -119,6 +119,13 @@ object GermanProvider : AppLocalization {
         "Eine ältere FetchJet-Erweiterung möchte Links senden. Erlauben Sie es, wenn es Ihre ist; nach einem Update der Erweiterung entfällt diese Frage."
     override val bridgePairAllow = "Zulassen"
     override val bridgePairBlock = "Blockieren"
+    override val extConnectionsGroup = "Browser-Verbindungen"
+    override val extConnectionsFooter =
+        "Browser-Erweiterungen, denen du das Senden von Links an FetchJet erlaubt oder verboten hast."
+    override val extAllowedLabel = "Erlaubt"
+    override val extBlockedLabel = "Blockiert"
+    override val extRevoke = "Entziehen"
+    override val extUnblock = "Freigeben"
     override val homeBrowserFallbackTitle = "Stattdessen im Browser herunterladen?"
     override val homeBrowserFallbackText =
         "Du hast diese Datei in FetchJet abgebrochen. Der Browser hat seinen eigenen Download beendet, " +

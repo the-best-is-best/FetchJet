@@ -117,6 +117,13 @@ object ArabicProvider : AppLocalization {
         "إضافة FetchJet قديمة تريد إرسال روابط. اسمح لها إذا كانت إضافتك؛ تحديث الإضافة يلغي هذا السؤال."
     override val bridgePairAllow = "السماح"
     override val bridgePairBlock = "حظر"
+    override val extConnectionsGroup = "اتصالات المتصفح"
+    override val extConnectionsFooter =
+        "إضافات المتصفح التي سمحت لها أو حظرتها من إرسال الروابط إلى FetchJet."
+    override val extAllowedLabel = "مسموح"
+    override val extBlockedLabel = "محظور"
+    override val extRevoke = "إلغاء السماح"
+    override val extUnblock = "رفع الحظر"
     override val homeBrowserFallbackTitle = "هل تريد التنزيل في المتصفح بدلًا من ذلك؟"
     override val homeBrowserFallbackText =
         "لقد ألغيت هذا الملف في FetchJet. أوقف المتصفح تنزيله عندما سلّم الرابط، " +

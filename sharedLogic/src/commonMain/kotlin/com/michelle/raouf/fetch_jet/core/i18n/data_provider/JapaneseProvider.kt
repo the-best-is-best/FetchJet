@@ -116,6 +116,13 @@ object JapaneseProvider : AppLocalization {
         "古い FetchJet 拡張機能がリンクを送信しようとしています。ご自身のものなら許可してください。拡張機能を更新するとこの確認は不要になります。"
     override val bridgePairAllow = "許可"
     override val bridgePairBlock = "ブロック"
+    override val extConnectionsGroup = "ブラウザ接続"
+    override val extConnectionsFooter =
+        "FetchJet へのリンク送信を許可またはブロックしたブラウザ拡張機能。"
+    override val extAllowedLabel = "許可"
+    override val extBlockedLabel = "ブロック"
+    override val extRevoke = "取り消す"
+    override val extUnblock = "ブロック解除"
     override val homeBrowserFallbackTitle = "代わりにブラウザでダウンロードしますか？"
     override val homeBrowserFallbackText =
         "FetchJet でこのファイルをキャンセルしました。ブラウザはリンクを渡した時点で" +
