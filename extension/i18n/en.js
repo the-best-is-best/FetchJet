@@ -43,6 +43,8 @@ fjAddLanguage("en", {
   "errCantGet": "Can't get this video",
   "itemOpenApp": "Open in FetchJet",
   "itemOpenAppSub": "Pick the quality in the app",
+  "itemPlaylist": "Download the whole playlist",
+  "itemPlaylistSub": "Opens the list in FetchJet: pick the videos and the quality there",
   "itemGettingAll": "Getting all qualities from FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Captured streams are shown meanwhile",
   "itemGetting": "Getting video qualities…",

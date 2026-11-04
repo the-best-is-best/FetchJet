@@ -61,7 +61,10 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
     null
 }
 
-actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
+actual suspend fun inspectPlatformPlaylist(
+    url: String,
+    headers: Map<String, String>
+): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         val trimmedUrl = normalizePlaylistUrl(url)
         if (trimmedUrl.isEmpty() || !ensureRuntimeInitialized()) return@withContext null
@@ -71,6 +74,8 @@ actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
         request.addOption("-J")
         request.addOption("--no-warnings")
         request.addOption("--yes-playlist")
+        ytDlpHeaderArgs(headers, trimmedUrl).chunked(2)
+            .forEach { (k, v) -> request.addOption(k, v) }
         FileUtil.getCookieFile(context) { cookiePath ->
             request.addOption("--cookies", cookiePath)
         }

@@ -292,7 +292,7 @@ Bridges:
   runs it only after the user opened the app once; the user turns it off in Settings > Apps >
   Startup or Task Manager. The MSI / macOS / Linux builds stay opt-in (AutoLaunch toggle).
   Owner-verified on the previous MSIX (task enabled by hand in Task Manager > Startup apps):
-  FetchJet starts at login. Not yet tested: the new default (on without touching it).
+  FetchJet starts at login. The new default (on without touching it) owner-verified 2026-11-04.
 - 1.2.0 updates (branch `release-v1.2.0`): `UpdateManager` falls back to the release web pages
   (`fetchLatestFromWebPage`) when the API answers 403/429. In-app install on every platform:
   Android opens the system installer (tested on the A56 up to the installer), macOS swaps
@@ -564,7 +564,9 @@ Bridges:
   Trackers that fail here also fail from the Mac with curl / a raw UDP packet (opentrackr TCP
   1337 refused, gbitt.info no DNS, tiny-vps and openbittorrent no answer): the network, not the
   app. The verbose `trackers:` log now reports the best endpoint (it showed the first one,
-  usually the `127.0.0.1` listen socket, which always fails). Android builds; not run on the A56.
+  usually the `127.0.0.1` listen socket, which always fails). Windows + A56 verified 2026-11-04
+  (local tracker got the announce; see ROADMAP item 6 for a `listenPort=0` seen twice on Windows
+  right after switching from the installed 1.1.0, not reproduced).
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
@@ -698,8 +700,8 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
 
 1. iOS: Python 3.13 media engine: done (simulator + owner's real iPhone, 2026-11-01).
 2. iOS: torrent flow end to end: done (FJTorrent, simulator + owner's real iPhone, 2026-11-01).
-3. `MediaStreamDownloader`: remove Invidious/cobalt resolvers. Stream bodies with
-   `prepareGet().execute` instead of `client.get`.
+3. `MediaStreamDownloader`: Invidious / Cobalt / Piped removed and the HTTP fallback streams
+   with `prepareGet().execute` (done 2026-11-04, see ROADMAP item 7).
 4. Clean-code plan (in 1.1.0) (owner's request): kotlinx.serialization done (step 1); `App.kt` split
    from 2637 to ~700 lines (step 2, pure move, same package, `private` → `internal`). Step 3: Add
    dialog 1884 → ~360 lines (sections get `MutableState` for the dialog-local fields and
@@ -718,15 +720,17 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
    `resolveMediaFileName`, `downloadWithOwnHls`, `downloadWithYtDlp`, `findFinishedFileInCache`,
    `moveFinishedFileIntoPlace`, `downloadWithHttpFallback`) and `inspectMediaQualities` 380 → ~85
    (`MediaInspectSteps.kt`: `inspectHlsVariants`, `inspectPlatformWithCookieRetry`,
-   `withTitleAndDuration`, `inspectYouTubeFallbacks` (Piped/Cobalt/embed, still the old public
-   APIs), `inspectWebPage`). `MediaStreamDownloader.kt` is now ~600 lines. Tested on the A56: HLS
+   `withTitleAndDuration`, `inspectYouTubeFallbacks` (YouTube embed only since 2026-11-04),
+   `inspectWebPage`). `MediaStreamDownloader.kt` is now ~600 lines. Tested on the A56: HLS
    (mux test stream, 184p + 1080p via multi-quality), YouTube. String resources: not done on
    purpose (~350 strings in ~20 files); worth it only when a second language (Arabic) is added.
    `moveIntoPlace` now returns the saved path: when the old file cannot be deleted (Android: a file
    made by an earlier install of the app is not ours) it saves as `name (1).ext` instead of failing
    with "failed to delete".
-5. Playlist queue in the extension (`/playlist`), not ported from Ezoo yet.
-6. Merge captured video-only + audio-only pairs inside the app.
+5. Playlist in the extension: done 2026-11-04 ("Download the whole playlist" sends the playlist
+   link to the Add dialog; not for mixes), see ROADMAP item 7.
+6. Merge captured video-only + audio-only pairs inside the app: done 2026-11-04 (ROADMAP item 7,
+   `DownloadTask.pairedAudioUrl`, `/config` `"pairedMerge":true`).
 7. iOS Safari extension: done (2026-11-01, simulator-tested). Target `FetchJetSafariExtension`
    copies the same `extension/` JS at build time (`manifest.safari.json` -> manifest.json). On iOS
    (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`

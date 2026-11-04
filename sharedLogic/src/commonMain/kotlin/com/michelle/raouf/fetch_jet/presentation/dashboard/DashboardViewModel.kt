@@ -229,7 +229,7 @@ class DashboardViewModel(
             val selected = qualities.firstOrNull { it.isSelected } ?: qualities.firstOrNull()
             val rawName = request.fileName.ifBlank {
                 val title = selected?.videoTitle
-                if (!title.isNullOrBlank()) "$title.${selected.format?.ifBlank { "mp4" } ?: "mp4"}" else ""
+                if (!title.isNullOrBlank()) "$title.${selected.format.ifBlank { "mp4" } ?: "mp4"}" else ""
             }
             val fileName = (overrideFileName ?: rawName).ifBlank { null }
                 ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
@@ -251,8 +251,11 @@ class DashboardViewModel(
                 com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
                 return@launch
             }
+            val paired = request.audioUrl.isNotBlank()
             val engine =
-                if (qualities.isNotEmpty()) EngineType.MEDIA_STREAM else engineForDirectFile(request.url)
+                if (qualities.isNotEmpty() || paired) EngineType.MEDIA_STREAM else engineForDirectFile(
+                    request.url
+                )
             // The same video + quality already downloading or queued (a double click in the
             // popup, the page sending twice): do not start it a second time.
             val wantedFormat = selected?.formatId
@@ -276,7 +279,7 @@ class DashboardViewModel(
                 com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
                 return@launch
             }
-            if (engine == EngineType.MEDIA_STREAM && qualities.isEmpty()) {
+            if (engine == EngineType.MEDIA_STREAM && qualities.isEmpty() && !paired) {
                 // A video page without a chosen quality still needs the inspector. The name the
                 // extension chose (the page title for an HLS playlist) is kept for the file.
                 pendingExternalUrl = request.url
@@ -295,7 +298,8 @@ class DashboardViewModel(
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
                 maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
                 forcedEngineType = engine,
-                requestHeaders = request.toRequestHeaders()
+                requestHeaders = request.toRequestHeaders(),
+                pairedAudioUrl = request.audioUrl.ifBlank { null }
             ).onSuccess { task ->
                 _uiEffect.emit(
                     DashboardUiEffect.ShowToast(
@@ -557,7 +561,12 @@ class DashboardViewModel(
                 )
             ) {
                 val playlist = try {
-                    withTimeoutOrNull(90_000L) { queueRepository.inspectPlaylist(url) }
+                    withTimeoutOrNull(90_000L) {
+                        queueRepository.inspectPlaylist(
+                            url,
+                            headersForLink(url)
+                        )
+                    }
                 } catch (_: Exception) {
                     null
                 }

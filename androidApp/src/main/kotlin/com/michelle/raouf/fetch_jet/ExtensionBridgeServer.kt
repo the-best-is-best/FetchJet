@@ -311,7 +311,7 @@ object ExtensionBridgeServer {
                     """{"app":"FetchJet","platform":"android","version":"${json(version)}","bridge":2,""" +
                             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
                             """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
-                            """"pairing":true,"paired":${
+                            """"pairing":true,"pairedMerge":true,"paired":${
                                 BridgePairing.isPaired(
                                     r.header(
                                         BridgePairing.TOKEN_HEADER
@@ -516,7 +516,8 @@ object ExtensionBridgeServer {
             fileName = getString("fileName")?.trim().orEmpty().take(255),
             mediaQualities = qualities,
             direct = (this["direct"] as? Boolean) == true,
-            openClip = (this["openClip"] as? Boolean) == true
+            openClip = (this["openClip"] as? Boolean) == true,
+            audioUrl = getString("audioUrl")?.trim().orEmpty()
         )
     }
 

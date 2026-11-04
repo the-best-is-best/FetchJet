@@ -43,6 +43,8 @@ fjAddLanguage("hi", {
   "errCantGet": "यह वीडियो प्राप्त नहीं हो सका",
   "itemOpenApp": "FetchJet में खोलें",
   "itemOpenAppSub": "ऐप में क्वालिटी चुनें",
+  "itemPlaylist": "पूरी प्लेलिस्ट डाउनलोड करें",
+  "itemPlaylistSub": "सूची FetchJet में खुलती है: वहीं वीडियो और क्वालिटी चुनें",
   "itemGettingAll": "FetchJet (yt-dlp) से सभी क्वालिटी ली जा रही हैं…",
   "itemGettingAllSub": "तब तक पकड़ी गई स्ट्रीम दिखाई जा रही हैं",
   "itemGetting": "वीडियो क्वालिटी ली जा रही हैं…",

@@ -43,6 +43,8 @@ fjAddLanguage("ko", {
   "errCantGet": "이 동영상을 가져올 수 없습니다",
   "itemOpenApp": "FetchJet에서 열기",
   "itemOpenAppSub": "앱에서 화질 선택",
+  "itemPlaylist": "재생목록 전체 다운로드",
+  "itemPlaylistSub": "FetchJet에서 목록을 엽니다: 거기서 동영상과 화질을 고르세요",
   "itemGettingAll": "FetchJet(yt-dlp)에서 모든 화질을 가져오는 중…",
   "itemGettingAllSub": "그동안 가로챈 스트림이 표시됩니다",
   "itemGetting": "동영상 화질을 가져오는 중…",

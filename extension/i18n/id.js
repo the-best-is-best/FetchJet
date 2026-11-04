@@ -43,6 +43,8 @@ fjAddLanguage("id", {
   "errCantGet": "Tidak dapat mengambil video ini",
   "itemOpenApp": "Buka di FetchJet",
   "itemOpenAppSub": "Pilih kualitas di aplikasi",
+  "itemPlaylist": "Unduh seluruh playlist",
+  "itemPlaylistSub": "Membuka daftar di FetchJet: pilih video dan kualitasnya di sana",
   "itemGettingAll": "Mengambil semua kualitas dari FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Sementara itu, stream yang ditangkap ditampilkan",
   "itemGetting": "Mengambil kualitas video…",

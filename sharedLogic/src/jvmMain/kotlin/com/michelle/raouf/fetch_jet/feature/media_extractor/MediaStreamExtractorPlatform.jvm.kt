@@ -82,17 +82,19 @@ internal fun runYtDlp(args: List<String>, timeoutSec: Long = 25L): String? {
     }
 }
 
-actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? {
+actual suspend fun inspectPlatformPlaylist(
+    url: String,
+    headers: Map<String, String>
+): MediaPlaylist? {
     getExistingYtDlpBinary() ?: return null
+    val listUrl = normalizePlaylistUrl(url)
     val output = runYtDlp(
         ytDlpRuntimeArgs() + listOf(
             "--flat-playlist",
             "-J",
             "--no-warnings",
-            "--yes-playlist",
-            "--",
-            normalizePlaylistUrl(url)
-        ),
+            "--yes-playlist"
+        ) + ytDlpHeaderArgs(headers, listUrl) + listOf("--", listUrl),
         timeoutSec = 85L // a channel with hundreds of videos takes a while
     ) ?: return null
     return parsePlaylistJson(output)

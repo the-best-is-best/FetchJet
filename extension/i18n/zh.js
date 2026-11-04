@@ -43,6 +43,8 @@ fjAddLanguage("zh", {
   "errCantGet": "无法获取此视频",
   "itemOpenApp": "在 FetchJet 中打开",
   "itemOpenAppSub": "在应用中选择画质",
+  "itemPlaylist": "下载整个播放列表",
+  "itemPlaylistSub": "在 FetchJet 中打开列表：在那里选择视频和画质",
   "itemGettingAll": "正在从 FetchJet (yt-dlp) 获取所有画质…",
   "itemGettingAllSub": "期间先显示已捕获的流",
   "itemGetting": "正在获取视频画质…",

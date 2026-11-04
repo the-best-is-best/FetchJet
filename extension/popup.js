@@ -89,7 +89,7 @@ async function loadMedia() {
   for (const it of items) {
     const row = document.createElement("div");
     row.className = "media" + (it.disabled ? " off" : "");
-    const kind = it.kind === "ytdlp" ? "yt-dlp" : it.kind === "captured" ? "stream" : (it.label.split(" ")[0] || "file");
+    const kind = it.kind === "ytdlp" ? "yt-dlp" : it.kind === "captured" ? "stream" : it.kind === "playlist" ? "list" : (it.label.split(" ")[0] || "file");
     const badge = document.createElement("span"); badge.className = `kind ${it.kind || ""} ${kind}`; badge.textContent = it.disabled ? "…" : kind;
     const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
     name.textContent = it.label;

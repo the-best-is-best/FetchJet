@@ -43,6 +43,8 @@ fjAddLanguage("fa", {
   "errCantGet": "دریافت این ویدیو ممکن نیست",
   "itemOpenApp": "باز کردن در FetchJet",
   "itemOpenAppSub": "کیفیت را در برنامه انتخاب کنید",
+  "itemPlaylist": "دانلود کل فهرست پخش",
+  "itemPlaylistSub": "فهرست را در FetchJet باز می‌کند: ویدیوها و کیفیت را آنجا انتخاب کنید",
   "itemGettingAll": "در حال دریافت همه کیفیت‌ها از FetchJet (yt-dlp)…",
   "itemGettingAllSub": "در این فاصله جریان‌های گرفته‌شده نمایش داده می‌شوند",
   "itemGetting": "در حال دریافت کیفیت‌های ویدیو…",

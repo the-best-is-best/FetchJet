@@ -275,6 +275,9 @@ async function appFetch(path, init = {}, timeoutMs = 0) {
   return (await pairWithApp()) ? await send() : res;
 }
 
+/** The app downloads a captured video-only stream together with its audio and merges them. */
+let appMerges = false;
+
 async function fetchAppConfig() {
   try {
     const controller = new AbortController();
@@ -284,6 +287,7 @@ async function fetchAppConfig() {
     if (!res.ok) return null;
     const cfg = await res.json();
     if (cfg && cfg.language) rememberAppLanguage(cfg.language);
+    appMerges = !!(cfg && cfg.pairedMerge);
     return cfg;
   } catch (_) { return null; }
 }
@@ -304,7 +308,7 @@ async function cookieHeaderFor(url) {
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
-async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false }) {
+async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "" }) {
   const body = {
     url,
     cookie: await cookieHeaderFor(url),
@@ -315,6 +319,7 @@ async function buildRequest({ url, referer = "", fileName = "", formatId = "", d
   if (formatId) body.formatId = formatId; // quality chosen in the browser (yt-dlp format)
   if (direct) body.direct = true;         // start now, no Add dialog
   if (openClip) body.openClip = true;     // open the Add dialog with the clip range on
+  if (audioUrl && isValidDownloadUrl(audioUrl)) body.audioUrl = audioUrl; // video-only + its audio: merged in the app
   return body;
 }
 
@@ -415,9 +420,9 @@ async function notify(message, extra = {}) {
  * Main entry: hand a link to FetchJet, launching it when needed.
  * `source` is a short tag for logging ("download", "link", "menu", "popup", "media").
  */
-async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false }, source = "") {
+async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "" }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
-  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip });
+  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl });
   if (ON_IOS) {
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
@@ -885,7 +890,7 @@ async function itemsForTab(tabId) {
     if (page) items.push({ kind: "openApp", label: fjT("itemOpenApp"), sub: fjT("itemOpenAppSub"), url: page });
   }
   if (yt) {
-    const captured = typeof ytBuildOptions === "function" ? ytBuildOptions(yt.streams) : [];
+    const captured = typeof ytBuildOptions === "function" ? ytBuildOptions(yt.streams, appMerges && !ON_IOS) : [];
     if (yt.resolved && yt.resolved.options.length) {
       pageTitle = yt.resolved.title;
       items.push(...yt.resolved.options);
@@ -934,7 +939,22 @@ async function itemsForTab(tabId) {
       url: m.url, fileName: m.name, referer: m.pageUrl, size: m.size, ext: extensionOf(m.name)
     });
   }
+  const list = await listUrlForTab(tabId);
+  if (list) items.unshift({ kind: "playlist", label: fjT("itemPlaylist"), sub: fjT("itemPlaylistSub"), url: list.url });
   return { items, title: pageTitle };
+}
+
+/**
+ * The tab's YouTube list (`list=`) as a link the app lists video by video. Not for a mix
+ * (RD...): YouTube makes it endless (yt-dlp listed 762 videos for one).
+ */
+async function listUrlForTab(tabId) {
+  let pageUrl = "";
+  try { pageUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) { return null; }
+  if (typeof ytIsPlaylistPage !== "function" || !ytIsPlaylistPage(pageUrl)) return null;
+  const list = new URL(pageUrl).searchParams.get("list");
+  if (!list || /^RD/.test(list)) return null;
+  return { url: `https://www.youtube.com/playlist?list=${encodeURIComponent(list)}` };
 }
 
 async function pushToTab(tabId) {
@@ -979,6 +999,10 @@ async function downloadItem(item, tab) {
   }
   const title = item.title || pageTitle || (tab && tab.title) || "video";
   const clean = typeof ytCleanTitle === "function" ? ytCleanTitle(title) : title;
+  if (item.kind === "playlist") {
+    // The app's Add dialog lists the videos; the user picks them and the quality there.
+    return sendToFetchJet({ url: item.url, referer: pageUrl }, "playlist");
+  }
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.
     if (ON_IOS) {
@@ -1009,7 +1033,7 @@ async function downloadItem(item, tab) {
   }
   if (item.kind === "captured") {
     const fileName = `${clean}${item.quality ? " [" + item.quality + "]" : ""}${item.videoOnly ? " (video only)" : ""}.${item.ext || "mp4"}`;
-    return sendToFetchJet({ url: item.url, referer: "https://www.youtube.com/", fileName, direct: true }, "captured");
+    return sendToFetchJet({ url: item.url, audioUrl: item.audioUrl || "", referer: "https://www.youtube.com/", fileName, direct: true }, "captured");
   }
   // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
   // (the lecture / video title), not after the playlist's hash.

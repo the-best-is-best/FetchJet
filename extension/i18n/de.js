@@ -43,6 +43,8 @@ fjAddLanguage("de", {
   "errCantGet": "Dieses Video kann nicht abgerufen werden",
   "itemOpenApp": "In FetchJet öffnen",
   "itemOpenAppSub": "Qualität in der App auswählen",
+  "itemPlaylist": "Ganze Playlist herunterladen",
+  "itemPlaylistSub": "Öffnet die Liste in FetchJet: dort Videos und Qualität wählen",
   "itemGettingAll": "Alle Qualitäten werden von FetchJet (yt-dlp) abgerufen…",
   "itemGettingAllSub": "Abgefangene Streams werden solange angezeigt",
   "itemGetting": "Videoqualitäten werden abgerufen…",

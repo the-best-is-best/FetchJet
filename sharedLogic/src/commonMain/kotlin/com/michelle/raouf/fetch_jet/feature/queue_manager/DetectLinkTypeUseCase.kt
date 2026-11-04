@@ -22,7 +22,7 @@ class DetectLinkTypeUseCase {
             "youtube.com", "youtu.be", "youtube-nocookie.com", "vimeo.com", "tiktok.com",
             "instagram.com", "twitter.com", "x.com", "facebook.com", "fb.watch",
             "twitch.tv", "dailymotion.com", "dai.ly", "bilibili.com", "rumble.com",
-            "googlevideo.com", "pipedapi.kavin.rocks", "cobalt.tools",
+            "googlevideo.com",
             "soundcloud.com", "bandcamp.com", "reddit.com", "vk.com", "odysee.com",
             "streamable.com",
             "ok.ru",

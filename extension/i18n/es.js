@@ -43,6 +43,8 @@ fjAddLanguage("es", {
   "errCantGet": "No se puede obtener este video",
   "itemOpenApp": "Abrir en FetchJet",
   "itemOpenAppSub": "Elige la calidad en la aplicación",
+  "itemPlaylist": "Descargar toda la lista",
+  "itemPlaylistSub": "Abre la lista en FetchJet: elige allí los vídeos y la calidad",
   "itemGettingAll": "Obteniendo todas las calidades de FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Mientras tanto se muestran las transmisiones capturadas",
   "itemGetting": "Obteniendo las calidades del video…",

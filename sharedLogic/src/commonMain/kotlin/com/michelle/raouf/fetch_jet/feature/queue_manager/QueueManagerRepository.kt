@@ -427,8 +427,11 @@ class QueueManagerRepository(
     }
 
     /** The videos of a playlist / channel link (null = not a playlist). */
-    suspend fun inspectPlaylist(url: String): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
-        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url)
+    suspend fun inspectPlaylist(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url, headers)
 
     suspend fun enqueueTask(
         url: String,
@@ -451,7 +454,8 @@ class QueueManagerRepository(
         /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
         scheduledAtMs: Long = 0L,
         /** Connections for a direct download; 0 = app setting / automatic. */
-        maxConnections: Int = 0
+        maxConnections: Int = 0,
+        pairedAudioUrl: String? = null
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -542,6 +546,7 @@ class QueueManagerRepository(
             maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
             formatId = formatId,
             originalUrl = originalMediaUrl,
+            pairedAudioUrl = pairedAudioUrl?.takeIf { it.isNotBlank() },
             clipStart = clipStart,
             clipEnd = clipEnd,
             clipByCutting = cutAfterDownload,

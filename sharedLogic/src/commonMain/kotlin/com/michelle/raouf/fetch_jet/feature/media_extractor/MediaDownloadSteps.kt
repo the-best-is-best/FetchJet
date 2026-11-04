@@ -2,9 +2,8 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
-import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.statement.HttpResponse
+import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
@@ -309,38 +308,39 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
     } else if (isYouTubeUrl(effectiveUrl)) {
         resolveAnyValidYouTubeStream(effectiveUrl)
     } else {
-        val response: HttpResponse = client.get(effectiveUrl) {
+        client.prepareGet(effectiveUrl) {
             header(HttpHeaders.UserAgent, desktopUserAgent)
             header(
                 HttpHeaders.Accept,
                 "text/html,application/xhtml+xml,application/xml;q=0.9,video/*,*/*;q=0.8"
             )
+        }.execute { response ->
+            if (response.status.isSuccess()) {
+                val contentType = response.headers[HttpHeaders.ContentType] ?: ""
+                if (contentType.contains("video") || contentType.contains("octet-stream")) {
+                    downloadStreamToPath(taskId, response, cacheTargetPath)
+                    try {
+                        finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                    } catch (_: Exception) {
+                    }
+                    if (FileSystem.SYSTEM.exists(finalTargetPath)) {
+                        FileSystem.SYSTEM.delete(finalTargetPath)
+                    }
+                    FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
+                    deleteRecursively(cacheDir.toPath())
+                    downloadedRealFile = true
+                    null
+                } else {
+                    val htmlBody = response.bodyAsText()
+                    extractHighQualityVideoUrl(effectiveUrl, htmlBody)
+                }
+            } else null
         }
-        if (response.status.isSuccess()) {
-            val contentType = response.headers[HttpHeaders.ContentType] ?: ""
-            if (contentType.contains("video") || contentType.contains("octet-stream")) {
-                downloadStreamToPath(taskId, response, cacheTargetPath)
-                try {
-                    finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-                } catch (_: Exception) {
-                }
-                if (FileSystem.SYSTEM.exists(finalTargetPath)) {
-                    FileSystem.SYSTEM.delete(finalTargetPath)
-                }
-                FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
-                deleteRecursively(cacheDir.toPath())
-                downloadedRealFile = true
-                null
-            } else {
-                val htmlBody = response.bodyAsText()
-                extractHighQualityVideoUrl(effectiveUrl, htmlBody)
-            }
-        } else null
     }
 
     if (!downloadedRealFile && !directStreamUrl.isNullOrBlank()) {
         try {
-            val videoResponse: HttpResponse = client.get(directStreamUrl) {
+            client.prepareGet(directStreamUrl) {
                 header(
                     HttpHeaders.UserAgent,
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -357,21 +357,22 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
                     header("Referer", "https://www.facebook.com/")
                     header("Origin", "https://www.facebook.com")
                 }
-            }
-            if (videoResponse.status.isSuccess()) {
-                downloadStreamToPath(taskId, videoResponse, cacheTargetPath)
-                try {
-                    finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-                } catch (_: Exception) {
+            }.execute { videoResponse ->
+                if (videoResponse.status.isSuccess()) {
+                    downloadStreamToPath(taskId, videoResponse, cacheTargetPath)
+                    try {
+                        finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                    } catch (_: Exception) {
+                    }
+                    if (FileSystem.SYSTEM.exists(finalTargetPath)) {
+                        FileSystem.SYSTEM.delete(finalTargetPath)
+                    }
+                    FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
+                    deleteRecursively(cacheDir.toPath())
+                    downloadedRealFile = true
+                } else {
+                    throw Exception("HTTP Error: ${videoResponse.status.value}")
                 }
-                if (FileSystem.SYSTEM.exists(finalTargetPath)) {
-                    FileSystem.SYSTEM.delete(finalTargetPath)
-                }
-                FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
-                deleteRecursively(cacheDir.toPath())
-                downloadedRealFile = true
-            } else {
-                throw Exception("HTTP Error: ${videoResponse.status.value}")
             }
         } catch (innerE: CancellationException) {
             throw innerE

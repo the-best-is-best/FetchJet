@@ -1,11 +1,11 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
 import com.michelle.raouf.fetch_jet.core.util.getString
+import com.tbib.kmp_localization.LocalizationManager
 
 data class PlaylistEntry(
     val index: Int,
@@ -24,7 +24,10 @@ data class MediaPlaylist(
  * The videos of a playlist / channel link, read with `yt-dlp --flat-playlist -J` (titles and
  * links only, no formats: fast even for hundreds of videos). null = not a playlist.
  */
-expect suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist?
+expect suspend fun inspectPlatformPlaylist(
+    url: String,
+    headers: Map<String, String>
+): MediaPlaylist?
 
 /**
  * A bare YouTube channel link ("youtube.com/@name") lists the channel's tabs; its videos are

@@ -47,12 +47,16 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
     output.lineSequence().firstOrNull { it.isNotBlank() }?.trim()
 }
 
-actual suspend fun inspectPlatformPlaylist(url: String): MediaPlaylist? =
+actual suspend fun inspectPlatformPlaylist(
+    url: String,
+    headers: Map<String, String>
+): MediaPlaylist? =
     withContext(Dispatchers.IO) {
         requireIosMediaEngine()
         val trimmedUrl = normalizePlaylistUrl(url)
         if (trimmedUrl.isEmpty()) return@withContext null
         val args = mutableListOf("--flat-playlist", "-J", "--no-warnings", "--yes-playlist")
+        args.addAll(ytDlpHeaderArgs(headers, trimmedUrl))
         getIosCookieFile()?.let { cookiePath ->
             args.add("--cookies")
             args.add(cookiePath)

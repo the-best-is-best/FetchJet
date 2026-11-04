@@ -43,6 +43,8 @@ fjAddLanguage("ar", {
   "errCantGet": "تعذّر الحصول على هذا الفيديو",
   "itemOpenApp": "فتح في FetchJet",
   "itemOpenAppSub": "اختر الجودة في التطبيق",
+  "itemPlaylist": "تنزيل قائمة التشغيل كلها",
+  "itemPlaylistSub": "تفتح القائمة في FetchJet: اختر الفيديوهات والجودة هناك",
   "itemGettingAll": "جارٍ جلب كل الجودات من FetchJet (yt-dlp)…",
   "itemGettingAllSub": "تُعرض البثوث الملتقطة في الأثناء",
   "itemGetting": "جارٍ جلب جودات الفيديو…",

@@ -179,6 +179,12 @@ kills that shell too: put it in a script file.
 
 ## 9. Other checks
 
+- A torrent's own trackers: a local HTTP tracker that answers `d8:intervali60e5:peers0:e` and
+  logs each request, a tiny torrent with it as first tracker (`tiny_torrent.py t.torrent
+  http://127.0.0.1:18101/announce ...`), Add the torrent's URL, Start: the tracker logs
+  `event=started` with libtorrent's port. Android: `adb reverse` 18100 and 18101. Status: Mac,
+  Windows, A56 (2026-11-04). If the verbose `[torrent ...]` line shows `listenPort=0`, libtorrent
+  has no listen socket and announces nothing (seen twice on Windows, see ROADMAP item 6).
 - Public trackers (no download): `python3 scripts/security-test/tiny_torrent.py p.torrent
   udp://tracker.bittor.pw:1337/announce udp://tracker.qu.ax:6969/announce`, serve it on 18100,
   queue it, verbose log `trackers:` shows both `ok`. Delete the task after.

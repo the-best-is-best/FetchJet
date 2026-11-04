@@ -43,6 +43,8 @@ fjAddLanguage("ja", {
   "errCantGet": "この動画を取得できません",
   "itemOpenApp": "FetchJet で開く",
   "itemOpenAppSub": "アプリで画質を選択",
+  "itemPlaylist": "再生リストをすべてダウンロード",
+  "itemPlaylistSub": "FetchJet でリストを開きます：そこで動画と画質を選びます",
   "itemGettingAll": "FetchJet (yt-dlp) からすべての画質を取得中…",
   "itemGettingAllSub": "その間、取得済みのストリームを表示しています",
   "itemGetting": "動画の画質を取得中…",

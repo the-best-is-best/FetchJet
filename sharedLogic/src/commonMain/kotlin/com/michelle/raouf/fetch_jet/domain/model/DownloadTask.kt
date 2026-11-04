@@ -60,6 +60,8 @@ data class DownloadTask(
     val maxUploadSpeedBytesPerSec: Long = 0L,
     val formatId: String? = null,
     val originalUrl: String? = null,
+    /** A captured video-only stream's audio stream: both are fetched and merged by ffmpeg. */
+    val pairedAudioUrl: String? = null,
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,

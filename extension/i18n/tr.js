@@ -43,6 +43,8 @@ fjAddLanguage("tr", {
   "errCantGet": "Bu video alınamıyor",
   "itemOpenApp": "FetchJet'te aç",
   "itemOpenAppSub": "Kaliteyi uygulamada seçin",
+  "itemPlaylist": "Tüm oynatma listesini indir",
+  "itemPlaylistSub": "Listeyi FetchJet'te açar: videoları ve kaliteyi orada seçin",
   "itemGettingAll": "Tüm kaliteler FetchJet'ten (yt-dlp) alınıyor…",
   "itemGettingAllSub": "Bu arada yakalanan akışlar gösteriliyor",
   "itemGetting": "Video kaliteleri alınıyor…",

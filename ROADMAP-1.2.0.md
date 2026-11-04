@@ -170,6 +170,13 @@ range from the last clicked row in the order shown.
   `load_torrent_parsed` and added (`Libtorrent4jBackend.trackersAndWebSeeds`). Verified on the Mac
   desktop with a local tracker (announce received), and with public trackers (WARP off): a tiny
   torrent's own `tracker.bittor.pw` and `tracker.qu.ax` answered ok.
+  Windows and A56 (2026-11-04, local tracker on 18101 + tiny torrent with it and the two public
+  trackers, served on 18100; phone through `adb reverse`): the torrent's own trackers are first
+  in the list and the local tracker got `event=started` at once (Windows 4 runs, A56 once).
+  Seen twice on Windows, not reproduced in 4 later runs: right after quitting the installed
+  1.1.0 and starting the dev build, libtorrent had no listen socket (`listenPort=0`, every
+  tracker "no endpoint", no announce). A unit test with the same backend and the same settings
+  listened at once. Watch for it; if it comes back, log libtorrent's `LISTEN_FAILED` alerts.
   iOS (Mac simulator, 2026-11-03, `test_proxies.py`): builds; HTTP proxy with login: the update
   check, an 8 MB file (`media.githubusercontent.com`), YouTube inspect + download (
   `www.youtube.com`,
@@ -311,15 +318,55 @@ Open, owner's decision:
 
 ## 7. Clean-up and older backlog
 
-- [ ] `MediaStreamDownloader`: remove the Invidious / Cobalt / Piped resolvers; stream bodies with
+- [x] `MediaStreamDownloader`: remove the Invidious / Cobalt / Piped resolvers; stream bodies with
   `prepareGet().execute` instead of `client.get`.
-- [ ] Extension: playlist queue (`/playlist`).
-- [ ] Merge a captured video-only + audio-only pair inside the app.
+  Done 2026-11-04. All three were dead (Piped 502, the Invidious hosts gone, Cobalt's old
+  `/api/json` 400), so they only cost time when yt-dlp failed. Removed from
+  `resolveAnyValidYouTubeStream` and `inspectYouTubeFallbacks` (left: the YouTube page and embed
+  readers), `resolveInvidiousStream`, `parsePipedQualities`, and their hosts in
+  `DetectLinkTypeUseCase`. The HTTP fallback (`downloadWithHttpFallback`) read the whole file into
+  memory with `client.get` before writing it; it now streams through `prepareGet().execute`.
+  Checked with a unit test against a local 40 MB `video/mp4` server: the page path and the
+  direct `.mp4` path both wrote a byte-identical file, heap growth 2-15 MB. Desktop + Android
+  build. Not run in the app: these paths are used only when yt-dlp fails.
+- [x] Extension: playlist queue (`/playlist`).
+  Done 2026-11-04 without a new endpoint: the app's Add dialog already lists a playlist link's
+  videos (`looksLikePlaylistUrl` -> `inspectPlaylist`, quality for all, pick the videos). On a
+  YouTube page with `list=` the extension now puts "Download the whole playlist" first in the
+  popup / page button (`youtubePlaylistUrl` + kind `playlist` in background.js, badge "list",
+  `itemPlaylist` / `itemPlaylistSub` in the 15 languages) and sends
+  `youtube.com/playlist?list=<id>` to the app. Not for mixes (`list=RD...`): yt-dlp listed 762
+  videos for one. Owner-verified in Edge (2026-11-04): a 182-video playlist opened in the Add
+  dialog with its videos and the quality row. Reading a list now passes the site's cookies to
+  yt-dlp (`inspectPlatformPlaylist(url, headers)` on all three platforms), for lists that need
+  a login. A whole Udemy course was tried the same way (2026-11-04, owner's course, cookies from
+  the extension) and dropped: yt-dlp's `udemy:course` got 403 with the cookies and "Unable to
+  extract course id" without them (Udemy is behind Cloudflare; many courses are DRM too).
+  Single lectures still go through the normal page path.
+- [x] Merge a captured video-only + audio-only pair inside the app.
+  Done 2026-11-04. Only the extension's captured YouTube streams were ever split (shown before
+  the app's qualities arrive, or with "Ask FetchJet for video qualities automatically" off); the
+  normal path (app qualities through yt-dlp) already merged. Now `ytBuildOptions(streams, merge)`
+  offers each video-only quality "with sound" paired with the best audio in the same container
+  (MP4 + M4A, WebM + WebM), and `downloadItem` sends `audioUrl`. Only when the app's `/config`
+  says `"pairedMerge":true` (desktop, Android; not iOS, whose `fetchjet://add` always opens the
+  Add dialog), so an older app never gets a link it would save without sound. App:
+  `ExternalDownloadRequest.audioUrl` -> `DownloadTask.pairedAudioUrl` (saved encrypted in
+  `tasks_cache.json`) -> `downloadWithOwnEngine` skips yt-dlp and fetches the two links
+  (`capturedStream`: type and size from `mime` / `clen`), then the usual ffmpeg merge.
+  Checked: a real YouTube pair (itag 134 + 140 of `jNQXAC9IVRw`) through `downloadWithOwnEngine`
+  = one 19 s file with H.264 video and AAC audio; the extension's option list with node (one
+  "with sound" per quality, ads left out); all jvmTests pass; desktop + Android build. Not
+  checked: the click in a real browser. Owner tried it in Edge (2026-11-04): YouTube's web
+  player streamed with SABR, so the extension captured no stream links at all (the popup asks
+  for the app's qualities instead): today the merge rarely gets a chance on YouTube. Kept on
+  the owner's decision (it costs nothing and works when a page plays plain stream links).
 
 ## Checks still open from 1.1.0 (owner, any time)
 
 - [x] iOS: build 1.1.0 on the Mac (clean code, kotlinx.serialization, navigationevent).
-- [ ] Microsoft Store MSIX: starts with Windows by default (install, open once, restart).
+- [x] Microsoft Store MSIX: starts with Windows by default (install, open once, restart).
+  Owner-verified 2026-11-04.
 - [ ] Edge Android listing: waiting for Microsoft's answer. Edge iOS: not tested.
 - [x] Udemy logged in on a real iPhone: counted as done (owner's decision, no iPhone; works on
   the simulator). Do not ask again.

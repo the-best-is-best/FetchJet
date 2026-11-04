@@ -43,6 +43,8 @@ fjAddLanguage("ru", {
   "errCantGet": "Не удаётся получить это видео",
   "itemOpenApp": "Открыть в FetchJet",
   "itemOpenAppSub": "Выберите качество в приложении",
+  "itemPlaylist": "Скачать весь плейлист",
+  "itemPlaylistSub": "Открывает список в FetchJet: там выберите видео и качество",
   "itemGettingAll": "Получение всех вариантов качества из FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Пока показаны перехваченные потоки",
   "itemGetting": "Получение вариантов качества видео…",

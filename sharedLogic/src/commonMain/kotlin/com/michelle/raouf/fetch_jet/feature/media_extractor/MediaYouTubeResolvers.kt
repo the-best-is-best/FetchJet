@@ -3,66 +3,10 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
-
-internal suspend fun MediaStreamDownloader.resolveInvidiousStream(videoId: String): String? {
-
-    val instances = listOf(
-
-        "https://vid.puffyan.us",
-
-        "https://inv.nadeko.net",
-
-        "https://invidious.projectsegfault.net"
-
-    )
-
-    for (instance in instances) {
-
-        try {
-
-            val apiUrl = "$instance/api/v1/videos/$videoId"
-
-            val response: HttpResponse = client.get(apiUrl) {
-
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-
-            }
-
-            if (response.status.isSuccess()) {
-
-                val json = response.bodyAsText()
-
-                val match = Regex("""["']url["']\s*:\s*["'](https?://[^"']+)["']""").find(json)
-
-                if (match != null) {
-
-                    val url = cleanEscapedUrl(match.groupValues[1])
-
-                    if (url.startsWith("http")) {
-
-                        return url
-
-                    }
-
-                }
-
-            }
-
-        } catch (_: Exception) {
-
-        }
-
-    }
-
-    return null
-
-}
 
 internal suspend fun MediaStreamDownloader.resolveYouTubeFromHtmlPage(url: String): String? {
 
@@ -154,111 +98,14 @@ internal suspend fun MediaStreamDownloader.resolveAnyValidYouTubeStream(url: Str
     val videoId = extractYouTubeVideoId(url)
 
 
-    // 1. Try Piped API first
-
-    if (!videoId.isNullOrBlank()) {
-
-        try {
-
-            val apiUrl = "https://pipedapi.kavin.rocks/streams/$videoId"
-
-            val response: HttpResponse = client.get(apiUrl) {
-
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-
-            }
-
-            if (response.status.isSuccess()) {
-
-                val json = response.bodyAsText()
-
-                val mp4Match =
-
-                    Regex("""["']url["']\s*:\s*["'](https?://[^"']+\.mp4[^"']*)["']""").find(
-
-                        json
-
-                    )
-
-                if (mp4Match != null) {
-
-                    val dlUrl = cleanEscapedUrl(mp4Match.groupValues[1])
-
-                    if (dlUrl.startsWith("http")) return dlUrl
-
-                }
-
-            }
-
-        } catch (_: Exception) {
-
-        }
-
-    }
-
-
-    // 2. Try Invidious instances
-
-    if (!videoId.isNullOrBlank()) {
-
-        val invidiousUrl = resolveInvidiousStream(videoId)
-
-        if (!invidiousUrl.isNullOrBlank()) return invidiousUrl
-
-    }
-
-
-    // 3. Try parsing YouTube HTML page directly
+    // 1. Try parsing YouTube HTML page directly
 
     val htmlStreamUrl = resolveYouTubeFromHtmlPage(url)
 
     if (!htmlStreamUrl.isNullOrBlank()) return htmlStreamUrl
 
 
-    // 4. Try Cobalt API across multiple quality tiers
-
-    for (q in listOf("720", "1080", "480", "360")) {
-
-        try {
-
-            val cobaltUrl = "https://api.cobalt.tools/api/json"
-
-            val response: HttpResponse = client.post(cobaltUrl) {
-
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-
-                header(HttpHeaders.Accept, "application/json")
-
-                header(HttpHeaders.ContentType, "application/json")
-
-                setBody("""{"url":"$url","vQuality":"$q"}""")
-
-            }
-
-            if (response.status.isSuccess()) {
-
-                val json = response.bodyAsText()
-
-                val urlMatch = Regex("""["']url["']\s*:\s*["']([^"']+)["']""").find(json)
-
-                val dlUrl = urlMatch?.groupValues?.get(1)?.replace("""\/""", "/")
-
-                if (!dlUrl.isNullOrBlank() && dlUrl.startsWith("http")) {
-
-                    return dlUrl
-
-                }
-
-            }
-
-        } catch (_: Exception) {
-
-        }
-
-    }
-
-
-    // 5. Fallback to embed stream
+    // 2. Fallback to embed stream
 
     if (!videoId.isNullOrBlank()) {
 
@@ -392,7 +239,7 @@ internal fun MediaStreamDownloader.isYouTubeUrl(url: String): Boolean {
  * one cache entry, instead of yt-dlp running once per spelling.
  */
 internal fun MediaStreamDownloader.normalizeYouTubeUrl(url: String): String {
-    val id = com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls.youTubeVideoId(url)
+    val id = MediaUrls.youTubeVideoId(url)
         ?: return url
     return "https://www.youtube.com/watch?v=$id"
 }

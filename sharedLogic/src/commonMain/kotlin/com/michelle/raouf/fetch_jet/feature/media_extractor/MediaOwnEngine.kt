@@ -41,7 +41,17 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         if (it.status == DownloadStatus.PAUSED) it else it.copy(currentStepText = "Resolving streams…")
     }
     var headersUsed = task.requestHeaders
-    val resolved =
+    val pairedAudio = task.pairedAudioUrl
+    val resolved = if (pairedAudio != null) {
+        ResolvedMedia(
+            title = null,
+            streams = listOf(
+                capturedStream(task.url, video = true, headers = headersUsed),
+                capturedStream(pairedAudio, video = false, headers = headersUsed)
+            ),
+            durationSeconds = 0L
+        )
+    } else
         DirectMediaResolver.resolve(sourceUrl, task.formatId, audioTarget, headersUsed)
             ?: if (headersUsed.isNotEmpty()) {
                 headersUsed = emptyMap()
@@ -97,7 +107,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         }
         fetcher.download(
             urlProvider = { refresh ->
-                if (!refresh) stream.url
+                if (!refresh || pairedAudio != null) stream.url
                 else DirectMediaResolver.resolve(
                     sourceUrl,
                     task.formatId,
@@ -514,4 +524,39 @@ internal fun MediaStreamDownloader.reportPostProcess(
             downloadSpeedBytesPerSec = 0L
         )
     }
+}
+
+/**
+ * A stream link the browser captured (a video-only or an audio-only googlevideo URL): its type
+ * and size come from the link itself (`mime`, `clen`), no yt-dlp run.
+ */
+internal fun capturedStream(
+    url: String,
+    video: Boolean,
+    headers: Map<String, String>
+): ResolvedStream {
+    val params = try {
+        io.ktor.http.Url(url).parameters
+    } catch (_: Exception) {
+        null
+    }
+    val mime = params?.get("mime").orEmpty().lowercase()
+    val pathExt =
+        url.substringBefore('?').substringAfterLast('/').substringAfterLast('.', "").lowercase()
+    val ext = when {
+        "webm" in mime -> "webm"
+        mime.startsWith("audio/") -> "m4a"
+        mime.startsWith("video/") -> "mp4"
+        pathExt in listOf("mp4", "m4a", "webm", "mkv", "mp3", "aac", "opus") -> pathExt
+        video -> "mp4"
+        else -> "m4a"
+    }
+    return ResolvedStream(
+        url = url,
+        ext = ext,
+        size = params?.get("clen")?.toLongOrNull() ?: -1L,
+        hasVideo = video,
+        hasAudio = !video,
+        headers = headers
+    )
 }

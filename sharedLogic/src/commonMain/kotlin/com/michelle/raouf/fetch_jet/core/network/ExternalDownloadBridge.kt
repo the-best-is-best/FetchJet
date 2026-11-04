@@ -15,7 +15,9 @@ data class ExternalDownloadRequest(
     /** Start right away with the default folder instead of opening the Add dialog. */
     val direct: Boolean = false,
     /** The extension's scissors button: open the Add dialog with this quality and the clip range on. */
-    val openClip: Boolean = false
+    val openClip: Boolean = false,
+    /** [url] is a captured video-only stream and this its audio: download both, merge them. */
+    val audioUrl: String = ""
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {
