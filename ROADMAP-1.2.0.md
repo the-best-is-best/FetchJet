@@ -46,7 +46,7 @@ Why first: every later fix only helps users who can update.
   shell steps were tested in WSL (wait for quit, swap, relaunch, path with a space). The
   `.deb` path: counted as tested (owner's decision, 2026-11-02, no Linux desktop available);
   revisit only if a user reports a problem.
-- [ ] Microsoft Store build: the Store itself says whether an update is waiting (StoreContext
+- [x] Microsoft Store build: the Store itself says whether an update is waiting (StoreContext
   through PowerShell), the app tells the user and opens the Store page. Check works inside the
   installed MSIX; the dialog is seen only when a newer Store version exists.
 
@@ -116,7 +116,7 @@ Why: the biggest gap for users in Egypt (Ezoo has 8 languages). Large, so after 
 
 - [x] Option: do nothing / exit FetchJet / sleep / shut down the computer when all downloads
   finish. 60 s countdown with Cancel before sleep or shut down.
-- [ ] Windows, macOS, Linux. Not on Android / iOS.
+- [x] Windows, macOS, Linux. Not on Android / iOS.
 
 Done 2026-11-02. Owner-tested on Windows: Exit FetchJet (countdown dialog, Cancel, Now). Sleep /
 shut down not run on purpose (they really turn the computer off). `core/power/WhenDone.kt` (choice,
