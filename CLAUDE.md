@@ -601,7 +601,9 @@ Bridges:
    ~90 Mbps total, Android A56 ~10.5 MB/s total. No problem found. Speed limit verified on the A56
    while downloading: 1 MB/s → 1.0, 5 MB/s → 5.0, applied at once and shared between the running
    downloads. Not verified: switching back to Unlimited mid-download.
-4. **Udemy:** works (owner confirmed, 2026-11-01). Closed.
+4. **Udemy:** works (owner confirmed, 2026-11-01). Whole course: the extension reads it in the
+   page and sends the lecture list (ROADMAP item 7, owner-verified in Edge 2026-11-04); the app
+   alone cannot (Cloudflare 403, do not try to get around it). Closed.
 5. **googlevideo 403 right after resolve:** happens for a few seconds. Probe retries and link
    renewal mitigate it. A later curl with the same URL returns 206.
 6. **Browser extension stores: done in CI** (`build-extension` in `build.yml`). Firefox is signed

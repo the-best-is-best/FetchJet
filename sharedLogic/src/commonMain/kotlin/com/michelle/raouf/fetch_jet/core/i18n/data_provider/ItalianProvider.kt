@@ -196,6 +196,11 @@ object ItalianProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "Formato: $format$details"
     override val inspectingVideoQualities = "Analisi delle qualità video..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Lettura delle lezioni del corso: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "L'estensione del browser le legge nella scheda del corso: lasciala aperta"
     override val inspectingVideoQualitiesHint =
         "Ricerca delle risoluzioni video e delle tracce audio disponibili"
     override val videoInspectionFailed = "Analisi del video non riuscita"
@@ -262,6 +267,9 @@ object ItalianProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "Playlist · $videos video · " + if (selected == 1) "1 selezionato" else "$selected selezionati"
 
+    override val playlistFolder = "Salva nella cartella"
+    override val playlistFolderHint =
+        "Ogni file va in questa cartella. Svuotala per salvarli direttamente."
     override val qualityForAllVideos = "Qualità per tutti i video"
     override val qualityForAllVideosHint =
         "Se un video non ha questa qualità, viene presa la più vicina inferiore."

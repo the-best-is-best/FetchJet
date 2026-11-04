@@ -198,6 +198,11 @@ object RussianProvider : AppLocalization {
     override fun selectedOfAvailable(selected: Int, total: Int) = "Выбрано: $selected из $total"
     override fun qualityFormatLine(format: String, details: String) = "Формат: $format$details"
     override val inspectingVideoQualities = "Получаем варианты качества..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Чтение лекций курса: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "Расширение браузера читает их во вкладке курса: не закрывайте её"
     override val inspectingVideoQualitiesHint = "Ищем доступные разрешения видео и аудиодорожки"
     override val videoInspectionFailed = "Не удалось проверить видео"
     override val addRetryInspection = "Проверить снова"
@@ -265,6 +270,9 @@ object RussianProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "Плейлист · $videos видео · выбрано $selected"
 
+    override val playlistFolder = "Сохранить в папку"
+    override val playlistFolderHint =
+        "Все файлы попадут в эту папку. Очистите поле, чтобы сохранить их напрямую."
     override val qualityForAllVideos = "Качество для всех видео"
     override val qualityForAllVideosHint =
         "Если у видео нет такого качества, берётся ближайшее более низкое."

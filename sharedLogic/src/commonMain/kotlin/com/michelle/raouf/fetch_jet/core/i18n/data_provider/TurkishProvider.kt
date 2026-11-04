@@ -190,6 +190,11 @@ object TurkishProvider : AppLocalization {
     override fun selectedOfAvailable(selected: Int, total: Int) = "Seçili: $selected / $total"
     override fun qualityFormatLine(format: String, details: String) = "Biçim: $format$details"
     override val inspectingVideoQualities = "Video kaliteleri inceleniyor..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Kurs dersleri okunuyor: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "Tarayıcı eklentisi bunları kurs sekmesinde okuyor: sekmeyi açık tutun"
     override val inspectingVideoQualitiesHint =
         "Kullanılabilir video çözünürlükleri ve ses akışları taranıyor"
     override val videoInspectionFailed = "Video incelemesi başarısız"
@@ -256,6 +261,9 @@ object TurkishProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "Oynatma listesi · $videos video · $selected seçili"
 
+    override val playlistFolder = "Klasöre kaydet"
+    override val playlistFolderHint =
+        "Her dosya bu klasöre gider. Doğrudan kaydetmek için boş bırakın."
     override val qualityForAllVideos = "Tüm videolar için kalite"
     override val qualityForAllVideosHint =
         "Bir videoda bu kalite yoksa en yakın düşük kalite alınır."

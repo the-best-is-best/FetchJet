@@ -186,6 +186,10 @@ object ChineseProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "格式：${format}${details}"
     override val inspectingVideoQualities = "正在解析视频画质..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "正在读取课程讲座：${done} / ${total}"
+
+    override val readingCourseLecturesHint = "浏览器扩展正在课程标签页中读取：请保持其打开"
     override val inspectingVideoQualitiesHint = "正在扫描可用的视频分辨率和音频流"
     override val videoInspectionFailed = "视频解析失败"
     override val addRetryInspection = "重新解析"
@@ -250,6 +254,8 @@ object ChineseProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "播放列表 · ${videos} 个视频 · 已选 ${selected} 个"
 
+    override val playlistFolder = "保存到文件夹"
+    override val playlistFolderHint = "所有文件都保存到此文件夹。清空即可直接保存。"
     override val qualityForAllVideos = "所有视频的画质"
     override val qualityForAllVideosHint = "如果某个视频没有该画质，将选用最接近的较低画质。"
     override val downloadOnlyThisVideo = "改为只下载此视频"

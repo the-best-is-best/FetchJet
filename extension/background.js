@@ -290,7 +290,11 @@ async function fetchAppConfig() {
     const cfg = await res.json();
     if (cfg && cfg.language) rememberAppLanguage(cfg.language);
     appMerges = !!(cfg && cfg.pairedMerge);
-    appCourses = !!(cfg && cfg.coursePlaylist);
+    const courses = !!(cfg && cfg.coursePlaylist);
+    if (courses !== appCourses) {
+      appCourses = courses;
+      api.tabs.query({ active: true, currentWindow: true }).then(([t]) => t && refreshMenus(t.id)).catch(() => {});
+    }
     return cfg;
   } catch (_) { return null; }
 }
@@ -311,7 +315,7 @@ async function cookieHeaderFor(url) {
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
-async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null }) {
+async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, group = "" }) {
   const body = {
     url,
     cookie: await cookieHeaderFor(url),
@@ -324,6 +328,7 @@ async function buildRequest({ url, referer = "", fileName = "", formatId = "", d
   if (openClip) body.openClip = true;     // open the Add dialog with the clip range on
   if (audioUrl && isValidDownloadUrl(audioUrl)) body.audioUrl = audioUrl; // video-only + its audio: merged in the app
   if (playlist) body.playlist = playlist; // the videos, already read here (Udemy course)
+  if (group) body.group = group.slice(0, 150); // several links of one page: their folder in the app
   return body;
 }
 
@@ -448,7 +453,7 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   return { ok: false, reason: "app did not start" };
 }
 
-async function sendBatchToFetchJet(items, referer = "") {
+async function sendBatchToFetchJet(items, referer = "", group = "") {
   const unique = new Map();
   for (const it of items) {
     const url = typeof it === "string" ? it : it.url;
@@ -458,7 +463,7 @@ async function sendBatchToFetchJet(items, referer = "") {
   }
   if (unique.size === 0) return { ok: false, reason: "no links", count: 0 };
   const requests = [];
-  for (const it of unique.values()) requests.push(await buildRequest(it));
+  for (const it of unique.values()) requests.push(await buildRequest({ ...it, group }));
   if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
   if (!(await pingApp())) {
@@ -960,10 +965,11 @@ async function udemyCourseForTab(tabId) {
 }
 
 /**
- * Runs in the Udemy page (its own origin and login, like Udemy's player): the course's
- * lectures and the stream link of each one. DRM lectures have no usable link and are counted.
+ * Runs in the Udemy page (its own origin and login, like Udemy's player). Without `part`: the
+ * course id, title and lectures. With `part` ({ id, lectures }): each lecture's stream link
+ * (null when it has none; `drm` when it is protected).
  */
-async function readUdemyCourseInPage(slug) {
+async function readUdemyCourseInPage(slug, part) {
   const headers = { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" };
   const get = async (path) => {
     const r = await fetch(path.startsWith("http") ? path : location.origin + path, { credentials: "include", headers });
@@ -971,6 +977,27 @@ async function readUdemyCourseInPage(slug) {
     return r.json();
   };
   try {
+    if (part) {
+      const pick = (asset) => {
+        const all = [].concat(asset.media_sources || [],
+          (asset.stream_urls && asset.stream_urls.Video) || [],
+          (asset.download_urls && asset.download_urls.Video) || []);
+        const srcOf = (x) => (x && (x.src || x.file)) || "";
+        const hls = all.find(x => /mpegurl/i.test(x.type || "") || /\.m3u8(\?|$)/i.test(srcOf(x)));
+        if (hls) return srcOf(hls);
+        const files = all.filter(x => /^https?:/i.test(srcOf(x)) && !/dash/i.test(x.type || "") && !/\.mpd(\?|$)/i.test(srcOf(x)))
+          .sort((a, b) => (parseInt(b.label, 10) || 0) - (parseInt(a.label, 10) || 0));
+        return files.length ? srcOf(files[0]) : "";
+      };
+      return await Promise.all(part.lectures.map(async (lec) => {
+        try {
+          const d = await get(`/api-2.0/users/me/subscribed-courses/${part.id}/lectures/${lec.id}/?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`);
+          const url = d.asset ? pick(d.asset) : "";
+          if (url) return { url, title: d.title || lec.title || "" };
+          return { drm: !!(d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length)) };
+        } catch (_) { return {}; }
+      }));
+    }
     const html = document.documentElement.innerHTML;
     const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
     let id = found ? found[1] : "";
@@ -986,38 +1013,16 @@ async function readUdemyCourseInPage(slug) {
     let items = page.results || [];
     while (page.next) { page = await get(page.next); items = items.concat(page.results || []); }
     const lectures = items.filter(e => e._class === "lecture" &&
-      (!e.asset || (e.asset.asset_type || e.asset.assetType) === "Video"));
-    const entries = new Array(lectures.length).fill(null);
-    let drm = 0, failed = 0, next = 0;
-    const pick = (asset) => {
-      const all = [].concat(asset.media_sources || [],
-        (asset.stream_urls && asset.stream_urls.Video) || [],
-        (asset.download_urls && asset.download_urls.Video) || []);
-      const srcOf = (x) => (x && (x.src || x.file)) || "";
-      const hls = all.find(x => /mpegurl/i.test(x.type || "") || /\.m3u8(\?|$)/i.test(srcOf(x)));
-      if (hls) return srcOf(hls);
-      const files = all.filter(x => /^https?:/i.test(srcOf(x)) && !/dash/i.test(x.type || "") && !/\.mpd(\?|$)/i.test(srcOf(x)))
-        .sort((a, b) => (parseInt(b.label, 10) || 0) - (parseInt(a.label, 10) || 0));
-      return files.length ? srcOf(files[0]) : "";
-    };
-    const worker = async () => {
-      while (next < lectures.length) {
-        const i = next++;
-        const lec = lectures[i];
-        try {
-          const d = await get(`/api-2.0/users/me/subscribed-courses/${id}/lectures/${lec.id}/?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`);
-          const url = d.asset ? pick(d.asset) : "";
-          if (url) entries[i] = { title: `${String(i + 1).padStart(3, "0")} - ${d.title || lec.title || ""}`, url };
-          else if (d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length)) drm++;
-          else failed++;
-        } catch (_) { failed++; }
-      }
-    };
-    await Promise.all([worker(), worker(), worker(), worker()]);
-    return { title, entries: entries.filter(Boolean), drm, failed };
+      (!e.asset || (e.asset.asset_type || e.asset.assetType) === "Video")).map(e => ({ id: e.id, title: e.title || "" }));
+    return { id, title, lectures };
   } catch (e) {
     return { error: (e && e.message) || "error" };
   }
+}
+
+/** Tells the app how far the course reading is (it shows "12 / 80"), or why it failed. */
+async function courseProgressToApp(courseUrl, referer, extra) {
+  try { await postJson("/add", { ...(await buildRequest({ url: courseUrl, referer })), ...extra }, 2500); } catch (_) {}
 }
 
 /**
@@ -1042,14 +1047,17 @@ async function pushToTab(tabId) {
   }
   const { items } = await itemsForTab(tabId);
   updateBadge(tabId, items.filter(i => !i.disabled).length);
+  refreshMenus(tabId).catch(() => {});
   api.tabs.sendMessage(tabId, { action: "fetchjetItems", items: settings.pagePanel ? items : [] }).catch(() => {});
 }
 
 async function clearTab(tabId) {
   seenStreams.delete(tabId);
+  videoPages.delete(tabId);
   await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null)]);
   updateBadge(tabId, 0);
   api.tabs.sendMessage(tabId, { action: "fetchjetItems", items: [] }).catch(() => {});
+  refreshMenus(tabId).catch(() => {});
 }
 
 /** The user picked one item (popup or page button). */
@@ -1082,19 +1090,37 @@ async function downloadItem(item, tab) {
   if (item.kind === "course") {
     const course = tab && tab.id != null ? await udemyCourseForTab(tab.id) : null;
     if (!course) return { ok: false, reason: fjT("courseFailed", { reason: "" }) };
-    await notify(fjT("courseReading"));
-    let read;
-    try {
-      const [res] = await api.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", func: readUdemyCourseInPage, args: [course.slug] });
-      read = res && res.result;
-    } catch (e) { read = { error: (e && e.message) || "" }; }
-    if (!read || read.error || !read.entries.length) {
-      const reason = read && read.drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: read && read.error ? `(${read.error})` : "" });
+    const inPage = async (part) => {
+      try {
+        const [res] = await api.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN", func: readUdemyCourseInPage, args: [course.slug, part || null] });
+        return res && res.result;
+      } catch (e) { return { error: (e && e.message) || "" }; }
+    };
+    const fail = async (reason) => {
+      await courseProgressToApp(course.url, pageUrl, { readingFailed: reason });
       await notify(reason);
       return { ok: false, reason };
+    };
+    await courseProgressToApp(course.url, pageUrl, { reading: { done: 0, total: 0 } });
+    const head = await inPage(null);
+    if (!head || head.error || !head.lectures || !head.lectures.length) {
+      return fail(fjT("courseFailed", { reason: head && head.error ? `(${head.error})` : "" }));
     }
-    if (read.drm) await notify(fjT("courseDrm", { n: read.drm }));
-    return sendToFetchJet({ url: course.url, referer: pageUrl, playlist: { title: read.title || clean, entries: read.entries } }, "course");
+    const total = head.lectures.length;
+    const entries = [];
+    let drm = 0;
+    for (let i = 0; i < total; i += 12) {
+      await courseProgressToApp(course.url, pageUrl, { reading: { done: i, total } });
+      const part = await inPage({ id: head.id, lectures: head.lectures.slice(i, i + 12) });
+      if (!Array.isArray(part)) return fail(fjT("courseFailed", { reason: part && part.error ? `(${part.error})` : "" }));
+      part.forEach((r, k) => {
+        if (r && r.url) entries.push({ title: `${String(i + k + 1).padStart(3, "0")} - ${r.title}`, url: r.url });
+        else if (r && r.drm) drm++;
+      });
+    }
+    if (!entries.length) return fail(drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: "" }));
+    if (drm) await notify(fjT("courseDrm", { n: drm }));
+    return sendToFetchJet({ url: course.url, referer: pageUrl, playlist: { title: head.title || clean, entries } }, "course");
   }
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.
@@ -1173,23 +1199,63 @@ const MENU = {
   page: "fetchjet-page",
   allLinks: "fetchjet-all-links",
   selectionLinks: "fetchjet-selection-links",
-  pageMedia: "fetchjet-page-media"
+  pageMedia: "fetchjet-page-media",
+  course: "fetchjet-course",
+  playlist: "fetchjet-playlist"
 };
 
 function installMenus() {
   if (!api.contextMenus) return;
   Promise.resolve(api.contextMenus.removeAll()).catch(() => {}).then(() => {
+    shownMenus.clear();
     // contextMenus.create is callback-style in every browser (also browser.* in Firefox).
     const create = (props) => { try { api.contextMenus.create(props, () => void api.runtime.lastError); } catch (_) {} };
     create({ id: MENU.link, title: fjT("menuLink"), contexts: ["link"] });
     create({ id: MENU.media, title: fjT("menuMedia"), contexts: ["video", "audio"] });
     create({ id: MENU.image, title: fjT("menuImage"), contexts: ["image"] });
     create({ id: MENU.selectionLinks, title: fjT("menuSelection"), contexts: ["selection"] });
+    create({ id: MENU.course, title: fjT("itemCourse"), contexts: ["page", "frame", "video"], visible: false });
+    create({ id: MENU.playlist, title: fjT("itemPlaylist"), contexts: ["page", "frame"], visible: false });
+    create({ id: MENU.page, title: fjT("menuPage"), contexts: ["page", "frame"], visible: false });
     create({ id: MENU.allLinks, title: fjT("menuAllLinks"), contexts: ["page", "frame"] });
-    create({ id: MENU.page, title: fjT("menuPage"), contexts: ["page", "frame"] });
     create({ id: MENU.pageMedia, title: fjT("menuPageMedia"), contexts: ["action"] });
+    api.tabs.query({ active: true, currentWindow: true }).then(([t]) => t && refreshMenus(t.id)).catch(() => {});
   });
 }
+
+/** Tabs whose content script said the page is one video (content.js VIDEO_PAGE). */
+const videoPages = new Map();
+const shownMenus = new Map();
+
+/**
+ * The right-click menu shows only what fits the page: a Udemy course -> the whole course; a
+ * YouTube list -> the list and the video; a video page (or one that played media) -> the
+ * video; any other page -> all its links.
+ */
+async function refreshMenus(tabId) {
+  if (!api.contextMenus || tabId == null) return;
+  try {
+    const [active] = await api.tabs.query({ active: true, currentWindow: true });
+    if (!active || active.id !== tabId) return;
+  } catch (_) { return; }
+  const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;
+  const list = course ? null : await listUrlForTab(tabId);
+  let video = false;
+  if (!course) {
+    let url = "";
+    try { url = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) {}
+    const all = await sessionGet(MEDIA_KEY);
+    video = !!ytVideoId(url) || videoPages.get(tabId) === true || Object.keys(all[tabId] || {}).length > 0;
+  }
+  const want = { [MENU.course]: !!course, [MENU.playlist]: !!list, [MENU.page]: video, [MENU.allLinks]: !course && !list && !video };
+  for (const [id, visible] of Object.entries(want)) {
+    if (shownMenus.get(id) === visible) continue;
+    shownMenus.set(id, visible);
+    try { api.contextMenus.update(id, { visible }, () => void api.runtime.lastError); } catch (_) {}
+  }
+}
+
+api.tabs.onActivated.addListener(({ tabId }) => { refreshMenus(tabId).catch(() => {}); });
 
 api.runtime.onInstalled.addListener(() => { installMenus(); updateActionBadgeForAll(); });
 api.runtime.onStartup.addListener(() => { installMenus(); updateActionBadgeForAll(); });
@@ -1207,6 +1273,12 @@ if (api.contextMenus) {
         return sendToFetchJet({ url: info.srcUrl, referer: pageUrl }, "menu");
       case MENU.page:
         return sendToFetchJet({ url: pageUrl }, "menu");
+      case MENU.course:
+        return downloadItem({ kind: "course" }, tab);
+      case MENU.playlist: {
+        const list = tab && tab.id != null ? await listUrlForTab(tab.id) : null;
+        return list ? downloadItem({ kind: "playlist", url: list.url }, tab) : null;
+      }
       case MENU.allLinks:
         return collectAndSendLinks(tab, { selectionOnly: false, frameId: info.frameId });
       case MENU.selectionLinks:
@@ -1250,7 +1322,33 @@ async function collectAndSendLinks(tab, { selectionOnly = false, frameId } = {})
     await notify(selectionOnly ? fjT("notifyNoLinksSelection") : fjT("notifyNoLinksPage"));
     return { ok: false, count: 0 };
   }
-  return sendBatchToFetchJet(links, tab.url || "");
+  return sendBatchToFetchJet(links, tab.url || "", await tabGroupName(tab));
+}
+
+/**
+ * The folder name for a page's links in the app: the page's own name from its title without
+ * the site's name and the description ("GitHub - owner/speed-test-files: Collection of..." ->
+ * "speed-test-files"), else the last part of its address, else the site.
+ */
+async function tabGroupName(tabOrId) {
+  let tab = tabOrId;
+  if (typeof tabOrId === "number") { try { tab = await api.tabs.get(tabOrId); } catch (_) { tab = null; } }
+  if (!tab) return "";
+  let url = null;
+  try { url = new URL(tab.url); } catch (_) {}
+  const host = url ? url.hostname.replace(/^www\./, "") : "";
+  const site = host.split(".").slice(-2, -1)[0] || host;
+  const title = (tab.title || "").trim();
+  if (title && !/^https?:\/\//i.test(title)) {
+    const parts = title.split(/\s+[-|·—–]\s+/).map(p => p.trim()).filter(Boolean)
+      .filter(p => p.toLowerCase().replace(/\s+/g, "") !== site.toLowerCase() && p.toLowerCase() !== host.toLowerCase());
+    let name = (parts[0] || "").split(/:\s/)[0].trim();
+    if (/^[\w.-]+\/[\w.-]+$/.test(name)) name = name.split("/")[1]; // owner/repo
+    if (name) return name.slice(0, 80);
+  }
+  const last = url ? url.pathname.split("/").filter(Boolean).pop() : "";
+  if (last) { try { return decodeURIComponent(last).slice(0, 80); } catch (_) { return last.slice(0, 80); } }
+  return host;
 }
 
 async function sendDetectedMedia(tabId) {
@@ -1258,7 +1356,7 @@ async function sendDetectedMedia(tabId) {
   const all = await sessionGet(MEDIA_KEY);
   const items = Object.values(all[tabId] || {});
   if (items.length === 0) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
-  return sendBatchToFetchJet(items.map(i => ({ url: i.url, referer: i.pageUrl, fileName: i.name })));
+  return sendBatchToFetchJet(items.map(i => ({ url: i.url, referer: i.pageUrl, fileName: i.name })), "", await tabGroupName(tabId));
 }
 
 /**
@@ -1306,7 +1404,7 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return sendToFetchJet({ url: request.url, referer, fileName: request.fileName || "" }, "message");
       }
       case "sendBatch":
-        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "");
+        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "", sender.tab ? await tabGroupName(sender.tab) : "");
       case "sendDetectedMedia":
         return sendDetectedMedia(request.tabId);
       case "collectAndSendLinks": {
@@ -1335,6 +1433,10 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       case "getItems": {
         const tabId = request.tabId != null ? request.tabId : (sender.tab && sender.tab.id);
         if (tabId != null) { try { const t = await api.tabs.get(tabId); ensureYoutubeResolved(tabId, t.url); } catch (_) {} }
+        if (tabId != null && typeof request.videoPage === "boolean" && sender.tab) {
+          videoPages.set(tabId, request.videoPage);
+          refreshMenus(tabId).catch(() => {});
+        }
         return itemsForTab(tabId);
       }
       case "downloadItem": {

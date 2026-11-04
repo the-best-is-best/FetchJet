@@ -129,6 +129,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleAddDialog -> {
 
+            if (!event.show) _uiState.update { it.copy(linkListFolder = "") }
             if (!event.show && pendingExternalUrl != null) {
                 val urlToFallback = pendingExternalUrl!!
                 pendingExternalUrl = null
@@ -231,6 +232,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             st.copy(linkList = st.linkList.map { it.copy(isSelected = event.selected) })
         }
 
+        is DashboardUiEvent.OnLinkListFolderChanged -> _uiState.update { it.copy(linkListFolder = event.name) }
+
         is DashboardUiEvent.OnLinkListQualitySelected -> _uiState.update { st ->
             st.copy(linkList = st.linkList.mapIndexed { i, entry ->
                 if (i != event.linkIndex) entry
@@ -262,6 +265,10 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnPlaylistSelectAll -> _uiState.update { st ->
             val pl = st.inspectedPlaylist ?: return@update st
             st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map { it.copy(isSelected = event.selected) }))
+        }
+
+        is DashboardUiEvent.OnPlaylistFolderChanged -> _uiState.update {
+            it.copy(inspectedPlaylist = it.inspectedPlaylist?.copy(folderName = event.name))
         }
 
         is DashboardUiEvent.OnPlaylistQualityChanged -> _uiState.update {

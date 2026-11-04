@@ -192,6 +192,11 @@ object PersianProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "فرمت: $format$details"
     override val inspectingVideoQualities = "در حال بررسی کیفیت‌های ویدیو..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "در حال خواندن درس‌های دوره: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "افزونه مرورگر آن‌ها را در زبانه دوره می‌خواند: آن را باز نگه دارید"
     override val inspectingVideoQualitiesHint =
         "در حال جستجوی رزولوشن‌های ویدیو و جریان‌های صوتی موجود"
     override val videoInspectionFailed = "بررسی ویدیو ناموفق بود"
@@ -258,6 +263,9 @@ object PersianProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "لیست پخش · $videos ویدیو · $selected انتخاب‌شده"
 
+    override val playlistFolder = "ذخیره در پوشه"
+    override val playlistFolderHint =
+        "همه فایل‌ها در این پوشه ذخیره می‌شوند. برای ذخیره مستقیم خالی‌اش کنید."
     override val qualityForAllVideos = "کیفیت برای همه ویدیوها"
     override val qualityForAllVideosHint =
         "اگر ویدیویی این کیفیت را نداشته باشد، نزدیک‌ترین کیفیت پایین‌تر انتخاب می‌شود."

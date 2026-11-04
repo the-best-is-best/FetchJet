@@ -183,6 +183,8 @@ object KoreanProvider : AppLocalization {
     override fun selectedOfAvailable(selected: Int, total: Int) = "선택: ${total}개 중 ${selected}개"
     override fun qualityFormatLine(format: String, details: String) = "형식: $format$details"
     override val inspectingVideoQualities = "동영상 화질 분석 중..."
+    override fun readingCourseLectures(done: Int, total: Int) = "강좌 강의를 읽는 중: ${done} / ${total}"
+    override val readingCourseLecturesHint = "브라우저 확장 프로그램이 강좌 탭에서 읽고 있습니다: 탭을 열어 두세요"
     override val inspectingVideoQualitiesHint = "사용 가능한 해상도와 오디오 스트림을 확인하는 중"
     override val videoInspectionFailed = "동영상 분석 실패"
     override val addRetryInspection = "다시 분석"
@@ -247,6 +249,8 @@ object KoreanProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "재생목록 · 동영상 ${videos}개 · ${selected}개 선택됨"
 
+    override val playlistFolder = "폴더에 저장"
+    override val playlistFolderHint = "모든 파일이 이 폴더에 저장됩니다. 비우면 바로 저장합니다."
     override val qualityForAllVideos = "모든 동영상의 화질"
     override val qualityForAllVideosHint = "해당 화질이 없는 동영상은 가장 가까운 낮은 화질로 받습니다."
     override val downloadOnlyThisVideo = "대신 이 동영상만 다운로드"

@@ -509,6 +509,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     inspectedTorrentFiles = state.inspectedTorrentFiles,
                     inspectError = state.inspectError,
                     isInspectingMedia = state.isInspectingMedia,
+                    courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
@@ -626,6 +627,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         )
                     },
                     onPlaylistUseSingleVideo = { viewModel.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo) },
+                    onPlaylistFolderChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnPlaylistFolderChanged(
+                                it
+                            )
+                        )
+                    },
                     linkList = state.linkList,
                     onLinkListEntryToggled = { i, on ->
                         viewModel.onEvent(
@@ -638,6 +646,14 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     onLinkListSelectAll = {
                         viewModel.onEvent(
                             DashboardUiEvent.OnLinkListSelectAll(
+                                it
+                            )
+                        )
+                    },
+                    linkListFolder = state.linkListFolder,
+                    onLinkListFolderChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListFolderChanged(
                                 it
                             )
                         )

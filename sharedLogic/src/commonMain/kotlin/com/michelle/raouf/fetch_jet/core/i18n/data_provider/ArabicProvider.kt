@@ -202,6 +202,10 @@ object ArabicProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "الصيغة: $format$details"
     override val inspectingVideoQualities = "جارٍ فحص جودات الفيديو..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "جارٍ قراءة محاضرات الكورس: ${done} / ${total}"
+
+    override val readingCourseLecturesHint = "إضافة المتصفح تقرأها في تبويب الكورس: اتركه مفتوحًا"
     override val inspectingVideoQualitiesHint = "جارٍ البحث عن دقات الفيديو ومسارات الصوت المتاحة"
     override val videoInspectionFailed = "فشل فحص الفيديو"
     override val addRetryInspection = "إعادة الفحص"
@@ -276,6 +280,8 @@ object ArabicProvider : AppLocalization {
             "فيديو"
         ) + " · المحدد $selected"
 
+    override val playlistFolder = "الحفظ في مجلد"
+    override val playlistFolderHint = "كل الملفات تُحفظ في هذا المجلد. امسح الاسم لحفظها مباشرة."
     override val qualityForAllVideos = "الجودة لكل الفيديوهات"
     override val qualityForAllVideosHint =
         "إذا لم تتوفر هذه الجودة في فيديو ما، تُختار أقرب جودة أقل منها."

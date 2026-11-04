@@ -19,7 +19,12 @@ data class ExternalDownloadRequest(
     /** [url] is a captured video-only stream and this its audio: download both, merge them. */
     val audioUrl: String = "",
     /** The videos of [url] as the extension read them (a Udemy course): listed without yt-dlp. */
-    val playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null
+    val playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    /** The extension is still reading [url]'s videos: done / total, or the reason it failed. */
+    val reading: Pair<Int, Int>? = null,
+    val readingFailed: String = "",
+    /** Several links of one page ("Download all links"): the page's name, their folder. */
+    val group: String = ""
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {

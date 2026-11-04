@@ -328,10 +328,30 @@ internal fun DashboardViewModel.addPlaylist(
     }
     val quality = if (playlist.fromBrowser)
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST else state.playlistQuality
-    val destDir =
+    val chosenDir =
         state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+    // Like a torrent: the videos get a folder of their own, named after the list, under the
+    // chosen folder (and under its type folder when "Sort into folders" is on).
+    val folder = queueRepository.pathResolver.sanitizeFileName(
+        (playlist.folderName ?: playlist.title).trim()
+    ).trim().trimEnd('.')
+    val typeDir =
+        if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value)
+            com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
+                "video.${quality.extension}", isMedia = true, isTorrent = false
+            )?.let { sub ->
+                val trimmed = chosenDir.trimEnd('/', '\\')
+                val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
+                if (known.any { trimmed.endsWith("/$it") || trimmed.endsWith("\\$it") }) chosenDir else "$trimmed/$sub"
+            } ?: chosenDir
+        else chosenDir
+    val destDir = if (folder.isBlank()) chosenDir else "${typeDir.trimEnd('/', '\\')}/$folder"
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
+        if (folder.isNotBlank()) try {
+            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+        } catch (_: Exception) {
+        }
         var added = 0
         var failed = 0
         val usedNames = mutableSetOf<String>()
@@ -379,7 +399,8 @@ internal fun DashboardViewModel.addPlaylist(
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
                 forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
                 scheduledAtMs = state.scheduleStartMs,
-                requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap()
+                requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap(),
+                sortByType = folder.isBlank()
             ).onSuccess { added++ }.onFailure { failed++ }
         }
         _uiState.update {
@@ -445,10 +466,17 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOneLink) }
         return
     }
-    val destDir =
+    val chosenDir =
         state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+    val folder = queueRepository.pathResolver.sanitizeFileName(state.linkListFolder.trim()).trim()
+        .trimEnd('.')
+    val destDir = if (folder.isBlank()) chosenDir else "${chosenDir.trimEnd('/', '\\')}/$folder"
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
+        if (folder.isNotBlank()) try {
+            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+        } catch (_: Exception) {
+        }
         val existing = queueRepository.allTasksFlow.value
         var added = 0
         var skipped = 0
@@ -478,13 +506,15 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
                 maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
                 forcedEngineType = entry.engine,
-                scheduledAtMs = state.scheduleStartMs
+                scheduledAtMs = state.scheduleStartMs,
+                sortByType = folder.isBlank()
             ).onSuccess { added++ }.onFailure { skipped++ }
         }
         _uiState.update {
             it.copy(
                 inputUrl = "",
                 linkList = emptyList(),
+                linkListFolder = "",
                 fileNameOverride = "",
                 suggestedFileName = "",
                 isLoading = false,

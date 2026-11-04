@@ -2,13 +2,10 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
-
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
-
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
-
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.tbib.kmp_localization.LocalizationManager
 
 
 enum class DashboardTab {
@@ -124,6 +121,8 @@ data class DashboardUiState(
     val inspectError: String? = null,
 
     val isInspectingMedia: Boolean = false,
+    /** The browser extension is reading a course's lectures: done / total, null when not. */
+    val courseReading: Pair<Int, Int>? = null,
 
     val inspectedMediaTitle: String? = null,
     /** Name FetchJet would give the file (shown in the Add dialog's "File name" box). */
@@ -183,6 +182,8 @@ data class DashboardUiState(
     /** A playlist / channel link: its videos (null = a single video). */
     val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
     val linkList: List<LinkListEntry> = emptyList(),
+    /** The folder the list's downloads go into, under the chosen one ("" = none). */
+    val linkListFolder: String = "",
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
@@ -227,6 +228,7 @@ sealed interface DashboardUiEvent {
     data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
     data class OnPlaylistEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnPlaylistFolderChanged(val name: String) : DashboardUiEvent
     data class OnPlaylistQualityChanged(val quality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) :
         DashboardUiEvent
 
@@ -234,6 +236,7 @@ sealed interface DashboardUiEvent {
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
     data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnLinkListFolderChanged(val name: String) : DashboardUiEvent
     data class OnLinkListTorrentFileToggled(
         val linkIndex: Int,
         val fileIndex: Int,

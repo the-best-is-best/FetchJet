@@ -29,12 +29,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import com.michelle.raouf.fetch_jet.utils.formatSecondsToHhMm
 import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 fun AddDownloadModalDialog(
@@ -50,6 +50,7 @@ fun AddDownloadModalDialog(
     inspectedTorrentFiles: List<TorrentFileEntry>,
     inspectError: String?,
     isInspectingMedia: Boolean,
+    courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
@@ -86,9 +87,12 @@ fun AddDownloadModalDialog(
     onPlaylistSelectAll: (Boolean) -> Unit = {},
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit = {},
+    onPlaylistFolderChanged: (String) -> Unit = {},
     linkList: List<com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry> = emptyList(),
     onLinkListEntryToggled: (Int, Boolean) -> Unit = { _, _ -> },
     onLinkListSelectAll: (Boolean) -> Unit = {},
+    linkListFolder: String = "",
+    onLinkListFolderChanged: (String) -> Unit = {},
     onLinkListTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     onLinkListTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
@@ -321,6 +325,8 @@ fun AddDownloadModalDialog(
                         links = linkList,
                         onToggled = onLinkListEntryToggled,
                         onSelectAll = onLinkListSelectAll,
+                        folder = linkListFolder,
+                        onFolderChanged = onLinkListFolderChanged,
                         onTorrentFileToggled = onLinkListTorrentFileToggled,
                         onTorrentFilePriority = onLinkListTorrentFilePriority,
                         onTorrentSelectAll = onLinkListTorrentSelectAll,
@@ -348,6 +354,7 @@ fun AddDownloadModalDialog(
                     inputUrl = inputUrl,
                     detectedEngine = detectedEngine,
                     isInspectingMedia = isInspectingMedia,
+                    courseReading = courseReading,
                     inspectedMediaQualities = inspectedMediaQualities,
                     inspectMediaError = inspectMediaError,
                     isYtDlpInstalled = isYtDlpInstalled,
@@ -372,6 +379,7 @@ fun AddDownloadModalDialog(
                     onPlaylistSelectAll = onPlaylistSelectAll,
                     onPlaylistQualityChanged = onPlaylistQualityChanged,
                     onPlaylistUseSingleVideo = onPlaylistUseSingleVideo,
+                    onPlaylistFolderChanged = onPlaylistFolderChanged,
                     showStartTimePickerState = showStartTimePickerState,
                     showEndTimePickerState = showEndTimePickerState,
                     fullVideoDurationHhMm = fullVideoDurationHhMm,
@@ -400,7 +408,7 @@ fun AddDownloadModalDialog(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                if (!showsLinkList) FileNameSection(
+                if (!showsLinkList && inspectedPlaylist == null) FileNameSection(
                     suggestedFileName = suggestedFileName,
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,

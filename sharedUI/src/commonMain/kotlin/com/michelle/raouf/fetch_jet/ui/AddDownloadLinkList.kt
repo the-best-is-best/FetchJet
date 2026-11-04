@@ -47,6 +47,8 @@ internal fun LinkListSection(
     links: List<LinkListEntry>,
     onToggled: (Int, Boolean) -> Unit,
     onSelectAll: (Boolean) -> Unit,
+    folder: String = "",
+    onFolderChanged: (String) -> Unit = {},
     onTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     onTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
@@ -71,6 +73,18 @@ internal fun LinkListSection(
             )
         }
     }
+    FetchJetTextField(
+        value = folder,
+        onValueChange = onFolderChanged,
+        label = LocalizationManager.Strings.playlistFolder,
+        leading = { Text("📁", fontSize = 14.sp) }
+    )
+    Text(
+        text = LocalizationManager.Strings.playlistFolderHint,
+        fontSize = 10.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+    )
     Surface(
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),

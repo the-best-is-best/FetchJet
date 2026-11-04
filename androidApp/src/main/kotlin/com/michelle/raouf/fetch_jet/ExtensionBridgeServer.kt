@@ -413,7 +413,9 @@ object ExtensionBridgeServer {
                         )
                     }
                     val dedupeKey =
-                        req.url + "|" + (obj.getString("formatId") ?: "") + "|" + req.openClip
+                        req.url + "|" + (obj.getString("formatId")
+                            ?: "") + "|" + req.openClip + "|" + req.reading + "|" + req.readingFailed + "|" + (req.playlist?.entries?.size
+                            ?: 0)
                     val now = System.currentTimeMillis()
                     val repeat = synchronized(recentAdds) {
                         recentAdds.entries.removeAll { now - it.value > 5_000 }
@@ -520,7 +522,14 @@ object ExtensionBridgeServer {
             audioUrl = getString("audioUrl")?.trim().orEmpty(),
             playlist = com.michelle.raouf.fetch_jet.feature.media_extractor.parseExternalPlaylist(
                 this["playlist"]
-            )
+            ),
+            reading = (this["reading"] as? Map<*, *>)?.let { r ->
+                val done = (r["done"] as? Number)?.toInt() ?: return@let null
+                val total = (r["total"] as? Number)?.toInt() ?: return@let null
+                done.coerceAtLeast(0) to total.coerceAtLeast(0)
+            },
+            readingFailed = getString("readingFailed")?.trim().orEmpty().take(300),
+            group = getString("group")?.trim().orEmpty().take(150)
         )
     }
 

@@ -193,6 +193,11 @@ object JapaneseProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "形式: ${format}${details}"
     override val inspectingVideoQualities = "動画の画質を解析中..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "コースのレクチャーを読み取り中: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "ブラウザ拡張機能がコースのタブで読み取っています: タブを開いたままにしてください"
     override val inspectingVideoQualitiesHint = "利用可能な解像度と音声ストリームを確認しています"
     override val videoInspectionFailed = "動画の解析に失敗しました"
     override val addRetryInspection = "再解析"
@@ -258,6 +263,9 @@ object JapaneseProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "プレイリスト · 動画 ${videos} 本 · ${selected} 本選択"
 
+    override val playlistFolder = "フォルダーに保存"
+    override val playlistFolderHint =
+        "すべてのファイルがこのフォルダーに入ります。空にすると直接保存します。"
     override val qualityForAllVideos = "すべての動画の画質"
     override val qualityForAllVideosHint = "その画質がない動画は、最も近い低い画質になります。"
     override val downloadOnlyThisVideo = "代わりにこの動画だけをダウンロード"

@@ -166,6 +166,8 @@ interface AppLocalization : LocalizationProvider {
     fun qualityFormatLine(format: String, details: String): String
     val inspectingVideoQualities: String
     val inspectingVideoQualitiesHint: String
+    fun readingCourseLectures(done: Int, total: Int): String
+    val readingCourseLecturesHint: String
     val videoInspectionFailed: String
     val addRetryInspection: String
     val mediaEngineStarting: String
@@ -216,6 +218,8 @@ interface AppLocalization : LocalizationProvider {
     fun linkListYouTubeVideo(id: String): String
     fun playlistSummary(videos: Int, selected: Int): String
     val qualityForAllVideos: String
+    val playlistFolder: String
+    val playlistFolderHint: String
     val qualityForAllVideosHint: String
     val downloadOnlyThisVideo: String
     val whenToStart: String

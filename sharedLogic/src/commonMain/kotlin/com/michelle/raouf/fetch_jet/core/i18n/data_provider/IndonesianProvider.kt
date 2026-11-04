@@ -193,6 +193,11 @@ object IndonesianProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "Format: $format$details"
     override val inspectingVideoQualities = "Memeriksa kualitas video..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Membaca materi kursus: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "Ekstensi browser membacanya di tab kursus: biarkan tetap terbuka"
     override val inspectingVideoQualitiesHint =
         "Memindai resolusi video dan aliran audio yang tersedia"
     override val videoInspectionFailed = "Pemeriksaan video gagal"
@@ -259,6 +264,9 @@ object IndonesianProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "Playlist · $videos video · $selected dipilih"
 
+    override val playlistFolder = "Simpan di folder"
+    override val playlistFolderHint =
+        "Setiap file masuk ke folder ini. Kosongkan untuk menyimpannya langsung."
     override val qualityForAllVideos = "Kualitas untuk semua video"
     override val qualityForAllVideosHint =
         "Jika video tidak punya kualitas ini, dipilih kualitas lebih rendah yang terdekat."

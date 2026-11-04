@@ -451,6 +451,7 @@ class QueueManagerRepository(
          *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
         clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap(),
+        sortByType: Boolean = true,
         /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
         scheduledAtMs: Long = 0L,
         /** Connections for a direct download; 0 = app setting / automatic. */
@@ -516,7 +517,7 @@ class QueueManagerRepository(
             if (!customDestinationPath.isNullOrBlank()) customDestinationPath else pathResolver.getDownloadsDirectory()
         // "Sort into folders": Video / Music / Archives / ... under the chosen folder, by file type.
         val destDir =
-            if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
+            if (sortByType && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
                 val nameForType = (customFileName ?: torrentName ?: targetUrl.substringBefore('?')
                     .substringAfterLast('/'))
                 com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(

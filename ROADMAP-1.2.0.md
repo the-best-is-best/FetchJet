@@ -339,10 +339,43 @@ Open, owner's decision:
   videos for one. Owner-verified in Edge (2026-11-04): a 182-video playlist opened in the Add
   dialog with its videos and the quality row. Reading a list now passes the site's cookies to
   yt-dlp (`inspectPlatformPlaylist(url, headers)` on all three platforms), for lists that need
-  a login. A whole Udemy course was tried the same way (2026-11-04, owner's course, cookies from
-  the extension) and dropped: yt-dlp's `udemy:course` got 403 with the cookies and "Unable to
-  extract course id" without them (Udemy is behind Cloudflare; many courses are DRM too).
-  Single lectures still go through the normal page path.
+  a login. A whole Udemy course through yt-dlp failed (`udemy:course`: 403 from Cloudflare with
+  the cookies, "Unable to extract course id" without them), so the extension reads the course
+  itself: on a `udemy.com/course/<name>/...` page "Download the whole course" (popup, page
+  button and right-click; kind `course`, only when `/config` says `"coursePlaylist":true`)
+  runs `readUdemyCourseInPage` in the page (`world: "MAIN"`, the page's own login): the
+  curriculum (`api-2.0/courses/<id>/subscriber-curriculum-items`), then each lecture's
+  `media_sources` / `stream_urls` (4 at a time), HLS first, else the biggest mp4; DRM lectures
+  are skipped and counted (notification). The request carries `playlist: {title, entries}`
+  (`parseExternalPlaylist`, desktop + Android bridges); the app shows it as a playlist without
+  yt-dlp (`MediaPlaylist.fromBrowser`, no quality row) and queues each lecture: HLS -> own HLS
+  engine (best rendition), mp4 -> plain download, names `001 - <title>.mp4`.
+  The right-click menu now fits the page (`refreshMenus`): course page -> the course; YouTube
+  list -> list + video; a video page (`VIDEO_PAGE`, reported by content.js) or one that played
+  media -> the video ("Download this video with FetchJet", "(yt-dlp)" dropped); any other page
+  -> all links. Owner-verified in Edge (2026-11-04) on his course (172 lectures). The reading
+  shows in the app: the extension reads 12 lectures per `executeScript` and sends
+  `/add` with `reading: {done, total}` (or `readingFailed`) between them; the Add dialog opens at
+  once with "Reading the course lectures: 24 / 172" (`courseReading` in the UI state,
+  `showCourseReading`, `readingCourseLectures*` strings) until the list arrives. A browser-read
+  list shows each row as its file name (`001 - <title>.mp4`, no index column) and the dialog's
+  single "File name" box is hidden for every playlist. Owner-verified in Edge (2026-11-04). Not
+  checked: Android (code built), Firefox, a course with DRM lectures, links expiring in a long
+  queue.
+  Folders, like a torrent (2026-11-04): every playlist (YouTube, SoundCloud, Udemy, any yt-dlp
+  list) goes into `<chosen>/<list title>/` (`<chosen>/Video/<title>/` with "Sort into folders";
+  `MediaPlaylist.folderName`, "Save in folder" field in the list, empty = no folder,
+  `enqueueTask(sortByType = false)`). "Download all links" / selected links / detected media
+  with 2+ files go into a folder named after the page: the extension sends `group`
+  (`tabGroupName`: the title without the site name and description, "GitHub - o/speed-test-files:
+  ..." -> `speed-test-files`; else the last address part), the app falls back to the referer's
+  last path part. Owner-verified in Edge on the GitHub speed-test-files page.
+  The Add dialog's link list has the same "Save in folder" field (`linkListFolder`), filled
+  with the page's name for 2+ media pages from the browser (SoundCloud tracks). With cookies,
+  yt-dlp now reads SoundCloud's `discover/sets/personalized-tracks::...` but gives only track
+  ids (no names): a list where most entries have no name (`PlaylistEntry.titled`) opens as the
+  link list instead (each track read with its name and quality), folder = the list's title.
+  Owner-verified in Edge (2026-11-04) on "Related tracks".
 - [x] Merge a captured video-only + audio-only pair inside the app.
   Done 2026-11-04. Only the extension's captured YouTube streams were ever split (shown before
   the app's qualities arrive, or with "Ask FetchJet for video qualities automatically" off); the

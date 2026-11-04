@@ -12,14 +12,18 @@ data class PlaylistEntry(
     val title: String,
     val url: String,
     val durationSeconds: Long = 0L,
-    val isSelected: Boolean = true
+    val isSelected: Boolean = true,
+    /** yt-dlp gave the video's name (false: only its id, e.g. SoundCloud's personal lists). */
+    val titled: Boolean = true
 )
 
 data class MediaPlaylist(
     val title: String,
     val entries: List<PlaylistEntry>,
     /** Read by the browser extension: the entries are the videos' own stream links. */
-    val fromBrowser: Boolean = false
+    val fromBrowser: Boolean = false,
+    /** The folder the videos go into, under the chosen one; null = the title, "" = none. */
+    val folderName: String? = null
 )
 
 /**
@@ -124,7 +128,8 @@ fun parsePlaylistJson(output: String): MediaPlaylist? {
                 index = entries.size,
                 title = title.ifBlank { id.ifBlank { "Video ${entries.size + 1}" } },
                 url = link,
-                durationSeconds = e.getLong("duration") ?: 0L
+                durationSeconds = e.getLong("duration") ?: 0L,
+                titled = title.isNotBlank()
             )
         )
     }

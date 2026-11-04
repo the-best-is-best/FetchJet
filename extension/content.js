@@ -645,7 +645,7 @@
   } catch (_) {}
   if (TOP) {
     // media / qualities the background found before this script loaded
-    try { api.runtime.sendMessage({ action: "getItems" }).then((r) => { if (r && r.items) update(r.items); }).catch(() => {}); } catch (_) {}
+    try { api.runtime.sendMessage({ action: "getItems", videoPage: isVideoPage(location.href) }).then((r) => { if (r && r.items) update(r.items); }).catch(() => {}); } catch (_) {}
   }
 
   fjOnLanguage(() => { for (const b of bubbles.values()) renderOne(b); });

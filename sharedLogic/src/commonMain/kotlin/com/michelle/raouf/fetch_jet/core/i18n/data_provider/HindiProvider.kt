@@ -190,6 +190,11 @@ object HindiProvider : AppLocalization {
     override fun selectedOfAvailable(selected: Int, total: Int) = "चुने गए: $total में से $selected"
     override fun qualityFormatLine(format: String, details: String) = "फ़ॉर्मेट: $format$details"
     override val inspectingVideoQualities = "वीडियो क्वालिटी की जांच हो रही है..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "कोर्स के लेक्चर पढ़े जा रहे हैं: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "ब्राउज़र एक्सटेंशन इन्हें कोर्स टैब में पढ़ रहा है: टैब खुला रखें"
     override val inspectingVideoQualitiesHint =
         "उपलब्ध वीडियो रिज़ॉल्यूशन और ऑडियो स्ट्रीम खोजी जा रही हैं"
     override val videoInspectionFailed = "वीडियो जांच विफल"
@@ -256,6 +261,9 @@ object HindiProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "प्लेलिस्ट · $videos वीडियो · $selected चुने गए"
 
+    override val playlistFolder = "फ़ोल्डर में सहेजें"
+    override val playlistFolderHint =
+        "हर फ़ाइल इस फ़ोल्डर में जाएगी। सीधे सहेजने के लिए इसे खाली करें।"
     override val qualityForAllVideos = "सभी वीडियो की क्वालिटी"
     override val qualityForAllVideosHint =
         "अगर किसी वीडियो में यह क्वालिटी नहीं है, तो उससे नीचे की सबसे नज़दीकी क्वालिटी ली जाती है।"

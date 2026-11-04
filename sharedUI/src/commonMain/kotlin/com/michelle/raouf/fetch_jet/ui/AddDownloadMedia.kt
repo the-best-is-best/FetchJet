@@ -290,6 +290,7 @@ internal fun MediaInspectionSection(
     inputUrl: String,
     detectedEngine: EngineType,
     isInspectingMedia: Boolean,
+    courseReading: Pair<Int, Int>?,
     inspectedMediaQualities: List<MediaQualityEntry>,
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
@@ -314,6 +315,7 @@ internal fun MediaInspectionSection(
     onPlaylistSelectAll: (Boolean) -> Unit,
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit,
     onPlaylistUseSingleVideo: () -> Unit,
+    onPlaylistFolderChanged: (String) -> Unit,
     showStartTimePickerState: MutableState<Boolean>,
     showEndTimePickerState: MutableState<Boolean>,
     fullVideoDurationHhMm: String,
@@ -327,7 +329,15 @@ internal fun MediaInspectionSection(
     // Media Stream Inspection Section
     if (detectedEngine == EngineType.MEDIA_STREAM) {
         Spacer(modifier = Modifier.height(12.dp))
-        if (isInspectingMedia) {
+        if (courseReading != null) {
+            InspectionLoadingBanner(
+                title = LocalizationManager.Strings.readingCourseLectures(
+                    courseReading.first,
+                    courseReading.second
+                ),
+                subtitle = LocalizationManager.Strings.readingCourseLecturesHint
+            )
+        } else if (isInspectingMedia) {
             InspectionLoadingBanner(
                 title = LocalizationManager.Strings.inspectingVideoQualities,
                 subtitle = LocalizationManager.Strings.inspectingVideoQualitiesHint
@@ -428,6 +438,7 @@ internal fun MediaInspectionSection(
                 onEntryToggled = onPlaylistEntryToggled,
                 onSelectAll = onPlaylistSelectAll,
                 onQualityChanged = onPlaylistQualityChanged,
+                onFolderChanged = onPlaylistFolderChanged,
                 onUseSingleVideo = if (inputUrl.contains("v=") || inputUrl.contains("youtu.be/")) onPlaylistUseSingleVideo else null
             )
         } else if (inspectedMediaQualities.isEmpty()) {

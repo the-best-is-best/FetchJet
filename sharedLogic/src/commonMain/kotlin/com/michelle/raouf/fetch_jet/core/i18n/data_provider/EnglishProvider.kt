@@ -192,6 +192,11 @@ object EnglishProvider : AppLocalization {
 
     override fun qualityFormatLine(format: String, details: String) = "Format: $format$details"
     override val inspectingVideoQualities = "Inspecting Video Qualities..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Reading the course lectures: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "The browser extension reads them in the course tab: keep it open"
     override val inspectingVideoQualitiesHint =
         "Scanning available video resolutions and audio streams"
     override val videoInspectionFailed = "Video Inspection Failed"
@@ -258,6 +263,9 @@ object EnglishProvider : AppLocalization {
     override fun playlistSummary(videos: Int, selected: Int) =
         "Playlist · $videos videos · $selected selected"
 
+    override val playlistFolder = "Save in folder"
+    override val playlistFolderHint =
+        "Every file goes into this folder. Clear it to save them directly."
     override val qualityForAllVideos = "Quality for all videos"
     override val qualityForAllVideosHint =
         "If a video has no such quality, the closest lower one is taken."

@@ -56,6 +56,7 @@ fun PlaylistSelectionCard(
     onEntryToggled: (Int, Boolean) -> Unit,
     onSelectAll: (Boolean) -> Unit,
     onQualityChanged: (PlaylistQuality) -> Unit,
+    onFolderChanged: (String) -> Unit,
     onUseSingleVideo: (() -> Unit)?
 ) {
     val selectedCount = playlist.entries.count { it.isSelected }
@@ -98,6 +99,20 @@ fun PlaylistSelectionCard(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            FetchJetTextField(
+                value = playlist.folderName ?: playlist.title,
+                onValueChange = onFolderChanged,
+                label = LocalizationManager.Strings.playlistFolder,
+                leading = { Text("📁", fontSize = 14.sp) }
+            )
+            Text(
+                text = LocalizationManager.Strings.playlistFolderHint,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
 
             if (!playlist.fromBrowser) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -144,14 +159,14 @@ fun PlaylistSelectionCard(
                             Checkbox(
                                 checked = entry.isSelected,
                                 onCheckedChange = { onEntryToggled(entry.index, it) })
-                            Text(
+                            if (!playlist.fromBrowser) Text(
                                 text = "${entry.index + 1}.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(30.dp)
                             )
                             Text(
-                                text = entry.title,
+                                text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
