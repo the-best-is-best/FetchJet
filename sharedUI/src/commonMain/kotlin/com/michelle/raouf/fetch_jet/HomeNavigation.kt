@@ -39,6 +39,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -329,6 +330,8 @@ private fun SpeedControl(
         else -> com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(limitBytes)
     }
     val capped = limitBytes > 0L && !turtleActive
+    val scheduleCap by com.michelle.raouf.fetch_jet.core.power.SpeedSchedule.activeCap.collectAsState()
+    val scheduled = scheduleCap != null
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -361,6 +364,7 @@ private fun SpeedControl(
                     .padding(horizontal = 9.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (scheduled) Text("🕒 ", fontSize = 11.sp)
                 Text(
                     modeLabel,
                     fontSize = 12.sp,
