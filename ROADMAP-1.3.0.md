@@ -1,9 +1,9 @@
 # FetchJet 1.3.0: work list
 
-Planned after 1.2.0 (not released yet; 1.2.0 stays the active branch for now). These are the
-medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that go *beyond* the
-competitors, kept out of 1.2.0 because they are bigger than the quick wins there (section 8 of
-`ROADMAP-1.2.0.md`). Ordered by value / cost. Mark an item `[x]` when the owner has tested it.
+1.2.0 is released (2026-11-05); this is the active work list now, on branch `release-v1.3.0`. These
+are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that go *beyond* the
+competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
+value / cost. Mark an item `[x]` when the owner has tested it.
 
 ## 1. Subtitles with the video (medium)
 
@@ -82,3 +82,25 @@ was reverted from the 1.2.0 branch and should be redone here.
   control that rewrites each selected audio track's output extension), per the owner's request.
 - [ ] i18n: `audioConvertTo` / `audioOriginal` (and any new strings) in `AppLocalization` + all 15
   providers.
+
+## 6. Release notes in the app's language (small / medium)
+
+Why: the in-app "update available" dialog shows the changelog in English only; the owner wants it in
+the app's own language (asked 2026-11-05 while finishing 1.2.0).
+
+- [ ] The release uploads a notes file per language: `release-notes.md` (English = default /
+  fallback) plus `release-notes-<lang>.md` for the 15 app languages (en ar fr de es pt it ru tr id
+  zh ja ko hi fa). CI just uploads whatever `release-notes*.md` files exist.
+- [ ] `UpdateManager` fetches `release-notes-<AppLanguage code>.md` first, falls back to
+  `release-notes.md` (const `RELEASE_NOTES_FILE`). Keep the `<!-- fetchjet-unchanged: ... -->`
+  marker in every file.
+- [ ] Translate the Highlights into the 15 languages (Claude can produce them; English stays the
+  base).
+- **Note:** only takes effect from the *next* release onward — the pre-update dialog is drawn by the
+  already-installed (old) app, which has no language-aware fetch, so e.g. 1.2.0 → 1.3.0 still shows
+  English; 1.3.0 → 1.4.0 is the first update that can use it.
+
+## Carried over from 1.2.0 (external, waiting)
+
+- [ ] Edge Android listing: waiting for Microsoft's answer. Edge iOS: not tested
+  (see `docs/edge-android-test-cases.docx`).
