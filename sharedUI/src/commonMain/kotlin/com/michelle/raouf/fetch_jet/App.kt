@@ -186,7 +186,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                             speedPresetLowBytes = state.speedPresetLowBytes,
                             speedPresetMediumBytes = state.speedPresetMediumBytes,
-                            speedPresetHighBytes = state.speedPresetHighBytes,
+                            speedPresetFastBytes = state.speedPresetFastBytes,
                             onPickDownloadLimit = {
                                 viewModel.onEvent(
                                     DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
@@ -323,7 +323,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                     downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                                     speedPresetLowBytes = state.speedPresetLowBytes,
                                     speedPresetMediumBytes = state.speedPresetMediumBytes,
-                                    speedPresetHighBytes = state.speedPresetHighBytes,
+                                    speedPresetFastBytes = state.speedPresetFastBytes,
                                     onPickDownloadLimit = {
                                         viewModel.onEvent(
                                             DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
@@ -533,6 +533,14 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     isInspectingMedia = state.isInspectingMedia,
                     courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
+                    inspectedSubtitles = state.inspectedSubtitles,
+                    embedSubtitles = state.embedSubtitles,
+                    onSubtitleToggled = { lang, selected ->
+                        viewModel.onEvent(DashboardUiEvent.OnSubtitleToggled(lang, selected))
+                    },
+                    onToggleEmbedSubtitles = { embed ->
+                        viewModel.onEvent(DashboardUiEvent.OnToggleEmbedSubtitles(embed))
+                    },
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
                     ytDlpStatus = state.ytDlpStatus,

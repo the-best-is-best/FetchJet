@@ -316,15 +316,16 @@ private fun SpeedControl(
     limitBytes: Long,
     lowBytes: Long,
     mediumBytes: Long,
-    highBytes: Long,
+    fastBytes: Long,
     onPick: (Long) -> Unit
 ) {
     val turtleActive = limitBytes == TURTLE_BYTES
+    // High is always Unlimited (no cap = 0 bytes).
     val modeLabel = when (limitBytes) {
-        0L -> "∞"
+        0L -> LocalizationManager.Strings.speedPresetHigh
         lowBytes -> LocalizationManager.Strings.speedPresetLow
         mediumBytes -> LocalizationManager.Strings.speedPresetMedium
-        highBytes -> LocalizationManager.Strings.speedPresetHigh
+        fastBytes -> LocalizationManager.Strings.speedPresetFast
         else -> com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(limitBytes)
     }
     val capped = limitBytes > 0L && !turtleActive
@@ -372,16 +373,16 @@ private fun SpeedControl(
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 val options = listOf(
-                    0L to LocalizationManager.Strings.speedLimitUnlimited,
                     lowBytes to "${LocalizationManager.Strings.speedPresetLow}  ·  ${
                         com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(lowBytes)
                     }",
                     mediumBytes to "${LocalizationManager.Strings.speedPresetMedium}  ·  ${
                         com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(mediumBytes)
                     }",
-                    highBytes to "${LocalizationManager.Strings.speedPresetHigh}  ·  ${
-                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(highBytes)
-                    }"
+                    fastBytes to "${LocalizationManager.Strings.speedPresetFast}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(fastBytes)
+                    }",
+                    0L to "${LocalizationManager.Strings.speedPresetHigh}  ·  ${LocalizationManager.Strings.speedLimitUnlimited}"
                 )
                 options.forEach { (value, label) ->
                     DropdownMenuItem(
@@ -408,8 +409,8 @@ internal fun FjTopBar(
     isDarkMode: Boolean,
     downloadLimitBytes: Long = 0L,
     speedPresetLowBytes: Long = 256L * 1024,
-    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
-    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    speedPresetMediumBytes: Long = 2L * 1024 * 1024,
+    speedPresetFastBytes: Long = 3L * 1024 * 1024,
     onPickDownloadLimit: (Long) -> Unit = {},
     onThemeToggled: () -> Unit,
     onAdd: () -> Unit
@@ -471,7 +472,7 @@ internal fun FjTopBar(
                     downloadLimitBytes,
                     speedPresetLowBytes,
                     speedPresetMediumBytes,
-                    speedPresetHighBytes,
+                    speedPresetFastBytes,
                     onPickDownloadLimit
                 )
                 IconButton(onClick = onThemeToggled) {
@@ -541,7 +542,7 @@ internal fun FjTopBar(
             downloadLimitBytes,
             speedPresetLowBytes,
             speedPresetMediumBytes,
-            speedPresetHighBytes,
+            speedPresetFastBytes,
             onPickDownloadLimit
         )
         IconButton(onClick = onThemeToggled) {
@@ -570,8 +571,8 @@ internal fun FjPhoneHeader(
     isDarkMode: Boolean,
     downloadLimitBytes: Long = 0L,
     speedPresetLowBytes: Long = 256L * 1024,
-    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
-    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    speedPresetMediumBytes: Long = 2L * 1024 * 1024,
+    speedPresetFastBytes: Long = 3L * 1024 * 1024,
     onPickDownloadLimit: (Long) -> Unit = {},
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
@@ -611,7 +612,7 @@ internal fun FjPhoneHeader(
             downloadLimitBytes,
             speedPresetLowBytes,
             speedPresetMediumBytes,
-            speedPresetHighBytes,
+            speedPresetFastBytes,
             onPickDownloadLimit
         )
         var open by remember { mutableStateOf(false) }

@@ -466,6 +466,10 @@ class QueueManagerRepository(
         }
     }
 
+    /** Subtitle tracks the last [inspectMediaQualities] found (for the Add dialog). */
+    val lastMediaSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>
+        get() = mediaEngine.lastSubtitles
+
     /** The videos of a playlist / channel link (null = not a playlist). */
     suspend fun inspectPlaylist(
         url: String,
@@ -497,7 +501,9 @@ class QueueManagerRepository(
         /** Connections for a direct download; 0 = app setting / automatic. */
         maxConnections: Int = 0,
         pairedAudioUrl: String? = null,
-        expectedChecksum: String? = null
+        expectedChecksum: String? = null,
+        subtitleTracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+        embedSubtitles: Boolean = false
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -598,7 +604,9 @@ class QueueManagerRepository(
                 .filterValues { it.isNotBlank() },
             scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
             maxConnections = maxConnections.coerceIn(0, 32),
-            expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() }
+            expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() },
+            subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
+            embedSubtitles = embedSubtitles
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump

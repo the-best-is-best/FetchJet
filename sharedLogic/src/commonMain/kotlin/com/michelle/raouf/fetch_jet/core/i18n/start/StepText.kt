@@ -100,6 +100,7 @@ private fun exact(s: AppLocalization, text: String): String? = when (text.trim()
     "merging audio + video",
     "merging audio & video" -> s.stepMergingAudioVideo
 
+    "subtitles" -> s.subtitlesTitle
     "converting to mp3" -> s.stepConvertingToMp3
     "cutting the clip", "cutting clip" -> s.stepCuttingClip
     "saving to folder" -> s.stepSavingToFolder

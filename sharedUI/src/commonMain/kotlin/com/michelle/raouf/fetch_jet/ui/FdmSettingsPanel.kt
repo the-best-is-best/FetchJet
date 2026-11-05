@@ -96,8 +96,10 @@ fun FdmSettingsPanel(
     speedDisplayUnit: String = "MB/s",
     speedPresetLowBytes: Long = 256L * 1024,
     speedPresetLowUnit: String = "KB/s",
-    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     speedPresetMediumUnit: String = "MB/s",
+    speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    speedPresetFastUnit: String = "MB/s",
     speedPresetHighBytes: Long = 20L * 1024 * 1024,
     speedPresetHighUnit: String = "MB/s",
     ytDlpStatus: String,
@@ -201,6 +203,7 @@ fun FdmSettingsPanel(
                 onDefaultConnectionsChanged,
                 speedPresetLowBytes, speedPresetLowUnit,
                 speedPresetMediumBytes, speedPresetMediumUnit,
+                speedPresetFastBytes, speedPresetFastUnit,
                 speedPresetHighBytes, speedPresetHighUnit,
                 onSpeedPresetChanged
             )

@@ -5,6 +5,7 @@ import com.michelle.raouf.fetch_jet.core.security.Secrets
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -43,7 +44,9 @@ internal data class PersistedTask(
     val scheduledAtMs: Long = 0L,
     val maxConnections: Int = 0,
     val expectedChecksum: String = "",
-    val checksumVerified: String = ""
+    val checksumVerified: String = "",
+    val subtitles: String = "",
+    val embedSubtitles: Boolean = false
 )
 
 internal object TaskCache {
@@ -104,7 +107,14 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     scheduledAtMs = scheduledAtMs,
     maxConnections = maxConnections,
     expectedChecksum = expectedChecksum.orEmpty(),
-    checksumVerified = checksumVerified?.toString().orEmpty()
+    checksumVerified = checksumVerified?.toString().orEmpty(),
+    subtitles = subtitleTracks.joinToString("\u0002") { t ->
+        listOf(
+            t.langCode, t.langName, t.ext,
+            if (t.isAuto) "1" else "0", if (t.isSelected) "1" else "0", sealed(t.url)
+        ).joinToString("\u0001")
+    },
+    embedSubtitles = embedSubtitles
 )
 
 internal fun PersistedTask.toTask(
@@ -161,7 +171,21 @@ internal fun PersistedTask.toTask(
         scheduledAtMs = scheduledAtMs,
         maxConnections = maxConnections,
         expectedChecksum = expectedChecksum.ifBlank { null },
-        checksumVerified = checksumVerified.toBooleanStrictOrNull()
+        checksumVerified = checksumVerified.toBooleanStrictOrNull(),
+        subtitleTracks = subtitles.ifBlank { null }?.split('\u0002')?.mapNotNull { entry ->
+            val f = entry.split('\u0001')
+            val code = f.getOrNull(0)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val url = f.getOrNull(5).orEmpty()
+            SubtitleTrack(
+                langCode = code,
+                langName = f.getOrNull(1).orEmpty().ifBlank { code },
+                ext = f.getOrNull(2).orEmpty(),
+                url = Secrets.reveal(url) ?: url,
+                isAuto = f.getOrNull(3) == "1",
+                isSelected = f.getOrNull(4) != "0"
+            )
+        } ?: emptyList(),
+        embedSubtitles = embedSubtitles
     )
 }
 

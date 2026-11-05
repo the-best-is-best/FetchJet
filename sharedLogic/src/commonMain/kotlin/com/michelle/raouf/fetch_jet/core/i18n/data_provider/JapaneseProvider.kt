@@ -193,6 +193,10 @@ object JapaneseProvider : AppLocalization {
     override val addStartDownload = "ダウンロード開始"
     override val availableAudioFormats = "利用可能な音声形式"
     override val availableQualities = "利用可能な画質"
+    override val subtitlesTitle = "字幕"
+    override val subtitlesAuto = "自動"
+    override val subtitlesEmbedInVideo = "動画に埋め込む"
+    override val subtitlesSeparateFile = "別ファイル"
     override val addSelectAll = "すべて選択"
     override val addClearSelection = "クリア"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -325,8 +329,9 @@ object JapaneseProvider : AppLocalization {
     override val speedLimitUnlimited = "無制限（最大）"
     override val speedPresetsTitle = "速度プリセット"
     override val speedPresetsFooter =
-        "高・中・低それぞれに速度を設定します。ヘッダーからすばやく選べます。カメは常に 512 KB/s です。"
+        "高速・中・低それぞれに速度を設定します。ヘッダーからすばやく選べます。カメは常に 512 KB/s です。"
     override val speedPresetHigh = "高"
+    override val speedPresetFast = "高速"
     override val speedPresetMedium = "中"
     override val speedPresetLow = "低"
     override val checksumLabel = "チェックサム（任意）"

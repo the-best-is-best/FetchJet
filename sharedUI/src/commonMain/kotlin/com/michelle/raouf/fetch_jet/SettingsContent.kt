@@ -23,6 +23,8 @@ internal fun SettingsContentView(
         speedPresetLowUnit = state.speedPresetLowUnit,
         speedPresetMediumBytes = state.speedPresetMediumBytes,
         speedPresetMediumUnit = state.speedPresetMediumUnit,
+        speedPresetFastBytes = state.speedPresetFastBytes,
+        speedPresetFastUnit = state.speedPresetFastUnit,
         speedPresetHighBytes = state.speedPresetHighBytes,
         speedPresetHighUnit = state.speedPresetHighUnit,
         ytDlpStatus = state.ytDlpStatus,

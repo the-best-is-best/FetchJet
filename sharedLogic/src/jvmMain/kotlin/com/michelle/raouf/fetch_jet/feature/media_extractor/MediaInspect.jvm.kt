@@ -130,6 +130,8 @@ actual suspend fun inspectPlatformQualities(
         null
     }
 
+    MediaSubtitleStore.record(url, parseSubtitlesFromRoot(parsedRoot))
+
     val videoTitle = parsedRoot?.getString("title")?.let { decodeUnicodeEscapes(it) }
         ?: Regex(""""title"\s*:\s*"([^"]+)"""").find(output)?.groupValues?.get(1)
             ?.let { decodeUnicodeEscapes(it) }

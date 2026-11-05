@@ -145,8 +145,10 @@ internal fun DownloadsPage(
     onDefaultConnectionsChanged: (Int) -> Unit,
     lowBytes: Long = 256L * 1024,
     lowUnit: String = "KB/s",
-    mediumBytes: Long = 5L * 1024 * 1024,
+    mediumBytes: Long = 2L * 1024 * 1024,
     mediumUnit: String = "MB/s",
+    fastBytes: Long = 3L * 1024 * 1024,
+    fastUnit: String = "MB/s",
     highBytes: Long = 20L * 1024 * 1024,
     highUnit: String = "MB/s",
     onPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> }
@@ -236,13 +238,33 @@ internal fun DownloadsPage(
             footer = LocalizationManager.Strings.speedPresetsFooter
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = LocalizationManager.Strings.speedPresetHigh,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = LocalizationManager.Strings.speedLimitUnlimited,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            SettingDivider()
+            Column(modifier = Modifier.padding(16.dp)) {
                 SpeedPresetRow(
-                    name = LocalizationManager.Strings.speedPresetHigh,
-                    bytes = highBytes,
-                    unit = highUnit,
+                    name = LocalizationManager.Strings.speedPresetFast,
+                    bytes = fastBytes,
+                    unit = fastUnit,
                     onChanged = { b, u ->
                         onPresetChanged(
-                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.HIGH,
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.FAST,
                             b, u
                         )
                     }

@@ -31,6 +31,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import com.michelle.raouf.fetch_jet.utils.formatSecondsToHhMm
 import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
@@ -52,6 +53,10 @@ fun AddDownloadModalDialog(
     isInspectingMedia: Boolean,
     courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
+    inspectedSubtitles: List<SubtitleTrack> = emptyList(),
+    embedSubtitles: Boolean = false,
+    onSubtitleToggled: (String, Boolean) -> Unit = { _, _ -> },
+    onToggleEmbedSubtitles: (Boolean) -> Unit = {},
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
     ytDlpStatus: String = "",
@@ -367,6 +372,10 @@ fun AddDownloadModalDialog(
                     onInspectMedia = onInspectMedia,
                     onMediaQualitySelectionToggled = onMediaQualitySelectionToggled,
                     onSelectAllMediaQualitiesToggled = onSelectAllMediaQualitiesToggled,
+                    inspectedSubtitles = inspectedSubtitles,
+                    embedSubtitles = embedSubtitles,
+                    onSubtitleToggled = onSubtitleToggled,
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles,
                     clipStartTime = clipStartTime,
                     clipEndTime = clipEndTime,
                     isClipRangeEnabled = isClipRangeEnabled,

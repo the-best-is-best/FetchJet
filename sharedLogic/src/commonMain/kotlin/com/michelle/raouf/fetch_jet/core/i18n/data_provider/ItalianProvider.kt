@@ -196,6 +196,10 @@ object ItalianProvider : AppLocalization {
     override val addStartDownload = "Avvia download"
     override val availableAudioFormats = "Formati audio disponibili"
     override val availableQualities = "Qualità disponibili"
+    override val subtitlesTitle = "Sottotitoli"
+    override val subtitlesAuto = "auto"
+    override val subtitlesEmbedInVideo = "Incorpora nel video"
+    override val subtitlesSeparateFile = "File separato"
     override val addSelectAll = "Seleziona tutto"
     override val addClearSelection = "Cancella"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -330,8 +334,9 @@ object ItalianProvider : AppLocalization {
     override val speedLimitUnlimited = "Illimitata (max)"
     override val speedPresetsTitle = "Preimpostazioni di velocità"
     override val speedPresetsFooter =
-        "Imposta una velocità per Alta, Media e Bassa. Scegline una rapidamente dall’intestazione; la tartaruga è sempre 512 KB/s."
+        "Imposta una velocità per Veloce, Media e Bassa. Scegline una rapidamente dall’intestazione; la tartaruga è sempre 512 KB/s."
     override val speedPresetHigh = "Alta"
+    override val speedPresetFast = "Veloce"
     override val speedPresetMedium = "Media"
     override val speedPresetLow = "Bassa"
     override val checksumLabel = "Checksum (facoltativo)"

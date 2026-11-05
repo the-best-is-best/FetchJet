@@ -192,6 +192,10 @@ object EnglishProvider : AppLocalization {
     override val addStartDownload = "Start Download"
     override val availableAudioFormats = "Available Audio Formats"
     override val availableQualities = "Available Qualities"
+    override val subtitlesTitle = "Subtitles"
+    override val subtitlesAuto = "auto"
+    override val subtitlesEmbedInVideo = "Embed in video"
+    override val subtitlesSeparateFile = "Separate file"
     override val addSelectAll = "Select All"
     override val addClearSelection = "Clear"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -326,8 +330,9 @@ object EnglishProvider : AppLocalization {
     override val speedLimitUnlimited = "Unlimited (Max)"
     override val speedPresetsTitle = "Speed presets"
     override val speedPresetsFooter =
-        "Set a speed for High, Medium and Low. Pick one quickly from the header; the turtle is always 512 KB/s."
+        "Set a speed for Fast, Medium and Low. Pick one quickly from the header; the turtle is always 512 KB/s."
     override val speedPresetHigh = "High"
+    override val speedPresetFast = "Fast"
     override val speedPresetMedium = "Medium"
     override val speedPresetLow = "Low"
     override val checksumLabel = "Checksum (optional)"

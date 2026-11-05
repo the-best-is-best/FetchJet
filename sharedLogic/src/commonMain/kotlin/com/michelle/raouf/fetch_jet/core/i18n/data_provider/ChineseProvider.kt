@@ -185,6 +185,10 @@ object ChineseProvider : AppLocalization {
     override val addStartDownload = "开始下载"
     override val availableAudioFormats = "可用音频格式"
     override val availableQualities = "可用画质"
+    override val subtitlesTitle = "字幕"
+    override val subtitlesAuto = "自动"
+    override val subtitlesEmbedInVideo = "嵌入视频"
+    override val subtitlesSeparateFile = "单独文件"
     override val addSelectAll = "全选"
     override val addClearSelection = "清除"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -310,8 +314,9 @@ object ChineseProvider : AppLocalization {
     override val speedLimitUnlimited = "不限速（最快）"
     override val speedPresetsTitle = "速度预设"
     override val speedPresetsFooter =
-        "为「高」「中」「低」各设置一个速度。在顶部快速选择其一；乌龟始终为 512 KB/s。"
+        "为「快」「中」「低」各设置一个速度。在顶部快速选择其一；乌龟始终为 512 KB/s。"
     override val speedPresetHigh = "高"
+    override val speedPresetFast = "快"
     override val speedPresetMedium = "中"
     override val speedPresetLow = "低"
     override val checksumLabel = "校验和（可选）"

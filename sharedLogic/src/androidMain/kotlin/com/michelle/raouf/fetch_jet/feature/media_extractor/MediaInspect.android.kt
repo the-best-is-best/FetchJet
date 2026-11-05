@@ -6,6 +6,7 @@ import com.deniscerri.ytdl.util.FileUtil
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -73,6 +74,41 @@ private fun getCachedContentLength(u: String): Long {
             }
         }
     }
+}
+
+private fun subtitlesFromJson(json: JSONObject): List<SubtitleTrack> {
+    val result = LinkedHashMap<String, SubtitleTrack>()
+    val extPriority = listOf("srt", "vtt", "ass", "ssa")
+    fun ingest(key: String, isAuto: Boolean) {
+        val obj = json.optJSONObject(key) ?: return
+        val langs = obj.keys()
+        while (langs.hasNext()) {
+            val lang = langs.next()
+            if (result.containsKey(lang)) continue
+            val arr = obj.optJSONArray(lang) ?: continue
+            val tracks = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.filter { t ->
+                val u = t.optString("url", "")
+                u.isNotBlank() && !(isAuto && u.contains("tlang="))
+            }
+            if (tracks.isEmpty()) continue
+            val chosen = tracks.minByOrNull {
+                val p = extPriority.indexOf(it.optString("ext", "").lowercase())
+                if (p < 0) extPriority.size else p
+            } ?: tracks.first()
+            val url = chosen.optString("url", "")
+            if (url.isBlank()) continue
+            result[lang] = SubtitleTrack(
+                langCode = lang,
+                langName = chosen.optString("name", "").ifBlank { lang },
+                ext = chosen.optString("ext", "srt").lowercase(),
+                url = url,
+                isAuto = isAuto
+            )
+        }
+    }
+    ingest("subtitles", false)
+    ingest("automatic_captions", true)
+    return result.values.toList()
 }
 
 actual suspend fun inspectPlatformQualities(
@@ -144,6 +180,8 @@ actual suspend fun inspectPlatformQualities(
         } catch (_: Exception) {
             return@withContext emptyList()
         }
+
+        MediaSubtitleStore.record(url, subtitlesFromJson(json))
 
         val videoTitle = json.optString("title").ifBlank { null }
         val videoDuration = json.optLong("duration", 0L)

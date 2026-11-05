@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FetchJet Download Manager",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Send downloads, videos and link lists from Safari to FetchJet, with cookies so logged-in downloads just work.",
   "icons": {
     "16": "icon16.png",

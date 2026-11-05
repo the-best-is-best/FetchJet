@@ -133,6 +133,8 @@ data class DashboardUiState(
     val checksumInput: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
+    val inspectedSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val embedSubtitles: Boolean = false,
 
     val inspectMediaError: String? = null,
 
@@ -199,14 +201,16 @@ data class DashboardUiState(
     /** Named quick speed presets (Settings > Speed), picked fast from the header. */
     val speedPresetLowBytes: Long = 256L * 1024,
     val speedPresetLowUnit: String = "KB/s",
-    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    val speedPresetFastUnit: String = "MB/s",
     val speedPresetHighBytes: Long = 20L * 1024 * 1024,
     val speedPresetHighUnit: String = "MB/s"
 )
 
-/** Which named quick speed preset a setting refers to. */
-enum class SpeedPreset { LOW, MEDIUM, HIGH }
+/** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
+enum class SpeedPreset { LOW, MEDIUM, FAST, HIGH }
 
 
 sealed interface DashboardUiEvent {
@@ -332,6 +336,12 @@ sealed interface DashboardUiEvent {
 
     data class OnSelectAllMediaQualitiesToggled(val selectAll: Boolean) :
 
+        DashboardUiEvent
+
+    data class OnSubtitleToggled(val langCode: String, val isSelected: Boolean) :
+        DashboardUiEvent
+
+    data class OnToggleEmbedSubtitles(val embed: Boolean) :
         DashboardUiEvent
 
     data class OnTorrentFileSelectionToggled(val fileIndex: Int, val isSelected: Boolean) :

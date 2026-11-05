@@ -51,6 +51,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.utils.formatBytes
@@ -207,6 +208,124 @@ internal fun MediaQualitiesSelectionCard(
 }
 
 @Composable
+internal fun SubtitlesSelectionCard(
+    subtitles: List<SubtitleTrack>,
+    embedSubtitles: Boolean,
+    onSubtitleToggled: (String, Boolean) -> Unit,
+    onToggleEmbedSubtitles: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "💬 ${LocalizationManager.Strings.subtitlesTitle}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 120.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(4.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(subtitles, key = { it.langCode }) { sub ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (sub.isSelected) MaterialTheme.colorScheme.primaryContainer.copy(
+                                        alpha = 0.4f
+                                    ) else Color.Transparent
+                                )
+                                .clickable { onSubtitleToggled(sub.langCode, !sub.isSelected) }
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = sub.isSelected,
+                                onCheckedChange = { checked ->
+                                    onSubtitleToggled(sub.langCode, checked)
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color(0xFF0284C7),
+                                    uncheckedColor = Color(0xFF64748B)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = sub.langName,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f, fill = false),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (sub.isAuto) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                ) {
+                                    Text(
+                                        text = LocalizationManager.Strings.subtitlesAuto,
+                                        fontSize = 9.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 4.dp,
+                                            vertical = 1.dp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (subtitles.any { it.isSelected }) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ClipModeOption(
+                        selected = embedSubtitles,
+                        title = LocalizationManager.Strings.subtitlesEmbedInVideo,
+                        lines = emptyList(),
+                        onClick = { onToggleEmbedSubtitles(true) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ClipModeOption(
+                        selected = !embedSubtitles,
+                        title = LocalizationManager.Strings.subtitlesSeparateFile,
+                        lines = emptyList(),
+                        onClick = { onToggleEmbedSubtitles(false) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun QuickTimeChip(
     label: String,
     onClick: () -> Unit
@@ -300,6 +419,10 @@ internal fun MediaInspectionSection(
     onInspectMedia: () -> Unit,
     onMediaQualitySelectionToggled: (Int, Boolean) -> Unit,
     onSelectAllMediaQualitiesToggled: (Boolean) -> Unit,
+    inspectedSubtitles: List<SubtitleTrack>,
+    embedSubtitles: Boolean,
+    onSubtitleToggled: (String, Boolean) -> Unit,
+    onToggleEmbedSubtitles: (Boolean) -> Unit,
     clipStartTime: String,
     clipEndTime: String,
     isClipRangeEnabled: Boolean,
@@ -474,6 +597,16 @@ internal fun MediaInspectionSection(
                 onQualitySelectionToggled = onMediaQualitySelectionToggled,
                 onSelectAll = onSelectAllMediaQualitiesToggled
             )
+
+            if (inspectedSubtitles.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                SubtitlesSelectionCard(
+                    subtitles = inspectedSubtitles,
+                    embedSubtitles = embedSubtitles,
+                    onSubtitleToggled = onSubtitleToggled,
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles
+                )
+            }
 
             // Video/Audio Time Range Trimming Section (Only available when media duration is known!)
             if (mediaDurationSeconds > 0L) {

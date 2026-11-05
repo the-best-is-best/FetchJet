@@ -192,6 +192,10 @@ object PersianProvider : AppLocalization {
     override val addStartDownload = "شروع دانلود"
     override val availableAudioFormats = "فرمت‌های صوتی موجود"
     override val availableQualities = "کیفیت‌های موجود"
+    override val subtitlesTitle = "زیرنویس"
+    override val subtitlesAuto = "خودکار"
+    override val subtitlesEmbedInVideo = "جاسازی در ویدیو"
+    override val subtitlesSeparateFile = "فایل جداگانه"
     override val addSelectAll = "انتخاب همه"
     override val addClearSelection = "پاک کردن"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -326,8 +330,9 @@ object PersianProvider : AppLocalization {
     override val speedLimitUnlimited = "نامحدود (حداکثر)"
     override val speedPresetsTitle = "پیش‌تنظیم‌های سرعت"
     override val speedPresetsFooter =
-        "برای زیاد، متوسط و کم یک سرعت تعیین کنید. از بالا به‌سرعت یکی را انتخاب کنید؛ لاک‌پشت همیشه ۵۱۲ کیلوبایت/ث است."
+        "برای سریع، متوسط و کم یک سرعت تعیین کنید. از بالا به‌سرعت یکی را انتخاب کنید؛ لاک‌پشت همیشه ۵۱۲ کیلوبایت/ث است."
     override val speedPresetHigh = "زیاد"
+    override val speedPresetFast = "سریع"
     override val speedPresetMedium = "متوسط"
     override val speedPresetLow = "کم"
     override val checksumLabel = "جمع کنترلی (اختیاری)"

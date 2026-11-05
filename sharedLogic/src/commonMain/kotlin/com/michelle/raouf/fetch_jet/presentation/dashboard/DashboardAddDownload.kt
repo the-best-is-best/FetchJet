@@ -78,9 +78,18 @@ internal fun DashboardViewModel.addDownload(
 
     val allTasks = queueRepository.allTasksFlow.value
 
-    // 1. Check for duplicate in queue
+    // 1. Check for duplicate in queue. A name the user typed that differs from the existing
+    // task's name means "download it again as a separate file", so it is not a duplicate.
     if (!skipDuplicateCheck) {
-        val duplicate = allTasks.find { isSameDownload(it, url) }
+        val typedBaseName = currentState.fileNameOverride.trim()
+            .takeIf { it.isNotBlank() }
+            ?.substringBeforeLast('.')
+        val duplicate = allTasks.find { task ->
+            isSameDownload(task, url) &&
+                    (typedBaseName == null ||
+                            task.fileName.substringBeforeLast('.')
+                                .equals(typedBaseName, ignoreCase = true))
+        }
         if (duplicate != null) {
             _uiState.update { it.copy(duplicateTaskAlert = duplicate) }
             return
@@ -172,7 +181,9 @@ internal fun DashboardViewModel.addDownload(
             requestHeaders = headersForLink(url),
             scheduledAtMs = currentState.scheduleStartMs,
             maxConnections = currentState.selectedConnections,
-            expectedChecksum = currentState.checksumInput
+            expectedChecksum = currentState.checksumInput,
+            subtitleTracks = currentState.inspectedSubtitles,
+            embedSubtitles = currentState.embedSubtitles
         ).onSuccess { task ->
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()
@@ -192,6 +203,8 @@ internal fun DashboardViewModel.addDownload(
                     inspectedTorrentFiles = emptyList(),
                     inspectedTorrentName = null,
                     inspectedMediaQualities = emptyList(),
+                    inspectedSubtitles = emptyList(),
+                    embedSubtitles = false,
                     inspectedPlaylist = null,
                     inspectedMediaTitle = null,
                     duplicateTaskAlert = null,

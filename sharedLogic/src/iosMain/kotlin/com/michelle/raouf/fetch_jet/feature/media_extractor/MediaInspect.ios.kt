@@ -149,6 +149,9 @@ actual suspend fun inspectPlatformQualities(
             throw Exception("yt-dlp returned no video metadata for this URL")
         }
 
+        @Suppress("UNCHECKED_CAST")
+        MediaSubtitleStore.record(url, parseSubtitlesFromRoot(parsedRoot as? Map<String, Any?>))
+
         val videoTitle = getStringFromMap(parsedRoot, "title")?.let { decodeUnicodeEscapes(it) }
             ?: getStringFromMap(parsedRoot, "fulltitle")?.let { decodeUnicodeEscapes(it) }
             ?: Regex(""""title"\s*:\s*"([^"]+)"""").find(output)?.groupValues?.get(1)

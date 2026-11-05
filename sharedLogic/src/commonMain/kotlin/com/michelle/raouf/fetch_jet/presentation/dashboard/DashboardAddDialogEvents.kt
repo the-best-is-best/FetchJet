@@ -215,6 +215,18 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             }
         }
 
+        is DashboardUiEvent.OnSubtitleToggled -> {
+            _uiState.update { state ->
+                state.copy(inspectedSubtitles = state.inspectedSubtitles.map { s ->
+                    if (s.langCode == event.langCode) s.copy(isSelected = event.isSelected) else s
+                })
+            }
+        }
+
+        is DashboardUiEvent.OnToggleEmbedSubtitles -> {
+            _uiState.update { it.copy(embedSubtitles = event.embed) }
+        }
+
         is DashboardUiEvent.OnClipStartTimeChanged -> {
             _uiState.update { it.copy(clipStartTime = event.time) }
         }

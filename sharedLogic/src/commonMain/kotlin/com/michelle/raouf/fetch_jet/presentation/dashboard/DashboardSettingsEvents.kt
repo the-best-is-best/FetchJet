@@ -67,6 +67,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
             val oldBytes = when (event.preset) {
                 SpeedPreset.LOW -> current.speedPresetLowBytes
                 SpeedPreset.MEDIUM -> current.speedPresetMediumBytes
+                SpeedPreset.FAST -> current.speedPresetFastBytes
                 SpeedPreset.HIGH -> current.speedPresetHighBytes
             }
             _uiState.update {
@@ -81,10 +82,13 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
                         speedPresetMediumUnit = event.unit
                     )
 
-                    SpeedPreset.HIGH -> it.copy(
-                        speedPresetHighBytes = event.bytes,
-                        speedPresetHighUnit = event.unit
+                    SpeedPreset.FAST -> it.copy(
+                        speedPresetFastBytes = event.bytes,
+                        speedPresetFastUnit = event.unit
                     )
+
+                    // HIGH is always Unlimited; it is not edited through this event.
+                    SpeedPreset.HIGH -> it
                 }
             }
             // If this preset is the one currently capping downloads, apply the new value live.

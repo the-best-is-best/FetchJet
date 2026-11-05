@@ -62,6 +62,8 @@ data class DownloadTask(
     val originalUrl: String? = null,
     /** A captured video-only stream's audio stream: both are fetched and merged by ffmpeg. */
     val pairedAudioUrl: String? = null,
+    val subtitleTracks: List<SubtitleTrack> = emptyList(),
+    val embedSubtitles: Boolean = false,
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,

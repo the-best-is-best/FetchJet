@@ -166,6 +166,10 @@ interface AppLocalization : LocalizationProvider {
     val addStartDownload: String
     val availableAudioFormats: String
     val availableQualities: String
+    val subtitlesTitle: String
+    val subtitlesAuto: String
+    val subtitlesEmbedInVideo: String
+    val subtitlesSeparateFile: String
     val addSelectAll: String
     val addClearSelection: String
     fun selectedOfAvailable(selected: Int, total: Int): String
@@ -274,6 +278,7 @@ interface AppLocalization : LocalizationProvider {
     val speedPresetsTitle: String
     val speedPresetsFooter: String
     val speedPresetHigh: String
+    val speedPresetFast: String
     val speedPresetMedium: String
     val speedPresetLow: String
     val checksumLabel: String

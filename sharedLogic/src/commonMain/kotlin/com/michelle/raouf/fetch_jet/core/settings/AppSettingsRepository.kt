@@ -16,8 +16,10 @@ data class AppSettings(
     val language: String = "system",
     val speedPresetLowBytes: Long = 256L * 1024,
     val speedPresetLowUnit: String = "KB/s",
-    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    val speedPresetFastUnit: String = "MB/s",
     val speedPresetHighBytes: Long = 20L * 1024 * 1024,
     val speedPresetHighUnit: String = "MB/s"
 )
@@ -40,6 +42,8 @@ class AppSettingsRepository(
         var lowUnit = "KB/s"
         var mediumBytes = 5L * 1024 * 1024
         var mediumUnit = "MB/s"
+        var fastBytes = 10L * 1024 * 1024
+        var fastUnit = "MB/s"
         var highBytes = 20L * 1024 * 1024
         var highUnit = "MB/s"
 
@@ -69,6 +73,8 @@ class AppSettingsRepository(
                             value.toLongOrNull() ?: mediumBytes
 
                         "speedPresetMediumUnit" -> if (value.isNotBlank()) mediumUnit = value
+                        "speedPresetFastBytes" -> fastBytes = value.toLongOrNull() ?: fastBytes
+                        "speedPresetFastUnit" -> if (value.isNotBlank()) fastUnit = value
                         "speedPresetHighBytes" -> highBytes = value.toLongOrNull() ?: highBytes
                         "speedPresetHighUnit" -> if (value.isNotBlank()) highUnit = value
                     }
@@ -96,6 +102,8 @@ class AppSettingsRepository(
             speedPresetLowUnit = lowUnit,
             speedPresetMediumBytes = mediumBytes,
             speedPresetMediumUnit = mediumUnit,
+            speedPresetFastBytes = fastBytes,
+            speedPresetFastUnit = fastUnit,
             speedPresetHighBytes = highBytes,
             speedPresetHighUnit = highUnit
         )
@@ -117,6 +125,8 @@ class AppSettingsRepository(
                 writeUtf8("speedPresetLowUnit=${settings.speedPresetLowUnit}\n")
                 writeUtf8("speedPresetMediumBytes=${settings.speedPresetMediumBytes}\n")
                 writeUtf8("speedPresetMediumUnit=${settings.speedPresetMediumUnit}\n")
+                writeUtf8("speedPresetFastBytes=${settings.speedPresetFastBytes}\n")
+                writeUtf8("speedPresetFastUnit=${settings.speedPresetFastUnit}\n")
                 writeUtf8("speedPresetHighBytes=${settings.speedPresetHighBytes}\n")
                 writeUtf8("speedPresetHighUnit=${settings.speedPresetHighUnit}\n")
             }

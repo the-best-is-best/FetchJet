@@ -193,6 +193,10 @@ object IndonesianProvider : AppLocalization {
     override val addStartDownload = "Mulai unduh"
     override val availableAudioFormats = "Format audio tersedia"
     override val availableQualities = "Kualitas tersedia"
+    override val subtitlesTitle = "Subtitle"
+    override val subtitlesAuto = "otomatis"
+    override val subtitlesEmbedInVideo = "Sematkan ke video"
+    override val subtitlesSeparateFile = "File terpisah"
     override val addSelectAll = "Pilih semua"
     override val addClearSelection = "Hapus"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -327,8 +331,9 @@ object IndonesianProvider : AppLocalization {
     override val speedLimitUnlimited = "Tanpa batas (maks)"
     override val speedPresetsTitle = "Prasetel kecepatan"
     override val speedPresetsFooter =
-        "Atur kecepatan untuk Tinggi, Sedang, dan Rendah. Pilih salah satu dengan cepat dari header; kura-kura selalu 512 KB/s."
+        "Atur kecepatan untuk Cepat, Sedang, dan Rendah. Pilih salah satu dengan cepat dari header; kura-kura selalu 512 KB/s."
     override val speedPresetHigh = "Tinggi"
+    override val speedPresetFast = "Cepat"
     override val speedPresetMedium = "Sedang"
     override val speedPresetLow = "Rendah"
     override val checksumLabel = "Checksum (opsional)"

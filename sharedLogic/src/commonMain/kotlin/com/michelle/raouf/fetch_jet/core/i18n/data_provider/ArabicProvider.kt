@@ -202,6 +202,10 @@ object ArabicProvider : AppLocalization {
     override val addStartDownload = "بدء التنزيل"
     override val availableAudioFormats = "صيغ الصوت المتاحة"
     override val availableQualities = "الجودات المتاحة"
+    override val subtitlesTitle = "الترجمة"
+    override val subtitlesAuto = "تلقائي"
+    override val subtitlesEmbedInVideo = "دمج في الفيديو"
+    override val subtitlesSeparateFile = "ملف منفصل"
     override val addSelectAll = "تحديد الكل"
     override val addClearSelection = "مسح"
     override fun selectedOfAvailable(selected: Int, total: Int) =
@@ -340,8 +344,9 @@ object ArabicProvider : AppLocalization {
     override val speedLimitUnlimited = "غير محدود (أقصى سرعة)"
     override val speedPresetsTitle = "سرعات جاهزة"
     override val speedPresetsFooter =
-        "حدّد سرعة لكل من عالية ومتوسطة ومنخفضة. اختَر واحدة بسرعة من الأعلى؛ السلحفاة دائمًا 512 ك.ب/ث."
+        "حدّد سرعة لكل من سريعة ومتوسطة ومنخفضة. اختَر واحدة بسرعة من الأعلى؛ السلحفاة دائمًا 512 ك.ب/ث."
     override val speedPresetHigh = "عالية"
+    override val speedPresetFast = "سريعة"
     override val speedPresetMedium = "متوسطة"
     override val speedPresetLow = "منخفضة"
     override val checksumLabel = "بصمة الملف (اختياري)"

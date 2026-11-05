@@ -8,7 +8,7 @@ package com.michelle.raouf.fetch_jet.core.update
  * update check, the installers and the GitHub release always agree.
  * (iOS: keep MARKETING_VERSION in iosApp/Configuration/Config.xcconfig the same.)
  */
-const val APP_VERSION = "1.2.0"
+const val APP_VERSION = "1.3.0"
 
 /** GitHub repository whose published releases are the updates. */
 const val UPDATE_REPOSITORY = "the-best-is-best/FetchJet"
