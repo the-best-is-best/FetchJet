@@ -16,6 +16,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.tbib.kmp_localization.LocalizationManager
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -34,7 +37,7 @@ actual class DownloadNotificationManager actual constructor() {
     companion object {
         const val CHANNEL_ID = "fetchjet_downloads_channel"
         const val OLD_CHANNEL_ID = "fetch_jet_downloads_channel"
-        const val CHANNEL_NAME = "FetchJet Downloads"
+        val CHANNEL_NAME: String get() = LocalizationManager.Strings.sysDownloadsChannelName
         const val FOREGROUND_NOTIFICATION_ID = 99999
 
         // Deterministic ordered list of task IDs: new tasks append to the end.
@@ -43,6 +46,12 @@ actual class DownloadNotificationManager actual constructor() {
         private val taskDataMap = ConcurrentHashMap<String, LiveTaskItem>()
 
         private var lastUpdateTime = 0L
+
+        /** show / cancel never interleave: a cancel cannot be undone by a notify in flight. */
+        private val lock = Any()
+
+        /** A download is still on the card (the service, restarted by Android, checks this). */
+        fun hasActiveTasks(): Boolean = taskOrderList.any { taskDataMap[it]?.isCompleted == false }
 
         @Volatile
         var appContext: Context? = null
@@ -87,7 +96,7 @@ actual class DownloadNotificationManager actual constructor() {
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_LOW
                 ).apply {
-                    description = "Shows real-time Live Activity download updates"
+                    description = LocalizationManager.Strings.sysDownloadsChannelDescription
                     setShowBadge(false)
                 }
                 notificationManager.createNotificationChannel(channel)
@@ -111,8 +120,8 @@ actual class DownloadNotificationManager actual constructor() {
             // Fallback for versions that don't support Live Activity (< Android 8.0)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                 return NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setContentTitle("FetchJet Downloader")
-                    .setContentText("التطبيق يعمل في الخلفية")
+                    .setContentTitle(LocalizationManager.Strings.sysNotificationAppTitle)
+                    .setContentText(LocalizationManager.Strings.sysAppRunningInBackground)
                     .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setOngoing(true)
                     .setContentIntent(pendingIntent)
@@ -158,7 +167,8 @@ actual class DownloadNotificationManager actual constructor() {
                     val collapsed = RemoteViews(pkg, collapsedLayoutId)
                     val expanded = RemoteViews(pkg, expandedLayoutId)
 
-                    val topTaskName = tasksSnapshot.firstOrNull()?.fileName ?: "Downloads"
+                    val topTaskName = tasksSnapshot.firstOrNull()?.fileName
+                        ?: LocalizationManager.Strings.sysNotificationDownloadsFallback
 
                     // --- Populate Collapsed View ---
                     val colTitleId = res.getIdentifier("live_collapsed_title", "id", pkg)
@@ -168,13 +178,18 @@ actual class DownloadNotificationManager actual constructor() {
 
                     collapsed.setTextViewText(
                         colTitleId,
-                        if (activeTasks.size <= 1) topTaskName else "${activeTasks.size} files downloading"
+                        if (activeTasks.size <= 1) topTaskName else LocalizationManager.Strings.sysFilesDownloading(
+                            activeTasks.size
+                        )
                     )
                     collapsed.setTextViewText(colSpeedId, totalSpeedStr)
                     collapsed.setProgressBar(colProgressId, 100, overallPercent, false)
                     collapsed.setTextViewText(
                         colSubtitleId,
-                        "$overallPercent% • ${activeTasks.size} active"
+                        LocalizationManager.Strings.sysPercentActive(
+                            overallPercent,
+                            activeTasks.size
+                        )
                     )
 
                     // --- Populate Expanded View ---
@@ -184,7 +199,10 @@ actual class DownloadNotificationManager actual constructor() {
                     val expOverallProgId = res.getIdentifier("live_overall_progress", "id", pkg)
 
                     expanded.setTextViewText(expTitleId, "FetchJet")
-                    expanded.setTextViewText(expCountId, "${activeTasks.size} active")
+                    expanded.setTextViewText(
+                        expCountId,
+                        LocalizationManager.Strings.sysActiveCount(activeTasks.size)
+                    )
                     expanded.setTextViewText(expSpeedId, totalSpeedStr)
                     expanded.setProgressBar(expOverallProgId, 100, overallPercent, false)
 
@@ -206,7 +224,11 @@ actual class DownloadNotificationManager actual constructor() {
                                 expanded.setProgressBar(progId, 100, 100, false)
                                 expanded.setTextViewText(
                                     detailsId,
-                                    "Download complete • ${formatBytes(taskItem.totalBytes)}"
+                                    LocalizationManager.Strings.sysDownloadCompleteSize(
+                                        formatBytes(
+                                            taskItem.totalBytes
+                                        )
+                                    )
                                 )
                             } else {
                                 expanded.setTextViewText(percentId, "${taskItem.progressPercent}%")
@@ -221,9 +243,13 @@ actual class DownloadNotificationManager actual constructor() {
                                         formatBytes(
                                             taskItem.totalBytes
                                         )
-                                    } • ${taskItem.speedText}"
+                                    } • ${localizeStep(taskItem.speedText)}"
                                 } else {
-                                    "${formatBytes(taskItem.downloadedBytes)} • ${taskItem.speedText}"
+                                    "${formatBytes(taskItem.downloadedBytes)} • ${
+                                        localizeStep(
+                                            taskItem.speedText
+                                        )
+                                    }"
                                 }
                                 expanded.setTextViewText(detailsId, sizeStr)
                             }
@@ -238,7 +264,7 @@ actual class DownloadNotificationManager actual constructor() {
                         expanded.setViewVisibility(moreTextId, View.VISIBLE)
                         expanded.setTextViewText(
                             moreTextId,
-                            "+ ${tasksSnapshot.size - maxSlots} more downloading"
+                            LocalizationManager.Strings.sysMoreDownloading(tasksSnapshot.size - maxSlots)
                         )
                     } else {
                         expanded.setViewVisibility(moreTextId, View.GONE)
@@ -263,16 +289,33 @@ actual class DownloadNotificationManager actual constructor() {
             // BigTextStyle fallback: unified list in fixed order
             val summaryLines = tasksSnapshot.take(5).mapIndexed { idx, t ->
                 val status =
-                    if (t.isCompleted) "✓ Complete" else "${t.progressPercent}% (${t.speedText})"
+                    if (t.isCompleted) "✓ ${LocalizationManager.Strings.sysComplete}" else "${t.progressPercent}% (${
+                        localizeStep(
+                            t.speedText
+                        )
+                    })"
                 "${idx + 1}. ${t.fileName}: $status"
             }.joinToString("\n")
 
             return NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setContentTitle("FetchJet downloads ($totalSpeedStr)")
-                .setContentText("${activeTasks.size} downloading • $overallPercent%")
+                .setContentTitle(
+                    LocalizationManager.Strings.sysNotificationDownloadsTitle(
+                        totalSpeedStr
+                    )
+                )
+                .setContentText(
+                    LocalizationManager.Strings.sysDownloadingPercent(
+                        activeTasks.size,
+                        overallPercent
+                    )
+                )
                 .setStyle(
                     NotificationCompat.BigTextStyle()
-                        .setBigContentTitle("FetchJet downloads ($totalSpeedStr)")
+                        .setBigContentTitle(
+                            LocalizationManager.Strings.sysNotificationDownloadsTitle(
+                                totalSpeedStr
+                            )
+                        )
                         .bigText(summaryLines)
                 )
                 .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -328,8 +371,25 @@ actual class DownloadNotificationManager actual constructor() {
         Companion.setContext(ctx)
     }
 
-    @SuppressLint("MissingPermission")
     actual fun showOrUpdateNotification(
+        taskId: String,
+        fileName: String,
+        progressPercent: Int,
+        speedText: String,
+        downloadedBytes: Long,
+        totalBytes: Long
+    ) {
+        synchronized(lock) {
+            showLocked(taskId, fileName, progressPercent, speedText, downloadedBytes, totalBytes)
+        }
+    }
+
+    actual fun cancelNotification(taskId: String) {
+        synchronized(lock) { cancelLocked(taskId) }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun showLocked(
         taskId: String,
         fileName: String,
         progressPercent: Int,
@@ -361,7 +421,7 @@ actual class DownloadNotificationManager actual constructor() {
             }
             taskDataMap[taskId] = LiveTaskItem(
                 taskId = taskId,
-                fileName = fileName.ifBlank { "Download Task" },
+                fileName = fileName.ifBlank { LocalizationManager.Strings.sysDownloadTaskFallback },
                 progressPercent = progressPercent,
                 speedText = speedText,
                 downloadedBytes = downloadedBytes,
@@ -404,7 +464,7 @@ actual class DownloadNotificationManager actual constructor() {
         }
     }
 
-    actual fun cancelNotification(taskId: String) {
+    private fun cancelLocked(taskId: String) {
         val ctx = getEffectiveContext() ?: return
         taskOrderList.remove(taskId)
         taskDataMap.remove(taskId)

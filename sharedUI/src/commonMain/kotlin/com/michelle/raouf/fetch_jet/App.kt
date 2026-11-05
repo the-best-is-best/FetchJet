@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
@@ -56,6 +55,8 @@ import com.michelle.raouf.fetch_jet.ui.DuplicateDownloadDialog
 import com.michelle.raouf.fetch_jet.ui.FileOverwriteDialog
 import com.michelle.raouf.fetch_jet.ui.RemoveConfirmationDialog
 import com.michelle.raouf.fetch_jet.ui.SideFilter
+import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
+import com.tbib.kmp_localization.LocalizationManager
 
 /**
  * Opens a finished download with the system's default app. If the file cannot be opened
@@ -149,9 +150,16 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
     }
 
+    val language by com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.collectAsState()
+    androidx.compose.runtime.key(language) {
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalLayoutDirection provides
+                    if (com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
+                    else androidx.compose.ui.unit.LayoutDirection.Ltr
+        ) {
     FetchJetTheme(isDarkMode = state.isDarkMode) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().clearFocusOnTapOutside(),
             color = MaterialTheme.colorScheme.background
         ) {
             BoxWithConstraints(
@@ -175,11 +183,22 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             speedDisplayUnit = state.speedDisplayUnit,
                             sortOption = state.sortOption,
                             isDarkMode = state.isDarkMode,
+                            downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
+                            speedPresetLowBytes = state.speedPresetLowBytes,
+                            speedPresetMediumBytes = state.speedPresetMediumBytes,
+                            speedPresetHighBytes = state.speedPresetHighBytes,
+                            onPickDownloadLimit = {
+                                viewModel.onEvent(
+                                    DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
+                                        it
+                                    )
+                                )
+                            },
                             onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPauseAllClicked) },
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                             onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
-                            title = if (state.selectedTab == DashboardTab.SETTINGS) "Settings" else "Downloads"
+                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
                         )
 
                         Box(
@@ -294,13 +313,24 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                 FjTopBar(
                                     showSearch = state.selectedTab != DashboardTab.SETTINGS,
                                     compact = isMedium,
-                                    title = if (state.selectedTab == DashboardTab.SETTINGS) "Settings" else sideFilter.label,
+                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else sideFilter.label,
                                     searchQuery = searchQuery,
                                     onSearchChange = { searchQuery = it },
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
                                     totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                                     speedDisplayUnit = state.speedDisplayUnit,
                                     isDarkMode = state.isDarkMode,
+                                    downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
+                                    speedPresetLowBytes = state.speedPresetLowBytes,
+                                    speedPresetMediumBytes = state.speedPresetMediumBytes,
+                                    speedPresetHighBytes = state.speedPresetHighBytes,
+                                    onPickDownloadLimit = {
+                                        viewModel.onEvent(
+                                            DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
+                                                it
+                                            )
+                                        )
+                                    },
                                     onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
                                     onAdd = {
                                         viewModel.onEvent(
@@ -501,6 +531,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     inspectedTorrentFiles = state.inspectedTorrentFiles,
                     inspectError = state.inspectError,
                     isInspectingMedia = state.isInspectingMedia,
+                    courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
@@ -512,6 +543,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     fileNameOverride = state.fileNameOverride,
                     sortIntoFolders = state.sortIntoFolders,
                     onFileNameChanged = { viewModel.onEvent(DashboardUiEvent.OnFileNameChanged(it)) },
+                    checksumInput = state.checksumInput,
+                    onChecksumChanged = { viewModel.onEvent(DashboardUiEvent.OnChecksumChanged(it)) },
                     onDestinationPathChanged = {
                         viewModel.onEvent(
                             DashboardUiEvent.OnDestinationPathChanged(
@@ -618,6 +651,65 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                         )
                     },
                     onPlaylistUseSingleVideo = { viewModel.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo) },
+                    onPlaylistFolderChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnPlaylistFolderChanged(
+                                it
+                            )
+                        )
+                    },
+                    linkList = state.linkList,
+                    onLinkListEntryToggled = { i, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListEntryToggled(
+                                i,
+                                on
+                            )
+                        )
+                    },
+                    onLinkListSelectAll = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListSelectAll(
+                                it
+                            )
+                        )
+                    },
+                    linkListFolder = state.linkListFolder,
+                    onLinkListFolderChanged = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListFolderChanged(
+                                it
+                            )
+                        )
+                    },
+                    onLinkListTorrentFileToggled = { link, file, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentFileToggled(link, file, on)
+                        )
+                    },
+                    onLinkListTorrentFilePriority = { link, file, p ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentFilePriority(link, file, p)
+                        )
+                    },
+                    onLinkListQualitySelected = { link, quality ->
+                        viewModel.onEvent(DashboardUiEvent.OnLinkListQualitySelected(link, quality))
+                    },
+                    onLinkListRetryInspect = {
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListRetryInspect(
+                                it
+                            )
+                        )
+                    },
+                    onLinkListTorrentSelectAll = { link, on ->
+                        viewModel.onEvent(
+                            DashboardUiEvent.OnLinkListTorrentSelectAll(
+                                link,
+                                on
+                            )
+                        )
+                    },
                     scheduleStartMs = state.scheduleStartMs,
                     onScheduleChanged = { viewModel.onEvent(DashboardUiEvent.OnScheduleChanged(it)) },
                     selectedConnections = state.selectedConnections,
@@ -649,12 +741,30 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             // New FetchJet version: automatic check on start + "what's new" dialog
             com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
+            com.michelle.raouf.fetch_jet.ui.WhenDoneDialogHost()
+
             // A link just copied (clipboard watcher): download it?
             state.clipboardOfferUrl?.let { url ->
                 ClipboardOfferDialog(
                     url = url,
                     onConfirm = { viewModel.onEvent(DashboardUiEvent.OnClipboardOfferAccepted) },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnClipboardOfferDismissed) }
+                )
+            }
+
+            // A browser extension asks to use the local bridge (desktop / Android).
+            val pairing by com.michelle.raouf.fetch_jet.core.network.BridgePairing.pending
+                .collectAsState()
+            pairing?.let { request ->
+                BridgePairingDialog(
+                    request,
+                    onAllow = { com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(true) },
+                    onBlock = { com.michelle.raouf.fetch_jet.core.network.BridgePairing.block() },
+                    onDismiss = {
+                        com.michelle.raouf.fetch_jet.core.network.BridgePairing.answer(
+                            false
+                        )
+                    }
                 )
             }
 
@@ -699,6 +809,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
             ) {
                 androidx.compose.material3.SnackbarHost(snackbarHostState)
             }
+        }
+    }
         }
     }
 }

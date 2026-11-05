@@ -6,11 +6,14 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.BridgePairing
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -36,6 +39,7 @@ import java.util.concurrent.Executors
 object ExtensionBridgeServer {
     private const val PORT = 28450
     private const val MAX_BODY = 4 * 1024 * 1024
+    private val TOKEN_PATHS = setOf("/inspect", "/add", "/links", "/download", "/show")
 
     @Volatile
     private var started = false
@@ -157,7 +161,7 @@ object ExtensionBridgeServer {
     ) {
         val bytes = body.toByteArray(Charsets.UTF_8)
         val reason = when (status) {
-            200 -> "OK"; 204 -> "No Content"; 400 -> "Bad Request"; 403 -> "Forbidden"
+            200 -> "OK"; 204 -> "No Content"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 403 -> "Forbidden"
             404 -> "Not Found"; 405 -> "Method Not Allowed"; 409 -> "Conflict"; else -> "Error"
         }
         val sb = StringBuilder("HTTP/1.1 $status $reason\r\n")
@@ -176,7 +180,7 @@ object ExtensionBridgeServer {
         reply(
             out, r, 204, "", extra = mapOf(
                 "Access-Control-Allow-Methods" to methods,
-                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer"
+                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing"
             )
         )
 
@@ -248,10 +252,47 @@ object ExtensionBridgeServer {
 
     // ---- routes -----------------------------------------------------------------------------
 
+    /**
+     * The app's token ([BridgePairing]) or an old extension the user allowed. An extension from
+     * before 1.2.0 (no `X-FetchJet-Pairing`) makes the app ask once; any other app on the phone
+     * gets 401.
+     */
+    private fun authorized(r: Req): Boolean {
+        if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER))) return true
+        val origin = r.header("Origin")
+        if (BridgePairing.isLegacyAllowed(origin)) return true
+        if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
+            !BridgePairing.isBlocked(origin) &&
+            r.header("X-FetchJet-Pairing").isNullOrBlank()
+        ) {
+            Thread({ runBlocking { BridgePairing.ask(origin, legacy = true) } }, "bridge-pair")
+                .apply { isDaemon = true }.start()
+            deliver(toast = false) {}
+        }
+        return false
+    }
+
     private fun route(r: Req, out: OutputStream) {
         if (!trusted(r)) return reply(out, r, 403, "forbidden")
         val isOptions = r.method == "OPTIONS"
+        if (!isOptions && r.path in TOKEN_PATHS && !authorized(r)) {
+            return reply(out, r, 401, "pairing required")
+        }
         when (r.path) {
+            "/pair" -> {
+                if (isOptions) return preflight(out, r, "POST, OPTIONS")
+                val origin = r.header("Origin")
+                if (r.method != "POST" || r.header("X-FetchJet").isNullOrBlank() ||
+                    origin == null || !BridgePairing.isExtensionOrigin(origin)
+                ) return reply(out, r, 403, "forbidden")
+                deliver(toast = false) {}
+                val allowed = runBlocking { BridgePairing.ask(origin, legacy = false) }
+                if (allowed) reply(
+                    out, r, 200, """{"token":"${BridgePairing.token}"}""",
+                    "application/json; charset=UTF-8"
+                ) else reply(out, r, 403, "refused")
+            }
+
             "/ping" -> if (isOptions) preflight(out, r, "GET, OPTIONS") else reply(
                 out,
                 r,
@@ -270,7 +311,15 @@ object ExtensionBridgeServer {
                     out, r, 200,
                     """{"app":"FetchJet","platform":"android","version":"${json(version)}","bridge":2,""" +
                             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
-                            """"endpoints":["/ping","/config","/add","/links","/download","/inspect"]}""",
+                            """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
+                            """"pairing":true,"pairedMerge":true,"coursePlaylist":true,"paired":${
+                                BridgePairing.isPaired(
+                                    r.header(
+                                        BridgePairing.TOKEN_HEADER
+                                    )
+                                )
+                            },""" +
+                            """"endpoints":["/ping","/config","/pair","/add","/links","/download","/inspect"]}""",
                     "application/json; charset=UTF-8"
                 )
             }
@@ -301,7 +350,7 @@ object ExtensionBridgeServer {
                             ?.let { put("Referer", it) }
                     }
                     com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.remember(
-                        headers["Referer"] ?: url, headers
+                        url, headers
                     )
                     val list = inspectCached(url, headers).joinToString(",", "[", "]") { q ->
                         """{"index":${q.index},"quality":"${json(q.qualityLabel)}","format":"${
@@ -365,7 +414,9 @@ object ExtensionBridgeServer {
                         )
                     }
                     val dedupeKey =
-                        req.url + "|" + (obj.getString("formatId") ?: "") + "|" + req.openClip
+                        req.url + "|" + (obj.getString("formatId")
+                            ?: "") + "|" + req.openClip + "|" + req.reading + "|" + req.readingFailed + "|" + (req.playlist?.entries?.size
+                            ?: 0)
                     val now = System.currentTimeMillis()
                     val repeat = synchronized(recentAdds) {
                         recentAdds.entries.removeAll { now - it.value > 5_000 }
@@ -373,7 +424,18 @@ object ExtensionBridgeServer {
                             recentAdds[dedupeKey] = now; false
                         }
                     }
-                    if (!repeat) deliver { ExternalDownloadBridge.dispatch(req) }
+                    val reading = req.reading
+                    if (repeat) Unit
+                    else if (reading != null) main.post {
+                        // The browser reads the course page by page: opening FetchJet over it
+                        // sends the browser to the background, where Android slows its page
+                        // down (a minute per 12 lectures). Count quietly, open with the list.
+                        ExternalDownloadBridge.dispatch(req)
+                        showReadingProgress(reading.first, reading.second)
+                    } else deliver {
+                        if (req.playlist != null || req.readingFailed.isNotBlank()) endReadingProgress()
+                        ExternalDownloadBridge.dispatch(req)
+                    }
                     reply(out, r, 200, """{"ok":true}""", "application/json; charset=UTF-8")
                 } else {
                     @Suppress("UNCHECKED_CAST")
@@ -468,7 +530,18 @@ object ExtensionBridgeServer {
             fileName = getString("fileName")?.trim().orEmpty().take(255),
             mediaQualities = qualities,
             direct = (this["direct"] as? Boolean) == true,
-            openClip = (this["openClip"] as? Boolean) == true
+            openClip = (this["openClip"] as? Boolean) == true,
+            audioUrl = getString("audioUrl")?.trim().orEmpty(),
+            playlist = com.michelle.raouf.fetch_jet.feature.media_extractor.parseExternalPlaylist(
+                this["playlist"]
+            ),
+            reading = (this["reading"] as? Map<*, *>)?.let { r ->
+                val done = (r["done"] as? Number)?.toInt() ?: return@let null
+                val total = (r["total"] as? Number)?.toInt() ?: return@let null
+                done.coerceAtLeast(0) to total.coerceAtLeast(0)
+            },
+            readingFailed = getString("readingFailed")?.trim().orEmpty().take(300),
+            group = getString("group")?.trim().orEmpty().take(150)
         )
     }
 
@@ -477,7 +550,7 @@ object ExtensionBridgeServer {
      * may refuse to start an activity from the background (Android 10+); the toast then tells
      * the user the link is waiting in FetchJet.
      */
-    private fun deliver(action: () -> Unit) {
+    private fun deliver(toast: Boolean = true, action: () -> Unit) {
         main.post {
             action()
             val open = Intent(appContext, MainActivity::class.java).addFlags(
@@ -494,7 +567,11 @@ object ExtensionBridgeServer {
                     appContext.startActivity(open)
                 } catch (_: Exception) {
                 }
-                Toast.makeText(appContext, "Sent to FetchJet", Toast.LENGTH_SHORT).show()
+                if (toast) Toast.makeText(
+                    appContext,
+                    LocalizationManager.Strings.sysSentToFetchJet,
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 showOpenNotification(open)
             }
@@ -508,9 +585,9 @@ object ExtensionBridgeServer {
             if (android.os.Build.VERSION.SDK_INT >= 26) {
                 nm.createNotificationChannel(
                     android.app.NotificationChannel(
-                        LINK_CHANNEL, "Links from the browser",
+                        LINK_CHANNEL, LocalizationManager.Strings.sysLinksChannelName,
                         android.app.NotificationManager.IMPORTANCE_HIGH
-                    ).apply { description = "Tap to open the link FetchJet just received" }
+                    ).apply { description = LocalizationManager.Strings.sysLinksChannelDescription }
                 )
             }
             val pi = android.app.PendingIntent.getActivity(
@@ -519,8 +596,8 @@ object ExtensionBridgeServer {
             )
             val n = androidx.core.app.NotificationCompat.Builder(appContext, LINK_CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle("Link received")
-                .setContentText("Tap to open it in FetchJet")
+                .setContentTitle(LocalizationManager.Strings.sysLinkReceivedTitle)
+                .setContentText(LocalizationManager.Strings.sysLinkReceivedText)
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
@@ -533,4 +610,45 @@ object ExtensionBridgeServer {
     }
 
     private const val LINK_CHANNEL = "fetchjet_links"
+    private const val READING_ID = 7002
+    private var lastReadingToastMs = 0L
+
+    /**
+     * "Reading the course lectures: 48 / 172" while the browser reads a course: a toast over
+     * the browser (at most every 2.5 s, toasts queue up) and a quiet notification with a bar.
+     */
+    private fun showReadingProgress(done: Int, total: Int) {
+        if (total <= 0) return
+        val text = LocalizationManager.Strings.readingCourseLectures(done, total)
+        val now = System.currentTimeMillis()
+        if (done == 0 || now - lastReadingToastMs >= 2_500L) {
+            lastReadingToastMs = now
+            Toast.makeText(appContext, text, Toast.LENGTH_SHORT).show()
+        }
+        try {
+            val n = androidx.core.app.NotificationCompat.Builder(
+                appContext,
+                com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager.CHANNEL_ID
+            )
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(text)
+                .setContentText(LocalizationManager.Strings.readingCourseLecturesHint)
+                .setProgress(total, done, false)
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .setSilent(true)
+                .build()
+            androidx.core.app.NotificationManagerCompat.from(appContext).notify(READING_ID, n)
+        } catch (_: SecurityException) {
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun endReadingProgress() {
+        lastReadingToastMs = 0L
+        try {
+            androidx.core.app.NotificationManagerCompat.from(appContext).cancel(READING_ID)
+        } catch (_: Exception) {
+        }
+    }
 }

@@ -1,36 +1,76 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
-
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
-
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.tbib.kmp_localization.LocalizationManager
 
 
-enum class DashboardTab(val title: String) {
+enum class DashboardTab {
 
-    ALL("All Downloads"),
+    ALL,
 
-    ACTIVE("Active"),
+    ACTIVE,
 
-    COMPLETED("Completed"),
+    COMPLETED,
 
-    TORRENT("BitTorrent"),
+    TORRENT,
 
-    MEDIA("Media Extractor"),
+    MEDIA,
 
-    SETTINGS("Settings")
+    SETTINGS;
+
+    val title: String
+        get() = when (this) {
+            ALL -> LocalizationManager.Strings.sysTabAllDownloads
+            ACTIVE -> LocalizationManager.Strings.sysTabActive
+            COMPLETED -> LocalizationManager.Strings.sysTabCompleted
+            TORRENT -> "BitTorrent"
+            MEDIA -> LocalizationManager.Strings.sysTabMediaExtractor
+            SETTINGS -> LocalizationManager.Strings.sysTabSettings
+        }
 
 }
 
 
-enum class TaskSortOption(val label: String) {
-    DATE_DESC("Newest first"),
-    DATE_ASC("Oldest first"),
-    SIZE_DESC("Largest first"),
-    SIZE_ASC("Smallest first"),
-    NAME_ASC("Name A–Z")
+enum class TaskSortOption {
+    DATE_DESC,
+    DATE_ASC,
+    SIZE_DESC,
+    SIZE_ASC,
+    NAME_ASC;
+
+    val label: String
+        get() = when (this) {
+            DATE_DESC -> LocalizationManager.Strings.sysSortNewestFirst
+            DATE_ASC -> LocalizationManager.Strings.sysSortOldestFirst
+            SIZE_DESC -> LocalizationManager.Strings.sysSortLargestFirst
+            SIZE_ASC -> LocalizationManager.Strings.sysSortSmallestFirst
+            NAME_ASC -> LocalizationManager.Strings.sysSortNameAz
+        }
+}
+
+data class LinkListEntry(
+    val url: String,
+    val engine: EngineType,
+    val isSelected: Boolean = true,
+    val isInspecting: Boolean = false,
+    val inspectError: String? = null,
+    val torrentName: String? = null,
+    val torrentFiles: List<TorrentFileEntry> = emptyList(),
+    val webSeeds: List<String> = emptyList(),
+    val isInspectingMedia: Boolean = false,
+    val mediaInspectFailed: Boolean = false,
+    val mediaTitle: String? = null,
+    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList()
+) {
+    /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
+    val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
+
+    /** A video whose qualities could not be read: the user retries it or unchecks it. */
+    val needsRetry: Boolean get() = engine == EngineType.MEDIA_STREAM && mediaInspectFailed
 }
 
 data class FileConflictData(
@@ -81,12 +121,16 @@ data class DashboardUiState(
     val inspectError: String? = null,
 
     val isInspectingMedia: Boolean = false,
+    /** The browser extension is reading a course's lectures: done / total, null when not. */
+    val courseReading: Pair<Int, Int>? = null,
 
     val inspectedMediaTitle: String? = null,
     /** Name FetchJet would give the file (shown in the Add dialog's "File name" box). */
     val suggestedFileName: String = "",
     /** What the user typed in that box; empty = use [suggestedFileName]. */
     val fileNameOverride: String = "",
+    /** Optional checksum the user typed to verify the finished file (sha256 / md5 hex). */
+    val checksumInput: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
 
@@ -139,6 +183,9 @@ data class DashboardUiState(
     val clipFastMode: Boolean = false,
     /** A playlist / channel link: its videos (null = a single video). */
     val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    val linkList: List<LinkListEntry> = emptyList(),
+    /** The folder the list's downloads go into, under the chosen one ("" = none). */
+    val linkListFolder: String = "",
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
@@ -148,8 +195,18 @@ data class DashboardUiState(
     /** App-wide default connections per direct download (Settings > Downloads); 0 = automatic. */
     val defaultConnections: Int = 0,
     val mediaDurationSeconds: Long = 0L,
-    val speedDisplayUnit: String = "MB/s"
+    val speedDisplayUnit: String = "MB/s",
+    /** Named quick speed presets (Settings > Speed), picked fast from the header. */
+    val speedPresetLowBytes: Long = 256L * 1024,
+    val speedPresetLowUnit: String = "KB/s",
+    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    val speedPresetHighUnit: String = "MB/s"
 )
+
+/** Which named quick speed preset a setting refers to. */
+enum class SpeedPreset { LOW, MEDIUM, HIGH }
 
 
 sealed interface DashboardUiEvent {
@@ -161,6 +218,7 @@ sealed interface DashboardUiEvent {
 
     data class OnDestinationPathChanged(val path: String) : DashboardUiEvent
     data class OnFileNameChanged(val name: String) : DashboardUiEvent
+    data class OnChecksumChanged(val value: String) : DashboardUiEvent
 
     data class OnDisableTorrentUploadToggled(val disable: Boolean) : DashboardUiEvent
 
@@ -174,6 +232,10 @@ sealed interface DashboardUiEvent {
 
     data class OnSpeedDisplayUnitChanged(val unit: String) : DashboardUiEvent
 
+    /** Edit one named quick preset's speed (Settings > Speed). */
+    data class OnSpeedPresetChanged(val preset: SpeedPreset, val bytes: Long, val unit: String) :
+        DashboardUiEvent
+
     data object OnApplySettingsClicked : DashboardUiEvent
 
     data class OnToggleAddDialog(val show: Boolean) : DashboardUiEvent
@@ -183,11 +245,36 @@ sealed interface DashboardUiEvent {
     data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
     data class OnPlaylistEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnPlaylistFolderChanged(val name: String) : DashboardUiEvent
     data class OnPlaylistQualityChanged(val quality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) :
         DashboardUiEvent
 
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
+    data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
+    data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
+    data class OnLinkListFolderChanged(val name: String) : DashboardUiEvent
+    data class OnLinkListTorrentFileToggled(
+        val linkIndex: Int,
+        val fileIndex: Int,
+        val selected: Boolean
+    ) : DashboardUiEvent
+
+    data class OnLinkListTorrentFilePriority(
+        val linkIndex: Int,
+        val fileIndex: Int,
+        val priority: Int
+    ) : DashboardUiEvent
+
+    data class OnLinkListTorrentSelectAll(val linkIndex: Int, val selected: Boolean) :
+        DashboardUiEvent
+
+    data class OnLinkListQualitySelected(val linkIndex: Int, val qualityIndex: Int) :
+        DashboardUiEvent
+
+    data class OnLinkListRetryInspect(val linkIndex: Int) : DashboardUiEvent
+
+    data class OnExportLinksClicked(val taskIds: List<String>) : DashboardUiEvent
     data class OnScheduleChanged(val epochMs: Long) : DashboardUiEvent
     data class OnConnectionsChanged(val connections: Int) : DashboardUiEvent
     data class OnDefaultConnectionsChanged(val connections: Int) : DashboardUiEvent
@@ -195,6 +282,7 @@ sealed interface DashboardUiEvent {
     data object OnResumeAllClicked : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
+    data class OnLanguageChanged(val choice: String) : DashboardUiEvent
 
     data object OnAddDownloadClicked : DashboardUiEvent
 

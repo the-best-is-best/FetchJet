@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -60,6 +62,41 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
             persistCurrentSettings()
         }
 
+        is DashboardUiEvent.OnSpeedPresetChanged -> {
+            val current = _uiState.value
+            val oldBytes = when (event.preset) {
+                SpeedPreset.LOW -> current.speedPresetLowBytes
+                SpeedPreset.MEDIUM -> current.speedPresetMediumBytes
+                SpeedPreset.HIGH -> current.speedPresetHighBytes
+            }
+            _uiState.update {
+                when (event.preset) {
+                    SpeedPreset.LOW -> it.copy(
+                        speedPresetLowBytes = event.bytes,
+                        speedPresetLowUnit = event.unit
+                    )
+
+                    SpeedPreset.MEDIUM -> it.copy(
+                        speedPresetMediumBytes = event.bytes,
+                        speedPresetMediumUnit = event.unit
+                    )
+
+                    SpeedPreset.HIGH -> it.copy(
+                        speedPresetHighBytes = event.bytes,
+                        speedPresetHighUnit = event.unit
+                    )
+                }
+            }
+            // If this preset is the one currently capping downloads, apply the new value live.
+            if (event.bytes != oldBytes &&
+                _uiState.value.globalDownloadSpeedLimitBytes == oldBytes
+            ) {
+                _uiState.update { it.copy(globalDownloadSpeedLimitBytes = event.bytes) }
+                queueRepository.setGlobalDownloadSpeedLimit(event.bytes)
+            }
+            persistCurrentSettings()
+        }
+
         DashboardUiEvent.OnApplySettingsClicked -> {
 
             queueRepository.setGlobalDownloadSpeedLimit(_uiState.value.globalDownloadSpeedLimitBytes)
@@ -68,6 +105,11 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
             persistCurrentSettings()
 
+        }
+
+        is DashboardUiEvent.OnLanguageChanged -> {
+            com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(event.choice)
+            persistCurrentSettings()
         }
 
         DashboardUiEvent.OnThemeToggled -> {
@@ -122,7 +164,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
                         .getOrElse { Result.failure(it) }
                 val torrentStatus2 =
                     runCatching { queueRepository.torrentEngine.engineStatus() }
-                        .getOrElse { "BitTorrent engine error: ${it.message}" }
+                        .getOrElse { LocalizationManager.Strings.sysTorrentEngineError(it.message.toString()) }
                 val torrentReady2 = torrentInstall.isSuccess ||
                         runCatching { queueRepository.torrentEngine.isSupported }.getOrDefault(
                             false
@@ -162,7 +204,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
                         toolsDirectoryPath = toolsDir,
                         torrentEngineStatus = torrentInstall.exceptionOrNull()?.let { e ->
-                            "BitTorrent engine install failed: ${e.message}"
+                            LocalizationManager.Strings.sysTorrentEngineInstallFailed(e.message.toString())
                         } ?: torrentStatus2,
                         isTorrentEngineReady = torrentReady2
 
@@ -172,7 +214,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
                 val msg =
 
-                    if (success) "Media tools downloaded successfully!" else "Failed to download media tools"
+                    if (success) LocalizationManager.Strings.sysMediaToolsDownloaded else LocalizationManager.Strings.sysMediaToolsDownloadFailed
 
                 _uiEffect.emit(DashboardUiEffect.ShowToast(msg))
 

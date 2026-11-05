@@ -1,6 +1,5 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,18 +9,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,10 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
-import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
+import com.tbib.kmp_localization.LocalizationManager
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -44,25 +44,27 @@ internal fun GeneralPage(
     watchClipboard: Boolean,
     clipboardVideoPages: Boolean,
     onThemeToggled: () -> Unit,
+    onLanguageChanged: (String) -> Unit,
     onSpeedDisplayUnitChanged: (String) -> Unit,
     onWatchClipboardChanged: (Boolean) -> Unit,
     onClipboardVideoPagesChanged: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        LanguageSettingsCard(onLanguageChanged)
         SettingsGroup(
-            title = "Clipboard",
-            footer = "Copy a link to a file (zip, mp4, pdf, apk…) or a magnet link anywhere, and FetchJet asks whether to download it."
+            title = LocalizationManager.Strings.clipboardGroup,
+            footer = LocalizationManager.Strings.clipboardFooter
         ) {
             SettingSwitch(
-                title = "Watch the clipboard",
-                subtitle = if (watchClipboard) "On · copied file links are offered for download" else "Off",
+                title = LocalizationManager.Strings.watchClipboard,
+                subtitle = if (watchClipboard) LocalizationManager.Strings.watchClipboardOn else LocalizationManager.Strings.settingOff,
                 checked = watchClipboard,
                 onChange = onWatchClipboardChanged
             )
             SettingDivider()
             SettingSwitch(
-                title = "Also video pages",
-                subtitle = "YouTube, Facebook, TikTok, Vimeo… links are offered too (not only files)",
+                title = LocalizationManager.Strings.alsoVideoPages,
+                subtitle = LocalizationManager.Strings.alsoVideoPagesHint,
                 checked = clipboardVideoPages,
                 enabled = watchClipboard,
                 onChange = onClipboardVideoPagesChanged
@@ -72,9 +74,9 @@ internal fun GeneralPage(
         if (diag.canExport) {
             var savedTo by remember { mutableStateOf<String?>(null) }
             SettingsGroup(
-                title = "Diagnostics",
-                footer = savedTo?.let { "Saved: $it — send this file when reporting a problem." }
-                    ?: "Saves the app's log (what yt-dlp and the engines did) to your Downloads folder."
+                title = LocalizationManager.Strings.diagnosticsGroup,
+                footer = savedTo?.let { LocalizationManager.Strings.logSavedTo(it) }
+                    ?: LocalizationManager.Strings.diagnosticsFooter
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
@@ -82,31 +84,36 @@ internal fun GeneralPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Save log to Downloads",
+                        LocalizationManager.Strings.saveLogToDownloads,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedButton(
-                        onClick = { savedTo = diag.export() ?: "could not save" },
+                        onClick = {
+                            savedTo = diag.export() ?: LocalizationManager.Strings.logCouldNotSave
+                        },
                         shape = RoundedCornerShape(10.dp)
-                    ) { Text("Save") }
+                    ) { Text(LocalizationManager.Strings.save) }
                 }
             }
         }
-        SettingsGroup(title = "Appearance") {
-            SettingRow("Theme", "Light or dark look for every screen") {
+        SettingsGroup(title = LocalizationManager.Strings.appearanceGroup) {
+            SettingRow(
+                LocalizationManager.Strings.themeTitle,
+                LocalizationManager.Strings.themeHint
+            ) {
                 SegmentedPicker(
                     options = listOf(false, true),
                     selected = isDarkMode,
-                    label = { if (it) "Dark" else "Light" },
+                    label = { if (it) LocalizationManager.Strings.settingsThemeDark else LocalizationManager.Strings.settingsThemeLight },
                     onSelect = { if (it != isDarkMode) onThemeToggled() }
                 )
             }
             SettingDivider()
             SettingRow(
-                "Speed shown in",
-                "Bytes (MB/s) like file sizes, or bits (Mbps) like your internet plan"
+                LocalizationManager.Strings.speedShownIn,
+                LocalizationManager.Strings.speedShownInHint
             )
             Box(
                 modifier = Modifier
@@ -123,6 +130,7 @@ internal fun GeneralPage(
             }
         }
         if (StartupLauncher.isSupported) StartupSettingsCard()
+        WhenDoneSettingsCard()
     }
 }
 
@@ -134,7 +142,14 @@ internal fun DownloadsPage(
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
     onSortIntoFoldersChanged: (Boolean) -> Unit,
-    onDefaultConnectionsChanged: (Int) -> Unit
+    onDefaultConnectionsChanged: (Int) -> Unit,
+    lowBytes: Long = 256L * 1024,
+    lowUnit: String = "KB/s",
+    mediumBytes: Long = 5L * 1024 * 1024,
+    mediumUnit: String = "MB/s",
+    highBytes: Long = 20L * 1024 * 1024,
+    highUnit: String = "MB/s",
+    onPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> }
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     var showDirectoryPicker by remember { mutableStateOf(false) }
@@ -151,50 +166,50 @@ internal fun DownloadsPage(
     }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(
-            title = "Save location",
-            footer = "New downloads go here unless you pick another folder when adding them."
+            title = LocalizationManager.Strings.saveLocationGroup,
+            footer = LocalizationManager.Strings.saveLocationFooter
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                OutlinedTextField(
+                FetchJetTextField(
                     value = destinationPath,
                     onValueChange = onDestinationPathChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    placeholder = { Text("Folder path") },
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                    )
+                    placeholder = LocalizationManager.Strings.settingsFolderPath,
+                    leading = { Text("📁", fontSize = 15.sp) }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = { showDirectoryPicker = true },
                         shape = RoundedCornerShape(10.dp)
-                    ) { Text("Choose folder…", fontWeight = FontWeight.SemiBold) }
+                    ) {
+                        Text(
+                            LocalizationManager.Strings.settingsChooseFolder,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     if (pathResolver.isOpenFolderSupported()) {
                         OutlinedButton(
                             onClick = { pathResolver.openDirectoryInExplorer(destinationPath) },
                             shape = RoundedCornerShape(10.dp)
-                        ) { Text("Open") }
+                        ) { Text(LocalizationManager.Strings.open) }
                     }
                     if (destinationPath != defaultDownloads) {
                         OutlinedButton(
                             onClick = { onDestinationPathChanged(defaultDownloads) },
                             shape = RoundedCornerShape(10.dp)
-                        ) { Text("Use Downloads") }
+                        ) { Text(LocalizationManager.Strings.settingsUseDownloads) }
                     }
                 }
             }
         }
         SettingsGroup(
-            title = "Connections",
-            footer = "How many pieces a direct download is split into. Each piece is a connection; when one finishes it takes half of the biggest remaining piece, so none sits idle. Auto picks by file size (4–8). Some servers limit connections per client."
+            title = LocalizationManager.Strings.settingsConnectionsGroup,
+            footer = LocalizationManager.Strings.connectionsFooter
         ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
-                    "Connections per download",
+                    LocalizationManager.Strings.settingsConnectionsPerDownload,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -205,7 +220,8 @@ internal fun DownloadsPage(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     (listOf(0, 1, 4, 8, 16, 32)).forEach { n ->
-                        val label = if (n == 0) "Auto" else n.toString()
+                        val label =
+                            if (n == 0) LocalizationManager.Strings.settingsConnectionsAuto else n.toString()
                         FilterChip(
                             selected = defaultConnections == n,
                             onClick = { onDefaultConnectionsChanged(n) },
@@ -216,12 +232,58 @@ internal fun DownloadsPage(
             }
         }
         SettingsGroup(
-            title = "Organize",
-            footer = "Sub-folders are created inside the save location: Video, Music, Archives, Documents, Programs, Images, Torrents."
+            title = LocalizationManager.Strings.speedPresetsTitle,
+            footer = LocalizationManager.Strings.speedPresetsFooter
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetHigh,
+                    bytes = highBytes,
+                    unit = highUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.HIGH,
+                            b, u
+                        )
+                    }
+                )
+            }
+            SettingDivider()
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetMedium,
+                    bytes = mediumBytes,
+                    unit = mediumUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.MEDIUM,
+                            b, u
+                        )
+                    }
+                )
+            }
+            SettingDivider()
+            Column(modifier = Modifier.padding(16.dp)) {
+                SpeedPresetRow(
+                    name = LocalizationManager.Strings.speedPresetLow,
+                    bytes = lowBytes,
+                    unit = lowUnit,
+                    onChanged = { b, u ->
+                        onPresetChanged(
+                            com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset.LOW,
+                            b, u
+                        )
+                    }
+                )
+            }
+        }
+        SettingsGroup(
+            title = LocalizationManager.Strings.organizeGroup,
+            footer = LocalizationManager.Strings.organizeFooter
         ) {
             SettingSwitch(
-                title = "Sort into folders by type",
-                subtitle = if (sortIntoFolders) "On · e.g. Downloads/Video/lecture.mp4" else "Off · everything goes straight into the folder",
+                title = LocalizationManager.Strings.sortIntoFolders,
+                subtitle = if (sortIntoFolders) LocalizationManager.Strings.sortIntoFoldersOn else LocalizationManager.Strings.sortIntoFoldersOff,
                 checked = sortIntoFolders,
                 onChange = onSortIntoFoldersChanged
             )
@@ -231,63 +293,47 @@ internal fun DownloadsPage(
 }
 
 @Composable
-internal fun SpeedPage(
-    downloadLimit: Long,
-    uploadLimit: Long,
-    onDownloadLimit: (Long) -> Unit,
-    onUploadLimit: (Long) -> Unit
-) {
-    val ios = getPlatform().name.startsWith("iOS", ignoreCase = true)
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(
-            footer = "Applied right away and shared between the downloads that are running." +
-                    if (ios) " On iOS, HTTP downloads already running in the background keep their speed; " +
-                            "the limit applies to the ones started after it." else ""
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                TrafficLimitSelector(
-                    title = "Download",
-                    speedBytesPerSec = downloadLimit,
-                    onSpeedChanged = onDownloadLimit
-                )
-            }
-            SettingDivider()
-            Column(modifier = Modifier.padding(16.dp)) {
-                TrafficLimitSelector(
-                    title = "Upload (torrents)",
-                    speedBytesPerSec = uploadLimit,
-                    onSpeedChanged = onUploadLimit
-                )
-            }
-        }
-    }
-}
-
-@Composable
 internal fun TorrentPage(
     disableTorrentUpload: Boolean,
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
+    uploadLimit: Long,
+    onUploadLimit: (Long) -> Unit,
     showEngine: Boolean,
     isTorrentEngineReady: Boolean,
     torrentEngineStatus: String
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = "Sharing") {
+        SettingsGroup {
+            Column(modifier = Modifier.padding(16.dp)) {
+                TrafficLimitSelector(
+                    title = LocalizationManager.Strings.speedLimitUploadTorrents,
+                    speedBytesPerSec = uploadLimit,
+                    onSpeedChanged = onUploadLimit
+                )
+            }
+        }
+        SettingsGroup(title = LocalizationManager.Strings.torrentSharingGroup) {
             SettingSwitch(
-                title = "Download only (don't upload)",
-                subtitle = "Saves your upload bandwidth and data quota. Some trackers download slower for peers that don't share.",
+                title = LocalizationManager.Strings.downloadOnlyNoUpload,
+                subtitle = LocalizationManager.Strings.downloadOnlyNoUploadHint,
                 checked = disableTorrentUpload,
                 onChange = onDisableTorrentUploadToggled
             )
         }
         if (showEngine) {
-            SettingsGroup(title = "Engine") {
+            SettingsGroup(title = LocalizationManager.Strings.torrentEngineGroup) {
                 SettingRow(
                     title = "libtorrent",
-                    subtitle = torrentEngineStatus.ifBlank { null }
+                    subtitle = localizeStep(torrentEngineStatus).ifBlank { null }
                 ) {
-                    if (isTorrentEngineReady) StatusLabel("Ready", StatusCompleted)
-                    else StatusLabel("Not ready", MaterialTheme.colorScheme.error)
+                    if (isTorrentEngineReady) StatusLabel(
+                        LocalizationManager.Strings.settingsReady,
+                        StatusCompleted
+                    )
+                    else StatusLabel(
+                        LocalizationManager.Strings.settingsNotReady,
+                        MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
@@ -331,9 +377,8 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(
-            title = "Install",
-            footer = "With the extension, a \"Download with FetchJet\" button shows on videos and links, " +
-                    "and the browser can hand its downloads to FetchJet. It talks only to this app on your device."
+            title = LocalizationManager.Strings.extInstallGroup,
+            footer = LocalizationManager.Strings.extensionInstallFooter
         ) {
             if (isDesktop) {
                 val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
@@ -344,11 +389,11 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
                     SettingRow(
                         "Microsoft Edge",
                         note
-                            ?: if (registered) "Added · restart Edge and click \"Turn on extension\" when it asks"
-                            else "From Microsoft Edge Add-ons · updates by itself"
+                            ?: if (registered) LocalizationManager.Strings.edgeAddedHint
+                            else LocalizationManager.Strings.edgeFromStoreHint
                     ) {
                         if (registered) storeButton(
-                            "Open in Edge store",
+                            LocalizationManager.Strings.openInEdgeStore,
                             EDGE_STORE_URL,
                             primary = false
                         )
@@ -356,12 +401,12 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
                             bi.addToEdge()
                                 .onSuccess {
                                     registered = true; note =
-                                    "Done: restart Edge, it will ask to turn FetchJet on."
+                                    LocalizationManager.Strings.edgeAddedNote
                                 }
                                 .onFailure { uri.openUri(EDGE_STORE_URL) }
                         }, shape = RoundedCornerShape(10.dp)) {
                             Text(
-                                "Add to Edge",
+                                LocalizationManager.Strings.extAddToEdge,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -369,39 +414,43 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
                 } else {
                     SettingRow(
                         "Microsoft Edge",
-                        "From Microsoft Edge Add-ons · updates by itself"
+                        LocalizationManager.Strings.edgeFromStoreHint
                     ) {
-                        storeButton("Add to Edge", EDGE_STORE_URL)
+                        storeButton(LocalizationManager.Strings.extAddToEdge, EDGE_STORE_URL)
                     }
                 }
                 SettingDivider()
-                SettingRow("Firefox", "From Firefox Add-ons · updates by itself") {
-                    storeButton("Add to Firefox", AMO_URL)
+                SettingRow("Firefox", LocalizationManager.Strings.firefoxFromStoreHint) {
+                    storeButton(LocalizationManager.Strings.extAddToFirefox, AMO_URL)
                 }
                 SettingDivider()
                 SettingRow(
                     "Chrome, Brave, Opera, Vivaldi",
-                    "Not in the Chrome Web Store: install the .zip in developer mode (steps on the page). It does not update by itself."
+                    LocalizationManager.Strings.chromeZipHint
                 ) {
-                    storeButton("Get the .zip", MANUAL_INSTALL_URL, primary = false)
+                    storeButton(
+                        LocalizationManager.Strings.getTheZip,
+                        MANUAL_INSTALL_URL,
+                        primary = false
+                    )
                 }
             } else {
                 SettingRow(
                     "Firefox for Android",
-                    "Open this in Firefox on this phone. Links you send go straight to this app."
+                    LocalizationManager.Strings.firefoxAndroidHint
                 ) {
-                    storeButton("Add to Firefox", AMO_URL)
+                    storeButton(LocalizationManager.Strings.extAddToFirefox, AMO_URL)
                 }
                 val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
                 if (bi.canKeepReadyForBrowser) {
                     var keepReady by remember { mutableStateOf(bi.isKeptReadyForBrowser()) }
                     SettingDivider()
                     SettingSwitch(
-                        title = "Keep ready for the browser",
+                        title = LocalizationManager.Strings.keepReadyForBrowser,
                         subtitle = if (keepReady)
-                            "Video qualities show right in Firefox. A quiet notification stays while this is on."
+                            LocalizationManager.Strings.keepReadyOn
                         else
-                            "Off: Firefox opens FetchJet and you pick the quality here. On: qualities show in Firefox (keeps a notification).",
+                            LocalizationManager.Strings.keepReadyOff,
                         checked = keepReady,
                         onChange = { keepReady = it; bi.setKeepReadyForBrowser(it) }
                     )
@@ -416,12 +465,95 @@ internal fun BrowserExtensionPage(isDesktop: Boolean) {
                     }
                     SettingDivider()
                     SettingSwitch(
-                        title = "Pop up over the browser",
-                        subtitle = if (allowed) "On · FetchJet opens by itself when Firefox sends a link"
-                        else "Off · a notification appears instead; tap to allow \"display over other apps\"",
+                        title = LocalizationManager.Strings.popUpOverBrowser,
+                        subtitle = if (allowed) LocalizationManager.Strings.popUpOverBrowserOn
+                        else LocalizationManager.Strings.popUpOverBrowserOff,
                         checked = allowed,
                         onChange = { bi.requestPopUpPermission() }
                     )
+                }
+            }
+        }
+        BrowserConnectionsGroup()
+    }
+}
+
+/**
+ * Extensions the user allowed or blocked at the pairing dialog ([BridgePairing]). Shown so the
+ * user can see what got in and revoke it, or let a blocked origin ask again. Hidden when empty.
+ */
+@Composable
+private fun BrowserConnectionsGroup() {
+    val pairing = com.michelle.raouf.fetch_jet.core.network.BridgePairing
+    val allowed by pairing.legacyAllowed.collectAsState()
+    val blocked by pairing.blocked.collectAsState()
+    if (allowed.isEmpty() && blocked.isEmpty()) return
+    SettingsGroup(
+        title = LocalizationManager.Strings.extConnectionsGroup,
+        footer = LocalizationManager.Strings.extConnectionsFooter
+    ) {
+        var first = true
+        allowed.sorted().forEach { origin ->
+            if (!first) SettingDivider()
+            first = false
+            SettingRow(origin, LocalizationManager.Strings.extAllowedLabel) {
+                OutlinedButton(
+                    onClick = { pairing.revokeAllowed(origin) },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.extRevoke) }
+            }
+        }
+        blocked.sorted().forEach { origin ->
+            if (!first) SettingDivider()
+            first = false
+            SettingRow(origin, LocalizationManager.Strings.extBlockedLabel) {
+                OutlinedButton(
+                    onClick = { pairing.unblock(origin) },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.extUnblock) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageSettingsCard(onLanguageChanged: (String) -> Unit) {
+    val i18n = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
+    val s = LocalizationManager.Strings
+    var open by remember { mutableStateOf(false) }
+    val current = i18n.choice
+    val currentName = if (current == i18n.SYSTEM) "${s.systemLanguage} (${s.languageName})"
+    else com.michelle.raouf.fetch_jet.core.i18n.start.appLanguages.firstOrNull { it.localeCode == current }?.languageName
+        ?: current
+    SettingsGroup(title = s.language) {
+        SettingRow(s.language, s.languageHint, onClick = { open = true }) {
+            Box {
+                androidx.compose.material3.TextButton(onClick = { open = true }) {
+                    Text("$currentName  ▾", fontWeight = FontWeight.SemiBold)
+                }
+                androidx.compose.material3.DropdownMenu(
+                    expanded = open,
+                    onDismissRequest = { open = false }) {
+                    val options =
+                        listOf(i18n.SYSTEM) + com.michelle.raouf.fetch_jet.core.i18n.start.appLanguages.map { it.localeCode }
+                    options.forEach { code ->
+                        val name = if (code == i18n.SYSTEM) s.systemLanguage
+                        else com.michelle.raouf.fetch_jet.core.i18n.start.appLanguages.first { it.localeCode == code }.languageName
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = {
+                                Text(
+                                    name,
+                                    fontWeight = if (code == current) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (code == current) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                open = false
+                                if (code != current) onLanguageChanged(code)
+                            }
+                        )
+                    }
                 }
             }
         }

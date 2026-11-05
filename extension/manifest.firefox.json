@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FetchJet Download Manager",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Send downloads, videos and link lists from your browser to FetchJet, with cookies so logged-in downloads just work.",
   "browser_specific_settings": {
     "gecko": {
@@ -39,6 +39,22 @@
   ],
   "background": {
     "scripts": [
+      "i18n/i18n.js",
+      "i18n/en.js",
+      "i18n/ar.js",
+      "i18n/fr.js",
+      "i18n/de.js",
+      "i18n/es.js",
+      "i18n/pt.js",
+      "i18n/it.js",
+      "i18n/ru.js",
+      "i18n/tr.js",
+      "i18n/id.js",
+      "i18n/zh.js",
+      "i18n/ja.js",
+      "i18n/ko.js",
+      "i18n/hi.js",
+      "i18n/fa.js",
       "yt-core.js",
       "background.js"
     ]
@@ -49,6 +65,22 @@
         "<all_urls>"
       ],
       "js": [
+        "i18n/i18n.js",
+        "i18n/en.js",
+        "i18n/ar.js",
+        "i18n/fr.js",
+        "i18n/de.js",
+        "i18n/es.js",
+        "i18n/pt.js",
+        "i18n/it.js",
+        "i18n/ru.js",
+        "i18n/tr.js",
+        "i18n/id.js",
+        "i18n/zh.js",
+        "i18n/ja.js",
+        "i18n/ko.js",
+        "i18n/hi.js",
+        "i18n/fa.js",
         "content.js"
       ],
       "run_at": "document_idle",

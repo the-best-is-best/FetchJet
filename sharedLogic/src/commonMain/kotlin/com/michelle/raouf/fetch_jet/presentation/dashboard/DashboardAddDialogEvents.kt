@@ -47,10 +47,21 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(fileNameOverride = event.name) }
         }
 
+        is DashboardUiEvent.OnChecksumChanged -> {
+            _uiState.update { it.copy(checksumInput = event.value) }
+        }
+
         is DashboardUiEvent.OnUrlChanged -> {
+            val links = extractLinks(event.url)
+            val inputUrl = links.singleOrNull()
+                ?.takeIf {
+                    event.url.trim().any { c -> c.isWhitespace() } &&
+                            event.url.length - _uiState.value.inputUrl.length > 1
+                }
+                ?: event.url
 
             // App Store edition: media and torrent engines are not shipped.
-            val engine = when (val detected = detectLinkTypeUseCase(event.url)) {
+            val engine = when (val detected = detectLinkTypeUseCase(inputUrl)) {
                 EngineType.MEDIA_STREAM -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) detected else EngineType.HTTP_DIRECT
                 EngineType.BITTORRENT -> if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) detected else EngineType.HTTP_DIRECT
                 else -> detected
@@ -59,14 +70,22 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             val defaultQualities =
 
                 emptyList<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>()
+            val linkList =
+                if (links.size >= 2) links.map {
+                    LinkListEntry(
+                        it,
+                        engineForListedLink(it)
+                    )
+                } else emptyList()
 
             _uiState.update {
 
                 it.copy(
 
-                    inputUrl = event.url,
+                    inputUrl = inputUrl,
 
-                    detectedEngine = engine,
+                    detectedEngine = if (linkList.isNotEmpty()) EngineType.HTTP_DIRECT else engine,
+                    linkList = linkList,
 
                     errorMessage = null,
 
@@ -88,10 +107,13 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     selectedConnections = 0,
                     mediaDurationSeconds = 0L,
                     fileNameOverride = "",
+                    checksumInput = "",
                     suggestedFileName = ""
                 )
             }
             refreshSuggestedFileName()
+            if (linkList.any { it.engine == EngineType.BITTORRENT }) inspectListedTorrents()
+            if (linkList.any { it.engine == EngineType.MEDIA_STREAM }) inspectListedVideos()
         }
 
         is DashboardUiEvent.OnDestinationPathChanged -> {
@@ -112,6 +134,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleAddDialog -> {
 
+            if (!event.show) _uiState.update { it.copy(linkListFolder = "") }
             if (!event.show && pendingExternalUrl != null) {
                 val urlToFallback = pendingExternalUrl!!
                 pendingExternalUrl = null
@@ -154,6 +177,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
                     inspectedMediaQualities = defaultQualities,
                     inspectedPlaylist = null,
+                    linkList = if (event.show) state.linkList else emptyList(),
                     scheduleStartMs = 0L,
 
                     selectedConnections = 0,
@@ -203,6 +227,39 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(clipFastMode = event.enabled) }
         }
 
+        is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+                if (i == event.index) entry.copy(isSelected = event.selected) else entry
+            })
+        }
+
+        is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.map { it.copy(isSelected = event.selected) })
+        }
+
+        is DashboardUiEvent.OnLinkListFolderChanged -> _uiState.update { it.copy(linkListFolder = event.name) }
+
+        is DashboardUiEvent.OnLinkListQualitySelected -> _uiState.update { st ->
+            st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+                if (i != event.linkIndex) entry
+                else entry.copy(mediaQualities = entry.mediaQualities.map { it.copy(isSelected = it.index == event.qualityIndex) })
+            })
+        }
+
+        is DashboardUiEvent.OnLinkListRetryInspect -> inspectListedVideos()
+
+        is DashboardUiEvent.OnLinkListTorrentFileToggled -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { if (it.index == event.fileIndex) it.copy(isSelected = event.selected) else it }
+        }
+
+        is DashboardUiEvent.OnLinkListTorrentFilePriority -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { if (it.index == event.fileIndex) it.copy(priority = event.priority) else it }
+        }
+
+        is DashboardUiEvent.OnLinkListTorrentSelectAll -> updateListedTorrentFiles(event.linkIndex) { files ->
+            files.map { it.copy(isSelected = event.selected) }
+        }
+
         is DashboardUiEvent.OnPlaylistEntryToggled -> _uiState.update { st ->
             val pl = st.inspectedPlaylist ?: return@update st
             st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map {
@@ -213,6 +270,10 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnPlaylistSelectAll -> _uiState.update { st ->
             val pl = st.inspectedPlaylist ?: return@update st
             st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map { it.copy(isSelected = event.selected) }))
+        }
+
+        is DashboardUiEvent.OnPlaylistFolderChanged -> _uiState.update {
+            it.copy(inspectedPlaylist = it.inspectedPlaylist?.copy(folderName = event.name))
         }
 
         is DashboardUiEvent.OnPlaylistQualityChanged -> _uiState.update {

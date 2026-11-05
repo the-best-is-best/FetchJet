@@ -19,7 +19,11 @@ actual fun createStreamHttpClient(): HttpClient = HttpClient(OkHttp) {
                 if (resp.code == 403) {
                     com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                         "StreamHttpClient 403\n  okUrl : ${req.url}\n  okHdr : " +
-                                req.headers.joinToString { "${it.first}=${it.second}" } +
+                                req.headers.joinToString {
+                                    val secret = it.first.equals("Cookie", true) ||
+                                            it.first.contains("Authorization", true)
+                                    "${it.first}=${if (secret) "***" else it.second}"
+                                } +
                                 "\n  proto : ${resp.protocol}  tls=${resp.handshake?.tlsVersion}/${resp.handshake?.cipherSuite}"
                     }
                 }
@@ -35,6 +39,7 @@ actual fun createStreamHttpClient(): HttpClient = HttpClient(OkHttp) {
         connectTimeoutMillis = 60_000L
         socketTimeoutMillis = 60_000L
     }
+    useNetworkSettings()
 }
 
 actual fun rawProbeForDiagnostics(url: String, userAgent: String): String = ""

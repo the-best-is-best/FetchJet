@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,15 +37,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canResume
@@ -59,6 +69,7 @@ import com.michelle.raouf.fetch_jet.ui.TaskRow
 import com.michelle.raouf.fetch_jet.ui.TaskRowsHeader
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
@@ -69,8 +80,9 @@ internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
-                text = "Updating media tools · $tool" + (fraction?.let { " ${(it * 100).toInt()}%" }
-                    ?: "…"),
+                text = LocalizationManager.Strings.homeUpdatingMediaTools(
+                    tool.orEmpty(),
+                    fraction?.let { (it * 100).toInt() }),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
@@ -131,31 +143,74 @@ internal fun TaskListArea(
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
     }
     val selectionMode = checkedIds.isNotEmpty()
+    var anchorId by remember { mutableStateOf<String?>(null) }
+    val listFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val desktop = remember { com.michelle.raouf.fetch_jet.getPlatform().isJvm }
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = selectionMode,
         onBackCompleted = { checkedIds = emptySet() }
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val tasks = shownTasks
+    val shownOrder = if (grouped) {
+        taskStateGroups(tasks).filter { collapsedGroups[it.key] != true }.flatMap { it.tasks }
+    } else tasks
+    Column(
+        modifier = if (!desktop) Modifier.fillMaxSize() else Modifier.fillMaxSize()
+            .focusRequester(listFocus)
+            .focusable()
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when {
+                    e.key == Key.A && (e.isCtrlPressed || e.isMetaPressed) -> {
+                        checkedIds = shownOrder.mapTo(HashSet()) { it.id }
+                        true
+                    }
+
+                    e.key == Key.Escape && selectionMode -> {
+                        checkedIds = emptySet()
+                        true
+                    }
+
+                    e.key == Key.Delete || (e.key == Key.Backspace && e.isMetaPressed) -> {
+                        when {
+                            selectionMode -> viewModel.onEvent(
+                                DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())
+                            )
+
+                            selectedTaskId != null -> viewModel.onEvent(
+                                DashboardUiEvent.OnRemoveClicked(selectedTaskId)
+                            )
+                        }
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+    ) {
         if (uiState.isDownloadingYtDlp && uiState.toolDownloadName != null) {
             ToolsDownloadBanner(uiState.toolDownloadName, uiState.toolDownloadFraction)
         }
+        com.michelle.raouf.fetch_jet.ui.WhenDoneBanner()
         if (allTasks.isNotEmpty() && externalSearch == null) {
-            androidx.compose.material3.OutlinedTextField(
+            com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
                 value = searchQuery,
                 onValueChange = { localSearch = it },
-                placeholder = { Text("🔍 Search downloads by name…", fontSize = 13.sp) },
-                singleLine = true,
-                trailingIcon = if (searchQuery.isNotEmpty()) {
-                    { IconButton(onClick = { localSearch = "" }) { Text("✕", fontSize = 14.sp) } }
+                placeholder = LocalizationManager.Strings.homeSearchDownloadsByNamePlaceholder,
+                leading = { Text("🔍", fontSize = 14.sp) },
+                trailing = if (searchQuery.isNotEmpty()) {
+                    {
+                        com.michelle.raouf.fetch_jet.ui.FieldIconButton(
+                            "✕",
+                            onClick = { localSearch = "" })
+                    }
                 } else null,
-                shape = RoundedCornerShape(12.dp),
-                textStyle = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                height = 44.dp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
         }
-        val tasks = shownTasks
         if (selectionMode) {
             SelectionBar(
                 count = checkedIds.size,
@@ -164,6 +219,7 @@ internal fun TaskListArea(
                     checkedIds = if (all) tasks.mapTo(HashSet()) { it.id } else emptySet()
                 },
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())) },
+                onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(checkedIds.toList())) },
                 onClose = { checkedIds = emptySet() }
             )
         } else if (tasks.isNotEmpty() && showToolbar) {
@@ -185,12 +241,14 @@ internal fun TaskListArea(
                     Text("📥", fontSize = 48.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank()) "No downloads match \"${searchQuery.trim()}\"" else "No tasks in this view",
+                        text = if (searchQuery.isNotBlank()) LocalizationManager.Strings.homeNoDownloadsMatch(
+                            searchQuery.trim()
+                        ) else LocalizationManager.Strings.homeNoTasksInView,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (searchQuery.isNotBlank()) "Try another name" else "Add a download to get started",
+                        text = if (searchQuery.isNotBlank()) LocalizationManager.Strings.homeTryAnotherName else LocalizationManager.Strings.homeAddDownloadToGetStarted,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -223,12 +281,34 @@ internal fun TaskListArea(
                     task = task,
                     selected = task.id == selectedTaskId,
                     speedDisplayUnit = speedDisplayUnit,
-                    onClick = { onSelect(task.id) },
+                    onClick = {
+                        anchorId = task.id
+                        if (desktop) listFocus.requestFocus()
+                        onSelect(task.id)
+                    },
                     checked = task.id in checkedIds,
                     selectionMode = selectionMode,
                     onCheckedChange = { on ->
+                        anchorId = task.id
+                        if (desktop) listFocus.requestFocus()
                         checkedIds = if (on) checkedIds + task.id else checkedIds - task.id
                     },
+                    onCtrlClick = if (!desktop) null else ({
+                        anchorId = task.id
+                        listFocus.requestFocus()
+                        checkedIds =
+                            if (task.id in checkedIds) checkedIds - task.id else checkedIds + task.id
+                    }),
+                    onShiftClick = if (!desktop) null else ({
+                        listFocus.requestFocus()
+                        val ids = shownOrder.map { it.id }
+                        val from = ids.indexOf(anchorId ?: selectedTaskId).takeIf { it >= 0 } ?: 0
+                        val to = ids.indexOf(task.id)
+                        if (to >= 0) {
+                            checkedIds =
+                                checkedIds + ids.subList(minOf(from, to), maxOf(from, to) + 1)
+                        }
+                    }),
                     onLongClick = { checkedIds = checkedIds + task.id },
                     onQuickAction = { action ->
                         when (action) {
@@ -350,18 +430,25 @@ internal fun QueueStatusBar(
     ) {
         val style = MaterialTheme.typography.labelMedium
         val color = MaterialTheme.colorScheme.onSurfaceVariant
-        Text("$running downloading · $waiting waiting", style = style, color = color, maxLines = 1)
         Text(
-            "Queue: " + if (maxAtOnce <= 0) "no limit" else "$maxAtOnce at a time",
+            LocalizationManager.Strings.homeDownloadingWaitingSummary(running, waiting),
             style = style,
             color = color,
             maxLines = 1
         )
         Text(
-            "Speed limit: " + if (globalLimitBytes > 0) formatSpeed(
-                globalLimitBytes,
-                speedDisplayUnit
-            ) else "off",
+            LocalizationManager.Strings.homeQueueStatus(maxAtOnce),
+            style = style,
+            color = color,
+            maxLines = 1
+        )
+        Text(
+            LocalizationManager.Strings.homeSpeedLimitStatus(
+                if (globalLimitBytes > 0) formatSpeed(
+                    globalLimitBytes,
+                    speedDisplayUnit
+                ) else null
+            ),
             style = style, color = color
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -395,17 +482,27 @@ internal fun taskStateGroups(tasks: List<DownloadTask>): List<TaskStateGroup> {
         TaskStateGroup(
             "run",
             "⬇",
-            "Downloading",
+            LocalizationManager.Strings.homeGroupDownloading,
             downloading
         ) { MaterialTheme.colorScheme.primary },
         TaskStateGroup(
             "wait",
             "⏳",
-            "Waiting",
+            LocalizationManager.Strings.homeGroupWaiting,
             waiting
         ) { MaterialTheme.colorScheme.onSurfaceVariant },
-        TaskStateGroup("stop", "⏸", "Paused & failed", stopped) { StatusPaused },
-        TaskStateGroup("done", "✓", "Completed", completed) { MaterialTheme.colorScheme.tertiary }
+        TaskStateGroup(
+            "stop",
+            "⏸",
+            LocalizationManager.Strings.homeGroupPausedFailed,
+            stopped
+        ) { StatusPaused },
+        TaskStateGroup(
+            "done",
+            "✓",
+            LocalizationManager.Strings.homeGroupCompleted,
+            completed
+        ) { MaterialTheme.colorScheme.tertiary }
     ).filter { it.tasks.isNotEmpty() }
 }
 
@@ -437,14 +534,26 @@ internal fun ListToolbar(
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.height(34.dp)
-        ) { Text("⏸  Pause all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) {
+            Text(
+                "⏸  ${LocalizationManager.Strings.homePauseAll}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         OutlinedButton(
             onClick = onResumeAll,
             enabled = anyResumable(tasks),
             shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.height(34.dp)
-        ) { Text("▶  Resume all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        ) {
+            Text(
+                "▶  ${LocalizationManager.Strings.homeResumeAll}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Spacer(Modifier.weight(1f))
         var open by remember { mutableStateOf(false) }
         Box {
@@ -454,7 +563,7 @@ internal fun ListToolbar(
                 contentPadding = PaddingValues(horizontal = 10.dp)
             ) {
                 Text(
-                    "Sort: ${sortOption.label}  ▾",
+                    "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -483,6 +592,7 @@ internal fun SelectionBar(
     allChecked: Boolean,
     onCheckAll: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit,
     onClose: () -> Unit
 ) {
     Row(
@@ -496,19 +606,35 @@ internal fun SelectionBar(
                 fontSize = 14.sp
             )
         }
-        Text("$count selected", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            LocalizationManager.Strings.homeSelectedCount(count),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         androidx.compose.material3.TextButton(
             onClick = { onCheckAll(!allChecked) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
             Text(
-                if (allChecked) "Select none" else "Select all",
+                if (allChecked) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
         Spacer(Modifier.weight(1f))
+        OutlinedButton(
+            onClick = onExport,
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+            modifier = Modifier.height(34.dp)
+        ) {
+            Text(
+                LocalizationManager.Strings.homeExport,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         androidx.compose.material3.Button(
             onClick = onDelete,
             shape = RoundedCornerShape(10.dp),
@@ -519,7 +645,7 @@ internal fun SelectionBar(
             modifier = Modifier.height(34.dp)
         ) {
             Text(
-                "🗑  Delete",
+                "🗑  ${LocalizationManager.Strings.delete}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onError

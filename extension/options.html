@@ -32,97 +32,132 @@
 </head>
 <body>
 <div class="wrap">
-    <h1><span class="logo">⚡</span> FetchJet extension settings</h1>
+    <h1><span class="logo">⚡</span> <span data-i18n="optTitle">FetchJet extension settings</span>
+    </h1>
+    <div class="status" data-i18n="optLanguageNote">The extension uses the language chosen in the
+        FetchJet app.
+    </div>
 
     <div class="card">
-        <h2>Connection</h2>
-        <div class="status" id="connStatus">Checking FetchJet…</div>
-        <div class="row" id="rowAutoLaunch"><label>Start FetchJet automatically when a download is
-            captured and the app
-            is closed<small>Off: the browser keeps the download when FetchJet is not running. Uses
-                the native messaging host or the <code>fetchjet://</code> link handler registered by
+        <h2 data-i18n="optConnection">Connection</h2>
+        <div class="status" data-i18n="optCheckingApp" id="connStatus">Checking FetchJet…</div>
+        <div class="row" id="rowAutoLaunch"><label><span data-i18n="optAutoLaunch">Start FetchJet automatically when a download is
+            captured and the app is closed</span><small data-i18n="optAutoLaunchHint">Off: the
+            browser keeps the download when FetchJet is not running. Uses
+            the native messaging host or the fetchjet:// link handler registered by
                 the installer.</small></label><input id="autoLaunch" type="checkbox"></div>
-        <div class="row" id="rowNotifications"><label>Show notifications</label><input
+        <div class="row" id="rowNotifications"><label data-i18n="optNotifications">Show
+            notifications</label><input
                 id="notifications" type="checkbox">
         </div>
-        <div class="row" id="permRow" style="display:none"><label>Site access<small>Without it the
+        <div class="row" id="permRow" style="display:none"><label><span data-i18n="optSiteAccess">Site access</span><small
+                data-i18n="optSiteAccessHint">Without it the
             extension cannot see downloads or media on pages.</small></label>
-            <button class="ghost" id="grantBtn">Allow all sites</button>
+            <button class="ghost" data-i18n="optAllowAllSites" id="grantBtn">Allow all sites
+            </button>
         </div>
     </div>
 
     <div class="card">
-        <h2>Capture</h2>
-        <div class="row"><label>Enable FetchJet capture<small id="masterHint">Master switch.
-            Shortcut:
-            <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggles it.</small></label><input
+        <h2 data-i18n="optCapture">Capture</h2>
+        <div class="row"><label><span data-i18n="optEnable">Enable FetchJet capture</span><small
+                data-i18n="optMasterShortcut" id="masterHint">Master switch.
+            Shortcut: Alt+Shift+X toggles it.</small></label><input
                 id="enabled" type="checkbox"></div>
-        <div class="row" id="rowCaptureDownloads"><label>Take over browser downloads<small>Any
+        <div class="row" id="rowCaptureDownloads"><label><span data-i18n="optTakeOver">Take over browser downloads</span><small
+                data-i18n="optTakeOverHint">Any
             download the browser starts is
             cancelled and sent to FetchJet instead.</small></label><input id="captureDownloads"
                                                                           type="checkbox">
         </div>
-        <div class="row"><label>Intercept clicks on file links<small>Links ending in one of the
+        <div class="row"><label><span
+                data-i18n="optInterceptLinks">Intercept clicks on file links</span><small
+                data-i18n="optInterceptLinksHint">Links ending in one of the
             extensions below open in FetchJet directly.</small></label><input id="captureLinks"
                                                                               type="checkbox">
         </div>
-        <div class="row"><label>Detect video &amp; audio on pages<small>Streams the page plays (MP4,
+        <div class="row"><label><span
+                data-i18n="optDetectMedia">Detect video &amp; audio on pages</span><small
+                data-i18n="optDetectMediaHint">Streams the page plays (MP4,
             WebM, HLS, DASH…) are listed in the popup. YouTube is handled by yt-dlp instead.</small></label><input
                 id="captureMedia" type="checkbox"></div>
-        <div class="row" id="rowAutoResolve"><label>Ask FetchJet for video qualities
-            automatically<small>When a page
+        <div class="row" id="rowAutoResolve"><label><span data-i18n="optAutoResolve">Ask FetchJet for video qualities
+            automatically</span><small data-i18n="optAutoResolveHint">When a page
             plays a video (YouTube, Facebook, Instagram, TikTok, X, Vimeo…), the qualities found by
             yt-dlp are listed in the popup and on the page button.</small></label><input
                 id="autoResolve" type="checkbox"></div>
-        <div class="row"><label>Show the “Download this video” button on pages</label><input
+        <div class="row"><label data-i18n="optPagePanel">Show the “Download this video” button on
+            pages</label><input
                 id="pagePanel" type="checkbox"></div>
-        <div class="row"><label>Send the site's cookies with each link<small id="cookiesNote">Needed
+        <div class="row"><label><span
+                data-i18n="optCookies">Send the site's cookies with each link</span><small
+                data-i18n="optCookiesHint" id="cookiesNote">Needed
             for downloads
             behind a login. Cookies go only to the FetchJet app on this computer
             (127.0.0.1).</small></label><input id="sendCookies" type="checkbox"></div>
-        <div class="row" id="rowHoldKey"><label>Hold this key to download with the browser
+        <div class="row" id="rowHoldKey"><label data-i18n="optHoldKey">Hold this key to download
+            with the browser
             instead</label>
             <select id="holdKey">
                 <option value="alt">Alt</option>
                 <option value="ctrl">Ctrl</option>
                 <option value="shift">Shift</option>
                 <option value="meta">Meta / Win / Cmd</option>
-                <option value="none">Disabled</option>
+                <option data-i18n="optHoldDisabled" value="none">Disabled</option>
             </select></div>
-        <div class="row" id="rowMinSize"><label>Ignore browser downloads smaller than (KB)<small>0 =
+        <div class="row" id="rowMinSize"><label><span data-i18n="optMinSize">Ignore browser downloads smaller than (KB)</span><small
+                data-i18n="optMinSizeHint">0 =
             capture
             everything. The size is only known when the server reports it.</small></label><input
                 id="minSizeKB" min="0" step="1" type="number"></div>
     </div>
 
     <div class="card">
-        <h2>File types</h2>
-        <label>Extensions to capture (comma or space separated)</label>
+        <h2 data-i18n="optFileTypes">File types</h2>
+        <label data-i18n="optExtensions">Extensions to capture (comma or space separated)</label>
         <textarea id="extensions" spellcheck="false"></textarea>
         <div class="actions">
-            <button class="ghost" id="resetExt">Reset to defaults</button>
+            <button class="ghost" data-i18n="optResetDefaults" id="resetExt">Reset to defaults
+            </button>
         </div>
     </div>
 
     <div class="card">
-        <h2>Excluded sites</h2>
-        <label>Never capture on these hosts (one per line, sub-domains included)<small>Example:
-            <code>drive.google.com</code></small></label>
+        <h2 data-i18n="optExcluded">Excluded sites</h2>
+        <label><span data-i18n="optExcludedLabel">Never capture on these hosts (one per line, sub-domains included)</span><small
+                data-i18n="optExcludedExample">Example:
+            drive.google.com</small></label>
         <textarea id="excludedHosts" placeholder="example.com" spellcheck="false"></textarea>
     </div>
 
     <div class="card" id="cardShortcuts">
-        <h2>Keyboard shortcuts</h2>
-        <div class="status"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> send current page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>
-            all links on page · <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> toggle capture<br>
+        <h2 data-i18n="optShortcuts">Keyboard shortcuts</h2>
+        <div class="status"><span data-i18n="optShortcutsList">Alt+Shift+D send current page · Alt+Shift+L
+            all links on page · Alt+Shift+X toggle capture</span><br>
             <small id="shortcutsHelp">Change them at
                 <code>chrome://extensions/shortcuts</code>.</small></div>
     </div>
 
     <div class="actions">
-        <button id="save">Save</button>
+        <button data-i18n="optSave" id="save">Save</button>
         <span class="saved" id="saved"></span></div>
 </div>
+<script src="i18n/i18n.js"></script>
+<script src="i18n/en.js"></script>
+<script src="i18n/ar.js"></script>
+<script src="i18n/fr.js"></script>
+<script src="i18n/de.js"></script>
+<script src="i18n/es.js"></script>
+<script src="i18n/pt.js"></script>
+<script src="i18n/it.js"></script>
+<script src="i18n/ru.js"></script>
+<script src="i18n/tr.js"></script>
+<script src="i18n/id.js"></script>
+<script src="i18n/zh.js"></script>
+<script src="i18n/ja.js"></script>
+<script src="i18n/ko.js"></script>
+<script src="i18n/hi.js"></script>
+<script src="i18n/fa.js"></script>
 <script src="platform.js"></script>
 <script src="options.js"></script>
 </body>

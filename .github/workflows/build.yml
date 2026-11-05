@@ -136,6 +136,9 @@ jobs:
       - name: Checkout repository
         if: steps.plan.outputs.release == 'true'
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       # The in-app update check compares the release tag with APP_VERSION: they must match,
       # or users of the new build would be told about an "update" to the version they have.
@@ -179,6 +182,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -226,6 +232,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
@@ -236,6 +243,9 @@ jobs:
             case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*|*universal*) FILES+=("$f");; esac
           done
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -247,6 +257,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -286,11 +299,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -303,6 +320,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -371,11 +391,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi desktopApp/build/msix/*.msix )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -388,6 +412,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -422,11 +449,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( desktopApp/build/dmg-out/*-arm64.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -442,6 +473,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -488,11 +522,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           FILES=( build/ios/FetchJet-full.ipa )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No iOS files were produced"; exit 1; }
+          # Every file gets <file>.sig: the in-app updater installs only signed files.
+          bash scripts/sign-release-file.sh "${FILES[@]}"
+          SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -525,6 +563,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
           fetch-depth: 0   # tags, to compare with the previous release
 
       # The stores only get a new version when extension/ changed since the previous
@@ -604,6 +644,8 @@ jobs:
           # same build without the key, the file Edge Add-ons takes when it is submitted by hand.
           FILES=( build/extension/fetchjet-chrome-*.zip build/extension/fetchjet-store-*.zip build/extension/*.xpi )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No extension files were produced"; exit 1; }
+          # No <file>.sig here: the in-app updater never installs the extension (Firefox checks
+          # Mozilla's own signature inside the .xpi, Chrome / Edge install from their stores).
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
 
@@ -663,4 +705,25 @@ jobs:
           } > notes.md
           cat notes.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file notes.md
+          # The same notes as a file: the app reads it when the GitHub API is rate-limited
+          # (the release web page drops the fetchjet-unchanged / fetchjet-beta markers).
+          cp notes.md release-notes.md
+          gh release upload "$TAG" release-notes.md --repo "$GITHUB_REPOSITORY" --clobber
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
+
+      # Publish SHA256 checksums so a user who downloads a file by hand can verify it
+      # (e.g. paste the hash into FetchJet's own checksum field, or run `sha256sum -c`).
+      # Authenticity of in-app updates is already covered by the per-file .sig signatures.
+      - name: Publish SHA256 checksums
+        run: |
+          rm -rf sums && mkdir sums
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir sums --clobber
+          (
+            cd sums
+            rm -f SHA256SUMS.txt
+            # Hash the distributable files only — not signatures or notes metadata.
+            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes.md' -printf '%P\n' \
+              | sort | xargs -r sha256sum > SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          )
+          gh release upload "$TAG" sums/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber

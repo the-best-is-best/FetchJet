@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -20,7 +22,7 @@ internal fun DashboardViewModel.autoUpdateTools() {
         }
         refreshToolStatus()
         if (changed) {
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Media tools updated"))
+            _uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.sysMediaToolsUpdated))
         }
     }
 }
@@ -59,7 +61,7 @@ internal fun DashboardViewModel.refreshToolStatus() {
         val statusText =
             com.michelle.raouf.fetch_jet.feature.media_extractor.getMediaExtractorToolStatus()
         val torrentStatus = runCatching { queueRepository.torrentEngine.engineStatus() }
-            .getOrElse { "BitTorrent engine error: ${it.message}" }
+            .getOrElse { LocalizationManager.Strings.sysTorrentEngineError(it.message.toString()) }
         val torrentReady =
             runCatching { queueRepository.torrentEngine.isSupported }.getOrDefault(false)
         _uiState.update {

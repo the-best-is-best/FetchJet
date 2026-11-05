@@ -15,7 +15,8 @@ import platform.Foundation.stringByRemovingPercentEncoding
  *    fileName, the JSON the desktop app's /add and /links endpoints accept
  *
  * Any web page can open a fetchjet:// link too, so "start without asking" (direct) and a
- * pre-chosen yt-dlp format are ignored: a single link always opens the Add dialog.
+ * pre-chosen yt-dlp format are ignored: a single link always opens the Add dialog, several
+ * open in its link list (nothing starts before the user taps Download).
  */
 object IosFetchJetLinks {
     private const val MAX_LINKS = 500
@@ -42,7 +43,9 @@ object IosFetchJetLinks {
                 when (parsed) {
                     is Map<*, *> -> (parsed as Map<String, Any?>).toRequest()?.let(ExternalDownloadBridge::dispatch)
                     is List<*> -> ExternalDownloadBridge.dispatchBatch(
-                        parsed.take(MAX_LINKS).mapNotNull { (it as? Map<String, Any?>)?.toRequest() }
+                        parsed.take(MAX_LINKS)
+                            .mapNotNull { (it as? Map<String, Any?>)?.toRequest() },
+                        review = true
                     )
                 }
             }

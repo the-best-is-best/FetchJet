@@ -7,6 +7,13 @@ package com.michelle.raouf.fetch_jet.core.network
  * entry - then still opens pages that need the login.
  */
 object SiteCookieJar {
+    private val SHARED_HOSTS = setOf(
+        "github.io", "gitlab.io", "herokuapp.com", "netlify.app", "vercel.app", "pages.dev",
+        "workers.dev", "web.app", "firebaseapp.com", "appspot.com", "blogspot.com",
+        "azurewebsites.net", "cloudfront.net", "amazonaws.com", "onrender.com", "glitch.me",
+        "fly.dev", "neocities.org", "wordpress.com", "tumblr.com", "ngrok.io", "ngrok-free.app"
+    )
+
     // Copy-on-write map: reads need no lock, a lost write only re-saves the same site.
     @kotlin.concurrent.Volatile
     private var bySite: Map<String, Map<String, String>> = emptyMap()
@@ -17,6 +24,10 @@ object SiteCookieJar {
             .substringBefore(':').lowercase().removePrefix("www.").removePrefix("m.")
         if (host == "youtu.be") return "youtube.com"
         val parts = host.split('.')
+        // Hosting domains where every sub-domain is someone else's site: keep one more label.
+        if (parts.size >= 3 && parts.takeLast(2).joinToString(".") in SHARED_HOSTS) {
+            return parts.takeLast(3).joinToString(".")
+        }
         // keep the last two labels (three for co.uk-style suffixes)
         return when {
             parts.size <= 2 -> host

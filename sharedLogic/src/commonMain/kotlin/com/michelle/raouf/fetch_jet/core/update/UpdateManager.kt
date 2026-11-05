@@ -3,11 +3,15 @@ package com.michelle.raouf.fetch_jet.core.update
 import com.michelle.raouf.fetch_jet.core.edition.AppEdition
 import com.michelle.raouf.fetch_jet.core.edition.currentAppEdition
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
+import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
@@ -36,7 +40,12 @@ import okio.SYSTEM
 import okio.buffer
 import okio.use
 
-data class ReleaseAsset(val name: String, val url: String, val size: Long)
+/** [sha256]: GitHub's `digest` of the file (lower-case hex), "" when unknown (web-page fallback). */
+data class ReleaseAsset(val name: String, val url: String, val size: Long, val sha256: String = "")
+
+/** Only files of FetchJet's own releases are downloaded and installed. */
+internal const val RELEASE_DOWNLOAD_PREFIX =
+    "https://github.com/$UPDATE_REPOSITORY/releases/download/"
 
 data class AppRelease(
     val version: String,
@@ -87,6 +96,8 @@ data class UpdateState(
     val showDialog: Boolean = false,
     /** Result line for the settings page: "You're up to date", an error... */
     val message: String? = null,
+    val messageIsInstallError: Boolean = false,
+    val messageIsError: Boolean = false,
     /** 0..1 while the installer downloads, -1 otherwise. */
     val downloadProgress: Float = -1f,
     /** Installer downloaded and waiting for "Restart & update". */
@@ -112,14 +123,16 @@ object UpdateManager {
     private val pathResolver = PathResolver()
     private val settingsFile get() = "${pathResolver.getSettingsDirectory()}/updates.properties".toPath()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val client by lazy {
+    private val clients = NetworkClient {
         HttpClient {
             install(HttpTimeout) {
                 connectTimeoutMillis = 20_000L
                 socketTimeoutMillis = 60_000L
             }
+            useNetworkSettings()
         }
     }
+    private val client get() = clients.current
     private var checkJob: Job? = null
     private var downloadJob: Job? = null
     private var started = false
@@ -128,7 +141,7 @@ object UpdateManager {
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
     init {
-        val supported = currentAppEdition() != AppEdition.STORE && !PlatformUpdater.updatesFromStore
+        val supported = currentAppEdition() != AppEdition.STORE
         val saved = load()
         _state.value = UpdateState(
             supported = supported,
@@ -189,7 +202,13 @@ object UpdateManager {
         val path = s.installerPath
         if (path != null && FileSystem.SYSTEM.exists(path.toPath())) {
             PlatformUpdater.launchInstallerAndExit(path).onFailure { e ->
-                _state.update { it.copy(message = "Could not start the installer: ${e.message}") }
+                _state.update {
+                    it.copy(
+                        message = LocalizationManager.Strings.sysCouldNotStartInstaller(
+                            e.message.toString()
+                        ), messageIsInstallError = true
+                    )
+                }
             }
             return
         }
@@ -202,7 +221,9 @@ object UpdateManager {
         _state.update {
             it.copy(
                 checking = true,
-                message = if (manual) "Checking for updates…" else it.message
+                message = if (manual) LocalizationManager.Strings.sysCheckingForUpdates else it.message,
+                messageIsInstallError = if (manual) false else it.messageIsInstallError,
+                messageIsError = if (manual) false else it.messageIsError
             )
         }
         val result = runCatching { fetchLatestRelease() }
@@ -222,12 +243,17 @@ object UpdateManager {
                     available = if (newer) latest else null,
                     showDialog = newer && !skipped,
                     message = when {
-                        latest == null -> "No published release yet."
-                        unchangedHere -> "Version ${latest!!.version} has no changes for this device; " +
-                                "you have the latest build for it ($APP_VERSION)."
-                        newer -> "Version ${latest.version} is available."
-                        else -> "You're up to date ($APP_VERSION)."
-                    }
+                        latest == null -> LocalizationManager.Strings.sysNoPublishedRelease
+                        unchangedHere -> LocalizationManager.Strings.sysVersionNoChangesForDevice(
+                            latest!!.version,
+                            APP_VERSION
+                        )
+
+                        newer -> LocalizationManager.Strings.sysVersionAvailable(latest.version)
+                        else -> LocalizationManager.Strings.sysUpToDate(APP_VERSION)
+                    },
+                    messageIsInstallError = false,
+                    messageIsError = false
                 )
             }
             save()
@@ -239,19 +265,36 @@ object UpdateManager {
             _state.update {
                 it.copy(
                     checking = false,
-                    message = if (manual) "Could not check for updates: ${e.message ?: "network error"}" else it.message
+                    message = if (manual) LocalizationManager.Strings.sysCouldNotCheckForUpdates(
+                        e.message ?: LocalizationManager.Strings.sysNetworkError
+                    ) else it.message,
+                    messageIsInstallError = if (manual) false else it.messageIsInstallError,
+                    messageIsError = if (manual) true else it.messageIsError
                 )
             }
         }
     }
 
     private suspend fun fetchLatestRelease(): AppRelease? {
+        if (PlatformUpdater.updatesFromStore) {
+            val version = PlatformUpdater.latestStoreVersion() ?: APP_VERSION
+            return AppRelease(
+                version = version,
+                tag = "v$version",
+                title = "FetchJet $version",
+                notes = "",
+                pageUrl = MICROSOFT_STORE_PAGE,
+                publishedAt = "",
+                assets = emptyList()
+            )
+        }
         val response =
             client.get("https://api.github.com/repos/$UPDATE_REPOSITORY/releases/latest") {
                 header("Accept", "application/vnd.github+json")
                 header("User-Agent", "FetchJet/$APP_VERSION")
             }
         if (response.status.value == 404) return null // nothing published yet
+        if (response.status.value == 403 || response.status.value == 429) return fetchLatestFromWebPage()
         if (!response.status.isSuccess()) throw Exception("GitHub answered HTTP ${response.status.value}")
         @Suppress("UNCHECKED_CAST")
         val json = MiniJson.parse(response.bodyAsText()) as? Map<String, Any?>
@@ -261,8 +304,11 @@ object UpdateManager {
             @Suppress("UNCHECKED_CAST")
             val m = a as? Map<String, Any?> ?: return@mapNotNull null
             val name = m.getString("name") ?: return@mapNotNull null
-            val url = m.getString("browser_download_url") ?: return@mapNotNull null
-            ReleaseAsset(name, url, m.getLong("size") ?: 0L)
+            val url = m.getString("browser_download_url")
+                ?.takeIf { it.startsWith(RELEASE_DOWNLOAD_PREFIX) } ?: return@mapNotNull null
+            val sha = m.getString("digest").orEmpty().lowercase()
+                .takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:").orEmpty()
+            ReleaseAsset(name, url, m.getLong("size") ?: 0L, sha)
         }
         return AppRelease(
             version = tag.trim().removePrefix("v").removePrefix("V"),
@@ -276,15 +322,71 @@ object UpdateManager {
         )
     }
 
+    internal suspend fun fetchLatestFromWebPage(): AppRelease? {
+        val latest = client.get("https://github.com/$UPDATE_REPOSITORY/releases/latest") {
+            header("User-Agent", "FetchJet/$APP_VERSION")
+        }
+        if (latest.status.value == 404) return null
+        if (!latest.status.isSuccess()) throw Exception("GitHub answered HTTP ${latest.status.value}")
+        val pageHtml = latest.bodyAsText()
+        val pageUrl = latest.call.request.url.toString()
+        val tag =
+            pageUrl.substringAfter("/releases/tag/", "").substringBefore('?').substringBefore('#')
+        if (tag.isBlank()) return null
+        val assetsHtml =
+            client.get("https://github.com/$UPDATE_REPOSITORY/releases/expanded_assets/$tag") {
+                header("User-Agent", "FetchJet/$APP_VERSION")
+            }.bodyAsText()
+        // The page shows each file's digest too ("Copy to clipboard digest for <name>").
+        val digests = Regex("""digest for ([^"]+)" type="button" value="sha256:([0-9a-f]{64})"""")
+            .findAll(assetsHtml).associate { it.groupValues[1] to it.groupValues[2] }
+        val assets = Regex("""href="(/$UPDATE_REPOSITORY/releases/download/[^"]+)"""")
+            .findAll(assetsHtml)
+            .map { it.groupValues[1] }
+            .distinct()
+            .map { path ->
+                val name = path.substringAfterLast('/')
+                ReleaseAsset(name, "https://github.com$path", 0L, digests[name].orEmpty())
+            }
+            .toList()
+        val notes = assets.firstOrNull { it.name == RELEASE_NOTES_FILE }?.let { file ->
+            runCatching {
+                client.get(file.url) { header("User-Agent", "FetchJet/$APP_VERSION") }
+                    .takeIf { it.status.isSuccess() }?.bodyAsText()?.trim()
+            }.getOrNull()
+        } ?: notesFromReleasePage(pageHtml)
+        return AppRelease(
+            version = tag.trim().removePrefix("v").removePrefix("V"),
+            tag = tag,
+            title = "FetchJet $tag",
+            notes = notes,
+            pageUrl = pageUrl,
+            publishedAt = "",
+            assets = assets
+        )
+    }
+
     private fun startDownload(release: AppRelease, installWhenDone: Boolean = false) {
         if (!PlatformUpdater.canInstallInApp) return
         if (downloadJob?.isActive == true) return
         val asset = PlatformUpdater.pickAsset(release.assets) ?: run {
-            _state.update { it.copy(message = "Update download failed: this release has no installer for this system.") }
+            _state.update {
+                it.copy(
+                    message = LocalizationManager.Strings.sysUpdateNoInstallerForSystem,
+                    messageIsInstallError = true
+                )
+            }
             return
         }
         downloadJob = scope.launch {
-            _state.update { it.copy(downloadProgress = 0f, message = "Downloading ${asset.name}…") }
+            _state.update {
+                it.copy(
+                    downloadProgress = 0f,
+                    message = LocalizationManager.Strings.sysDownloadingAsset(asset.name),
+                    messageIsInstallError = false,
+                    messageIsError = false
+                )
+            }
             val dir = "${pathResolver.getTempDirectory()}/fetchjet-update".toPath()
             val target = dir / asset.name
             val part = dir / "${asset.name}.part"
@@ -298,7 +400,8 @@ object UpdateManager {
                     val channel = response.bodyAsChannel()
                     val buffer = ByteArray(64 * 1024)
                     var done = 0L
-                    FileSystem.SYSTEM.sink(part).buffer().use { sink ->
+                    val hashing = okio.HashingSink.sha256(FileSystem.SYSTEM.sink(part))
+                    hashing.buffer().use { sink ->
                         while (isActive && !channel.isClosedForRead) {
                             val n = channel.readAvailable(buffer, 0, buffer.size)
                             if (n <= 0) break
@@ -315,6 +418,20 @@ object UpdateManager {
                         }
                     }
                     if (total > 0L && done < total) throw Exception("download interrupted")
+                    // GitHub's own SHA-256 of the file: a changed or broken download is not installed.
+                    if (asset.sha256.isNotEmpty() && hashing.hash.hex() != asset.sha256) {
+                        throw Exception("checksum does not match the release")
+                    }
+                }
+                // Signed by FetchJet's own key in CI (<file>.sig): a file that GitHub serves but
+                // was not built by the owner's release workflow is never installed.
+                val sigAsset = release.assets.firstOrNull { it.name == "${asset.name}.sig" }
+                    ?: throw Exception("the release file is not signed")
+                val sig = client.get(sigAsset.url) {
+                    header("User-Agent", "FetchJet/$APP_VERSION")
+                }.bodyAsText()
+                if (!verifyUpdateSignature(part.toString(), sig)) {
+                    throw Exception("the release file signature is not valid")
                 }
                 if (FileSystem.SYSTEM.exists(target)) FileSystem.SYSTEM.delete(target)
                 FileSystem.SYSTEM.atomicMove(part, target)
@@ -325,7 +442,9 @@ object UpdateManager {
                         downloadProgress = -1f,
                         installerPath = target.toString(),
                         showDialog = true,
-                        message = "Version ${release.version} is ready to install."
+                        message = LocalizationManager.Strings.sysVersionReadyToInstall(release.version),
+                        messageIsInstallError = false,
+                        messageIsError = false
                     )
                 }
                 if (installWhenDone) installNow()
@@ -337,7 +456,8 @@ object UpdateManager {
                 _state.update {
                     it.copy(
                         downloadProgress = -1f,
-                        message = "Update download failed: ${e.message}"
+                        message = LocalizationManager.Strings.sysUpdateDownloadFailed(e.message.toString()),
+                        messageIsInstallError = true
                     )
                 }
             }
@@ -370,6 +490,35 @@ object UpdateManager {
         } catch (_: Throwable) {
         }
     }
+}
+
+const val MICROSOFT_STORE_PAGE = "ms-windows-store://pdp/?productid=9NP3HJRHMPJS"
+
+/** Release file with the raw notes (markers included), uploaded by CI next to the builds. */
+const val RELEASE_NOTES_FILE = "release-notes.md"
+
+/**
+ * The notes shown on a GitHub release page, as plain markdown-like text. Used for releases
+ * without [RELEASE_NOTES_FILE]; the page has no `<!-- fetchjet-... -->` markers.
+ */
+internal fun notesFromReleasePage(html: String): String {
+    val start = html.indexOf("data-test-selector=\"body-content\"")
+    if (start < 0) return ""
+    val open = html.indexOf('>', start)
+    val end = html.indexOf("</div>", open)
+    if (open < 0 || end < 0) return ""
+    return html.substring(open + 1, end)
+        .replace("\n", "")
+        .replace(Regex("<h[1-6][^>]*>"), "\n## ")
+        .replace(Regex("<p[^>]*>"), "\n")
+        .replace(Regex("<li[^>]*>"), "- ")
+        .replace(Regex("<br\\s*/?>|</p>|</li>|</h[1-6]>|</ul>|</ol>"), "\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
+        .replace("&#39;", "'").replace("&nbsp;", " ").replace("&amp;", "&")
+        .lines().joinToString("\n") { it.trim() }
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
 }
 
 /** true when [candidate] is a later version than [current] ("1.2.0" > "1.1.9", "1.0.0" > "1.0.0-beta"). */

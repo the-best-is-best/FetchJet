@@ -15,7 +15,16 @@ data class ExternalDownloadRequest(
     /** Start right away with the default folder instead of opening the Add dialog. */
     val direct: Boolean = false,
     /** The extension's scissors button: open the Add dialog with this quality and the clip range on. */
-    val openClip: Boolean = false
+    val openClip: Boolean = false,
+    /** [url] is a captured video-only stream and this its audio: download both, merge them. */
+    val audioUrl: String = "",
+    /** The videos of [url] as the extension read them (a Udemy course): listed without yt-dlp. */
+    val playlist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
+    /** The extension is still reading [url]'s videos: done / total, or the reason it failed. */
+    val reading: Pair<Int, Int>? = null,
+    val readingFailed: String = "",
+    /** Several links of one page ("Download all links"): the page's name, their folder. */
+    val group: String = ""
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {
@@ -39,8 +48,11 @@ object ExternalDownloadBridge {
         }
     private val pending = mutableListOf<ExternalDownloadRequest>()
 
-    /** Several links at once ("Download all links"): queued directly, no dialog per link. */
-    var onExternalBatch: ((List<ExternalDownloadRequest>) -> Unit)? = null
+    /**
+     * Several links at once ("Download all links"): queued directly, no dialog per link. With
+     * `review` (links any web page can send, iOS fetchjet://) they open in the Add dialog's list.
+     */
+    var onExternalBatch: ((List<ExternalDownloadRequest>, Boolean) -> Unit)? = null
 
     var openInBrowserFallback: ((String) -> Unit)? = null
 
@@ -64,12 +76,16 @@ object ExternalDownloadBridge {
         if (handler != null) handler(clean) else pending.add(clean)
     }
 
-    fun dispatchBatch(requests: List<ExternalDownloadRequest>) {
+    fun dispatchBatch(requests: List<ExternalDownloadRequest>, review: Boolean = false) {
         val clean = requests.map { it.copy(url = it.url.trim()) }.filter { it.url.isNotBlank() }
         if (clean.isEmpty()) return
         println("ExternalDownloadBridge: dispatched a batch of ${clean.size} URLs")
         val handler = onExternalBatch
-        if (handler != null) handler(clean) else clean.forEach { onExternalRequest?.invoke(it) }
+        if (handler != null) handler(clean, review) else clean.forEach {
+            onExternalRequest?.invoke(
+                it
+            )
+        }
     }
 
     fun triggerFallback(url: String) {

@@ -32,42 +32,87 @@ function setStatus(state, text) {
 }
 
 async function checkStatus() {
-  setStatus("busy", "Checking…");
+  setStatus("busy", fjT("popupChecking"));
   try {
     const r = await send({ action: "checkStatus" });
     online = !!(r && r.online);
+    if (r && r.config && r.config.language) fjUseLanguage(r.config.language);
     if (r && r.ios) {
-      setStatus("online", "Links open in the FetchJet app");
+      setStatus("online", fjT("popupIosLinks"));
     } else if (online) {
       const v = r.config && r.config.version ? ` v${r.config.version}` : "";
-      setStatus("online", `Connected${v}`);
+      setStatus("online", `${fjT("popupConnected")}${v}`);
     } else {
-      setStatus("", "Not running — click to start");
+      setStatus("", fjT("popupNotRunning"));
     }
   } catch (_) {
     online = false;
-    setStatus("", "Not running — click to start");
+    setStatus("", fjT("popupNotRunning"));
   }
 }
 
 async function launch() {
-  setStatus("busy", "Starting FetchJet…");
+  setStatus("busy", fjT("popupStarting"));
   const r = await send({ action: "launchApp" });
-  if (r && r.online) { online = true; setStatus("online", "Connected"); }
-  else { setStatus("", "Could not start FetchJet"); flash("Is FetchJet installed? Open it once manually.", true, 5000); }
+  if (r && r.online) { online = true; setStatus("online", fjT("popupConnected")); }
+  else { setStatus("", fjT("popupCouldNotStart")); flash(fjT("popupInstalledHint"), true, 5000); }
 }
 
 async function sendUrl(url, extra = {}) {
   if (!url) return;
-  flash("Sending to FetchJet…");
+  flash(fjT("popupSending"));
   const r = await send({ action: "sendToFetchJet", url, referer: currentTab ? currentTab.url : "", ...extra });
-  if (r && r.ok) flash("✓ Sent to FetchJet");
-  else flash(`Could not send (${(r && r.reason) || "unknown error"})`, true, 4000);
+  if (r && r.ok) flash(fjT("popupSent"));
+  else flash(fjT("couldNotSendParen", { reason: fjReason(r && r.reason) }), true, 4000);
   checkStatus();
 }
 
 function isWebPage(url) {
   return !!url && /^(https?|ftp):/i.test(url);
+}
+
+/** A short, plain name for the kind of item (no "HLS", "yt-dlp"...). */
+function badgeOf(it) {
+  if (it.kind === "playlist" || it.kind === "course") return { cls: "list", text: fjT("badgeList") };
+  if ((it.kind === "ytdlp" || it.kind === "captured") && /^audio/i.test(it.label || "")) return { cls: "audio", text: fjT("badgeAudio") };
+  if (it.kind === "ytdlp" || it.kind === "captured") return { cls: "video", text: fjT("badgeVideo") };
+  if (it.stream) return { cls: "stream", text: fjT("badgeStream") };
+  if (/^(mp3|m4a|aac|flac|wav|ogg|opus|wma)$/i.test(it.ext || "") || /^Audio/.test(it.label || "")) return { cls: "audio", text: fjT("badgeAudio") };
+  if (/^(mp4|mkv|webm|mov|avi|m4v|ts|flv)$/i.test(it.ext || "") || /^Video/.test(it.label || "")) return { cls: "video", text: fjT("badgeVideo") };
+  return { cls: "file", text: fjT("badgeFile") };
+}
+
+async function downloadFromPopup(btn, it, extra = {}, okText = "popupSent") {
+  btn.disabled = true; flash(fjT(extra.openClip ? "popupOpening" : "popupSending"));
+  const res = await send({ action: "downloadItem", item: { ...it, ...extra }, tabId: currentTab.id });
+  if (res && res.ok) flash(fjT(okText)); else flash(fjT("couldNotSendParen", { reason: fjReason(res && res.reason) }), true, 4000);
+  btn.disabled = false;
+}
+
+function mediaRow(it, hero) {
+  const row = document.createElement("div");
+  row.className = "media" + (it.disabled ? " off" : "") + (hero ? " hero" : "");
+  const b = badgeOf(it);
+  const badge = document.createElement("span"); badge.className = `kind ${b.cls}`; badge.textContent = it.disabled ? "…" : b.text;
+  const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
+  name.textContent = it.label;
+  if (it.sub && it.kind !== "media") { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = it.sub; name.appendChild(sub); }
+  const size = document.createElement("span"); size.className = "size"; size.dir = "ltr";
+  size.textContent = it.kind === "media" && !it.stream ? human(it.size) : "";
+  row.append(badge, name, size);
+  if (!it.disabled) {
+    const btn = document.createElement("button");
+    btn.className = "small primary"; btn.style.flex = "0 0 auto"; btn.textContent = "⬇"; btn.title = fjT("popupDownloadWith");
+    btn.addEventListener("click", () => downloadFromPopup(btn, it));
+    row.appendChild(btn);
+    if (it.kind === "ytdlp") {
+      const cut = document.createElement("button");
+      cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = fjT("clipTitle");
+      cut.addEventListener("click", () => downloadFromPopup(cut, it, { openClip: true }, "popupOpened"));
+      row.appendChild(cut);
+    }
+  }
+  return row;
 }
 
 async function loadMedia() {
@@ -76,61 +121,43 @@ async function loadMedia() {
   const items = (r && r.items) || [];
   const list = $("mediaList");
   list.replaceChildren();
-  const files = items.filter(i => i.kind === "media");
+  // "Download all" only for real files: stream playlists of one video are not several files.
+  const files = items.filter(i => i.kind === "media" && !i.stream);
   $("allMediaBtn").style.display = files.length > 1 ? "" : "none";
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = !FJ_PLATFORM.qualitiesInPopup ? "Nothing yet. Play the video, or tap “Download page / video”." : "Nothing yet. Play the video, or click “Get qualities”.";
+    empty.textContent = !FJ_PLATFORM.qualitiesInPopup ? fjT("popupEmptyNoQualities") : fjT("popupEmpty");
     list.appendChild(empty);
+    $("sendPageBtn").classList.add("primary");
     return;
   }
-  for (const it of items) {
-    const row = document.createElement("div");
-    row.className = "media" + (it.disabled ? " off" : "");
-    const kind = it.kind === "ytdlp" ? "yt-dlp" : it.kind === "captured" ? "stream" : (it.label.split(" ")[0] || "file");
-    const badge = document.createElement("span"); badge.className = `kind ${it.kind || ""} ${kind}`; badge.textContent = it.disabled ? "…" : kind;
-    const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
-    name.textContent = it.label;
-    if (it.sub && it.kind !== "media") { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = it.sub; name.appendChild(sub); }
-    const size = document.createElement("span"); size.className = "size"; size.textContent = it.kind === "media" ? human(it.size) : "";
-    row.append(badge, name, size);
-    if (!it.disabled) {
-      const btn = document.createElement("button");
-      btn.className = "small primary"; btn.style.flex = "0 0 auto"; btn.textContent = "⬇"; btn.title = "Download with FetchJet";
-      btn.addEventListener("click", async () => {
-        btn.disabled = true; flash("Sending to FetchJet…");
-        const res = await send({ action: "downloadItem", item: it, tabId: currentTab.id });
-        if (res && res.ok) flash("✓ Sent to FetchJet"); else flash(`Could not send (${(res && res.reason) || "unknown error"})`, true, 4000);
-        btn.disabled = false;
-      });
-      row.appendChild(btn);
-      if (it.kind === "ytdlp") {
-        const cut = document.createElement("button");
-        cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = "Download a part of it (clip) in FetchJet";
-        cut.addEventListener("click", async () => {
-          cut.disabled = true; flash("Opening FetchJet…");
-          const res = await send({ action: "downloadItem", item: { ...it, openClip: true }, tabId: currentTab.id });
-          if (res && res.ok) flash("✓ Opened in FetchJet"); else flash(`Could not send (${(res && res.reason) || "unknown error"})`, true, 4000);
-          cut.disabled = false;
-        });
-        row.appendChild(cut);
-      }
-    }
-    list.appendChild(row);
+  // What the user most likely wants goes first, on its own: the whole course / list, else the
+  // best quality FetchJet found. Everything else sits under "More options".
+  const usable = items.filter(i => !i.disabled);
+  const hero = usable.find(i => i.kind === "course" || i.kind === "playlist") ||
+    usable.find(i => i.kind === "ytdlp") || (usable.length === 1 ? usable[0] : null);
+  $("sendPageBtn").classList.toggle("primary", !hero);
+  if (hero) list.appendChild(mediaRow(hero, true));
+  const rest = items.filter(i => i !== hero);
+  if (hero && rest.length) {
+    const more = document.createElement("div");
+    more.className = "more"; more.textContent = fjT("popupMoreOptions");
+    list.appendChild(more);
   }
+  for (const it of rest) list.appendChild(mediaRow(it, false));
 }
 
 function renderSwitches() {
   $("enabledSwitch").classList.toggle("on", !!settings.enabled);
   $("mediaSwitch").classList.toggle("on", !!settings.captureMedia);
   if (FJ_PLATFORM.hint != null) {
-    $("hint").textContent = FJ_PLATFORM.hint;
+    $("hint").textContent = FJ_PLATFORM.hint && fjT(FJ_PLATFORM.hint);
     return;
   }
   const key = (settings.holdKey || "alt");
-  $("hint").textContent = key === "none" ? "Use the context menu to download with FetchJet"
-    : `Hold ${key[0].toUpperCase() + key.slice(1)} while clicking to download with the browser`;
+  $("hint").textContent = key === "none" ? fjT("popupMenuHint")
+    : fjT("popupHoldHint", { key: key[0].toUpperCase() + key.slice(1) });
 }
 
 async function toggle(key) {
@@ -147,7 +174,17 @@ async function checkHostPermission() {
   } catch (_) {}
 }
 
+let pageInfo = null;
+function renderTexts() {
+  fjApplyTexts(document);
+  if (pageInfo) { $("pageTitle").textContent = pageInfo.title; $("pageUrl").textContent = pageInfo.url; }
+  if (settings) renderSwitches();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+  fjOnLanguage(() => { renderTexts(); checkStatus(); loadMedia(); });
+  renderTexts();
+  setStatus("busy", fjT("popupChecking"));
   settings = await send({ action: "getSettings" });
   if (!FJ_PLATFORM.qualitiesInPopup) $("resolveBtn").style.display = "none";
   renderSwitches();
@@ -156,44 +193,43 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try { [currentTab] = await api.tabs.query({ active: true, currentWindow: true }); } catch (_) {}
   if (currentTab && isWebPage(currentTab.url)) {
-    $("pageTitle").textContent = currentTab.title || "Current page";
-    $("pageUrl").textContent = currentTab.url;
+    pageInfo = { title: currentTab.title || fjT("popupCurrentPage"), url: currentTab.url };
     $("urlInput").placeholder = "https://… or magnet:?…";
   } else {
-    $("pageTitle").textContent = "Browser page";
-    $("pageUrl").textContent = "Open a website to download from it";
+    pageInfo = { title: fjT("popupBrowserPage"), url: fjT("popupOpenWebsite") };
     $("sendPageBtn").disabled = true;
     $("allLinksBtn").disabled = true;
   }
+  renderTexts();
   loadMedia();
 
   $("status").addEventListener("click", () => online ? checkStatus() : launch());
   $("sendPageBtn").addEventListener("click", () => sendUrl(currentTab.url));
   $("allLinksBtn").addEventListener("click", async () => {
-    flash("Collecting links…");
+    flash(fjT("popupCollecting"));
     const r = await send({ action: "collectAndSendLinks", tabId: currentTab.id });
-    if (r && r.ok) flash(`✓ ${r.count} link${r.count === 1 ? "" : "s"} sent`);
-    else flash(r && r.reason === "no links" ? "No downloadable links on this page" : "Could not send links", true);
+    if (r && r.ok) flash(r.count === 1 ? fjT("popupLinksSentOne") : fjT("popupLinksSent", { n: r.count }));
+    else flash(r && r.reason === "no links" ? fjT("popupNoLinks") : fjT("popupCouldNotSendLinks"), true);
   });
   $("allMediaBtn").addEventListener("click", async () => {
     const r = await send({ action: "sendDetectedMedia", tabId: currentTab.id });
-    if (r && r.ok) flash(`✓ ${r.count} item${r.count === 1 ? "" : "s"} sent`); else flash("Could not send", true);
+    if (r && r.ok) flash(r.count === 1 ? fjT("popupItemsSentOne") : fjT("popupItemsSent", { n: r.count })); else flash(fjT("popupCouldNotSend"), true);
   });
   $("clearMediaBtn").addEventListener("click", async () => { await send({ action: "clearDetectedMedia", tabId: currentTab.id }); loadMedia(); });
   $("resolveBtn").addEventListener("click", async () => {
     if (!currentTab || !isWebPage(currentTab.url)) return;
-    $("resolveBtn").textContent = "Working…";
+    $("resolveBtn").textContent = fjT("popupWorking");
     const r = await send({ action: "resolveTab", tabId: currentTab.id, force: true });
-    $("resolveBtn").textContent = "Get qualities";
+    $("resolveBtn").textContent = fjT("popupGetQualities");
     await loadMedia();
-    if (!r || !r.items || !r.items.length) flash("No video found on this page", true);
+    if (!r || !r.items || !r.items.length) flash(fjT("popupNoVideo"), true);
   });
   // Keep the list live while the page is still being resolved.
   const refresh = setInterval(loadMedia, 2000);
   window.addEventListener("unload", () => clearInterval(refresh));
   $("sendInputBtn").addEventListener("click", () => {
     const v = $("urlInput").value.trim();
-    if (!v) { flash("Paste a link first", true); return; }
+    if (!v) { flash(fjT("popupPasteFirst"), true); return; }
     sendUrl(v);
     $("urlInput").value = "";
   });
@@ -205,6 +241,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const granted = await api.permissions.request({ origins: ["<all_urls>"] });
       if (granted) $("permBanner").style.display = "none";
-    } catch (e) { flash("Permission request failed", true); }
+    } catch (e) { flash(fjT("popupPermFailed"), true); }
   });
 });

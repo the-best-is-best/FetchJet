@@ -1,17 +1,20 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.engine.DownloadEngine
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
@@ -32,27 +35,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
-import okio.use
 import kotlin.coroutines.coroutineContext
-import kotlin.time.TimeSource
 
 class MediaStreamDownloader(
-
-    internal val client: HttpClient = HttpClient {
-
-        install(HttpRedirect) {
-
-            checkHttpMethod = false
-
-        }
-
-        install(HttpTimeout) {
-            requestTimeoutMillis = null
-            connectTimeoutMillis = 60000L
-            socketTimeoutMillis = 60000L
-        }
-
-    },
 
     internal val pathResolver: PathResolver = PathResolver(),
 
@@ -63,7 +48,24 @@ class MediaStreamDownloader(
     internal var lastHlsError: String? = null
 
     /** HTTP/1.1-only client for piece downloads (googlevideo rejects ranged requests over h2). */
-    internal val streamClient: HttpClient by lazy { com.michelle.raouf.fetch_jet.core.network.createStreamHttpClient() }
+    private val streamClients =
+        NetworkClient { com.michelle.raouf.fetch_jet.core.network.createStreamHttpClient() }
+    internal val streamClient: HttpClient get() = streamClients.current
+
+    private val clients = NetworkClient {
+        HttpClient {
+            install(HttpRedirect) {
+                checkHttpMethod = false
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = null
+                connectTimeoutMillis = 60000L
+                socketTimeoutMillis = 60000L
+            }
+            useNetworkSettings()
+        }
+    }
+    internal val client: HttpClient get() = clients.current
 
     override val engineType: EngineType = EngineType.MEDIA_STREAM
 
@@ -160,6 +162,7 @@ class MediaStreamDownloader(
     }
 
     internal suspend fun executeMediaDownload(taskId: String) {
+        MediaToolsLock.awaitIdle()
         var initialTask = tasksState.value[taskId] ?: return
         if (!coroutineContext.isActive || tasksState.value[taskId]?.status == DownloadStatus.PAUSED) {
             return
@@ -362,7 +365,8 @@ class MediaStreamDownloader(
                 if (it.status == DownloadStatus.PAUSED) it
                 else it.copy(
                     status = DownloadStatus.ERROR,
-                    errorMessage = e.message ?: "Download failed due to network exception",
+                    errorMessage = e.message
+                        ?: LocalizationManager.Strings.sysDownloadFailedNetwork,
                     downloadSpeedBytesPerSec = 0L
                 )
             }
@@ -491,6 +495,7 @@ class MediaStreamDownloader(
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }
 
+        MediaToolsLock.awaitIdle()
         val effectiveUrl = resolveEffectiveMediaUrl(url)
 
         val list = mutableListOf<MediaQualityEntry>()

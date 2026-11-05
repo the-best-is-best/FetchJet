@@ -1,6 +1,7 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-02. Read this first, then `README.md` and `CLAUDE_HANDOFF.md` (the
+Last updated: 2026-11-03. Read this first, then `README.md`, `TESTING.md` (how to re-run the
+manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
 ## Owner rules (follow strictly)
@@ -51,10 +52,11 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.1.0"`
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.1.0`,
-  `CURRENT_PROJECT_VERSION = 3`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.1.0`
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.2.0"` (branch `release-v1.2.0`;
+  `master` has 1.1.0)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.2.0`,
+  `CURRENT_PROJECT_VERSION = 4`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.2.0` (also `manifest.safari.json`)
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
 
@@ -80,7 +82,8 @@ extension\build.ps1
   `adb install -r` fails if the installed app was signed with another key (release / Windows debug):
   ask before `adb uninstall`, it wipes the app data. Bridge from the Mac:
   `adb forward tcp:28451 tcp:28450`,
-  then POST `/add` with header `X-FetchJet: 1`. Permission dialogs on the phone are the owner's to
+  then POST `/add` with header `X-FetchJet: 1` and the pairing token (`X-FetchJet-Token`, see Bridge
+  pairing). Permission dialogs on the phone are the owner's to
   tap. POST `/links` (JSON array of `{url, fileName}`) queues downloads directly, no dialog (desktop
   port 28450 too). The UI can be driven with `adb shell input tap` + `uiautomator dump`
   (set `MSYS_NO_PATHCONV=1` in Git Bash); the header shows the total speed (`↓ 10.5 MB/s`).
@@ -90,6 +93,10 @@ extension\build.ps1
   (1-128 MB) work from Egypt. thinkbroadband returns 403 for Egyptian IPs (server-side block, do
   not try to get around it). Hetzner `*-speed.hetzner.com` allows one connection per IP (429 for
   the rest): good for testing the 429 handling, bad for speed tests.
+- Git submodule `packages/kmp-localization` (project `:kmpLocalization`). After a clone or a pull
+  that adds it, run `git submodule update --init --recursive`, else every Gradle build fails with
+  "Configuring project ':kmpLocalization' without an existing directory" (in Xcode this shows only
+  as "Command PhaseScriptExecution failed with a nonzero exit code").
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
   An incremental build does not re-embed `FetchJetSafariExtension.appex` into `FetchJet.app` when
   only `extension/` JS changed: rsync `Debug-iphonesimulator/FetchJetSafariExtension.appex` into
@@ -103,6 +110,12 @@ extension\build.ps1
   bandwidth service (KNDBWM) helped only half the time. After the owner switched to the Wi-Fi
   network "Mesho_5G 2", Windows and WSL both upload a steady ~15 Mbit/s. Cause not proven (the
   old Wi-Fi network and/or Killer software). Slow release uploads from Windows = check this first.
+- Testing an in-app update on the Mac: back up `/Applications/FetchJet.app`, set `APP_VERSION`
+  to an older version (e.g. `1.0.9`), `./gradlew :desktopApp:createDistributable`, set it back,
+  `ditto desktopApp/build/compose/binaries/main/app/FetchJet.app /Applications/FetchJet.app`.
+  To get the update dialog at start without clicking Settings, set `lastCheckedMs=0` in
+  `~/.fetch_jet/updates.properties` (the auto check runs at most twice a day). The update files
+  land in `$TMPDIR/FetchJetDownloads/fetchjet-update/` (`fetchjet-update.log`).
 - Self-hosted Mac runner: `~/actions-runner`, installed as a launchd service
   (`./svc.sh start|stop|status`, or `./run.sh` in a terminal).
 
@@ -159,11 +172,13 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   `getJsRuntimeStatus()`, `latestGitHubReleaseTag(repo)`. Progress goes to
   `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
   `ToolsDownloadBanner` above the home list.
-- Desktop: tools in `~/.fetch_jet/tools` (yt-dlp, ffmpeg pinned 4.4.1, deno from denoland releases
-  with sha256 check). Auto-update compares `--version` with the latest GitHub tag. Every yt-dlp call
+- Desktop: tools in `~/.fetch_jet/tools` (yt-dlp as the unpacked build in `tools/yt-dlp-dir`,
+  see ROADMAP 6c; ffmpeg pinned 4.4.1 with a per-OS sha256 check, deno from denoland releases
+  with sha256 check). Auto-update
+  compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
   ~/.fetch_jet/cache/yt-dlp`. Desktop inspect is fast (qualities appear on hover), so no EJS cache.
-- Android: python/ffmpeg/QuickJS/aria2c are bundled as `.so` (Android 10+ cannot run downloaded
+- Android: python/ffmpeg/QuickJS are bundled as `.so` (Android 10+ cannot run downloaded
   binaries, so they can only change with a new APK). yt-dlp (a Python zip, data not a binary) ships
   in
   `res/raw/ytdlp` (copied there by CI) and is auto-updated at start; the owner chose to keep it
@@ -171,6 +186,24 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   Android exists only as an unofficial ~100 MB package: not used. `RuntimeManager` passes
   `--cache-dir filesDir/yt-dlp-cache` (it used to pass `--no-cache-dir`) and
   `--plugin-dirs filesDir/fetchjet-ejs-cache-plugin`.
+- iOS Python: **3.14.10** (BeeWare `3.14-b14`) + curl_cffi payload `v0.16.3` (SwiftCurlCffi-iOS,
+  built for Python 3.14), pinned in `scripts/ios-prepare-frameworks.sh` (owner's choice,
+  2026-11-02). Before, the app embedded 3.13 while the payload was built for 3.14, so curl_cffi was
+  skipped and impersonation sites could 403. The script replaces a cached Python / payload of
+  another version. SwiftCurlCffi v0.17.0 = Python 3.15 + curl_cffi 0.17: bump PY_VERSION,
+  PY_BUILD and CC_TAG together. The Swift bridge is version-agnostic (finds `python3.*`, uses only
+  PyGILState_* / PyEval_SaveThread). The "Install Python Runtime" Xcode phase deletes any
+  `python/lib/python3.*` in the app that is not the embedded version. An earlier 3.14 build crashed
+  on the simulator (EXC_BAD_ACCESS in PythonKit's `PyObject_CallObject`, engine stuck at
+  "Preparing engine"): PythonKit took the borrowed `args` / `kwargs` of Swift callbacks with
+  `consuming` (one release too many); PythonKit is now vendored at `iosApp/PythonKit` (local Swift
+  package, upstream fe7d973, Apache-2.0, fix in its README). **Verified 2026-11-02 on the Mac
+  simulator (iPhone 17), clean build with 3.14.10:** log `engine ready: yt-dlp 2026.10.26 on
+  Python 3.14.10, curl_cffi 0.16.3`; YouTube `jNQXAC9IVRw` listed 15 formats and downloaded;
+  9gag `ae5Ag7B` (Media engine) listed 3 formats and downloaded 1.9 MB; no "no impersonate target"
+  warning, no crash report. Not exercised: a YouTube format that needs the ffmpeg merge, a real
+  iPhone. Test for curl_cffi: inspect https://9gag.com/gag/ae5Ag7B (pick Media: the link is
+  detected as Direct); the log must NOT say "no impersonate target is available".
 - iOS: in-process Python + yt-dlp, JS runtime = WebKit plugin (`yt-dlp-apple-webkit-jsi`, an
   `EJSBaseJCP` subclass). Auto-update calls Swift `updateYtDlpModule()` (takes effect next launch).
   deno is impossible on iOS (no JIT for apps, no subprocess).
@@ -191,6 +224,31 @@ Bridges:
   up over the browser".
 - Extension: `background.js` has `downloadItem`, `inspectWithApp`, `sendToFetchJet`,
   `isStreamFragment`, `recentSends` (8 s dedupe), quality labels via regex.
+- Extension languages (2026-11-03): `extension/i18n/` holds the extension's texts in the app's
+  15 languages: `i18n/i18n.js` (the functions: `fjT(key, vars)`, `fjReason(code)`,
+  `fjApplyTexts(document)` for `data-i18n` / `data-i18n-title`, `fjIsRtl`, `fjOnLanguage`,
+  `fjUseLanguage`, `fjAddLanguage`) and one file per language (`i18n/en.js`, `i18n/ar.js`...:
+  `fjAddLanguage("ar", {...})`). A new text = add the key to `en.js` and every language file,
+  then `python scripts/extension-i18n/check.py` (missing / unknown keys, `{placeholders}`). A
+  missing key shows the English text. A new language = its file, its code in `KNOWN`
+  (`i18n.js`) and the file in every list below. The language is the app's: `/config` (desktop
+  `main.kt`, Android `ExtensionBridgeServer`) returns `"language"`, the background stores it as
+  `appLanguage` in `storage.local`, and the content script, popup and options follow it live (RTL
+  for ar / fa, sizes kept LTR). Without the app: the browser's language. iOS / Safari has no
+  `/config`, so it uses Safari's language. The `i18n/` files load first everywhere:
+  `importScripts` in the service worker (and the `executeScript` fallback in
+  `collectAndSendLinks`), first in `content_scripts.js` and Firefox `background.scripts` of
+  all three manifests, `<script>` tags in popup / options; `build.ps1`, `build.sh` and the
+  Xcode "Copy Web Extension Files" phase copy the whole folder. Reasons
+  (`reason: "app not running"`...) stay English codes
+  between scripts and are translated only when shown (`fjReason`); `resolveVideo` returns
+  `notRunning: true` instead of the content script matching English text. `start()` now applies
+  the saved language at once (before, `/config` answered "en" for the first seconds). Platform
+  files hold string keys (`cookiesNote`, `status`, `hint`, `shortcutsText`). Checked with stubbed
+  pages: popup and options in Arabic RTL, SoundCloud button "تنزيل هذا الصوت". Owner-verified in the
+  installed Edge extension (2026-11-03). Not checked: Firefox, Safari.
+- YouTube: only the main video gets a page button (`place()`, `oneVideoSite`): during ads the
+  owner saw 3 buttons (ad / preview players). Not re-checked on a real ad yet.
 - Extension per-browser UI (2026-11-01): `options.js` / `popup.js` read `FJ_PLATFORM` from
   `platform.js`, which differs per build like the manifest: `platform.js` (Chromium: Chrome, Edge,
   Brave, Opera, Vivaldi, Arc; also used when loading the folder unpacked), `platform.firefox.js`,
@@ -235,7 +293,295 @@ Bridges:
   runs it only after the user opened the app once; the user turns it off in Settings > Apps >
   Startup or Task Manager. The MSI / macOS / Linux builds stay opt-in (AutoLaunch toggle).
   Owner-verified on the previous MSIX (task enabled by hand in Task Manager > Startup apps):
-  FetchJet starts at login. Not yet tested: the new default (on without touching it).
+  FetchJet starts at login. The new default (on without touching it) owner-verified 2026-11-04.
+- 1.2.0 updates (branch `release-v1.2.0`): `UpdateManager` falls back to the release web pages
+  (`fetchLatestFromWebPage`) when the API answers 403/429. In-app install on every platform:
+  Android opens the system installer (tested on the A56 up to the installer), macOS swaps
+  `/Applications/FetchJet.app` from the downloaded .dmg, Linux installs the .deb with `pkexec`
+  or swaps the portable folder (script run after the app quits, `fetchjet-update.sh/.log` next
+  to the download). Desktop code: `PlatformUpdater.jvm.kt` only picks the OS; each OS has its
+  own file in `jvmMain/.../core/update/`: `WindowsUpdater.kt` (MSI + Store check),
+  `MacUpdater.kt`, `LinuxUpdater.kt`, shared helpers in `DesktopUpdater.kt`
+  (`DesktopInstall.runShellAfterExit`, `shellQuote`, `firstAsset`). Change one OS = edit its file.
+  macOS in-app update verified 2026-11-02 on the Mac (local 1.0.9 in `/Applications` -> 1.1.0,
+  swapped and reopened by itself, data kept; the script also deletes the temp mount folder and
+  the .dmg). Linux `.deb` path counted as tested (owner's decision, no Linux desktop): do not
+  list it as an open test again; revisit only on a user report. Release notes without the API: CI
+  uploads
+  `release-notes.md` with each release (markers included); the web-page fallback reads it, or the
+  notes text on the release page (`notesFromReleasePage`) for releases without it. The API
+  limit is 60 checks/hour per IP: repeated update tests use it up (then the fallback runs).
+  Windows MSI in-app
+  update verified 2026-11-02: a local 1.0.9 MSI found 1.1.0, downloaded it, restarted into
+  1.1.0 (test MSI uninstalled after; the Store MSIX and `~/.fetch_jet` were untouched).
+  The Store MSIX asks the Store, not GitHub (owner's request), so it never announces a version
+  Microsoft has not approved yet: `WindowsUpdater.latestStoreVersion()` runs PowerShell with
+  WinRT `StoreContext.GetAppAndOptionalStorePackageUpdatesAsync` (works because child processes
+  of the MSIX keep its package identity; outside the package it just answers "no update"). A
+  found update shows the dialog with "Open Microsoft Store"
+  (`ms-windows-store://pdp/?productid=9NP3HJRHMPJS`). Tested inside the installed MSIX with
+  `Invoke-CommandInDesktopPackage` (answer: no update for 1.1.0). It never downloads the MSI.
+- 1.2.0 several links at once: see ROADMAP-1.2.0.md item 2 (`linkList` in the UI state,
+  `extractLinks` / `addLinkList` in `DashboardAddDownload.kt`, `exportLinks` in
+  `DashboardTaskEvents.kt`, `TextFilePicker` expect/actual, `ui/AddDownloadLinkList.kt`).
+  Torrents and magnets in the list are read one by one (`inspectListedTorrents`) and show their
+  files under their row (`TorrentFilesSelectionCard`: checkbox + priority per file).
+- 1.2.0 languages (owner's library `kmpLocalization`, git submodule `packages/kmp-localization`,
+  owner's private repo; CI checks it out with secret `SUBMODULE_TOKEN`; FetchJet's
+  `libs.versions.toml` + root `build.gradle.kts` carry the catalog names it needs). Use it the
+  library's way (owner's rule, do not add layers): one `interface AppLocalization :
+  LocalizationProvider` with every string (`core/i18n/data_provider/AppLocalization.kt`), one
+  `object XxxProvider : AppLocalization` per language in the same folder (15: en ar fr de es pt it
+  ru tr id zh ja ko hi fa), text read as `LocalizationManager.Strings.x`, and
+  `LocalizationManager.start()` (`core/i18n/start/LocalizationStart.kt`) called at every entry:
+  `MainActivity.onCreate`, desktop `main`, iOS `MainViewController`, and the two Android services
+  (START_STICKY can restart them without the activity; `start()` runs once). The library is not
+  observable, so `AppLanguage` (same file) keeps the saved choice (`language=` in
+  settings.properties, "system" = device language) and a StateFlow; `App.kt` and the desktop tray
+  re-compose on it (`key`) and set RTL for ar/fa. Settings > General > Language. A new string =
+  add it to `AppLocalization`, then the build fails until every provider has it. Engine step /
+  status texts (`currentStepText`, `speedText`, `postProcessLabel`, torrent states, `ytDlpStatus`)
+  stay English in the engines and in tasks_cache.json (code compares them) and are translated only
+  where shown, by `localizeStep()` (`core/i18n/start/StepText.kt`, ~55 texts, `step*` members);
+  an unknown text passes through unchanged. Sizes and speeds from `utils/Formatters.kt` are wrapped
+  in `ltr()` (Unicode isolate) so "6.41 MB/s" does not flip in Arabic. Still English: free-form
+  error tails / exception messages, units, brand names. In Kotlin, `"$n个"` / `"$nرابط"` does not
+  compile (letters continue the name): use
+  `${n}`. Verified on the A56: Arabic + RTL (home, settings, a live download, toast and
+  notification in Arabic), choice kept after a restart; Chinese on screen (back to LTR). Not
+  checked: the other 13 languages on screen, desktop. iOS build (CI "Build unsigned IPA") passed
+  2026-11-02 with these changes.
+- 1.2.0 media fixes (2026-11-02, A56):
+    - 9gag.com, kick.com, mixcloud.com detected as Media (`DetectLinkTypeUseCase`, clipboard
+      `videoHosts`); soundcloud.com already was. The extension's `VIDEO_PAGE` list was not changed.
+    - `MediaToolsLock` (`MediaExtractorToolManager.kt`, shared with the view model's tool updates):
+      inspection and media downloads wait while yt-dlp is being updated (a SoundCloud inspect right
+      after a fresh install failed during the update).
+    - A single HLS format (SoundCloud audio, `protocol=m3u8_native`) now goes to FetchJet's own
+      `HlsDownloader` (`DirectMediaResolver` returns `hlsUrl`, `downloadWithOwnEngine` hands it
+      over)
+      instead of yt-dlp's one-segment-at-a-time download. HLS default parallel 6 -> 16 (PC test on
+      SoundCloud segments: 6 = 2.7 MB/s, 16 = 5.0, 24 = 4.0). A56: 62 MB / 510 segments in 29 s (8 s
+      of it resolving); before, minutes. YouTube still tries https formats first.
+    - Pasted / shared text with exactly one link ("Listen to ... on #SoundCloud
+      https://...") keeps
+      only the link (`OnUrlChanged`), only when the text grew by more than one character at once, so
+      typing is not touched. Owner-verified on the A56: SoundCloud Share -> Copy -> Paste leaves
+      only the link.
+    - `/links` skips video pages on purpose (they need the inspector); test media with `/add`.
+- 1.2.0 file split (pure move, same package, `private` -> `internal` where another file needs
+  it; owner's request, 2026-11-02):
+    - `HttpChunkDownloader.kt` 1316 -> 254 (class API only) + `HttpChunkLayout.kt`,
+      `HttpChunkSpeedometer.kt`, `HttpChunkModels.kt`, `HttpChunkWorkers.kt` (download loop, piece
+      workers, single stream), `HttpChunkUrls.kt` (metadata probe, redirects),
+      `HttpChunkHeaders.kt`,
+      `HttpChunkRetry.kt`, `HttpChunkFileNames.kt`, `HttpChunkFiles.kt`.
+    - `MediaStreamExtractorPlatform.jvm.kt` 1530 -> 107 + `MediaInspect.jvm.kt`,
+      `MediaYtDlpDownload.jvm.kt`, `MediaThrottlingProxy.jvm.kt`, `MediaToolPaths.jvm.kt`.
+    - `….android.kt` 1025 -> 114 + `MediaInspect.android.kt`, `MediaDownload.android.kt`.
+    - `….ios.kt` 1270 -> 93 + `MediaInspect.ios.kt`, `MediaYtDlpDownload.ios.kt`,
+      `MediaYtDlpRun.ios.kt` (iOS not compiled on Windows: needs a Mac build).
+    - One real fix in the move: `resolveUrl` (relative redirects) gave `https://a.com/a.com/dir/x`
+      for `Location: x` and broke `//host/path`; now correct.
+    - Desktop + Android build; A56: 64 MB direct download OK after the split.
+  - Mac check 2026-11-02 (after the split): iOS builds (Gradle + Xcode) and on the simulator:
+    YouTube 720p WEBM merged by ffmpeg (VP9 + Opus, 3:33), SoundCloud `forss/flickermood`
+    (full 3:33 m4a, ~8 s), 9gag, YouTube 240p. The SoundCloud log line `ERROR: [soundcloud] ...
+      Requested format is not available` is expected and harmless: `DirectMediaResolver.resolve`
+    gets an HLS format, then asks for a plain https one (`bestaudio[protocol^=http]`); SoundCloud
+    has none, so yt-dlp says so and the HLS link goes to FetchJet's own `HlsDownloader`
+    (common code, so the same line can appear on every platform).
+  - iOS gives the app a new data container on reinstall, and the saved download folder
+    (`destinationPath` in settings.properties and in each task) kept the old absolute path: on
+    the simulator files were written into the old container (a real iPhone would refuse).
+    `relocateAppPath` (`core/filesystem/AppContainerPath.kt`, expect/actual: iOS rebases
+    `.../Containers/Data/Application/<UUID>` onto `NSHomeDirectory()`, JVM/Android return the
+    path) is applied when settings and tasks are loaded. Verified on the simulator: after two
+    reinstalls the Add dialog shows the current container and the file lands there. Counted as
+    tested (owner's decision): no real iPhone; revisit only if a user reports a save problem.
+  - Direct downloads failed with "failed to delete <file>" when a file with the same name was
+    made by an earlier install of the app (Android scoped storage: owned by the old uid).
+    `copyIntoPlace` (`HttpChunkFiles.kt`) now saves as `name (1).ext` then, like the media
+    path's `moveIntoPlace`, and the task's `fileName` follows. Verified on the A56: with the old
+    `1MB.bin` / `2MB.bin` in Download, both completed as `1MB (1).bin` / `2MB (1).bin`.
+  - Android import `.txt` verified on the A56: the system picker returned the file and its 3
+    links (2 files + 1 YouTube) were listed and started. Desktop import (macOS file dialog) also
+    works (owner picked the file). iOS import verified on the simulator: the document picker
+    shows only .txt files as selectable; a file in the app's Documents (visible in Files under
+    FetchJet) filled the list with its 2 links. The automation tools may not drive the macOS Open
+    panel.
+  - Link list videos: title + quality picker per row, Download disabled while any checked video
+    or torrent is read and while a checked video failed (Retry button, never a guessed best).
+    See ROADMAP-1.2.0.md item 2. A56-tested. Desktop inspect timeouts raised (slow network:
+    yt-dlp `-j` took 25-37 s and was killed at 25 s): `-j` waits 90 s, list / single-link limit
+    120 s. `runYtDlp` now logs `yt-dlp timed out after N s: -j` and (verbose) the run time.
+    Verified through the bridge `/inspect` (36.8 s, 15 qualities).
+  - Arabic on the Mac desktop: RTL home, Add dialog and link list OK. Test trick: write
+    `language=ar` into `~/.fetch_jet/settings.properties` and restart (remove it after).
+    `gradlew :desktopApp:run` rebuilds the jars under a running dev app: quit the old window
+    first, or clicks hit `ClassNotFoundException` (seen with `DashboardUiEvent$OnTabSelected`).
+    - Follow-ups done: unused iOS `resolveEffectiveMediaUrl` / `cleanEscapedUrl` / user agent
+      removed; size/speed units of yt-dlp progress lines now go through `ytDlpUnitMultiplier` /
+      `ytDlpUnitPrefixMultiplier` (`MediaUnits.kt`, same results as the old copies); Android
+      `contentLengthCache` is a ConcurrentHashMap cleared above 500 entries; extension `VIDEO_PAGE`
+      has 9gag `/gag/` and kick `/videos|clips/` pages, extension version 3.2.0 (not uploaded; 3.1.1
+      was never released).
+      SoundCloud track / set pages are in `VIDEO_PAGE` too; they have no `<video>`, so
+      `audioHero()` (content.js, `AUDIO_HERO` list) gives the track header as the element the
+      page button sits on: `.fullListenHero` in the classic layout (logged out), or the
+      `<section>` around `main h1` in the new MUI layout (logged in, hashed `mui-*` classes).
+      The header never "plays", so its button shows at once (`place()`: any non-`VIDEO`
+      anchor) and a click asks the app (`lookUp`); waiting for pushed items failed in the
+      owner's Edge (no button, hero found). Checked on a local copy of each layout (button, click,
+      list). In the new layout the track is a same-site frame
+      (`soundcloud.com/n/<artist>/<track>?embedded=crossfade`), so the hero is looked up in
+      frames too and `audioPageUrl()` sends the clean `soundcloud.com/<artist>/<track>` link.
+      Owner-verified in Edge, logged in (new layout) and logged out (classic layout).
+      `/discover/sets/...` (personal "Related
+      tracks", private) gets no button: yt-dlp answers 404 there (also through the app with the
+      extension's cookies; these are system playlists). Instead "Download all links on this
+      page" on SoundCloud also collects track page links (`pushTrack` in `collectLinks`: two
+      path parts, not `sets`, `/n/` and `?in=` removed) so the app's link list reads each
+      track. Checked on the real `forss/sets/soulhack` DOM: its 11 tracks; `tags/`,
+      `getstarted/`, `company/` ... are excluded in `VIDEO_PAGE`.
+      The app used to skip every media page of a batch (`/links`, "Download all links"):
+      `handleExternalBatch` now queues the files and opens the Add dialog's link list with the
+      media pages (each read for title + quality). Owner-verified on the "Related tracks" page
+      (Edge, 2026-11-03). SoundCloud renders only part of a long list: scroll down first.
+      Audio vs video: `MediaQualityEntry.isAudioOnly` / `List.isAllAudio()` (all qualities are
+      sound only). The link list tags such rows "AUDIO" (`linkTagAudio`), and the Add dialog's
+      🎵 / "audio formats" title uses it too (it used `any`, so a YouTube video with an "Audio
+      Only" option showed as audio). Test `MediaQualityAudioTest`.
+      A56 after all of it: 64 MB direct, YouTube `jNQXAC9IVRw` (own engine, https streams),
+      SoundCloud (own HLS) all completed.
+- 1.2.0 text fields: every field in the app is `FetchJetTextField` (`ui/FetchJetTextField.kt`, on
+  `BasicTextField`; String and `TextFieldValue` overloads). Focus = primary border + soft glow
+  (`dropShadow`), hover on desktop, optional `label`, `error`, `centered`. Buttons inside a field:
+  `FieldIconButton` (✕ ↺ 📂), `FieldChipButton` (Paste). Do not add new `OutlinedTextField`s; use
+  this. `Modifier.clearFocusOnTapOutside()` (same file) drops focus and hides the keyboard on a
+  tap outside the focused field; it is on the `App.kt` root `Surface`, the Add dialog `Card` and
+  the `DirectoryPickerDialog` `Surface`. A new `Dialog` with a field needs it on its root too (a
+  dialog is its own window). Verified on the A56 (look + keyboard closes); desktop and iOS not
+  checked yet.
+- 1.2.0 "When downloads finish" (desktop, ROADMAP item 4): `core/power/WhenDone.kt` +
+  `SystemPower` (expect/actual, jvm only) + `ui/WhenDoneUi.kt` (Settings > General card, banner
+  above the list, countdown dialog) + tray submenu in `main.kt`. Per session, not saved. Unit test
+  `WhenDoneTest`. Owner-tested on Windows with Exit; macOS Sleep (`pmset sleepnow`) verified on the
+  Mac
+  2026-11-04 (ROADMAP item 4); macOS shut down via System Events also verified there (the Mac
+  turned off; owner-verified); the installed .app may still ask for Automation permission the first
+  time.
+- 1.2.0 keyboard selection in the task list (ROADMAP item 5): Ctrl/Cmd+click, Shift+click range,
+  Ctrl/Cmd+A, Delete, Esc (`TaskList.kt` `onKeyEvent` on the focusable list column, `TaskRow`
+  `onCtrlClick` / `onShiftClick` via `LocalWindowInfo.keyboardModifiers`). In commonMain on
+  purpose (owner: a keyboard on a phone works too). Owner-tested on Windows.
+- 1.2.0 network settings (ROADMAP item 6): Settings > Network (`ui/NetworkSettingsUi.kt`),
+  `core/network/NetworkSettings.kt` (`network.json` in the settings folder, password in plain
+  text). Every app HTTP client is built in a `NetworkClient { ... useNetworkSettings() }` (rebuilt
+  after a change: applies to downloads started later). `useNetworkSettings` sets the ktor proxy,
+  sends `Authorization: Basic` to saved sites (and sub-domains) and `Proxy-Authorization` for
+  plain http; `applyProxyLogin` (expect/actual) answers the HTTPS tunnel login: OkHttp
+  `proxyAuthenticator`, JDK `authenticator` + `jdk.http.auth.tunneling.disabledSchemes=""`,
+  SOCKS5 login via the default `java.net.Authenticator` (`JvmProxyLogin`). The JDK engine has no
+  SOCKS, so the desktop stream client uses OkHttp while a SOCKS5 proxy is on. The JVM default
+  ktor engine is OkHttp (checked). iOS Darwin: ktor sends only http:// through an HTTP proxy, so
+  the proxy dictionary (HTTPS keys, SOCKS user) is set by hand. yt-dlp gets `--proxy` (desktop
+  `ytDlpRuntimeArgs`, Android `RuntimeManager.buildYTDLCommand`, iOS every bridge / popen call);
+  libtorrent4j `proxy_type` etc. (`Libtorrent4jBackend.applyProxy`, live; with an HTTP proxy
+  DHT / LSD / uTP are turned off, they would go around it). Every `HttpURLConnection` (web seeds,
+  size probes, tool downloads, yt-dlp updater, native loader) opens through `openAppConnection`
+  (`jvmAndroidMain/.../core/network/ProxiedConnection.kt`); web seeds use the ktor client
+  (`streamUrlWithClient`, common) while a proxy is on, because Android's `HttpURLConnection`
+  did not answer the proxy's 407. A new network call = `NetworkClient` / `useNetworkSettings`
+  or `openAppConnection`, never a bare client. Not on iOS torrents (FJTorrent would need a new
+  method + xcframework rebuild). Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
+  login, basic-auth site) was used on Windows; see ROADMAP item 6.
+- **Item 6 (network) on iOS: done on the Mac simulator (2026-11-03), see ROADMAP item 6.** It
+  compiled with no change. Results: HTTP / SOCKS5 proxy with login, YouTube through the proxy,
+  site login, wrong password fails. Fixed there: site logins skipped by the background engine
+  (`IosHybridHttpEngine.hasSiteLogin` -> foreground), and a links `.txt` taken as a cookies file
+  (`looksLikeNetscapeCookies` in `MediaExtractorToolManager.ios.kt`). The simulator's background
+  download daemon (`nsurlsessiond`) can break ("connection to background transfer daemon
+  invalidated", every background task "unknown error"): then direct downloads with no proxy /
+  login / limit fail in the simulator only; test those on the foreground path or reset the
+  simulator. Files that were changed for item 6 on iOS:
+  `iosMain/.../core/network/NetworkSettings.ios.kt` (new: Darwin proxy dictionary with HTTPS
+  keys and SOCKS user/password, `handleChallenge` for the HTTP proxy login),
+  `StreamHttpClient.ios.kt`, `IosHybridHttpEngine.kt` (proxy on -> foreground engine, the
+  background NSURLSession ignores it), `MediaInspect.ios.kt` (size probes),
+  `MediaStreamExtractorPlatform.ios.kt` / `MediaYtDlpDownload.ios.kt` / `MediaYtDlpRun.ios.kt`
+  (`NetworkSettings.ytDlpArgs()` before every yt-dlp call), `TorrentStreamer.ios.kt` (now calls
+  the common `streamUrlWithClient`). Steps on the Mac:
+    1. `./gradlew :sharedLogic:compileKotlinIosSimulatorArm64`, fix compile errors (likely spots:
+       `handleChallenge` lambda types, `NSURLCredential.credentialWithUser`, `isProxy()`), then
+       the Xcode build and the simulator.
+    2. Test proxy: `python3 scripts/network-test/test_proxies.py /tmp/proxies.log` on the Mac (HTTP
+       proxy `127.0.0.1:18080`, SOCKS5 `127.0.0.1:11080`, both user `fj` password `secret`;
+       a basic-auth site `http://127.0.0.1:18090/x.bin` user `site` password `pw`; every request
+       is written to the log). The simulator's 127.0.0.1 is the Mac itself.
+    3. In the app, Settings > Network: HTTP proxy with the login, then download
+       `https://media.githubusercontent.com/media/inventer-dev/speed-test-files/main/8MB.bin`
+       and a YouTube video (`jNQXAC9IVRw`); the log must show `HTTP-PROXY OK CONNECT
+     media.githubusercontent.com`, `www.youtube.com`, `googlevideo.com`. Then SOCKS5 (log:
+       `SOCKS OK ...`). A wrong password must fail. Proxy Off: nothing in the log.
+    4. Site login: proxy Off, save `127.0.0.1` / `site` / `pw`, download the 18090 link (log:
+       `SITE ... auth-ok`); without the login it fails with 401.
+    5. Known gaps on iOS: torrents do not use the proxy (FJTorrent has no proxy setting; adding
+       it = a new `FJTorrent` method + Swift bridge + rebuild the xcframework, owner's call).
+       Web seeds (HTTP) of a torrent do use it.
+    6. Update ROADMAP item 6 and this note with the result.
+- Security (2026-11-03, ROADMAP item 6b): passwords and task cookies are stored encrypted
+  through `core/security/Secrets.kt` (`Secrets.protect` / `reveal`, `fjenc1:` prefix; a value
+  the device cannot open stays as it is on disk). A new secret written to disk = `Secrets`.
+  Platform key: `SecretBox.android.kt` (Keystore), `SecretBox.ios.kt` + `KeyFile.ios.kt`
+  (Keychain; errSecMissingEntitlement -34018 = app without signing identity, e.g. the unsigned
+  dev / CI build or some sideload tools -> key file), `jvmMain/.../core/security/`
+  `MacKeyVault.kt` / `WindowsKeyVault.kt` / `LinuxKeyVault.kt`. The Mac test run created the
+  Keychain item `FetchJet` / `secrets-key`. iOS settings folder is now Application Support
+  (moved from Documents once). Every app client gets `RedirectCookieGuard` via
+  `useNetworkSettings()`. `SiteCookieJar.remember` takes the link URL, never the referer.
+- Update signing (2026-11-03): every release file needs `<file>.sig` from CI (secret
+  `UPDATE_SIGNING_KEY`, `scripts/sign-release-file.sh`); the in-app updater refuses unsigned
+  files. Losing the private key = installed apps cannot update themselves; rotate by adding the
+  new public key to `UPDATE_PUBLIC_KEYS` in a release signed with the old one. Log files pass
+  through `LogRedact` (cookies, logins, URL query values hidden): a log you need with full URLs
+  must come from logcat / the console, not the file.
+- Bridge pairing (2026-11-03): every bridge endpoint that acts (`/add`, `/links`, `/inspect`,
+  `/download`, `/show`) needs `X-FetchJet-Token` (`BridgePairing`); the extension gets it from
+  `POST /pair` after the user taps Allow in the app. Testing the bridge with curl now needs the
+  token: pair with `-H 'Origin: chrome-extension://x' -H 'X-FetchJet-Pairing: 1'` on `/pair` and
+  tap Allow, or a new endpoint call returns 401. A new endpoint = add it to the token check
+  (desktop `isAuthorized`, Android `TOKEN_PATHS`) and to `BRIDGE_ALLOWED_HEADERS` / `preflight`.
+  Pairing-dialog hardening (2026-11-04): a local program can fake a browser `Origin`, so it could
+  pop the "Allow?" dialog. `BridgePairing` now shows at most one dialog at a time (a request from
+  another origin while one is up is refused, not queued) and ignores a repeat for the same origin
+  for 8 s after the last one closed, so a program cannot flood the user into tapping Allow. The
+  dialog's prominent button is **Block** (Allow is the secondary/outlined one). Tapping Block
+  remembers the origin (`blockedOrigins` in `bridge.json`, encrypted alongside the token) and it is
+  refused silently afterwards; tapping outside is a one-time "no". Allowed (legacy) and blocked
+  origins are listed in Settings > Browser extension (`BrowserConnectionsGroup`), with Revoke /
+  Unblock (`BridgePairing.revokeAllowed` / `unblock`). Every refusal is `println`-logged. Review
+  2026-11-04 found no un-consented, no-token exploit: web pages are blocked by the custom-header +
+  CORS gate, `/download` writes to disk (no echo back, so no SSRF exfil), bind is loopback-only, and
+  the token compare is constant-time.
+- Fixed 2026-11-03: libtorrent on desktop / Android sent no announce to a torrent's own
+  trackers. Cause: libtorrent4j 2.1.0 is libtorrent 2.1, where a .torrent's trackers and web seeds
+  live in `add_torrent_params`, not in `TorrentInfo`; `session.download(ti, ...)` passes only
+  `TorrentInfo`, so they were dropped (only the 7 public trackers the app adds were left).
+  `Libtorrent4jBackend.trackersAndWebSeeds` reads them with `load_torrent_parsed` and adds them
+  to the handle (`addTracker` / `addUrlSeed`). Verified on the Mac desktop with a local fake
+  tracker: before, the torrent's tracker was missing from the list and got nothing; after, it got
+  the announce at once (`127.0.0.1:18100=ok`). Magnets: `fetchMagnet` writes the file from the
+  full params (`write_torrent_file_buf`), so the magnet's `tr=` trackers come back the same way
+  (code read, not run). Public trackers, WARP off: a self-made 16 KB torrent (no web seed, so
+  nothing downloads) whose own trackers were `udp://tracker.bittor.pw:1337` and
+  `udp://tracker.qu.ax:6969` got `ok` from both, first in the list, plus 6 of the app's 7.
+  Trackers that fail here also fail from the Mac with curl / a raw UDP packet (opentrackr TCP
+  1337 refused, gbitt.info no DNS, tiny-vps and openbittorrent no answer): the network, not the
+  app. The verbose `trackers:` log now reports the best endpoint (it showed the first one,
+  usually the `127.0.0.1` listen socket, which always fails). Windows + A56 verified 2026-11-04
+  (local tracker got the announce; see ROADMAP item 6 for a `listenPort=0` seen twice on Windows
+  right after switching from the installed 1.1.0, not reproduced).
 - `:androidApp:assembleRelease` failed in R8 (missing optional `zstd` / `xz` classes of
   commons-compress, used only by `ZipUtils` for zip). Fixed with `-dontwarn` in
   `androidApp/proguard-rules.pro`. The minified release APK was installed on the A56: GitHub
@@ -270,7 +616,9 @@ Bridges:
    ~90 Mbps total, Android A56 ~10.5 MB/s total. No problem found. Speed limit verified on the A56
    while downloading: 1 MB/s → 1.0, 5 MB/s → 5.0, applied at once and shared between the running
    downloads. Not verified: switching back to Unlimited mid-download.
-4. **Udemy:** works (owner confirmed, 2026-11-01). Closed.
+4. **Udemy:** works (owner confirmed, 2026-11-01). Whole course: the extension reads it in the
+   page and sends the lecture list (ROADMAP item 7, owner-verified in Edge 2026-11-04); the app
+   alone cannot (Cloudflare 403, do not try to get around it). Closed.
 5. **googlevideo 403 right after resolve:** happens for a few seconds. Probe retries and link
    renewal mitigate it. A later curl with the same URL returns 206.
 6. **Browser extension stores: done in CI** (`build-extension` in `build.yml`). Firefox is signed
@@ -295,6 +643,9 @@ Bridges:
    iPhone: works (2026-11-01).
 
 ## Release plan
+
+- **1.2.0:** branch `release-v1.2.0` (from `master`, 2026-11-02). Ordered work list:
+  `ROADMAP-1.2.0.md`. When the owner asks what is next, take the first unchecked item there.
 
 - 1.1.0 history: a
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
@@ -355,9 +706,18 @@ All done and pushed (`a751617` + the Udemy preview fix):
    no forced client. Verified: 4K clip "Only the clip" = 3840x2160, 33 s, with audio; "Full video,
    then cut" = exact 11 s (cut by the app's own ffmpeg step, not CutPlugin).
 
+8. 1.2.0 check (2026-11-04, after the playlist / folders / course reading work): build OK
+   with no change; Live Activity ends within ~0.1 s of "Pause all" (3 times) and shows
+   "Completed" ~4 s; SoundCloud set and YouTube playlist land in their "Save in folder"
+   folder; Safari popup fits the phone width. Fixed: the default download folder became the
+   container root (see ROADMAP-1.2.0.md item 7). The simulator's `nsurlsessiond` stayed
+   broken after a simulator reboot and an app reinstall: test with a speed limit on (the
+   foreground engine) instead.
+
 Udemy works on the simulator (owner-tested 2026-11-01). Safari extension (appex bundle id
 `<app>.SafariExtension`) sideloaded and working on the owner's real iPhone (2026-11-01). Video
-download and torrent also work there. Not confirmed on a real iPhone yet: Udemy logged in. No App
+download and torrent also work there. Udemy logged in on a real iPhone: counted as done (owner's
+decision, do not ask again). No App
 Store release is
 planned (owner's decision: a YouTube/media downloader is rejected there), iOS ships sideloaded only.
 
@@ -365,8 +725,8 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
 
 1. iOS: Python 3.13 media engine: done (simulator + owner's real iPhone, 2026-11-01).
 2. iOS: torrent flow end to end: done (FJTorrent, simulator + owner's real iPhone, 2026-11-01).
-3. `MediaStreamDownloader`: remove Invidious/cobalt resolvers. Stream bodies with
-   `prepareGet().execute` instead of `client.get`.
+3. `MediaStreamDownloader`: Invidious / Cobalt / Piped removed and the HTTP fallback streams
+   with `prepareGet().execute` (done 2026-11-04, see ROADMAP item 7).
 4. Clean-code plan (in 1.1.0) (owner's request): kotlinx.serialization done (step 1); `App.kt` split
    from 2637 to ~700 lines (step 2, pure move, same package, `private` → `internal`). Step 3: Add
    dialog 1884 → ~360 lines (sections get `MutableState` for the dialog-local fields and
@@ -385,15 +745,17 @@ planned (owner's decision: a YouTube/media downloader is rejected there), iOS sh
    `resolveMediaFileName`, `downloadWithOwnHls`, `downloadWithYtDlp`, `findFinishedFileInCache`,
    `moveFinishedFileIntoPlace`, `downloadWithHttpFallback`) and `inspectMediaQualities` 380 → ~85
    (`MediaInspectSteps.kt`: `inspectHlsVariants`, `inspectPlatformWithCookieRetry`,
-   `withTitleAndDuration`, `inspectYouTubeFallbacks` (Piped/Cobalt/embed, still the old public
-   APIs), `inspectWebPage`). `MediaStreamDownloader.kt` is now ~600 lines. Tested on the A56: HLS
+   `withTitleAndDuration`, `inspectYouTubeFallbacks` (YouTube embed only since 2026-11-04),
+   `inspectWebPage`). `MediaStreamDownloader.kt` is now ~600 lines. Tested on the A56: HLS
    (mux test stream, 184p + 1080p via multi-quality), YouTube. String resources: not done on
    purpose (~350 strings in ~20 files); worth it only when a second language (Arabic) is added.
    `moveIntoPlace` now returns the saved path: when the old file cannot be deleted (Android: a file
    made by an earlier install of the app is not ours) it saves as `name (1).ext` instead of failing
    with "failed to delete".
-5. Playlist queue in the extension (`/playlist`), not ported from Ezoo yet.
-6. Merge captured video-only + audio-only pairs inside the app.
+5. Playlist in the extension: done 2026-11-04 ("Download the whole playlist" sends the playlist
+   link to the Add dialog; not for mixes), see ROADMAP item 7.
+6. Merge captured video-only + audio-only pairs inside the app: done 2026-11-04 (ROADMAP item 7,
+   `DownloadTask.pairedAudioUrl`, `/config` `"pairedMerge":true`).
 7. iOS Safari extension: done (2026-11-01, simulator-tested). Target `FetchJetSafariExtension`
    copies the same `extension/` JS at build time (`manifest.safari.json` -> manifest.json). On iOS
    (`ON_IOS` in background.js) every send goes through `fetchjet://add?json=...`

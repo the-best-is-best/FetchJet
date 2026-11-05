@@ -11,6 +11,9 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
+import com.tbib.kmp_localization.LocalizationManager
 
 /**
  * "Keep ready for the browser": a quiet foreground service whose only job is to stop Android
@@ -23,6 +26,8 @@ class BrowserReadyService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        com.michelle.raouf.fetch_jet.core.filesystem.PathResolver.appContext = applicationContext
+        com.tbib.kmp_localization.LocalizationManager.start()
         if (intent?.action == ACTION_TURN_OFF) {
             BrowserIntegration.setKeepReadyForBrowser(false)
             return START_NOT_STICKY
@@ -38,13 +43,13 @@ class BrowserReadyService : Service() {
         }
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("FetchJet is ready for your browser")
-            .setContentText("Video qualities show right in Firefox")
+            .setContentTitle(LocalizationManager.Strings.sysBrowserReadyTitle)
+            .setContentText(LocalizationManager.Strings.sysBrowserReadyText)
             .setOngoing(true)
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setContentIntent(open)
-            .addAction(0, "Turn off", turnOff)
+            .addAction(0, LocalizationManager.Strings.sysTurnOff, turnOff)
             .build()
         val type =
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
@@ -65,10 +70,10 @@ class BrowserReadyService : Service() {
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Browser extension",
+                LocalizationManager.Strings.sysBrowserReadyChannelName,
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "Shown while FetchJet stays ready for the browser extension"
+                description = LocalizationManager.Strings.sysBrowserReadyChannelDescription
                 setShowBadge(false)
             }
         )

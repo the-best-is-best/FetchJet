@@ -1,0 +1,845 @@
+package com.michelle.raouf.fetch_jet.core.i18n.data_provider
+
+object EnglishProvider : AppLocalization {
+    override val localeCode = "en"
+    override val languageName = "English"
+    override val ok = "OK"
+    override val cancel = "Cancel"
+    override val close = "Close"
+    override val save = "Save"
+    override val delete = "Delete"
+    override val remove = "Remove"
+    override val open = "Open"
+    override val copy = "Copy"
+    override val copied = "Copied"
+    override val retry = "Retry"
+    override val pause = "Pause"
+    override val resume = "Resume"
+    override val apply = "Apply"
+    override val reset = "Reset"
+    override val yes = "Yes"
+    override val no = "No"
+    override val back = "Back"
+    override val done = "Done"
+    override val selectAll = "Select all"
+    override val selectNone = "Select none"
+    override val language = "Language"
+    override val languageHint = "The language of every screen. System follows your device."
+    override val systemLanguage = "System"
+    override val homeSettings = "Settings"
+    override val homeDownloads = "Downloads"
+
+    override val homeTabAll = "All"
+    override val homeTabActive = "Active"
+    override val homeTabDone = "Done"
+    override val homeTabTorrent = "Torrent"
+    override val homeTabMedia = "Media"
+    override val homeSidebarTypeHeader = "TYPE"
+    override val homeSearchDownloadsPlaceholder = "Search downloads"
+    override val homeAdd = "Add"
+    override val homeAddDownload = "Add download"
+    override val homePauseAll = "Pause all"
+    override val homeResumeAll = "Resume all"
+    override fun homeSortBy(option: String) = "Sort: $option"
+    override val homeLightTheme = "Light theme"
+    override val homeDarkTheme = "Dark theme"
+
+    override fun homeUpdatingMediaTools(tool: String, percent: Int?) =
+        "Updating media tools · $tool" + (percent?.let { " $it%" } ?: "…")
+
+    override val homeSearchDownloadsByNamePlaceholder = "Search downloads by name…"
+    override fun homeNoDownloadsMatch(query: String) = "No downloads match \"$query\""
+    override val homeNoTasksInView = "No tasks in this view"
+    override val homeTryAnotherName = "Try another name"
+    override val homeAddDownloadToGetStarted = "Add a download to get started"
+    override fun homeDownloadingWaitingSummary(running: Int, waiting: Int) =
+        "$running downloading · $waiting waiting"
+
+    override fun homeQueueStatus(maxAtOnce: Int) =
+        "Queue: " + if (maxAtOnce <= 0) "no limit" else "$maxAtOnce at a time"
+
+    override fun homeSpeedLimitStatus(limit: String?) = "Speed limit: " + (limit ?: "off")
+    override val homeGroupDownloading = "Downloading"
+    override val homeGroupWaiting = "Waiting"
+    override val homeGroupPausedFailed = "Paused & failed"
+    override val homeGroupCompleted = "Completed"
+    override fun homeSelectedCount(count: Int) = "$count selected"
+    override val homeExport = "Export"
+
+    override fun homeStartsAt(time: String) = "Starts $time"
+    override val homeWaitingInQueue = "Waiting in queue"
+    override fun homeWaitingInQueuePosition(position: Int) = "Waiting in queue (#$position)"
+    override val homeConnecting = "Connecting…"
+    override val homeStarting = "Starting…"
+    override fun homeTimeLeft(eta: String) = "$eta left"
+    override fun homePausedState(percent: Int, restartsOnResume: Boolean) =
+        "Paused · $percent%" + if (restartsOnResume) " · restarts on resume" else ""
+
+    override fun homeFailedState(message: String?) = "Failed: " + (message ?: "error")
+    override fun homeCompletedState(size: String?) = "Completed" + (size?.let { " · $it" } ?: "")
+    override val homeStartNow = "Start now"
+    override val homeColumnName = "NAME"
+    override val homeColumnSize = "SIZE"
+    override val homeColumnProgress = "PROGRESS"
+    override val homeColumnSpeed = "SPEED"
+    override val homeColumnLeft = "LEFT"
+    override val homeFilterAllDownloads = "All downloads"
+    override val homeFilterDownloading = "Downloading"
+    override val homeFilterWaiting = "Waiting"
+    override val homeFilterPaused = "Paused"
+    override val homeFilterCompleted = "Completed"
+    override val homeFilterFailed = "Failed"
+    override val homeFilterMedia = "Video & audio"
+    override val homeFilterFiles = "Files"
+    override val homeFilterTorrents = "Torrents"
+
+    override val homeCantResumeTitle = "This download can't be resumed"
+    override val homeCantResumeClipText =
+        "Clips cut while downloading can't continue where they stopped. " +
+                "If you pause now, the clip will start again from the beginning when you resume."
+    override val homeCantResumeServerText =
+        "The server doesn't support resuming. If you pause now, the download will " +
+                "start again from the beginning when you resume."
+    override val homePauseAnyway = "Pause anyway"
+    override val homeKeepDownloading = "Keep downloading"
+    override val homeMagnetLink = "Magnet link"
+    override val homeClipboardOfferTitle = "Download the link you copied?"
+    override val homeClipboardOfferHint =
+        "Turn this off in Settings > General > Watch the clipboard."
+    override val homeDownload = "Download"
+    override val homeNotNow = "Not now"
+    override val bridgePairTitle = "Allow this browser extension?"
+    override val bridgePairText =
+        "A browser extension asks to send links to FetchJet. Allow it only if you just installed or reset the FetchJet extension."
+    override val bridgePairOldText =
+        "An older FetchJet extension wants to send links. Allow it if it is yours; updating the extension makes this question unnecessary."
+    override val bridgePairAllow = "Allow"
+    override val bridgePairBlock = "Block"
+    override val extConnectionsGroup = "Browser connections"
+    override val extConnectionsFooter =
+        "Browser extensions you have allowed or blocked from sending links to FetchJet."
+    override val extAllowedLabel = "Allowed"
+    override val extBlockedLabel = "Blocked"
+    override val extRevoke = "Revoke"
+    override val extUnblock = "Unblock"
+    override val homeBrowserFallbackTitle = "Download in browser instead?"
+    override val homeBrowserFallbackText =
+        "You cancelled this file in FetchJet. The browser stopped its own download when it " +
+                "handed the link over, so it will only continue if you send it back."
+    override val homeDownloadInBrowser = "Download in browser"
+    override val homeNoDiscard = "No, discard"
+
+    override val homeQueueTitle = "Queue"
+    override val homeQueueFooter =
+        "Extra downloads wait and start by themselves, oldest first, when one finishes. " +
+                "\"Start now\" on a waiting download skips the queue."
+    override val homeDownloadsAtSameTime = "Downloads at the same time"
+    override val homeNoLimit = "No limit"
+    override fun homeAtATime(count: Int) = "$count at a time"
+
+    override val homePiecesLabel = "Pieces"
+    override fun homeSegmentsCount(count: Int) = "$count segments"
+    override fun homePiecesCount(count: Int) = "$count pieces"
+    override fun homeActiveCount(count: Int) = "$count active"
+    override fun homeWaitingCount(count: Int) = "$count waiting"
+    override fun homeDoneCount(count: Int) = "$count done"
+    override fun homeSegmentsProgress(finished: Int, total: Int, downloading: String?) =
+        "Segments $finished/$total" + (downloading?.let { " · downloading $it" } ?: "")
+
+    override fun homeRetryingNote(note: String?) = "$note · retrying"
+    override fun clipStartAfterEnd(start: String, end: String) =
+        "Start time ($start) must be before end time ($end)"
+
+    override fun clipEndExceedsVideo(end: String, duration: String) =
+        "End time ($end) exceeds video duration ($duration)"
+
+    override fun clipStartExceedsVideo(duration: String) =
+        "Start time exceeds video duration ($duration)"
+
+    override val setStartTimeTitle = "Set Start Time (From)"
+    override val setEndTimeTitle = "Set End Time (To)"
+    override val addDialogTitle = "Add New Download"
+    override val addDialogSubtitle = "Enter link to start downloading"
+    override val addLinkLabel = "Link"
+    override val addImportTxt = "Import .txt"
+    override val openTorrentFile = "Open .torrent file"
+    override val urlPlaceholder = "Paste links or magnets"
+    override val addPaste = "Paste"
+    override val addDownloadEngine = "Download Engine"
+    override val engineDirect = "Direct"
+    override val engineMedia = "Media"
+    override val engineTorrent = "Torrent"
+    override val addFileNameLabel = "File name"
+    override val findingName = "Finding the name…"
+    override val saveDestination = "Save Destination Directory"
+    override val quickFolderDownloads = "Downloads"
+    override val quickFolderDocuments = "Documents"
+    override val quickFolderMedia = "Media"
+    override val quickFolderDesktop = "Desktop"
+    override val addRetryInspect = "Retry Inspect"
+    override val addStarting = "Starting..."
+    override val addInspecting = "Inspecting..."
+    override val addInspectionFailed = "Inspection Failed"
+    override val addEnterUrl = "Enter URL"
+    override fun scheduleLinks(n: Int) = "Schedule $n links"
+    override fun downloadLinks(n: Int) = "Download $n links"
+    override val inspectVideoFirst = "Inspect Video First"
+    override val inspectTorrentFirst = "Inspect Torrent First"
+    override val invalidTimeRange = "Invalid Time Range"
+    override fun scheduleVideos(n: Int) = "Schedule $n videos"
+    override fun downloadVideos(n: Int) = "Download $n videos"
+    override val addScheduleDownload = "Schedule Download"
+    override val addStartDownload = "Start Download"
+    override val availableAudioFormats = "Available Audio Formats"
+    override val availableQualities = "Available Qualities"
+    override val addSelectAll = "Select All"
+    override val addClearSelection = "Clear"
+    override fun selectedOfAvailable(selected: Int, total: Int) =
+        "Selected: $selected of $total available"
+
+    override fun qualityFormatLine(format: String, details: String) = "Format: $format$details"
+    override val inspectingVideoQualities = "Inspecting Video Qualities..."
+    override fun readingCourseLectures(done: Int, total: Int) =
+        "Reading the course lectures: ${done} / ${total}"
+
+    override val readingCourseLecturesHint =
+        "The browser extension reads them in the course tab: keep it open"
+    override val inspectingVideoQualitiesHint =
+        "Scanning available video resolutions and audio streams"
+    override val videoInspectionFailed = "Video Inspection Failed"
+    override val addRetryInspection = "Retry Inspection"
+    override val mediaEngineStarting = "Media engine is starting..."
+    override val mediaEngineNotReady = "Media engine is not ready"
+    override val mediaEngineRequiresYtDlp =
+        "Video stream extraction requires yt-dlp installed or embedded."
+    override val preparingEngine = "Preparing engine..."
+    override val startMediaEngine = "Download / Start media engine"
+    override val inspectAudioFormats = "Inspect & Select Audio Formats"
+    override val inspectVideoQuality = "Inspect & Select Video Quality"
+    override fun clipSectionTitle(isAudio: Boolean) =
+        if (isAudio) "Clip Audio Section (Optional)" else "Clip Video Section (Optional)"
+
+    override val clipSectionHint = "Download a specific time range only"
+    override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
+        "${if (isAudio) "Audio" else "Video"} Duration: $clock ($friendly) - Full range selected by default"
+
+    override val clipStartTimeFrom = "Start Time (From)"
+    override val clipEndTimeTo = "End Time (To)"
+    override fun fullMediaChip(isAudio: Boolean, duration: String) =
+        if (isAudio) "Full Audio ($duration)" else "Full Video ($duration)"
+
+    override val clipFirst5Min = "First 5 min"
+    override val clipFirst15Min = "First 15 min"
+    override val clipFirst30Min = "First 30 min"
+    override val clipFirst1Hour = "First 1 hour"
+    override val clipModeTitle = "How to download the clip"
+    override val clipOnlyTitle = "Only the clip"
+    override val clipOnlyLine1 = "Downloads only the part you chose"
+    override val clipOnlyLine2 = "Slower: YouTube limits the speed"
+    override val clipOnlyLine3 = "Pause starts the clip over"
+    override fun fullThenCutTitle(isAudio: Boolean) =
+        if (isAudio) "Full Audio, then cut" else "Full Video, then cut"
+
+    override fun fullThenCutLine1(isAudio: Boolean, sizeText: String) =
+        if (isAudio) "Downloads the whole Audio$sizeText" else "Downloads the whole Video$sizeText"
+
+    override val fullThenCutLine2 = "Faster: full speed"
+    override val fullThenCutLine3 = "Then keeps only your part"
+    override val fullThenCutLine4 = "Pause / resume works"
+    override val inspectingTorrent = "Inspecting Torrent Metadata..."
+    override val inspectingTorrentHint = "Fetching file manifest and peers"
+    override val torrentInspectionFailed = "Torrent Inspection Failed"
+    override val inspectTorrentFiles = "Inspect Torrent Files"
+    override val disableTorrentUpload = "Disable Torrent Upload (Leech-Only Mode)"
+    override val torrentFiles = "Torrent Files"
+    override val addDeselectAll = "Deselect All"
+    override val torrentPriorityHigh = "High"
+    override val torrentPriorityLow = "Low"
+    override val torrentPriorityNormal = "Normal"
+    override fun selectedOfLinks(selected: Int, total: Int) = "$selected of $total links"
+    override val readingTorrentFiles = "Reading the torrent's files…"
+    override fun couldNotReadTorrentFiles(error: String) =
+        "Could not read its files ($error); all of them will download."
+
+    override val linkTagVideo = "VIDEO"
+    override val linkTagAudio = "AUDIO"
+    override val linkTagTorrent = "TORRENT"
+    override val linkTagFile = "FILE"
+    override val linkListMagnet = "Magnet link"
+    override fun linkListYouTubeVideo(id: String) = "YouTube video $id"
+    override fun playlistSummary(videos: Int, selected: Int) =
+        "Playlist · $videos videos · $selected selected"
+
+    override val playlistFolder = "Save in folder"
+    override val playlistFolderHint =
+        "Every file goes into this folder. Clear it to save them directly."
+    override val qualityForAllVideos = "Quality for all videos"
+    override val qualityForAllVideosHint =
+        "If a video has no such quality, the closest lower one is taken."
+    override val downloadOnlyThisVideo = "Download only this video instead"
+    override val whenToStart = "When to start"
+    override val scheduleNow = "Now"
+    override val scheduleIn30Min = "In 30 min"
+    override val scheduleIn1Hour = "In 1 hour"
+    override val scheduleAtTime = "At a time…"
+    override val scheduleDayLabel = "Day"
+    override val scheduleToday = "Today"
+    override val scheduleTomorrow = "Tomorrow"
+    override val scheduleIn2Days = "In 2 days"
+    override val scheduleIn3Days = "In 3 days"
+    override val scheduleInAWeek = "In a week"
+    override val scheduleTimePassed =
+        "That time has already passed today. Pick a later time or another day."
+    override val scheduleHourLabel = "Hour"
+    override val scheduleMinuteLabel = "Minute"
+    override val scheduleSet = "Set"
+    override val scheduleSetTime = "Set time"
+    override fun scheduleStartsAt(time: String) = "Starts $time (FetchJet must be running)"
+    override val addConnectionsTitle = "Connections"
+    override val connectionsAuto = "Auto"
+    override fun connectionsAutoWithDefault(n: Int) = "Auto ($n)"
+    override fun pickerExceedsVideo(duration: String) = "Exceeds video duration ($duration)"
+    override fun pickerMustBeAfterStart(start: String) = "Must be after start time ($start)"
+    override val pickerStartZero = "Start (00:00)"
+    override val pickerHours = "Hours"
+    override val pickerMinutes = "Minutes"
+    override val pickerSeconds = "Seconds"
+    override fun pickerSelectedTime(time: String, summary: String) =
+        "Selected Time: $time ($summary)"
+
+    override fun pickerEndOfVideo(time: String) = "End of Video ($time)"
+    override fun pickerMin(time: String) = "Min ($time)"
+    override fun pickerApply(time: String) = "Apply ($time)"
+    override val pickerInvalidTime = "Invalid Time"
+    override val dirPickerSelectFolder = "Select Folder"
+    override val dirPickerUp = "Up"
+    override fun dirPickerSubfolders(n: Int) = "Subfolders ($n)"
+    override val dirPickerHiddenOn = "Hidden: On"
+    override val dirPickerHiddenOff = "Hidden: Off"
+    override val dirPickerNewFolder = "New Folder"
+    override val dirPickerFolderName = "Folder name…"
+    override val dirPickerCreateFailed = "Failed to create folder"
+    override val dirPickerCreate = "Create"
+    override val dirPickerNoSubfolders =
+        "No subfolders in this directory.\nFiles will be saved directly here."
+    override val dirPickerHiddenTag = "(hidden)"
+    override val speedLimitUnlimited = "Unlimited (Max)"
+    override val speedPresetsTitle = "Speed presets"
+    override val speedPresetsFooter =
+        "Set a speed for High, Medium and Low. Pick one quickly from the header; the turtle is always 512 KB/s."
+    override val speedPresetHigh = "High"
+    override val speedPresetMedium = "Medium"
+    override val speedPresetLow = "Low"
+    override val checksumLabel = "Checksum (optional)"
+    override val checksumHint = "sha256 or md5"
+    override val checksumVerified = "Checksum verified"
+    override val checksumMismatch = "Checksum mismatch"
+    override val checksumChecking = "Verifying checksum…"
+    override val speedLimitNoLimit = "No Limit (Max Speed)"
+    override val speedLimitCustom = "Custom..."
+    override val speedLimitValue = "Value"
+    override val scheduleAm = "AM"
+    override val schedulePm = "PM"
+    override val detailsChipMedia = "Media"
+    override val detailsChipTorrent = "Torrent"
+    override val detailsChipFile = "File"
+    override val detailsChipResumable = "Resumable"
+    override val detailsChipNoResume = "No resume"
+    override fun detailsClipChip(start: String, end: String?, cutAfterDownload: Boolean) =
+        "Clip $start–${end ?: "End"}" + if (cutAfterDownload) " · cut after download" else ""
+
+    override fun detailsTorrentFiles(selected: Int, total: Int) =
+        "Torrent Files ($selected selected / $total)"
+
+    override val detailsPriorityHigh = "High"
+    override val detailsPriorityLow = "Low"
+    override val detailsPriorityNormal = "Normal"
+    override val detailsStatusCompleted = "Completed"
+    override val detailsStatusPaused = "Paused"
+    override val detailsStatusFailed = "Failed"
+    override val detailsStatusWaiting = "Waiting"
+    override val detailsStatusQueued = "Queued"
+    override val detailsStatusNotStarted = "Not started"
+    override val detailsUnknownSize = "Unknown"
+    override val detailsMergingAudioVideo = "Merging Audio & Video..."
+    override fun detailsTorrentSpeedUploadDisabled(download: String) = "DL: $download (UL Disabled)"
+    override fun detailsTorrentSpeed(download: String, upload: String) =
+        "DL: $download | UL: $upload"
+
+    override val detailsConnecting = "Connecting..."
+    override fun detailsStartsAt(time: String) = "Starts $time"
+    override fun detailsWaitingInQueuePosition(position: Int) = "Waiting in queue (#$position)"
+    override val detailsWaitingInQueue = "Waiting in queue"
+    override val detailsDownloaded = "Downloaded"
+    override val detailsSpeed = "Speed"
+    override val detailsState = "State"
+    override val detailsTimeLeft = "Time left"
+    override val detailsAdded = "Added"
+    override val detailsSavedTo = "Saved to"
+    override val detailsSource = "Source"
+    override val detailsPage = "Page"
+    override val detailsOpenFile = "Open file"
+    override val detailsOpenFolder = "Open folder"
+    override val detailsStartNow = "Start now"
+    override val detailsRemoveFromList = "Remove from list"
+    override val detailsCancelDownload = "Cancel download"
+    override val detailsHeaderDownload = "Download"
+    override val detailsHeaderDetails = "DETAILS"
+    override fun detailsAddedToday(clock: String) = "Today $clock"
+    override fun detailsAddedYesterday(clock: String) = "Yesterday $clock"
+
+    override fun removeDialogTitle(count: Int) =
+        if (count > 1) "Remove $count Downloads" else "Remove Download"
+
+    override fun removeDialogMessage(count: Int) =
+        if (count > 1) "Are you sure you want to remove these $count download tasks?"
+        else "Are you sure you want to remove this download task?"
+
+    override val removeDialogAlsoDeleteFiles = "Also delete downloaded file(s) from disk"
+
+    override val duplicateDialogTitle = "Download Already Exists"
+    override val duplicateDialogSubtitle = "This item is already in your download queue"
+    override fun duplicateDialogStatus(status: String) = "Status: $status"
+    override val duplicateDialogQuestion =
+        "Would you like to resume the existing download or start over from scratch?"
+    override val duplicateDialogResumeExisting = "Resume Existing"
+    override val duplicateDialogRedownload = "Re-download (Start Fresh)"
+
+    override val overwriteDialogTitle = "File Already Exists"
+    override val overwriteDialogSubtitle = "A file with this name already exists in destination"
+    override val overwriteDialogFileNameLabel = "File Name: "
+    override val overwriteDialogFolderLabel = "Folder: "
+    override val overwriteDialogNewCopyLabel = "New Copy: "
+    override val overwriteDialogQuestion =
+        "Would you like to save this download as a new copy or overwrite the existing file?"
+
+    override fun overwriteDialogSaveAsCopy(name: String) = "Save as Copy ($name)"
+    override val overwriteDialogOverwriteExisting = "Overwrite Existing File"
+
+    override val desktopWindowTagline = "High-Velocity Multi-Engine Downloader"
+    override val desktopTrayIdleTooltip = "FetchJet - Running in Background"
+    override val desktopTrayDownloadsHeader = "FetchJet Downloads:"
+    override fun desktopTrayMore(count: Int) = "+$count more"
+    override val desktopTrayShowApp = "Show App"
+    override val desktopTrayCloseApp = "Close App"
+    override val sectionGeneral = "General"
+    override val sectionGeneralBlurb = "Look of the app and how it starts"
+    override val sectionDownloads = "Downloads"
+    override val sectionDownloadsBlurb = "Where files go and how many run at once"
+    override val sectionBrowser = "Browser extension"
+    override val sectionBrowserBlurb = "Send links and videos from your browser to FetchJet"
+    override val sectionSpeed = "Speed limits"
+    override val sectionSpeedBlurb = "Cap the bandwidth FetchJet uses"
+    override val sectionMedia = "Media tools"
+    override val sectionMediaBlurb = "yt-dlp and FFmpeg for video sites"
+    override val sectionTorrent = "BitTorrent"
+    override val sectionTorrentBlurb = "Peers, uploading and the torrent engine"
+    override val sectionUpdates = "Updates"
+    override val sectionUpdatesBlurb = "Your version and new releases"
+    override val summaryNoQueueLimit = "no limit"
+    override fun summaryAtATime(n: Int) = "$n at a time"
+    override val summaryNoSpeedLimit = "No limit"
+    override val summarySetupNeeded = "Setup needed"
+    override val summaryUploadingOff = "Uploading off"
+    override val summaryUploadingOn = "Uploading on"
+    override fun summaryVersionAvailable(version: String) = "$version available"
+    override fun summaryVersion(version: String) = "Version $version"
+    override val changesSavedAutomatically = "Changes are saved automatically."
+    override val settingsAllSettings = "All settings"
+
+    override val clipboardGroup = "Clipboard"
+    override val clipboardFooter =
+        "Copy a link to a file (zip, mp4, pdf, apk…) or a magnet link anywhere, and FetchJet asks whether to download it."
+    override val watchClipboard = "Watch the clipboard"
+    override val watchClipboardOn = "On · copied file links are offered for download"
+    override val settingOff = "Off"
+    override val alsoVideoPages = "Also video pages"
+    override val alsoVideoPagesHint =
+        "YouTube, Facebook, TikTok, Vimeo… links are offered too (not only files)"
+    override val diagnosticsGroup = "Diagnostics"
+    override fun logSavedTo(path: String) =
+        "Saved: $path — send this file when reporting a problem."
+
+    override val diagnosticsFooter =
+        "Saves the app's log (what yt-dlp and the engines did) to your Downloads folder."
+    override val saveLogToDownloads = "Save log to Downloads"
+    override val logCouldNotSave = "could not save"
+    override val appearanceGroup = "Appearance"
+    override val themeTitle = "Theme"
+    override val themeHint = "Light or dark look for every screen"
+    override val settingsThemeDark = "Dark"
+    override val settingsThemeLight = "Light"
+    override val speedShownIn = "Speed shown in"
+    override val speedShownInHint =
+        "Bytes (MB/s) like file sizes, or bits (Mbps) like your internet plan"
+
+    override val saveLocationGroup = "Save location"
+    override val saveLocationFooter =
+        "New downloads go here unless you pick another folder when adding them."
+    override val settingsFolderPath = "Folder path"
+    override val settingsChooseFolder = "Choose folder…"
+    override val settingsUseDownloads = "Use Downloads"
+    override val settingsConnectionsGroup = "Connections"
+    override val connectionsFooter =
+        "How many pieces a direct download is split into. Each piece is a connection; when one finishes it takes half of the biggest remaining piece, so none sits idle. Auto picks by file size (4–8). Some servers limit connections per client."
+    override val settingsConnectionsPerDownload = "Connections per download"
+    override val settingsConnectionsAuto = "Auto"
+    override val organizeGroup = "Organize"
+    override val organizeFooter =
+        "Sub-folders are created inside the save location: Video, Music, Archives, Documents, Programs, Images, Torrents."
+    override val sortIntoFolders = "Sort into folders by type"
+    override val sortIntoFoldersOn = "On · e.g. Downloads/Video/lecture.mp4"
+    override val sortIntoFoldersOff = "Off · everything goes straight into the folder"
+
+    override val speedLimitsFooter =
+        "Applied right away and shared between the downloads that are running."
+    override val speedLimitsFooterIos =
+        "Applied right away and shared between the downloads that are running. On iOS, HTTP downloads already running in the background keep their speed; the limit applies to the ones started after it."
+    override val speedLimitDownload = "Download"
+    override val speedLimitUploadTorrents = "Upload (torrents)"
+
+    override val torrentSharingGroup = "Sharing"
+    override val downloadOnlyNoUpload = "Download only (don't upload)"
+    override val downloadOnlyNoUploadHint =
+        "Saves your upload bandwidth and data quota. Some trackers download slower for peers that don't share."
+    override val torrentEngineGroup = "Engine"
+    override val settingsReady = "Ready"
+    override val settingsNotReady = "Not ready"
+
+    override val extInstallGroup = "Install"
+    override val extensionInstallFooter =
+        "With the extension, a \"Download with FetchJet\" button shows on videos and links, and the browser can hand its downloads to FetchJet. It talks only to this app on your device."
+    override val edgeAddedHint = "Added · restart Edge and click \"Turn on extension\" when it asks"
+    override val edgeFromStoreHint = "From Microsoft Edge Add-ons · updates by itself"
+    override val openInEdgeStore = "Open in Edge store"
+    override val edgeAddedNote = "Done: restart Edge, it will ask to turn FetchJet on."
+    override val extAddToEdge = "Add to Edge"
+    override val firefoxFromStoreHint = "From Firefox Add-ons · updates by itself"
+    override val extAddToFirefox = "Add to Firefox"
+    override val chromeZipHint =
+        "Not in the Chrome Web Store: install the .zip in developer mode (steps on the page). It does not update by itself."
+    override val getTheZip = "Get the .zip"
+    override val firefoxAndroidHint =
+        "Open this in Firefox on this phone. Links you send go straight to this app."
+    override val keepReadyForBrowser = "Keep ready for the browser"
+    override val keepReadyOn =
+        "Video qualities show right in Firefox. A quiet notification stays while this is on."
+    override val keepReadyOff =
+        "Off: Firefox opens FetchJet and you pick the quality here. On: qualities show in Firefox (keeps a notification)."
+    override val popUpOverBrowser = "Pop up over the browser"
+    override val popUpOverBrowserOn = "On · FetchJet opens by itself when Firefox sends a link"
+    override val popUpOverBrowserOff =
+        "Off · a notification appears instead; tap to allow \"display over other apps\""
+
+    override val mediaToolsGroup = "Tools"
+    override val ytDlpHint = "Finds the video and audio on YouTube and other sites"
+    override val settingsMissing = "Missing"
+    override val ffmpegHint = "Joins video + audio (1080p and up), cuts clips, makes MP3"
+    override val ffmpegMissing = "Missing · up to 720p"
+    override fun jsRuntimeTitle(name: String) = "JS runtime · $name"
+    override val jsRuntimeHint = "Solves YouTube's checks so every quality shows up, faster"
+    override fun missingPress(button: String) = "Missing · press $button"
+    override val mediaToolsFolder = "Tools folder"
+    override val mediaUpdatingTools = "Updating…"
+    override val mediaDownloadingTools = "Downloading tools…"
+    override fun mediaDownloadingTool(name: String) = "Downloading $name…"
+    override fun mediaDownloadingToolPercent(name: String, percent: Int) =
+        "Downloading $name… $percent%"
+
+    override val mediaUpdateTools = "Update tools"
+    override val mediaDownloadTheTools = "Download the tools"
+
+    override val updateNewVersionAvailable = "New version available"
+    override fun updateVersionLine(version: String, current: String) =
+        "FetchJet $version  ·  you have $current"
+
+    override val updateWhatsNew = "What's new"
+    override val updateNoReleaseNotes = "No release notes."
+    override fun downloadingUpdate(percent: Int) = "Downloading the update… $percent%"
+    override val updateDownloadedAndroid =
+        "The update is downloaded. Android asks you to confirm the install; your downloads stay in the list."
+    override val updateDownloadedDesktop =
+        "The update is downloaded. FetchJet will close, install it and open again. Running downloads are paused and can be resumed."
+    override val storeInstallsItselfOpenNow =
+        "Microsoft Store installs it by itself. Open the Store to update now."
+    override val updateInstall = "Install"
+    override val updateRestartAndUpdate = "Restart & update"
+    override val updateDownloading = "Downloading…"
+    override val updateDownloadAndInstall = "Download & install"
+    override val updateOpenMicrosoftStore = "Open Microsoft Store"
+    override fun updateDownloadWithSize(size: String) = "Download $size"
+    override val updateOpenReleasePage = "Open release page"
+    override val updateSkipThisVersion = "Skip this version"
+    override val updateLater = "Later"
+    override fun versionIsAvailable(version: String) = "Version $version is available"
+    override val youHaveLatest = "You have the version installed here"
+    override val updateSeeWhatsNew = "See what's new"
+    override val updateChecking = "Checking…"
+    override val updateCheckNow = "Check now"
+    override val checkUpdatesAutomatically = "Check for updates automatically"
+    override val checkUpdatesAutomaticallyHint =
+        "Looks for a new version when FetchJet starts (at most twice a day)."
+    override val downloadUpdatesAutomatically = "Download updates automatically"
+    override val downloadUpdatesAutomaticallyHintAndroid =
+        "Downloads a new version in the background; you only confirm the install."
+    override val downloadUpdatesAutomaticallyHint =
+        "Downloads a new version in the background; you only confirm the restart."
+    override val installingUpdates = "Installing updates"
+    override val installingUpdatesStore =
+        "Microsoft Store installs new versions by itself; FetchJet tells you when one is out."
+    override val installingUpdatesManual =
+        "On this device FetchJet tells you about a new version and links to it; you install it."
+    override val updateReleaseNotes = "Release notes"
+    override val updateReleaseNotesHint = "Every version and what changed"
+    override val installHintReleasePage = "Open the release page to download the new version."
+    override val installHintApk =
+        "Download the APK and open it to install the update over this version."
+    override val installHintIpa =
+        "Download the .ipa and install it with AltStore / Sideloadly, as you installed FetchJet."
+    override val installHintDmg =
+        "Download the .dmg, open it and drag FetchJet to Applications (replace the old one)."
+    override val installHintDeb =
+        "Download the .deb and install it (double-click, or sudo apt install ./file.deb)."
+    override val installHintOther = "Download the new version and install it over this one."
+
+    override val startupGroup = "Startup"
+    override val startupStoreFooter =
+        "The Store version is started by Windows: turn FetchJet on under Settings > Apps > Startup."
+    override val startupStartAtLogin = "Start FetchJet when you log in"
+    override val startupManagedByWindows = "Managed by Windows"
+    override val startupOpenWindowsSettings = "Open Windows settings"
+    override val startupStartHidden = "Start hidden in the tray"
+    override val startupStartHiddenHint =
+        "When started at login, stay in the tray instead of opening the window."
+    override val startupStartAtLoginHint =
+        "Scheduled and queued downloads continue, and the browser extension always finds the app."
+
+    override fun startupCouldNotChange(message: String) = "Could not change the setting: $message"
+    override val whenDoneGroup = "When downloads finish"
+    override val whenDoneHint = "For this session only. You get 60 seconds to cancel first."
+    override val whenDoneNothing = "Do nothing"
+    override val whenDoneExit = "Exit FetchJet"
+    override val whenDoneSleep = "Sleep"
+    override val whenDoneShutDown = "Shut down"
+    override val whenDoneTitle = "All downloads finished"
+    override fun whenDoneExitIn(seconds: Int) = "FetchJet will exit in ${seconds} s."
+    override fun whenDoneSleepIn(seconds: Int) = "The computer will sleep in ${seconds} s."
+    override fun whenDoneShutDownIn(seconds: Int) = "The computer will shut down in ${seconds} s."
+    override val whenDoneNow = "Now"
+    override fun whenDoneBanner(action: String) = "When downloads finish: ${action}"
+    override fun whenDoneFailed(message: String) = "Could not do it: ${message}"
+    override val sectionNetwork = "Network"
+    override val sectionNetworkBlurb = "Proxy and site logins"
+    override val netProxyGroup = "Proxy"
+    override val netProxyOff = "Off"
+    override val netProxyHost = "Server"
+    override val netProxyPort = "Port"
+    override val netProxyUser = "User name (optional)"
+    override val netProxyPassword = "Password"
+    override val netUser = "User name"
+    override val netSave = "Save"
+    override val netSaved = "Saved"
+    override val netProxyHint =
+        "Used by downloads, video downloads (yt-dlp) and torrents. Applies to downloads started after saving."
+    override val netProxyHintIos =
+        "Used by downloads and video downloads. Torrents on iOS connect directly. Applies to downloads started after saving."
+    override val netProxyBadPort = "Enter a server and a port from 1 to 65535"
+    override val netLoginsGroup = "Site logins"
+    override val netLoginsHint =
+        "For downloads that ask for a user name and password (HTTP basic auth). A site also covers its sub-domains."
+    override val netLoginSite = "Site (example.com)"
+    override val netLoginAdd = "Add"
+    override val netLoginsEmpty = "No saved logins"
+    override val netRemove = "Remove"
+    override fun netLoginsCount(n: Int) = "${n} logins"
+    override val sysTabAllDownloads = "All Downloads"
+    override val sysTabActive = "Active"
+    override val sysTabCompleted = "Completed"
+    override val sysTabMediaExtractor = "Media Extractor"
+    override val sysTabSettings = "Settings"
+    override val sysSortNewestFirst = "Newest first"
+    override val sysSortOldestFirst = "Oldest first"
+    override val sysSortLargestFirst = "Largest first"
+    override val sysSortSmallestFirst = "Smallest first"
+    override val sysSortNameAz = "Name A–Z"
+    override val sysEnterValidUrlOrMagnet = "Please enter a valid URL or Magnet link"
+    override val sysCannotStartVideoInspectionFailed =
+        "Cannot start download: Video inspection failed."
+    override val sysCannotStartTorrentInspectionFailed =
+        "Cannot start download: Torrent inspection failed or no files selected."
+    override val sysClipEndExceedsDuration = "Clip end time exceeds video duration."
+    override val sysClipStartAfterEnd = "Clip start time must be before end time."
+    override fun sysStartedDownload(name: String) = "Started download: $name"
+    override val sysFailedToQueueDownload = "Failed to queue download"
+    override fun sysQualitiesNotAdded(count: Int) = "$count quality(s) could not be added."
+    override fun sysAddedQualityDownloads(count: Int, title: String) =
+        "Added $count downloads of \"$title\""
+
+    override val sysSelectAtLeastOnePlaylistVideo = "Select at least one video of the playlist."
+    override fun sysVideosNotAdded(count: Int) = "$count video(s) could not be added."
+    override fun sysAddedPlaylistVideos(count: Int, playlistTitle: String) =
+        "Added $count videos from \"$playlistTitle\""
+
+    override val sysSelectAtLeastOneLink = "Select at least one link."
+    override fun sysAddedLinkDownloads(added: Int, skipped: Int) =
+        "Added $added download${if (added == 1) "" else "s"}" + (if (skipped > 0) " ($skipped already in the list or failed)" else "")
+
+    override val sysCouldNotReadTorrent = "Could not read the torrent"
+    override fun sysCouldNotStartDownload(reason: String) = "Could not start download: $reason"
+    override val sysUnknownError = "unknown error"
+    override fun sysQueuedFromBrowser(added: Int, skipped: Int) =
+        "Queued $added download${if (added == 1) "" else "s"} from the browser" + (if (skipped > 0) " ($skipped skipped)" else "")
+
+    override val sysEnterTorrentOrMagnetFirst = "Please enter a torrent or magnet link first"
+    override val sysFailedToParseTorrentMetadata = "Failed to parse torrent metadata"
+    override val sysEnterMediaUrlFirst = "Please enter a media URL first"
+    override fun sysUnableToFetchFormatsWithReason(reason: String) =
+        "Unable to fetch video formats: $reason"
+
+    override val sysUnableToFetchFormats =
+        "Unable to fetch video formats. Please verify the URL or check your internet connection."
+    override val sysFailedToInspectMediaQualities = "Failed to inspect media qualities"
+    override fun sysTorrentEngineError(message: String) = "BitTorrent engine error: $message"
+    override fun sysTorrentEngineInstallFailed(message: String) =
+        "BitTorrent engine install failed: $message"
+
+    override val sysMediaToolsDownloaded = "Media tools downloaded successfully!"
+    override val sysMediaToolsDownloadFailed = "Failed to download media tools"
+    override val sysMediaToolsUpdated = "Media tools updated"
+    override fun sysSavedLinks(count: Int, path: String) =
+        "Saved $count link${if (count == 1) "" else "s"} to $path"
+
+    override fun sysCouldNotSaveLinks(reason: String) = "Could not save the links: $reason"
+    override val sysErrorFallback = "error"
+    override val sysDownloadFailed = "Download failed"
+    override val sysDownloadFailedNetwork = "Download failed due to network exception"
+    override val sysCouldNotStart = "Could not start"
+    override val sysUnknownErrorCapital = "Unknown error"
+    override fun sysCouldNotSaveFileTo(dir: String) = "Could not save file to $dir"
+    override val sysPlaylistFallbackTitle = "Playlist"
+    override val sysPlaylistQualityBest = "Best"
+    override val sysPlaylistQualityAudioOnly = "Audio only"
+    override val sysToolsReadyYtDlpFfmpeg = "Ready: yt-dlp & ffmpeg installed (Full 1080p+ support)"
+    override val sysToolsReadyYtDlpNoFfmpeg = "Ready: yt-dlp installed (No ffmpeg - 720p limit)"
+    override val sysToolsNotInstalled = "Not Installed. Click 'Download Tools' below."
+    override val sysToolsInstalledBuiltIn = "Installed & Ready (Built-in)"
+    override fun sysYtDlpVersionReady(version: String) = "yt-dlp $version (Ready)"
+    override val sysMediaEngineBridgeNotRegistered = "Media engine bridge not registered"
+    override val sysWebKitBuiltIn = "WebKit (built-in)"
+    override val sysTorrentEngineBuiltIn = "Ready: BitTorrent engine built in"
+    override fun sysTorrentEngineReadyVersion(version: String) =
+        "Ready: BitTorrent engine (libtorrent $version)"
+
+    override fun sysTorrentEngineFailedToLoad(message: String) =
+        "BitTorrent engine failed to load: $message"
+
+    override val sysTorrentEngineAvailable =
+        "Ready: BitTorrent engine available (loads on first torrent)"
+    override val sysTorrentEngineMissing =
+        "BitTorrent engine missing. Click 'Download Tools' below."
+    override val sysTorrentEngineNotAvailable = "BitTorrent engine is not available in this build"
+    override fun sysCouldNotStartInstaller(message: String) =
+        "Could not start the installer: $message"
+
+    override val sysCheckingForUpdates = "Checking for updates…"
+    override val sysNoPublishedRelease = "No published release yet."
+    override fun sysVersionNoChangesForDevice(version: String, current: String) =
+        "Version $version has no changes for this device; you have the latest build for it ($current)."
+
+    override fun sysVersionAvailable(version: String) = "Version $version is available."
+    override fun sysUpToDate(current: String) = "You're up to date ($current)."
+    override fun sysCouldNotCheckForUpdates(reason: String) = "Could not check for updates: $reason"
+    override val sysNetworkError = "network error"
+    override val sysUpdateNoInstallerForSystem =
+        "Update download failed: this release has no installer for this system."
+
+    override fun sysDownloadingAsset(name: String) = "Downloading $name…"
+    override fun sysVersionReadyToInstall(version: String) = "Version $version is ready to install."
+    override fun sysUpdateDownloadFailed(message: String) = "Update download failed: $message"
+    override val sysAllowUnknownAppsThenInstall =
+        "allow \"Install unknown apps\" for FetchJet, then tap Install again."
+    override val sysDownloadsChannelName = "FetchJet Downloads"
+    override val sysDownloadsChannelDescription = "Shows real-time Live Activity download updates"
+    override val sysNotificationAppTitle = "FetchJet Downloader"
+    override val sysAppRunningInBackground = "The app is running in the background"
+    override val sysNotificationDownloadsFallback = "Downloads"
+    override fun sysFilesDownloading(count: Int) = "$count files downloading"
+    override fun sysPercentActive(percent: Int, count: Int) = "$percent% • $count active"
+    override fun sysActiveCount(count: Int) = "$count active"
+    override fun sysDownloadCompleteSize(size: String) = "Download complete • $size"
+    override fun sysMoreDownloading(count: Int) = "+ $count more downloading"
+    override val sysComplete = "Complete"
+    override fun sysNotificationDownloadsTitle(speed: String) = "FetchJet downloads ($speed)"
+    override fun sysDownloadingPercent(count: Int, percent: Int) = "$count downloading • $percent%"
+    override val sysDownloadTaskFallback = "Download Task"
+    override val sysBrowserReadyTitle = "FetchJet is ready for your browser"
+    override val sysBrowserReadyText = "Video qualities show right in Firefox"
+    override val sysTurnOff = "Turn off"
+    override val sysBrowserReadyChannelName = "Browser extension"
+    override val sysBrowserReadyChannelDescription =
+        "Shown while FetchJet stays ready for the browser extension"
+    override val sysDownloadingFileFallback = "Downloading File"
+    override val sysUnknownSize = "Unknown"
+    override val sysStatusCompleted = "Completed"
+    override val sysStatusDownloading = "Downloading"
+    override val sysDownloadCompleteTitle = "Download Complete"
+    override fun sysFinishedDownloading(size: String) = "Finished downloading • $size"
+    override val sysSentToFetchJet = "Sent to FetchJet"
+    override val sysLinksChannelName = "Links from the browser"
+    override val sysLinksChannelDescription = "Tap to open the link FetchJet just received"
+    override val sysLinkReceivedTitle = "Link received"
+    override val sysLinkReceivedText = "Tap to open it in FetchJet"
+
+    override val stepCompleted = "Completed"
+    override val stepSeeding = "Seeding"
+    override val stepFetchingMetadata = "Fetching metadata"
+    override val stepConnectingToPeers = "Connecting to peers"
+    override val stepCheckingFiles = "Checking files"
+    override val stepCheckingResumeData = "Checking resume data"
+    override val stepDownloading = "Downloading"
+    override val stepFinished = "Finished"
+    override val stepConnecting = "Connecting"
+    override val stepPaused = "Paused"
+    override val stepError = "Error"
+    override val stepResolvingStreams = "Resolving streams"
+    override val stepDownloadingParts = "Downloading parts"
+    override val stepPreparingDownload = "Preparing download"
+    override val stepClippingVideo = "Clipping video"
+    override val stepDownloadingMedia = "Downloading media"
+    override val stepAlreadyDownloaded = "Already downloaded"
+    override val stepDownloadingVideo = "Downloading video"
+    override val stepDownloadingAudio = "Downloading audio"
+    override val stepMergingAudioVideo = "Merging audio and video"
+    override val stepConvertingToMp3 = "Converting to MP3"
+    override val stepCuttingClip = "Cutting the clip"
+    override val stepSavingToFolder = "Saving to folder"
+    override val stepFinalizingVideo = "Finalizing video"
+    override val stepConvertingVideo = "Converting video"
+    override val stepRepackagingVideo = "Repackaging video"
+    override val stepYtDlpFallback = "yt-dlp fallback"
+    override val stepNotPlainStream = "not a plain stream"
+    override val stepSingleConnection = "Single connection"
+    override val stepServerNoRanges = "the server does not support ranges"
+    override val stepAgeRestrictedExpiredCookies =
+        "Age-restricted: expired cookies in Files > FetchJet"
+    override val stepAgeRestrictedPlaceCookies =
+        "Age-restricted: place cookies.txt in Files > FetchJet"
+    override val stepPreparingMediaEngine =
+        "Preparing the in-app media engine (starting Python, loading yt-dlp)"
+    override val stepMediaEngineNotStarted = "Media engine not started. Tap 'Download tools'."
+    override fun stepNumber(step: Int, total: Int) = "Step ${step} of ${total}"
+    override fun stepSavingAs(ext: String) = "Saving as .${ext}"
+    override fun stepJoiningParts(count: Int) =
+        "Joining ${count} ${if (count == 1) "part" else "parts"} into MP4"
+
+    override fun stepNoDataFor(seconds: Int) = "No data for ${seconds}s"
+    override fun stepPeers(peers: Int, seeds: Int) =
+        "${peers} ${if (peers == 1) "peer" else "peers"} (${seeds} ${if (seeds == 1) "seed" else "seeds"})"
+
+    override fun stepDownloadingFrom(host: String) = "Downloading from ${host}"
+    override fun stepMediaEngineNotReady(error: String) = "Media engine not ready: ${error}"
+    override fun stepTorrentEngineFailed(error: String) =
+        "BitTorrent engine failed to start: ${error}"
+
+    override fun stepReadyWith(details: String) = "Ready: ${details}"
+}

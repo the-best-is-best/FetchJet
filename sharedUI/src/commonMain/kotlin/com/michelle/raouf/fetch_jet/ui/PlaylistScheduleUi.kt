@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,12 +39,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
+import com.tbib.kmp_localization.LocalizationManager
 
 /** The videos of a playlist with checkboxes and one quality for all of them. */
 @Composable
@@ -55,6 +56,7 @@ fun PlaylistSelectionCard(
     onEntryToggled: (Int, Boolean) -> Unit,
     onSelectAll: (Boolean) -> Unit,
     onQualityChanged: (PlaylistQuality) -> Unit,
+    onFolderChanged: (String) -> Unit,
     onUseSingleVideo: (() -> Unit)?
 ) {
     val selectedCount = playlist.entries.count { it.isSelected }
@@ -82,36 +84,62 @@ fun PlaylistSelectionCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Playlist · ${playlist.entries.size} videos · $selectedCount selected",
+                        text = LocalizationManager.Strings.playlistSummary(
+                            playlist.entries.size,
+                            selectedCount
+                        ),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 TextButton(onClick = { onSelectAll(!allSelected) }) {
-                    Text(if (allSelected) "Select none" else "Select all", fontSize = 12.sp)
+                    Text(
+                        if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Quality for all videos", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                PlaylistQuality.entries.forEach { q ->
-                    ChoiceChip(
-                        label = q.label,
-                        selected = q == quality,
-                        onClick = { onQualityChanged(q) })
-                }
-            }
+            FetchJetTextField(
+                value = playlist.folderName ?: playlist.title,
+                onValueChange = onFolderChanged,
+                label = LocalizationManager.Strings.playlistFolder,
+                leading = { Text("📁", fontSize = 14.sp) }
+            )
             Text(
-                text = "If a video has no such quality, the closest lower one is taken.",
+                text = LocalizationManager.Strings.playlistFolderHint,
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)
             )
+
+            if (!playlist.fromBrowser) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    LocalizationManager.Strings.qualityForAllVideos,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PlaylistQuality.entries.forEach { q ->
+                        ChoiceChip(
+                            label = q.label,
+                            selected = q == quality,
+                            onClick = { onQualityChanged(q) })
+                    }
+                }
+                Text(
+                    text = LocalizationManager.Strings.qualityForAllVideosHint,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
@@ -131,14 +159,14 @@ fun PlaylistSelectionCard(
                             Checkbox(
                                 checked = entry.isSelected,
                                 onCheckedChange = { onEntryToggled(entry.index, it) })
-                            Text(
+                            if (!playlist.fromBrowser) Text(
                                 text = "${entry.index + 1}.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(30.dp)
                             )
                             Text(
-                                text = entry.title,
+                                text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -159,7 +187,7 @@ fun PlaylistSelectionCard(
 
             if (onUseSingleVideo != null) {
                 TextButton(onClick = onUseSingleVideo, modifier = Modifier.align(Alignment.End)) {
-                    Text("Download only this video instead", fontSize = 12.sp)
+                    Text(LocalizationManager.Strings.downloadOnlyThisVideo, fontSize = 12.sp)
                 }
             }
         }
@@ -180,7 +208,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
     var timeError by remember { mutableStateOf<String?>(null) }
 
     Text(
-        "When to start",
+        LocalizationManager.Strings.whenToStart,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface
@@ -190,19 +218,22 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        ChoiceChip("Now", selected = scheduleStartMs == 0L && !showTimeFields) {
+        ChoiceChip(
+            LocalizationManager.Strings.scheduleNow,
+            selected = scheduleStartMs == 0L && !showTimeFields
+        ) {
             showTimeFields = false
             onScheduleChanged(0L)
         }
-        ChoiceChip("In 30 min", selected = false) {
+        ChoiceChip(LocalizationManager.Strings.scheduleIn30Min, selected = false) {
             showTimeFields = false
             onScheduleChanged(currentEpochMs() + 30 * 60_000L)
         }
-        ChoiceChip("In 1 hour", selected = false) {
+        ChoiceChip(LocalizationManager.Strings.scheduleIn1Hour, selected = false) {
             showTimeFields = false
             onScheduleChanged(currentEpochMs() + 60 * 60_000L)
         }
-        ChoiceChip("At a time…", selected = showTimeFields) {
+        ChoiceChip(LocalizationManager.Strings.scheduleAtTime, selected = showTimeFields) {
             if (!showTimeFields) {
                 // Start from the current local time; the user moves it forward from there.
                 val minuteOfDay =
@@ -222,18 +253,22 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
         // 12-hour clock with AM / PM and a day: "01:49 PM, today" is what people mean;
         // a 24-hour "01:49" silently became 1:49 AM tomorrow.
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Day", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            LocalizationManager.Strings.scheduleDayLabel,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             listOf(
-                0 to "Today",
-                1 to "Tomorrow",
-                2 to "In 2 days",
-                3 to "In 3 days",
-                7 to "In a week"
+                0 to LocalizationManager.Strings.scheduleToday,
+                1 to LocalizationManager.Strings.scheduleTomorrow,
+                2 to LocalizationManager.Strings.scheduleIn2Days,
+                3 to LocalizationManager.Strings.scheduleIn3Days,
+                7 to LocalizationManager.Strings.scheduleInAWeek
             )
                 .forEach { (d, label) ->
                     ChoiceChip(label, selected = dayOffset == d) {
@@ -252,7 +287,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
             val at = localTimeOnDayEpochMs(dayOffset, h24, m)
             if (at <= currentEpochMs()) {
                 timeError =
-                    "That time has already passed today. Pick a later time or another day."
+                    LocalizationManager.Strings.scheduleTimePassed
             } else {
                 timeError = null
                 onScheduleChanged(at)
@@ -262,31 +297,37 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
             val compact = maxWidth < 420.dp
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = hourText,
                         onValueChange = { v -> hourText = v.filter { it.isDigit() }.take(2) },
-                        label = { Text("Hour", fontSize = 11.sp) },
-                        singleLine = true,
+                        label = LocalizationManager.Strings.scheduleHourLabel,
+                        centered = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(if (compact) 72.dp else 80.dp)
                     )
                     Text(" : ", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = minuteText,
                         onValueChange = { v -> minuteText = v.filter { it.isDigit() }.take(2) },
-                        label = { Text("Minute", fontSize = 11.sp) },
-                        singleLine = true,
+                        label = LocalizationManager.Strings.scheduleMinuteLabel,
+                        centered = true,
+                        textStyle = MaterialTheme.typography.titleMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(if (compact) 72.dp else 80.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    ChoiceChip("AM", selected = !isPm) { isPm = false }
+                    ChoiceChip(LocalizationManager.Strings.scheduleAm, selected = !isPm) {
+                        isPm = false
+                    }
                     Spacer(modifier = Modifier.width(4.dp))
-                    ChoiceChip("PM", selected = isPm) { isPm = true }
+                    ChoiceChip(LocalizationManager.Strings.schedulePm, selected = isPm) {
+                        isPm = true
+                    }
                     if (!compact) {
                         Spacer(modifier = Modifier.width(10.dp))
                         Button(onClick = setTime, shape = RoundedCornerShape(10.dp)) {
-                            Text("Set", fontSize = 12.sp)
+                            Text(LocalizationManager.Strings.scheduleSet, fontSize = 12.sp)
                         }
                     }
                 }
@@ -296,7 +337,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
                         onClick = setTime,
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().height(40.dp)
-                    ) { Text("Set time", fontSize = 12.sp) }
+                    ) { Text(LocalizationManager.Strings.scheduleSetTime, fontSize = 12.sp) }
                 }
             }
         }
@@ -318,7 +359,13 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "🕑 Starts ${formatLocalSchedule(scheduleStartMs)} (FetchJet must be running)",
+                text = "🕑 ${
+                    LocalizationManager.Strings.scheduleStartsAt(
+                        formatLocalSchedule(
+                            scheduleStartMs
+                        )
+                    )
+                }",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -365,7 +412,7 @@ private fun clock(sec: Long): String {
 @Composable
 fun ConnectionsSection(selected: Int, appDefault: Int, onChanged: (Int) -> Unit) {
     Text(
-        "Connections",
+        LocalizationManager.Strings.addConnectionsTitle,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface
@@ -375,7 +422,8 @@ fun ConnectionsSection(selected: Int, appDefault: Int, onChanged: (Int) -> Unit)
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        val autoLabel = if (appDefault > 0) "Auto ($appDefault)" else "Auto"
+        val autoLabel =
+            if (appDefault > 0) LocalizationManager.Strings.connectionsAutoWithDefault(appDefault) else LocalizationManager.Strings.connectionsAuto
         ChoiceChip(autoLabel, selected = selected == 0) { onChanged(0) }
         listOf(1, 4, 8, 16, 32).forEach { n ->
             ChoiceChip(n.toString(), selected = selected == n) { onChanged(n) }

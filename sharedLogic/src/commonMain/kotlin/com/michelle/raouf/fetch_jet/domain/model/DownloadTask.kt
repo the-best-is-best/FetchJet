@@ -60,6 +60,8 @@ data class DownloadTask(
     val maxUploadSpeedBytesPerSec: Long = 0L,
     val formatId: String? = null,
     val originalUrl: String? = null,
+    /** A captured video-only stream's audio stream: both are fetched and merged by ffmpeg. */
+    val pairedAudioUrl: String? = null,
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,
@@ -90,7 +92,12 @@ data class DownloadTask(
      */
     val waitingInQueue: Boolean = false,
     /** 1-based place in the queue among the waiting downloads that are due; 0 = none. */
-    val queuePosition: Int = 0
+    val queuePosition: Int = 0,
+    /** Optional checksum the user entered to verify the finished file ("sha256:..", "md5:..", or a
+     *  bare hex string whose length picks the algorithm). Blank/null = no verification. */
+    val expectedChecksum: String? = null,
+    /** Result of the checksum check: true = matched, false = mismatch, null = not checked yet. */
+    val checksumVerified: Boolean? = null
 )
 
 /**

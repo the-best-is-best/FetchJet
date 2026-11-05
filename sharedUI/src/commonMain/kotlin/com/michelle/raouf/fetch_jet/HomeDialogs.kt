@@ -3,44 +3,44 @@ package com.michelle.raouf.fetch_jet
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun RestartOnPauseDialog(isClip: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(18.dp),
-        title = { Text("This download can't be resumed", fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                LocalizationManager.Strings.homeCantResumeTitle,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Text(
-                if (isClip) "Clips cut while downloading can't continue where they stopped. " +
-                        "If you pause now, the clip will start again from the beginning when you resume."
-                else "The server doesn't support resuming. If you pause now, the download will " +
-                        "start again from the beginning when you resume.",
+                if (isClip) LocalizationManager.Strings.homeCantResumeClipText else LocalizationManager.Strings.homeCantResumeServerText,
                 style = MaterialTheme.typography.bodyMedium
             )
         },
         confirmButton = {
             Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) {
-                Text("Pause anyway")
+                Text(LocalizationManager.Strings.homePauseAnyway)
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("Keep downloading")
+                Text(LocalizationManager.Strings.homeKeepDownloading)
             }
         }
     )
@@ -48,12 +48,17 @@ internal fun RestartOnPauseDialog(isClip: Boolean, onConfirm: () -> Unit, onDism
 
 @Composable
 internal fun ClipboardOfferDialog(url: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val name = if (url.startsWith("magnet:", true)) "Magnet link"
+    val name = if (url.startsWith("magnet:", true)) LocalizationManager.Strings.homeMagnetLink
     else url.substringBefore('?').substringAfterLast('/').ifBlank { url }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(18.dp),
-        title = { Text("Download the link you copied?", fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                LocalizationManager.Strings.homeClipboardOfferTitle,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column {
                 Text(
@@ -73,20 +78,24 @@ internal fun ClipboardOfferDialog(url: String, onConfirm: () -> Unit, onDismiss:
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Turn this off in Settings > General > Watch the clipboard.",
+                    LocalizationManager.Strings.homeClipboardOfferHint,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) { Text("Download") }
+            Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) {
+                Text(
+                    LocalizationManager.Strings.homeDownload
+                )
+            }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(10.dp)
-            ) { Text("Not now") }
+            ) { Text(LocalizationManager.Strings.homeNotNow) }
         }
     )
 }
@@ -96,12 +105,16 @@ internal fun BrowserFallbackDialog(url: String, onConfirm: () -> Unit, onDismiss
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(18.dp),
-        title = { Text("Download in browser instead?", fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                LocalizationManager.Strings.homeBrowserFallbackTitle,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column {
                 Text(
-                    "You cancelled this file in FetchJet. The browser stopped its own download when it " +
-                            "handed the link over, so it will only continue if you send it back.",
+                    LocalizationManager.Strings.homeBrowserFallbackText,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -116,12 +129,56 @@ internal fun BrowserFallbackDialog(url: String, onConfirm: () -> Unit, onDismiss
         },
         confirmButton = {
             Button(onClick = onConfirm, shape = RoundedCornerShape(10.dp)) {
-                Text("Download in browser")
+                Text(LocalizationManager.Strings.homeDownloadInBrowser)
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("No, discard")
+                Text(LocalizationManager.Strings.homeNoDiscard)
+            }
+        }
+    )
+}
+
+/** A browser extension asks to use FetchJet's local bridge ([BridgePairing]). */
+@Composable
+internal fun BridgePairingDialog(
+    request: com.michelle.raouf.fetch_jet.core.network.BridgePairing.Request,
+    onAllow: () -> Unit,
+    onBlock: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(18.dp),
+        title = { Text(LocalizationManager.Strings.bridgePairTitle, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    if (request.legacy) LocalizationManager.Strings.bridgePairOldText
+                    else LocalizationManager.Strings.bridgePairText,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    request.origin,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        // Block is the prominent button: a reflexive tap lands on the safe choice. Allow is
+        // secondary, so letting an extension in is a deliberate act.
+        confirmButton = {
+            Button(onClick = onBlock, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairBlock)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onAllow, shape = RoundedCornerShape(10.dp)) {
+                Text(LocalizationManager.Strings.bridgePairAllow)
             }
         }
     )

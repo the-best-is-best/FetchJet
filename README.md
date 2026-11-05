@@ -36,7 +36,13 @@
 | 🔁 **Resume-aware**                | FetchJet tells you whether a link can resume *before* you pause it.                                                                                                          |
 | 🔔 **Live progress**               | Android live notification and iOS Live Activity with speed and time left.                                                                                                    |
 | 🌗 **One UI everywhere**           | Sidebar on desktop, rail on tablets, bottom bar on phones. Dark and light.                                                                                                   |
-| 🔄 **Auto-update**                 | Checks for new versions; Windows installs them for you.                                                                                                                      |
+| 🔄 **Auto-update**                 | Checks for new versions and installs them from inside the app on Windows, macOS, Linux and Android; the Microsoft Store build is updated by the Store.                       |
+| 🧮 **Checksum check**              | Paste a sha256 or md5 next to a direct download; when it finishes FetchJet hashes the file and shows ✅ *verified* or ❌ *mismatch* in its details.                          |
+| 📋 **Many links at once**          | Paste a whole list or import a `.txt`; every link – files, videos and torrents – becomes its own download, each with its own quality or file picker.                         |
+| 🚦 **Speed limit**                 | Cap the total download speed from the header, with your own presets and a one-tap slow "turtle" mode; the limit is shared live between all running downloads.                |
+| 🌐 **Proxy & site login**          | Route everything through an HTTP or SOCKS5 proxy (with username / password), and send Basic-auth logins to sites that need them – Settings → Network.                        |
+| 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
+| 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
 
 ---
 
@@ -45,15 +51,16 @@
 **👉 [Downloads page](https://the-best-is-best.github.io/FetchJet/)** – every version for every
 platform, with the right file highlighted for your device.
 
-| Platform                  | File                                                                                                | Notes                                                                          |
-|---------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| Windows 10 / 11           | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                |
-| macOS 12+ (Apple Silicon) | `-arm64.dmg`                                                                                        | M1 or newer only; Intel Macs are not supported. Drag FetchJet to Applications. |
-| Linux                     | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                    |
-| Android 8+                | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.               |
-| iOS 16+                   | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly.                                          |
-| Chrome / Edge / Brave     | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).             |
-| Firefox                   | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                              |
+| Platform                                | File                                                                                                | Notes                                                                           |
+|-----------------------------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
+| macOS 12+ (Apple Silicon)               | `-arm64.dmg`                                                                                        | M1 or newer only. Drag FetchJet to Applications (in-app updates need it there). |
+| Linux                                   | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                     |
+| Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.                |
+| iOS 16+                                 | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly. Includes the Safari extension.            |
+| Chrome / Edge / Brave / Opera / Vivaldi | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).              |
+| Safari (iPhone / iPad)                  | inside the `.ipa`                                                                                   | Turn it on in Settings › Safari › Extensions. Qualities are listed in the app.  |
+| Firefox                                 | [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/)              | Install from the store; Firefox keeps it updated.                               |
 
 ---
 
@@ -129,6 +136,21 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
   click.
 - **Settings → General** can start FetchJet with the system (hidden in the tray), so scheduled
   downloads and the extension always find it.
+- **Checksum (optional)** in the Add dialog: paste the sha256 or md5 a site lists next to a direct
+  link. When the download finishes, its details show ✅ *Checksum verified* or ❌ *Checksum mismatch*.
+- **Settings → General → Language** switches between 15 languages; Arabic and Persian flip the whole
+  UI to right-to-left.
+- The **speed badge** in the header caps the total download speed; edit the presets in **Settings →
+  Speed**, or tap the turtle for an instant slow mode.
+- **Settings → Network** routes downloads through an HTTP or SOCKS5 proxy and stores per-site
+  logins.
+- **When downloads finish** (desktop, above the list or in the tray) can sleep, shut down or quit
+  the
+  computer once the queue is empty.
+- Paste a **list of links** or use **Import .txt** in the Add dialog to queue many downloads at
+  once;
+  select several finished items with the checkboxes (or long-press on a phone) to delete them
+  together.
 
 ---
 
@@ -136,6 +158,10 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
 
 FetchJet talks only to the sites you download from, to GitHub (for update checks) and – for Firefox
 signing in CI – to Mozilla. No analytics, no accounts.
+
+Saved passwords, cookies and download links are stored encrypted with your system's key store
+(Keychain, Android Keystore, Windows DPAPI). The browser extension has to be allowed once in the
+app before it can send links, and updates are installed only when they carry FetchJet's signature.
 
 ---
 
@@ -177,6 +203,10 @@ hand and tick only the platforms that changed. See `.github/workflows/build.yml`
 
 Set `fetchjet.verboseLogs=true` in `gradle.properties` (or the `FETCHJET_VERBOSE_LOGS` env var) for
 a build with detailed engine logs; on desktop the log is at `~/.fetch_jet/logs/app.log`.
+
+Manual tests (bridge pairing, encrypted settings, cookies and redirects, update signing, yt-dlp
+start time) with the commands to run them: [TESTING.md](TESTING.md). Release files are signed
+for the in-app updater with the `UPDATE_SIGNING_KEY` repository secret.
 
 </details>
 

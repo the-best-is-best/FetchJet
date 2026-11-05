@@ -38,21 +38,46 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
+import com.tbib.kmp_localization.LocalizationManager
 
 /** The pages of Settings, in the order of the side list. */
-internal enum class SettingsSection(val title: String, val glyph: String, val blurb: String) {
-    GENERAL("General", "◐", "Look of the app and how it starts"),
-    DOWNLOADS("Downloads", "↓", "Where files go and how many run at once"),
-    BROWSER("Browser extension", "⧉", "Send links and videos from your browser to FetchJet"),
-    SPEED("Speed limits", "≋", "Cap the bandwidth FetchJet uses"),
-    MEDIA("Media tools", "▶", "yt-dlp and FFmpeg for video sites"),
-    TORRENT("BitTorrent", "⇅", "Peers, uploading and the torrent engine"),
-    UPDATES("Updates", "↻", "Your version and new releases")
+internal enum class SettingsSection(val glyph: String) {
+    GENERAL("◐"),
+    DOWNLOADS("↓"),
+    BROWSER("⧉"),
+    NETWORK("◎"),
+    MEDIA("▶"),
+    TORRENT("⇅"),
+    UPDATES("↻");
+
+    val title: String
+        get() = when (this) {
+            GENERAL -> LocalizationManager.Strings.sectionGeneral
+            DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
+            BROWSER -> LocalizationManager.Strings.sectionBrowser
+            NETWORK -> LocalizationManager.Strings.sectionNetwork
+            MEDIA -> LocalizationManager.Strings.sectionMedia
+            TORRENT -> LocalizationManager.Strings.sectionTorrent
+            UPDATES -> LocalizationManager.Strings.sectionUpdates
+        }
+
+    val blurb: String
+        get() = when (this) {
+            GENERAL -> LocalizationManager.Strings.sectionGeneralBlurb
+            DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
+            BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
+            NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
+            MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
+            TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
+            UPDATES -> LocalizationManager.Strings.sectionUpdatesBlurb
+        }
 }
 
 /**
@@ -69,6 +94,12 @@ fun FdmSettingsPanel(
     globalDownloadSpeedLimitBytes: Long,
     globalUploadSpeedLimitBytes: Long,
     speedDisplayUnit: String = "MB/s",
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetLowUnit: String = "KB/s",
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetMediumUnit: String = "MB/s",
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    speedPresetHighUnit: String = "MB/s",
     ytDlpStatus: String,
     isYtDlpInstalled: Boolean,
     isFfmpegInstalled: Boolean,
@@ -92,9 +123,11 @@ fun FdmSettingsPanel(
     onDefaultConnectionsChanged: (Int) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
+    onLanguageChanged: (String) -> Unit = {},
     onGlobalDownloadSpeedLimitChanged: (Long) -> Unit,
     onGlobalUploadSpeedLimitChanged: (Long) -> Unit,
     onSpeedDisplayUnitChanged: (String) -> Unit = {},
+    onSpeedPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> },
     onDownloadYtDlpClicked: () -> Unit,
     onApplySettings: () -> Unit
 ) {
@@ -102,6 +135,8 @@ fun FdmSettingsPanel(
     val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
+    val netProxy by NetworkSettings.proxy.collectAsState()
+    val netLogins by NetworkSettings.logins.collectAsState()
     val sections = SettingsSection.entries.filter {
         when (it) {
             SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
@@ -119,24 +154,24 @@ fun FdmSettingsPanel(
 
     // The live one-line summary under each page name.
     fun summary(s: SettingsSection): Pair<String, Color?> = when (s) {
-        SettingsSection.GENERAL -> (if (isDarkMode) "Dark" else "Light") + " · " + unitKey to null
+        SettingsSection.GENERAL -> (if (isDarkMode) LocalizationManager.Strings.settingsThemeDark else LocalizationManager.Strings.settingsThemeLight) + " · " + unitKey to null
         SettingsSection.DOWNLOADS -> folderName(destinationPath) + " · " +
-                (if (maxAtOnce <= 0) "no limit" else "$maxAtOnce at a time") to null
+                (if (maxAtOnce <= 0) LocalizationManager.Strings.summaryNoQueueLimit else LocalizationManager.Strings.summaryAtATime(
+                    maxAtOnce
+                )) to null
 
-        SettingsSection.SPEED ->
-            if (globalDownloadSpeedLimitBytes <= 0 && globalUploadSpeedLimitBytes <= 0) "No limit" to null
-            else listOfNotNull(
-                if (globalDownloadSpeedLimitBytes > 0) "↓ " + limitText(
-                    globalDownloadSpeedLimitBytes
-                ) else null,
-                if (globalUploadSpeedLimitBytes > 0) "↑ " + limitText(globalUploadSpeedLimitBytes) else null
-            ).joinToString("  ") to StatusPaused
+        SettingsSection.NETWORK -> networkSummary(netProxy, netLogins.size) to
+                (if (netProxy.isOn) StatusCompleted else null)
 
-        SettingsSection.MEDIA -> if (toolsReady) "Ready" to StatusCompleted else "Setup needed" to StatusPaused
-        SettingsSection.TORRENT -> (if (disableTorrentUpload) "Uploading off" else "Uploading on") to null
+        SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
+        SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
         SettingsSection.BROWSER -> (if (isJvm) "Edge · Firefox · Chrome" else "Firefox for Android") to null
-        SettingsSection.UPDATES -> updateState.available?.let { "${it.version} available" to StatusCompleted }
-            ?: ("Version " + updateState.currentVersion to null)
+        SettingsSection.UPDATES -> updateState.available?.let {
+            LocalizationManager.Strings.summaryVersionAvailable(
+                it.version
+            ) to StatusCompleted
+        }
+            ?: (LocalizationManager.Strings.summaryVersion(updateState.currentVersion) to null)
     }
 
     var openSection by remember { mutableStateOf<SettingsSection?>(null) }
@@ -150,6 +185,7 @@ fun FdmSettingsPanel(
                 monitorClipboard,
                 clipboardVideoPages,
                 onThemeToggled,
+                onLanguageChanged,
                 onSpeedDisplayUnitChanged,
                 onMonitorClipboardChanged,
                 onClipboardVideoPagesChanged
@@ -162,13 +198,14 @@ fun FdmSettingsPanel(
                 pathResolver,
                 onDestinationPathChanged,
                 onSortIntoFoldersChanged,
-                onDefaultConnectionsChanged
+                onDefaultConnectionsChanged,
+                speedPresetLowBytes, speedPresetLowUnit,
+                speedPresetMediumBytes, speedPresetMediumUnit,
+                speedPresetHighBytes, speedPresetHighUnit,
+                onSpeedPresetChanged
             )
 
-            SettingsSection.SPEED -> SpeedPage(
-                globalDownloadSpeedLimitBytes, globalUploadSpeedLimitBytes,
-                onGlobalDownloadSpeedLimitChanged, onGlobalUploadSpeedLimitChanged
-            )
+            SettingsSection.NETWORK -> NetworkPage(isIos)
 
             SettingsSection.MEDIA -> MediaToolsPage(
                 ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,
@@ -178,6 +215,7 @@ fun FdmSettingsPanel(
 
             SettingsSection.TORRENT -> TorrentPage(
                 disableTorrentUpload, onDisableTorrentUploadToggled,
+                globalUploadSpeedLimitBytes, onGlobalUploadSpeedLimitChanged,
                 showEngine = isJvm, isTorrentEngineReady, torrentEngineStatus
             )
 
@@ -207,7 +245,7 @@ fun FdmSettingsPanel(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Changes are saved automatically.",
+                        LocalizationManager.Strings.changesSavedAutomatically,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 12.dp)
@@ -253,7 +291,7 @@ fun FdmSettingsPanel(
                         ) { openSection = s }
                     }
                     Text(
-                        "Changes are saved automatically.",
+                        LocalizationManager.Strings.changesSavedAutomatically,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
@@ -277,7 +315,7 @@ fun FdmSettingsPanel(
                         Text("←", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "All settings",
+                            LocalizationManager.Strings.settingsAllSettings,
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )

@@ -1,6 +1,9 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.engine.DownloadEngine
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -99,7 +102,8 @@ class TorrentDownloader(
     }
 
     private fun describe(e: Throwable): String {
-        val msg = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName ?: "Unknown error"
+        val msg = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName
+        ?: LocalizationManager.Strings.sysUnknownErrorCapital
         return if (e is Exception) msg else "${e::class.simpleName}: $msg"
     }
 
@@ -147,6 +151,7 @@ class TorrentDownloader(
                 connectTimeoutMillis = 15_000
                 socketTimeoutMillis = 30_000
             }
+            useNetworkSettings()
         }
         try {
             val safeUrl = url.replace(" ", "%20")

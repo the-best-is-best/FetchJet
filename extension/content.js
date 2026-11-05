@@ -121,6 +121,8 @@
 
   document.addEventListener("click", (event) => {
     if (!settings.enabled || !settings.captureLinks) return;
+    // Only the user's own clicks: a page script's a.click() must not send links with cookies.
+    if (!event.isTrusted) return;
     if (event.button !== 0) return;
     let target = event.target;
     while (target && target.tagName !== "A") target = target.parentElement;
@@ -186,8 +188,22 @@
         }
       }
     }
+    const onSoundCloud = /(^|\.)soundcloud\.com$/i.test(location.hostname);
+    const pushTrack = (href) => {
+      try {
+        const u = new URL(href, window.location.href);
+        if (!/(^|\.)soundcloud\.com$/i.test(u.hostname)) return;
+        const parts = u.pathname.replace(/^\/n\//, "/").split("/").filter(Boolean);
+        if (parts.length !== 2 || parts[1] === "sets") return;
+        const clean = "https://soundcloud.com/" + parts.join("/");
+        if (!out.has(clean) && isVideoPage(clean)) out.set(clean, { url: clean, fileName: "" });
+      } catch (_) {}
+    };
     for (const root of roots) {
-      root.querySelectorAll && root.querySelectorAll("a[href]").forEach(a => push(a.href, a.getAttribute("download")));
+      root.querySelectorAll && root.querySelectorAll("a[href]").forEach(a => {
+        push(a.href, a.getAttribute("download"));
+        if (onSoundCloud) pushTrack(a.getAttribute("href"));
+      });
       if (!selectionOnly) {
         root.querySelectorAll("video[src], audio[src], video source[src], audio source[src]").forEach(m => {
           const src = m.getAttribute("src");
@@ -248,10 +264,29 @@
       collectShadow(sr, out, depth + 1);
     }
   }
+  const AUDIO_HERO = [[/soundcloud\.com\//i, () => {
+    const h1 = document.querySelector("main h1");
+    return document.querySelector(".fullListenHero") || (h1 && h1.closest("section"));
+  }]];
+  function audioPageUrl() {
+    try {
+      const u = new URL(location.href);
+      if (/(^|\.)soundcloud\.com$/i.test(u.hostname)) return "https://soundcloud.com" + u.pathname.replace(/^\/n\//, "/");
+    } catch (_) {}
+    return location.href;
+  }
+  function audioHero() {
+    const page = audioPageUrl();
+    if (!isVideoPage(page)) return null;
+    for (const [re, find] of AUDIO_HERO) if (re.test(page)) return find();
+    return null;
+  }
   function allVideos() {
     const list = [...document.querySelectorAll("video")];
     if (deepRound++ % 4 === 0) { const found = []; try { collectShadow(document, found, 0); } catch (_) {} shadowVideos = found; }
     for (const v of shadowVideos) if (v.isConnected && !list.includes(v)) list.push(v);
+    const hero = audioHero();
+    if (hero && !list.includes(hero)) list.push(hero);
     return list;
   }
   // The video the user is watching: a playing one first, else the biggest on screen.
@@ -282,7 +317,9 @@
     /(twitter|x)\.com\/[^/]+\/status\//i, /vimeo\.com\/\d+/i, /player\.vimeo\.com\/video\//i,
     /dailymotion\.com\/(video\/|embed\/video\/)/i, /dai\.ly\//i, /reddit\.com\/r\/[^/]+\/comments\//i,
     /twitch\.tv\/(videos\/|[^/]+\/clip\/)/i, /clips\.twitch\.tv\//i, /pinterest\.[a-z.]+\/pin\//i,
-    /snapchat\.com\/(spotlight|add)\//i, /linkedin\.com\/(posts|feed\/update)\//i, /streamable\.com\//i, /rumble\.com\//i, /odysee\.com\//i
+    /snapchat\.com\/(spotlight|add)\//i, /linkedin\.com\/(posts|feed\/update)\//i, /streamable\.com\//i, /rumble\.com\//i, /odysee\.com\//i,
+    /9gag\.com\/gag\//i, /kick\.com\/[^/]+\/(videos|clips)\//i,
+    /soundcloud\.com\/(?!(you|discover|stream|search|upload|charts|pages|settings|messages|notifications|tags|getstarted|company|jobs|imprint|terms-of-use|creators|artists|people|popular|feed|library|n)\/)[^/?#]+\/(?!(tracks|albums|reposts|likes|followers|following|popular-tracks|comments|spotlight|toptracks)(?:[/?#]|$))[^/?#]+/i
   ];
   const isVideoPage = (u) => VIDEO_PAGE.some(r => r.test(u));
   // In feeds (Facebook, Instagram, X...) many videos share a page: the post link next to the video.
@@ -305,7 +342,7 @@
     const v = biggestVideo();
     if (!v) return;
     if (v.paused && !(v.duration > 3) && !v.currentSrc) return;
-    const page = TOP ? linkFor(v) : (isVideoPage(location.href) ? location.href : "");
+    const page = v.tagName !== "VIDEO" ? audioPageUrl() : TOP ? linkFor(v) : (isVideoPage(location.href) ? location.href : "");
     const key = (TOP ? "" : "frame:") + page;
     if (key === lastPage) return;
     lastPage = key;
@@ -376,6 +413,9 @@
     return svg;
   }
 
+  const isAudioAnchor = (v) => v.tagName !== "VIDEO";
+  const byKind = (v, video, audio) => fjT(isAudioAnchor(v) ? audio : video);
+
   function makeBubble(video) {
     const host = document.createElement("fetchjet-button");
     host.style.cssText = "all:initial;position:fixed;z-index:2147483647;";
@@ -385,10 +425,10 @@
     root.append(
       el("style", { text: STYLE }),
       el("div", { class: "wrap" },
-        el("div", { class: "btn", id: "main", title: "Download this video with FetchJet" },
-          el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: "Download this video" })),
+        el("div", { class: "btn", id: "main", title: byKind(video, "btnTitleVideo", "btnTitleAudio") },
+          el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownloadVideo", "btnDownloadAudio") })),
           el("span", { class: "count", id: "count" }),
-          el("span", { class: "side", id: "close", title: "Hide this button", text: "✕" })),
+          el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
     const b = { host, root, video, open: false, own: null, loading: false, dx: null, dy: null, dismissed: false };
     let down = null;
@@ -425,15 +465,16 @@
   // Another video on the page (or nothing found yet): look it up now.
   function lookUp(b) {
     b.loading = true; b.open = true;
-    renderOne(b, "Looking for the video qualities…");
-    const msg = { action: "resolveVideo", page: ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href), src: directSrc(b.video), frame: !TOP };
+    renderOne(b, byKind(b.video, "lookingVideo", "lookingAudio"));
+    const page = b.video.tagName !== "VIDEO" ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
+    const msg = { action: "resolveVideo", page, src: directSrc(b.video), frame: !TOP };
     api.runtime.sendMessage(msg).then((res) => {
       b.loading = false;
       if (!res) return notRunning(b, () => lookUp(b));
-      if (res.error) return /not running/i.test(res.error) ? notRunning(b, () => lookUp(b)) : renderOne(b, res.error, true);
+      if (res.error) return res.notRunning || /not running/i.test(res.error) ? notRunning(b, () => lookUp(b)) : renderOne(b, res.error, true);
       b.own = res.items || [];
       renderOne(b);
-    }).catch(() => { b.loading = false; renderOne(b, "FetchJet extension was reloaded - refresh the page", true); });
+    }).catch(() => { b.loading = false; renderOne(b, fjT("extReloaded"), true); });
   }
 
   function clicked(b) {
@@ -444,10 +485,10 @@
 
   function notRunning(b, retry) {
     b.open = true;
-    renderOne(b, "FetchJet is not running.", true, {
-      text: "Start FetchJet", run: () => {
-        renderOne(b, "Starting FetchJet…");
-        api.runtime.sendMessage({ action: "launchApp" }).then((r) => { if (r && r.online) retry(); else renderOne(b, "FetchJet did not start. Open it from the Start menu and try again.", true); }).catch(() => {});
+    renderOne(b, fjT("appNotRunning"), true, {
+      text: fjT("startApp"), run: () => {
+        renderOne(b, fjT("startingApp"));
+        api.runtime.sendMessage({ action: "launchApp" }).then((r) => { if (r && r.online) retry(); else renderOne(b, fjT("appDidNotStart"), true); }).catch(() => {});
       }
     });
   }
@@ -459,7 +500,10 @@
     const list = itemsOf(b);
     const usable = list.filter(i => !i.disabled);
     const busy = b.loading || (!usable.length && list.some(i => i.disabled && /Getting/.test(i.label)));
-    b.root.getElementById("label").textContent = usable.length > 1 ? `Download · ${usable.length} options` : "Download this video";
+    b.root.getElementById("label").textContent = usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownloadVideo", "btnDownloadAudio");
+    b.root.getElementById("main").title = byKind(b.video, "btnTitleVideo", "btnTitleAudio");
+    b.root.getElementById("close").title = fjT("hideButton");
+    b.root.querySelector(".wrap").dir = fjIsRtl() ? "rtl" : "ltr";
     const count = b.root.getElementById("count");
     count.textContent = String(usable.length);
     count.classList.toggle("on", usable.length > 1 && !b.open);
@@ -474,12 +518,12 @@
       if (action) { const a = el("div", { class: "act", text: action.text }); a.addEventListener("click", action.run); d.append(el("br"), a); }
       box.appendChild(d); return;
     }
-    if (!list.length) { box.appendChild(el("div", { class: "msg", text: "Looking for the video qualities…" })); return; }
+    if (!list.length) { box.appendChild(el("div", { class: "msg", text: byKind(b.video, "lookingVideo", "lookingAudio") })); return; }
     const title = (list.find(m => m.title) || {}).title || cleanTitle();
     box.appendChild(el("div", { class: "head", title, text: title }));
-    const files = usable.filter(m => m.kind === "media");
+    const files = usable.filter(m => m.kind === "media" && !m.stream);
     if (files.length >= 2) {
-      const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: `Download all (${files.length} files)` })));
+      const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: fjT("downloadAllFiles", { n: files.length }) })));
       row.addEventListener("click", () => files.forEach((m, i) => setTimeout(() => download(b, m), i * 300)));
       box.appendChild(row);
     }
@@ -492,11 +536,11 @@
       const subText = m.sub || (m.size ? fmtSize(m.size) : "");
       const row = el("div", { class: "item" + (m.disabled ? " off" : "") },
         el("span", { class: "num", text: m.disabled ? "" : `${++n}.` }),
-        el("div", { class: "body" }, t, el("div", { class: "s", text: subText.length > 110 ? subText.slice(0, 110) + "…" : subText })));
+        el("div", { class: "body" }, t, el("div", { class: "s", dir: "ltr", text: subText.length > 110 ? subText.slice(0, 110) + "…" : subText })));
       if (!m.disabled) row.addEventListener("click", () => download(b, m));
       if (!m.disabled && m.kind === "ytdlp") {
         // Scissors: open FetchJet on this quality with the clip range on (download a part only).
-        const cut = el("button", { class: "cut", text: "✂", title: "Download a part of it (clip) in FetchJet" });
+        const cut = el("button", { class: "cut", text: "✂", title: fjT("clipTitle") });
         cut.addEventListener("click", (e) => { e.stopPropagation(); download(b, { ...m, openClip: true }); });
         row.appendChild(cut);
       }
@@ -508,10 +552,10 @@
     api.runtime.sendMessage({ action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } }).then((res) => {
       if (!res || !res.ok) {
         if (res && /not running|did not start/i.test(res.reason || "")) return notRunning(b, () => download(b, m));
-        return flashOne(b, `Could not send: ${(res && res.reason) || "unknown error"}`, true);
+        return flashOne(b, fjT("couldNotSendReason", { reason: fjReason(res && res.reason) }), true);
       }
-      flashOne(b, "Sent to FetchJet ✔");
-    }).catch(() => flashOne(b, "Could not reach the extension", true));
+      flashOne(b, fjT("sentToApp"));
+    }).catch(() => flashOne(b, fjT("cantReachExtension"), true));
   }
   function flashOne(b, text, isError) {
     b.open = true; renderOne(b, text, isError);
@@ -549,11 +593,17 @@
     if (!settings.enabled || settings.pagePanel === false) return;
     const vids = allVideos().filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100; });
     for (const [v, b] of bubbles) if (!v.isConnected) { b.host.remove(); bubbles.delete(v); }
+    const oneVideoSite = /(^|\.)youtube\.com$/i.test(location.hostname);
     for (const v of vids.slice(0, 12)) {
+      if (oneVideoSite && !isMain(v)) {
+        const old = bubbles.get(v);
+        if (old) { old.host.remove(); bubbles.delete(v); }
+        continue;
+      }
       let b = bubbles.get(v);
       if (!b) {
         // main video: once the background found something or it plays; others: as soon as they are real players
-        const show = isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v));
+        const show = v.tagName !== "VIDEO" || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
         if (!show) continue;
         b = makeBubble(v);
       }
@@ -595,8 +645,10 @@
   } catch (_) {}
   if (TOP) {
     // media / qualities the background found before this script loaded
-    try { api.runtime.sendMessage({ action: "getItems" }).then((r) => { if (r && r.items) update(r.items); }).catch(() => {}); } catch (_) {}
+    try { api.runtime.sendMessage({ action: "getItems", videoPage: isVideoPage(location.href) }).then((r) => { if (r && r.items) update(r.items); }).catch(() => {}); } catch (_) {}
   }
+
+  fjOnLanguage(() => { for (const b of bubbles.values()) renderOne(b); });
 
   api.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request && request.action === "fetchjetItems") {

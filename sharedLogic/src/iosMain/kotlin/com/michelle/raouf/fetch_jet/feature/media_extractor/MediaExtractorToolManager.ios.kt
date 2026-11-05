@@ -2,6 +2,8 @@
 
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -112,10 +114,7 @@ fun getIosCookieFile(): String? {
                 if (size in 10..5_000_000) {
                     val content =
                         NSString.stringWithContentsOfFile(fullPath, NSUTF8StringEncoding, null)
-                    if (content != null && (content.contains("youtube.com") || content.contains("google.com") || content.contains(
-                            "Netscape HTTP Cookie File"
-                        ))
-                    ) {
+                    if (content != null && looksLikeNetscapeCookies(content)) {
                         return fullPath
                     }
                 }
@@ -124,6 +123,14 @@ fun getIosCookieFile(): String? {
     }
 
     return null
+}
+
+private fun looksLikeNetscapeCookies(content: String): Boolean {
+    if (content.contains("# Netscape HTTP Cookie File") || content.contains("# HTTP Cookie File")) return true
+    return content.lineSequence().any { line ->
+        val fields = line.removePrefix("#HttpOnly_").split('\t')
+        fields.size == 7 && (fields[1] == "TRUE" || fields[1] == "FALSE")
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -228,7 +235,7 @@ fun getExistingFfmpegBinary(): String? {
 
 actual fun getMediaExtractorToolStatus(): String {
     val bridge = IosMediaBridgeRegistry.bridge
-        ?: return "Media engine bridge not registered"
+        ?: return LocalizationManager.Strings.sysMediaEngineBridgeNotRegistered
     return bridge.statusText()
 }
 
@@ -243,7 +250,7 @@ actual fun getMediaToolsDirectory(): String {
 }
 
 actual fun getJsRuntimeStatus(): JsRuntimeStatus = JsRuntimeStatus(
-    name = "WebKit (built-in)",
+    name = LocalizationManager.Strings.sysWebKitBuiltIn,
     isReady = IosMediaBridgeRegistry.bridge?.statusText()?.contains("WebKit JS solver") == true
 )
 
@@ -269,3 +276,5 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
         onProgress(ToolDownloadProgress("yt-dlp"))
         bridge.updateYtDlpModule { onProgress(ToolDownloadProgress("yt-dlp", it)) } == null
     }
+
+internal actual val toolUpdateSwapsAtomically: Boolean = true

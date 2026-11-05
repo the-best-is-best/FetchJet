@@ -6,9 +6,33 @@ One code base for every browser:
 |---------------------------------------------------------|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Chrome, Edge, Brave, Opera, Vivaldi, Arc (any Chromium) | `manifest.json`         | `chrome://extensions` (Edge: `edge://extensions`, Brave: `brave://extensions`, Opera: `opera://extensions`) → Developer mode → *Load unpacked* → this folder, or drop `fetchjet-chrome-<v>.zip` |
 | Firefox (desktop; Android ≥ 142 with the same file)     | `manifest.firefox.json` | signed `fetchjet-firefox-<v>.xpi` (see below)                                                                                                                                                   |
+| Safari on iPhone / iPad                                 | `manifest.safari.json`  | built into the iOS app (target `FetchJetSafariExtension`); turn it on in Settings › Safari › Extensions                                                                                         |
 
-The Chromium build is one package for all Chromium browsers: Edge, Brave, Opera and Vivaldi run
-Chrome extensions unchanged and the Chrome Web Store listing works in all of them.
+The Chromium build is one package for all Chromium browsers: Edge, Brave, Opera, Vivaldi and Arc
+run Chrome extensions unchanged and the Chrome Web Store listing works in all of them.
+
+### One file per browser: `platform.js`
+
+`popup.js` and `options.js` are the same everywhere. What differs per browser lives in a small
+`platform.js`, chosen like the manifest:
+
+| File                  | Copied as `platform.js` by                                   | Sets                                                                                 |
+|-----------------------|--------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `platform.js`         | `build.sh` / `build.ps1` (Chrome + store zip), Load unpacked | the shortcuts page of each Chromium browser (`edge://`, `brave://`, `opera://`, …)   |
+| `platform.firefox.js` | `build.sh` / `build.ps1` (Firefox xpi)                       | Firefox shortcuts text; on Android hides downloads, min size, hold key and shortcuts |
+| `platform.safari.js`  | the Xcode phase "Copy Web Extension Files"                   | hides the settings Safari cannot use and the "Get qualities" button                  |
+
+`FJ_PLATFORM.hidden` lists the ids of the settings rows to hide (`rowAutoLaunch`,
+`rowNotifications`, `rowCaptureDownloads`, `rowAutoResolve`, `rowHoldKey`, `rowMinSize`,
+`cardShortcuts`). A new browser difference goes into these files, not into `popup.js` /
+`options.js`.
+
+### Safari on iOS
+
+iOS suspends FetchJet while Safari is in front and the app has no local server, so the extension
+cannot ask it for qualities. Every link goes to the app through `fetchjet://add?json=...` (with
+cookies and referer): the page button shows *Open in FetchJet* and the app lists the qualities.
+Media is found through the Performance API in `content.js` (Safari has no `webRequest` there).
 
 ## What it does
 
@@ -48,7 +72,7 @@ every request of that download, so files behind a login or hot-link protection w
 ## Build
 
 ```
-./build.sh        # Linux/macOS   → build/extension/fetchjet-chrome-<v>.zip, fetchjet-firefox-<v>.xpi
+./build.sh        # Linux/macOS   → build/extension/fetchjet-chrome-<v>.zip, fetchjet-store-<v>.zip, fetchjet-firefox-<v>.xpi
 .\build.ps1       # Windows
 ```
 

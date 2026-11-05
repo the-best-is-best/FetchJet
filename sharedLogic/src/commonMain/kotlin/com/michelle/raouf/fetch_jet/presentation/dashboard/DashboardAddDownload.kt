@@ -1,8 +1,11 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -15,7 +18,7 @@ internal fun DashboardViewModel.addDownload(
     val currentState = _uiState.value
     val url = currentState.inputUrl
     if (url.isBlank()) {
-        _uiState.update { it.copy(errorMessage = "Please enter a valid URL or Magnet link") }
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysEnterValidUrlOrMagnet) }
         return
     }
 
@@ -24,16 +27,21 @@ internal fun DashboardViewModel.addDownload(
         return
     }
 
+    if (currentState.linkList.isNotEmpty()) {
+        addLinkList(currentState)
+        return
+    }
+
     if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
         if (currentState.inspectMediaError != null) {
-            _uiState.update { it.copy(errorMessage = "Cannot start download: Video inspection failed.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysCannotStartVideoInspectionFailed) }
             return
         }
     }
 
     if (currentState.detectedEngine == EngineType.BITTORRENT) {
         if (currentState.inspectError != null || currentState.inspectedTorrentFiles.isEmpty() || !currentState.inspectedTorrentFiles.any { it.isSelected }) {
-            _uiState.update { it.copy(errorMessage = "Cannot start download: Torrent inspection failed or no files selected.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysCannotStartTorrentInspectionFailed) }
             return
         }
     }
@@ -56,11 +64,11 @@ internal fun DashboardViewModel.addDownload(
 
     if (isClippingActive) {
         if (mediaDur > 0L && !isClipEndAtEnd && clipEndSec > mediaDur) {
-            _uiState.update { it.copy(errorMessage = "Clip end time exceeds video duration.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipEndExceedsDuration) }
             return
         }
         if (clipEndSec > 0L && clipStartSec >= clipEndSec) {
-            _uiState.update { it.copy(errorMessage = "Clip start time must be before end time.") }
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipStartAfterEnd) }
             return
         }
     }
@@ -163,16 +171,20 @@ internal fun DashboardViewModel.addDownload(
             clipByCutting = isActualSubClip && currentState.clipFastMode,
             requestHeaders = headersForLink(url),
             scheduledAtMs = currentState.scheduleStartMs,
-            maxConnections = currentState.selectedConnections
+            maxConnections = currentState.selectedConnections,
+            expectedChecksum = currentState.checksumInput
         ).onSuccess { task ->
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()
             pendingExternalFileName = null
+            pendingExternalPlaylist = null
             _uiState.update {
                 it.copy(
                     inputUrl = "",
+                    linkList = emptyList(),
 
                     fileNameOverride = "",
+                    checksumInput = "",
 
                     suggestedFileName = "",
                     isLoading = false,
@@ -193,13 +205,19 @@ internal fun DashboardViewModel.addDownload(
                     mediaDurationSeconds = 0L
                 )
             }
-            _uiEffect.emit(DashboardUiEffect.ShowToast("Started download: ${task.fileName.ifBlank { task.url }}"))
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysStartedDownload(
+                        task.fileName.ifBlank { task.url })
+                )
+            )
             _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
         }.onFailure { error ->
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Failed to queue download"
+                    errorMessage = error.message
+                        ?: LocalizationManager.Strings.sysFailedToQueueDownload
                 )
             }
         }
@@ -259,9 +277,11 @@ internal fun DashboardViewModel.addSeveralQualities(
         pendingExternalUrl = null
         pendingExternalHeaders = emptyMap()
         pendingExternalFileName = null
+        pendingExternalPlaylist = null
         _uiState.update {
             it.copy(
                 inputUrl = "",
+                linkList = emptyList(),
 
                 fileNameOverride = "",
 
@@ -278,10 +298,19 @@ internal fun DashboardViewModel.addSeveralQualities(
                 scheduleStartMs = 0L,
                 selectedConnections = 0,
                 mediaDurationSeconds = 0L,
-                errorMessage = if (failed > 0) "$failed quality(s) could not be added." else null
+                errorMessage = if (failed > 0) LocalizationManager.Strings.sysQualitiesNotAdded(
+                    failed
+                ) else null
             )
         }
-        _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added downloads of \"$title\""))
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                LocalizationManager.Strings.sysAddedQualityDownloads(
+                    added,
+                    title
+                )
+            )
+        )
     }
 }
 
@@ -296,14 +325,35 @@ internal fun DashboardViewModel.addPlaylist(
 ) {
     val selected = playlist.entries.filter { it.isSelected }
     if (selected.isEmpty()) {
-        _uiState.update { it.copy(errorMessage = "Select at least one video of the playlist.") }
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOnePlaylistVideo) }
         return
     }
-    val quality = state.playlistQuality
-    val destDir =
+    val quality = if (playlist.fromBrowser)
+        com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST else state.playlistQuality
+    val chosenDir =
         state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+    // Like a torrent: the videos get a folder of their own, named after the list, under the
+    // chosen folder (and under its type folder when "Sort into folders" is on).
+    val folder = queueRepository.pathResolver.sanitizeFileName(
+        (playlist.folderName ?: playlist.title).trim()
+    ).trim().trimEnd('.')
+    val typeDir =
+        if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value)
+            com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
+                "video.${quality.extension}", isMedia = true, isTorrent = false
+            )?.let { sub ->
+                val trimmed = chosenDir.trimEnd('/', '\\')
+                val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
+                if (known.any { trimmed.endsWith("/$it") || trimmed.endsWith("\\$it") }) chosenDir else "$trimmed/$sub"
+            } ?: chosenDir
+        else chosenDir
+    val destDir = if (folder.isBlank()) chosenDir else "${typeDir.trimEnd('/', '\\')}/$folder"
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
+        if (folder.isNotBlank()) try {
+            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+        } catch (_: Exception) {
+        }
         var added = 0
         var failed = 0
         val usedNames = mutableSetOf<String>()
@@ -323,6 +373,14 @@ internal fun DashboardViewModel.addPlaylist(
                 fileName = "$base ($n).$ext"
             }
             usedNames.add(fileName.lowercase())
+            // A course the extension read (Udemy) lists the lectures' own streams: an HLS
+            // playlist goes to the own HLS engine (best rendition), a file is a plain download.
+            val hls = playlist.fromBrowser &&
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(
+                        entry.url
+                    )
+            val file =
+                playlist.fromBrowser && !hls && engineForDirectFile(entry.url) == EngineType.HTTP_DIRECT
             val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
                 index = 0,
                 qualityLabel = quality.label,
@@ -330,7 +388,7 @@ internal fun DashboardViewModel.addPlaylist(
                 format = quality.extension,
                 size = -1L,
                 isSelected = true,
-                formatId = quality.formatSelector,
+                formatId = if (hls) com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.FORMAT_ID else quality.formatSelector,
                 originalUrl = entry.url,
                 videoTitle = entry.title,
                 durationSeconds = entry.durationSeconds
@@ -339,15 +397,18 @@ internal fun DashboardViewModel.addPlaylist(
                 url = entry.url,
                 customDestinationPath = destDir,
                 customFileName = fileName,
-                mediaQualities = listOf(pseudoQuality),
+                mediaQualities = if (file) emptyList() else listOf(pseudoQuality),
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
-                forcedEngineType = EngineType.MEDIA_STREAM,
-                scheduledAtMs = state.scheduleStartMs
+                forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
+                scheduledAtMs = state.scheduleStartMs,
+                requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap(),
+                sortByType = folder.isBlank()
             ).onSuccess { added++ }.onFailure { failed++ }
         }
         _uiState.update {
             it.copy(
                 inputUrl = "",
+                linkList = emptyList(),
 
                 fileNameOverride = "",
 
@@ -359,10 +420,199 @@ internal fun DashboardViewModel.addPlaylist(
                 inspectedMediaTitle = null,
                 scheduleStartMs = 0L,
                 selectedConnections = 0,
-                errorMessage = if (failed > 0) "$failed video(s) could not be added." else null
+                errorMessage = if (failed > 0) LocalizationManager.Strings.sysVideosNotAdded(failed) else null
             )
         }
         singleVideoUrl = null
-        _uiEffect.emit(DashboardUiEffect.ShowToast("Added $added videos from \"${playlist.title}\""))
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                LocalizationManager.Strings.sysAddedPlaylistVideos(
+                    added,
+                    playlist.title
+                )
+            )
+        )
+    }
+}
+
+internal fun extractLinks(text: String): List<String> =
+    Regex("""(?:https?://|magnet:\?)[^\s<>"'`]+""", RegexOption.IGNORE_CASE)
+        .findAll(text)
+        .map { it.value.trimEnd('.', ',', ';', ':', ')', ']', '}', '!', '?') }
+        .filter { it.length > 10 }
+        .distinct()
+        .take(500)
+        .toList()
+
+internal fun DashboardViewModel.engineForListedLink(url: String): EngineType {
+    if (url.startsWith("magnet:", ignoreCase = true)) {
+        return if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) EngineType.BITTORRENT
+        else EngineType.HTTP_DIRECT
+    }
+    val engine = engineForDirectFile(url)
+    return when {
+        engine == EngineType.MEDIA_STREAM && !com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor ->
+            EngineType.HTTP_DIRECT
+
+        engine == EngineType.BITTORRENT && !com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent ->
+            EngineType.HTTP_DIRECT
+
+        else -> engine
+    }
+}
+
+internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
+    val selected = state.linkList.filter { it.isSelected }
+    if (selected.any { it.isBeingInspected || it.needsRetry }) return
+    if (selected.isEmpty()) {
+        _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOneLink) }
+        return
+    }
+    val chosenDir =
+        state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+    val folder = queueRepository.pathResolver.sanitizeFileName(state.linkListFolder.trim()).trim()
+        .trimEnd('.')
+    val destDir = if (folder.isBlank()) chosenDir else "${chosenDir.trimEnd('/', '\\')}/$folder"
+    _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    scope.launch {
+        if (folder.isNotBlank()) try {
+            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+        } catch (_: Exception) {
+        }
+        val existing = queueRepository.allTasksFlow.value
+        var added = 0
+        var skipped = 0
+        for (entry in selected) {
+            if (existing.any { isSameDownload(it, entry.url) }) {
+                skipped++
+                continue
+            }
+            if (entry.torrentFiles.isNotEmpty() && entry.torrentFiles.none { it.isSelected }) {
+                skipped++
+                continue
+            }
+            val quality = entry.mediaQualities.firstOrNull { it.isSelected }
+            val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
+                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + quality.format.ifBlank { "mp4" }
+            else null
+            queueRepository.enqueueTask(
+                url = entry.url,
+                customDestinationPath = destDir,
+                customFileName = videoName,
+                mediaQualities = entry.mediaQualities,
+                requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
+                disableUpload = state.disableTorrentUpload,
+                torrentFiles = entry.torrentFiles,
+                torrentName = entry.torrentName,
+                webSeedUrls = entry.webSeeds,
+                maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
+                maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
+                forcedEngineType = entry.engine,
+                scheduledAtMs = state.scheduleStartMs,
+                sortByType = folder.isBlank()
+            ).onSuccess { added++ }.onFailure { skipped++ }
+        }
+        _uiState.update {
+            it.copy(
+                inputUrl = "",
+                linkList = emptyList(),
+                linkListFolder = "",
+                fileNameOverride = "",
+                suggestedFileName = "",
+                isLoading = false,
+                isAddDialogVisible = false,
+                scheduleStartMs = 0L,
+                selectedConnections = 0,
+                scrollToTopSignal = it.scrollToTopSignal + 1
+            )
+        }
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(
+                LocalizationManager.Strings.sysAddedLinkDownloads(added, skipped)
+            )
+        )
+    }
+}
+
+internal fun DashboardViewModel.updateListedTorrentFiles(
+    linkIndex: Int,
+    change: (List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry>) -> List<com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry>
+) {
+    _uiState.update { st ->
+        st.copy(linkList = st.linkList.mapIndexed { i, entry ->
+            if (i == linkIndex) entry.copy(torrentFiles = change(entry.torrentFiles)) else entry
+        })
+    }
+}
+
+/**
+ * Video links in the list: their title and qualities are read one at a time, so each row can show
+ * the real name and offer a quality. A video that cannot be read must be retried (or unchecked)
+ * before the list can start.
+ */
+internal fun DashboardViewModel.inspectListedVideos() {
+    val urls = _uiState.value.linkList
+        .filter { it.engine == EngineType.MEDIA_STREAM && it.mediaQualities.isEmpty() && !it.isInspectingMedia }
+        .map { it.url }
+    if (urls.isEmpty()) return
+    fun update(url: String, change: (LinkListEntry) -> LinkListEntry) = _uiState.update { st ->
+        st.copy(linkList = st.linkList.map { if (it.url == url) change(it) else it })
+    }
+    urls.forEach { url -> update(url) { it.copy(isInspectingMedia = true, mediaInspectFailed = false) } }
+    scope.launch {
+        for (url in urls) {
+            if (_uiState.value.linkList.none { it.url == url }) continue
+            val qualities = try {
+                withTimeoutOrNull(120_000L) {
+                    queueRepository.inspectMediaQualities(url, headersForLink(url))
+                } ?: emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            update(url) {
+                it.copy(
+                    isInspectingMedia = false,
+                    mediaInspectFailed = qualities.isEmpty(),
+                    mediaTitle = qualities.firstOrNull { q -> !q.videoTitle.isNullOrBlank() }?.videoTitle,
+                    mediaQualities = qualities
+                )
+            }
+        }
+    }
+}
+
+internal fun DashboardViewModel.inspectListedTorrents() {
+    val urls = _uiState.value.linkList
+        .filter { it.engine == EngineType.BITTORRENT && it.torrentFiles.isEmpty() && !it.isInspecting }
+        .map { it.url }
+    if (urls.isEmpty()) return
+    fun update(url: String, change: (LinkListEntry) -> LinkListEntry) = _uiState.update { st ->
+        st.copy(linkList = st.linkList.map { if (it.url == url) change(it) else it })
+    }
+    urls.forEach { url -> update(url) { it.copy(isInspecting = true, inspectError = null) } }
+    scope.launch {
+        for (url in urls) {
+            if (_uiState.value.linkList.none { it.url == url }) continue
+            queueRepository.torrentEngine.fetchAndParseTorrent(url)
+                .onSuccess { parsed ->
+                    update(url) {
+                        it.copy(
+                            isInspecting = false,
+                            torrentName = parsed.name,
+                            torrentFiles = parsed.files,
+                            webSeeds = parsed.webSeeds
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    update(url) {
+                        it.copy(
+                            isInspecting = false,
+                            inspectError = err.message
+                                ?: LocalizationManager.Strings.sysCouldNotReadTorrent
+                        )
+                    }
+                }
+        }
     }
 }

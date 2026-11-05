@@ -1,6 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -11,7 +12,14 @@ data class AppSettings(
     val isDarkMode: Boolean = true,
     val globalDownloadSpeedLimitBytes: Long = 0L,
     val globalUploadSpeedLimitBytes: Long = 0L,
-    val speedDisplayUnit: String = "MB/s"
+    val speedDisplayUnit: String = "MB/s",
+    val language: String = "system",
+    val speedPresetLowBytes: Long = 256L * 1024,
+    val speedPresetLowUnit: String = "KB/s",
+    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    val speedPresetHighUnit: String = "MB/s"
 )
 
 class AppSettingsRepository(
@@ -27,6 +35,13 @@ class AppSettingsRepository(
         var dlLimit = 0L
         var ulLimit = 0L
         var speedUnit = "MB/s"
+        var language = "system"
+        var lowBytes = 256L * 1024
+        var lowUnit = "KB/s"
+        var mediumBytes = 5L * 1024 * 1024
+        var mediumUnit = "MB/s"
+        var highBytes = 20L * 1024 * 1024
+        var highUnit = "MB/s"
 
         try {
             if (FileSystem.SYSTEM.exists(settingsFile)) {
@@ -38,7 +53,8 @@ class AppSettingsRepository(
                     val key = trimmed.substringBefore("=").trim()
                     val value = trimmed.substringAfter("=").trim()
                     when (key) {
-                        "destinationPath" -> if (value.isNotBlank()) destination = value
+                        "destinationPath" -> if (value.isNotBlank()) destination =
+                            relocateAppPath(value)
                         "disableTorrentUpload" -> disableUpload =
                             value.toBooleanStrictOrNull() ?: false
 
@@ -46,6 +62,15 @@ class AppSettingsRepository(
                         "globalDownloadSpeedLimitBytes" -> dlLimit = value.toLongOrNull() ?: 0L
                         "globalUploadSpeedLimitBytes" -> ulLimit = value.toLongOrNull() ?: 0L
                         "speedDisplayUnit" -> if (value.isNotBlank()) speedUnit = value
+                        "language" -> if (value.isNotBlank()) language = value
+                        "speedPresetLowBytes" -> lowBytes = value.toLongOrNull() ?: lowBytes
+                        "speedPresetLowUnit" -> if (value.isNotBlank()) lowUnit = value
+                        "speedPresetMediumBytes" -> mediumBytes =
+                            value.toLongOrNull() ?: mediumBytes
+
+                        "speedPresetMediumUnit" -> if (value.isNotBlank()) mediumUnit = value
+                        "speedPresetHighBytes" -> highBytes = value.toLongOrNull() ?: highBytes
+                        "speedPresetHighUnit" -> if (value.isNotBlank()) highUnit = value
                     }
                 }
             }
@@ -65,7 +90,14 @@ class AppSettingsRepository(
             isDarkMode = darkMode,
             globalDownloadSpeedLimitBytes = dlLimit,
             globalUploadSpeedLimitBytes = ulLimit,
-            speedDisplayUnit = normalizedSpeedUnit
+            speedDisplayUnit = normalizedSpeedUnit,
+            language = language,
+            speedPresetLowBytes = lowBytes,
+            speedPresetLowUnit = lowUnit,
+            speedPresetMediumBytes = mediumBytes,
+            speedPresetMediumUnit = mediumUnit,
+            speedPresetHighBytes = highBytes,
+            speedPresetHighUnit = highUnit
         )
     }
 
@@ -80,6 +112,13 @@ class AppSettingsRepository(
                 writeUtf8("globalDownloadSpeedLimitBytes=${settings.globalDownloadSpeedLimitBytes}\n")
                 writeUtf8("globalUploadSpeedLimitBytes=${settings.globalUploadSpeedLimitBytes}\n")
                 writeUtf8("speedDisplayUnit=${settings.speedDisplayUnit}\n")
+                writeUtf8("language=${settings.language}\n")
+                writeUtf8("speedPresetLowBytes=${settings.speedPresetLowBytes}\n")
+                writeUtf8("speedPresetLowUnit=${settings.speedPresetLowUnit}\n")
+                writeUtf8("speedPresetMediumBytes=${settings.speedPresetMediumBytes}\n")
+                writeUtf8("speedPresetMediumUnit=${settings.speedPresetMediumUnit}\n")
+                writeUtf8("speedPresetHighBytes=${settings.speedPresetHighBytes}\n")
+                writeUtf8("speedPresetHighUnit=${settings.speedPresetHighUnit}\n")
             }
         } catch (_: Exception) {
         }

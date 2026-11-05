@@ -8,7 +8,7 @@ fun interface IosMediaExecutionProgressCallback {
 }
 
 /**
- * Line-by-line callback for streaming CLI output (ffmpeg, aria2, etc.).
+ * Line-by-line callback for streaming CLI output (ffmpeg, etc.).
  */
 fun interface IosMediaLineCallback {
     fun onLine(line: String)
@@ -23,7 +23,7 @@ fun interface IosToolDownloadProgressCallback {
 
 /**
  * Native iOS bridge interface to be implemented in Swift (via SPM / Frameworks: FFmpegKit, PythonKit, AVFoundation, etc.)
- * matching Android's ytdlnis / ffmpeg / aria2c architecture.
+ * matching Android's ytdlnis / ffmpeg architecture.
  */
 interface IosMediaExecutionBridge {
     fun isAvailable(): Boolean

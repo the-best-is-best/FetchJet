@@ -104,11 +104,12 @@ function ytFmtSize(n) {
 
 /**
  * Download choices from the streams captured in one tab. Ads are short separate streams,
- * so the group with the longest duration is the real video. Without an in-app merger,
- * only progressive (video+audio) streams give a complete file; video-only and audio-only
- * streams are offered as what they are.
+ * so the group with the longest duration is the real video. Progressive (video+audio)
+ * streams give a complete file by themselves. When the app can merge ([merge]), each
+ * video-only stream is offered with the best audio stream, and the app puts them together;
+ * otherwise video-only and audio-only streams are offered as what they are.
  */
-function ytBuildOptions(streams) {
+function ytBuildOptions(streams, merge) {
   const list = Object.values(streams || {}).filter(s => !s.sabr);
   if (!list.length) return [];
   const groups = new Map();
@@ -124,34 +125,52 @@ function ytBuildOptions(streams) {
     if (seen.has("av" + q)) continue;
     seen.add("av" + q);
     options.push({
-      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${v.ext.toUpperCase()} · video with sound`,
+      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${v.ext.toUpperCase()} · ${ytText("ytVideoWithSound", "video with sound")}`,
       sub: ytFmtSize(v.size), quality: q, ext: v.ext, size: v.size, duration: v.dur, url: v.url
     });
   }
+  const trackRank = (s) => (s.original ? 2 : s.dubbed ? 0 : 1);
+  const audios = main.filter(s => s.kind === "a").sort((a, b) => trackRank(b) - trackRank(a) || (b.abr || 0) - (a.abr || 0) || b.size - a.size);
   for (const v of main.filter(s => s.kind === "v").sort(byQuality)) {
+    if (merge && audios.length) {
+      // Same container when there is one (MP4 + M4A, WebM + WebM): ffmpeg then only copies.
+      const sameBox = (a) => (v.ext === "webm") === (a.ext === "webm");
+      const a = audios.find(x => sameBox(x) && trackRank(x) === trackRank(audios[0])) || audios[0];
+      const q = `${v.h ? v.h + "p" : "video"}${v.fps && v.fps > 30 ? v.fps : ""}`;
+      const fmt = v.codec ? `${v.ext.toUpperCase()} ${v.codec}` : v.ext.toUpperCase();
+      const key = `m${q}`;
+      if (seen.has(key) || seen.has("av" + `${v.h}p`)) continue;
+      seen.add(key);
+      options.push({
+        kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${fmt} · ${ytText("ytVideoWithSound", "video with sound")}`,
+        sub: ytFmtSize((v.size || 0) + (a.size || 0)), quality: q, ext: v.ext === "webm" && a.ext === "webm" ? "webm" : "mp4",
+        size: (v.size || 0) + (a.size || 0), duration: v.dur, url: v.url, audioUrl: a.url
+      });
+      continue;
+    }
     const q = `${v.h ? v.h + "p" : "video"}${v.fps && v.fps > 30 ? v.fps : ""}`;
     const fmt = v.codec ? `${v.ext.toUpperCase()} ${v.codec}` : v.ext.toUpperCase();
     const key = `v${q}|${fmt}`;
     if (seen.has(key)) continue;
     seen.add(key);
     options.push({
-      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${fmt} · video only (no sound)`,
+      kind: "captured", label: `${q} ${ytQualityTag(v.h)} · ${fmt} · ${ytText("ytVideoOnly", "video only (no sound)")}`,
       sub: ytFmtSize(v.size), quality: q, ext: v.ext, size: v.size, duration: v.dur, url: v.url, videoOnly: true
     });
   }
-  const trackRank = (s) => (s.original ? 2 : s.dubbed ? 0 : 1);
-  const audios = main.filter(s => s.kind === "a").sort((a, b) => trackRank(b) - trackRank(a) || (b.abr || 0) - (a.abr || 0) || b.size - a.size);
   for (const a of audios.slice(0, 3)) {
     const key = `a${a.ext}${a.abr}${a.lang}`;
     if (seen.has(key)) continue;
     seen.add(key);
     options.push({
-      kind: "captured", label: `Audio only · ${a.ext.toUpperCase()}${a.abr ? " " + a.abr + "k" : ""}${a.lang ? " · " + a.lang : ""}`,
+      kind: "captured", label: `${ytText("ytAudioOnly", "Audio only")} · ${a.ext.toUpperCase()}${a.abr ? " " + a.abr + "k" : ""}${a.lang ? " · " + a.lang : ""}`,
       sub: ytFmtSize(a.size), quality: "audio", ext: a.ext, size: a.size, duration: a.dur, url: a.url, audioOnly: true
     });
   }
   return options;
 }
+
+function ytText(key, english) { return typeof fjT === "function" ? fjT(key) : english; }
 
 /** "(3) Some title - YouTube" -> "Some title", safe for file names on every OS. */
 function ytCleanTitle(title) {

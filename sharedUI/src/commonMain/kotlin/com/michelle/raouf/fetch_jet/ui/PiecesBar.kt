@@ -36,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
@@ -86,29 +88,31 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
-                "Pieces",
+                LocalizationManager.Strings.homePiecesLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             Pill(
-                if (manySegments) "${chunks.size} segments" else "${chunks.size} pieces",
+                if (manySegments) LocalizationManager.Strings.homeSegmentsCount(chunks.size) else LocalizationManager.Strings.homePiecesCount(
+                    chunks.size
+                ),
                 scheme.onSurfaceVariant,
                 scheme.surfaceVariant.copy(alpha = 0.5f)
             )
             if (active.isNotEmpty()) Pill(
-                "${active.size} active",
+                LocalizationManager.Strings.homeActiveCount(active.size),
                 activeB,
                 activeB.copy(alpha = 0.14f),
                 dot = true
             )
             if (stalled.isNotEmpty()) Pill(
-                "${stalled.size} waiting",
+                LocalizationManager.Strings.homeWaitingCount(stalled.size),
                 waiting,
                 waiting.copy(alpha = 0.14f)
             )
             if (finished > 0) Pill(
-                "$finished done",
+                LocalizationManager.Strings.homeDoneCount(finished),
                 StatusCompleted,
                 StatusCompleted.copy(alpha = 0.14f)
             )
@@ -183,8 +187,11 @@ fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
             // Hundreds of HLS segments: a line instead of a card per connection.
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Segments $finished/${chunks.size}" +
-                        (if (active.isNotEmpty()) " · downloading ${active.joinToString(", ") { "#${it.chunkIndex + 1}" }}" else ""),
+                text = LocalizationManager.Strings.homeSegmentsProgress(
+                    finished,
+                    chunks.size,
+                    if (active.isNotEmpty()) active.joinToString(", ") { "#${it.chunkIndex + 1}" } else null
+                ),
                 fontSize = 11.sp,
                 color = scheme.onSurfaceVariant,
                 maxLines = 2,
@@ -259,7 +266,7 @@ private fun ConnectionCard(
             Spacer(Modifier.width(8.dp))
             Text(
                 text = if (c.isActive) formatSpeed(c.speedBytesPerSec, speedDisplayUnit)
-                else "${c.note} · retrying",
+                else LocalizationManager.Strings.homeRetryingNote(c.note),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (c.isActive) scheme.onSurface else tint,

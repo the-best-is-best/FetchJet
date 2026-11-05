@@ -13,6 +13,12 @@ data class MediaQualityEntry(
     val durationSeconds: Long = 0L
 )
 
+val MediaQualityEntry.isAudioOnly: Boolean
+    get() = qualityLabel.contains("Audio", ignoreCase = true) ||
+            format.lowercase() in listOf("mp3", "m4a", "flac", "wav", "aac", "ogg", "opus")
+
+fun List<MediaQualityEntry>.isAllAudio(): Boolean = isNotEmpty() && all { it.isAudioOnly }
+
 /** Plain words for a resolution so the choice reads at a glance: 720 -> "HD", 2160 -> "4K". */
 fun qualityTag(height: Int): String = when {
     height <= 0 -> ""

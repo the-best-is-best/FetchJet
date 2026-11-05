@@ -14,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,11 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -64,6 +65,7 @@ import com.michelle.raouf.fetch_jet.theme.StatusPaused
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 internal fun DownloadTaskItem(
@@ -127,14 +129,32 @@ internal fun DownloadTaskItem(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 when (task.engineType) {
-                    EngineType.MEDIA_STREAM -> DetailChip("Media", EngineMediaStream)
-                    EngineType.BITTORRENT -> DetailChip("Torrent", EngineBitTorrent)
-                    EngineType.HTTP_DIRECT -> DetailChip("File", MaterialTheme.colorScheme.primary)
+                    EngineType.MEDIA_STREAM -> DetailChip(
+                        LocalizationManager.Strings.detailsChipMedia,
+                        EngineMediaStream
+                    )
+
+                    EngineType.BITTORRENT -> DetailChip(
+                        LocalizationManager.Strings.detailsChipTorrent,
+                        EngineBitTorrent
+                    )
+
+                    EngineType.HTTP_DIRECT -> DetailChip(
+                        LocalizationManager.Strings.detailsChipFile,
+                        MaterialTheme.colorScheme.primary
+                    )
                 }
                 if (!isCompleted) {
                     when (task.canResume()) {
-                        true -> DetailChip("Resumable", StatusCompleted)
-                        false -> DetailChip("No resume", StatusPaused)
+                        true -> DetailChip(
+                            LocalizationManager.Strings.detailsChipResumable,
+                            StatusCompleted
+                        )
+
+                        false -> DetailChip(
+                            LocalizationManager.Strings.detailsChipNoResume,
+                            StatusPaused
+                        )
                         null -> {}
                     }
                 }
@@ -142,8 +162,11 @@ internal fun DownloadTaskItem(
                     // Fast clip mode downloads the whole video first, then cuts it: say so,
                     // otherwise the full video's size on a clip looks like a bug.
                     DetailChip(
-                        "Clip ${task.clipStart ?: "00:00"}–${task.clipEnd ?: "End"}" +
-                                if (task.clipByCutting && !isCompleted) " · cut after download" else "",
+                        LocalizationManager.Strings.detailsClipChip(
+                            task.clipStart ?: "00:00",
+                            task.clipEnd,
+                            task.clipByCutting && !isCompleted
+                        ),
                         MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -161,7 +184,12 @@ internal fun DownloadTaskItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "📁 Torrent Files (${task.torrentFiles.count { it.isSelected }} selected / ${task.torrentFiles.size}) ${if (showFiles) "▲" else "▼"}",
+                        text = "📁 ${
+                            LocalizationManager.Strings.detailsTorrentFiles(
+                                task.torrentFiles.count { it.isSelected },
+                                task.torrentFiles.size
+                            )
+                        } ${if (showFiles) "▲" else "▼"}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -208,9 +236,9 @@ internal fun DownloadTaskItem(
                                         )
                                     )
                                     val (priorityLabel, priorityColor) = when (file.priority) {
-                                        1 -> "High" to MaterialTheme.colorScheme.primary
-                                        -1 -> "Low" to MaterialTheme.colorScheme.error
-                                        else -> "Normal" to MaterialTheme.colorScheme.onSurfaceVariant
+                                        1 -> LocalizationManager.Strings.detailsPriorityHigh to MaterialTheme.colorScheme.primary
+                                        -1 -> LocalizationManager.Strings.detailsPriorityLow to MaterialTheme.colorScheme.error
+                                        else -> LocalizationManager.Strings.detailsPriorityNormal to MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                     Surface(
                                         modifier = Modifier.clickable {
@@ -274,10 +302,10 @@ internal fun DownloadTaskItem(
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
                             text = when (task.status) {
-                                DownloadStatus.COMPLETED -> "Completed"
-                                DownloadStatus.PAUSED -> "Paused"
-                                DownloadStatus.ERROR -> "Failed"
-                                else -> if (task.waitingInQueue) "Waiting" else ""
+                                DownloadStatus.COMPLETED -> LocalizationManager.Strings.detailsStatusCompleted
+                                DownloadStatus.PAUSED -> LocalizationManager.Strings.detailsStatusPaused
+                                DownloadStatus.ERROR -> LocalizationManager.Strings.detailsStatusFailed
+                                else -> if (task.waitingInQueue) LocalizationManager.Strings.detailsStatusWaiting else ""
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -292,7 +320,7 @@ internal fun DownloadTaskItem(
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                         ) {
                             Text(
-                                text = "⚡ ${task.currentStepText}",
+                                text = "⚡ ${localizeStep(task.currentStepText.orEmpty())}",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -344,58 +372,63 @@ internal fun DownloadTaskItem(
                         else "${formatBytes(task.downloadedBytes)} / ${
                             if (task.totalBytes > 0) (if (totalIsEstimate) "~" else "") + formatBytes(
                                 task.totalBytes
-                            ) else "Unknown"
+                            ) else LocalizationManager.Strings.detailsUnknownSize
                         }"
 
                         val speedText = if (task.status == DownloadStatus.DOWNLOADING) {
                             if (task.postProcessLabel != null) {
-                                "${task.postProcessLabel}..."
+                                "${task.postProcessLabel?.let { localizeStep(it) }}..."
                             } else if (task.currentStepText?.contains(
                                     "Merging",
                                     ignoreCase = true
                                 ) == true
                             ) {
-                                "Merging Audio & Video..."
+                                LocalizationManager.Strings.detailsMergingAudioVideo
                             } else if (task.engineType == EngineType.BITTORRENT && task.disableUpload) {
-                                "DL: ${
+                                LocalizationManager.Strings.detailsTorrentSpeedUploadDisabled(
                                     formatSpeed(
                                         task.downloadSpeedBytesPerSec,
                                         speedDisplayUnit
                                     )
-                                } (UL Disabled)"
+                                )
                             } else if (task.engineType == EngineType.BITTORRENT) {
-                                "DL: ${
+                                LocalizationManager.Strings.detailsTorrentSpeed(
                                     formatSpeed(
                                         task.downloadSpeedBytesPerSec,
                                         speedDisplayUnit
-                                    )
-                                } | UL: ${
+                                    ),
                                     formatSpeed(
                                         task.uploadSpeedBytesPerSec,
                                         speedDisplayUnit
                                     )
-                                }"
+                                )
                             } else {
                                 formatSpeed(task.downloadSpeedBytesPerSec, speedDisplayUnit)
                             }
                         } else if (task.status == DownloadStatus.CONNECTING) {
-                            "Connecting..."
+                            LocalizationManager.Strings.detailsConnecting
                         } else if (task.waitingInQueue) {
                             if (task.scheduledAtMs > com.michelle.raouf.fetch_jet.core.util.currentEpochMs())
-                                "🕑 Starts ${
-                                    com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule(
-                                        task.scheduledAtMs
+                                "🕑 ${
+                                    LocalizationManager.Strings.detailsStartsAt(
+                                        com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule(
+                                            task.scheduledAtMs
+                                        )
                                     )
                                 }"
-                            else if (task.queuePosition > 0) "⏳ Waiting in queue (#${task.queuePosition})"
-                            else "⏳ Waiting in queue"
+                            else if (task.queuePosition > 0) "⏳ ${
+                                LocalizationManager.Strings.detailsWaitingInQueuePosition(
+                                    task.queuePosition
+                                )
+                            }"
+                            else "⏳ ${LocalizationManager.Strings.detailsWaitingInQueue}"
                         } else {
                             when (task.status) {
-                                DownloadStatus.COMPLETED -> "Completed"
-                                DownloadStatus.PAUSED -> "Paused"
-                                DownloadStatus.ERROR -> "Failed"
-                                DownloadStatus.QUEUED -> "Queued"
-                                else -> "Not started"
+                                DownloadStatus.COMPLETED -> LocalizationManager.Strings.detailsStatusCompleted
+                                DownloadStatus.PAUSED -> LocalizationManager.Strings.detailsStatusPaused
+                                DownloadStatus.ERROR -> LocalizationManager.Strings.detailsStatusFailed
+                                DownloadStatus.QUEUED -> LocalizationManager.Strings.detailsStatusQueued
+                                else -> LocalizationManager.Strings.detailsStatusNotStarted
                             }
                         }
 
@@ -413,13 +446,13 @@ internal fun DownloadTaskItem(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             DetailStat(
-                                "Downloaded",
+                                LocalizationManager.Strings.detailsDownloaded,
                                 bytesText,
                                 MaterialTheme.colorScheme.onSurface,
                                 Modifier.weight(1f)
                             )
                             DetailStat(
-                                if (task.status == DownloadStatus.DOWNLOADING) "Speed" else "State",
+                                if (task.status == DownloadStatus.DOWNLOADING) LocalizationManager.Strings.detailsSpeed else LocalizationManager.Strings.detailsState,
                                 speedText,
                                 speedColor,
                                 Modifier.weight(1f)
@@ -431,13 +464,13 @@ internal fun DownloadTaskItem(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             DetailStat(
-                                "Time left",
+                                LocalizationManager.Strings.detailsTimeLeft,
                                 if (eta != null) formatEta(eta) else "—",
                                 MaterialTheme.colorScheme.onSurface,
                                 Modifier.weight(1f)
                             )
                             DetailStat(
-                                "Added",
+                                LocalizationManager.Strings.detailsAdded,
                                 formatAddedTime(task.createdAtEpochMs),
                                 MaterialTheme.colorScheme.onSurface,
                                 Modifier.weight(1f)
@@ -459,7 +492,7 @@ internal fun DownloadTaskItem(
             if (task.status == DownloadStatus.ERROR && !task.errorMessage.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "⚠️ ${task.errorMessage}",
+                    text = "⚠️ ${localizeStep(task.errorMessage.orEmpty())}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium
@@ -468,7 +501,7 @@ internal fun DownloadTaskItem(
 
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "Saved to",
+                text = LocalizationManager.Strings.detailsSavedTo,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -481,10 +514,11 @@ internal fun DownloadTaskItem(
                 modifier = Modifier.padding(top = 3.dp)
             )
 
-            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+            val clipboard = LocalClipboardManager.current
             listOf(
-                "Source" to task.url,
-                "Page" to (task.requestHeaders["Referer"] ?: task.originalUrl.orEmpty())
+                LocalizationManager.Strings.detailsSource to task.url,
+                LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
+                    ?: task.originalUrl.orEmpty())
             ).filter { (_, link) -> link.isNotBlank() }
                 .distinctBy { (_, link) -> link }
                 .forEach { (label, link) ->
@@ -497,13 +531,19 @@ internal fun DownloadTaskItem(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "Copy",
+                            text = LocalizationManager.Strings.copy,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .clickable {
-                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
+                                    runCatching {
+                                        clipboard.setText(
+                                            androidx.compose.ui.text.AnnotatedString(
+                                                link
+                                            )
+                                        )
+                                    }
                                 }
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -520,6 +560,39 @@ internal fun DownloadTaskItem(
                     }
                 }
 
+            if (!task.expectedChecksum.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                val verdictIcon: String
+                val verdictText: String
+                val verdictColor: Color
+                when (task.checksumVerified) {
+                    true -> {
+                        verdictIcon = "✅"
+                        verdictText = LocalizationManager.Strings.checksumVerified
+                        verdictColor = Color(0xFF2E7D32)
+                    }
+
+                    false -> {
+                        verdictIcon = "❌"
+                        verdictText = LocalizationManager.Strings.checksumMismatch
+                        verdictColor = MaterialTheme.colorScheme.error
+                    }
+
+                    null -> {
+                        verdictIcon = "⏳"
+                        verdictText = LocalizationManager.Strings.checksumChecking
+                        verdictColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                }
+                Text(
+                    text = "$verdictIcon $verdictText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = verdictColor,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(18.dp))
 
             // Actions: two equal buttons, then the red one across the full width.
@@ -534,27 +607,46 @@ internal fun DownloadTaskItem(
                 val m = Modifier.weight(1f).height(42.dp)
                 when {
                     isCompleted -> {
-                        DetailPrimaryButton("Open file", m) { openDownloadedFile(fullPath) }
-                        if (canFolder) DetailSecondaryButton("Open folder", m, openFolder)
+                        DetailPrimaryButton(
+                            LocalizationManager.Strings.detailsOpenFile,
+                            m
+                        ) { openDownloadedFile(fullPath) }
+                        if (canFolder) DetailSecondaryButton(
+                            LocalizationManager.Strings.detailsOpenFolder,
+                            m,
+                            openFolder
+                        )
                     }
 
                     running -> {
-                        DetailPrimaryButton("Pause", m, pauseClicked)
-                        if (canFolder) DetailSecondaryButton("Open folder", m, openFolder)
+                        DetailPrimaryButton(LocalizationManager.Strings.pause, m, pauseClicked)
+                        if (canFolder) DetailSecondaryButton(
+                            LocalizationManager.Strings.detailsOpenFolder,
+                            m,
+                            openFolder
+                        )
                     }
 
                     task.waitingInQueue -> {
-                        DetailPrimaryButton("Start now", m, onResume)
-                        DetailSecondaryButton("Pause", m, onPause)
+                        DetailPrimaryButton(
+                            LocalizationManager.Strings.detailsStartNow,
+                            m,
+                            onResume
+                        )
+                        DetailSecondaryButton(LocalizationManager.Strings.pause, m, onPause)
                     }
 
                     else -> {
                         DetailPrimaryButton(
-                            if (task.status == DownloadStatus.ERROR) "Retry" else "Resume",
+                            if (task.status == DownloadStatus.ERROR) LocalizationManager.Strings.retry else LocalizationManager.Strings.resume,
                             m,
                             onResume
                         )
-                        if (canFolder) DetailSecondaryButton("Open folder", m, openFolder)
+                        if (canFolder) DetailSecondaryButton(
+                            LocalizationManager.Strings.detailsOpenFolder,
+                            m,
+                            openFolder
+                        )
                     }
                 }
             }
@@ -570,7 +662,7 @@ internal fun DownloadTaskItem(
                 modifier = Modifier.fillMaxWidth().height(42.dp)
             ) {
                 Text(
-                    if (isCompleted) "Remove from list" else "Cancel download",
+                    if (isCompleted) LocalizationManager.Strings.detailsRemoveFromList else LocalizationManager.Strings.detailsCancelDownload,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -672,7 +764,7 @@ internal fun PostProcessLine(label: String, progress: Float, startedAtMs: Long) 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "$icon $label",
+                text = "$icon ${localizeStep(label)}",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.tertiary,
@@ -730,7 +822,7 @@ internal fun TaskDetailsPane(
                 IconButton(onClick = onClose) { Text("←", fontSize = 20.sp) }
             }
             Text(
-                text = if (fullScreen) "Download" else "DETAILS",
+                text = if (fullScreen) LocalizationManager.Strings.detailsHeaderDownload else LocalizationManager.Strings.detailsHeaderDetails,
                 style = if (fullScreen) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = if (fullScreen) 0.sp else 0.8.sp,
@@ -808,8 +900,8 @@ internal fun formatAddedTime(epochMs: Long): String {
     val h12 = if (h24 % 12 == 0) 12 else h24 % 12
     val clock = "$h12:${(minutes % 60).toString().padStart(2, '0')} ${if (h24 < 12) "AM" else "PM"}"
     return when (today - day) {
-        0L -> "Today $clock"
-        1L -> "Yesterday $clock"
+        0L -> LocalizationManager.Strings.detailsAddedToday(clock)
+        1L -> LocalizationManager.Strings.detailsAddedYesterday(clock)
         else -> {
             // days since 1970-01-01 -> civil date (Howard Hinnant's algorithm)
             val z = day + 719468

@@ -84,6 +84,10 @@ simulator, WebKit JSI plugin behaviour, Palladium's two small patches to that pl
 
 ## iOS BitTorrent engine (added 2026-10-28, evening - first build pending)
 
+> **Outdated (2026-11-01):** LibTorrent-Swift was replaced by FetchJet's own wrapper
+> `iosApp/FJTorrent` over libtorrent-rasterbar (`FJTorrent.xcframework`, built by
+> `scripts/build-libtorrent-ios.command`). See CLAUDE.md, Open issue 8. The text below is history.
+
 Same bridge pattern as media. Native side = libtorrent-rasterbar + the LibTorrent-Swift wrapper
 (XITRIX, used by iTorrent; GPL-compatible), packaged as `iosApp/Frameworks/LibTorrent.xcframework`.
 

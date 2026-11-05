@@ -197,6 +197,25 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
     }
 
     /// `yt-dlp <args>` with progress; used for the actual download. `runId` lets Kotlin stop it.
+    /// The command line for the log, without the proxy login and the Cookie / Authorization values.
+    private func redactedForLog(_ argv: [String]) -> [String] {
+        var out: [String] = []
+        var previous = ""
+        for arg in argv {
+            if previous == "--proxy", let at = arg.range(of: "@"), let scheme = arg.range(of: "://") {
+                out.append(String(arg[..<scheme.upperBound]) + "***" + String(arg[at.lowerBound...]))
+            } else if previous == "--add-headers" || previous == "--add-header",
+                      let colon = arg.firstIndex(of: ":"),
+                      ["cookie", "authorization", "proxy-authorization"].contains(arg[..<colon].lowercased()) {
+                out.append(String(arg[...colon]) + "***")
+            } else {
+                out.append(arg)
+            }
+            previous = arg
+        }
+        return out
+    }
+
     public func executeYtDlpCancellable(
         runId: String,
         args: [String],
@@ -207,7 +226,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         guard ensureEngine() else { return 1 }
         let argv = sanitize(args)
-        NSLog("[yt-dlp] run: %@", argv.joined(separator: " "))
+        NSLog("[yt-dlp] run: %@", redactedForLog(argv).joined(separator: " "))
         var hookCount = 0
         // ffmpeg (clipping / merging / HLS) prints its "size= ... time= ..." progress to stderr;
         // forward it live so the Kotlin parser can animate the bar during those phases.

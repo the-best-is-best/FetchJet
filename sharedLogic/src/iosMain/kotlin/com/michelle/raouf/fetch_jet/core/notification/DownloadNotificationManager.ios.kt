@@ -1,5 +1,8 @@
 ﻿package com.michelle.raouf.fetch_jet.core.notification
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.tbib.kmp_localization.LocalizationManager
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
 import platform.UserNotifications.UNAuthorizationOptionSound
@@ -50,10 +53,12 @@ actual class DownloadNotificationManager actual constructor() {
         downloadedBytes: Long,
         totalBytes: Long
     ) {
-        val name = fileName.ifBlank { "Downloading File" }
+        val name = fileName.ifBlank { LocalizationManager.Strings.sysDownloadingFileFallback }
         val downloadedStr = formatBytes(downloadedBytes)
-        val totalStr = if (totalBytes > 0) formatBytes(totalBytes) else "Unknown"
-        val statusText = if (progressPercent >= 100) "Completed" else "Downloading"
+        val totalStr =
+            if (totalBytes > 0) formatBytes(totalBytes) else LocalizationManager.Strings.sysUnknownSize
+        val statusText =
+            if (progressPercent >= 100) LocalizationManager.Strings.sysStatusCompleted else LocalizationManager.Strings.sysStatusDownloading
 
         // 1. Notify Live Activity (Dynamic Island & Lock Screen banner)
         listener?.onUpdateProgress(
@@ -62,7 +67,7 @@ actual class DownloadNotificationManager actual constructor() {
             engineType = "FetchJet",
             progress = progressPercent / 100.0,
             progressPercent = progressPercent,
-            speedText = speedText,
+            speedText = localizeStep(speedText),
             downloadedBytesStr = downloadedStr,
             totalBytesStr = totalStr,
             statusText = statusText
@@ -75,9 +80,9 @@ actual class DownloadNotificationManager actual constructor() {
         // 3. Local system notification (Deliver with sound & alert when completed)
         if (progressPercent >= 100) {
             val content = UNMutableNotificationContent().apply {
-                setTitle("Download Complete")
+                setTitle(LocalizationManager.Strings.sysDownloadCompleteTitle)
                 setSubtitle(name)
-                setBody("Finished downloading • $downloadedStr")
+                setBody(LocalizationManager.Strings.sysFinishedDownloading(downloadedStr))
                 setSound(UNNotificationSound.defaultSound())
             }
 

@@ -1,13 +1,9 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
-import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.head
 import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
@@ -125,88 +121,7 @@ internal suspend fun MediaStreamDownloader.inspectYouTubeFallbacks(
     var index = startIndex
     val videoId = extractYouTubeVideoId(effectiveUrl)
 
-    // 1. Try Piped API
-    if (!videoId.isNullOrBlank()) {
-        try {
-            val apiUrl = "https://pipedapi.kavin.rocks/streams/$videoId"
-            val response: HttpResponse = client.get(apiUrl) {
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-                timeout {
-                    requestTimeoutMillis = 3000L
-                    connectTimeoutMillis = 3000L
-                    socketTimeoutMillis = 3000L
-                }
-            }
-            if (response.status.isSuccess()) {
-                val json = response.bodyAsText()
-                val pipedEntries = parsePipedQualities(json)
-                for (entry in pipedEntries) {
-                    if (list.none { it.directUrl == entry.directUrl || it.qualityLabel == entry.qualityLabel }) {
-                        list.add(
-                            entry.copy(
-                                index = index++,
-                                isSelected = list.isEmpty()
-                            )
-                        )
-                    }
-                }
-            }
-        } catch (_: Exception) {
-        }
-    }
-
-    // 2. Query Cobalt API across quality tiers (1080, 720, 480, 360)
-    val qualitiesToTry = listOf("1080", "720", "480", "360")
-    for (q in qualitiesToTry) {
-        try {
-            val cobaltUrl = "https://api.cobalt.tools/api/json"
-            val response: HttpResponse = client.post(cobaltUrl) {
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-                header(HttpHeaders.Accept, "application/json")
-                header(HttpHeaders.ContentType, "application/json")
-                timeout {
-                    requestTimeoutMillis = 3000L
-                    connectTimeoutMillis = 3000L
-                    socketTimeoutMillis = 3000L
-                }
-                setBody("""{"url":"$effectiveUrl","vQuality":"$q"}""")
-            }
-            if (response.status.isSuccess()) {
-                val json = response.bodyAsText()
-                val urlMatch =
-                    Regex("""["']url["']\s*:\s*["']([^"']+)["']""").find(json)
-                val dlUrl = urlMatch?.groupValues?.get(1)?.replace("""\/""", "/")
-                if (!dlUrl.isNullOrBlank() && dlUrl.startsWith("http")) {
-                    val label = when (q) {
-                        "1080" -> "1080p (Full HD - MP4)"
-                        "720" -> "720p (HD - MP4)"
-                        "480" -> "480p (SD - MP4)"
-                        else -> "360p (Low - MP4)"
-                    }
-                    if (list.none {
-                            it.qualityLabel.contains(
-                                q,
-                                true
-                            ) || it.directUrl == dlUrl
-                        }) {
-                        list.add(
-                            MediaQualityEntry(
-                                index = index++,
-                                qualityLabel = label,
-                                directUrl = dlUrl,
-                                format = "mp4",
-                                size = -1L,
-                                isSelected = list.isEmpty()
-                            )
-                        )
-                    }
-                }
-            }
-        } catch (_: Exception) {
-        }
-    }
-
-    // 3. Fallback to embed stream if still empty
+    // Fallback to embed stream
 
     if (list.isEmpty() && !videoId.isNullOrBlank()) {
 

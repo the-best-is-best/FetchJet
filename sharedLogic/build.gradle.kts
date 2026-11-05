@@ -49,6 +49,7 @@ kotlin {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.libtorrent4j.core)
+                implementation(libs.ktor.client.okhttp)
             }
         }
         jvmMain.get().dependsOn(jvmAndroidMain)
@@ -60,6 +61,7 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.ktor.client.core)
             implementation(libs.okio)
+            api(project(":kmpLocalization"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -83,7 +85,6 @@ kotlin {
             implementation(libs.androidx.preference.ktx)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.ffmpeg)
-            implementation(libs.aria2c)
             implementation(libs.ytdlnis.packages.python)
             implementation(libs.ytdlnis.packages.bash)
             implementation(libs.commons.io)

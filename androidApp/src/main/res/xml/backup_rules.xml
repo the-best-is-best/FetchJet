@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Android 6-11 backups: no saved passwords (network.json) or logs. The task list stays: its cookies are encrypted with a Keystore key, which is never in a backup. -->
+<full-backup-content>
+    <exclude
+        domain="file"
+        path="settings/network.json" />
+    <exclude
+        domain="file"
+        path="logs/" />
+</full-backup-content>

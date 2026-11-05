@@ -8,6 +8,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import com.michelle.raouf.fetch_jet.core.i18n.start.start
 
 class DownloadForegroundService : Service() {
 
@@ -18,6 +19,8 @@ class DownloadForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        com.michelle.raouf.fetch_jet.core.filesystem.PathResolver.appContext = applicationContext
+        com.tbib.kmp_localization.LocalizationManager.start()
         isRunning = true
         acquireLocks()
     }
@@ -89,7 +92,11 @@ class DownloadForegroundService : Service() {
         } catch (_: Throwable) {
         }
         awaitingForeground = false
-        if (action == ACTION_STOP || stopRequested) {
+        // intent == null: Android restarted the service (START_STICKY) after killing the
+        // app; with nothing downloading it would keep the old card up forever.
+        if (action == ACTION_STOP || stopRequested ||
+            (intent == null && !DownloadNotificationManager.hasActiveTasks())
+        ) {
             stopRequested = false
             stopForegroundService()
             return START_NOT_STICKY

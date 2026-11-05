@@ -8,10 +8,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FW="$ROOT/iosApp/Frameworks"
 mkdir -p "$FW" "$ROOT/build"
 
-PY_VERSION="${FETCHJET_PYTHON_VERSION:-3.13}"
+PY_VERSION="${FETCHJET_PYTHON_VERSION:-3.14}"
 PY_BUILD="${FETCHJET_PYTHON_BUILD:-b14}"
 
 # ---- 1. Python runtime -------------------------------------------------------------------
+# A cached runtime of another Python version (e.g. 3.13 on the self-hosted runner) is replaced.
+if [ -f "$FW/Python.xcframework/build/utils.sh" ] && ! grep -q "Python version: $PY_VERSION\." "$FW/PYTHON-VERSIONS.txt" 2>/dev/null; then
+  echo "note: cached Python.xcframework is not Python $PY_VERSION - replacing it"
+  rm -rf "$FW/Python.xcframework" "$FW/PYTHON-VERSIONS.txt"
+fi
 if [ ! -f "$FW/Python.xcframework/build/utils.sh" ]; then
   echo "note: Python.xcframework missing - downloading Python-$PY_VERSION-iOS-support.$PY_BUILD"
   URL="https://github.com/beeware/Python-Apple-support/releases/download/$PY_VERSION-$PY_BUILD/Python-$PY_VERSION-iOS-support.$PY_BUILD.tar.gz"
@@ -51,10 +56,16 @@ fi
 # fails, yt-dlp just runs without impersonation.
 CC_DIR="$FW/SwiftCurlCffi-iOS"
 CC_PAYLOAD="$CC_DIR/Sources/SwiftCurlCffiIOS/Resources/curl_cffi_ios_payload.zip"
+CC_MANIFEST="$CC_DIR/Sources/SwiftCurlCffiIOS/Resources/manifest.json"
+if [ -f "$CC_PAYLOAD" ] && ! grep -q "\"python\": *\"$PY_VERSION\"" "$CC_MANIFEST" 2>/dev/null; then
+  echo "note: cached curl_cffi payload is not for Python $PY_VERSION - replacing it"
+  rm -rf "$CC_DIR"
+fi
 if [ ! -f "$CC_PAYLOAD" ]; then
   echo "note: curl_cffi payload missing - downloading SwiftCurlCffi-iOS.zip (latest release)"
-  # Pinned, not "latest": the bundled yt-dlp (2026.10.21) only accepts curl_cffi 0.10.x - 0.16.x and
-  # v0.17.0 of the payload ships curl_cffi 0.17. Bump both together.
+  # Pinned, not "latest": each payload is built for one Python version. v0.16.3 = Python 3.14,
+  # curl_cffi 0.16 (any recent yt-dlp accepts it). v0.17.0 = Python 3.15, curl_cffi 0.17 (needs
+  # yt-dlp 2026.10.26+). Bump it together with PY_VERSION.
   CC_TAG="${FETCHJET_CURL_CFFI_TAG:-v0.16.3}"
   CC_URL="${FETCHJET_CURL_CFFI_URL:-https://github.com/tfourj/SwiftCurlCffi-iOS/releases/download/$CC_TAG/SwiftCurlCffi-iOS.zip}"
   TMP="$ROOT/build/swiftcurlcffi"
@@ -73,7 +84,7 @@ if [ ! -f "$CC_PAYLOAD" ]; then
   rm -rf "$TMP"
 fi
 if [ -f "$CC_PAYLOAD" ]; then
-  CC_PY=$(sed -n 's/.*"python": *"\([0-9.]*\)".*/\1/p' "$CC_DIR/Sources/SwiftCurlCffiIOS/Resources/manifest.json" 2>/dev/null)
+  CC_PY=$(sed -n 's/.*"python": *"\([0-9.]*\)".*/\1/p' "$CC_MANIFEST" 2>/dev/null)
   if [ -n "$CC_PY" ] && [ "$CC_PY" != "$PY_VERSION" ]; then
     echo "warning: curl_cffi payload was built for Python $CC_PY but the app embeds Python $PY_VERSION - it will be skipped. Rebuild it with scripts/build-all.sh in $CC_DIR (PYTHON_XCFRAMEWORK=$FW/Python.xcframework) or set FETCHJET_CURL_CFFI_URL to a matching release."
   else

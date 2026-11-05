@@ -294,7 +294,7 @@
 			mainGroup = 83C726E80E5A1CEE8F3E957F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */,
+				41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */,
 				41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */,
 				B20000000000000000000008 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Support" */,
 				B30000000000000000000008 /* XCRemoteSwiftPackageReference "OpenSSL" */,
@@ -372,7 +372,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n# Copies the Python standard library from Frameworks/Python.xcframework into the app\n# (python/lib/python3.X) and turns every extension module (.so) into a signed framework.\n# See Frameworks/Python.xcframework/build/utils.sh (BeeWare Python-Apple-support).\nXC=\"$PROJECT_DIR/Frameworks/Python.xcframework\"\nif [ ! -d \"$XC\" ]; then\n  echo \"error: $XC is missing. Download Python-3.13-iOS-support.bNN.tar.gz from https://github.com/beeware/Python-Apple-support/releases and extract Python.xcframework into iosApp/Frameworks/ (see CLAUDE_HANDOFF.md).\"\n  exit 1\nfi\n# Unsigned / simulator builds have no identity: ad-hoc sign the generated frameworks.\nif [ -z \"$(echo \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" | tr -d '[:space:]')\" ]; then\n  export EXPANDED_CODE_SIGN_IDENTITY=\"-\"\n  export EXPANDED_CODE_SIGN_IDENTITY_NAME=\"ad-hoc\"\nfi\nsource \"$XC/build/utils.sh\"\n# curl_cffi (browser impersonation for yt-dlp): prebuilt payload fetched by \"Prepare Native\n# Frameworks\" into Frameworks/SwiftCurlCffi-iOS. site-packages-<platform> is copied to\n# FetchJet.app/python-packages and its .so modules are turned into frameworks like the stdlib.\nCC_RES=\"$PROJECT_DIR/Frameworks/SwiftCurlCffi-iOS/Sources/SwiftCurlCffiIOS/Resources\"\nCC_PY=$(sed -n 's/.*\"python\": *\"\\([0-9.]*\\)\".*/\\1/p' \"$CC_RES/manifest.json\" 2>/dev/null)\nAPP_PY=$(sed -n 's/^#define PY_VERSION[[:space:]]*\"\\([0-9]*\\.[0-9]*\\).*\"/\\1/p' \"$XC/ios-arm64/Python.framework/Headers/patchlevel.h\" | head -1)\nrm -rf \"$CODESIGNING_FOLDER_PATH/python-packages\"\nPKG_ARGS=\"\"\nif [ ! -f \"$CC_RES/curl_cffi_ios_payload.zip\" ]; then\n  echo \"note: curl_cffi payload not available (yt-dlp impersonation disabled)\"\nelif [ -n \"$CC_PY\" ] && [ -n \"$APP_PY\" ] && [ \"$CC_PY\" != \"$APP_PY\" ]; then\n  echo \"warning: curl_cffi payload is for Python $CC_PY, app embeds Python $APP_PY - skipping it (see scripts/ios-prepare-frameworks.sh)\"\nelse\n  CC_TMP=\"$DERIVED_FILE_DIR/curl_cffi_payload\"\n  rm -rf \"$CC_TMP\"; mkdir -p \"$CC_TMP\"\n  unzip -q -o \"$CC_RES/curl_cffi_ios_payload.zip\" -d \"$CC_TMP\"\n  CC_SRC=\"$CC_TMP/curl_cffi_ios_payload/site-packages-$PLATFORM_NAME\"\n  if [ -d \"$CC_SRC\" ]; then\n    echo \"Installing curl_cffi payload for $PLATFORM_NAME\"\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/python-packages\"\n    rsync -a --exclude '__pycache__' \"$CC_SRC/\" \"$CODESIGNING_FOLDER_PATH/python-packages/\"\n    PKG_ARGS=\"python-packages\"\n  else\n    echo \"warning: curl_cffi payload has no site-packages-$PLATFORM_NAME - skipping\"\n  fi\nfi\ninstall_python Frameworks/Python.xcframework $PKG_ARGS\n";
+			shellScript = "set -e\n# Copies the Python standard library from Frameworks/Python.xcframework into the app\n# (python/lib/python3.X) and turns every extension module (.so) into a signed framework.\n# See Frameworks/Python.xcframework/build/utils.sh (BeeWare Python-Apple-support).\nXC=\"$PROJECT_DIR/Frameworks/Python.xcframework\"\nif [ ! -d \"$XC\" ]; then\n  echo \"error: $XC is missing. Run scripts/ios-prepare-frameworks.sh (downloads Python-3.14-iOS-support.bNN.tar.gz) from https://github.com/beeware/Python-Apple-support/releases and extract Python.xcframework into iosApp/Frameworks/ (see CLAUDE_HANDOFF.md).\"\n  exit 1\nfi\n# Unsigned / simulator builds have no identity: ad-hoc sign the generated frameworks.\nif [ -z \"$(echo \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" | tr -d '[:space:]')\" ]; then\n  export EXPANDED_CODE_SIGN_IDENTITY=\"-\"\n  export EXPANDED_CODE_SIGN_IDENTITY_NAME=\"ad-hoc\"\nfi\nsource \"$XC/build/utils.sh\"\n# curl_cffi (browser impersonation for yt-dlp): prebuilt payload fetched by \"Prepare Native\n# Frameworks\" into Frameworks/SwiftCurlCffi-iOS. site-packages-<platform> is copied to\n# FetchJet.app/python-packages and its .so modules are turned into frameworks like the stdlib.\nCC_RES=\"$PROJECT_DIR/Frameworks/SwiftCurlCffi-iOS/Sources/SwiftCurlCffiIOS/Resources\"\nCC_PY=$(sed -n 's/.*\"python\": *\"\\([0-9.]*\\)\".*/\\1/p' \"$CC_RES/manifest.json\" 2>/dev/null)\nAPP_PY=$(sed -n 's/^#define PY_VERSION[[:space:]]*\"\\([0-9]*\\.[0-9]*\\).*\"/\\1/p' \"$XC/ios-arm64/Python.framework/Headers/patchlevel.h\" | head -1)\nrm -rf \"$CODESIGNING_FOLDER_PATH/python-packages\"\nPKG_ARGS=\"\"\nif [ ! -f \"$CC_RES/curl_cffi_ios_payload.zip\" ]; then\n  echo \"note: curl_cffi payload not available (yt-dlp impersonation disabled)\"\nelif [ -n \"$CC_PY\" ] && [ -n \"$APP_PY\" ] && [ \"$CC_PY\" != \"$APP_PY\" ]; then\n  echo \"warning: curl_cffi payload is for Python $CC_PY, app embeds Python $APP_PY - skipping it (see scripts/ios-prepare-frameworks.sh)\"\nelse\n  CC_TMP=\"$DERIVED_FILE_DIR/curl_cffi_payload\"\n  rm -rf \"$CC_TMP\"; mkdir -p \"$CC_TMP\"\n  unzip -q -o \"$CC_RES/curl_cffi_ios_payload.zip\" -d \"$CC_TMP\"\n  CC_SRC=\"$CC_TMP/curl_cffi_ios_payload/site-packages-$PLATFORM_NAME\"\n  if [ -d \"$CC_SRC\" ]; then\n    echo \"Installing curl_cffi payload for $PLATFORM_NAME\"\n    mkdir -p \"$CODESIGNING_FOLDER_PATH/python-packages\"\n    rsync -a --exclude '__pycache__' \"$CC_SRC/\" \"$CODESIGNING_FOLDER_PATH/python-packages/\"\n    PKG_ARGS=\"python-packages\"\n  else\n    echo \"warning: curl_cffi payload has no site-packages-$PLATFORM_NAME - skipping\"\n  fi\nfi\nfor d in \"$CODESIGNING_FOLDER_PATH\"/python/lib/python3.*; do if [ -d \"$d\" ] && [ \"$(basename \"$d\")\" != \"python$APP_PY\" ]; then echo \"note: removing stale $(basename \"$d\") from the app\"; rm -rf \"$d\"; fi; done\ninstall_python Frameworks/Python.xcframework $PKG_ARGS\n";
 		};
 		B40000000000000000000001 /* Prepare Native Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -410,7 +410,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n# Same JavaScript as the Chrome / Edge / Firefox extension: copied from extension/ so there is\n# one source. manifest.safari.json becomes manifest.json with the version of manifest.json.\nSRC=\"$SRCROOT/../extension\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$DST\"\nfor f in background.js yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png; do\n  cp \"$SRC/$f\" \"$DST/\"\ndone\ncp \"$SRC/platform.safari.js\" \"$DST/platform.js\"\nVERSION=$(sed -n 's/.*\"version\": *\"\\([^\"]*\\)\".*/\\1/p' \"$SRC/manifest.json\" | head -1)\nsed \"s/\\\"version\\\": *\\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$VERSION\\\"/\" \"$SRC/manifest.safari.json\" > \"$DST/manifest.json\"\n";
+			shellScript = "set -e\n# Same JavaScript as the Chrome / Edge / Firefox extension: copied from extension/ so there is\n# one source. manifest.safari.json becomes manifest.json with the version of manifest.json.\nSRC=\"$SRCROOT/../extension\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$DST\"\nfor f in background.js i18n yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png; do\n  cp -R \"$SRC/$f\" \"$DST/\"\ndone\ncp \"$SRC/platform.safari.js\" \"$DST/platform.js\"\nVERSION=$(sed -n 's/.*\"version\": *\"\\([^\"]*\\)\".*/\\1/p' \"$SRC/manifest.json\" | head -1)\nsed \"s/\\\"version\\\": *\\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$VERSION\\\"/\" \"$SRC/manifest.safari.json\" > \"$DST/manifest.json\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -826,15 +826,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/pvieito/PythonKit.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = PythonKit;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		41F731533092209D00EE47F8 /* XCRemoteSwiftPackageReference "FFmpeg-iOS-Lame" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/kewlbear/FFmpeg-iOS-Lame";
@@ -864,7 +863,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		41F731513092206B00EE47F8 /* PythonKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 41F731503092206B00EE47F8 /* XCRemoteSwiftPackageReference "PythonKit" */;
+			package = 41F731503092206B00EE47F8 /* XCLocalSwiftPackageReference "PythonKit" */;
 			productName = PythonKit;
 		};
 		41F731543092209D00EE47F8 /* FFmpeg-iOS-Lame */ = {

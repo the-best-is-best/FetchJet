@@ -31,7 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.update.AppRelease
+import com.michelle.raouf.fetch_jet.core.update.MICROSOFT_STORE_PAGE
 import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.update.UpdateManager
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
@@ -54,7 +57,8 @@ fun UpdateDialogHost() {
 @Composable
 private fun UpdateDialog(state: UpdateState, release: AppRelease) {
     val uriHandler = LocalUriHandler.current
-    val asset = PlatformUpdater.pickAsset(release.assets)
+    val fromStore = PlatformUpdater.updatesFromStore
+    val asset = if (fromStore) null else PlatformUpdater.pickAsset(release.assets)
     val downloading = state.downloadProgress >= 0f
     val ready = state.installerPath != null
 
@@ -63,10 +67,16 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
         shape = RoundedCornerShape(18.dp),
         title = {
             Column {
-                Text("🎉 New version available", fontWeight = FontWeight.Bold)
+                Text(
+                    "🎉 ${LocalizationManager.Strings.updateNewVersionAvailable}",
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "FetchJet ${release.version}  ·  you have ${state.currentVersion}",
+                    LocalizationManager.Strings.updateVersionLine(
+                        release.version,
+                        state.currentVersion
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -76,7 +86,7 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
         text = {
             Column {
                 Text(
-                    "What's new",
+                    LocalizationManager.Strings.updateWhatsNew,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -93,7 +103,7 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = plainNotes(release.notesForDisplay).ifBlank { "No release notes." },
+                            text = plainNotes(release.notesForDisplay).ifBlank { LocalizationManager.Strings.updateNoReleaseNotes },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -102,7 +112,7 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     downloading -> {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "Downloading the update… ${(state.downloadProgress * 100).toInt()}%",
+                            LocalizationManager.Strings.downloadingUpdate((state.downloadProgress * 100).toInt()),
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -119,8 +129,9 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     ready -> {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "The update is downloaded. FetchJet will close, install it and open again. " +
-                                    "Running downloads are paused and can be resumed.",
+                            if (PlatformUpdater.platformKey == "android")
+                                LocalizationManager.Strings.updateDownloadedAndroid
+                            else LocalizationManager.Strings.updateDownloadedDesktop,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -129,13 +140,14 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     !state.canInstallInApp -> {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            installHint(asset?.name),
+                            if (fromStore) LocalizationManager.Strings.storeInstallsItselfOpenNow
+                            else installHint(asset?.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-                state.message?.takeIf { it.startsWith("Update download failed") || it.startsWith("Could not start") }
+                state.message?.takeIf { state.messageIsInstallError }
                     ?.let {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -152,14 +164,22 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                     onClick = { UpdateManager.installNow() },
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Restart & update")
+                    Text(if (PlatformUpdater.platformKey == "android") LocalizationManager.Strings.updateInstall else LocalizationManager.Strings.updateRestartAndUpdate)
                 }
 
                 state.canInstallInApp && asset != null -> Button(
                     onClick = { UpdateManager.installNow() },
                     enabled = !downloading,
                     shape = RoundedCornerShape(10.dp)
-                ) { Text(if (downloading) "Downloading…" else "Download & install") }
+                ) { Text(if (downloading) LocalizationManager.Strings.updateDownloading else LocalizationManager.Strings.updateDownloadAndInstall) }
+
+                fromStore -> Button(
+                    onClick = {
+                        uriHandler.openUri(MICROSOFT_STORE_PAGE)
+                        UpdateManager.dismiss()
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.updateOpenMicrosoftStore) }
 
                 else -> Button(
                     onClick = {
@@ -167,19 +187,25 @@ private fun UpdateDialog(state: UpdateState, release: AppRelease) {
                         UpdateManager.dismiss()
                     },
                     shape = RoundedCornerShape(10.dp)
-                ) { Text(if (asset != null) "Download ${sizeText(asset.size)}" else "Open release page") }
+                ) {
+                    Text(
+                        if (asset != null) LocalizationManager.Strings.updateDownloadWithSize(
+                            sizeText(asset.size)
+                        ) else LocalizationManager.Strings.updateOpenReleasePage
+                    )
+                }
             }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!downloading) {
-                    TextButton(onClick = { UpdateManager.skip() }) { Text("Skip this version") }
+                    TextButton(onClick = { UpdateManager.skip() }) { Text(LocalizationManager.Strings.updateSkipThisVersion) }
                 }
                 OutlinedButton(
                     onClick = { UpdateManager.dismiss() },
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Later")
+                    Text(LocalizationManager.Strings.updateLater)
                 }
             }
         }
@@ -193,17 +219,17 @@ fun UpdatesSettingsCard() {
     if (!state.supported) return
     val uriHandler = LocalUriHandler.current
 
-    SettingsGroup(title = "Updates") {
+    SettingsGroup(title = LocalizationManager.Strings.sectionUpdates) {
         SettingRow(
             title = "FetchJet ${state.currentVersion}",
-            subtitle = state.available?.let { "Version ${it.version} is available" }
-                ?: "You have the version installed here"
+            subtitle = state.available?.let { LocalizationManager.Strings.versionIsAvailable(it.version) }
+                ?: LocalizationManager.Strings.youHaveLatest
         ) {
             if (state.available != null) {
                 Button(
                     onClick = { UpdateManager.showDialog() },
                     shape = RoundedCornerShape(10.dp)
-                ) { Text("See what's new") }
+                ) { Text(LocalizationManager.Strings.updateSeeWhatsNew) }
             } else {
                 OutlinedButton(
                     onClick = { UpdateManager.checkNow() },
@@ -217,7 +243,7 @@ fun UpdatesSettingsCard() {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (state.checking) "Checking…" else "Check now")
+                    Text(if (state.checking) LocalizationManager.Strings.updateChecking else LocalizationManager.Strings.updateCheckNow)
                 }
             }
         }
@@ -225,37 +251,41 @@ fun UpdatesSettingsCard() {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (it.startsWith("Could not") || it.contains("failed")) MaterialTheme.colorScheme.error
+                color = if (state.messageIsInstallError || state.messageIsError) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
             )
         }
         SettingDivider()
         SettingSwitch(
-            title = "Check for updates automatically",
-            subtitle = "Looks for a new version when FetchJet starts (at most twice a day).",
+            title = LocalizationManager.Strings.checkUpdatesAutomatically,
+            subtitle = LocalizationManager.Strings.checkUpdatesAutomaticallyHint,
             checked = state.autoCheck,
             onChange = { UpdateManager.setAutoCheck(it) }
         )
         SettingDivider()
         if (state.canInstallInApp) {
             SettingSwitch(
-                title = "Download updates automatically",
-                subtitle = "Downloads a new version in the background; you only confirm the restart.",
+                title = LocalizationManager.Strings.downloadUpdatesAutomatically,
+                subtitle = if (PlatformUpdater.platformKey == "android")
+                    LocalizationManager.Strings.downloadUpdatesAutomaticallyHintAndroid
+                else LocalizationManager.Strings.downloadUpdatesAutomaticallyHint,
                 checked = state.autoInstall,
                 enabled = state.autoCheck,
                 onChange = { UpdateManager.setAutoInstall(it) }
             )
         } else {
             SettingRow(
-                title = "Installing updates",
-                subtitle = "On this device FetchJet tells you about a new version and links to it; you install it."
+                title = LocalizationManager.Strings.installingUpdates,
+                subtitle = if (PlatformUpdater.updatesFromStore)
+                    LocalizationManager.Strings.installingUpdatesStore
+                else LocalizationManager.Strings.installingUpdatesManual
             )
         }
         SettingDivider()
         SettingRow(
-            title = "Release notes",
-            subtitle = "Every version and what changed",
+            title = LocalizationManager.Strings.updateReleaseNotes,
+            subtitle = LocalizationManager.Strings.updateReleaseNotesHint,
             onClick = { uriHandler.openUri("https://github.com/${com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY}/releases") }
         ) {
             Text("↗", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -266,28 +296,28 @@ fun UpdatesSettingsCard() {
 private fun sizeText(bytes: Long): String = if (bytes > 0L) "(${formatBytes(bytes)})" else ""
 
 private fun installHint(assetName: String?): String = when {
-    assetName == null -> "Open the release page to download the new version."
+    assetName == null -> LocalizationManager.Strings.installHintReleasePage
     assetName.endsWith(
         ".apk",
         true
-    ) -> "Download the APK and open it to install the update over this version."
+    ) -> LocalizationManager.Strings.installHintApk
 
     assetName.endsWith(
         ".ipa",
         true
-    ) -> "Download the .ipa and install it with AltStore / Sideloadly, as you installed FetchJet."
+    ) -> LocalizationManager.Strings.installHintIpa
 
     assetName.endsWith(
         ".dmg",
         true
-    ) -> "Download the .dmg, open it and drag FetchJet to Applications (replace the old one)."
+    ) -> LocalizationManager.Strings.installHintDmg
 
     assetName.endsWith(
         ".deb",
         true
-    ) -> "Download the .deb and install it (double-click, or sudo apt install ./file.deb)."
+    ) -> LocalizationManager.Strings.installHintDeb
 
-    else -> "Download the new version and install it over this one."
+    else -> LocalizationManager.Strings.installHintOther
 }
 
 /** GitHub release notes are markdown: show them as readable plain text. */

@@ -28,11 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import com.michelle.raouf.fetch_jet.utils.formatSecondsToHhMm
 import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 fun AddDownloadModalDialog(
@@ -48,6 +50,7 @@ fun AddDownloadModalDialog(
     inspectedTorrentFiles: List<TorrentFileEntry>,
     inspectError: String?,
     isInspectingMedia: Boolean,
+    courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
@@ -60,6 +63,8 @@ fun AddDownloadModalDialog(
     fileNameOverride: String = "",
     sortIntoFolders: Boolean = false,
     onFileNameChanged: (String) -> Unit = {},
+    checksumInput: String = "",
+    onChecksumChanged: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
@@ -84,6 +89,17 @@ fun AddDownloadModalDialog(
     onPlaylistSelectAll: (Boolean) -> Unit = {},
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit = {},
+    onPlaylistFolderChanged: (String) -> Unit = {},
+    linkList: List<com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry> = emptyList(),
+    onLinkListEntryToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onLinkListSelectAll: (Boolean) -> Unit = {},
+    linkListFolder: String = "",
+    onLinkListFolderChanged: (String) -> Unit = {},
+    onLinkListTorrentFileToggled: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
+    onLinkListTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
+    onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
+    onLinkListQualitySelected: (Int, Int) -> Unit = { _, _ -> },
+    onLinkListRetryInspect: (Int) -> Unit = {},
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
     selectedConnections: Int = 0,
@@ -162,9 +178,18 @@ fun AddDownloadModalDialog(
 
     val clipValidationErrorMessage = when {
         !isClipRangeEnabled -> null
-        isStartAfterEnd -> "Start time (${clipStartTime.ifBlank { "00:00" }}) must be before end time (${clipEndTime.ifBlank { fullVideoDurationHhMm }})"
-        isEndExceedingVideo -> "End time (${clipEndTime.ifBlank { fullVideoDurationHhMm }}) exceeds video duration ($fullVideoDurationHhMm)"
-        isStartExceedingVideo -> "Start time exceeds video duration ($fullVideoDurationHhMm)"
+        isStartAfterEnd -> LocalizationManager.Strings.clipStartAfterEnd(
+            clipStartTime.ifBlank { "00:00" },
+            clipEndTime.ifBlank { fullVideoDurationHhMm })
+
+        isEndExceedingVideo -> LocalizationManager.Strings.clipEndExceedsVideo(
+            clipEndTime.ifBlank { fullVideoDurationHhMm },
+            fullVideoDurationHhMm
+        )
+
+        isStartExceedingVideo -> LocalizationManager.Strings.clipStartExceedsVideo(
+            fullVideoDurationHhMm
+        )
         else -> null
     }
 
@@ -178,7 +203,7 @@ fun AddDownloadModalDialog(
             mediaDurationSeconds
         }
         TimeRangePickerDialog(
-            title = "⏱️ Set Start Time (From)",
+            title = "⏱️ ${LocalizationManager.Strings.setStartTimeTitle}",
             initialHhMm = clipStartTime.ifBlank { "00:00" },
             maxDurationSeconds = maxForStart.coerceAtLeast(0L),
             minTimeSeconds = 0L,
@@ -194,7 +219,7 @@ fun AddDownloadModalDialog(
 
     if (showEndTimePicker) {
         TimeRangePickerDialog(
-            title = "⏱️ Set End Time (To)",
+            title = "⏱️ ${LocalizationManager.Strings.setEndTimeTitle}",
             initialHhMm = clipEndTime.ifBlank { fullVideoDurationHhMm },
             maxDurationSeconds = mediaDurationSeconds,
             minTimeSeconds = currentStartSec,
@@ -243,14 +268,17 @@ fun AddDownloadModalDialog(
     }
 
     val isUrlValid = inputUrl.isNotBlank()
-    val isInspectionComplete = when (detectedEngine) {
+    val showsLinkList = linkList.isNotEmpty()
+    val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isBeingInspected }
+    val isInspectionComplete =
+        if (showsLinkList) linkList.any { it.isSelected } && !listInspecting && linkList.none { it.isSelected && it.needsRetry } else when (detectedEngine) {
         EngineType.BITTORRENT -> inspectedTorrentFiles.isNotEmpty() && inspectedTorrentFiles.any { it.isSelected } && inspectError == null
         EngineType.MEDIA_STREAM -> inspectMediaError == null && (
                 inspectedPlaylist?.entries?.any { it.isSelected } == true ||
                         (inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected }))
         EngineType.HTTP_DIRECT -> true
     }
-    val isInspecting = isInspectingTorrent || isInspectingMedia
+    val isInspecting = isInspectingTorrent || isInspectingMedia || listInspecting
     val hasActiveError = errorMessage != null || inspectError != null || inspectMediaError != null
     val canStartDownload =
         isUrlValid && isInspectionComplete && !isLoading && !isInspecting && !hasActiveError && isClipRangeValid
@@ -259,12 +287,14 @@ fun AddDownloadModalDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        ProvideSafeClipboard {
         Card(
             modifier = Modifier
                 .widthIn(min = 340.dp, max = 660.dp)
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 720.dp)
-                .padding(vertical = 12.dp),
+                .padding(vertical = 12.dp)
+                .clearFocusOnTapOutside(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
@@ -293,6 +323,21 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                if (showsLinkList) {
+                    LinkListSection(
+                        links = linkList,
+                        onToggled = onLinkListEntryToggled,
+                        onSelectAll = onLinkListSelectAll,
+                        folder = linkListFolder,
+                        onFolderChanged = onLinkListFolderChanged,
+                        onTorrentFileToggled = onLinkListTorrentFileToggled,
+                        onTorrentFilePriority = onLinkListTorrentFilePriority,
+                        onTorrentSelectAll = onLinkListTorrentSelectAll,
+                        onQualitySelected = onLinkListQualitySelected,
+                        onRetryInspect = onLinkListRetryInspect
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                } else {
                 EngineSelector(detectedEngine = detectedEngine, onEngineSelected = onEngineSelected)
 
                 TorrentInspectionSection(
@@ -312,6 +357,7 @@ fun AddDownloadModalDialog(
                     inputUrl = inputUrl,
                     detectedEngine = detectedEngine,
                     isInspectingMedia = isInspectingMedia,
+                    courseReading = courseReading,
                     inspectedMediaQualities = inspectedMediaQualities,
                     inspectMediaError = inspectMediaError,
                     isYtDlpInstalled = isYtDlpInstalled,
@@ -336,6 +382,7 @@ fun AddDownloadModalDialog(
                     onPlaylistSelectAll = onPlaylistSelectAll,
                     onPlaylistQualityChanged = onPlaylistQualityChanged,
                     onPlaylistUseSingleVideo = onPlaylistUseSingleVideo,
+                    onPlaylistFolderChanged = onPlaylistFolderChanged,
                     showStartTimePickerState = showStartTimePickerState,
                     showEndTimePickerState = showEndTimePickerState,
                     fullVideoDurationHhMm = fullVideoDurationHhMm,
@@ -345,6 +392,7 @@ fun AddDownloadModalDialog(
                     clipValidationErrorMessage = clipValidationErrorMessage
                 )
                 Spacer(modifier = Modifier.height(14.dp))
+                }
 
                 // When to start: now, in a while, or at a time of day
                 ScheduleStartSection(
@@ -354,7 +402,7 @@ fun AddDownloadModalDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Direct files: how many connections split the file (IDM-style pieces).
-                if (detectedEngine == EngineType.HTTP_DIRECT) {
+                if (detectedEngine == EngineType.HTTP_DIRECT && !showsLinkList) {
                     ConnectionsSection(
                         selected = selectedConnections,
                         appDefault = defaultConnections,
@@ -363,12 +411,21 @@ fun AddDownloadModalDialog(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                FileNameSection(
+                if (!showsLinkList && inspectedPlaylist == null) FileNameSection(
                     suggestedFileName = suggestedFileName,
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,
                     isInspectingTorrent = isInspectingTorrent,
                     onFileNameChanged = onFileNameChanged
+                )
+
+                // Optional checksum to verify the finished file (direct download only: a media
+                // file is re-encoded / merged, so a published checksum would never match it).
+                if (!showsLinkList && inspectedPlaylist == null &&
+                    detectedEngine == EngineType.HTTP_DIRECT
+                ) ChecksumSection(
+                    value = checksumInput,
+                    onValueChange = onChecksumChanged
                 )
 
                 DestinationSection(
@@ -408,12 +465,14 @@ fun AddDownloadModalDialog(
                     detectedEngine = detectedEngine,
                     inspectedPlaylist = inspectedPlaylist,
                     scheduleStartMs = scheduleStartMs,
+                    linkCount = if (showsLinkList) linkList.count { it.isSelected } else 0,
                     onInspectTorrent = onInspectTorrent,
                     onInspectMedia = onInspectMedia,
                     onAddDownload = onAddDownload,
                     onDismiss = onDismiss
                 )
             }
+        }
         }
     }
 }

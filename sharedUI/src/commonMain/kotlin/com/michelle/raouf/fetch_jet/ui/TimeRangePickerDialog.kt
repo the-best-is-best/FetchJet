@@ -1,5 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.ui
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,8 +94,17 @@ fun TimeRangePickerDialog(
     val isValid = !isExceedingMax && !isBelowMin
 
     val validationErrorMessage = when {
-        isExceedingMax -> "Exceeds video duration (${formatSecondsToHhMm(maxDurationSeconds)})"
-        isBelowMin -> "Must be after start time (${formatSecondsToHhMm(minTimeSeconds)})"
+        isExceedingMax -> LocalizationManager.Strings.pickerExceedsVideo(
+            formatSecondsToHhMm(
+                maxDurationSeconds
+            )
+        )
+
+        isBelowMin -> LocalizationManager.Strings.pickerMustBeAfterStart(
+            formatSecondsToHhMm(
+                minTimeSeconds
+            )
+        )
         else -> null
     }
 
@@ -101,7 +112,7 @@ fun TimeRangePickerDialog(
         if (hours > 0) add("${hours}h")
         if (minutes > 0) add("${minutes}m")
         if (seconds > 0) add("${seconds}s")
-    }.joinToString(" ").ifEmpty { "Start (00:00)" }
+    }.joinToString(" ").ifEmpty { LocalizationManager.Strings.pickerStartZero }
 
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -154,7 +165,7 @@ fun TimeRangePickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TimeFieldColumn(
-                        label = "Hours",
+                        label = LocalizationManager.Strings.pickerHours,
                         value = hours,
                         maxValue = 99,
                         onValueChange = { hours = it },
@@ -168,7 +179,7 @@ fun TimeRangePickerDialog(
                     )
                     TimeColon()
                     TimeFieldColumn(
-                        label = "Minutes",
+                        label = LocalizationManager.Strings.pickerMinutes,
                         value = minutes,
                         maxValue = 59,
                         onValueChange = { minutes = it },
@@ -186,7 +197,7 @@ fun TimeRangePickerDialog(
                     )
                     TimeColon()
                     TimeFieldColumn(
-                        label = "Seconds",
+                        label = LocalizationManager.Strings.pickerSeconds,
                         value = seconds,
                         maxValue = 59,
                         onValueChange = { seconds = it },
@@ -215,7 +226,12 @@ fun TimeRangePickerDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "⏱️ Selected Time: $formatted ($durationSummary)",
+                            text = "⏱️ ${
+                                LocalizationManager.Strings.pickerSelectedTime(
+                                    formatted,
+                                    durationSummary
+                                )
+                            }",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -320,7 +336,12 @@ fun TimeRangePickerDialog(
                             onClick = {
                                 applyTotalSeconds(maxDurationSeconds)
                             },
-                            label = { Text("End of Video ($endFormatted)", fontSize = 11.sp) },
+                            label = {
+                                Text(
+                                    LocalizationManager.Strings.pickerEndOfVideo(endFormatted),
+                                    fontSize = 11.sp
+                                )
+                            },
                             shape = RoundedCornerShape(16.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
@@ -341,11 +362,11 @@ fun TimeRangePickerDialog(
                         },
                         label = {
                             Text(
-                                if (minTimeSeconds > 0L) "Min (${
+                                if (minTimeSeconds > 0L) LocalizationManager.Strings.pickerMin(
                                     formatSecondsToHhMm(
                                         minTimeSeconds + 60L
                                     )
-                                })" else "00:00", fontSize = 11.sp
+                                ) else "00:00", fontSize = 11.sp
                             )
                         },
                         shape = RoundedCornerShape(16.dp)
@@ -366,7 +387,7 @@ fun TimeRangePickerDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Cancel")
+                        Text(LocalizationManager.Strings.cancel)
                     }
 
                     Button(
@@ -381,7 +402,7 @@ fun TimeRangePickerDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
-                            if (isValid) "Apply ($formatted)" else "Invalid Time",
+                            if (isValid) LocalizationManager.Strings.pickerApply(formatted) else LocalizationManager.Strings.pickerInvalidTime,
                             fontWeight = FontWeight.Bold
                         )
                     }

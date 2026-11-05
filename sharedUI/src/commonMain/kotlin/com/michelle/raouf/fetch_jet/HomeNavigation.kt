@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -54,12 +52,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
+import com.tbib.kmp_localization.LocalizationManager
 import fetchjet.sharedui.generated.resources.Res
 import fetchjet.sharedui.generated.resources.ic_fetchjet_logo
 import org.jetbrains.compose.resources.painterResource
@@ -99,20 +99,36 @@ internal fun FdmBottomNavigation(
                     .height(58.dp)
             ) {
                 val items = listOfNotNull(
-                    Triple(DashboardTab.ALL, "All", "📥" to allCount),
-                    Triple(DashboardTab.ACTIVE, "Active", "⚡" to activeCount),
-                    Triple(DashboardTab.COMPLETED, "Done", "✅" to completedCount),
+                    Triple(
+                        DashboardTab.ALL,
+                        LocalizationManager.Strings.homeTabAll,
+                        "📥" to allCount
+                    ),
+                    Triple(
+                        DashboardTab.ACTIVE,
+                        LocalizationManager.Strings.homeTabActive,
+                        "⚡" to activeCount
+                    ),
+                    Triple(
+                        DashboardTab.COMPLETED,
+                        LocalizationManager.Strings.homeTabDone,
+                        "✅" to completedCount
+                    ),
                     if (AppFeatures.torrent) Triple(
                         DashboardTab.TORRENT,
-                        "Torrent",
+                        LocalizationManager.Strings.homeTabTorrent,
                         "🧲" to torrentCount
                     ) else null,
                     if (AppFeatures.mediaExtractor) Triple(
                         DashboardTab.MEDIA,
-                        "Media",
+                        LocalizationManager.Strings.homeTabMedia,
                         "🎬" to mediaCount
                     ) else null,
-                    Triple(DashboardTab.SETTINGS, "Settings", "⚙️" to 0)
+                    Triple(
+                        DashboardTab.SETTINGS,
+                        LocalizationManager.Strings.homeSettings,
+                        "⚙️" to 0
+                    )
                 )
 
                 items.forEach { (tab, label, iconBadge) ->
@@ -223,7 +239,7 @@ internal fun FjSidebar(
                     .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             )
             Text(
-                "TYPE",
+                LocalizationManager.Strings.homeSidebarTypeHeader,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -241,7 +257,12 @@ internal fun FjSidebar(
                 ) { onSelect(f) }
             }
             Spacer(modifier = Modifier.weight(1f))
-            FjSidebarItem("Settings", null, settingsSelected, onSettings)
+            FjSidebarItem(
+                LocalizationManager.Strings.homeSettings,
+                null,
+                settingsSelected,
+                onSettings
+            )
         }
     }
 }
@@ -283,6 +304,96 @@ internal fun FjSidebarItem(label: String, count: Int?, selected: Boolean, onClic
     }
 }
 
+private const val TURTLE_BYTES = 512L * 1024L
+
+/**
+ * Header speed control: a fixed-512 KB/s turtle toggle plus a mode chip that picks one of the
+ * named presets (Unlimited / Low / Medium / High) right away, without opening Settings. Stays
+ * compact so it fits a phone header.
+ */
+@Composable
+private fun SpeedControl(
+    limitBytes: Long,
+    lowBytes: Long,
+    mediumBytes: Long,
+    highBytes: Long,
+    onPick: (Long) -> Unit
+) {
+    val turtleActive = limitBytes == TURTLE_BYTES
+    val modeLabel = when (limitBytes) {
+        0L -> "∞"
+        lowBytes -> LocalizationManager.Strings.speedPresetLow
+        mediumBytes -> LocalizationManager.Strings.speedPresetMedium
+        highBytes -> LocalizationManager.Strings.speedPresetHigh
+        else -> com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(limitBytes)
+    }
+    val capped = limitBytes > 0L && !turtleActive
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (turtleActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                    else Color.Transparent
+                )
+                .clickable { onPick(if (turtleActive) 0L else TURTLE_BYTES) }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🐢", fontSize = 18.sp)
+        }
+
+        var open by remember { mutableStateOf(false) }
+        Box {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (capped) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
+                    .clickable { open = true }
+                    .padding(horizontal = 9.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    modeLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (capped) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+                Text(" ▾", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                val options = listOf(
+                    0L to LocalizationManager.Strings.speedLimitUnlimited,
+                    lowBytes to "${LocalizationManager.Strings.speedPresetLow}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(lowBytes)
+                    }",
+                    mediumBytes to "${LocalizationManager.Strings.speedPresetMedium}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(mediumBytes)
+                    }",
+                    highBytes to "${LocalizationManager.Strings.speedPresetHigh}  ·  ${
+                        com.michelle.raouf.fetch_jet.ui.speedPresetShortLabel(highBytes)
+                    }"
+                )
+                options.forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = { Text(if (value == limitBytes) "$label  ✓" else label) },
+                        onClick = { open = false; onPick(value) }
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Wide-layout top bar: search, live speeds, theme, Add download. */
 @Composable
 internal fun FjTopBar(
@@ -295,35 +406,35 @@ internal fun FjTopBar(
     totalUlSpeed: Long,
     speedDisplayUnit: String,
     isDarkMode: Boolean,
+    downloadLimitBytes: Long = 0L,
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    onPickDownloadLimit: (Long) -> Unit = {},
     onThemeToggled: () -> Unit,
     onAdd: () -> Unit
 ) {
     val searchField: @Composable (Modifier) -> Unit = { m ->
-        androidx.compose.material3.OutlinedTextField(
+        com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = {
-                Text(
-                    "Search downloads",
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            },
-            leadingIcon = {
+            placeholder = LocalizationManager.Strings.homeSearchDownloadsPlaceholder,
+            leading = {
                 Text(
                     "⌕",
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
-            trailingIcon = if (searchQuery.isNotEmpty()) {
-                { IconButton(onClick = { onSearchChange("") }) { Text("✕", fontSize = 13.sp) } }
+            trailing = if (searchQuery.isNotEmpty()) {
+                {
+                    com.michelle.raouf.fetch_jet.ui.FieldIconButton(
+                        "✕",
+                        onClick = { onSearchChange("") })
+                }
             } else null,
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            textStyle = MaterialTheme.typography.bodyMedium,
-            modifier = m.heightIn(min = 44.dp)
+            height = 44.dp,
+            modifier = m
         )
     }
     // Tablet: the title takes the bar and the search box sits under it, as on the phone.
@@ -356,6 +467,13 @@ internal fun FjTopBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
+                SpeedControl(
+                    downloadLimitBytes,
+                    speedPresetLowBytes,
+                    speedPresetMediumBytes,
+                    speedPresetHighBytes,
+                    onPickDownloadLimit
+                )
                 IconButton(onClick = onThemeToggled) {
                     Text(
                         if (isDarkMode) "☀" else "☾",
@@ -367,7 +485,13 @@ internal fun FjTopBar(
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier = Modifier.height(44.dp)
-                ) { Text("+  Add", fontWeight = FontWeight.Bold, maxLines = 1) }
+                ) {
+                    Text(
+                        "+  ${LocalizationManager.Strings.homeAdd}",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
             }
             if (showSearch) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -413,6 +537,13 @@ internal fun FjTopBar(
                 )
             }
         }
+        SpeedControl(
+            downloadLimitBytes,
+            speedPresetLowBytes,
+            speedPresetMediumBytes,
+            speedPresetHighBytes,
+            onPickDownloadLimit
+        )
         IconButton(onClick = onThemeToggled) {
             Text(if (isDarkMode) "☀" else "☾", fontSize = 18.sp)
         }
@@ -422,7 +553,7 @@ internal fun FjTopBar(
             contentPadding = PaddingValues(horizontal = 18.dp),
             modifier = Modifier.height(44.dp)
         ) {
-            Text("+  Add download", fontWeight = FontWeight.Bold)
+            Text("+  ${LocalizationManager.Strings.homeAddDownload}", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -437,6 +568,11 @@ internal fun FjPhoneHeader(
     speedDisplayUnit: String,
     sortOption: TaskSortOption,
     isDarkMode: Boolean,
+    downloadLimitBytes: Long = 0L,
+    speedPresetLowBytes: Long = 256L * 1024,
+    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetHighBytes: Long = 20L * 1024 * 1024,
+    onPickDownloadLimit: (Long) -> Unit = {},
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onSort: (TaskSortOption) -> Unit,
@@ -471,6 +607,13 @@ internal fun FjPhoneHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        SpeedControl(
+            downloadLimitBytes,
+            speedPresetLowBytes,
+            speedPresetMediumBytes,
+            speedPresetHighBytes,
+            onPickDownloadLimit
+        )
         var open by remember { mutableStateOf(false) }
         var sortOpen by remember { mutableStateOf(false) }
         Box {
@@ -485,17 +628,17 @@ internal fun FjPhoneHeader(
                 if (showListActions) {
                     val unfinished = tasks.filter { it.status != DownloadStatus.COMPLETED }
                     DropdownMenuItem(
-                        text = { Text("Pause all") },
+                        text = { Text(LocalizationManager.Strings.homePauseAll) },
                         enabled = anyPausable(unfinished),
                         onClick = { open = false; onPauseAll() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Resume all") },
+                        text = { Text(LocalizationManager.Strings.homeResumeAll) },
                         enabled = anyResumable(unfinished),
                         onClick = { open = false; onResumeAll() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Sort: ${sortOption.label}  " + if (sortOpen) "▴" else "▾") },
+                        text = { Text("${LocalizationManager.Strings.homeSortBy(sortOption.label)}  " + if (sortOpen) "▴" else "▾") },
                         onClick = { sortOpen = !sortOpen }
                     )
                     if (sortOpen) {
@@ -514,7 +657,7 @@ internal fun FjPhoneHeader(
                     HorizontalDivider()
                 }
                 DropdownMenuItem(
-                    text = { Text(if (isDarkMode) "Light theme" else "Dark theme") },
+                    text = { Text(if (isDarkMode) LocalizationManager.Strings.homeLightTheme else LocalizationManager.Strings.homeDarkTheme) },
                     onClick = { open = false; onThemeToggled() }
                 )
             }
@@ -551,11 +694,11 @@ internal fun FjRail(
             )
             Spacer(modifier = Modifier.height(10.dp))
             listOf(
-                SideFilter.ALL to "All",
-                SideFilter.DOWNLOADING to "Active",
-                SideFilter.WAITING to "Waiting",
-                SideFilter.COMPLETED to "Done",
-                SideFilter.FAILED to "Failed"
+                SideFilter.ALL to LocalizationManager.Strings.homeTabAll,
+                SideFilter.DOWNLOADING to LocalizationManager.Strings.homeTabActive,
+                SideFilter.WAITING to LocalizationManager.Strings.homeFilterWaiting,
+                SideFilter.COMPLETED to LocalizationManager.Strings.homeTabDone,
+                SideFilter.FAILED to LocalizationManager.Strings.homeFilterFailed
             ).forEach { (f, label) ->
                 FjRailItem(
                     label,
@@ -564,7 +707,13 @@ internal fun FjRail(
                 ) { onSelect(f) }
             }
             Spacer(modifier = Modifier.weight(1f))
-            FjRailItem("Settings", null, settingsSelected, glyph = "⚙", onClick = onSettings)
+            FjRailItem(
+                LocalizationManager.Strings.homeSettings,
+                null,
+                settingsSelected,
+                glyph = "⚙",
+                onClick = onSettings
+            )
         }
     }
 }

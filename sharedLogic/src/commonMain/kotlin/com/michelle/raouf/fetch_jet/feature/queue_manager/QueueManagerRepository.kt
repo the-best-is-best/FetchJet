@@ -1,7 +1,9 @@
 package com.michelle.raouf.fetch_jet.feature.queue_manager
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
+import com.michelle.raouf.fetch_jet.core.util.verifyFileChecksum
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -9,6 +11,7 @@ import com.michelle.raouf.fetch_jet.feature.http_downloader.HttpDownloadEngine
 import com.michelle.raouf.fetch_jet.feature.http_downloader.createHttpEngine
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaStreamDownloader
 import com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDownloader
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -293,7 +296,7 @@ class QueueManagerRepository(
             // Keep it visible with the reason instead of losing it.
             val failed = fresh.copy(
                 status = DownloadStatus.ERROR,
-                errorMessage = e.message ?: "Could not start"
+                errorMessage = e.message ?: LocalizationManager.Strings.sysCouldNotStart
             )
             when (fresh.engineType) {
                 EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(failed)
@@ -303,7 +306,11 @@ class QueueManagerRepository(
         }
     }
 
-    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+    /** Checksum verdicts overlaid onto the engine tasks (true = match, false = mismatch). */
+    private val _checksumResults = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private val checksumVerifyingIds = mutableSetOf<String>()
+
+    private val baseTasksFlow: kotlinx.coroutines.flow.Flow<List<DownloadTask>> = combine(
         httpEngine.getAllTasksFlow(),
         torrentEngine.getAllTasksFlow(),
         mediaEngine.getAllTasksFlow(),
@@ -335,6 +342,14 @@ class QueueManagerRepository(
         }
         (engineTasks + waiting)
             .sortedByDescending { it.createdAtEpochMs }
+    }
+
+    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+        baseTasksFlow,
+        _checksumResults
+    ) { tasks, results ->
+        if (results.isEmpty()) tasks
+        else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -346,6 +361,7 @@ class QueueManagerRepository(
 
     init {
         observeTasksForNotifications()
+        observeChecksumVerification()
         loadAndRestoreTasks()
         observeTasksForPersistence()
         // Starts queued / scheduled downloads when a slot frees up or their time comes.
@@ -401,9 +417,35 @@ class QueueManagerRepository(
                                 totalBytes = task.totalBytes
                             )
                         }
-                    } else if (task.status == DownloadStatus.PAUSED || task.status == DownloadStatus.ERROR) {
-                        if (activeRunningTaskIds.remove(task.id)) {
-                            notificationManager.cancelNotification(task.id)
+                    } else if (activeRunningTaskIds.remove(task.id)) {
+                        // Paused, failed, back in line (QUEUED / IDLE): no longer downloading.
+                        notificationManager.cancelNotification(task.id)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * When a download with a user-supplied checksum finishes, hash the file once and publish the
+     * verdict (true = match, false = mismatch) into [_checksumResults], which allTasksFlow overlays.
+     * Runs once per task; a restored task that already has a stored verdict is left alone.
+     */
+    private fun observeChecksumVerification() {
+        scope.launch {
+            allTasksFlow.collect { tasks ->
+                tasks.forEach { task ->
+                    val needsCheck = task.status == DownloadStatus.COMPLETED &&
+                            !task.expectedChecksum.isNullOrBlank() &&
+                            task.checksumVerified == null &&
+                            task.id !in _checksumResults.value &&
+                            task.id !in checksumVerifyingIds
+                    if (needsCheck) {
+                        checksumVerifyingIds.add(task.id)
+                        val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
+                        scope.launch {
+                            val ok = verifyFileChecksum(path, task.expectedChecksum)
+                            if (ok != null) _checksumResults.update { it + (task.id to ok) }
                         }
                     }
                 }
@@ -425,8 +467,11 @@ class QueueManagerRepository(
     }
 
     /** The videos of a playlist / channel link (null = not a playlist). */
-    suspend fun inspectPlaylist(url: String): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
-        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url)
+    suspend fun inspectPlaylist(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url, headers)
 
     suspend fun enqueueTask(
         url: String,
@@ -446,10 +491,13 @@ class QueueManagerRepository(
          *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
         clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap(),
+        sortByType: Boolean = true,
         /** Start at this time (epoch ms); 0 = now (or as soon as a slot is free). */
         scheduledAtMs: Long = 0L,
         /** Connections for a direct download; 0 = app setting / automatic. */
-        maxConnections: Int = 0
+        maxConnections: Int = 0,
+        pairedAudioUrl: String? = null,
+        expectedChecksum: String? = null
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -510,7 +558,7 @@ class QueueManagerRepository(
             if (!customDestinationPath.isNullOrBlank()) customDestinationPath else pathResolver.getDownloadsDirectory()
         // "Sort into folders": Video / Music / Archives / ... under the chosen folder, by file type.
         val destDir =
-            if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
+            if (sortByType && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
                 val nameForType = (customFileName ?: torrentName ?: targetUrl.substringBefore('?')
                     .substringAfterLast('/'))
                 com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
@@ -540,6 +588,7 @@ class QueueManagerRepository(
             maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
             formatId = formatId,
             originalUrl = originalMediaUrl,
+            pairedAudioUrl = pairedAudioUrl?.takeIf { it.isNotBlank() },
             clipStart = clipStart,
             clipEnd = clipEnd,
             clipByCutting = cutAfterDownload,
@@ -548,7 +597,8 @@ class QueueManagerRepository(
             requestHeaders = requestHeaders.filterKeys { it.isNotBlank() }
                 .filterValues { it.isNotBlank() },
             scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
-            maxConnections = maxConnections.coerceIn(0, 32)
+            maxConnections = maxConnections.coerceIn(0, 32),
+            expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() }
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump
@@ -590,8 +640,6 @@ class QueueManagerRepository(
         }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
-        notificationManager.cancelNotification(taskId)
-        activeRunningTaskIds.remove(taskId)
         return when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.pause(taskId)
             EngineType.BITTORRENT -> torrentEngine.pause(taskId)
@@ -622,10 +670,6 @@ class QueueManagerRepository(
         }
         val task = allTasksFlow.value.find { it.id == taskId }
             ?: return Result.failure(Exception("Task not found"))
-        notificationManager.cancelNotification(taskId)
-        activeRunningTaskIds.remove(taskId)
-        completedNotifiedTaskIds.remove(taskId)
-
         when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.cancel(taskId)
             EngineType.BITTORRENT -> torrentEngine.cancel(taskId)
@@ -875,6 +919,7 @@ class QueueManagerRepository(
                         // emission can be the empty initial state before the restore lands.
                         if (hasSeenTasks && FileSystem.SYSTEM.exists(persistencePath)) {
                             FileSystem.SYSTEM.delete(persistencePath)
+                            FileSystem.SYSTEM.delete(backupPath, mustExist = false)
                         }
                     } else {
                         hasSeenTasks = true
@@ -887,7 +932,14 @@ class QueueManagerRepository(
                         // The file being replaced was readable (we loaded it): keep it as the backup.
                         if (FileSystem.SYSTEM.exists(persistencePath)) {
                             try {
-                                FileSystem.SYSTEM.copy(persistencePath, backupPath)
+                                // A file from before encryption holds plain links and cookies:
+                                // the backup gets the new (encrypted) list instead.
+                                val old = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+                                if (old.contains("\"url\":\"http")) {
+                                    FileSystem.SYSTEM.write(backupPath) { writeUtf8(jsonArray) }
+                                } else {
+                                    FileSystem.SYSTEM.copy(persistencePath, backupPath)
+                                }
                             } catch (_: Exception) {
                             }
                         }

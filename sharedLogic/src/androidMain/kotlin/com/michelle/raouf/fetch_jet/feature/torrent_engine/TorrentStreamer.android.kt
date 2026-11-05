@@ -16,9 +16,25 @@ actual suspend fun streamUrlToFile(
     startByte: Long,
     onProgress: (downloaded: Long, speed: Long) -> Unit
 ): Result<Unit> {
+    if (com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn) {
+        val client = io.ktor.client.HttpClient { webSeedDefaults() }
+        return try {
+            streamUrlWithClient(
+                client,
+                urlStr,
+                targetPath,
+                userAgent,
+                speedLimitProvider,
+                startByte,
+                onProgress
+            )
+        } finally {
+            client.close()
+        }
+    }
     val safeUrlStr = urlStr.replace(" ", "%20")
     val url = URI(safeUrlStr).toURL()
-    val connection = url.openConnection() as HttpURLConnection
+    val connection = com.michelle.raouf.fetch_jet.core.network.openAppConnection(url)
     return try {
         connection.setRequestProperty("User-Agent", userAgent)
         connection.setRequestProperty("Referer", extractReferer(safeUrlStr))

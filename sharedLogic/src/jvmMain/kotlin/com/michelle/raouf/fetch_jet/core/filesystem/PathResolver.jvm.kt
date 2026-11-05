@@ -43,13 +43,37 @@ actual class PathResolver actual constructor() {
     actual fun getSettingsDirectory(): String {
         val dir = File(System.getProperty("user.home") ?: ".", ".fetch_jet")
         if (!dir.exists()) dir.mkdirs()
+        // Settings, task list (cookies) and logs: other users of the computer may not read them.
+        if (!isWindows()) privateFolder(dir)
         return dir.absolutePath
     }
 
     actual fun getTempDirectory(): String {
         val tempDir = File(System.getProperty("java.io.tmpdir") ?: ".", "FetchJetDownloads")
         if (!tempDir.exists()) tempDir.mkdirs()
-        return tempDir.absolutePath
+        if (isWindows()) return tempDir.absolutePath
+        // Linux /tmp is shared by every user: a folder someone else made there could swap the
+        // update file before it is installed (as root). Ours only, mode 700.
+        return if (ownedByMe(tempDir)) {
+            privateFolder(tempDir); tempDir.absolutePath
+        } else {
+            File(getSettingsDirectory(), "tmp").also { it.mkdirs(); privateFolder(it) }.absolutePath
+        }
+    }
+
+    private fun ownedByMe(dir: File): Boolean = try {
+        java.nio.file.Files.getOwner(dir.toPath()).name == System.getProperty("user.name")
+    } catch (_: Throwable) {
+        false
+    }
+
+    private fun privateFolder(dir: File) {
+        try {
+            java.nio.file.Files.setPosixFilePermissions(
+                dir.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")
+            )
+        } catch (_: Throwable) {
+        }
     }
 
     actual fun sanitizeFileName(fileName: String): String {

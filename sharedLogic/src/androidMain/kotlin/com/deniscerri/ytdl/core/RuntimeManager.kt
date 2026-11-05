@@ -13,7 +13,6 @@ import com.deniscerri.ytdl.core.RuntimeManager.executeStreaming
 import com.deniscerri.ytdl.core.models.ExecuteException
 import com.deniscerri.ytdl.core.models.ExecuteResponse
 import com.deniscerri.ytdl.core.models.YTDLRequest
-import com.deniscerri.ytdl.core.packages.Aria2c
 import com.deniscerri.ytdl.core.packages.Deno
 import com.deniscerri.ytdl.core.packages.FFmpeg
 import com.deniscerri.ytdl.core.packages.NodeJS
@@ -48,7 +47,6 @@ object RuntimeManager {
     val idProcessMap = Collections.synchronizedMap(HashMap<String, Process>())
     lateinit var pythonLocation: PackageBase.PackageLocation
     lateinit var ffmpegLocation: PackageBase.PackageLocation
-    lateinit var aria2Location: PackageBase.PackageLocation
     lateinit var nodeLocation: PackageBase.PackageLocation
     lateinit var denoLocation: PackageBase.PackageLocation
     lateinit var quickJsLocation: PackageBase.PackageLocation
@@ -87,8 +85,7 @@ object RuntimeManager {
         PackageItem("Python", Python),
         PackageItem("FFmpeg", FFmpeg),
         PackageItem("NodeJS", NodeJS),
-        PackageItem("Deno", Deno),
-        PackageItem("Aria2c", Aria2c)
+        PackageItem("Deno", Deno)
     )
 
     fun init(appContext: Context) {
@@ -104,13 +101,12 @@ object RuntimeManager {
 
                     val python = Python.getInstance()
                     val ffmpeg = FFmpeg.getInstance()
-                    val aria2c = Aria2c.getInstance()
                     val nodeJS = NodeJS.getInstance()
                     val quickJS = QuickJS.getInstance()
                     val deno = Deno.getInstance()
 
                     coroutineScope {
-                        val packages = listOf(python, ffmpeg, aria2c, nodeJS, quickJS, deno)
+                        val packages = listOf(python, ffmpeg, nodeJS, quickJS, deno)
                         packages.map { pkg ->
                             async {
                                 pkg.init(appContext)
@@ -121,7 +117,6 @@ object RuntimeManager {
                     //find location of libraries either from bundled or downloaded paths
                     pythonLocation = python.location
                     ffmpegLocation = ffmpeg.location
-                    aria2Location = aria2c.location
                     nodeLocation = nodeJS.location
                     denoLocation = deno.location
                     quickJsLocation = quickJS.location
@@ -136,7 +131,6 @@ object RuntimeManager {
                         nodeLocation,
                         pythonLocation,
                         ffmpegLocation,
-                        aria2Location,
                         quickJsLocation,
                         denoLocation,
                     )
@@ -333,7 +327,7 @@ object RuntimeManager {
     }
 
     /**
-     * Kills the process together with everything it spawned (ffmpeg, aria2c, js runtimes used by yt-dlp etc.).
+     * Kills the process together with everything it spawned (ffmpeg, js runtimes used by yt-dlp etc.).
      * Process.destroy() alone only kills python and leaves its children running
      */
     private fun destroyProcessTree(process: Process) {
@@ -442,19 +436,15 @@ object RuntimeManager {
             request.addOption("--js-runtimes", "quickjs:${quickJsLocation.executable.absolutePath}")
         }
 
-        if (request.buildCommand().contains("libaria2c.so")) {
-            request.addOption(
-                "--external-downloader-args",
-                "aria2c:--ca-certificate=$ENV_SSL_CERT_FILE"
-            )
-        }
-
         if (usingCacheDir && YTDLP_CACHE_DIR.isNotEmpty()) {
             request.addOption("--cache-dir", YTDLP_CACHE_DIR)
             EJS_CACHE_PLUGIN_DIR?.let { request.addOption("--plugin-dirs", it) }
         } else {
             request.addOption("--no-cache-dir")
         }
+
+        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs().chunked(2)
+            .forEach { (k, v) -> request.addOption(k, v) }
 
         return mutableListOf(
             pythonLocation.executable.absolutePath,

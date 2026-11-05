@@ -1,7 +1,11 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okio.Path.Companion.toPath
+import okio.SYSTEM
 
 internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
     when (event) {
@@ -33,6 +37,7 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
 
         }
 
+        is DashboardUiEvent.OnExportLinksClicked -> exportLinks(event.taskIds)
         is DashboardUiEvent.OnRemoveSelectedClicked -> {
             if (event.taskIds.isNotEmpty()) {
                 _uiState.update { it.copy(removeConfirmationTaskIds = event.taskIds) }
@@ -103,7 +108,8 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
                         it.copy(
                             duplicateTaskAlert = null,
                             isAddDialogVisible = false,
-                            inputUrl = ""
+                            inputUrl = "",
+                            linkList = emptyList()
                         )
                     }
                 }
@@ -216,5 +222,51 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
         }
 
         else -> Unit
+    }
+}
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+internal fun DashboardViewModel.exportLinks(taskIds: List<String>) {
+    scope.launch {
+        val wanted = taskIds.toSet()
+        val links = queueRepository.allTasksFlow.value
+            .filter { it.id in wanted }
+            .map { it.originalUrl?.takeIf { url -> url.isNotBlank() } ?: it.url }
+            .distinct()
+        if (links.isEmpty()) return@launch
+        val stamp = kotlin.time.Instant.fromEpochMilliseconds(
+            com.michelle.raouf.fetch_jet.core.util.currentEpochMs() +
+                    com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs()
+        ).toString().take(16).replace('T', ' ').replace(':', '-')
+        val dir = queueRepository.pathResolver.getDownloadsDirectory()
+        val path = "$dir/FetchJet links $stamp.txt"
+        runCatching {
+            okio.FileSystem.SYSTEM.createDirectories(dir.toPath())
+            okio.FileSystem.SYSTEM.write(path.toPath()) {
+                writeUtf8(
+                    links.joinToString(
+                        "\n",
+                        postfix = "\n"
+                    )
+                )
+            }
+        }.onSuccess {
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysSavedLinks(
+                        links.size,
+                        path
+                    )
+                )
+            )
+        }.onFailure { e ->
+            _uiEffect.emit(
+                DashboardUiEffect.ShowToast(
+                    LocalizationManager.Strings.sysCouldNotSaveLinks(
+                        e.message ?: LocalizationManager.Strings.sysErrorFallback
+                    )
+                )
+            )
+        }
     }
 }

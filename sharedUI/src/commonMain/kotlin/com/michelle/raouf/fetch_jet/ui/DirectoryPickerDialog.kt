@@ -26,8 +26,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
 fun DirectoryPickerDialog(
@@ -81,12 +81,14 @@ fun DirectoryPickerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        ProvideSafeClipboard {
         Surface(
             modifier = Modifier
                 .widthIn(max = 620.dp)
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 680.dp)
-                .padding(vertical = 24.dp),
+                .padding(vertical = 24.dp)
+                .clearFocusOnTapOutside(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
@@ -105,7 +107,7 @@ fun DirectoryPickerDialog(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "📁 Select Folder",
+                            text = "📁 ${LocalizationManager.Strings.dirPickerSelectFolder}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -157,7 +159,7 @@ fun DirectoryPickerDialog(
                         enabled = parentDir != null,
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("⬆️ Up", fontSize = 12.sp)
+                        Text("⬆️ ${LocalizationManager.Strings.dirPickerUp}", fontSize = 12.sp)
                     }
                 }
 
@@ -207,7 +209,7 @@ fun DirectoryPickerDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Subfolders (${subdirectories.size})",
+                            text = LocalizationManager.Strings.dirPickerSubfolders(subdirectories.size),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -220,7 +222,7 @@ fun DirectoryPickerDialog(
                             },
                             label = {
                                 Text(
-                                    text = if (showHiddenFolders) "👁️ Hidden: On" else "👁️ Hidden: Off",
+                                    text = "👁️ ${if (showHiddenFolders) LocalizationManager.Strings.dirPickerHiddenOn else LocalizationManager.Strings.dirPickerHiddenOff}",
                                     fontSize = 10.sp
                                 )
                             },
@@ -243,7 +245,7 @@ fun DirectoryPickerDialog(
                         }
                     ) {
                         Text(
-                            text = if (isCreatingFolder) "Cancel" else "➕ New Folder",
+                            text = if (isCreatingFolder) LocalizationManager.Strings.cancel else "➕ ${LocalizationManager.Strings.dirPickerNewFolder}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -268,32 +270,16 @@ fun DirectoryPickerDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                OutlinedTextField(
+                                FetchJetTextField(
                                     value = newFolderName,
                                     onValueChange = {
                                         newFolderName = it
                                         createFolderError = null
                                     },
-                                    placeholder = { Text("Folder name...", fontSize = 13.sp) },
-                                    leadingIcon = {
-                                        Text("📁", fontSize = 14.sp)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(
-                                            alpha = 0.7f
-                                        ),
-                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
-                                            alpha = 0.6f
-                                        ),
-                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        cursorColor = MaterialTheme.colorScheme.primary
-                                    )
+                                    placeholder = LocalizationManager.Strings.dirPickerFolderName,
+                                    leading = { Text("📁", fontSize = 14.sp) },
+                                    height = 44.dp,
+                                    modifier = Modifier.weight(1f)
                                 )
 
                                 Button(
@@ -309,14 +295,18 @@ fun DirectoryPickerDialog(
                                                 newFolderName = ""
                                                 refreshSubdirectories()
                                             } else {
-                                                createFolderError = "Failed to create folder"
+                                                createFolderError =
+                                                    LocalizationManager.Strings.dirPickerCreateFailed
                                             }
                                         }
                                     },
                                     enabled = newFolderName.isNotBlank(),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Create", fontSize = 12.sp)
+                                    Text(
+                                        LocalizationManager.Strings.dirPickerCreate,
+                                        fontSize = 12.sp
+                                    )
                                 }
                             }
                             if (createFolderError != null) {
@@ -345,7 +335,7 @@ fun DirectoryPickerDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No subfolders in this directory.\nFiles will be saved directly here.",
+                            text = LocalizationManager.Strings.dirPickerNoSubfolders,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -395,7 +385,7 @@ fun DirectoryPickerDialog(
                                         if (isHidden) {
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = "(hidden)",
+                                                text = LocalizationManager.Strings.dirPickerHiddenTag,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.outline,
                                                 fontSize = 10.sp
@@ -431,7 +421,7 @@ fun DirectoryPickerDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Cancel", maxLines = 1)
+                        Text(LocalizationManager.Strings.cancel, maxLines = 1)
                     }
 
                     Button(
@@ -442,10 +432,15 @@ fun DirectoryPickerDialog(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Select Folder", fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(
+                            LocalizationManager.Strings.dirPickerSelectFolder,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
                     }
                 }
             }
+        }
         }
     }
 }

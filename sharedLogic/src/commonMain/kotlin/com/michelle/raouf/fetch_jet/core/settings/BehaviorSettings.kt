@@ -1,7 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
-import com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -127,10 +126,16 @@ object FileCategory {
     val allFolders =
         listOf("Video", "Music", "Archives", "Documents", "Programs", "Images", "Torrents", "Other")
 
-    /** [path] without any trailing type folder(s): "…\Downloads\Video\Archives" → "…\Downloads". */
-    fun stripTypeFolders(path: String): String {
+    /**
+     * [path] without any trailing type folder(s): "…\Downloads\Video\Archives" → "…\Downloads".
+     * Stops at a folder in [keep] (the system's Downloads / Documents / Desktop): on iOS the
+     * download folder is the app's "Documents", which is not a type folder there.
+     */
+    fun stripTypeFolders(path: String, keep: Collection<String> = emptyList()): String {
+        val kept = keep.map { it.trimEnd('/', '\\') }.filter { it.isNotEmpty() }.toSet()
         var p = path.trimEnd('/', '\\')
         while (true) {
+            if (p in kept) return p
             val hit =
                 allFolders.firstOrNull { p.endsWith("/$it") || p.endsWith("\\$it") } ?: return p
             p = p.dropLast(hit.length + 1).trimEnd('/', '\\')
@@ -230,7 +235,10 @@ object ClipboardLinks {
         "streamable.com",
         "ok.ru",
         "vk.com",
-        "odysee.com"
+        "odysee.com",
+        "9gag.com",
+        "kick.com",
+        "mixcloud.com"
     )
 
     fun downloadableUrl(text: String?, videoPages: Boolean = false): String? {

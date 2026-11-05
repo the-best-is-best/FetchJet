@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * iOS HTTP engine that keeps the speed-limit semantics identical to desktop and Android.
@@ -28,7 +27,9 @@ import okio.SYSTEM
  *
  * So the engine is chosen per task when it is started:
  *  - speed limit active (global or per task) -> foreground engine with the limit applied;
- *  - no limit -> background engine.
+ *  - a proxy, or a saved login for the task's site -> foreground engine (the background
+ *    NSURLSession uses neither);
+ *  - otherwise -> background engine.
  * A task stays with the engine that started it (their partial-file formats differ), so a
  * limit change applies to downloads started afterwards.
  */
@@ -62,11 +63,11 @@ class IosHybridHttpEngine(
 
     override fun enqueueTask(task: DownloadTask): DownloadTask {
         // Not started yet: park it with the engine the current limit implies.
-        return engineFor(task.id, create = true).enqueueTask(task)
+        return engineFor(task.id, create = true, url = task.url).enqueueTask(task)
     }
 
     override suspend fun start(task: DownloadTask): Result<Unit> =
-        engineFor(task.id, create = true).start(task)
+        engineFor(task.id, create = true, url = task.url).start(task)
 
     override suspend fun pause(taskId: String): Result<Unit> =
         engineFor(taskId, create = false).pause(taskId)
@@ -80,7 +81,7 @@ class IosHybridHttpEngine(
         return r
     }
 
-    private fun engineFor(taskId: String, create: Boolean): HttpDownloadEngine {
+    private fun engineFor(taskId: String, create: Boolean, url: String = ""): HttpDownloadEngine {
         val owner = owners[taskId] ?: run {
             // Unknown task: whichever engine already holds it (after a relaunch), else decide.
             val existing = when {
@@ -96,10 +97,20 @@ class IosHybridHttpEngine(
                 else -> null
             }
             val decided = existing ?: onDisk
-                ?: if (create && speedLimitProvider(taskId) > 0L) Owner.FOREGROUND else Owner.BACKGROUND
+            ?: if (create && (speedLimitProvider(taskId) > 0L ||
+                        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn ||
+                        hasSiteLogin(url))
+            ) Owner.FOREGROUND else Owner.BACKGROUND
             owners[taskId] = decided
             decided
         }
         return if (owner == Owner.FOREGROUND) foreground else background
+    }
+
+    private fun hasSiteLogin(url: String): Boolean {
+        val host = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
+            .substringAfterLast('@').substringBefore(':')
+        return host.isNotEmpty() &&
+                com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null
     }
 }

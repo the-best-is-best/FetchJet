@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -42,7 +42,7 @@ fun TrafficLimitSelector(
     onSpeedChanged: (Long) -> Unit
 ) {
     val presets = listOf(
-        "Unlimited (Max)" to 0L,
+        LocalizationManager.Strings.speedLimitUnlimited to 0L,
         "512 KB/s" to 512L * 1024L,
         "1 MB/s" to 1024L * 1024L,
         "5 MB/s" to 5L * 1024L * 1024L,
@@ -100,7 +100,7 @@ fun TrafficLimitSelector(
                 fontWeight = FontWeight.SemiBold
             )
             val currentLabel = when {
-                speedBytesPerSec <= 0L -> "No Limit (Max Speed)"
+                speedBytesPerSec <= 0L -> LocalizationManager.Strings.speedLimitNoLimit
                 speedBytesPerSec >= 1024L * 1024L -> {
                     val mb = speedBytesPerSec.toDouble() / (1024.0 * 1024.0)
                     val formatted = if (mb == mb.toLong().toDouble()) mb.toLong()
@@ -145,7 +145,7 @@ fun TrafficLimitSelector(
                         onSpeedChanged(calculateBytes(2.0, customUnit))
                     }
                 },
-                label = { Text("Custom...", fontSize = 12.sp) }
+                label = { Text(LocalizationManager.Strings.speedLimitCustom, fontSize = 12.sp) }
             )
         }
 
@@ -165,7 +165,7 @@ fun TrafficLimitSelector(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedTextField(
+                    FetchJetTextField(
                         value = customText,
                         onValueChange = { newValue ->
                             val sanitized = newValue.filter { it.isDigit() || it == '.' }
@@ -174,22 +174,11 @@ fun TrafficLimitSelector(
                             onSpeedChanged(calculateBytes(num, customUnit))
                         },
                         modifier = Modifier.width(130.dp),
-                        singleLine = true,
-                        placeholder = { Text("Value", fontSize = 13.sp) },
-                        leadingIcon = {
-                            Text("⚡", fontSize = 14.sp)
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
-                                alpha = 0.6f
-                            ),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            cursorColor = MaterialTheme.colorScheme.primary
+                        placeholder = LocalizationManager.Strings.speedLimitValue,
+                        leading = { Text("⚡", fontSize = 14.sp) },
+                        height = 42.dp,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                         )
                     )
 
@@ -253,7 +242,8 @@ fun TrafficLimitSelector(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(end = 6.dp)
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                                .padding(end = 6.dp)
                         )
                     }
                 }

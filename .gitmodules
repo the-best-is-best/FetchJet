@@ -1,0 +1,3 @@
+[submodule "packages/kmp-localization"]
+	path = packages/kmp-localization
+	url = https://github.com/the-best-is-best/mobile-kmp-localization.git

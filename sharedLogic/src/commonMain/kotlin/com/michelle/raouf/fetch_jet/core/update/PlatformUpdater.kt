@@ -3,10 +3,9 @@ package com.michelle.raouf.fetch_jet.core.update
 /** What this platform can do with a new release. */
 expect object PlatformUpdater {
     /**
-     * true = FetchJet can download the installer and install it over itself (Windows desktop,
-     * installed from the MSI). Elsewhere the user is only told about the update: Android and iOS
-     * apps cannot replace themselves, a macOS .dmg must be dragged to Applications, and Linux
-     * packages need the system package manager.
+     * true = FetchJet can download the new release and install it itself. Desktop: one file per
+     * OS in jvmMain (`WindowsUpdater`, `MacUpdater`, `LinuxUpdater`). Android opens the system
+     * installer. Elsewhere the user is only told about the update.
      */
     val canInstallInApp: Boolean
 
@@ -20,6 +19,8 @@ expect object PlatformUpdater {
 
     /** true = a store (Microsoft Store) installs the updates: FetchJet does not check GitHub. */
     val updatesFromStore: Boolean
+
+    fun latestStoreVersion(): String?
 
     /** The release file for this platform, or null to send the user to the release page. */
     fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset?

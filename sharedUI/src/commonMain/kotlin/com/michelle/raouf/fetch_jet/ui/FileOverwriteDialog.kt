@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.presentation.dashboard.FileConflictData
 
 @Composable
@@ -80,13 +82,13 @@ fun FileOverwriteDialog(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "File Already Exists",
+                            text = LocalizationManager.Strings.overwriteDialogTitle,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "A file with this name already exists in destination",
+                            text = LocalizationManager.Strings.overwriteDialogSubtitle,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -115,7 +117,7 @@ fun FileOverwriteDialog(
                     ) {
                         Row(verticalAlignment = Alignment.Top) {
                             Text(
-                                text = "File Name: ",
+                                text = LocalizationManager.Strings.overwriteDialogFileNameLabel,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -132,7 +134,7 @@ fun FileOverwriteDialog(
 
                         Row(verticalAlignment = Alignment.Top) {
                             Text(
-                                text = "Folder: ",
+                                text = LocalizationManager.Strings.overwriteDialogFolderLabel,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -148,7 +150,7 @@ fun FileOverwriteDialog(
 
                         Row(verticalAlignment = Alignment.Top) {
                             Text(
-                                text = "New Copy: ",
+                                text = LocalizationManager.Strings.overwriteDialogNewCopyLabel,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -168,7 +170,7 @@ fun FileOverwriteDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Would you like to save this download as a new copy or overwrite the existing file?",
+                    text = LocalizationManager.Strings.overwriteDialogQuestion,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -187,7 +189,7 @@ fun FileOverwriteDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
-                            "📝 Save as Copy (${data.suggestedNewName})",
+                            "📝 ${LocalizationManager.Strings.overwriteDialogSaveAsCopy(data.suggestedNewName)}",
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
@@ -200,7 +202,10 @@ fun FileOverwriteDialog(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("⚠️ Overwrite Existing File", fontWeight = FontWeight.Medium)
+                        Text(
+                            "⚠️ ${LocalizationManager.Strings.overwriteDialogOverwriteExisting}",
+                            fontWeight = FontWeight.Medium
+                        )
                     }
 
                     TextButton(
@@ -208,7 +213,7 @@ fun FileOverwriteDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "Cancel",
+                            LocalizationManager.Strings.cancel,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )

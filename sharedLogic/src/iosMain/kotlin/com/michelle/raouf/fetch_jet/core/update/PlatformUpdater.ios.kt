@@ -6,6 +6,8 @@ actual object PlatformUpdater {
     actual val platformKey: String = "ios"
     actual val updatesFromStore: Boolean = false
 
+    actual fun latestStoreVersion(): String? = null
+
     actual fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? =
         assets.firstOrNull { it.name.endsWith(".ipa", ignoreCase = true) }
 
