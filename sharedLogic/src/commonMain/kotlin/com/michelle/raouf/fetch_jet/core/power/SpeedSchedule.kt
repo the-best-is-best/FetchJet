@@ -124,6 +124,8 @@ object SpeedSchedule {
             null
         }
         if (desired == null) {
+            // Schedule turned off: release the limit it was holding back to unlimited.
+            if (lastApplied != null && lastApplied != 0L) apply?.invoke(0L)
             lastApplied = null
             return
         }
