@@ -134,6 +134,21 @@ class DashboardViewModel(
 
         }
 
+        // Time-of-day speed schedule: flip the global limit at window boundaries. The ticker
+        // owns its own process-lived scope, so it survives view-model recreation.
+        com.michelle.raouf.fetch_jet.core.power.SpeedSchedule.start { limit ->
+            queueRepository.setGlobalDownloadSpeedLimit(limit)
+        }
+        // Mirror any applied limit (manual or scheduled) into the UI so the header reflects it.
+        scope.launch {
+            queueRepository.globalDownloadSpeedLimit.collect { limit ->
+                _uiState.update {
+                    if (it.globalDownloadSpeedLimitBytes == limit) it
+                    else it.copy(globalDownloadSpeedLimitBytes = limit)
+                }
+            }
+        }
+
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest =
             { request -> handleExternalRequest(request) }
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =

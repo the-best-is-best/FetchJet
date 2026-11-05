@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,11 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
+import com.michelle.raouf.fetch_jet.core.power.SpeedSchedule
+import com.michelle.raouf.fetch_jet.core.power.SpeedWindow
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.tbib.kmp_localization.LocalizationManager
@@ -299,6 +304,7 @@ internal fun DownloadsPage(
                 )
             }
         }
+        SpeedScheduleCard()
         SettingsGroup(
             title = LocalizationManager.Strings.organizeGroup,
             footer = LocalizationManager.Strings.organizeFooter
@@ -312,6 +318,147 @@ internal fun DownloadsPage(
         }
         QueueSettingsCard()
     }
+}
+
+/**
+ * Time-of-day speed schedule (reads/writes [SpeedSchedule] directly). Each window has a start /
+ * end time and a speed cap; outside every window the speed is unlimited.
+ */
+@Composable
+private fun SpeedScheduleCard() {
+    val enabled by SpeedSchedule.enabled.collectAsState()
+    val windows by SpeedSchedule.windows.collectAsState()
+    val activeCap by SpeedSchedule.activeCap.collectAsState()
+
+    SettingsGroup(footer = LocalizationManager.Strings.speedScheduleFooter) {
+        SettingSwitch(
+            title = LocalizationManager.Strings.speedScheduleTitle,
+            subtitle = if (enabled && activeCap != null)
+                LocalizationManager.Strings.speedScheduleActive else null,
+            checked = enabled,
+            onChange = { SpeedSchedule.setEnabled(it) }
+        )
+        if (enabled) {
+            if (windows.isEmpty()) {
+                SettingDivider()
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        LocalizationManager.Strings.speedScheduleEmpty,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            windows.forEachIndexed { index, window ->
+                SettingDivider()
+                key(index, window.startMinutes, window.endMinutes) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TimeField(
+                                label = LocalizationManager.Strings.speedScheduleFrom,
+                                minutes = window.startMinutes,
+                                onChanged = {
+                                    SpeedSchedule.updateWindow(
+                                        index,
+                                        window.copy(startMinutes = it)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            TimeField(
+                                label = LocalizationManager.Strings.speedScheduleTo,
+                                minutes = window.endMinutes,
+                                onChanged = {
+                                    SpeedSchedule.updateWindow(index, window.copy(endMinutes = it))
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedButton(
+                                onClick = { SpeedSchedule.removeWindow(index) },
+                                shape = RoundedCornerShape(10.dp)
+                            ) { Text("✕") }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        SpeedPresetRow(
+                            name = "",
+                            bytes = window.capBytes,
+                            unit = window.capUnit,
+                            onChanged = { b, u ->
+                                SpeedSchedule.updateWindow(
+                                    index,
+                                    window.copy(capBytes = b, capUnit = u)
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+            SettingDivider()
+            Column(Modifier.padding(16.dp)) {
+                Button(
+                    onClick = {
+                        SpeedSchedule.addWindow(
+                            SpeedWindow(
+                                startMinutes = 8 * 60,
+                                endMinutes = 18 * 60,
+                                capBytes = 1L * 1024 * 1024,
+                                capUnit = "MB/s"
+                            )
+                        )
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        "+  " + LocalizationManager.Strings.speedScheduleAdd,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeField(
+    label: String,
+    minutes: Int,
+    onChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var text by remember { mutableStateOf(minutesToHhMm(minutes)) }
+    FetchJetTextField(
+        value = text,
+        onValueChange = { raw ->
+            val sanitized = raw.filter { it.isDigit() || it == ':' }.take(5)
+            text = sanitized
+            parseHhMm(sanitized)?.let(onChanged)
+        },
+        modifier = modifier,
+        label = label,
+        placeholder = "00:00",
+        height = 42.dp,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+    )
+}
+
+private fun minutesToHhMm(m: Int): String {
+    val mm = ((m % 1440) + 1440) % 1440
+    val h = mm / 60
+    val min = mm % 60
+    return "${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}"
+}
+
+private fun parseHhMm(text: String): Int? {
+    val parts = text.split(":")
+    if (parts.size != 2) return null
+    val h = parts[0].toIntOrNull() ?: return null
+    val m = parts[1].toIntOrNull() ?: return null
+    if (h !in 0..23 || m !in 0..59) return null
+    return h * 60 + m
 }
 
 @Composable

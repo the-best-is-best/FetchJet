@@ -67,6 +67,7 @@ class QueueManagerRepository(
     }
 
     private val _globalDownloadSpeedLimit = MutableStateFlow(0L)
+    val globalDownloadSpeedLimit: StateFlow<Long> = _globalDownloadSpeedLimit.asStateFlow()
 
     private val _globalUploadSpeedLimit = MutableStateFlow(0L)
 

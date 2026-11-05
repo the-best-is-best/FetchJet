@@ -281,6 +281,13 @@ interface AppLocalization : LocalizationProvider {
     val speedPresetFast: String
     val speedPresetMedium: String
     val speedPresetLow: String
+    val speedScheduleTitle: String
+    val speedScheduleFooter: String
+    val speedScheduleAdd: String
+    val speedScheduleFrom: String
+    val speedScheduleTo: String
+    val speedScheduleActive: String
+    val speedScheduleEmpty: String
     val checksumLabel: String
     val checksumHint: String
     val checksumVerified: String
