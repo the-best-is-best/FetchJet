@@ -335,8 +335,10 @@ jobs:
 
       - name: Build Windows EXE & MSI
         # cmd, not PowerShell: a self-hosted Windows PC usually blocks .ps1 scripts.
+        # .\ is required: a locked-down PC may set NoDefaultCurrentDirectoryInExePath,
+        # so cmd won't find gradlew.bat in the workspace without the explicit path.
         shell: cmd
-        run: call gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi :desktopApp:createDistributable
+        run: call .\gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi :desktopApp:createDistributable
 
       # Microsoft Store package: the same app image packed as an (unsigned) .msix. Upload it in
       # Partner Center -> FetchJet (MSIX) -> Packages; the Store signs and hosts it.
