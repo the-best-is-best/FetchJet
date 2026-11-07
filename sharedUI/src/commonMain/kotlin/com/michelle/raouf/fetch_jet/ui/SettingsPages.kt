@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -351,7 +352,7 @@ private fun SpeedScheduleCard() {
             }
             windows.forEachIndexed { index, window ->
                 SettingDivider()
-                key(index, window.startMinutes, window.endMinutes) {
+                key(index) {
                     Column(Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -429,36 +430,62 @@ private fun TimeField(
     onChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var text by remember { mutableStateOf(minutesToHhMm(minutes)) }
-    FetchJetTextField(
-        value = text,
-        onValueChange = { raw ->
-            val sanitized = raw.filter { it.isDigit() || it == ':' }.take(5)
-            text = sanitized
-            parseHhMm(sanitized)?.let(onChanged)
-        },
+    var text by remember { mutableStateOf(minutesToHm12(minutes)) }
+    var isPm by remember { mutableStateOf((((minutes % 1440) + 1440) % 1440) >= 12 * 60) }
+    Row(
         modifier = modifier,
-        label = label,
-        placeholder = "00:00",
-        height = 42.dp,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-    )
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        FetchJetTextField(
+            value = text,
+            onValueChange = { raw ->
+                val sanitized = raw.filter { it.isDigit() || it == ':' }.take(5)
+                text = sanitized
+                parseHm12(sanitized, isPm)?.let(onChanged)
+            },
+            modifier = Modifier.weight(1f),
+            label = label,
+            placeholder = "8:00",
+            height = 42.dp,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        OutlinedButton(
+            onClick = {
+                val next = !isPm
+                isPm = next
+                parseHm12(text, next)?.let(onChanged)
+            },
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+        ) { Text(if (isPm) "PM" else "AM", fontWeight = FontWeight.SemiBold) }
+    }
 }
 
-private fun minutesToHhMm(m: Int): String {
+private fun minutesToHm12(m: Int): String {
     val mm = ((m % 1440) + 1440) % 1440
-    val h = mm / 60
+    val h24 = mm / 60
     val min = mm % 60
-    return "${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}"
+    val h12 = when (h24 % 12) {
+        0 -> 12
+        else -> h24 % 12
+    }
+    return "$h12:${min.toString().padStart(2, '0')}"
 }
 
-private fun parseHhMm(text: String): Int? {
+private fun parseHm12(text: String, isPm: Boolean): Int? {
     val parts = text.split(":")
     if (parts.size != 2) return null
     val h = parts[0].toIntOrNull() ?: return null
     val m = parts[1].toIntOrNull() ?: return null
-    if (h !in 0..23 || m !in 0..59) return null
-    return h * 60 + m
+    if (h !in 1..12 || m !in 0..59) return null
+    val h24 = when {
+        isPm && h == 12 -> 12
+        isPm -> h + 12
+        !isPm && h == 12 -> 0
+        else -> h
+    }
+    return h24 * 60 + m
 }
 
 @Composable
