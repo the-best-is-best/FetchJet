@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -310,10 +312,12 @@ fun AddDownloadModalDialog(
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
+            val dialogScroll = rememberScrollState()
+            Box(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(dialogScroll)
                     .padding(20.dp)
             ) {
                 AddDialogHeader(onDismiss = onDismiss)
@@ -480,6 +484,10 @@ fun AddDownloadModalDialog(
                     onAddDownload = onAddDownload,
                     onDismiss = onDismiss
                 )
+            }
+                Box(Modifier.matchParentSize()) {
+                    AppScrollbar(dialogScroll, Modifier.align(Alignment.CenterEnd))
+                }
             }
         }
         }

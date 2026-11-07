@@ -1,10 +1,11 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -357,7 +359,7 @@ private fun SpeedScheduleCard() {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.Bottom
                         ) {
                             TimeField(
                                 label = LocalizationManager.Strings.speedScheduleFrom,
@@ -378,10 +380,12 @@ private fun SpeedScheduleCard() {
                                 },
                                 modifier = Modifier.weight(1f)
                             )
-                            OutlinedButton(
-                                onClick = { SpeedSchedule.removeWindow(index) },
-                                shape = RoundedCornerShape(10.dp)
-                            ) { Text("✕") }
+                            Box(Modifier.height(42.dp), contentAlignment = Alignment.Center) {
+                                FieldIconButton(
+                                    text = "✕",
+                                    onClick = { SpeedSchedule.removeWindow(index) }
+                                )
+                            }
                         }
                         Spacer(Modifier.height(10.dp))
                         SpeedPresetRow(
@@ -432,33 +436,45 @@ private fun TimeField(
 ) {
     var text by remember { mutableStateOf(minutesToHm12(minutes)) }
     var isPm by remember { mutableStateOf((((minutes % 1440) + 1440) % 1440) >= 12 * 60) }
-    Row(
+    FetchJetTextField(
+        value = text,
+        onValueChange = { raw ->
+            val sanitized = raw.filter { it.isDigit() || it == ':' }.take(5)
+            text = sanitized
+            parseHm12(sanitized, isPm)?.let(onChanged)
+        },
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        FetchJetTextField(
-            value = text,
-            onValueChange = { raw ->
-                val sanitized = raw.filter { it.isDigit() || it == ':' }.take(5)
-                text = sanitized
-                parseHm12(sanitized, isPm)?.let(onChanged)
-            },
-            modifier = Modifier.weight(1f),
-            label = label,
-            placeholder = "8:00",
-            height = 42.dp,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        OutlinedButton(
-            onClick = {
-                val next = !isPm
+        label = label,
+        placeholder = "8:00",
+        height = 42.dp,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        trailing = {
+            AmPmToggle(isPm) { next ->
                 isPm = next
                 parseHm12(text, next)?.let(onChanged)
-            },
-            shape = RoundedCornerShape(10.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-        ) { Text(if (isPm) "PM" else "AM", fontWeight = FontWeight.SemiBold) }
+            }
+        }
+    )
+}
+
+@Composable
+private fun AmPmToggle(isPm: Boolean, onToggle: (Boolean) -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(primary.copy(alpha = 0.14f))
+            .clickable { onToggle(!isPm) }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            if (isPm) "PM" else "AM",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = primary,
+            maxLines = 1
+        )
     }
 }
 

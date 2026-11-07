@@ -260,17 +260,20 @@ fun FdmSettingsPanel(
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 28.dp, end = 12.dp, top = 4.dp, bottom = 28.dp)
-                ) {
-                    Column(modifier = Modifier.widthIn(max = 720.dp)) {
-                        PageHeader(current)
-                        page(current)
+                val contentScroll = rememberScrollState()
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(contentScroll)
+                            .padding(start = 28.dp, end = 14.dp, top = 4.dp, bottom = 28.dp)
+                    ) {
+                        Column(modifier = Modifier.widthIn(max = 720.dp)) {
+                            PageHeader(current)
+                            page(current)
+                        }
                     }
+                    AppScrollbar(contentScroll, Modifier.align(Alignment.CenterEnd))
                 }
             }
         } else {
@@ -301,30 +304,34 @@ fun FdmSettingsPanel(
                     )
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 4.dp)
-                        .padding(bottom = 24.dp)
-                ) {
-                    Row(
+                val sectionScroll = rememberScrollState()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { openSection = null }
-                            .padding(horizontal = 6.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxSize()
+                            .verticalScroll(sectionScroll)
+                            .padding(start = 4.dp, end = 14.dp)
+                            .padding(bottom = 24.dp)
                     ) {
-                        Text("←", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            LocalizationManager.Strings.settingsAllSettings,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { openSection = null }
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("←", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                LocalizationManager.Strings.settingsAllSettings,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        PageHeader(current)
+                        page(current)
                     }
-                    PageHeader(current)
-                    page(current)
+                    AppScrollbar(sectionScroll, Modifier.align(Alignment.CenterEnd))
                 }
             }
         }
