@@ -382,6 +382,17 @@ sealed interface DashboardUiEvent {
 
         DashboardUiEvent
 
+
+    data class OnTaskPriorityChanged(
+
+        val taskId: String,
+
+        val priority: Int
+
+    ) :
+
+        DashboardUiEvent
+
 }
 
 

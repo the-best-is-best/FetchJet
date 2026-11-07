@@ -246,7 +246,8 @@ fun TaskRow(
     onCheckedChange: (Boolean) -> Unit = {},
     onLongClick: () -> Unit = {},
     onCtrlClick: (() -> Unit)? = null,
-    onShiftClick: (() -> Unit)? = null
+    onShiftClick: (() -> Unit)? = null,
+    onPriorityChanged: (Int) -> Unit = {}
 ) {
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val name = decodeUnicodeText(task.fileName.ifBlank {
@@ -345,6 +346,9 @@ fun TaskRow(
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(64.dp), maxLines = 1
                     )
+                    if (task.status != DownloadStatus.COMPLETED) {
+                        PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
+                    }
                     QuickActionButton(action, 34) { onQuickAction(action) }
                 }
             } else {
@@ -377,6 +381,10 @@ fun TaskRow(
                                 modifier = Modifier.padding(top = 3.dp)
                             )
                         }
+                        if (task.status != DownloadStatus.COMPLETED) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         if (!selectionMode) QuickActionButton(action, 44) { onQuickAction(action) }
                     }
@@ -387,6 +395,43 @@ fun TaskRow(
                 }
             }
         }
+    }
+}
+
+/** Normal -> High -> Low -> Normal, matching the torrent file priority chip. */
+private fun nextPriority(current: Int): Int = when {
+    current > 0 -> -1
+    current < 0 -> 0
+    else -> 1
+}
+
+/** Small tappable priority badge shown on each active row; one tap cycles High/Normal/Low. */
+@Composable
+private fun PriorityChip(priority: Int, onCycle: () -> Unit) {
+    val label = when {
+        priority > 0 -> LocalizationManager.Strings.priorityHigh
+        priority < 0 -> LocalizationManager.Strings.priorityLow
+        else -> LocalizationManager.Strings.priorityNormal
+    }
+    val color = when {
+        priority > 0 -> Color(0xFFEF4444)
+        priority < 0 -> Color(0xFF3B82F6)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        onClick = onCycle,
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.15f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.4f))
+    ) {
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+        )
     }
 }
 

@@ -328,6 +328,9 @@ internal fun TaskListArea(
 
                             RowAction.NONE -> {}
                         }
+                    },
+                    onPriorityChanged = { priority ->
+                        viewModel.onEvent(DashboardUiEvent.OnTaskPriorityChanged(task.id, priority))
                     }
                 )
             }

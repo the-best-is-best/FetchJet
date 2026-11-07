@@ -46,7 +46,8 @@ internal data class PersistedTask(
     val expectedChecksum: String = "",
     val checksumVerified: String = "",
     val subtitles: String = "",
-    val embedSubtitles: Boolean = false
+    val embedSubtitles: Boolean = false,
+    val priority: Int = 0
 )
 
 internal object TaskCache {
@@ -114,7 +115,8 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
             if (t.isAuto) "1" else "0", if (t.isSelected) "1" else "0", sealed(t.url)
         ).joinToString("\u0001")
     },
-    embedSubtitles = embedSubtitles
+    embedSubtitles = embedSubtitles,
+    priority = priority
 )
 
 internal fun PersistedTask.toTask(
@@ -185,7 +187,8 @@ internal fun PersistedTask.toTask(
                 isSelected = f.getOrNull(4) != "0"
             )
         } ?: emptyList(),
-        embedSubtitles = embedSubtitles
+        embedSubtitles = embedSubtitles,
+        priority = priority
     )
 }
 

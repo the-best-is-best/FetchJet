@@ -221,6 +221,12 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
 
         }
 
+        is DashboardUiEvent.OnTaskPriorityChanged -> {
+
+            queueRepository.setTaskPriority(event.taskId, event.priority)
+
+        }
+
         else -> Unit
     }
 }

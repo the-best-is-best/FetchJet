@@ -288,6 +288,10 @@ interface AppLocalization : LocalizationProvider {
     val speedScheduleTo: String
     val speedScheduleActive: String
     val speedScheduleEmpty: String
+    val priorityLabel: String
+    val priorityHigh: String
+    val priorityNormal: String
+    val priorityLow: String
     val checksumLabel: String
     val checksumHint: String
     val checksumVerified: String

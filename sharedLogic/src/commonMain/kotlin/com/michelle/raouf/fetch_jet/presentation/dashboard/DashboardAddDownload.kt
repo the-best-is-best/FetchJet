@@ -81,14 +81,16 @@ internal fun DashboardViewModel.addDownload(
     // 1. Check for duplicate in queue. A name the user typed that differs from the existing
     // task's name means "download it again as a separate file", so it is not a duplicate.
     if (!skipDuplicateCheck) {
-        val typedBaseName = currentState.fileNameOverride.trim()
+        val suggestedExt = currentState.suggestedFileName.substringAfterLast('.', "")
+        val typedFullName = currentState.fileNameOverride.trim()
             .takeIf { it.isNotBlank() }
-            ?.substringBeforeLast('.')
+            ?.let { typed ->
+                if (!typed.contains('.') && suggestedExt.isNotBlank()) "$typed.$suggestedExt" else typed
+            }
         val duplicate = allTasks.find { task ->
             isSameDownload(task, url) &&
-                    (typedBaseName == null ||
-                            task.fileName.substringBeforeLast('.')
-                                .equals(typedBaseName, ignoreCase = true))
+                    (typedFullName == null ||
+                            task.fileName.trim().equals(typedFullName, ignoreCase = true))
         }
         if (duplicate != null) {
             _uiState.update { it.copy(duplicateTaskAlert = duplicate) }

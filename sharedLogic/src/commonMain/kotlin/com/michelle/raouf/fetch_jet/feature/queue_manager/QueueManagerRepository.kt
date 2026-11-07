@@ -109,9 +109,14 @@ class QueueManagerRepository(
         val activeTasks = allTasks.filter {
             it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.CONNECTING
         }
-        val activeCount = maxOf(1, activeTasks.size)
+        // The global limit is shared by priority weight: High gets the biggest slice, Low the
+        // smallest (High:Normal:Low = 3:2:1). Recomputed live, so changing a running download's
+        // priority re-splits the speed at once without pausing anything.
+        val priorityWeight = { p: Int -> if (p > 0) 3L else if (p < 0) 1L else 2L }
+        val totalWeight = activeTasks.sumOf { priorityWeight(it.priority) }.coerceAtLeast(1L)
+        val myWeight = priorityWeight(task?.priority ?: 0)
         val perTaskGlobal =
-            if (globalLimit > 0L) maxOf(16 * 1024L, globalLimit / activeCount) else 0L
+            if (globalLimit > 0L) maxOf(16 * 1024L, globalLimit * myWeight / totalWeight) else 0L
 
         return when {
             taskLimit > 0L && perTaskGlobal > 0L -> minOf(taskLimit, perTaskGlobal)
@@ -217,7 +222,10 @@ class QueueManagerRepository(
                 val engineTasks = getAllCurrentTasks().associateBy { it.id }
                 val due = (pendingTasks.value.values.filter { it.scheduledAtMs <= now } +
                         resumeQueue.value.mapNotNull { engineTasks[it] })
-                    .sortedBy { it.createdAtEpochMs }
+                    .sortedWith(
+                        compareByDescending<DownloadTask> { it.priority }
+                            .thenBy { it.createdAtEpochMs }
+                    )
                 // A resumed engine task shows "running" only a moment later: count it here.
                 var resumedNow = 0
                 for (task in due) {
@@ -323,7 +331,10 @@ class QueueManagerRepository(
             it.id in resumeIds && (it.status == DownloadStatus.PAUSED || it.status == DownloadStatus.ERROR)
         }
         val dueOrder = (pending.values.filter { it.scheduledAtMs <= now } + inLine)
-            .sortedBy { it.createdAtEpochMs }
+            .sortedWith(
+                compareByDescending<DownloadTask> { it.priority }
+                    .thenBy { it.createdAtEpochMs }
+            )
             .mapIndexed { i, t -> t.id to i + 1 }.toMap()
         val waiting = pending.values.map {
             it.copy(
@@ -836,6 +847,22 @@ class QueueManagerRepository(
 
     fun updateTorrentFilePriority(taskId: String, fileIndex: Int, priority: Int) {
         torrentEngine.updateFilePriority(taskId, fileIndex, priority)
+    }
+
+    /** Task-level queue priority (1 High / 0 Normal / -1 Low): decides which waiting task starts next. */
+    fun setTaskPriority(taskId: String, priority: Int) {
+        val pending = pendingTasks.value[taskId]
+        if (pending != null) {
+            pendingTasks.update { it + (taskId to pending.copy(priority = priority)) }
+        } else {
+            val task = getAllCurrentTasks().firstOrNull { it.id == taskId } ?: return
+            when (task.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task.copy(priority = priority))
+                EngineType.BITTORRENT -> torrentEngine.enqueueTask(task.copy(priority = priority))
+                EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task.copy(priority = priority))
+            }
+        }
+        pumpQueue()
     }
 
     private fun loadAndRestoreTasks() {
