@@ -71,6 +71,9 @@ interface DeviceSync {
     fun stop()
 
     fun startPairing(deviceId: String)
+
+    /** Pair by the other device's IP, for networks where UDP discovery is blocked. */
+    fun startPairingWithHost(host: String)
     fun confirmPairing()
     fun cancelPairing()
     fun unpair(deviceId: String)

@@ -731,6 +731,8 @@ interface AppLocalization : LocalizationProvider {
     val sysDeviceReceived: String
     val sysDevicePairedLabel: String
     val sysDeviceThisDevice: String
+    val sysDeviceManualConnect: String
+    val sysDeviceConnect: String
 }
 
 val LocalizationManager.Strings: AppLocalization

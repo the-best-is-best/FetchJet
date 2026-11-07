@@ -176,6 +176,32 @@ fun DeviceSendSheet(
                     }
                 }
 
+                Divider()
+                var manualIp by remember(taskId) { mutableStateOf("") }
+                Text(
+                    text = LocalizationManager.Strings.sysDeviceManualConnect,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FetchJetTextField(
+                        value = manualIp,
+                        onValueChange = { manualIp = it },
+                        placeholder = "192.168.1.5",
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        enabled = manualIp.isNotBlank() && !isBusy,
+                        onClick = { onEvent(DashboardUiEvent.OnManualConnectClicked(manualIp.trim())) }
+                    ) {
+                        Text(LocalizationManager.Strings.sysDeviceConnect)
+                    }
+                }
+
                 when (sending) {
                     is SendState.Sending -> {
                         Spacer(Modifier.width(4.dp))

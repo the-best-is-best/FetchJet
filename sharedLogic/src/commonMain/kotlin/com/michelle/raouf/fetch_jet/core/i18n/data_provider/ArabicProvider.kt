@@ -899,6 +899,8 @@ object ArabicProvider : AppLocalization {
     override val sysDeviceReceived = "وصل تنزيل من {name}"
     override val sysDevicePairedLabel = "مقترن"
     override val sysDeviceThisDevice = "الجهاز ده"
+    override val sysDeviceManualConnect = "اتصال يدوي بالـIP"
+    override val sysDeviceConnect = "اتصال"
 }
 
 private fun arCount(

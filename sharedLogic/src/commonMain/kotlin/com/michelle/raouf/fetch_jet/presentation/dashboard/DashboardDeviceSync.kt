@@ -1,11 +1,10 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
-import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest
-import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.delay
@@ -127,6 +126,11 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         }
 
         is DashboardUiEvent.OnUnpairDeviceClicked -> deviceSync.unpair(event.deviceId)
+
+        is DashboardUiEvent.OnManualConnectClicked -> {
+            val ip = event.ip.trim()
+            if (ip.isNotEmpty()) deviceSync.startPairingWithHost(ip)
+        }
 
         else -> Unit
     }

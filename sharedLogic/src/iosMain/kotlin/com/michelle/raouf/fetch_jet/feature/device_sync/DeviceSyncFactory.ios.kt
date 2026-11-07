@@ -1,7 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
@@ -19,6 +18,7 @@ private object NoopDeviceSync : DeviceSync {
     override fun start() {}
     override fun stop() {}
     override fun startPairing(deviceId: String) {}
+    override fun startPairingWithHost(host: String) {}
     override fun confirmPairing() {}
     override fun cancelPairing() {}
     override fun unpair(deviceId: String) {}

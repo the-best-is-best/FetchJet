@@ -424,6 +424,9 @@ sealed interface DashboardUiEvent {
     /** Forget a previously paired device. */
     data class OnUnpairDeviceClicked(val deviceId: String) : DashboardUiEvent
 
+    /** Pair by typing the other device's IP (for networks that block UDP discovery). */
+    data class OnManualConnectClicked(val ip: String) : DashboardUiEvent
+
 }
 
 

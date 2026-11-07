@@ -616,7 +616,8 @@ class DashboardViewModel(
             is DashboardUiEvent.OnSendToDeviceClicked,
             DashboardUiEvent.OnConfirmPairingClicked,
             DashboardUiEvent.OnCancelPairingClicked,
-            is DashboardUiEvent.OnUnpairDeviceClicked -> handleDeviceSyncEvent(event)
+            is DashboardUiEvent.OnUnpairDeviceClicked,
+            is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
         }
 
     }

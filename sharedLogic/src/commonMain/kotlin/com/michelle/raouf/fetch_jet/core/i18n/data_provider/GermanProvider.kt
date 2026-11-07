@@ -938,4 +938,6 @@ object GermanProvider : AppLocalization {
     override val sysDeviceReceived = "Download received from {name}"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
+    override val sysDeviceManualConnect = "Connect by IP"
+    override val sysDeviceConnect = "Connect"
 }

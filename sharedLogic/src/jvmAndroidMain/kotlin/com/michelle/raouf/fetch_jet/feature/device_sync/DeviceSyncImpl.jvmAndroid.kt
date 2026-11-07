@@ -31,6 +31,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 private const val DISCOVERY_PORT = 28461
+private const val SYNC_TCP_PORT = 28462
 private const val ANNOUNCE_EVERY_MS = 2000L
 private const val DEVICE_EXPIRE_MS = 8000L
 private const val CHUNK = 64 * 1024
@@ -101,8 +102,13 @@ internal class DeviceSyncImpl(
         started = true
         val server = ServerSocket()
         server.reuseAddress = true
-        server.bind(InetSocketAddress(0))
+        try {
+            server.bind(InetSocketAddress(SYNC_TCP_PORT))
+        } catch (_: Throwable) {
+            server.bind(InetSocketAddress(0))
+        }
         serverSocket = server
+        println("FJSYNC start selfId=$selfId name=$selfName tcpPort=${server.localPort}")
         multicastToken = MulticastLock.acquire()
         scope.launch { acceptLoop(server) }
         scope.launch { announceLoop(server.localPort) }
@@ -129,8 +135,15 @@ internal class DeviceSyncImpl(
             Announce.serializer(),
             Announce(id = selfId, name = selfName, plat = platformName, port = tcpPort)
         ).encodeToByteArray()
+        var loggedTargets: String? = null
         while (scope.isActive && started) {
-            for (addr in broadcastAddresses()) {
+            val targets = broadcastAddresses()
+            val sig = targets.joinToString { it.hostAddress ?: "" }
+            if (sig != loggedTargets) {
+                loggedTargets = sig
+                println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
+            }
+            for (addr in targets) {
                 try {
                     socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
                 } catch (_: Throwable) {
@@ -145,18 +158,40 @@ internal class DeviceSyncImpl(
     }
 
     private fun broadcastAddresses(): List<InetAddress> {
-        val out = ArrayList<InetAddress>()
+        val out = LinkedHashSet<InetAddress>()
         try {
             for (ni in NetworkInterface.getNetworkInterfaces()) {
                 if (!ni.isUp || ni.isLoopback) continue
                 for (ia in ni.interfaceAddresses) {
-                    ia.broadcast?.let { out.add(it) }
+                    val a = ia.address
+                    if (a !is java.net.Inet4Address) continue
+                    val b = ia.broadcast ?: computeBroadcast(a, ia.networkPrefixLength.toInt())
+                    if (b != null) out.add(b)
                 }
             }
         } catch (_: Throwable) {
         }
         if (out.isEmpty()) runCatching { out.add(InetAddress.getByName("255.255.255.255")) }
-        return out
+        return out.toList()
+    }
+
+    private fun computeBroadcast(addr: java.net.Inet4Address, prefix: Int): InetAddress? = try {
+        if (prefix !in 1..31) {
+            null
+        } else {
+            val a = addr.address
+            val ip = ((a[0].toInt() and 0xff) shl 24) or ((a[1].toInt() and 0xff) shl 16) or
+                    ((a[2].toInt() and 0xff) shl 8) or (a[3].toInt() and 0xff)
+            val bc = ip or (-0x1 ushr prefix)
+            InetAddress.getByAddress(
+                byteArrayOf(
+                    (bc ushr 24).toByte(), (bc ushr 16).toByte(),
+                    (bc ushr 8).toByte(), bc.toByte()
+                )
+            )
+        }
+    } catch (_: Throwable) {
+        null
     }
 
     private suspend fun discoveryListenLoop() {
@@ -166,7 +201,8 @@ internal class DeviceSyncImpl(
                 broadcast = true
                 bind(InetSocketAddress(DISCOVERY_PORT))
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            println("FJSYNC listen bind failed: ${t.message}")
             return
         }
         val buf = ByteArray(2048)
@@ -178,6 +214,7 @@ internal class DeviceSyncImpl(
                 val ann =
                     runCatching { json.decodeFromString(Announce.serializer(), text) }.getOrNull()
                 if (ann == null || ann.t != "fj-ann" || ann.id == selfId) continue
+                println("FJSYNC heard ${ann.name} @ ${packet.address.hostAddress}:${ann.port}")
                 val device = DiscoveredDevice(
                     id = ann.id, name = ann.name, platform = ann.plat,
                     host = packet.address.hostAddress ?: continue, port = ann.port,
@@ -315,11 +352,19 @@ internal class DeviceSyncImpl(
 
     override fun startPairing(deviceId: String) {
         val device = synchronized(seen) { seen[deviceId] } ?: return
-        _pairing.value = PairingState.Connecting(device.name)
+        connectAndPair(device.host, device.port, device.name)
+    }
+
+    override fun startPairingWithHost(host: String) {
+        connectAndPair(host, SYNC_TCP_PORT, host)
+    }
+
+    private fun connectAndPair(host: String, port: Int, displayName: String) {
+        _pairing.value = PairingState.Connecting(displayName)
         scope.launch {
             try {
                 Socket().use { socket ->
-                    socket.connect(InetSocketAddress(device.host, device.port), 5000)
+                    socket.connect(InetSocketAddress(host, port), 5000)
                     val input = DataInputStream(socket.getInputStream().buffered())
                     val output = DataOutputStream(socket.getOutputStream().buffered())
                     val kp = newEcKeyPair()
@@ -337,6 +382,13 @@ internal class DeviceSyncImpl(
                     val pubB = Base64.decode(ack.pub)
                     val key = deriveKey(kp, pubB)
                     val code = pairingCode(pubA, pubB)
+                    val disc = DiscoveredDevice(
+                        ack.id, ack.name, ack.plat, host, port,
+                        PairedDeviceStore.isPaired(ack.id)
+                    )
+                    synchronized(seen) { seen[ack.id] = disc }
+                    lastSeenAt[ack.id] = System.currentTimeMillis()
+                    publishDiscovered()
                     pending = Pending(
                         PairedDevice(
                             ack.id,
@@ -348,7 +400,7 @@ internal class DeviceSyncImpl(
                     _pairing.value = PairingState.Confirm(ack.name, ack.id, code)
                 }
             } catch (t: Throwable) {
-                _pairing.value = PairingState.Failed(device.name, t.message ?: "failed")
+                _pairing.value = PairingState.Failed(displayName, t.message ?: "failed")
             }
         }
     }

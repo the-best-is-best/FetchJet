@@ -916,6 +916,8 @@ object RussianProvider : AppLocalization {
     override val sysDeviceReceived = "Download received from {name}"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
+    override val sysDeviceManualConnect = "Connect by IP"
+    override val sysDeviceConnect = "Connect"
 }
 
 private fun ruPlural(n: Int, one: String, few: String, many: String): String {
