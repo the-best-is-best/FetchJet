@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -13,11 +14,15 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSData
+import platform.Foundation.NSDate
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSLock
+import platform.Foundation.timeIntervalSince1970
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.system.getTimeMillis
+
+/** Epoch milliseconds (iosMain uses NSDate, not the now-deprecated kotlin.system.getTimeMillis). */
+private fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
 
 private const val DISCOVERY_PORT = 28461
 private const val SYNC_TCP_PORT = 28462
@@ -62,7 +67,7 @@ private class Pending(val device: PairedDevice, val key: ByteArray, val keyPairI
  * The raw sockets and the crypto come from the native [IosDeviceSyncNative] bridge; everything
  * else (state, flows, pairing, framing) is here and shared with the other platforms by shape.
  */
-@OptIn(ExperimentalEncodingApi::class)
+@OptIn(ExperimentalEncodingApi::class, ExperimentalForeignApi::class)
 internal class IosDeviceSync(
     private val native: IosDeviceSyncNative,
     private val platformName: String,
@@ -154,7 +159,7 @@ internal class IosDeviceSync(
         )
         locked {
             seen[ann.id] = device
-            lastSeenAt[ann.id] = getTimeMillis()
+            lastSeenAt[ann.id] = nowMs()
         }
         publishDiscovered()
     }
@@ -162,7 +167,7 @@ internal class IosDeviceSync(
     private suspend fun expireLoop() {
         while (scope.isActive && started) {
             delay(2000)
-            val now = getTimeMillis()
+            val now = nowMs()
             val expired =
                 locked { lastSeenAt.filterValues { now - it > DEVICE_EXPIRE_MS }.keys.toList() }
             if (expired.isNotEmpty()) {
@@ -211,7 +216,7 @@ internal class IosDeviceSync(
             json.encodeToString(Hello.serializer(), ack).encodeToByteArray()
         )
         val code = pairingCode(pubA, pubB)
-        pending = Pending(PairedDevice(hello.id, hello.name, hello.plat, getTimeMillis()), key, -1)
+        pending = Pending(PairedDevice(hello.id, hello.name, hello.plat, nowMs()), key, -1)
         _pairing.value = PairingState.Confirm(hello.name, hello.id, code)
     }
 
@@ -234,7 +239,7 @@ internal class IosDeviceSync(
         // Paired and able to read the meta: tell the sender it may stream now.
         writeFrame(connId, T_READY, ByteArray(0))
         val written = ArrayList<String>()
-        val dir = "$tempDir/recv-${getTimeMillis()}"
+        val dir = "$tempDir/recv-${nowMs()}"
         NSFileManager.defaultManager.createDirectoryAtPath(dir, true, null, null)
         try {
             for (fm in meta.files) {
@@ -302,10 +307,10 @@ internal class IosDeviceSync(
                 val disc = DiscoveredDevice(
                     ack.id, ack.name, ack.plat, host, port, PairedDeviceStore.isPaired(ack.id)
                 )
-                locked { seen[ack.id] = disc; lastSeenAt[ack.id] = getTimeMillis() }
+                locked { seen[ack.id] = disc; lastSeenAt[ack.id] = nowMs() }
                 publishDiscovered()
                 pending =
-                    Pending(PairedDevice(ack.id, ack.name, ack.plat, getTimeMillis()), key, -1)
+                    Pending(PairedDevice(ack.id, ack.name, ack.plat, nowMs()), key, -1)
                 _pairing.value = PairingState.Confirm(ack.name, ack.id, code)
             } catch (t: Throwable) {
                 _pairing.value = PairingState.Failed(displayName, t.message ?: "failed")
@@ -350,7 +355,7 @@ internal class IosDeviceSync(
         }
         _sending.value = SendState.Sending(name, 0f)
         scope.launch {
-            val deadline = getTimeMillis() + ACCEPT_WAIT_MS
+            val deadline = nowMs() + ACCEPT_WAIT_MS
             while (scope.isActive) {
                 val outcome = runCatching { trySendOnce(host, port, key, request, name) }
                     .getOrElse { SendOutcome.Fail(it.message ?: "failed") }
@@ -360,7 +365,7 @@ internal class IosDeviceSync(
                     }
 
                     SendOutcome.WaitAccept -> {
-                        if (getTimeMillis() >= deadline) {
+                        if (nowMs() >= deadline) {
                             _sending.value =
                                 SendState.Failed(name, "the other device didn't accept")
                             onResult(false); return@launch
