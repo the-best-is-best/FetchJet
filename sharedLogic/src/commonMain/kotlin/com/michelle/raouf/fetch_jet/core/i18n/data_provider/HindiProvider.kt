@@ -875,6 +875,7 @@ object HindiProvider : AppLocalization {
     override val sysDevicePairConnecting = "Connecting…"
     override val sysDevicePairFailed = "Pairing failed"
     override val sysDeviceSending = "Sending…"
+    override val sysDeviceWaitingAccept = "Waiting for the other device to accept…"
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"

@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
+import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
@@ -98,6 +100,10 @@ private fun DashboardViewModel.placeReceivedParts(taskId: String, files: List<St
                 }
         }
     }
+    // The now-empty `recv-<ts>` staging folders would otherwise pile up in the settings dir.
+    files.mapNotNull { it.toPath().parent }.distinct().forEach { recv ->
+        runCatching { FileSystem.SYSTEM.deleteRecursively(recv) }
+    }
 }
 
 internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
@@ -153,12 +159,17 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
     )
     val partialFiles = if (event.mode == SendMode.TRANSFER_AND_CONTINUE)
         gatherPartialFiles(task.id, task.fileName) else emptyList()
+    // Finished download: no pieces left on disk, so send the whole finished file as one complete
+    // piece — the other device lands at 100% instead of downloading it all over again.
+    val completedFile = if (event.mode == SendMode.TRANSFER_AND_CONTINUE && partialFiles.isEmpty())
+        completedTransferFile(task) else ""
     val request = SendRequest(
         deviceId = event.deviceId,
         payload = payload,
         mode = event.mode,
         deleteAfterSuccess = event.deleteAfterSuccess,
         partialFiles = partialFiles,
+        completedFilePath = completedFile,
         sourceTaskId = task.id
     )
     val alreadyPaired = deviceSync.paired.value.any { it.id == event.deviceId }
@@ -169,6 +180,17 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
         pendingDeviceSend = request
         deviceSync.startPairing(event.deviceId)
     }
+}
+
+/**
+ * A finished direct download's saved file, if it is really there — so "Transfer what's downloaded"
+ * on a 100% task hands over the whole file instead of silently re-downloading it on the other side.
+ */
+private fun DashboardViewModel.completedTransferFile(task: DownloadTask): String {
+    if (task.engineType != EngineType.HTTP_DIRECT || task.status != DownloadStatus.COMPLETED) return ""
+    if (task.fileName.isBlank()) return ""
+    val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
+    return if (FileSystem.SYSTEM.exists(path.toPath())) path else ""
 }
 
 /** The task's downloaded pieces: `<temp>/task_<id>/<name>.partN` + `<name>.chunks`. */

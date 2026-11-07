@@ -35,6 +35,7 @@ private const val SYNC_TCP_PORT = 28462
 private const val ANNOUNCE_EVERY_MS = 2000L
 private const val DEVICE_EXPIRE_MS = 8000L
 private const val CHUNK = 64 * 1024
+private const val ACCEPT_WAIT_MS = 90_000L
 
 private const val T_HELLO: Byte = 1
 private const val T_HELLO_ACK: Byte = 2
@@ -43,6 +44,7 @@ private const val T_FILE_CHUNK: Byte = 4
 private const val T_FILE_END: Byte = 5
 private const val T_ACK: Byte = 6
 private const val T_ERR: Byte = 7
+private const val T_READY: Byte = 8
 
 @Serializable
 private data class Announce(
@@ -61,6 +63,11 @@ private data class FileMeta(val name: String, val size: Long)
 
 @Serializable
 private data class SendMeta(val payload: SendPayload, val mode: String, val files: List<FileMeta>)
+
+/** One file to stream: either a file on disk or a small in-memory blob (a generated manifest). */
+private class OutgoingFile(val wireName: String, val file: File?, val inlineBytes: ByteArray?) {
+    val size: Long get() = inlineBytes?.size?.toLong() ?: file?.length() ?: 0L
+}
 
 private class Pending(val device: PairedDevice, val key: ByteArray)
 
@@ -326,6 +333,10 @@ internal class DeviceSyncImpl(
                 ?: run {
                     writeFrame(output, T_ERR, "bad meta".encodeToByteArray()); return
                 }
+        // Paired and able to read the meta: tell the sender it may stream now. Until it sees this
+        // it holds the file, so a not-yet-confirmed pairing gets a clean T_ERR, not a broken pipe.
+        writeFrame(output, T_READY, ByteArray(0))
+        output.flush()
         val written = ArrayList<String>()
         val dir = File(tempDir, "recv-${System.currentTimeMillis()}").apply { mkdirs() }
         try {
@@ -440,62 +451,124 @@ internal class DeviceSyncImpl(
         }
         _sending.value = SendState.Sending(name, 0f)
         scope.launch {
-            try {
-                Socket().use { socket ->
-                    socket.connect(InetSocketAddress(host, port), 5000)
-                    val input = DataInputStream(socket.getInputStream().buffered())
-                    val output = DataOutputStream(socket.getOutputStream().buffered())
-                    val files = if (request.mode == SendMode.TRANSFER_AND_CONTINUE)
-                        request.partialFiles.map { File(it) }
-                            .filter { it.exists() } else emptyList()
-                    val meta = SendMeta(
-                        payload = request.payload,
-                        mode = request.mode.name,
-                        files = files.map { FileMeta(it.name, it.length()) }
-                    )
-                    val sealedMeta = CryptoBox.seal(
-                        key,
-                        json.encodeToString(SendMeta.serializer(), meta).encodeToByteArray()
-                    )
-                    val baos = java.io.ByteArrayOutputStream()
-                    DataOutputStream(baos).apply {
-                        val idBytes = selfId.encodeToByteArray()
-                        writeInt(idBytes.size); write(idBytes); write(sealedMeta); flush()
+            val deadline = System.currentTimeMillis() + ACCEPT_WAIT_MS
+            while (scope.isActive) {
+                val outcome = runCatching { trySendOnce(host, port, key, request, name) }
+                    .getOrElse { SendOutcome.Fail(it.message ?: "failed") }
+                when (outcome) {
+                    SendOutcome.Success -> {
+                        _sending.value = SendState.Done(name); onResult(true); return@launch
                     }
-                    writeFrame(output, T_SEND_META, baos.toByteArray())
-                    output.flush()
-                    val total = files.sumOf { it.length() }.coerceAtLeast(1)
-                    var sent = 0L
-                    for (f in files) {
-                        f.inputStream().buffered().use { fin ->
-                            val buffer = ByteArray(CHUNK)
-                            while (true) {
-                                val n = fin.read(buffer)
-                                if (n <= 0) break
-                                writeFrame(
-                                    output,
-                                    T_FILE_CHUNK,
-                                    CryptoBox.seal(key, buffer.copyOf(n))
-                                )
-                                sent += n
-                                _sending.value = SendState.Sending(
-                                    name,
-                                    (sent.toFloat() / total).coerceIn(0f, 1f)
-                                )
-                            }
+
+                    SendOutcome.WaitAccept -> {
+                        if (System.currentTimeMillis() >= deadline) {
+                            _sending.value =
+                                SendState.Failed(name, "the other device didn't accept")
+                            onResult(false); return@launch
                         }
-                        writeFrame(output, T_FILE_END, ByteArray(0))
+                        _sending.value = SendState.Waiting(name)
+                        kotlinx.coroutines.delay(1500)
                     }
-                    output.flush()
-                    val (type, _) = readFrame(input) ?: throw IllegalStateException("no ack")
-                    if (type != T_ACK) throw IllegalStateException("receiver rejected")
-                    _sending.value = SendState.Done(name)
-                    onResult(true)
+
+                    is SendOutcome.Fail -> {
+                        _sending.value = SendState.Failed(name, outcome.reason)
+                        onResult(false); return@launch
+                    }
                 }
-            } catch (t: Throwable) {
-                _sending.value = SendState.Failed(name, t.message ?: "failed")
-                onResult(false)
             }
+        }
+    }
+
+    private sealed interface SendOutcome {
+        object Success : SendOutcome
+        object WaitAccept : SendOutcome
+        data class Fail(val reason: String) : SendOutcome
+    }
+
+    /** One connect + handshake. Streams the file only after the receiver replies [T_READY]. */
+    private fun trySendOnce(
+        host: String,
+        port: Int,
+        key: ByteArray,
+        request: SendRequest,
+        name: String
+    ): SendOutcome {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(host, port), 5000)
+            val input = DataInputStream(socket.getInputStream().buffered())
+            val output = DataOutputStream(socket.getOutputStream().buffered())
+            // What travels under TRANSFER_AND_CONTINUE: the resume pieces if any are still on disk,
+            // otherwise the finished file as one complete piece (its own `.chunks` saying so) so the
+            // other side finalizes at 100% without downloading it again. Nothing for LINK_ONLY.
+            val outgoing: List<OutgoingFile> = when {
+                request.mode != SendMode.TRANSFER_AND_CONTINUE -> emptyList()
+                request.partialFiles.isNotEmpty() ->
+                    request.partialFiles.map { File(it) }.filter { it.exists() }
+                        .map { OutgoingFile(it.name, it, null) }
+
+                request.completedFilePath.isNotBlank() && File(request.completedFilePath).exists() -> {
+                    val finished = File(request.completedFilePath)
+                    val base = request.payload.fileName.ifBlank { finished.name }
+                    val manifest =
+                        "0 0 ${(finished.length() - 1).coerceAtLeast(0)}".encodeToByteArray()
+                    listOf(
+                        OutgoingFile("$base.chunks", null, manifest),
+                        OutgoingFile("$base.part0", finished, null)
+                    )
+                }
+
+                else -> emptyList()
+            }
+            val meta = SendMeta(
+                payload = request.payload,
+                mode = request.mode.name,
+                files = outgoing.map { FileMeta(it.wireName, it.size) }
+            )
+            val sealedMeta = CryptoBox.seal(
+                key,
+                json.encodeToString(SendMeta.serializer(), meta).encodeToByteArray()
+            )
+            val baos = java.io.ByteArrayOutputStream()
+            DataOutputStream(baos).apply {
+                val idBytes = selfId.encodeToByteArray()
+                writeInt(idBytes.size); write(idBytes); write(sealedMeta); flush()
+            }
+            writeFrame(output, T_SEND_META, baos.toByteArray())
+            output.flush()
+            // Wait for the receiver to accept before sending the file. "not paired" = the other
+            // user has not confirmed the code yet, so keep waiting instead of failing.
+            val (reply, rbody) = readFrame(input) ?: return SendOutcome.Fail("no reply")
+            if (reply == T_ERR) {
+                val reason = rbody.decodeToString()
+                return if (reason == "not paired") SendOutcome.WaitAccept
+                else SendOutcome.Fail(reason)
+            }
+            if (reply != T_READY) return SendOutcome.Fail("unexpected reply")
+            val total = outgoing.sumOf { it.size }.coerceAtLeast(1)
+            var sent = 0L
+            fun progress(n: Int) {
+                sent += n
+                _sending.value = SendState.Sending(name, (sent.toFloat() / total).coerceIn(0f, 1f))
+            }
+            for (o in outgoing) {
+                val inline = o.inlineBytes
+                if (inline != null) {
+                    writeFrame(output, T_FILE_CHUNK, CryptoBox.seal(key, inline))
+                    progress(inline.size)
+                } else o.file!!.inputStream().buffered().use { fin ->
+                    val buffer = ByteArray(CHUNK)
+                    while (true) {
+                        val n = fin.read(buffer)
+                        if (n <= 0) break
+                        writeFrame(output, T_FILE_CHUNK, CryptoBox.seal(key, buffer.copyOf(n)))
+                        progress(n)
+                    }
+                }
+                writeFrame(output, T_FILE_END, ByteArray(0))
+            }
+            output.flush()
+            val (type, _) = readFrame(input) ?: return SendOutcome.Fail("no ack")
+            return if (type == T_ACK) SendOutcome.Success else SendOutcome.Fail("receiver rejected")
         }
     }
 

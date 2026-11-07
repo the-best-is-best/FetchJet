@@ -726,6 +726,7 @@ interface AppLocalization : LocalizationProvider {
     val sysDevicePairConnecting: String
     val sysDevicePairFailed: String
     val sysDeviceSending: String
+    val sysDeviceWaitingAccept: String
     val sysDeviceSent: String
     val sysDeviceSendFailed: String
     val sysDeviceReceived: String

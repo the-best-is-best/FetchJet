@@ -29,6 +29,8 @@ sealed interface PairingState {
 sealed interface SendState {
     val deviceName: String
 
+    /** Reached the other device; waiting for its user to accept the pairing before streaming. */
+    data class Waiting(override val deviceName: String) : SendState
     data class Sending(override val deviceName: String, val fraction: Float) : SendState
     data class Done(override val deviceName: String) : SendState
     data class Failed(override val deviceName: String, val reason: String) : SendState
@@ -47,6 +49,12 @@ data class SendRequest(
     val deleteAfterSuccess: Boolean,
     /** Absolute paths of the `.partN` / `.chunks` files to stream (TRANSFER_AND_CONTINUE only). */
     val partialFiles: List<String> = emptyList(),
+    /**
+     * A finished download has no `.partN` pieces left on disk (they were merged away). To still send
+     * it under TRANSFER_AND_CONTINUE, this holds the finished file's path; it travels as a single
+     * complete piece so the other device lands at 100% instead of fetching the whole thing again.
+     */
+    val completedFilePath: String = "",
     /** The local task to remove once the send fully succeeds (when [deleteAfterSuccess]). */
     val sourceTaskId: String = ""
 )

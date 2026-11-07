@@ -894,6 +894,7 @@ object ArabicProvider : AppLocalization {
     override val sysDevicePairConnecting = "بيتصل…"
     override val sysDevicePairFailed = "الاقتران فشل"
     override val sysDeviceSending = "بيبعت…"
+    override val sysDeviceWaitingAccept = "مستني الجهاز التاني يقبل…"
     override val sysDeviceSent = "اتبعت لـ {name}"
     override val sysDeviceSendFailed = "ماقدرش يبعت"
     override val sysDeviceReceived = "وصل تنزيل من {name}"

@@ -1,14 +1,18 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -21,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,10 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.canResume
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
@@ -53,7 +61,11 @@ fun DeviceSendSheet(
 ) {
     val taskId = state.deviceShareTaskId ?: return
     val task = state.allTasks.firstOrNull { it.id == taskId }
-    val transferable = task?.engineType == EngineType.HTTP_DIRECT
+    // "Transfer what's downloaded" only helps when the other device can actually use the bytes:
+    // a finished file (sent whole) always can; a part-done one only if the link supports resume,
+    // otherwise it would just restart from zero there, so we hide the option instead of misleading.
+    val canTransfer = task?.engineType == EngineType.HTTP_DIRECT &&
+            (task.status == DownloadStatus.COMPLETED || task.canResume() == true)
     val devices = state.discoveredDevices
 
     var selectedId by remember(taskId) { mutableStateOf<String?>(null) }
@@ -61,7 +73,7 @@ fun DeviceSendSheet(
     var deleteAfter by remember(taskId) { mutableStateOf(false) }
 
     val sending = state.deviceSending
-    val isBusy = sending is SendState.Sending
+    val isBusy = sending is SendState.Sending || sending is SendState.Waiting
 
     AlertDialog(
         onDismissRequest = { if (!isBusy) onEvent(DashboardUiEvent.OnDismissShareSheet) },
@@ -87,29 +99,46 @@ fun DeviceSendSheet(
                 }
 
                 if (devices.isEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.width(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(10.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(26.dp),
+                                strokeWidth = 2.5.dp
+                            )
+                        }
                         Text(
                             text = LocalizationManager.Strings.sysDeviceSearching,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
                     devices.forEach { device ->
                         val selected = device.id == selectedId
+                        val host = device.name.substringBefore(" · ")
+                        val plat = device.name.substringAfter(" · ", "")
+                            .ifBlank { device.platform }
+                        val showPlat = plat.isNotBlank() && !plat.equals(host, ignoreCase = true)
                         Surface(
                             onClick = { selectedId = device.id },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = if (selected)
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                            else MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             border = BorderStroke(
-                                1.dp,
+                                if (selected) 1.5.dp else 1.dp,
                                 if (selected) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.outlineVariant
                             ),
@@ -118,22 +147,54 @@ fun DeviceSendSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(
+                                                alpha = if (selected) 0.22f else 0.12f
+                                            ),
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        text = device.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = device.platform +
-                                                if (device.paired) "  ·  " + LocalizationManager.Strings.sysDevicePairedLabel else "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = deviceEmoji(device.name + " " + device.platform),
+                                        fontSize = 20.sp
                                     )
                                 }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = host,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (showPlat || device.paired) {
+                                        Spacer(Modifier.width(0.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (showPlat) {
+                                                Text(
+                                                    text = plat,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                            if (device.paired) {
+                                                if (showPlat) Spacer(Modifier.width(6.dp))
+                                                PairedChip()
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
                                 RadioButton(
                                     selected = selected,
                                     onClick = { selectedId = device.id }
@@ -152,7 +213,7 @@ fun DeviceSendSheet(
                         enabled = true
                     ) { mode = SendMode.LINK_ONLY }
 
-                    if (transferable) {
+                    if (canTransfer) {
                         ModeRow(
                             title = LocalizationManager.Strings.sysDeviceModeTransfer,
                             desc = LocalizationManager.Strings.sysDeviceModeTransferDesc,
@@ -177,32 +238,56 @@ fun DeviceSendSheet(
                 }
 
                 Divider()
+                var showManualIp by remember(taskId) { mutableStateOf(false) }
                 var manualIp by remember(taskId) { mutableStateOf("") }
-                Text(
-                    text = LocalizationManager.Strings.sysDeviceManualConnect,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                TextButton(
+                    onClick = { showManualIp = !showManualIp },
+                    modifier = Modifier.align(Alignment.Start)
                 ) {
-                    FetchJetTextField(
-                        value = manualIp,
-                        onValueChange = { manualIp = it },
-                        placeholder = "192.168.1.5",
-                        modifier = Modifier.weight(1f)
+                    Text(
+                        text = (if (showManualIp) "▾  " else "▸  ") +
+                                LocalizationManager.Strings.sysDeviceManualConnect,
+                        style = MaterialTheme.typography.bodySmall
                     )
-                    OutlinedButton(
-                        enabled = manualIp.isNotBlank() && !isBusy,
-                        onClick = { onEvent(DashboardUiEvent.OnManualConnectClicked(manualIp.trim())) }
+                }
+                if (showManualIp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(LocalizationManager.Strings.sysDeviceConnect)
+                        FetchJetTextField(
+                            value = manualIp,
+                            onValueChange = { manualIp = it },
+                            placeholder = "192.168.1.5",
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedButton(
+                            enabled = manualIp.isNotBlank() && !isBusy,
+                            onClick = { onEvent(DashboardUiEvent.OnManualConnectClicked(manualIp.trim())) }
+                        ) {
+                            Text(LocalizationManager.Strings.sysDeviceConnect)
+                        }
                     }
                 }
 
                 when (sending) {
+                    is SendState.Waiting -> Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            text = LocalizationManager.Strings.sysDeviceWaitingAccept,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     is SendState.Sending -> {
                         Spacer(Modifier.width(4.dp))
                         LinearProgressIndicator(
@@ -256,6 +341,33 @@ fun DeviceSendSheet(
             }
         }
     )
+}
+
+/** Small rounded "Paired" badge shown next to a device that has been paired before. */
+@Composable
+private fun PairedChip() {
+    Box(
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                RoundedCornerShape(50)
+            )
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = LocalizationManager.Strings.sysDevicePairedLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+private fun deviceEmoji(label: String): String {
+    val l = label.lowercase()
+    return when {
+        "android" in l || "iphone" in l || "ipad" in l || "ios" in l -> "📱"
+        else -> "💻"
+    }
 }
 
 @Composable

@@ -199,6 +199,18 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Android 17 (API 37) Local Network Protection: device sync (UDP discovery + TCP) is
+        // blocked on the LAN until the user grants this. Needed only when targeting SDK 37+.
+        if (Build.VERSION.SDK_INT >= 37) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    "android.permission.ACCESS_LOCAL_NETWORK"
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add("android.permission.ACCESS_LOCAL_NETWORK")
+            }
+        }
+
         if (permissionsToRequest.isNotEmpty()) {
             permissionLauncher.launch(permissionsToRequest.toTypedArray())
         }

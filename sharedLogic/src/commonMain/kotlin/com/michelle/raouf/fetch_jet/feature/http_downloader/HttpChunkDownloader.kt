@@ -1,9 +1,9 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
-import com.michelle.raouf.fetch_jet.core.network.NetworkClient
-import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -98,7 +99,9 @@ class HttpChunkDownloader(
     override suspend fun cancel(taskId: String): Result<Unit> {
         val job = activeJobs.remove(taskId)
         job?.cancel()
-        job?.join() // let the chunk writers close their files before we delete them
+        // Give the chunk writers a moment to close their files before we delete them, but never
+        // wait forever: if the job is stuck in a slow blocking call, Delete must not hang.
+        withTimeoutOrNull(5_000L) { job?.join() }
         val task = tasksState.value[taskId]
         if (task != null && task.fileName.isNotBlank()) {
             cleanupTempFiles(task)
@@ -117,6 +120,29 @@ class HttpChunkDownloader(
         }
 
         try {
+            // Pieces already fully on disk (a finished file another device handed over): assemble
+            // and finish with no network at all, so it still works if the original link has died.
+            // The size comes from the pieces themselves, not from a probe of the link.
+            val handedOverName = initialTask.fileName
+            if (handedOverName.isNotBlank()) {
+                val safeName = pathResolver.sanitizeFileName(handedOverName)
+                val cp = "${pathResolver.getTempDirectory()}/task_$taskId/$safeName"
+                val localTotal = locallyCompleteTotal(cp)
+                if (localTotal != null) {
+                    updateTaskState(taskId) {
+                        it.copy(fileName = safeName, serverSupportsResume = true)
+                    }
+                    downloadParallelChunks(
+                        taskId,
+                        initialTask.url,
+                        cp,
+                        "${initialTask.destinationPath}/$safeName",
+                        localTotal
+                    )
+                    return
+                }
+            }
+
             val metadata = fetchWithRetry {
                 resolveFinalUrlAndMetadata(initialTask.url, initialTask.requestHeaders)
             }
@@ -169,8 +195,12 @@ class HttpChunkDownloader(
             }
 
             // Enable parallel multi-connection chunked download if server supports byte ranges and file size > 2MB
-            // Download to cache first, then copy to destination upon completion
-            if (contentLength > 2 * 1024 * 1024 && acceptRanges) {
+            // Download to cache first, then copy to destination upon completion.
+            // A resume manifest already on disk (pieces another device handed over, even a whole
+            // finished file) always goes through the chunked path so those bytes are reused and
+            // assembled instead of being re-fetched - including for files under the 2 MB cutoff.
+            val hasResumeManifest = FileSystem.SYSTEM.exists("$cachePath.chunks".toPath())
+            if (hasResumeManifest || (contentLength > 2 * 1024 * 1024 && acceptRanges)) {
                 try {
                     downloadParallelChunks(
                         taskId,
@@ -228,6 +258,26 @@ class HttpChunkDownloader(
                 )
             }
         }
+    }
+
+    /** Total bytes when every piece in the on-disk manifest is already fully present, else null. */
+    private fun locallyCompleteTotal(cachePath: String): Long? {
+        val manifestPath = "$cachePath.chunks".toPath()
+        if (!FileSystem.SYSTEM.exists(manifestPath)) return null
+        fun partSize(index: Int): Long {
+            val p = "$cachePath.part$index".toPath()
+            return if (FileSystem.SYSTEM.exists(p)) FileSystem.SYSTEM.metadataOrNull(p)?.size ?: 0L
+            else 0L
+        }
+
+        val chunks = runCatching {
+            ChunkLayout.fromManifest(
+                FileSystem.SYSTEM.read(manifestPath) { readUtf8() },
+                ::partSize
+            )
+        }.getOrNull()
+        if (chunks.isNullOrEmpty() || !chunks.all { it.isCompleted }) return null
+        return chunks.sumOf { it.endByte - it.startByte + 1 }
     }
 
     internal fun taskHeaders(taskId: String, requestUrl: String = ""): Map<String, String> {
