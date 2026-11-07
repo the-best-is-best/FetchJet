@@ -75,6 +75,7 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let bridge = LiveActivityBridge()
     private let mediaBridge = NativeMediaExtractorBridge()
+    private let deviceSyncBridge = NativeDeviceSyncBridge()
     #if FETCHJET_FULL && canImport(FJTorrent)
     private let torrentBridge = NativeTorrentBridge()
     #endif
@@ -82,6 +83,7 @@ struct iOSApp: App {
     init() {
         DownloadNotificationManager.companion.listener = bridge
         IosMediaBridgeRegistry.shared.bridge = mediaBridge
+        IosDeviceSyncNativeRegistry.shared.native = deviceSyncBridge
         Task { @MainActor in
             LiveActivityManager.shared.endStaleActivities()
         }
