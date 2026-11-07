@@ -898,4 +898,26 @@ object ItalianProvider : AppLocalization {
         "Impossibile avviare il motore BitTorrent: ${error}"
 
     override fun stepReadyWith(details: String) = "Pronto: ${details}"
+
+    // --- Device sync (ROADMAP-1.3.0 item 4) ---
+    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceNoDevices = "No devices found on your network"
+    override val sysDeviceSearching = "Looking for devices…"
+    override val sysDeviceModeLink = "Send link only"
+    override val sysDeviceModeLinkDesc = "The other device downloads it from the start"
+    override val sysDeviceModeTransfer = "Transfer what's downloaded"
+    override val sysDeviceModeTransferDesc = "The other device continues from the same point"
+    override val sysDeviceDeleteAfter = "Delete from this device after it's sent"
+    override val sysDeviceSend = "Send"
+    override val sysDevicePairTitle = "Pair device"
+    override val sysDevicePairBody = "Check that this code is the same on both devices:"
+    override val sysDevicePairConfirm = "Codes match"
+    override val sysDevicePairConnecting = "Connecting…"
+    override val sysDevicePairFailed = "Pairing failed"
+    override val sysDeviceSending = "Sending…"
+    override val sysDeviceSent = "Sent to {name}"
+    override val sysDeviceSendFailed = "Couldn't send"
+    override val sysDeviceReceived = "Download received from {name}"
+    override val sysDevicePairedLabel = "Paired"
+    override val sysDeviceThisDevice = "This device"
 }

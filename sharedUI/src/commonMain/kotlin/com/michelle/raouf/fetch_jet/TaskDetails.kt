@@ -75,7 +75,8 @@ internal fun DownloadTaskItem(
     onResume: () -> Unit,
     onCancel: () -> Unit,
     onFileSelectionToggled: (Int, Boolean) -> Unit,
-    onFilePriorityChanged: (Int, Int) -> Unit
+    onFilePriorityChanged: (Int, Int) -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     val rawDisplayName =
         task.fileName.ifBlank { task.url.substringBefore('?').substringAfterLast('/') }
@@ -650,6 +651,20 @@ internal fun DownloadTaskItem(
                     }
                 }
             }
+            if (onShare != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onShare,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Text(
+                        LocalizationManager.Strings.sysDeviceSendTitle,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(
                 onClick = onCancel,
@@ -861,7 +876,8 @@ internal fun TaskDetailsPane(
                             priority
                         )
                     )
-                }
+                },
+                onShare = { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
             )
         }
     }

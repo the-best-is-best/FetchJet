@@ -776,6 +776,18 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            // "Send to device" sheet + first-time pairing (ROADMAP-1.3.0 item 4).
+            if (state.deviceShareTaskId != null) {
+                com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
+            }
+            state.devicePairing?.let { pairState ->
+                com.michelle.raouf.fetch_jet.ui.DevicePairingDialog(
+                    pairing = pairState,
+                    onConfirm = { viewModel.onEvent(DashboardUiEvent.OnConfirmPairingClicked) },
+                    onCancel = { viewModel.onEvent(DashboardUiEvent.OnCancelPairingClicked) }
+                )
+            }
+
             // "Download in browser instead?" (only for plain file links sent by the extension)
             state.browserFallbackUrl?.let { url ->
                 BrowserFallbackDialog(

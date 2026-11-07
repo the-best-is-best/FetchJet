@@ -206,7 +206,15 @@ data class DashboardUiState(
     val speedPresetFastBytes: Long = 3L * 1024 * 1024,
     val speedPresetFastUnit: String = "MB/s",
     val speedPresetHighBytes: Long = 20L * 1024 * 1024,
-    val speedPresetHighUnit: String = "MB/s"
+    val speedPresetHighUnit: String = "MB/s",
+    /** The task whose "Send to device" sheet is open (null = closed). */
+    val deviceShareTaskId: String? = null,
+    /** Devices found on the LAN running FetchJet. */
+    val discoveredDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice> = emptyList(),
+    /** Non-null while a secure pairing handshake with a device is in progress. */
+    val devicePairing: com.michelle.raouf.fetch_jet.feature.device_sync.PairingState? = null,
+    /** Non-null while a send is in progress / just finished. */
+    val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null
 )
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -392,6 +400,29 @@ sealed interface DashboardUiEvent {
     ) :
 
         DashboardUiEvent
+
+    /** Open the "Send to device" sheet for a task. */
+    data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent
+
+    /** Close the "Send to device" sheet. */
+    data object OnDismissShareSheet : DashboardUiEvent
+
+    /** Send the shared task to a chosen device (pairs first if needed). */
+    data class OnSendToDeviceClicked(
+        val taskId: String,
+        val deviceId: String,
+        val mode: com.michelle.raouf.fetch_jet.feature.device_sync.SendMode,
+        val deleteAfterSuccess: Boolean
+    ) : DashboardUiEvent
+
+    /** User confirmed the 6-digit pairing code matches on both devices. */
+    data object OnConfirmPairingClicked : DashboardUiEvent
+
+    /** User cancelled / rejected the pairing. */
+    data object OnCancelPairingClicked : DashboardUiEvent
+
+    /** Forget a previously paired device. */
+    data class OnUnpairDeviceClicked(val deviceId: String) : DashboardUiEvent
 
 }
 

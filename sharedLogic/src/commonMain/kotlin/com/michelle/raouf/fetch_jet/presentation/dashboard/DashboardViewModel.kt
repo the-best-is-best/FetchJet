@@ -90,6 +90,19 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
 
+    /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
+    internal var pendingDeviceSend: com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest? =
+        null
+
+    /** LAN "send to another device" engine (ROADMAP-1.3.0 item 4). Lazy: started from [init]. */
+    internal val deviceSync: com.michelle.raouf.fetch_jet.feature.device_sync.DeviceSync by lazy {
+        com.michelle.raouf.fetch_jet.feature.device_sync.createDeviceSync(
+            settingsDir = queueRepository.pathResolver.getSettingsDirectory(),
+            scratchDirFor = { id -> "${queueRepository.pathResolver.getTempDirectory()}/task_$id" },
+            onReceive = { payload, partialFiles -> onDeviceReceive(payload, partialFiles) }
+        )
+    }
+
     init {
 
         observeQueue()
@@ -153,6 +166,8 @@ class DashboardViewModel(
             { request -> handleExternalRequest(request) }
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =
             { requests, review -> handleExternalBatch(requests, review) }
+
+        initDeviceSync()
 
     }
 
@@ -595,6 +610,13 @@ class DashboardViewModel(
             is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
+
+            is DashboardUiEvent.OnShareTaskClicked,
+            DashboardUiEvent.OnDismissShareSheet,
+            is DashboardUiEvent.OnSendToDeviceClicked,
+            DashboardUiEvent.OnConfirmPairingClicked,
+            DashboardUiEvent.OnCancelPairingClicked,
+            is DashboardUiEvent.OnUnpairDeviceClicked -> handleDeviceSyncEvent(event)
         }
 
     }

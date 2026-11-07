@@ -877,6 +877,28 @@ object ArabicProvider : AppLocalization {
     override fun stepMediaEngineNotReady(error: String) = "محرك الوسائط غير جاهز: ${error}"
     override fun stepTorrentEngineFailed(error: String) = "تعذّر تشغيل محرك BitTorrent: ${error}"
     override fun stepReadyWith(details: String) = "جاهز: ${details}"
+
+    // --- Device sync (ROADMAP-1.3.0 item 4) ---
+    override val sysDeviceSendTitle = "ابعت لجهاز"
+    override val sysDeviceNoDevices = "مفيش أجهزة على الشبكة"
+    override val sysDeviceSearching = "بيدوّر على الأجهزة…"
+    override val sysDeviceModeLink = "ابعت اللينك بس"
+    override val sysDeviceModeLinkDesc = "الجهاز التاني هينزّله من الأول"
+    override val sysDeviceModeTransfer = "انقل اللي اتنزّل"
+    override val sysDeviceModeTransferDesc = "الجهاز التاني يكمّل من نفس النقطة"
+    override val sysDeviceDeleteAfter = "امسحه من الجهاز ده بعد ما يتبعت"
+    override val sysDeviceSend = "ابعت"
+    override val sysDevicePairTitle = "اقرن الجهاز"
+    override val sysDevicePairBody = "اتأكد إن الكود ده زي بعضه على الجهازين:"
+    override val sysDevicePairConfirm = "الكود متطابق"
+    override val sysDevicePairConnecting = "بيتصل…"
+    override val sysDevicePairFailed = "الاقتران فشل"
+    override val sysDeviceSending = "بيبعت…"
+    override val sysDeviceSent = "اتبعت لـ {name}"
+    override val sysDeviceSendFailed = "ماقدرش يبعت"
+    override val sysDeviceReceived = "وصل تنزيل من {name}"
+    override val sysDevicePairedLabel = "مقترن"
+    override val sysDeviceThisDevice = "الجهاز ده"
 }
 
 private fun arCount(

@@ -709,6 +709,28 @@ interface AppLocalization : LocalizationProvider {
     fun stepMediaEngineNotReady(error: String): String
     fun stepTorrentEngineFailed(error: String): String
     fun stepReadyWith(details: String): String
+
+    // --- Device sync (ROADMAP-1.3.0 item 4) ---
+    val sysDeviceSendTitle: String
+    val sysDeviceNoDevices: String
+    val sysDeviceSearching: String
+    val sysDeviceModeLink: String
+    val sysDeviceModeLinkDesc: String
+    val sysDeviceModeTransfer: String
+    val sysDeviceModeTransferDesc: String
+    val sysDeviceDeleteAfter: String
+    val sysDeviceSend: String
+    val sysDevicePairTitle: String
+    val sysDevicePairBody: String
+    val sysDevicePairConfirm: String
+    val sysDevicePairConnecting: String
+    val sysDevicePairFailed: String
+    val sysDeviceSending: String
+    val sysDeviceSent: String
+    val sysDeviceSendFailed: String
+    val sysDeviceReceived: String
+    val sysDevicePairedLabel: String
+    val sysDeviceThisDevice: String
 }
 
 val LocalizationManager.Strings: AppLocalization
