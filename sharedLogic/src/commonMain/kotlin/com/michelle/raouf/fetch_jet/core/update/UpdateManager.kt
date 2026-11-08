@@ -226,7 +226,17 @@ object UpdateManager {
                 messageIsError = if (manual) false else it.messageIsError
             )
         }
-        val result = runCatching { fetchLatestRelease()?.let { withNotesInAppLanguage(it) } }
+        val result = runCatching {
+            val latest = fetchLatestRelease()
+            val forThisPlatform =
+                if (latest != null && !PlatformUpdater.updatesFromStore &&
+                    latest.unchangedPlatforms.contains(PlatformUpdater.platformKey)
+                ) {
+                    runCatching { fetchNewestBuiltForThisPlatform() }.getOrNull()
+                        ?.takeIf { isNewer(it.version, APP_VERSION) } ?: latest
+                } else latest
+            forThisPlatform?.let { withNotesInAppLanguage(it) }
+        }
         val now = nowEpochMs()
         result.onSuccess { latest ->
             val isNewerVersion = latest != null && isNewer(latest.version, APP_VERSION)
@@ -318,27 +328,19 @@ object UpdateManager {
         @Suppress("UNCHECKED_CAST")
         val json = MiniJson.parse(response.bodyAsText()) as? Map<String, Any?>
             ?: throw Exception("unreadable answer")
-        val tag = json.getString("tag_name") ?: throw Exception("release has no tag")
-        val assets = json.getArray("assets").orEmpty().mapNotNull { a ->
-            @Suppress("UNCHECKED_CAST")
-            val m = a as? Map<String, Any?> ?: return@mapNotNull null
-            val name = m.getString("name") ?: return@mapNotNull null
-            val url = m.getString("browser_download_url")
-                ?.takeIf { it.startsWith(RELEASE_DOWNLOAD_PREFIX) } ?: return@mapNotNull null
-            val sha = m.getString("digest").orEmpty().lowercase()
-                .takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:").orEmpty()
-            ReleaseAsset(name, url, m.getLong("size") ?: 0L, sha)
+        return releaseFromJson(json) ?: throw Exception("release has no tag")
+    }
+
+    private suspend fun fetchNewestBuiltForThisPlatform(): AppRelease? {
+        val response =
+            client.get("https://api.github.com/repos/$UPDATE_REPOSITORY/releases?per_page=30") {
+                header("Accept", "application/vnd.github+json")
+                header("User-Agent", "FetchJet/$APP_VERSION")
+            }
+        if (!response.status.isSuccess()) return null
+        return newestBuiltFor(response.bodyAsText(), PlatformUpdater.platformKey) { assets ->
+            !PlatformUpdater.canInstallInApp || PlatformUpdater.pickAsset(assets) != null
         }
-        return AppRelease(
-            version = tag.trim().removePrefix("v").removePrefix("V"),
-            tag = tag,
-            title = json.getString("name")?.ifBlank { null } ?: "FetchJet $tag",
-            notes = json.getString("body").orEmpty().trim(),
-            pageUrl = json.getString("html_url")
-                ?: "https://github.com/$UPDATE_REPOSITORY/releases/latest",
-            publishedAt = json.getString("published_at").orEmpty(),
-            assets = assets
-        )
     }
 
     internal suspend fun fetchLatestFromWebPage(): AppRelease? {
@@ -541,6 +543,49 @@ internal fun notesFromReleasePage(html: String): String {
         .lines().joinToString("\n") { it.trim() }
         .replace(Regex("\n{3,}"), "\n\n")
         .trim()
+}
+
+internal fun newestBuiltFor(
+    releasesJson: String,
+    platformKey: String,
+    hasInstaller: (List<ReleaseAsset>) -> Boolean
+): AppRelease? {
+    val list = MiniJson.parse(releasesJson) as? List<*> ?: return null
+    return list.asSequence()
+        .mapNotNull { item ->
+            @Suppress("UNCHECKED_CAST")
+            val m = item as? Map<String, Any?> ?: return@mapNotNull null
+            if (m["draft"] == true || m["prerelease"] == true) return@mapNotNull null
+            releaseFromJson(m)
+        }
+        .filter { !it.unchangedPlatforms.contains(platformKey) && hasInstaller(it.assets) }
+        .maxWithOrNull { a, b ->
+            if (isNewer(a.version, b.version)) 1 else if (isNewer(b.version, a.version)) -1 else 0
+        }
+}
+
+internal fun releaseFromJson(json: Map<String, Any?>): AppRelease? {
+    val tag = json.getString("tag_name") ?: return null
+    val assets = json.getArray("assets").orEmpty().mapNotNull { a ->
+        @Suppress("UNCHECKED_CAST")
+        val m = a as? Map<String, Any?> ?: return@mapNotNull null
+        val name = m.getString("name") ?: return@mapNotNull null
+        val url = m.getString("browser_download_url")
+            ?.takeIf { it.startsWith(RELEASE_DOWNLOAD_PREFIX) } ?: return@mapNotNull null
+        val sha = m.getString("digest").orEmpty().lowercase()
+            .takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:").orEmpty()
+        ReleaseAsset(name, url, m.getLong("size") ?: 0L, sha)
+    }
+    return AppRelease(
+        version = tag.trim().removePrefix("v").removePrefix("V"),
+        tag = tag,
+        title = json.getString("name")?.ifBlank { null } ?: "FetchJet $tag",
+        notes = json.getString("body").orEmpty().trim(),
+        pageUrl = json.getString("html_url")
+            ?: "https://github.com/$UPDATE_REPOSITORY/releases/latest",
+        publishedAt = json.getString("published_at").orEmpty(),
+        assets = assets
+    )
 }
 
 /** true when [candidate] is a later version than [current] ("1.2.0" > "1.1.9", "1.0.0" > "1.0.0-beta"). */

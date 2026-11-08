@@ -703,7 +703,9 @@ Bridges:
 ## Release plan
 
 - **1.4.0:** branch `release-v1.4.0` (cut from `master` = 1.3.1 on 2026-11-08), work list
-  `ROADMAP-1.4.0.md` (RAM use on desktop first, then the checks carried over from 1.3.0). When
+  `ROADMAP-1.4.0.md`: the RAM release (owner's decision 2026-11-08): desktop memory close to
+  Ezoo (13 MB, Rust + Slint); spikes first (GraalVM native-image vs Kotlin/Native core + Slint
+  UI), then the owner picks the road on measured numbers. When
   the owner asks what is next, take the first unchecked item there. Before the release: write
   `release-notes/1.4.0/en.md` + the 14 translations.
 - **1.3.1:** released 2026-11-08 from `master` (Store update check fix, Safari label on iOS,
