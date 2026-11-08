@@ -918,6 +918,7 @@ object ArabicProvider : AppLocalization {
     override val pairRefusedBlocked = "الجهاز الآخر حظر هذا الجهاز"
     override val pairRefusedWait = "انتظر {seconds} ث قبل أن تطلب من هذا الجهاز مرة أخرى"
     override val pairRefusedBusy = "الجهاز الآخر يرد على طلب اقتران آخر. حاول مرة أخرى بعد قليل."
+    override val pairDeclined = "رفض الجهاز الآخر الاقتران. أرسل مرة أخرى للمحاولة من جديد."
     override val sysDevicePairedLabel = "مقترن"
     override val sysDeviceThisDevice = "الجهاز ده"
     override val sysDeviceManualConnect = "اتصال يدوي بالـIP"

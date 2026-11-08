@@ -406,6 +406,7 @@ internal class DeviceSyncImpl(
             val reason = when {
                 PairedDeviceStore.isBlocked(fromId) -> "blocked"
                 pending?.device?.id == fromId -> "pending"
+                declinedRecently(fromId) -> "declined"
                 else -> "not paired"
             }
             writeFrame(output, T_ERR, reason.encodeToByteArray()); return
@@ -514,9 +515,18 @@ internal class DeviceSyncImpl(
         publishDiscovered()
     }
 
+    /** Device id -> when this user cancelled its pairing code (its send then hears "declined"). */
+    private val recentlyDeclined = HashMap<String, Long>()
+
     override fun cancelPairing() {
+        pending?.let { synchronized(recentlyDeclined) { recentlyDeclined[it.device.id] = System.currentTimeMillis() } }
         pending = null
         _pairing.value = null
+    }
+
+    private fun declinedRecently(id: String): Boolean = synchronized(recentlyDeclined) {
+        val at = recentlyDeclined[id] ?: return false
+        System.currentTimeMillis() - at < 120_000L
     }
 
     override fun unpair(deviceId: String) {
@@ -625,7 +635,7 @@ internal class DeviceSyncImpl(
                     }
 
                     is SendOutcome.Fail -> {
-                        if (outcome.reason == "blocked") forgetPairing(request.deviceId)
+                        if (outcome.reason == "blocked" || outcome.reason == "declined") forgetPairing(request.deviceId)
                         _sending.value = SendState.Failed(name, outcome.reason)
                         onResult(false); return@launch
                     }

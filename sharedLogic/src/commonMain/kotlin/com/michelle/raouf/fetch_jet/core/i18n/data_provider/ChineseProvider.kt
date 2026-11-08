@@ -847,6 +847,7 @@ object ChineseProvider : AppLocalization {
     override val pairRefusedBlocked = "对方设备已屏蔽本设备"
     override val pairRefusedWait = "请等待 {seconds} 秒后再向该设备发出请求"
     override val pairRefusedBusy = "对方设备正在处理另一个配对请求，请稍后再试。"
+    override val pairDeclined = "对方设备拒绝了配对。再次发送即可重试。"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

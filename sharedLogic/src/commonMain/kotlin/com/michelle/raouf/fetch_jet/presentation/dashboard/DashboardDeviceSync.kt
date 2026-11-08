@@ -164,10 +164,14 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
 
         DashboardUiEvent.OnConfirmPairingClicked -> {
             deviceSync.confirmPairing()
-            // Both sides must confirm; the receiver may be a beat behind, so retry on "not paired".
+            // Send only if the pairing was really stored. One try: while the other user is still
+            // reading the code, the send itself waits ("pending"); a refusal there is final, and
+            // retrying would only replace its message with "not paired".
             pendingDeviceSend?.let { req ->
                 pendingDeviceSend = null
-                scope.launch { sendWithRetry(req, tries = 4) }
+                if (deviceSync.paired.value.any { it.id == req.deviceId }) {
+                    scope.launch { sendWithRetry(req, tries = 1) }
+                }
             }
         }
 

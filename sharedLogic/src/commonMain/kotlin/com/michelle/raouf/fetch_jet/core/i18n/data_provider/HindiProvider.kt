@@ -899,6 +899,7 @@ object HindiProvider : AppLocalization {
     override val pairRefusedBlocked = "दूसरे डिवाइस ने इस डिवाइस को ब्लॉक किया है"
     override val pairRefusedWait = "इस डिवाइस से दोबारा अनुरोध करने से पहले {seconds} सेकंड रुकें"
     override val pairRefusedBusy = "दूसरा डिवाइस किसी और पेयरिंग अनुरोध का जवाब दे रहा है। थोड़ी देर में फिर कोशिश करें।"
+    override val pairDeclined = "दूसरे डिवाइस ने पेयरिंग अस्वीकार कर दी। फिर से कोशिश करने के लिए दोबारा भेजें।"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

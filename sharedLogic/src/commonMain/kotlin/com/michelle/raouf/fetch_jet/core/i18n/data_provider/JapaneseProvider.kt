@@ -916,6 +916,7 @@ object JapaneseProvider : AppLocalization {
     override val pairRefusedBlocked = "相手のデバイスがこのデバイスをブロックしました"
     override val pairRefusedWait = "このデバイスに再度リクエストするまで {seconds} 秒お待ちください"
     override val pairRefusedBusy = "相手のデバイスは別のペアリング要求に応答中です。少し待ってからもう一度お試しください。"
+    override val pairDeclined = "相手のデバイスがペアリングを拒否しました。もう一度送信すると再試行できます。"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

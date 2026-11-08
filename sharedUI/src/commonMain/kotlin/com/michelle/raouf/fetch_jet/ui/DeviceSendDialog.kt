@@ -460,6 +460,7 @@ private fun ModeRow(
 internal fun deviceSyncReason(reason: String): String = when {
     reason == "blocked" -> LocalizationManager.Strings.pairRefusedBlocked
     reason == "busy" -> LocalizationManager.Strings.pairRefusedBusy
+    reason == "declined" -> LocalizationManager.Strings.pairDeclined
     reason.startsWith("wait:") ->
         LocalizationManager.Strings.pairRefusedWait.replace("{seconds}", reason.removePrefix("wait:"))
 
