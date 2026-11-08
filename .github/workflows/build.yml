@@ -147,7 +147,7 @@ jobs:
         env:
           VERSION: ${{ steps.plan.outputs.version }}
         run: |
-          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          APP_VERSION=$(tr -d '\r' < sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt | sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p')
           echo "release=$VERSION app=$APP_VERSION"
           if [ "$VERSION" != "$APP_VERSION" ]; then
             echo "::error::Release version $VERSION does not match APP_VERSION $APP_VERSION in AppVersion.kt"
@@ -352,7 +352,7 @@ jobs:
         run: |
           set -e
           V="$VERSION"
-          [ -n "$V" ] || V=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          [ -n "$V" ] || V=$(tr -d '\r' < sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt | sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p')
           V="${V%%-*}"
           while [ "$(echo "$V" | tr -cd . | wc -c)" -lt 2 ]; do V="$V.0"; done
           MSIX_VERSION="$V.0"   # the Store wants the 4th number to be 0
