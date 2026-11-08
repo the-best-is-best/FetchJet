@@ -485,6 +485,7 @@ object TurkishProvider : AppLocalization {
     override val themeTitle = "Tema"
     override val themeHint = "Tüm ekranlar için açık veya koyu görünüm"
     override val settingsThemeDark = "Koyu"
+    override val settingsThemeSystem = "Sistem"
     override val settingsThemeLight = "Açık"
     override val speedShownIn = "Hız birimi"
     override val speedShownInHint =

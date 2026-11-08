@@ -411,6 +411,7 @@ interface AppLocalization : LocalizationProvider {
     val themeTitle: String
     val themeHint: String
     val settingsThemeDark: String
+    val settingsThemeSystem: String
     val settingsThemeLight: String
     val speedShownIn: String
     val speedShownInHint: String

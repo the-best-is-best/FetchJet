@@ -480,6 +480,7 @@ object HindiProvider : AppLocalization {
     override val themeTitle = "थीम"
     override val themeHint = "हर स्क्रीन के लिए लाइट या डार्क रूप"
     override val settingsThemeDark = "डार्क"
+    override val settingsThemeSystem = "सिस्टम"
     override val settingsThemeLight = "लाइट"
     override val speedShownIn = "स्पीड इसमें दिखाएं"
     override val speedShownInHint =

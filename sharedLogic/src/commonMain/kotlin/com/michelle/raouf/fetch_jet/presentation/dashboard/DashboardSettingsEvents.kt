@@ -117,11 +117,21 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
         }
 
         DashboardUiEvent.OnThemeToggled -> {
-
-            _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
-
+            _uiState.update {
+                val dark = it.themeMode != "dark"
+                it.copy(themeMode = if (dark) "dark" else "light", isDarkMode = dark)
+            }
             persistCurrentSettings()
+        }
 
+        is DashboardUiEvent.OnThemeModeChanged -> {
+            _uiState.update {
+                it.copy(
+                    themeMode = event.mode,
+                    isDarkMode = when (event.mode) { "light" -> false; "dark" -> true; else -> it.isDarkMode }
+                )
+            }
+            persistCurrentSettings()
         }
 
         is DashboardUiEvent.OnTabSelected -> {

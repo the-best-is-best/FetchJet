@@ -495,6 +495,7 @@ object RussianProvider : AppLocalization {
     override val themeTitle = "Тема"
     override val themeHint = "Светлое или тёмное оформление всех экранов"
     override val settingsThemeDark = "Тёмная"
+    override val settingsThemeSystem = "Системная"
     override val settingsThemeLight = "Светлая"
     override val speedShownIn = "Единицы скорости"
     override val speedShownInHint =

@@ -501,6 +501,7 @@ object ArabicProvider : AppLocalization {
     override val themeTitle = "السمة"
     override val themeHint = "مظهر فاتح أو داكن لكل الشاشات"
     override val settingsThemeDark = "داكن"
+    override val settingsThemeSystem = "النظام"
     override val settingsThemeLight = "فاتح"
     override val speedShownIn = "وحدة عرض السرعة"
     override val speedShownInHint =

@@ -487,6 +487,7 @@ object PersianProvider : AppLocalization {
     override val themeTitle = "پوسته"
     override val themeHint = "ظاهر روشن یا تیره برای همه صفحه‌ها"
     override val settingsThemeDark = "تیره"
+    override val settingsThemeSystem = "سیستم"
     override val settingsThemeLight = "روشن"
     override val speedShownIn = "واحد نمایش سرعت"
     override val speedShownInHint =

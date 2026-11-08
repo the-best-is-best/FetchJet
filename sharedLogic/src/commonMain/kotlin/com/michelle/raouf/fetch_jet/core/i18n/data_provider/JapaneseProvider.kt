@@ -484,6 +484,7 @@ object JapaneseProvider : AppLocalization {
     override val themeTitle = "テーマ"
     override val themeHint = "すべての画面をライトまたはダークで表示"
     override val settingsThemeDark = "ダーク"
+    override val settingsThemeSystem = "システム"
     override val settingsThemeLight = "ライト"
     override val speedShownIn = "速度の単位"
     override val speedShownInHint =

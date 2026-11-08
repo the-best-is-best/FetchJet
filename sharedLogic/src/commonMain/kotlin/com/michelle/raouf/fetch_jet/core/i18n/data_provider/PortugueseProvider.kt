@@ -497,6 +497,7 @@ object PortugueseProvider : AppLocalization {
     override val themeTitle = "Tema"
     override val themeHint = "Visual claro ou escuro em todas as telas"
     override val settingsThemeDark = "Escuro"
+    override val settingsThemeSystem = "Sistema"
     override val settingsThemeLight = "Claro"
     override val speedShownIn = "Mostrar velocidade em"
     override val speedShownInHint =

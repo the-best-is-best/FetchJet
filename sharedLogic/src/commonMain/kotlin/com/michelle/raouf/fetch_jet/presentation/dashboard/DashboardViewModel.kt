@@ -116,6 +116,7 @@ class DashboardViewModel(
                 destinationPath = savedSettings.destinationPath,
                 disableTorrentUpload = savedSettings.disableTorrentUpload,
                 isDarkMode = savedSettings.isDarkMode,
+                themeMode = savedSettings.themeMode,
                 globalDownloadSpeedLimitBytes = savedSettings.globalDownloadSpeedLimitBytes,
                 globalUploadSpeedLimitBytes = savedSettings.globalUploadSpeedLimitBytes,
                 speedDisplayUnit = savedSettings.speedDisplayUnit,
@@ -184,6 +185,8 @@ class DashboardViewModel(
                 disableTorrentUpload = s.disableTorrentUpload,
 
                 isDarkMode = s.isDarkMode,
+
+                themeMode = s.themeMode,
 
                 globalDownloadSpeedLimitBytes = s.globalDownloadSpeedLimitBytes,
 
@@ -607,7 +610,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
 

@@ -137,8 +137,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
     }
 
-    LaunchedEffect(state.isDarkMode) {
-        onDarkModeChanged?.invoke(state.isDarkMode)
+    // "system" follows the device's light / dark setting (and changes with it while open).
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val darkMode = when (state.themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> systemDark
+    }
+    LaunchedEffect(darkMode) {
+        onDarkModeChanged?.invoke(darkMode)
     }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
@@ -157,7 +164,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     if (com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
                     else androidx.compose.ui.unit.LayoutDirection.Ltr
         ) {
-    FetchJetTheme(isDarkMode = state.isDarkMode) {
+    FetchJetTheme(isDarkMode = darkMode) {
         Surface(
             modifier = Modifier.fillMaxSize().clearFocusOnTapOutside(),
             color = MaterialTheme.colorScheme.background
@@ -182,7 +189,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                             speedDisplayUnit = state.speedDisplayUnit,
                             sortOption = state.sortOption,
-                            isDarkMode = state.isDarkMode,
+                            isDarkMode = darkMode,
                             downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                             speedPresetLowBytes = state.speedPresetLowBytes,
                             speedPresetMediumBytes = state.speedPresetMediumBytes,
@@ -197,7 +204,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPauseAllClicked) },
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
-                            onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
+                            onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
                             title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
                         )
 
@@ -319,7 +326,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
                                     totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                                     speedDisplayUnit = state.speedDisplayUnit,
-                                    isDarkMode = state.isDarkMode,
+                                    isDarkMode = darkMode,
                                     downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                                     speedPresetLowBytes = state.speedPresetLowBytes,
                                     speedPresetMediumBytes = state.speedPresetMediumBytes,
@@ -331,7 +338,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                             )
                                         )
                                     },
-                                    onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
+                                    onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
                                     onAdd = {
                                         viewModel.onEvent(
                                             DashboardUiEvent.OnToggleAddDialog(

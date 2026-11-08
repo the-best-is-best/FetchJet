@@ -47,11 +47,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun GeneralPage(
-    isDarkMode: Boolean,
+    themeMode: String,
     unitKey: String,
     watchClipboard: Boolean,
     clipboardVideoPages: Boolean,
-    onThemeToggled: () -> Unit,
+    onThemeModeChanged: (String) -> Unit,
     onLanguageChanged: (String) -> Unit,
     onSpeedDisplayUnitChanged: (String) -> Unit,
     onWatchClipboardChanged: (Boolean) -> Unit,
@@ -112,10 +112,10 @@ internal fun GeneralPage(
                 LocalizationManager.Strings.themeHint
             ) {
                 SegmentedPicker(
-                    options = listOf(false, true),
-                    selected = isDarkMode,
-                    label = { if (it) LocalizationManager.Strings.settingsThemeDark else LocalizationManager.Strings.settingsThemeLight },
-                    onSelect = { if (it != isDarkMode) onThemeToggled() }
+                    options = listOf("system", "light", "dark"),
+                    selected = themeMode,
+                    label = { themeModeLabel(it) },
+                    onSelect = { if (it != themeMode) onThemeModeChanged(it) }
                 )
             }
             SettingDivider()
@@ -140,6 +140,12 @@ internal fun GeneralPage(
         if (StartupLauncher.isSupported) StartupSettingsCard()
         WhenDoneSettingsCard()
     }
+}
+
+internal fun themeModeLabel(mode: String): String = when (mode) {
+    "light" -> LocalizationManager.Strings.settingsThemeLight
+    "dark" -> LocalizationManager.Strings.settingsThemeDark
+    else -> LocalizationManager.Strings.settingsThemeSystem
 }
 
 /** Settings > Devices: whether others can find this device, and the devices paired with it. */

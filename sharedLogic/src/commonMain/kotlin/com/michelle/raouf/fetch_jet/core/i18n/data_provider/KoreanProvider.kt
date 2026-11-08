@@ -458,6 +458,7 @@ object KoreanProvider : AppLocalization {
     override val themeTitle = "테마"
     override val themeHint = "모든 화면을 밝게 또는 어둡게"
     override val settingsThemeDark = "다크"
+    override val settingsThemeSystem = "시스템"
     override val settingsThemeLight = "라이트"
     override val speedShownIn = "속도 표시 단위"
     override val speedShownInHint = "파일 크기처럼 바이트(MB/s), 또는 인터넷 요금제처럼 비트(Mbps)"

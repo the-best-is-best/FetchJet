@@ -128,6 +128,8 @@ fun FdmSettingsPanel(
     onDefaultConnectionsChanged: (Int) -> Unit = {},
     pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
     onUnpairDevice: (String) -> Unit = {},
+    themeMode: String = "system",
+    onThemeModeChanged: (String) -> Unit = {},
     blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
     onUnblockDevice: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
@@ -165,7 +167,7 @@ fun FdmSettingsPanel(
 
     // The live one-line summary under each page name.
     fun summary(s: SettingsSection): Pair<String, Color?> = when (s) {
-        SettingsSection.GENERAL -> (if (isDarkMode) LocalizationManager.Strings.settingsThemeDark else LocalizationManager.Strings.settingsThemeLight) + " · " + unitKey to null
+        SettingsSection.GENERAL -> themeModeLabel(themeMode) + " · " + unitKey to null
         SettingsSection.DOWNLOADS -> folderName(destinationPath) + " · " +
                 (if (maxAtOnce <= 0) LocalizationManager.Strings.summaryNoQueueLimit else LocalizationManager.Strings.summaryAtATime(
                     maxAtOnce
@@ -195,11 +197,11 @@ fun FdmSettingsPanel(
     fun page(s: SettingsSection) {
         when (s) {
             SettingsSection.GENERAL -> GeneralPage(
-                isDarkMode,
+                themeMode,
                 unitKey,
                 monitorClipboard,
                 clipboardVideoPages,
-                onThemeToggled,
+                onThemeModeChanged,
                 onLanguageChanged,
                 onSpeedDisplayUnitChanged,
                 onMonitorClipboardChanged,

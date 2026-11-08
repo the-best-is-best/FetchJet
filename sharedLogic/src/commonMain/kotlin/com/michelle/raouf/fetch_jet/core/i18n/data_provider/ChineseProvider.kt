@@ -467,6 +467,7 @@ object ChineseProvider : AppLocalization {
     override val themeTitle = "主题"
     override val themeHint = "所有界面使用浅色或深色外观"
     override val settingsThemeDark = "深色"
+    override val settingsThemeSystem = "跟随系统"
     override val settingsThemeLight = "浅色"
     override val speedShownIn = "速度单位"
     override val speedShownInHint = "字节（MB/s），与文件大小一致；或比特（Mbps），与宽带套餐一致"

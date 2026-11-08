@@ -503,6 +503,7 @@ object GermanProvider : AppLocalization {
     override val themeTitle = "Design"
     override val themeHint = "Helles oder dunkles Aussehen für alle Bildschirme"
     override val settingsThemeDark = "Dunkel"
+    override val settingsThemeSystem = "System"
     override val settingsThemeLight = "Hell"
     override val speedShownIn = "Tempo anzeigen in"
     override val speedShownInHint =

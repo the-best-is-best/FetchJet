@@ -88,6 +88,8 @@ data class DashboardUiState(
     val disableTorrentUpload: Boolean = false,
 
     val isDarkMode: Boolean = true,
+    /** "system", "light" or "dark"; the UI resolves "system" from the device. */
+    val themeMode: String = "system",
 
     val isAddDialogVisible: Boolean = false,
 
@@ -296,6 +298,9 @@ sealed interface DashboardUiEvent {
     data object OnResumeAllClicked : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
+
+    /** "system", "light" or "dark". */
+    data class OnThemeModeChanged(val mode: String) : DashboardUiEvent
     data class OnLanguageChanged(val choice: String) : DashboardUiEvent
 
     data object OnAddDownloadClicked : DashboardUiEvent

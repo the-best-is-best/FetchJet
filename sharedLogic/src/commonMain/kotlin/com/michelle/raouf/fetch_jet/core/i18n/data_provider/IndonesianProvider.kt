@@ -488,6 +488,7 @@ object IndonesianProvider : AppLocalization {
     override val themeTitle = "Tema"
     override val themeHint = "Tampilan terang atau gelap untuk semua layar"
     override val settingsThemeDark = "Gelap"
+    override val settingsThemeSystem = "Sistem"
     override val settingsThemeLight = "Terang"
     override val speedShownIn = "Satuan kecepatan"
     override val speedShownInHint =
