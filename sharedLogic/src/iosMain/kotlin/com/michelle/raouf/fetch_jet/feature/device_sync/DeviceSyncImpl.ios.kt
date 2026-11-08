@@ -263,8 +263,14 @@ internal class IosDeviceSync(
             json.encodeToString(Hello.serializer(), ack).encodeToByteArray()
         )
         val code = pairingCode(pubA, pubB)
-        pending = Pending(PairedDevice(hello.id, hello.name, hello.plat, nowMs()), key, -1)
+        val p = Pending(PairedDevice(hello.id, hello.name, hello.plat, nowMs()), key, -1)
+        pending = p
         _pairing.value = PairingState.Confirm(hello.name, hello.id, code)
+        // The sender stops waiting after ACCEPT_WAIT_MS: close the code then too (as declined).
+        scope.launch {
+            delay(ACCEPT_WAIT_MS)
+            if (pending === p) cancelPairing()
+        }
     }
 
     private fun handleSend(body: ByteArray, connId: Long) {
@@ -511,6 +517,7 @@ internal class IosDeviceSync(
 
                     SendOutcome.WaitAccept -> {
                         if (nowMs() >= deadline) {
+                            forgetPairing(request.deviceId)
                             _sending.value =
                                 SendState.Failed(name, "the other device didn't accept")
                             onResult(false); return@launch

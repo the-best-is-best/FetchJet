@@ -352,9 +352,15 @@ internal class DeviceSyncImpl(
         )
         output.flush()
         val code = pairingCode(pubA, pubB)
-        pending =
-            Pending(PairedDevice(hello.id, hello.name, hello.plat, System.currentTimeMillis()), key)
+        val p = Pending(PairedDevice(hello.id, hello.name, hello.plat, System.currentTimeMillis()), key)
+        pending = p
         _pairing.value = PairingState.Confirm(hello.name, hello.id, code)
+        // The sender stops waiting after ACCEPT_WAIT_MS: close the code then too (as declined),
+        // instead of leaving it on screen for a pairing nobody is waiting for any more.
+        scope.launch {
+            kotlinx.coroutines.delay(ACCEPT_WAIT_MS)
+            if (pending === p) cancelPairing()
+        }
     }
 
     /**
@@ -613,6 +619,8 @@ internal class DeviceSyncImpl(
 
                     SendOutcome.WaitAccept -> {
                         if (System.currentTimeMillis() >= deadline) {
+                            // Never confirmed there: do not keep a one-sided pairing here.
+                            forgetPairing(request.deviceId)
                             _sending.value =
                                 SendState.Failed(name, "the other device didn't accept")
                             onResult(false); return@launch
