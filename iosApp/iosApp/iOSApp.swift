@@ -1,5 +1,6 @@
 import SwiftUI
 import SharedUI
+import UserNotifications
 
 final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {
     /// Each `Task` below may run out of order: the number taken here, in call order, lets
@@ -54,7 +55,29 @@ final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {
 
 /// Receives the wake-up from iOS when background downloads finish while the app is
 /// suspended or terminated, and hands the completion handler to the Kotlin engine.
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    /// Device sync "sent / received" notices (ids start with "device-") also show while the app is
+    /// open, so a missed toast is still in Notification Center. Other notifications keep iOS's default.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        if notification.request.identifier.hasPrefix("device-") {
+            completionHandler([.banner, .list, .sound])
+        } else {
+            completionHandler([])
+        }
+    }
+
     func application(
         _ application: UIApplication,
         handleEventsForBackgroundURLSession identifier: String,

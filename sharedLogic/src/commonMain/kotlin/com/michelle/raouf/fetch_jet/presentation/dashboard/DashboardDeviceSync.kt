@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.notification.SystemNotice
+import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -27,6 +29,7 @@ import okio.SYSTEM
  */
 
 internal fun DashboardViewModel.initDeviceSync() {
+    removeEmptyReceiveFolders()
     deviceSync.start()
     scope.launch {
         deviceSync.discovered.collect { list ->
@@ -92,11 +95,19 @@ internal fun DashboardViewModel.onDeviceReceive(
             placeReceivedParts(task.id, localPartialFiles)
         }
         val fromName = payload.fromDeviceName.ifBlank { payload.fromDeviceId }
-        _uiEffect.tryEmit(
-            DashboardUiEffect.ShowToast(
-                LocalizationManager.Strings.sysDeviceReceived.replace("{name}", fromName)
-            )
-        )
+        val message = LocalizationManager.Strings.sysDeviceReceived.replace("{name}", fromName)
+        _uiEffect.tryEmit(DashboardUiEffect.ShowToast(message))
+        SystemNotice.show("device-recv-${task?.id ?: nowEpochMs()}", message, payload.fileName)
+    }
+}
+
+/** Empty `recv-<ts>` folders that older versions left after a link-only receive. */
+private fun DashboardViewModel.removeEmptyReceiveFolders() {
+    val root = "${queueRepository.pathResolver.getSettingsDirectory()}/device-sync-tmp".toPath()
+    runCatching {
+        FileSystem.SYSTEM.listOrNull(root)
+            ?.filter { it.name.startsWith("recv-") && FileSystem.SYSTEM.listOrNull(it)?.isEmpty() == true }
+            ?.forEach { FileSystem.SYSTEM.delete(it) }
     }
 }
 
@@ -254,6 +265,12 @@ private suspend fun DashboardViewModel.sendWithRetry(request: SendRequest, tries
                     }
                 }
                 _uiState.update { it.copy(deviceShareTaskId = null) }
+                val toName = (deviceSync.sending.value as? SendState.Done)?.deviceName
+                    ?: deviceSync.paired.value.firstOrNull { it.id == request.deviceId }?.name
+                    ?: request.deviceId
+                val message = LocalizationManager.Strings.sysDeviceSent.replace("{name}", toName)
+                _uiEffect.tryEmit(DashboardUiEffect.ShowToast(message))
+                SystemNotice.show("device-sent-${nowEpochMs()}", message, request.payload.fileName)
             } else if (attempt < tries - 1) {
                 attempt++
                 scope.launch { delay(1500); attemptOnce() }

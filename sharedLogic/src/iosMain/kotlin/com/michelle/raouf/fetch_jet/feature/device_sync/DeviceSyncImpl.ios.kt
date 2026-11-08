@@ -240,7 +240,9 @@ internal class IosDeviceSync(
         writeFrame(connId, T_READY, ByteArray(0))
         val written = ArrayList<String>()
         val dir = "$tempDir/recv-${nowMs()}"
-        NSFileManager.defaultManager.createDirectoryAtPath(dir, true, null, null)
+        if (meta.files.isNotEmpty()) {
+            NSFileManager.defaultManager.createDirectoryAtPath(dir, true, null, null)
+        }
         try {
             for (fm in meta.files) {
                 val outPath = "$dir/${safeWireName(fm.name) ?: throw IllegalStateException("bad file name")}"

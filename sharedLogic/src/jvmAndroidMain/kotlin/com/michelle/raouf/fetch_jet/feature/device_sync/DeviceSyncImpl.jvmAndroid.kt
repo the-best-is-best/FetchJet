@@ -338,7 +338,8 @@ internal class DeviceSyncImpl(
         writeFrame(output, T_READY, ByteArray(0))
         output.flush()
         val written = ArrayList<String>()
-        val dir = File(tempDir, "recv-${System.currentTimeMillis()}").apply { mkdirs() }
+        val dir = File(tempDir, "recv-${System.currentTimeMillis()}")
+        if (meta.files.isNotEmpty()) dir.mkdirs()
         try {
             for (fm in meta.files) {
                 val outFile = File(dir, safeWireName(fm.name) ?: throw IllegalStateException("bad file name"))

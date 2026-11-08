@@ -736,6 +736,13 @@ fun main(rawArgs: Array<String>) {
         var isWindowVisible by remember { mutableStateOf(!startInTray) }
         var bringToFrontTrigger by remember { mutableStateOf(0) }
         val trayState = rememberTrayState()
+        LaunchedEffect(trayState) {
+            com.michelle.raouf.fetch_jet.core.notification.SystemNotice.notices.collect { (title, text) ->
+                trayState.sendNotification(
+                    androidx.compose.ui.window.Notification(title, text, androidx.compose.ui.window.Notification.Type.Info)
+                )
+            }
+        }
         val windowState = rememberWindowState(width = 1100.dp, height = 750.dp)
         val appIcon = painterResource(Res.drawable.ic_fetchjet_logo)
 
