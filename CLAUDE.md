@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-03. Read this first, then `README.md`, `TESTING.md` (how to re-run the
+Last updated: 2026-11-08. Read this first, then `README.md`, `TESTING.md` (how to re-run the
 manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
@@ -605,6 +605,33 @@ Bridges:
   qualities, so the inspection retries without cookies.
 - Duplicate protection: extension 8 s, app `/add` 5 s. A duplicate add resumes a paused task or
   scrolls to the existing item and brings the app forward.
+- 1.3.0 "Send to device" (LAN device sync, ROADMAP-1.3.0 item 4, owner-tested 2026-11-08): all
+  details, rules and commits are in that item. Things to know before touching it:
+    - One wire protocol on every platform (UDP 28461 announce, TCP 28462, frame types `T_*` incl.
+      `T_READY` 8 and `T_UNPAIR` 9). JVM + Android share `DeviceSyncImpl.jvmAndroid.kt`; iOS has
+      `DeviceSyncImpl.ios.kt` with the same logic over the Swift bridge
+      `NativeDeviceSyncBridge.swift` (CryptoKit + POSIX). **A change to the protocol or the
+      refusal codes must be made in both files.**
+    - Refusal codes travel as English words and are translated only in the UI
+      (`deviceSyncReason` in `DeviceSendDialog.kt`): `pending` (other user still reading the code:
+      the sender waits), `not paired` (forgot this device: sender drops its pairing), `declined`,
+      `blocked`, `busy`, `wait:<seconds>`.
+    - Owner's send rules (`DownloadTask.canSendToDevice` / `canTransferToDevice`): torrent never;
+      resumable → send the scratch folder and continue; finished → send the file; non-resumable
+      unfinished → not sendable. The owner argued hard for "parts are just files, same as resuming
+      after a pause": do not reintroduce the old "media can't transfer because the link expires".
+    - "Visible to other devices" is **off by default** (no open port); Settings > Devices holds it
+      plus Paired / Blocked lists. A hidden device can still start a pairing and send.
+    - Testing: the app must be open and visible on the receiving device; installing an APK closes
+      the app (port 28462 then refuses). `adb logcat | grep FJSYNC` and `~/.fetch_jet/logs/app.log`
+      show `FJSYNC start/visible/hidden/heard/unpaired by/pairing ... refused`.
+- 1.3.0 Theme: Settings > General > Appearance = System / Light / Dark, default System
+  (`themeMode` in settings.properties; `isDarkMode` still written for older versions). The UI
+  resolves System with `isSystemInDarkTheme()` in `App.kt` (`darkMode`); use that, not
+  `state.isDarkMode`, for anything theme-dependent.
+- 1.3.0 snackbar: on phones / tablets the task details are a separate `Dialog` window, so
+  `App.kt` has a second `SnackbarHost` inside it; a message shown while details are open would
+  otherwise be hidden behind them.
 
 ## Open issues
 
@@ -644,8 +671,10 @@ Bridges:
 
 ## Release plan
 
+- **1.3.0:** branch `release-v1.3.0`, work list `ROADMAP-1.3.0.md` (1.2.0 was released
+  2026-11-05). When the owner asks what is next, take the first unchecked item there.
 - **1.2.0:** branch `release-v1.2.0` (from `master`, 2026-11-02). Ordered work list:
-  `ROADMAP-1.2.0.md`. When the owner asks what is next, take the first unchecked item there.
+  `ROADMAP-1.2.0.md`.
 
 - 1.1.0 history: a
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of

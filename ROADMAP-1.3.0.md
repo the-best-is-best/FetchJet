@@ -53,46 +53,56 @@ not worth it". Do not bring it back unless the owner asks.)
   dialog's duplicate check now compares the full file name incl. extension, so the same link with a
   different name is a separate download. Needs the owner's test.
 
-## 4. Send a download to another device (large) — BUILT, waiting for the LAN test
+## 4. Send a download to another device (large) — DONE (owner-tested 2026-11-08)
 
 Why: FetchJet is the only cross-platform one here (Windows, macOS, Linux, Android, iOS) — "start on
-the phone, continue / watch on the desktop" is a feature no competitor can match. Large because the
-bridge is loopback-only today, so it needs a real transport and its own security design.
+the phone, continue / watch on the desktop" is a feature no competitor can match.
+
+Commits on `release-v1.3.0`: `2b3c84b` … `de162f6`, `f5ba90c` (iOS), `573d276`, `3c210f4`,
+`a4b7b3e`, `db58363`, `721656d`, `21cf243`, `3ebbaa3`.
 
 - [x] Transport: **LAN-only, direct device-to-device, no server, no cloud.** UDP broadcast
-  discovery on port 28461 (a device announces id/name/platform/tcp-port every 2 s; peers expire
-  after 8 s). The actual send is a direct TCP connection to the chosen device.
-  `feature/device_sync/DeviceSyncImpl.jvmAndroid.kt` (JVM + Android share one engine).
-- [x] Secure pairing, **not** trust-on-first-use: first contact runs ECDH (secp256r1); both
-  devices derive the same key and show the **same 6-digit code** (SHA-256 of the two public keys);
-  each user confirms the code matches, then the pairing is stored. The key is kept encrypted via
-  `core/security/Secrets`. Everything in transit (the link, cookies, file bytes) is AES-256-GCM
-  sealed with that key (`core/security/CryptoBox`). An unpaired device is refused.
-- [x] "Send to device" on a task (details pane → "Send to device"): device picker + mode +
-  "delete from this device after it's sent". **Two modes:**
-    - **Link only** — the other device downloads it from the start (the link, headers, cookies,
-      file name, engine, chosen quality).
-    - **Transfer what's downloaded** (HTTP direct only) — streams this task's `.partN` + `.chunks`
-      to the other device, which drops them into its own scratch folder and **continues from the
-      same %**. The receiver holds the task ~4 s so the parts land before the engine starts, then it
-      resumes from the manifest.
-      Delete-after-success removes the local task **only** once the receiver confirmed full receipt.
-      Code: `presentation/dashboard/DashboardDeviceSync.kt` (ViewModel glue, receiver → queue),
-      `ui/DeviceSendDialog.kt` (sheet + pairing dialog), events in `DashboardContract.kt`.
-- Offline device: the send fails fast ("device offline or not paired"); the user re-sends when it
-  is back. (No persistent outbound queue yet — add if the test shows it's needed.)
-- i18n: 20 `sysDevice*` strings in all 15 providers (Arabic done; the other 13 fall back to
-  English until translated).
-- Android: `ACCESS_WIFI_STATE` + `CHANGE_WIFI_MULTICAST_STATE` added; a Wi-Fi multicast lock is
-  held while discovering (`feature/device_sync/MulticastLock.android.kt`).
-- Compiles on **desktop (JVM), Android (assembleDebug), and iOS simulator**. **Not yet tested.**
-- [ ] **NEXT: LAN test, Mac desktop ↔ Android (A56) on the same Wi-Fi.** Share a download on one,
-  it should appear on the other; pair with the 6-digit code; try both modes and delete-after.
-- [ ] iOS phase (separate): real `CryptoBox` (CryptoKit) + LAN discovery (Bonjour/NWBrowser).
-  Today iOS has a `NoopDeviceSync` + a `CryptoBox` stub, so it builds but does not discover/send.
-- [ ] Security review before it ships (same bar as the bridge pairing review): no un-consented
-  sends, no way for a device on the LAN to push downloads without pairing. (Design already uses
-  mutual-code pairing + per-pair encryption; review the engine once the test passes.)
+  discovery on port 28461 (announce every 2 s, peers expire after 8 s); the send is a direct TCP
+  connection on 28462. JVM + Android: `feature/device_sync/DeviceSyncImpl.jvmAndroid.kt`.
+  iOS: `DeviceSyncImpl.ios.kt` (same protocol, same frames) on a Swift bridge
+  (`iosApp/iosApp/NativeDeviceSyncBridge.swift`: CryptoKit + POSIX sockets, no Bonjour so it
+  meets the other platforms on the same wire), `IosDeviceSyncNative` / registry in iosMain,
+  `NSLocalNetworkUsageDescription` + `NSBonjourServices` in Info.plist.
+- [x] Secure pairing, **not** trust-on-first-use: ECDH P-256, both sides show the same 6-digit
+  code (SHA-256 of the two public keys) and confirm it; the key is stored encrypted (`Secrets`);
+  everything in transit is AES-256-GCM (`CryptoBox`; on iOS CryptoKit `SealedBox.combined`, same
+  `nonce(12) ++ ct ++ tag(16)` layout, byte-checked against Android).
+- [x] Pairing hardening (owner's rules): one request per device every 30 s (the other side gets
+  "Wait N s"); "busy" while another device's code is on screen (a second request must not replace
+  the code being read); **Block** in the pairing dialog (the blocked device gets "The other device
+  blocked this one", its sends are refused, it is hidden from the send list); cancelling the code
+  answers "declined" to the other side ("The other device declined the pairing"). Unpair tells the
+  other device (frame `T_UNPAIR`, sealed with the shared key); a send to a device that forgot this
+  one fails at once and drops the stale pairing (it used to wait 90 s with Cancel disabled).
+  Incoming file names are reduced to a bare name (no `../`).
+- [x] **Visible to other devices** (Settings > Devices, **off by default**): off = no announce and
+  no open port, so nobody can find, pair with or send to this device; it can still see others and
+  send to them. `BehaviorSettings.visibleToDevices`, `DeviceSync.setVisible`, applies live.
+- [x] **Settings > Devices** section: the visibility switch, Paired devices (Unpair), Blocked
+  devices (Unblock). The list summary reads Visible / Hidden + the paired count.
+- [x] What can be sent (owner's rules, `DownloadTask.canSendToDevice` / `canTransferToDevice`):
+  **torrent never** (no button); **resumable** (direct or media) → "Transfer what's downloaded"
+  sends the scratch folder (direct `.partN` + `.chunks`; media own-engine `stream$i.part*`, HLS
+  segments, yt-dlp `.part`) and the other device continues from it with the same `formatId` and
+  clip settings; **finished** (any engine) → the file itself (part0 + one-piece manifest, finished
+  there with no network); **non-resumable and not finished** → not sendable at all.
+- [x] "Sent to <device>" / "Download received from <device>": a toast **and** a system notification
+  on both devices (Android channel "Send to device", iOS local notification shown even with the app
+  open via `UNUserNotificationCenterDelegate`, desktop tray). `core/notification/SystemNotice`.
+- [x] Send sheet for many devices: capped scrolling list grouped Paired / Other devices, compact
+  rows, search when more than 5, first device and Transfer preselected, readable in light and dark.
+- [x] Owner-tested: Android ↔ iOS simulator both ways, a 29% Facebook video continued at ~29% on
+  the other device, completed files land at 100%, Block / wait / declined messages, torrent button
+  hidden, Visible on/off on Windows, macOS, iOS.
+- [x] The local-network permission prompt shows on a real iPhone (owner's screenshot, before the
+  iOS sync code; the Info.plist description was added after it).
+- [ ] Not tested: an actual send / receive on a **real iPhone** after "Allow" (all iOS sync tests
+  so far were on the simulator); `3ebbaa3` in an iOS build.
 
 ## 5. Audio format conversion (medium)
 
