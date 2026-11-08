@@ -410,7 +410,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n# Same JavaScript as the Chrome / Edge / Firefox extension: copied from extension/ so there is\n# one source. manifest.safari.json becomes manifest.json with the version of manifest.json.\nSRC=\"$SRCROOT/../extension\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$DST\"\nfor f in background.js i18n yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png; do\n  cp -R \"$SRC/$f\" \"$DST/\"\ndone\ncp \"$SRC/platform.safari.js\" \"$DST/platform.js\"\nVERSION=$(sed -n 's/.*\"version\": *\"\\([^\"]*\\)\".*/\\1/p' \"$SRC/manifest.json\" | head -1)\nsed \"s/\\\"version\\\": *\\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$VERSION\\\"/\" \"$SRC/manifest.safari.json\" > \"$DST/manifest.json\"\n";
+			shellScript = "set -e\n# Same JavaScript as the Chrome / Edge / Firefox extension: copied from extension/ so there is\n# one source. manifest.safari.json becomes manifest.json with the version of manifest.json.\nSRC=\"$SRCROOT/../extension\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$DST\"\nfor f in background.js i18n _locales yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png; do\n  cp -R \"$SRC/$f\" \"$DST/\"\ndone\ncp \"$SRC/platform.safari.js\" \"$DST/platform.js\"\nVERSION=$(sed -n 's/.*\"version\": *\"\\([^\"]*\\)\".*/\\1/p' \"$SRC/manifest.json\" | head -1)\nsed \"s/\\\"version\\\": *\\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$VERSION\\\"/\" \"$SRC/manifest.safari.json\" > \"$DST/manifest.json\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet 下载管理器"
+  },
+  "extDescription": {
+    "message": "将浏览器中的下载、视频和链接列表连同 Cookie 一起发送到 FetchJet，需要登录的下载也能正常进行。"
+  },
+  "extDescriptionSafari": {
+    "message": "将 Safari 中的下载、视频和链接列表连同 Cookie 一起发送到 FetchJet，需要登录的下载也能正常进行。"
+  }
+}

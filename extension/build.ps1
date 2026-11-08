@@ -5,7 +5,7 @@ $version = (Get-Content manifest.json -Raw | ConvertFrom-Json).version
 $out = Join-Path $PSScriptRoot "..\build\extension"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Path "$out\chrome", "$out\firefox" | Out-Null
-$files = "background.js","i18n","yt-core.js","content.js","popup.html","popup.js","options.html","options.js","icon16.png","icon48.png","icon128.png"
+$files = "background.js","i18n","_locales","yt-core.js","content.js","popup.html","popup.js","options.html","options.js","icon16.png","icon48.png","icon128.png"
 Copy-Item ($files + "manifest.json" + "platform.js") "$out\chrome\" -Recurse
 Copy-Item $files "$out\firefox\" -Recurse
 Copy-Item "manifest.firefox.json" "$out\firefox\manifest.json"

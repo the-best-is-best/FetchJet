@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet – Gestionnaire de téléchargements"
+  },
+  "extDescription": {
+    "message": "Envoyez téléchargements, vidéos et listes de liens vers FetchJet, avec les cookies pour les sites connectés."
+  },
+  "extDescriptionSafari": {
+    "message": "Envoyez téléchargements, vidéos et listes de liens de Safari vers FetchJet, avec les cookies pour les sites connectés."
+  }
+}

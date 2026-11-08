@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet – Download-Manager"
+  },
+  "extDescription": {
+    "message": "Sende Downloads, Videos und Linklisten aus dem Browser an FetchJet, mit Cookies für Downloads mit Anmeldung."
+  },
+  "extDescriptionSafari": {
+    "message": "Sende Downloads, Videos und Linklisten aus Safari an FetchJet, mit Cookies für Downloads mit Anmeldung."
+  }
+}

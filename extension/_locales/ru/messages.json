@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet — менеджер загрузок"
+  },
+  "extDescription": {
+    "message": "Отправляйте загрузки, видео и списки ссылок из браузера в FetchJet вместе с cookie для загрузок со входом."
+  },
+  "extDescriptionSafari": {
+    "message": "Отправляйте загрузки, видео и списки ссылок из Safari в FetchJet вместе с cookie для загрузок со входом."
+  }
+}

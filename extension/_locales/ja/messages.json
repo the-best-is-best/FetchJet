@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet ダウンロードマネージャー"
+  },
+  "extDescription": {
+    "message": "ブラウザーのダウンロード、動画、リンク一覧を Cookie ごと FetchJet に送信。ログインが必要なダウンロードもそのまま動きます。"
+  },
+  "extDescriptionSafari": {
+    "message": "Safari のダウンロード、動画、リンク一覧を Cookie ごと FetchJet に送信。ログインが必要なダウンロードもそのまま動きます。"
+  }
+}

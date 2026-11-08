@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' manifest.json | head -1)
 OUT=../build/extension
 rm -rf "$OUT"; mkdir -p "$OUT/chrome" "$OUT/firefox"
-FILES="background.js i18n yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png"
+FILES="background.js i18n _locales yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png"
 cp -R $FILES manifest.json platform.js "$OUT/chrome/"
 cp -R $FILES "$OUT/firefox/"; cp manifest.firefox.json "$OUT/firefox/manifest.json"; cp platform.firefox.js "$OUT/firefox/platform.js"
 ( cd "$OUT/chrome"  && zip -q -r "../fetchjet-chrome-$VERSION.zip" . )

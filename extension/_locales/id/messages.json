@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet – Pengelola Unduhan"
+  },
+  "extDescription": {
+    "message": "Kirim unduhan, video, dan daftar tautan dari browser ke FetchJet, dengan cookie untuk unduhan yang perlu login."
+  },
+  "extDescriptionSafari": {
+    "message": "Kirim unduhan, video, dan daftar tautan dari Safari ke FetchJet, dengan cookie untuk unduhan yang perlu login."
+  }
+}

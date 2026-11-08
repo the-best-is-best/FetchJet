@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet 다운로드 관리자"
+  },
+  "extDescription": {
+    "message": "브라우저의 다운로드, 동영상, 링크 목록을 쿠키와 함께 FetchJet으로 보내 로그인이 필요한 다운로드도 그대로 됩니다."
+  },
+  "extDescriptionSafari": {
+    "message": "Safari의 다운로드, 동영상, 링크 목록을 쿠키와 함께 FetchJet으로 보내 로그인이 필요한 다운로드도 그대로 됩니다."
+  }
+}

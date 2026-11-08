@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "FetchJet – İndirme Yöneticisi"
+  },
+  "extDescription": {
+    "message": "İndirmeleri, videoları ve bağlantı listelerini çerezlerle birlikte tarayıcıdan FetchJet'e gönderin."
+  },
+  "extDescriptionSafari": {
+    "message": "İndirmeleri, videoları ve bağlantı listelerini çerezlerle birlikte Safari'den FetchJet'e gönderin."
+  }
+}

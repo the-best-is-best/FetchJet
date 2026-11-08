@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "FetchJet Download Manager",
+  "name": "__MSG_extName__",
+  "default_locale": "en",
   "version": "3.3.0",
-  "description": "Send downloads, videos and link lists from your browser to FetchJet, with cookies so logged-in downloads just work.",
+  "description": "__MSG_extDescription__",
   "browser_specific_settings": {
     "gecko": {
       "id": "fetchjet@michelle.raouf",

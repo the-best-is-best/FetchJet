@@ -54,7 +54,7 @@ val bundleExtension by tasks.registering(Sync::class) {
         include(
             "background.js", "yt-core.js", "content.js", "popup.html", "popup.js",
             "options.html", "options.js", "icon16.png", "icon48.png", "icon128.png",
-            "manifest.json", "platform.js", "i18n/**"
+            "manifest.json", "platform.js", "i18n/**", "_locales/**"
         )
     }
     into(bundledExtensionDir.map { it.dir("fetchjet-extension/chromium") })
