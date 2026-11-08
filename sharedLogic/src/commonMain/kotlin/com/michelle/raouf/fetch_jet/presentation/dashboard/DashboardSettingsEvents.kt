@@ -67,6 +67,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
             val oldBytes = when (event.preset) {
                 SpeedPreset.LOW -> current.speedPresetLowBytes
                 SpeedPreset.MEDIUM -> current.speedPresetMediumBytes
+                SpeedPreset.FAST -> current.speedPresetFastBytes
                 SpeedPreset.HIGH -> current.speedPresetHighBytes
             }
             _uiState.update {
@@ -81,10 +82,13 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
                         speedPresetMediumUnit = event.unit
                     )
 
-                    SpeedPreset.HIGH -> it.copy(
-                        speedPresetHighBytes = event.bytes,
-                        speedPresetHighUnit = event.unit
+                    SpeedPreset.FAST -> it.copy(
+                        speedPresetFastBytes = event.bytes,
+                        speedPresetFastUnit = event.unit
                     )
+
+                    // HIGH is always Unlimited; it is not edited through this event.
+                    SpeedPreset.HIGH -> it
                 }
             }
             // If this preset is the one currently capping downloads, apply the new value live.
@@ -113,11 +117,21 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
         }
 
         DashboardUiEvent.OnThemeToggled -> {
-
-            _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
-
+            _uiState.update {
+                val dark = it.themeMode != "dark"
+                it.copy(themeMode = if (dark) "dark" else "light", isDarkMode = dark)
+            }
             persistCurrentSettings()
+        }
 
+        is DashboardUiEvent.OnThemeModeChanged -> {
+            _uiState.update {
+                it.copy(
+                    themeMode = event.mode,
+                    isDarkMode = when (event.mode) { "light" -> false; "dark" -> true; else -> it.isDarkMode }
+                )
+            }
+            persistCurrentSettings()
         }
 
         is DashboardUiEvent.OnTabSelected -> {

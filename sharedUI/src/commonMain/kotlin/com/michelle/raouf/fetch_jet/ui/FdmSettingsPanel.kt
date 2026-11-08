@@ -52,6 +52,7 @@ internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
     BROWSER("⧉"),
+    DEVICES("⇄"),
     NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
@@ -62,6 +63,7 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneral
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
             BROWSER -> LocalizationManager.Strings.sectionBrowser
+            DEVICES -> LocalizationManager.Strings.sectionDevices
             NETWORK -> LocalizationManager.Strings.sectionNetwork
             MEDIA -> LocalizationManager.Strings.sectionMedia
             TORRENT -> LocalizationManager.Strings.sectionTorrent
@@ -73,6 +75,7 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneralBlurb
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
             BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
+            DEVICES -> LocalizationManager.Strings.sectionDevicesBlurb
             NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
             MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
             TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
@@ -96,8 +99,10 @@ fun FdmSettingsPanel(
     speedDisplayUnit: String = "MB/s",
     speedPresetLowBytes: Long = 256L * 1024,
     speedPresetLowUnit: String = "KB/s",
-    speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     speedPresetMediumUnit: String = "MB/s",
+    speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    speedPresetFastUnit: String = "MB/s",
     speedPresetHighBytes: Long = 20L * 1024 * 1024,
     speedPresetHighUnit: String = "MB/s",
     ytDlpStatus: String,
@@ -121,6 +126,12 @@ fun FdmSettingsPanel(
     onClipboardVideoPagesChanged: (Boolean) -> Unit = {},
     onSortIntoFoldersChanged: (Boolean) -> Unit = {},
     onDefaultConnectionsChanged: (Int) -> Unit = {},
+    pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    onUnpairDevice: (String) -> Unit = {},
+    themeMode: String = "system",
+    onThemeModeChanged: (String) -> Unit = {},
+    blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    onUnblockDevice: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
     onLanguageChanged: (String) -> Unit = {},
@@ -135,6 +146,8 @@ fun FdmSettingsPanel(
     val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
+    val visibleToDevices by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+        .visibleToDevices.collectAsState()
     val netProxy by NetworkSettings.proxy.collectAsState()
     val netLogins by NetworkSettings.logins.collectAsState()
     val sections = SettingsSection.entries.filter {
@@ -154,7 +167,7 @@ fun FdmSettingsPanel(
 
     // The live one-line summary under each page name.
     fun summary(s: SettingsSection): Pair<String, Color?> = when (s) {
-        SettingsSection.GENERAL -> (if (isDarkMode) LocalizationManager.Strings.settingsThemeDark else LocalizationManager.Strings.settingsThemeLight) + " · " + unitKey to null
+        SettingsSection.GENERAL -> themeModeLabel(themeMode) + " · " + unitKey to null
         SettingsSection.DOWNLOADS -> folderName(destinationPath) + " · " +
                 (if (maxAtOnce <= 0) LocalizationManager.Strings.summaryNoQueueLimit else LocalizationManager.Strings.summaryAtATime(
                     maxAtOnce
@@ -166,6 +179,10 @@ fun FdmSettingsPanel(
         SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
         SettingsSection.BROWSER -> (if (isJvm) "Edge · Firefox · Chrome" else "Firefox for Android") to null
+        SettingsSection.DEVICES ->
+            (if (visibleToDevices) LocalizationManager.Strings.summaryVisible else LocalizationManager.Strings.summaryHidden) +
+                    (if (pairedDevices.isNotEmpty()) " · ${pairedDevices.size}" else "") to
+                    (if (visibleToDevices) StatusCompleted else null)
         SettingsSection.UPDATES -> updateState.available?.let {
             LocalizationManager.Strings.summaryVersionAvailable(
                 it.version
@@ -180,11 +197,11 @@ fun FdmSettingsPanel(
     fun page(s: SettingsSection) {
         when (s) {
             SettingsSection.GENERAL -> GeneralPage(
-                isDarkMode,
+                themeMode,
                 unitKey,
                 monitorClipboard,
                 clipboardVideoPages,
-                onThemeToggled,
+                onThemeModeChanged,
                 onLanguageChanged,
                 onSpeedDisplayUnitChanged,
                 onMonitorClipboardChanged,
@@ -201,6 +218,7 @@ fun FdmSettingsPanel(
                 onDefaultConnectionsChanged,
                 speedPresetLowBytes, speedPresetLowUnit,
                 speedPresetMediumBytes, speedPresetMediumUnit,
+                speedPresetFastBytes, speedPresetFastUnit,
                 speedPresetHighBytes, speedPresetHighUnit,
                 onSpeedPresetChanged
             )
@@ -221,6 +239,7 @@ fun FdmSettingsPanel(
 
             SettingsSection.UPDATES -> UpdatesSettingsCard()
             SettingsSection.BROWSER -> BrowserExtensionPage(isJvm)
+            SettingsSection.DEVICES -> DevicesPage(pairedDevices, onUnpairDevice, blockedDevices, onUnblockDevice)
         }
     }
 
@@ -257,17 +276,20 @@ fun FdmSettingsPanel(
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 28.dp, end = 12.dp, top = 4.dp, bottom = 28.dp)
-                ) {
-                    Column(modifier = Modifier.widthIn(max = 720.dp)) {
-                        PageHeader(current)
-                        page(current)
+                val contentScroll = rememberScrollState()
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(contentScroll)
+                            .padding(start = 28.dp, end = 14.dp, top = 4.dp, bottom = 28.dp)
+                    ) {
+                        Column(modifier = Modifier.widthIn(max = 720.dp)) {
+                            PageHeader(current)
+                            page(current)
+                        }
                     }
+                    AppScrollbar(contentScroll, Modifier.align(Alignment.CenterEnd))
                 }
             }
         } else {
@@ -298,30 +320,34 @@ fun FdmSettingsPanel(
                     )
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 4.dp)
-                        .padding(bottom = 24.dp)
-                ) {
-                    Row(
+                val sectionScroll = rememberScrollState()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { openSection = null }
-                            .padding(horizontal = 6.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxSize()
+                            .verticalScroll(sectionScroll)
+                            .padding(start = 4.dp, end = 14.dp)
+                            .padding(bottom = 24.dp)
                     ) {
-                        Text("←", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            LocalizationManager.Strings.settingsAllSettings,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { openSection = null }
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("←", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                LocalizationManager.Strings.settingsAllSettings,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        PageHeader(current)
+                        page(current)
                     }
-                    PageHeader(current)
-                    page(current)
+                    AppScrollbar(sectionScroll, Modifier.align(Alignment.CenterEnd))
                 }
             }
         }

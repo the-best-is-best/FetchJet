@@ -11,6 +11,7 @@ expect class PathResolver() {
     fun openDirectoryInExplorer(path: String): Boolean
     fun openFileLocation(filePath: String): Boolean
     fun openFile(filePath: String): Boolean
+    fun fileExists(filePath: String): Boolean
     fun chooseDirectory(initialPath: String? = null): String?
     fun getAvailableDirectories(): List<Pair<String, String>>
     fun listSubdirectories(path: String): List<String>

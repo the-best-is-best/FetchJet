@@ -55,6 +55,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
@@ -75,7 +76,8 @@ internal fun DownloadTaskItem(
     onResume: () -> Unit,
     onCancel: () -> Unit,
     onFileSelectionToggled: (Int, Boolean) -> Unit,
-    onFilePriorityChanged: (Int, Int) -> Unit
+    onFilePriorityChanged: (Int, Int) -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     val rawDisplayName =
         task.fileName.ifBlank { task.url.substringBefore('?').substringAfterLast('/') }
@@ -610,7 +612,7 @@ internal fun DownloadTaskItem(
                         DetailPrimaryButton(
                             LocalizationManager.Strings.detailsOpenFile,
                             m
-                        ) { openDownloadedFile(fullPath) }
+                        ) { openDownloadedFile(fullPath, task.id) }
                         if (canFolder) DetailSecondaryButton(
                             LocalizationManager.Strings.detailsOpenFolder,
                             m,
@@ -648,6 +650,20 @@ internal fun DownloadTaskItem(
                             openFolder
                         )
                     }
+                }
+            }
+            if (onShare != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onShare,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Text(
+                        LocalizationManager.Strings.sysDeviceSendTitle,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -861,7 +877,10 @@ internal fun TaskDetailsPane(
                             priority
                         )
                     )
-                }
+                },
+                onShare = if (task.canSendToDevice()) {
+                    { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
+                } else null
             )
         }
     }

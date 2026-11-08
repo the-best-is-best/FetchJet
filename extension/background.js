@@ -222,8 +222,11 @@ async function loadAppToken() {
   return appToken;
 }
 
+/** Sent with every request so the app knows this browser has the extension, and which version. */
+const EXT_VERSION = (() => { try { return api.runtime.getManifest().version || ""; } catch (_) { return ""; } })();
+
 async function appHeaders(extra = {}) {
-  const headers = { "X-FetchJet": "1", "X-FetchJet-Pairing": "1", ...extra };
+  const headers = { "X-FetchJet": "1", "X-FetchJet-Pairing": "1", "X-FetchJet-Ext": EXT_VERSION, ...extra };
   const token = await loadAppToken();
   if (token) headers["X-FetchJet-Token"] = token;
   return headers;
@@ -239,7 +242,7 @@ function pairWithApp() {
     try {
       const res = await fetch(`${FETCHJET_BASE}/pair`, {
         method: "POST",
-        headers: { "X-FetchJet": "1", "X-FetchJet-Pairing": "1" },
+        headers: { "X-FetchJet": "1", "X-FetchJet-Pairing": "1", "X-FetchJet-Ext": EXT_VERSION },
         signal: controller.signal
       });
       if (!res.ok) return false;
@@ -284,7 +287,12 @@ async function fetchAppConfig() {
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 1500);
-    const res = await fetch(`${FETCHJET_BASE}/config`, { method: "GET", signal: controller.signal });
+    const token = await loadAppToken();
+    const res = await fetch(`${FETCHJET_BASE}/config`, {
+      method: "GET",
+      headers: token ? { "X-FetchJet-Token": token, "X-FetchJet-Ext": EXT_VERSION } : { "X-FetchJet-Ext": EXT_VERSION },
+      signal: controller.signal
+    });
     clearTimeout(t);
     if (!res.ok) return null;
     const cfg = await res.json();

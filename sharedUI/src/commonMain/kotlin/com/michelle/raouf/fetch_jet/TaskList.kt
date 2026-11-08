@@ -145,7 +145,7 @@ internal fun TaskListArea(
     val selectionMode = checkedIds.isNotEmpty()
     var anchorId by remember { mutableStateOf<String?>(null) }
     val listFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val desktop = remember { com.michelle.raouf.fetch_jet.getPlatform().isJvm }
+    val desktop = remember { getPlatform().isJvm }
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = selectionMode,
@@ -269,6 +269,7 @@ internal fun TaskListArea(
         LaunchedEffect(uiState.scrollToTopSignal) {
             if (uiState.scrollToTopSignal > 0) listState.animateScrollToItem(0)
         }
+        Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -322,11 +323,14 @@ internal fun TaskListArea(
                             RowAction.OPEN -> {
                                 val dest = task.destinationPath.trimEnd('/', '\\')
                                 val sep = if (dest.contains('\\')) "\\" else "/"
-                                openDownloadedFile(decodeUnicodeText("$dest$sep${task.fileName}").trim())
+                                openDownloadedFile(decodeUnicodeText("$dest$sep${task.fileName}").trim(), task.id)
                             }
 
                             RowAction.NONE -> {}
                         }
+                    },
+                    onPriorityChanged = { priority ->
+                        viewModel.onEvent(DashboardUiEvent.OnTaskPriorityChanged(task.id, priority))
                     }
                 )
             }
@@ -349,6 +353,11 @@ internal fun TaskListArea(
             } else {
                 items(tasks, key = { it.id }) { taskItem(it) }
             }
+        }
+            com.michelle.raouf.fetch_jet.ui.AppScrollbar(
+                listState,
+                Modifier.align(Alignment.CenterEnd)
+            )
         }
     }
 }

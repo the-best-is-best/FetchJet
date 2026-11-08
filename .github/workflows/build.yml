@@ -147,7 +147,7 @@ jobs:
         env:
           VERSION: ${{ steps.plan.outputs.version }}
         run: |
-          APP_VERSION=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          APP_VERSION=$(tr -d '\r' < sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt | sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p')
           echo "release=$VERSION app=$APP_VERSION"
           if [ "$VERSION" != "$APP_VERSION" ]; then
             echo "::error::Release version $VERSION does not match APP_VERSION $APP_VERSION in AppVersion.kt"
@@ -352,7 +352,7 @@ jobs:
         run: |
           set -e
           V="$VERSION"
-          [ -n "$V" ] || V=$(sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p' sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt)
+          [ -n "$V" ] || V=$(tr -d '\r' < sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt | sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p')
           V="${V%%-*}"
           while [ "$(echo "$V" | tr -cd . | wc -c)" -lt 2 ]; do V="$V.0"; done
           MSIX_VERSION="$V.0"   # the Store wants the 4th number to be 0
@@ -596,27 +596,32 @@ jobs:
       - name: Package Chrome and Firefox builds
         run: ./extension/build.sh
 
-      # Submits the new version to the public Firefox Add-ons store (listed). Mozilla reviews
-      # it and Firefox users get the update by themselves; nothing to wait for here, so the
-      # .xpi is not attached to the GitHub release (an unsigned one would not install).
-      - name: Submit the Firefox version to addons.mozilla.org
-        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
-        run: |
-          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
-            --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
-            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
-          rm -f build/extension/*.xpi
-
-      # "Submit to stores" off: a signed, installable .xpi for testing (unlisted = nobody sees
-      # it on AMO). It is attached to the release below.
-      - name: Sign the Firefox build unlisted (test file)
-        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores != 'true' }}
+      # Every release carries a signed .xpi of its own (unlisted = Mozilla signs it in minutes,
+      # no review, nobody sees it on AMO). The app installs it when the store is behind the
+      # version the app needs. Same add-on ID as the store listing, so it is one extension.
+      - name: Sign the Firefox build unlisted (attached to the release)
+        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' }}
         run: |
           npx --yes web-ext@8 sign --channel unlisted \
             --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
           rm -f build/extension/*.xpi
           cp build/extension/signed/*.xpi build/extension/
+
+      # Submits the new version to the public Firefox Add-ons store (listed). Mozilla reviews
+      # it and Firefox users get the update by themselves. AMO signs a version number once, so
+      # the store copy is <version>.1: higher than the unlisted one above, and once approved it
+      # replaces it on its own.
+      - name: Submit the Firefox version to addons.mozilla.org
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
+        run: |
+          rm -rf build/extension/firefox-listed
+          cp -r build/extension/firefox build/extension/firefox-listed
+          sed -i -E 's/("version": *")([^"]*)"/\1\2.1"/' build/extension/firefox-listed/manifest.json
+          grep '"version"' build/extension/firefox-listed/manifest.json
+          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
+            --source-dir build/extension/firefox-listed --artifacts-dir build/extension/signed-listed \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 
       # Same idea for Microsoft Edge Add-ons: the Chrome build is submitted for certification
       # and Edge users get updates from the store. Needs the EDGE_* secrets (Partner Center ->
@@ -661,6 +666,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: v${{ needs.plan.outputs.version }}
     steps:
+      # Only the translated highlights (release-notes/<version>/<lang>.md) are needed here.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release-notes
+          sparse-checkout-cone-mode: true
+
       # The files are already in the draft (uploaded by each build job). Write the notes:
       # which platforms are in it, which are unchanged (read by the app and the downloads
       # page), then GitHub's list of changes since the previous release.
@@ -673,6 +684,7 @@ jobs:
           IOS: ${{ needs.plan.outputs.ios }}
           EXTENSION: ${{ needs.plan.outputs.extension }}
           BETA: ${{ needs.plan.outputs.beta }}
+          NOTES_DIR: release-notes/${{ needs.plan.outputs.version }}
         run: |
           BUILT=""; UNCHANGED=""
           add() { if [ "$2" = "true" ]; then BUILT="${BUILT:+$BUILT, }$1"; else UNCHANGED="${UNCHANGED:+$UNCHANGED,}$1"; fi; }
@@ -703,6 +715,7 @@ jobs:
               echo "**Unchanged (not included):** $(echo "$UNCHANGED" | sed 's/,/, /g') — the latest build for these is in an earlier release; see the downloads page."
             fi
             echo
+            if [ -f "$NOTES_DIR/en.md" ]; then cat "$NOTES_DIR/en.md"; echo; fi
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body 2>/dev/null || true
           } > notes.md
           cat notes.md
@@ -711,6 +724,15 @@ jobs:
           # (the release web page drops the fetchjet-unchanged / fetchjet-beta markers).
           cp notes.md release-notes.md
           gh release upload "$TAG" release-notes.md --repo "$GITHUB_REPOSITORY" --clobber
+          # The same highlights in the app's other languages (release-notes-<lang>.md): the
+          # update dialog shows the one for the app's language, English when there is none.
+          for f in "$NOTES_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            lang=$(basename "$f" .md)
+            [ "$lang" = "en" ] && continue
+            { grep '^<!-- fetchjet-' notes.md || true; echo; cat "$f"; } > "release-notes-$lang.md"
+            gh release upload "$TAG" "release-notes-$lang.md" --repo "$GITHUB_REPOSITORY" --clobber
+          done
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
 
       # Publish SHA256 checksums so a user who downloads a file by hand can verify it
@@ -724,7 +746,7 @@ jobs:
             cd sums
             rm -f SHA256SUMS.txt
             # Hash the distributable files only — not signatures or notes metadata.
-            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes.md' -printf '%P\n' \
+            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes*.md' -printf '%P\n' \
               | sort | xargs -r sha256sum > SHA256SUMS.txt
             cat SHA256SUMS.txt
           )

@@ -10,14 +10,18 @@ data class AppSettings(
     val destinationPath: String,
     val disableTorrentUpload: Boolean = false,
     val isDarkMode: Boolean = true,
+    /** "system" (follow the device), "light" or "dark". */
+    val themeMode: String = "system",
     val globalDownloadSpeedLimitBytes: Long = 0L,
     val globalUploadSpeedLimitBytes: Long = 0L,
     val speedDisplayUnit: String = "MB/s",
     val language: String = "system",
     val speedPresetLowBytes: Long = 256L * 1024,
     val speedPresetLowUnit: String = "KB/s",
-    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    val speedPresetFastUnit: String = "MB/s",
     val speedPresetHighBytes: Long = 20L * 1024 * 1024,
     val speedPresetHighUnit: String = "MB/s"
 )
@@ -32,6 +36,7 @@ class AppSettingsRepository(
         var destination = defaultPath
         var disableUpload = false
         var darkMode = true
+        var themeMode = "system"
         var dlLimit = 0L
         var ulLimit = 0L
         var speedUnit = "MB/s"
@@ -40,6 +45,8 @@ class AppSettingsRepository(
         var lowUnit = "KB/s"
         var mediumBytes = 5L * 1024 * 1024
         var mediumUnit = "MB/s"
+        var fastBytes = 10L * 1024 * 1024
+        var fastUnit = "MB/s"
         var highBytes = 20L * 1024 * 1024
         var highUnit = "MB/s"
 
@@ -59,6 +66,7 @@ class AppSettingsRepository(
                             value.toBooleanStrictOrNull() ?: false
 
                         "isDarkMode" -> darkMode = value.toBooleanStrictOrNull() ?: true
+                        "themeMode" -> if (value in setOf("system", "light", "dark")) themeMode = value
                         "globalDownloadSpeedLimitBytes" -> dlLimit = value.toLongOrNull() ?: 0L
                         "globalUploadSpeedLimitBytes" -> ulLimit = value.toLongOrNull() ?: 0L
                         "speedDisplayUnit" -> if (value.isNotBlank()) speedUnit = value
@@ -69,6 +77,8 @@ class AppSettingsRepository(
                             value.toLongOrNull() ?: mediumBytes
 
                         "speedPresetMediumUnit" -> if (value.isNotBlank()) mediumUnit = value
+                        "speedPresetFastBytes" -> fastBytes = value.toLongOrNull() ?: fastBytes
+                        "speedPresetFastUnit" -> if (value.isNotBlank()) fastUnit = value
                         "speedPresetHighBytes" -> highBytes = value.toLongOrNull() ?: highBytes
                         "speedPresetHighUnit" -> if (value.isNotBlank()) highUnit = value
                     }
@@ -88,6 +98,7 @@ class AppSettingsRepository(
             destinationPath = destination,
             disableTorrentUpload = disableUpload,
             isDarkMode = darkMode,
+            themeMode = themeMode,
             globalDownloadSpeedLimitBytes = dlLimit,
             globalUploadSpeedLimitBytes = ulLimit,
             speedDisplayUnit = normalizedSpeedUnit,
@@ -96,6 +107,8 @@ class AppSettingsRepository(
             speedPresetLowUnit = lowUnit,
             speedPresetMediumBytes = mediumBytes,
             speedPresetMediumUnit = mediumUnit,
+            speedPresetFastBytes = fastBytes,
+            speedPresetFastUnit = fastUnit,
             speedPresetHighBytes = highBytes,
             speedPresetHighUnit = highUnit
         )
@@ -109,6 +122,7 @@ class AppSettingsRepository(
                 writeUtf8("destinationPath=${settings.destinationPath}\n")
                 writeUtf8("disableTorrentUpload=${settings.disableTorrentUpload}\n")
                 writeUtf8("isDarkMode=${settings.isDarkMode}\n")
+                writeUtf8("themeMode=${settings.themeMode}\n")
                 writeUtf8("globalDownloadSpeedLimitBytes=${settings.globalDownloadSpeedLimitBytes}\n")
                 writeUtf8("globalUploadSpeedLimitBytes=${settings.globalUploadSpeedLimitBytes}\n")
                 writeUtf8("speedDisplayUnit=${settings.speedDisplayUnit}\n")
@@ -117,6 +131,8 @@ class AppSettingsRepository(
                 writeUtf8("speedPresetLowUnit=${settings.speedPresetLowUnit}\n")
                 writeUtf8("speedPresetMediumBytes=${settings.speedPresetMediumBytes}\n")
                 writeUtf8("speedPresetMediumUnit=${settings.speedPresetMediumUnit}\n")
+                writeUtf8("speedPresetFastBytes=${settings.speedPresetFastBytes}\n")
+                writeUtf8("speedPresetFastUnit=${settings.speedPresetFastUnit}\n")
                 writeUtf8("speedPresetHighBytes=${settings.speedPresetHighBytes}\n")
                 writeUtf8("speedPresetHighUnit=${settings.speedPresetHighUnit}\n")
             }

@@ -210,6 +210,9 @@ actual class PathResolver actual constructor() {
         return true
     }
 
+    actual fun fileExists(filePath: String): Boolean =
+        NSFileManager.defaultManager.fileExistsAtPath(filePath.trim().removePrefix("file://"))
+
     actual fun openFile(filePath: String): Boolean {
         return try {
             val fileManager = NSFileManager.defaultManager

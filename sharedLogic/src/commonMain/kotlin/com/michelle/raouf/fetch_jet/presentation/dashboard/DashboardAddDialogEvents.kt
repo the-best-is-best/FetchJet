@@ -103,6 +103,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     clipEndTime = "",
                     isClipRangeEnabled = false,
                     clipFastMode = false,
+                    audioConvertFormat = null,
                     scheduleStartMs = 0L,
                     selectedConnections = 0,
                     mediaDurationSeconds = 0L,
@@ -178,6 +179,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     inspectedMediaQualities = defaultQualities,
                     inspectedPlaylist = null,
                     linkList = if (event.show) state.linkList else emptyList(),
+                    audioConvertFormat = null,
                     scheduleStartMs = 0L,
 
                     selectedConnections = 0,
@@ -213,6 +215,19 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                 }
                 state.copy(inspectedMediaQualities = updated)
             }
+            refreshSuggestedFileName()
+        }
+
+        is DashboardUiEvent.OnSubtitleToggled -> {
+            _uiState.update { state ->
+                state.copy(inspectedSubtitles = state.inspectedSubtitles.map { s ->
+                    if (s.langCode == event.langCode) s.copy(isSelected = event.isSelected) else s
+                })
+            }
+        }
+
+        is DashboardUiEvent.OnToggleEmbedSubtitles -> {
+            _uiState.update { it.copy(embedSubtitles = event.embed) }
         }
 
         is DashboardUiEvent.OnClipStartTimeChanged -> {
@@ -225,6 +240,11 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleClipFastMode -> {
             _uiState.update { it.copy(clipFastMode = event.enabled) }
+        }
+
+        is DashboardUiEvent.OnAudioConvertFormatSelected -> {
+            _uiState.update { it.copy(audioConvertFormat = event.format) }
+            refreshSuggestedFileName()
         }
 
         is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { st ->

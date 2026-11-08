@@ -124,11 +124,6 @@ actual suspend fun downloadMediaWithPlatformTool(
     rawArgs.addAll(ytDlpHeaderArgs(requestHeaders, url))
 
     if (isAudio) {
-        if (hasFfmpeg) {
-            rawArgs.add("-x")
-            rawArgs.add("--audio-format")
-            rawArgs.add("mp3")
-        }
         rawArgs.add("-f")
         if (!formatId.isNullOrBlank()) {
             rawArgs.add("$formatId/bestaudio/best")

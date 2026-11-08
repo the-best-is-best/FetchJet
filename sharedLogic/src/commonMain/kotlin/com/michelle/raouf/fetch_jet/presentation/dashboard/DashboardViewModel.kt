@@ -90,6 +90,19 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
 
+    /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
+    internal var pendingDeviceSend: com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest? =
+        null
+
+    /** LAN "send to another device" engine (ROADMAP-1.3.0 item 4). Lazy: started from [init]. */
+    internal val deviceSync: com.michelle.raouf.fetch_jet.feature.device_sync.DeviceSync by lazy {
+        com.michelle.raouf.fetch_jet.feature.device_sync.createDeviceSync(
+            settingsDir = queueRepository.pathResolver.getSettingsDirectory(),
+            scratchDirFor = { id -> "${queueRepository.pathResolver.getTempDirectory()}/task_$id" },
+            onReceive = { payload, partialFiles -> onDeviceReceive(payload, partialFiles) }
+        )
+    }
+
     init {
 
         observeQueue()
@@ -103,6 +116,7 @@ class DashboardViewModel(
                 destinationPath = savedSettings.destinationPath,
                 disableTorrentUpload = savedSettings.disableTorrentUpload,
                 isDarkMode = savedSettings.isDarkMode,
+                themeMode = savedSettings.themeMode,
                 globalDownloadSpeedLimitBytes = savedSettings.globalDownloadSpeedLimitBytes,
                 globalUploadSpeedLimitBytes = savedSettings.globalUploadSpeedLimitBytes,
                 speedDisplayUnit = savedSettings.speedDisplayUnit,
@@ -110,6 +124,8 @@ class DashboardViewModel(
                 speedPresetLowUnit = savedSettings.speedPresetLowUnit,
                 speedPresetMediumBytes = savedSettings.speedPresetMediumBytes,
                 speedPresetMediumUnit = savedSettings.speedPresetMediumUnit,
+                speedPresetFastBytes = savedSettings.speedPresetFastBytes,
+                speedPresetFastUnit = savedSettings.speedPresetFastUnit,
                 speedPresetHighBytes = savedSettings.speedPresetHighBytes,
                 speedPresetHighUnit = savedSettings.speedPresetHighUnit
             )
@@ -132,10 +148,27 @@ class DashboardViewModel(
 
         }
 
+        // Time-of-day speed schedule: flip the global limit at window boundaries. The ticker
+        // owns its own process-lived scope, so it survives view-model recreation.
+        com.michelle.raouf.fetch_jet.core.power.SpeedSchedule.start { limit ->
+            queueRepository.setGlobalDownloadSpeedLimit(limit)
+        }
+        // Mirror any applied limit (manual or scheduled) into the UI so the header reflects it.
+        scope.launch {
+            queueRepository.globalDownloadSpeedLimit.collect { limit ->
+                _uiState.update {
+                    if (it.globalDownloadSpeedLimitBytes == limit) it
+                    else it.copy(globalDownloadSpeedLimitBytes = limit)
+                }
+            }
+        }
+
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest =
             { request -> handleExternalRequest(request) }
         com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =
             { requests, review -> handleExternalBatch(requests, review) }
+
+        initDeviceSync()
 
     }
 
@@ -153,6 +186,8 @@ class DashboardViewModel(
 
                 isDarkMode = s.isDarkMode,
 
+                themeMode = s.themeMode,
+
                 globalDownloadSpeedLimitBytes = s.globalDownloadSpeedLimitBytes,
 
                 globalUploadSpeedLimitBytes = s.globalUploadSpeedLimitBytes,
@@ -165,6 +200,8 @@ class DashboardViewModel(
                 speedPresetLowUnit = s.speedPresetLowUnit,
                 speedPresetMediumBytes = s.speedPresetMediumBytes,
                 speedPresetMediumUnit = s.speedPresetMediumUnit,
+                speedPresetFastBytes = s.speedPresetFastBytes,
+                speedPresetFastUnit = s.speedPresetFastUnit,
                 speedPresetHighBytes = s.speedPresetHighBytes,
                 speedPresetHighUnit = s.speedPresetHighUnit
 
@@ -565,17 +602,27 @@ class DashboardViewModel(
     fun onEvent(event: DashboardUiEvent) {
 
         when (event) {
-            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
+            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnAudioConvertFormatSelected, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnSubtitleToggled, is DashboardUiEvent.OnToggleEmbedSubtitles, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
                 event
             )
 
-            is DashboardUiEvent.OnPauseClicked, is DashboardUiEvent.OnResumeClicked, is DashboardUiEvent.OnCancelClicked, is DashboardUiEvent.OnRemoveClicked, is DashboardUiEvent.OnRemoveSelectedClicked, is DashboardUiEvent.OnExportLinksClicked, is DashboardUiEvent.OnConfirmRemoveClicked, DashboardUiEvent.OnConfirmBrowserFallback, DashboardUiEvent.OnDismissBrowserFallback, DashboardUiEvent.OnConfirmCancelClicked, DashboardUiEvent.OnResumeExistingDuplicateClicked, DashboardUiEvent.OnRestartDuplicateClicked, DashboardUiEvent.OnDismissDuplicateDialog, DashboardUiEvent.OnConfirmOverwriteClicked, is DashboardUiEvent.OnSaveAsCopyClicked, DashboardUiEvent.OnDismissFileConflictDialog, DashboardUiEvent.OnDismissCancelDialog, DashboardUiEvent.OnDismissRemoveDialog, is DashboardUiEvent.OnDownloadSpeedLimitChanged, is DashboardUiEvent.OnUploadSpeedLimitChanged, DashboardUiEvent.OnPauseAllClicked, DashboardUiEvent.OnResumeAllClicked, is DashboardUiEvent.OnTaskTorrentFileSelectionToggled, is DashboardUiEvent.OnTaskTorrentFilePriorityChanged -> handleTaskEvent(
+            is DashboardUiEvent.OnPauseClicked, is DashboardUiEvent.OnResumeClicked, is DashboardUiEvent.OnCancelClicked, is DashboardUiEvent.OnRemoveClicked, is DashboardUiEvent.OnRemoveSelectedClicked, is DashboardUiEvent.OnExportLinksClicked, is DashboardUiEvent.OnConfirmRemoveClicked, DashboardUiEvent.OnConfirmBrowserFallback, DashboardUiEvent.OnDismissBrowserFallback, DashboardUiEvent.OnConfirmCancelClicked, DashboardUiEvent.OnResumeExistingDuplicateClicked, DashboardUiEvent.OnRestartDuplicateClicked, DashboardUiEvent.OnDismissDuplicateDialog, DashboardUiEvent.OnConfirmOverwriteClicked, is DashboardUiEvent.OnSaveAsCopyClicked, DashboardUiEvent.OnDismissFileConflictDialog, DashboardUiEvent.OnDismissCancelDialog, DashboardUiEvent.OnDismissRemoveDialog, is DashboardUiEvent.OnDownloadSpeedLimitChanged, is DashboardUiEvent.OnUploadSpeedLimitChanged, DashboardUiEvent.OnPauseAllClicked, DashboardUiEvent.OnResumeAllClicked, is DashboardUiEvent.OnTaskTorrentFileSelectionToggled, is DashboardUiEvent.OnTaskTorrentFilePriorityChanged, is DashboardUiEvent.OnTaskPriorityChanged -> handleTaskEvent(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
+
+            is DashboardUiEvent.OnShareTaskClicked,
+            DashboardUiEvent.OnDismissShareSheet,
+            is DashboardUiEvent.OnSendToDeviceClicked,
+            DashboardUiEvent.OnConfirmPairingClicked,
+            DashboardUiEvent.OnCancelPairingClicked,
+            is DashboardUiEvent.OnUnpairDeviceClicked,
+            DashboardUiEvent.OnBlockPairingClicked,
+            is DashboardUiEvent.OnUnblockDeviceClicked,
+            is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
         }
 
     }
@@ -722,6 +769,7 @@ class DashboardViewModel(
                         it.copy(
                             isInspectingMedia = false,
                             inspectedMediaQualities = emptyList(),
+                            inspectedSubtitles = emptyList(),
                             inspectedPlaylist = null,
                             inspectMediaError = com.michelle.raouf.fetch_jet.feature.media_extractor
                                 .lastMediaInspectionError()
@@ -749,6 +797,7 @@ class DashboardViewModel(
                         it.copy(
                             isInspectingMedia = false,
                             inspectedMediaQualities = picked,
+                            inspectedSubtitles = queueRepository.lastMediaSubtitles,
                             inspectedMediaTitle = mediaTitle,
                             mediaDurationSeconds = duration,
                             inspectMediaError = null,
@@ -815,7 +864,7 @@ class DashboardViewModel(
             val selected = s.inspectedMediaQualities.firstOrNull { it.isSelected }
             val title = s.inspectedMediaTitle ?: selected?.videoTitle
             val fromTitle = if (!title.isNullOrBlank()) {
-                val ext = selected?.format ?: "mp4"
+                val ext = mediaExt(selected, s.audioConvertFormat)
                 val clean = queueRepository.pathResolver.sanitizeFileName(title)
                 if (clean.endsWith(".$ext", ignoreCase = true)) clean else "$clean.$ext"
             } else null
@@ -845,8 +894,10 @@ class DashboardViewModel(
         val mediaTitle =
             currentState.inspectedMediaQualities.firstOrNull { !it.videoTitle.isNullOrBlank() }?.videoTitle
         if (!mediaTitle.isNullOrBlank()) {
-            val selectedExt =
-                currentState.inspectedMediaQualities.firstOrNull { it.isSelected }?.format ?: "mp4"
+            val selectedExt = mediaExt(
+                currentState.inspectedMediaQualities.firstOrNull { it.isSelected },
+                currentState.audioConvertFormat
+            )
             return queueRepository.pathResolver.sanitizeFileName("$mediaTitle.$selectedExt")
         }
         val cleanUrl = url.substringBefore('?')

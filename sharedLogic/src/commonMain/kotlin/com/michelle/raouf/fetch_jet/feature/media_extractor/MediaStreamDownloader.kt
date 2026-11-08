@@ -1,14 +1,15 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
-import com.michelle.raouf.fetch_jet.core.network.NetworkClient
-import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkClient
+import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.domain.engine.DownloadEngine
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
@@ -46,6 +47,9 @@ class MediaStreamDownloader(
 ) : DownloadEngine {
     /** Why the last HLS (own engine) step failed, for the task's error line. */
     internal var lastHlsError: String? = null
+
+    /** Subtitle tracks the last [inspectMediaQualities] found (yt-dlp sites), for the Add dialog. */
+    internal var lastSubtitles: List<SubtitleTrack> = emptyList()
 
     /** HTTP/1.1-only client for piece downloads (googlevideo rejects ranged requests over h2). */
     private val streamClients =
@@ -230,6 +234,7 @@ class MediaStreamDownloader(
                 // URLs; FetchJet downloads them in pieces (several connections, pause/resume,
                 // piece map) and merges with the local ffmpeg. Anything it cannot do — HLS/DASH
                 // fragments, section clips, a failure midway — falls back to yt-dlp below.
+                val hlsOutputPath = hlsOutputFor(cacheDir, fileName, cacheTargetPath)
                 var directDone = false
                 if (!useOwnHls && !isClipping) {
                     directDone = try {
@@ -246,6 +251,10 @@ class MediaStreamDownloader(
                         throw e
                     } catch (e: Exception) {
                         com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: own engine failed, using yt-dlp: ${e.message}")
+                        try {
+                            FileSystem.SYSTEM.delete(cacheTargetPath)
+                        } catch (_: Exception) {
+                        }
                         updateTaskState(taskId) {
                             if (it.status == DownloadStatus.PAUSED) it
                             else it.copy(
@@ -277,7 +286,7 @@ class MediaStreamDownloader(
                             initialTask,
                             downloadSourceUrl,
                             cacheDir,
-                            cacheTargetPath
+                            hlsOutputPath
                         )
                     } else {
                         com.michelle.raouf.fetch_jet.core.log.AppLog.d {
@@ -315,7 +324,9 @@ class MediaStreamDownloader(
                     )
                 }
 
-                val foundCachePath = findFinishedFileInCache(cacheDir, cacheTargetPath, fileName)
+                val foundCachePath = (if (hlsOutputPath != cacheTargetPath && FileSystem.SYSTEM.exists(hlsOutputPath)) hlsOutputPath
+                else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
+                    ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
                 downloadedRealFile =
                     moveFinishedFileIntoPlace(
                         taskId,
@@ -349,6 +360,17 @@ class MediaStreamDownloader(
 
             if (!downloadedRealFile) {
                 throw Exception("Unable to extract direct video stream. The video may be private, age-restricted, or protected.")
+            }
+
+            if (initialTask.subtitleTracks.any { it.isSelected } &&
+                tasksState.value[taskId]?.status != DownloadStatus.PAUSED
+            ) {
+                try {
+                    processSubtitles(taskId, initialTask)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
             }
         } catch (e: CancellationException) {
             // Task was paused or cancelled by user. Preserve files and state!
@@ -491,6 +513,7 @@ class MediaStreamDownloader(
         url: String,
         requestHeaders: Map<String, String> = emptyMap()
     ): List<MediaQualityEntry> {
+        lastSubtitles = emptyList()
         // A playlist link (.m3u8): FetchJet's own HLS engine reads the renditions itself. The
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }
@@ -519,6 +542,7 @@ class MediaStreamDownloader(
             // others serve a page the extractor cannot read (Facebook, logged in). Try with the
             // headers first, then without them.
             val platformQualities = inspectPlatformWithCookieRetry(effectiveUrl, requestHeaders)
+            lastSubtitles = MediaSubtitleStore.last(effectiveUrl)
 
             if (platformQualities.isNotEmpty()) return withTitleAndDuration(
                 platformQualities,

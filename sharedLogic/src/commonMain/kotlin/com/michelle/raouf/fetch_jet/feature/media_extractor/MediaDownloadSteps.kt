@@ -2,6 +2,8 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsText
@@ -9,6 +11,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import okio.FileSystem
+import okio.Path
 import okio.Path.Companion.toPath
 import okio.SYSTEM
 
@@ -52,7 +55,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnHls(
     initialTask: DownloadTask,
     downloadSourceUrl: String,
     cacheDir: String,
-    cacheTargetPath: okio.Path
+    cacheTargetPath: Path
 ): Boolean = HlsDownloader.download(
     client = client,
     playlistUrl = downloadSourceUrl,
@@ -206,12 +209,12 @@ internal suspend fun MediaStreamDownloader.downloadWithYtDlp(
 
 internal fun findFinishedFileInCache(
     cacheDir: String,
-    cacheTargetPath: okio.Path,
+    cacheTargetPath: Path,
     fileName: String
-): okio.Path? {
+): Path? {
     val baseName = fileName.substringBeforeLast(".")
     val searchPrefix = baseName.take(15)
-    var foundCachePath: okio.Path? = null
+    var foundCachePath: Path? = null
     if (FileSystem.SYSTEM.exists(cacheTargetPath)) {
         foundCachePath = cacheTargetPath
     } else {
@@ -227,9 +230,9 @@ internal fun findFinishedFileInCache(
             } ?: list.filter {
                 val n = it.name.lowercase()
                 !n.endsWith(".part") && !n.endsWith(".ytdl") && !n.endsWith(".temp") &&
-                        (n.endsWith(".mp4") || n.endsWith(".mkv") || n.endsWith(".webm") || n.endsWith(
-                            ".m4a"
-                        ) || n.endsWith(".mp3"))
+                        n.substringAfterLast('.') in listOf(
+                            "mp4", "mkv", "webm", "m4a", "mp3", "opus", "ogg", "flac", "wav", "aac", "mka"
+                        )
             }.maxByOrNull {
                 try {
                     FileSystem.SYSTEM.metadata(it).lastModifiedAtMillis ?: 0L
@@ -246,8 +249,8 @@ internal fun findFinishedFileInCache(
 internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
     taskId: String,
     initialTask: DownloadTask,
-    foundCachePath: okio.Path?,
-    finalTargetPath: okio.Path,
+    foundCachePath: Path?,
+    finalTargetPath: Path,
     cacheDir: String
 ): Boolean {
     var downloadedRealFile = false
@@ -283,13 +286,150 @@ internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
     return downloadedRealFile
 }
 
+/**
+ * After the video is on disk: fetches each selected subtitle track, converts it to SRT with
+ * ffmpeg when needed, then either muxes the tracks into the video (embed) or writes them next
+ * to it as `name.<lang>.srt`. Best-effort: any failure leaves the video untouched.
+ */
+private val iso639_1to2 = mapOf(
+    "en" to "eng", "de" to "ger", "ar" to "ara", "fr" to "fre", "es" to "spa",
+    "pt" to "por", "it" to "ita", "ru" to "rus", "tr" to "tur", "id" to "ind",
+    "zh" to "chi", "ja" to "jpn", "ko" to "kor", "hi" to "hin", "fa" to "per",
+    "nl" to "dut", "pl" to "pol", "sv" to "swe", "no" to "nor", "da" to "dan",
+    "fi" to "fin", "cs" to "cze", "el" to "gre", "he" to "heb", "th" to "tha",
+    "vi" to "vie", "uk" to "ukr", "ro" to "rum", "hu" to "hun", "bg" to "bul",
+    "hr" to "hrv", "sr" to "srp", "sk" to "slo", "ms" to "may", "bn" to "ben",
+    "ta" to "tam", "te" to "tel", "ur" to "urd", "fil" to "fil", "ca" to "cat"
+)
+
+/** yt-dlp gives 2-letter codes; mov_text in MP4 needs ISO 639-2 (3-letter), else no language. */
+private fun iso639_2(langCode: String): String {
+    val base = langCode.substringBefore('-').lowercase()
+    return iso639_1to2[base] ?: base.take(3).ifBlank { "und" }
+}
+
+internal suspend fun MediaStreamDownloader.processSubtitles(
+    taskId: String,
+    initialTask: DownloadTask
+) {
+    val tracks = initialTask.subtitleTracks.filter { it.isSelected }
+    if (tracks.isEmpty()) return
+    val task = tasksState.value[taskId] ?: return
+    val destDir = task.destinationPath
+    val videoName = task.fileName
+    if (videoName.isBlank()) return
+    val videoPath = "$destDir/$videoName".toPath()
+    if (!FileSystem.SYSTEM.exists(videoPath)) return
+    val baseName = videoName.substringBeforeLast('.', videoName)
+    val videoExt = videoName.substringAfterLast('.', "mp4").lowercase()
+
+    reportPostProcess(taskId, "Subtitles", -1f)
+
+    val tempDir = "$destDir/.fjsubs_$taskId"
+    try {
+        FileSystem.SYSTEM.createDirectories(tempDir.toPath())
+    } catch (_: Exception) {
+    }
+
+    val srtFiles = mutableListOf<Pair<SubtitleTrack, Path>>()
+    for (track in tracks) {
+        try {
+            val raw = client.get(track.url) {
+                header(HttpHeaders.UserAgent, desktopUserAgent)
+                initialTask.requestHeaders.forEach { (k, v) ->
+                    if (k.isNotBlank() && v.isNotBlank()) header(k, v)
+                }
+            }.let { if (it.status.isSuccess()) it.bodyAsText() else null } ?: continue
+            if (raw.isBlank()) continue
+            val rawExt = track.ext.ifBlank { "vtt" }.lowercase()
+            val rawPath = "$tempDir/${track.langCode}.$rawExt".toPath()
+            FileSystem.SYSTEM.write(rawPath) { writeUtf8(raw) }
+            if (rawExt == "srt") {
+                srtFiles.add(track to rawPath)
+            } else {
+                val srtPath = "$tempDir/${track.langCode}.srt".toPath()
+                val ok = runLocalFfmpeg(listOf("-y", "-i", rawPath.toString(), srtPath.toString()))
+                srtFiles.add(track to if (ok && FileSystem.SYSTEM.exists(srtPath)) srtPath else rawPath)
+            }
+        } catch (e: CancellationException) {
+            deleteRecursively(tempDir.toPath())
+            throw e
+        } catch (_: Exception) {
+        }
+    }
+
+    if (srtFiles.isEmpty()) {
+        deleteRecursively(tempDir.toPath())
+        reportPostProcess(taskId, "Subtitles", POST_PROCESS_CLEAR)
+        return
+    }
+
+    var embedded = false
+    if (initialTask.embedSubtitles && videoExt in listOf("mp4", "mkv", "webm", "mov", "m4v")) {
+        val subCodec = when (videoExt) {
+            "webm" -> "webvtt"
+            "mkv" -> "srt"
+            else -> "mov_text"
+        }
+        val muxedPath = "$tempDir/muxed.$videoExt".toPath()
+        val args = mutableListOf("-y", "-i", videoPath.toString())
+        srtFiles.forEach { (_, p) -> args.add("-i"); args.add(p.toString()) }
+        args.add("-map"); args.add("0")
+        srtFiles.indices.forEach { i -> args.add("-map"); args.add("${i + 1}") }
+        args.add("-c"); args.add("copy")
+        args.add("-c:s"); args.add(subCodec)
+        srtFiles.forEachIndexed { i, (track, _) ->
+            args.add("-metadata:s:s:$i")
+            args.add("language=${iso639_2(track.langCode)}")
+            args.add("-metadata:s:s:$i")
+            args.add("title=${track.langName}")
+        }
+        args.add(muxedPath.toString())
+        val ok = try {
+            runLocalFfmpeg(args)
+        } catch (_: Exception) {
+            false
+        }
+        val muxedSize = if (ok && FileSystem.SYSTEM.exists(muxedPath)) {
+            try {
+                FileSystem.SYSTEM.metadata(muxedPath).size ?: 0L
+            } catch (_: Exception) {
+                0L
+            }
+        } else 0L
+        if (muxedSize > 1024L) {
+            try {
+                FileSystem.SYSTEM.delete(videoPath)
+                FileSystem.SYSTEM.copy(muxedPath, videoPath)
+                embedded = true
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    if (!embedded) {
+        for ((track, p) in srtFiles) {
+            try {
+                val outName = "$baseName.${track.langCode}${if (track.isAuto) ".auto" else ""}.srt"
+                val outPath = "$destDir/$outName".toPath()
+                if (FileSystem.SYSTEM.exists(outPath)) FileSystem.SYSTEM.delete(outPath)
+                FileSystem.SYSTEM.copy(p, outPath)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    deleteRecursively(tempDir.toPath())
+    reportPostProcess(taskId, "Subtitles", POST_PROCESS_CLEAR)
+}
+
 internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
     taskId: String,
     initialTask: DownloadTask,
     effectiveUrl: String,
     cacheDir: String,
-    cacheTargetPath: okio.Path,
-    finalTargetPath: okio.Path
+    cacheTargetPath: Path,
+    finalTargetPath: Path
 ): Boolean {
     var downloadedRealFile = false
     if (isYouTubeUrl(effectiveUrl) && isMediaExtractorToolInstalled()) {

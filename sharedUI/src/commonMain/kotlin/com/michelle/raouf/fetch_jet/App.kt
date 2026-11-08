@@ -58,13 +58,19 @@ import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
 import com.tbib.kmp_localization.LocalizationManager
 
+/** The task whose file is gone from disk: shown in [MissingFileDialog]. */
+internal val missingFileTaskId = androidx.compose.runtime.mutableStateOf<String?>(null)
+
 /**
- * Opens a finished download with the system's default app. If the file cannot be opened
- * (no associated app, the engine renamed it, or the OS refused), reveal it in its folder
- * instead so the click never does nothing.
+ * Opens a finished download with the system's default app. A file that is no longer on disk
+ * shows [MissingFileDialog]; a file no app can open is revealed in its folder instead.
  */
-internal fun openDownloadedFile(fullPath: String) {
+internal fun openDownloadedFile(fullPath: String, taskId: String) {
     val resolver = PathResolver()
+    if (!resolver.fileExists(fullPath)) {
+        missingFileTaskId.value = taskId
+        return
+    }
     if (!resolver.openFile(fullPath)) {
         resolver.openFileLocation(fullPath)
     }
@@ -72,7 +78,11 @@ internal fun openDownloadedFile(fullPath: String) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
+fun App(
+    onDarkModeChanged: ((Boolean) -> Unit)? = null,
+    /** The user's explicit choice: true / false, or null for System (the host must not force it). */
+    onForcedDarkChanged: ((Boolean?) -> Unit)? = null
+) {
     val viewModel: DashboardViewModel =
         androidx.lifecycle.viewmodel.compose.viewModel { DashboardViewModel() }
 
@@ -137,8 +147,24 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
         }
     }
 
-    LaunchedEffect(state.isDarkMode) {
-        onDarkModeChanged?.invoke(state.isDarkMode)
+    // "system" follows the device's light / dark setting (and changes with it while open).
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val darkMode = when (state.themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> systemDark
+    }
+    LaunchedEffect(darkMode) {
+        onDarkModeChanged?.invoke(darkMode)
+    }
+    LaunchedEffect(state.themeMode) {
+        onForcedDarkChanged?.invoke(
+            when (state.themeMode) {
+                "light" -> false
+                "dark" -> true
+                else -> null
+            }
+        )
     }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
@@ -157,7 +183,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     if (com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
                     else androidx.compose.ui.unit.LayoutDirection.Ltr
         ) {
-    FetchJetTheme(isDarkMode = state.isDarkMode) {
+    FetchJetTheme(isDarkMode = darkMode) {
         Surface(
             modifier = Modifier.fillMaxSize().clearFocusOnTapOutside(),
             color = MaterialTheme.colorScheme.background
@@ -182,11 +208,11 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                             speedDisplayUnit = state.speedDisplayUnit,
                             sortOption = state.sortOption,
-                            isDarkMode = state.isDarkMode,
+                            isDarkMode = darkMode,
                             downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                             speedPresetLowBytes = state.speedPresetLowBytes,
                             speedPresetMediumBytes = state.speedPresetMediumBytes,
-                            speedPresetHighBytes = state.speedPresetHighBytes,
+                            speedPresetFastBytes = state.speedPresetFastBytes,
                             onPickDownloadLimit = {
                                 viewModel.onEvent(
                                     DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
@@ -197,7 +223,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPauseAllClicked) },
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
-                            onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
+                            onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
                             title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
                         )
 
@@ -319,11 +345,11 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
                                     totalUlSpeed = state.totalUploadSpeedBytesPerSec,
                                     speedDisplayUnit = state.speedDisplayUnit,
-                                    isDarkMode = state.isDarkMode,
+                                    isDarkMode = darkMode,
                                     downloadLimitBytes = state.globalDownloadSpeedLimitBytes,
                                     speedPresetLowBytes = state.speedPresetLowBytes,
                                     speedPresetMediumBytes = state.speedPresetMediumBytes,
-                                    speedPresetHighBytes = state.speedPresetHighBytes,
+                                    speedPresetFastBytes = state.speedPresetFastBytes,
                                     onPickDownloadLimit = {
                                         viewModel.onEvent(
                                             DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged(
@@ -331,7 +357,7 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                             )
                                         )
                                     },
-                                    onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeToggled) },
+                                    onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
                                     onAdd = {
                                         viewModel.onEvent(
                                             DashboardUiEvent.OnToggleAddDialog(
@@ -510,6 +536,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                         )
                                     }
                                 }
+                                // The details are their own window: messages shown while they are
+                                // open (e.g. "Sent to <device>") would be hidden behind it.
+                                androidx.compose.material3.SnackbarHost(
+                                    snackbarHostState,
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                        .padding(bottom = 24.dp)
+                                )
                             }
                         }
                     }
@@ -533,6 +566,14 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                     isInspectingMedia = state.isInspectingMedia,
                     courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
+                    inspectedSubtitles = state.inspectedSubtitles,
+                    embedSubtitles = state.embedSubtitles,
+                    onSubtitleToggled = { lang, selected ->
+                        viewModel.onEvent(DashboardUiEvent.OnSubtitleToggled(lang, selected))
+                    },
+                    onToggleEmbedSubtitles = { embed ->
+                        viewModel.onEvent(DashboardUiEvent.OnToggleEmbedSubtitles(embed))
+                    },
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
                     ytDlpStatus = state.ytDlpStatus,
@@ -625,6 +666,10 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                 it
                             )
                         )
+                    },
+                    audioConvertFormat = state.audioConvertFormat,
+                    onAudioConvertFormatSelected = {
+                        viewModel.onEvent(DashboardUiEvent.OnAudioConvertFormatSelected(it))
                     },
                     inspectedPlaylist = state.inspectedPlaylist,
                     playlistQuality = state.playlistQuality,
@@ -738,6 +783,19 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                 )
             }
 
+            missingFileTaskId.value?.let { missingId ->
+                val missingTask = state.allTasks.firstOrNull { it.id == missingId }
+                if (missingTask != null) com.michelle.raouf.fetch_jet.ui.MissingFileDialog(
+                    fileName = missingTask.fileName,
+                    onRemove = {
+                        missingFileTaskId.value = null
+                        viewModel.onEvent(DashboardUiEvent.OnRemoveClicked(missingId))
+                        viewModel.onEvent(DashboardUiEvent.OnConfirmRemoveClicked(false))
+                    },
+                    onDismiss = { missingFileTaskId.value = null }
+                )
+            }
+
             // New FetchJet version: automatic check on start + "what's new" dialog
             com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
@@ -765,6 +823,19 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                             false
                         )
                     }
+                )
+            }
+
+            // "Send to device" sheet + first-time pairing (ROADMAP-1.3.0 item 4).
+            if (state.deviceShareTaskId != null) {
+                com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
+            }
+            state.devicePairing?.let { pairState ->
+                com.michelle.raouf.fetch_jet.ui.DevicePairingDialog(
+                    pairing = pairState,
+                    onConfirm = { viewModel.onEvent(DashboardUiEvent.OnConfirmPairingClicked) },
+                    onCancel = { viewModel.onEvent(DashboardUiEvent.OnCancelPairingClicked) },
+                    onBlock = { viewModel.onEvent(DashboardUiEvent.OnBlockPairingClicked) }
                 )
             }
 

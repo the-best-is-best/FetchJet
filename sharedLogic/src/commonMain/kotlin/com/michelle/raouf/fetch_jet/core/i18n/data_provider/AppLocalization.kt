@@ -166,6 +166,10 @@ interface AppLocalization : LocalizationProvider {
     val addStartDownload: String
     val availableAudioFormats: String
     val availableQualities: String
+    val subtitlesTitle: String
+    val subtitlesAuto: String
+    val subtitlesEmbedInVideo: String
+    val subtitlesSeparateFile: String
     val addSelectAll: String
     val addClearSelection: String
     fun selectedOfAvailable(selected: Int, total: Int): String
@@ -185,6 +189,37 @@ interface AppLocalization : LocalizationProvider {
     val inspectVideoQuality: String
     fun clipSectionTitle(isAudio: Boolean): String
     val clipSectionHint: String
+    val audioConvertTo: String
+    val audioConvertAllTo: String
+    val audioOriginal: String
+    val fileMissingTitle: String
+    fun fileMissingMessage(name: String): String
+    val browserNotInstalled: String
+    val extensionConnected: String
+    val extensionNotAddedYet: String
+    val addExtension: String
+    fun browserMissingTitle(name: String): String
+    fun browserMissingMessage(name: String): String
+    fun downloadBrowser(name: String): String
+    fun loadUnpackedTitle(name: String): String
+    fun loadUnpackedSteps(name: String, page: String): String
+    val loadUnpackedUpdates: String
+    val copyPath: String
+    fun extensionConnectedVersion(version: String): String
+    fun extensionNeedsUpdate(found: String, wanted: String): String
+    fun extensionOldVersion(wanted: String): String
+    val updateExtension: String
+    fun storeHasUpdate(version: String): String
+    val updateFromAppHint: String
+    fun storeWaiting(wanted: String): String
+    val openStore: String
+    val updateFromApp: String
+    fun updateFromGitHubHint(version: String): String
+    val updateFromGitHub: String
+    val extensionDownloadFailed: String
+    fun installFromFileTitle(name: String): String
+    fun installFromFileSteps(name: String, file: String): String
+    fun openBrowser(name: String): String
     fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String): String
     val clipStartTimeFrom: String
     val clipEndTimeTo: String
@@ -274,8 +309,20 @@ interface AppLocalization : LocalizationProvider {
     val speedPresetsTitle: String
     val speedPresetsFooter: String
     val speedPresetHigh: String
+    val speedPresetFast: String
     val speedPresetMedium: String
     val speedPresetLow: String
+    val speedScheduleTitle: String
+    val speedScheduleFooter: String
+    val speedScheduleAdd: String
+    val speedScheduleFrom: String
+    val speedScheduleTo: String
+    val speedScheduleActive: String
+    val speedScheduleEmpty: String
+    val priorityLabel: String
+    val priorityHigh: String
+    val priorityNormal: String
+    val priorityLow: String
     val checksumLabel: String
     val checksumHint: String
     val checksumVerified: String
@@ -395,6 +442,7 @@ interface AppLocalization : LocalizationProvider {
     val themeTitle: String
     val themeHint: String
     val settingsThemeDark: String
+    val settingsThemeSystem: String
     val settingsThemeLight: String
     val speedShownIn: String
     val speedShownInHint: String
@@ -693,6 +741,52 @@ interface AppLocalization : LocalizationProvider {
     fun stepMediaEngineNotReady(error: String): String
     fun stepTorrentEngineFailed(error: String): String
     fun stepReadyWith(details: String): String
+
+    // --- Device sync (ROADMAP-1.3.0 item 4) ---
+    val sysDeviceSendTitle: String
+    val sysDeviceNoDevices: String
+    val sysDeviceSearching: String
+    val sysDeviceModeLink: String
+    val sysDeviceModeLinkDesc: String
+    val sysDeviceModeTransfer: String
+    val sysDeviceModeTransferDesc: String
+    val sysDeviceDeleteAfter: String
+    val sysDeviceSend: String
+    val sysDevicePairTitle: String
+    val sysDevicePairBody: String
+    val sysDevicePairConfirm: String
+    val sysDevicePairConnecting: String
+    val sysDevicePairFailed: String
+    val sysDeviceSending: String
+    val sysDeviceWaitingAccept: String
+    val sysDeviceSent: String
+    val sysDeviceSendFailed: String
+    val sysDeviceReceived: String
+    val visibleToDevices: String
+    val visibleToDevicesHint: String
+    val sysDeviceSearch: String
+    val sysDeviceOthers: String
+    val sysDeviceNoMatch: String
+    val sectionDevices: String
+    val sectionDevicesBlurb: String
+    val pairedDevicesTitle: String
+    val noPairedDevices: String
+    val unpairDevice: String
+    val summaryVisible: String
+    val summaryHidden: String
+    val blockDevice: String
+    val unblockDevice: String
+    val blockedDevicesTitle: String
+    val noBlockedDevices: String
+    val pairRefusedBlocked: String
+    val pairRefusedWait: String
+    val pairRefusedBusy: String
+    val pairDeclined: String
+    val pairExpired: String
+    val sysDevicePairedLabel: String
+    val sysDeviceThisDevice: String
+    val sysDeviceManualConnect: String
+    val sysDeviceConnect: String
 }
 
 val LocalizationManager.Strings: AppLocalization

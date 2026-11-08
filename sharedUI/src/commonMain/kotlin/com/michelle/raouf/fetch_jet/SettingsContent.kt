@@ -23,6 +23,8 @@ internal fun SettingsContentView(
         speedPresetLowUnit = state.speedPresetLowUnit,
         speedPresetMediumBytes = state.speedPresetMediumBytes,
         speedPresetMediumUnit = state.speedPresetMediumUnit,
+        speedPresetFastBytes = state.speedPresetFastBytes,
+        speedPresetFastUnit = state.speedPresetFastUnit,
         speedPresetHighBytes = state.speedPresetHighBytes,
         speedPresetHighUnit = state.speedPresetHighUnit,
         ytDlpStatus = state.ytDlpStatus,
@@ -57,6 +59,12 @@ internal fun SettingsContentView(
             )
         },
         onSortIntoFoldersChanged = { viewModel.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(it)) },
+        themeMode = state.themeMode,
+        onThemeModeChanged = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(it)) },
+        pairedDevices = state.pairedDevices,
+        onUnpairDevice = { viewModel.onEvent(DashboardUiEvent.OnUnpairDeviceClicked(it)) },
+        blockedDevices = state.blockedDevices,
+        onUnblockDevice = { viewModel.onEvent(DashboardUiEvent.OnUnblockDeviceClicked(it)) },
         onDefaultConnectionsChanged = {
             viewModel.onEvent(
                 DashboardUiEvent.OnDefaultConnectionsChanged(

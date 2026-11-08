@@ -180,7 +180,7 @@ object ExtensionBridgeServer {
         reply(
             out, r, 204, "", extra = mapOf(
                 "Access-Control-Allow-Methods" to methods,
-                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing"
+                "Access-Control-Allow-Headers" to "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing, X-FetchJet-Ext"
             )
         )
 
@@ -258,7 +258,10 @@ object ExtensionBridgeServer {
      * gets 401.
      */
     private fun authorized(r: Req): Boolean {
-        if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER))) return true
+        if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER))) {
+            BridgePairing.noteBrowser(r.header("User-Agent"), System.currentTimeMillis(), r.header("X-FetchJet-Ext"))
+            return true
+        }
         val origin = r.header("Origin")
         if (BridgePairing.isLegacyAllowed(origin)) return true
         if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
@@ -287,6 +290,7 @@ object ExtensionBridgeServer {
                 ) return reply(out, r, 403, "forbidden")
                 deliver(toast = false) {}
                 val allowed = runBlocking { BridgePairing.ask(origin, legacy = false) }
+                if (allowed) BridgePairing.noteBrowser(r.header("User-Agent"), System.currentTimeMillis(), r.header("X-FetchJet-Ext"))
                 if (allowed) reply(
                     out, r, 200, """{"token":"${BridgePairing.token}"}""",
                     "application/json; charset=UTF-8"
@@ -301,6 +305,12 @@ object ExtensionBridgeServer {
             )
 
             "/config" -> if (isOptions) preflight(out, r, "GET, OPTIONS") else {
+                if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER)) ||
+                    BridgePairing.isExtensionOrigin(r.header("Origin")) ||
+                    !r.header("X-FetchJet-Ext").isNullOrBlank()
+                ) {
+                    BridgePairing.noteBrowser(r.header("User-Agent"), System.currentTimeMillis(), r.header("X-FetchJet-Ext"))
+                }
                 val version = try {
                     appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName
                         ?: "dev"

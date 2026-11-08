@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -31,7 +33,9 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.utils.formatSecondsToHhMm
 import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
 import com.tbib.kmp_localization.LocalizationManager
@@ -52,6 +56,10 @@ fun AddDownloadModalDialog(
     isInspectingMedia: Boolean,
     courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
+    inspectedSubtitles: List<SubtitleTrack> = emptyList(),
+    embedSubtitles: Boolean = false,
+    onSubtitleToggled: (String, Boolean) -> Unit = { _, _ -> },
+    onToggleEmbedSubtitles: (Boolean) -> Unit = {},
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
     ytDlpStatus: String = "",
@@ -82,6 +90,8 @@ fun AddDownloadModalDialog(
     onToggleClipRange: (Boolean) -> Unit = {},
     clipFastMode: Boolean = false,
     onToggleClipFastMode: (Boolean) -> Unit = {},
+    audioConvertFormat: String? = null,
+    onAudioConvertFormatSelected: (String?) -> Unit = {},
     inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
     playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
@@ -305,10 +315,12 @@ fun AddDownloadModalDialog(
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
+            val dialogScroll = rememberScrollState()
+            Box(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(dialogScroll)
                     .padding(20.dp)
             ) {
                 AddDialogHeader(onDismiss = onDismiss)
@@ -367,6 +379,10 @@ fun AddDownloadModalDialog(
                     onInspectMedia = onInspectMedia,
                     onMediaQualitySelectionToggled = onMediaQualitySelectionToggled,
                     onSelectAllMediaQualitiesToggled = onSelectAllMediaQualitiesToggled,
+                    inspectedSubtitles = inspectedSubtitles,
+                    embedSubtitles = embedSubtitles,
+                    onSubtitleToggled = onSubtitleToggled,
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles,
                     clipStartTime = clipStartTime,
                     clipEndTime = clipEndTime,
                     isClipRangeEnabled = isClipRangeEnabled,
@@ -410,6 +426,30 @@ fun AddDownloadModalDialog(
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                 }
+
+                val audioConvertForAll = showsLinkList || inspectedPlaylist != null
+                val showsAudioConvert = when {
+                    showsLinkList -> linkList.any { e ->
+                        e.isSelected && e.mediaQualities.firstOrNull { it.isSelected }?.isAudioOnly == true
+                    }
+                    inspectedPlaylist != null -> playlistQuality ==
+                            com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO
+                    else -> detectedEngine == EngineType.MEDIA_STREAM && !isInspectingMedia &&
+                            inspectedMediaQualities.firstOrNull { it.isSelected }?.isAudioOnly == true
+                }
+                val nativeAudioFormat = when {
+                    showsLinkList -> linkList.filter { it.isSelected }
+                        .mapNotNull { e -> e.mediaQualities.firstOrNull { it.isSelected && it.isAudioOnly }?.format }
+                        .distinct().singleOrNull()
+                    inspectedPlaylist != null -> playlistQuality.extension
+                    else -> inspectedMediaQualities.firstOrNull { it.isSelected }?.format
+                }
+                if (showsAudioConvert) AudioConvertSection(
+                    selected = audioConvertFormat,
+                    nativeFormat = nativeAudioFormat,
+                    forAll = audioConvertForAll,
+                    onSelected = onAudioConvertFormatSelected
+                )
 
                 if (!showsLinkList && inspectedPlaylist == null) FileNameSection(
                     suggestedFileName = suggestedFileName,
@@ -471,6 +511,10 @@ fun AddDownloadModalDialog(
                     onAddDownload = onAddDownload,
                     onDismiss = onDismiss
                 )
+            }
+                Box(Modifier.matchParentSize()) {
+                    AppScrollbar(dialogScroll, Modifier.align(Alignment.CenterEnd))
+                }
             }
         }
         }

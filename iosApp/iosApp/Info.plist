@@ -15,6 +15,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FetchJet finds your other devices on this Wi-Fi network so you can send a download between them.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_fetchjet._tcp</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
     <key>LSSupportsOpeningDocumentsInPlace</key>

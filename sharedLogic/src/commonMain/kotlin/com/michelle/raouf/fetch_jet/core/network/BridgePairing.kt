@@ -44,7 +44,9 @@ object BridgePairing {
     private data class BridgeFile(
         val token: String = "",
         val legacyOrigins: List<String> = emptyList(),
-        val blockedOrigins: List<String> = emptyList()
+        val blockedOrigins: List<String> = emptyList(),
+        val seenBrowsers: Map<String, Long> = emptyMap(),
+        val seenVersions: Map<String, String> = emptyMap()
     )
 
     data class Request(val origin: String, val legacy: Boolean)
@@ -53,16 +55,37 @@ object BridgePairing {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyPrint = true }
     private val legacyOrigins = MutableStateFlow<Set<String>>(emptySet())
     private val blockedOrigins = MutableStateFlow<Set<String>>(emptySet())
+    private val seen = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val versions = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** The extension version last reported by each browser (`X-FetchJet-Ext`); 3.3.0 and newer send it. */
+    val seenVersions: StateFlow<Map<String, String>>
+        get() {
+            token // loads the file
+            return versions.asStateFlow()
+        }
 
     /** For the Settings list. */
     val legacyAllowed: StateFlow<Set<String>> = legacyOrigins.asStateFlow()
     val blocked: StateFlow<Set<String>> = blockedOrigins.asStateFlow()
+
+    /**
+     * Browsers whose paired extension talked to the app, by browser id (`chrome`, `edge`,
+     * `firefox`, `opera`, `vivaldi`, `samsung`) with the time it was last seen (epoch ms).
+     */
+    val seenBrowsers: StateFlow<Map<String, Long>>
+        get() {
+            token // loads the file
+            return seen.asStateFlow()
+        }
 
     /** The secret; made on first use and kept encrypted in bridge.json. */
     val token: String by lazy {
         val stored = load()
         legacyOrigins.value = stored.legacyOrigins.toSet()
         blockedOrigins.value = stored.blockedOrigins.toSet()
+        seen.value = stored.seenBrowsers
+        versions.value = stored.seenVersions
         Secrets.reveal(stored.token)?.takeIf { it.length >= 32 }
             ?: Secrets.randomHex().also { save(it) }
     }
@@ -180,6 +203,35 @@ object BridgePairing {
         if (question.compareAndSet(q, null)) _pending.value = null
     }
 
+    /**
+     * Called for a request that carried the token: remembers which browser the extension runs
+     * in (from its User-Agent). Written to disk at most once an hour per browser.
+     */
+    fun noteBrowser(userAgent: String?, nowMs: Long, extVersion: String? = null) {
+        val id = browserIdFromUserAgent(userAgent) ?: return
+        token // loads the file
+        val version = extVersion?.trim()?.takeIf { it.isNotEmpty() && it.length <= 20 }
+        val versionChanged = version != null && versions.value[id] != version
+        val last = seen.value[id]
+        if (!versionChanged && last != null && nowMs - last < 3_600_000L) return
+        seen.update { it + (id to nowMs) }
+        if (version != null) versions.update { it + (id to version) }
+        save(token)
+    }
+
+    fun browserIdFromUserAgent(userAgent: String?): String? {
+        val ua = userAgent ?: return null
+        return when {
+            ua.contains("Edg/") || ua.contains("EdgA/") || ua.contains("EdgiOS/") -> "edge"
+            ua.contains("OPR/") || ua.contains("OPT/") -> "opera"
+            ua.contains("Vivaldi") -> "vivaldi"
+            ua.contains("SamsungBrowser") -> "samsung"
+            ua.contains("Firefox/") || ua.contains("FxiOS/") -> "firefox"
+            ua.contains("Chrome/") || ua.contains("CriOS/") -> "chrome"
+            else -> null
+        }
+    }
+
     /** Settings: stop trusting a previously allowed origin. */
     fun revokeAllowed(origin: String) {
         legacyOrigins.update { it - origin }
@@ -208,7 +260,9 @@ object BridgePairing {
                 BridgeFile(
                     Secrets.protect(plainToken),
                     legacyOrigins.value.sorted(),
-                    blockedOrigins.value.sorted()
+                    blockedOrigins.value.sorted(),
+                    seen.value,
+                    versions.value
                 )
             )
             file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }

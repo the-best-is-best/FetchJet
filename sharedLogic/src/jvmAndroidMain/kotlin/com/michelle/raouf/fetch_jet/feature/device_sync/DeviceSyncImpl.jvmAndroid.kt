@@ -1,0 +1,847 @@
+package com.michelle.raouf.fetch_jet.feature.device_sync
+
+import com.michelle.raouf.fetch_jet.core.security.CryptoBox
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.NetworkInterface
+import java.net.ServerSocket
+import java.net.Socket
+import java.security.KeyFactory
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.MessageDigest
+import java.security.spec.X509EncodedKeySpec
+import javax.crypto.KeyAgreement
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
+private const val DISCOVERY_PORT = 28461
+private const val SYNC_TCP_PORT = 28462
+private const val ANNOUNCE_EVERY_MS = 2000L
+private const val DEVICE_EXPIRE_MS = 8000L
+private const val CHUNK = 64 * 1024
+private const val ACCEPT_WAIT_MS = 90_000L
+
+private const val T_HELLO: Byte = 1
+private const val T_HELLO_ACK: Byte = 2
+private const val T_SEND_META: Byte = 3
+private const val T_FILE_CHUNK: Byte = 4
+private const val T_FILE_END: Byte = 5
+private const val T_ACK: Byte = 6
+private const val T_ERR: Byte = 7
+private const val T_READY: Byte = 8
+private const val T_UNPAIR: Byte = 9
+private const val PAIR_REQUEST_GAP_MS = 30_000L
+
+/** Test switch: env FETCHJET_SYNC_NO_BROADCAST=1 sends no broadcast (as a real iPhone would). */
+private val NO_BROADCAST: Boolean = System.getenv("FETCHJET_SYNC_NO_BROADCAST") == "1"
+
+@Serializable
+private data class Announce(
+    val t: String = "fj-ann",
+    val id: String,
+    val name: String,
+    val plat: String,
+    val port: Int
+)
+
+@Serializable
+private data class Hello(val id: String, val name: String, val plat: String, val pub: String)
+
+@Serializable
+private data class FileMeta(val name: String, val size: Long)
+
+@Serializable
+private data class SendMeta(val payload: SendPayload, val mode: String, val files: List<FileMeta>)
+
+/** One file to stream: either a file on disk or a small in-memory blob (a generated manifest). */
+private class OutgoingFile(val wireName: String, val file: File?, val inlineBytes: ByteArray?) {
+    val size: Long get() = inlineBytes?.size?.toLong() ?: file?.length() ?: 0L
+}
+
+private class Pending(val device: PairedDevice, val key: ByteArray)
+
+@OptIn(ExperimentalEncodingApi::class)
+internal class DeviceSyncImpl(
+    private val platformName: String,
+    private val scratchDirFor: (String) -> String,
+    private val tempDir: String,
+    private val onReceive: (SendPayload, List<String>) -> Unit
+) : DeviceSync {
+
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val _discovered = MutableStateFlow<List<DiscoveredDevice>>(emptyList())
+    override val discovered: StateFlow<List<DiscoveredDevice>> = _discovered.asStateFlow()
+    private val _paired = MutableStateFlow(PairedDeviceStore.pairedDevices())
+    override val paired: StateFlow<List<PairedDevice>> = _paired.asStateFlow()
+    private val _pairing = MutableStateFlow<PairingState?>(null)
+    override val pairing: StateFlow<PairingState?> = _pairing.asStateFlow()
+    private val _sending = MutableStateFlow<SendState?>(null)
+    override val sending: StateFlow<SendState?> = _sending.asStateFlow()
+    private val _blocked = MutableStateFlow(PairedDeviceStore.blockedDevices())
+    override val blocked: StateFlow<List<PairedDevice>> = _blocked.asStateFlow()
+
+    /** Device id -> when its last pairing request was shown (one per [PAIR_REQUEST_GAP_MS]). */
+    private val lastPairRequestAt = HashMap<String, Long>()
+
+    override val selfId: String = PairedDeviceStore.selfId
+    override val selfName: String get() = PairedDeviceStore.selfName.ifBlank { platformName }
+    override fun setSelfName(name: String) {
+        PairedDeviceStore.selfName = name
+    }
+
+    /** id -> last seen (host, port, name, platform). */
+    private val seen = LinkedHashMap<String, DiscoveredDevice>()
+    private var serverSocket: ServerSocket? = null
+    private var multicastToken: Any? = null
+    @Volatile
+    private var pending: Pending? = null
+    private var started = false
+
+    override fun start() {
+        if (started) return
+        started = true
+        println("FJSYNC start selfId=$selfId name=$selfName visible=$visible")
+        multicastToken = MulticastLock.acquire()
+        scope.launch { discoveryListenLoop() }
+        scope.launch { expireLoop() }
+        scope.launch { announceLoop() }
+        applyVisibility()
+    }
+
+    override fun stop() {
+        started = false
+        closeServer()
+        MulticastLock.release(multicastToken)
+        multicastToken = null
+    }
+
+    @Volatile
+    private var visible = false
+
+    override fun setVisible(visible: Boolean) {
+        this.visible = visible
+        if (started) applyVisibility()
+    }
+
+    @Synchronized
+    private fun applyVisibility() {
+        if (visible && serverSocket == null) {
+            val server = ServerSocket()
+            server.reuseAddress = true
+            try {
+                server.bind(InetSocketAddress(SYNC_TCP_PORT))
+            } catch (_: Throwable) {
+                server.bind(InetSocketAddress(0))
+            }
+            serverSocket = server
+            println("FJSYNC visible tcpPort=${server.localPort}")
+            scope.launch { acceptLoop(server) }
+        } else if (!visible && serverSocket != null) {
+            closeServer()
+            println("FJSYNC hidden")
+        }
+    }
+
+    @Synchronized
+    private fun closeServer() {
+        try {
+            serverSocket?.close()
+        } catch (_: Throwable) {
+        }
+        serverSocket = null
+    }
+
+    // ---- discovery --------------------------------------------------------
+
+    /** This device's announce ("fj-ann", visible) or a probe ("fj-probe", hidden: asks only). */
+    private fun announceBytes(): ByteArray {
+        val port = serverSocket?.localPort ?: 0
+        val shown = visible && port > 0
+        return json.encodeToString(
+            Announce.serializer(),
+            Announce(
+                t = if (shown) "fj-ann" else "fj-probe",
+                id = selfId, name = selfName, plat = platformName, port = if (shown) port else 0
+            )
+        ).encodeToByteArray()
+    }
+
+    /**
+     * Every 2 s: the announce by broadcast (visible only), and to every known device directly.
+     * The direct copy is for devices that cannot hear broadcasts — a real iPhone needs an
+     * Apple entitlement for them — and keeps them seeing this one. Hidden, it sends a probe
+     * instead, so visible devices answer without this one appearing anywhere.
+     */
+    private suspend fun announceLoop() {
+        val socket = DatagramSocket().apply { broadcast = true }
+        var loggedTargets: String? = null
+        try {
+            while (scope.isActive && started) {
+                val body = announceBytes()
+                if (visible && serverSocket != null && !NO_BROADCAST) {
+                    val targets = broadcastAddresses()
+                    val sig = targets.joinToString { it.hostAddress ?: "" }
+                    if (sig != loggedTargets) {
+                        loggedTargets = sig
+                        println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
+                    }
+                    for (addr in targets) {
+                        try {
+                            socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
+                        } catch (_: Throwable) {
+                        }
+                    }
+                }
+                val hosts = synchronized(seen) {
+                    seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }.map { it.host }
+                }.distinct()
+                for (h in hosts) {
+                    try {
+                        socket.send(DatagramPacket(body, body.size, InetAddress.getByName(h), DISCOVERY_PORT))
+                    } catch (_: Throwable) {
+                    }
+                }
+                kotlinx.coroutines.delay(ANNOUNCE_EVERY_MS)
+            }
+        } finally {
+            try {
+                socket.close()
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    private fun broadcastAddresses(): List<InetAddress> {
+        val out = LinkedHashSet<InetAddress>()
+        try {
+            for (ni in NetworkInterface.getNetworkInterfaces()) {
+                if (!ni.isUp || ni.isLoopback) continue
+                for (ia in ni.interfaceAddresses) {
+                    val a = ia.address
+                    if (a !is java.net.Inet4Address) continue
+                    val b = ia.broadcast ?: computeBroadcast(a, ia.networkPrefixLength.toInt())
+                    if (b != null) out.add(b)
+                }
+            }
+        } catch (_: Throwable) {
+        }
+        if (out.isEmpty()) runCatching { out.add(InetAddress.getByName("255.255.255.255")) }
+        return out.toList()
+    }
+
+    private fun computeBroadcast(addr: java.net.Inet4Address, prefix: Int): InetAddress? = try {
+        if (prefix !in 1..31) {
+            null
+        } else {
+            val a = addr.address
+            val ip = ((a[0].toInt() and 0xff) shl 24) or ((a[1].toInt() and 0xff) shl 16) or
+                    ((a[2].toInt() and 0xff) shl 8) or (a[3].toInt() and 0xff)
+            val bc = ip or (-0x1 ushr prefix)
+            InetAddress.getByAddress(
+                byteArrayOf(
+                    (bc ushr 24).toByte(), (bc ushr 16).toByte(),
+                    (bc ushr 8).toByte(), bc.toByte()
+                )
+            )
+        }
+    } catch (_: Throwable) {
+        null
+    }
+
+    private suspend fun discoveryListenLoop() {
+        val socket = try {
+            DatagramSocket(null).apply {
+                reuseAddress = true
+                broadcast = true
+                bind(InetSocketAddress(DISCOVERY_PORT))
+            }
+        } catch (t: Throwable) {
+            println("FJSYNC listen bind failed: ${t.message}")
+            return
+        }
+        val buf = ByteArray(2048)
+        while (scope.isActive && started) {
+            try {
+                val packet = DatagramPacket(buf, buf.size)
+                socket.receive(packet)
+                val text = String(packet.data, packet.offset, packet.length)
+                val ann =
+                    runCatching { json.decodeFromString(Announce.serializer(), text) }.getOrNull()
+                if (ann == null || ann.id == selfId) continue
+                if (ann.t == "fj-probe") {
+                    // Someone asks who is here (a device that may not hear broadcasts): answer
+                    // it directly if visible. The asker is not added to the list.
+                    if (visible && serverSocket != null && !PairedDeviceStore.isBlocked(ann.id)) {
+                        val reply = announceBytes()
+                        runCatching { socket.send(DatagramPacket(reply, reply.size, packet.address, DISCOVERY_PORT)) }
+                    }
+                    continue
+                }
+                if (ann.t != "fj-ann" || PairedDeviceStore.isBlocked(ann.id)) continue
+                // Announces arrive every 2 s per device: log only a device that is new or moved.
+                val known = synchronized(seen) { seen[ann.id] }
+                if (known == null || known.host != packet.address.hostAddress || known.port != ann.port) {
+                    println("FJSYNC heard ${ann.name} @ ${packet.address.hostAddress}:${ann.port}")
+                }
+                val device = DiscoveredDevice(
+                    id = ann.id, name = ann.name, platform = ann.plat,
+                    host = packet.address.hostAddress ?: continue, port = ann.port,
+                    paired = PairedDeviceStore.isPaired(ann.id)
+                )
+                synchronized(seen) { seen[ann.id] = device }
+                lastSeenAt[ann.id] = System.currentTimeMillis()
+                publishDiscovered()
+            } catch (_: Throwable) {
+                if (!started) break
+            }
+        }
+        try {
+            socket.close()
+        } catch (_: Throwable) {
+        }
+    }
+
+    private val lastSeenAt = HashMap<String, Long>()
+
+    private suspend fun expireLoop() {
+        while (scope.isActive && started) {
+            kotlinx.coroutines.delay(2000)
+            val now = System.currentTimeMillis()
+            val expired = lastSeenAt.filterValues { now - it > DEVICE_EXPIRE_MS }.keys
+            if (expired.isNotEmpty()) {
+                synchronized(seen) { expired.forEach { seen.remove(it); lastSeenAt.remove(it) } }
+                publishDiscovered()
+            }
+        }
+    }
+
+    private fun publishDiscovered() {
+        val list = synchronized(seen) {
+            seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }
+                .map { it.copy(paired = PairedDeviceStore.isPaired(it.id)) }
+        }
+        _discovered.value = list
+    }
+
+    // ---- server (receiver side) ------------------------------------------
+
+    private suspend fun acceptLoop(server: ServerSocket) {
+        while (scope.isActive && started) {
+            val socket = try {
+                server.accept()
+            } catch (_: Throwable) {
+                if (!started || server.isClosed) break else continue
+            }
+            scope.launch { handle(socket) }
+        }
+    }
+
+    private fun handle(socket: Socket) {
+        socket.use {
+            val input = DataInputStream(socket.getInputStream().buffered())
+            val output = DataOutputStream(socket.getOutputStream().buffered())
+            val (type, body) = readFrame(input) ?: return
+            when (type) {
+                T_HELLO -> handleHello(body, output)
+                T_SEND_META -> handleSend(body, input, output)
+                T_UNPAIR -> handleUnpair(body)
+                else -> writeFrame(output, T_ERR, "unknown".encodeToByteArray())
+            }
+            output.flush()
+        }
+    }
+
+    private fun handleHello(body: ByteArray, output: DataOutputStream) {
+        val hello = runCatching {
+            json.decodeFromString(
+                Hello.serializer(),
+                body.decodeToString()
+            )
+        }.getOrNull()
+            ?: return
+        pairRefusal(hello.id)?.let { reason ->
+            println("FJSYNC pairing from ${hello.name} refused: $reason")
+            writeFrame(output, T_ERR, reason.encodeToByteArray()); output.flush(); return
+        }
+        val kp = newEcKeyPair()
+        val pubB = kp.public.encoded
+        val pubA = Base64.decode(hello.pub)
+        val key = deriveKey(kp, pubA)
+        val ack = Hello(selfId, selfName, platformName, Base64.encode(pubB))
+        writeFrame(
+            output,
+            T_HELLO_ACK,
+            json.encodeToString(Hello.serializer(), ack).encodeToByteArray()
+        )
+        output.flush()
+        val code = pairingCode(pubA, pubB)
+        val p = Pending(PairedDevice(hello.id, hello.name, hello.plat, System.currentTimeMillis()), key)
+        pending = p
+        _pairing.value = PairingState.Confirm(hello.name, hello.id, code)
+        // The sender stops waiting after ACCEPT_WAIT_MS: close the code then too (as declined),
+        // instead of leaving it on screen for a pairing nobody is waiting for any more.
+        scope.launch {
+            kotlinx.coroutines.delay(ACCEPT_WAIT_MS)
+            if (pending === p) endPairing(p, "expired")
+        }
+    }
+
+    /**
+     * Why a pairing request from [fromId] is refused, or null to show it: "blocked"; "busy" while
+     * another device's request is on screen (a second one must not replace the code being read);
+     * "wait:<seconds>" for a repeat within [PAIR_REQUEST_GAP_MS].
+     */
+    @Synchronized
+    private fun pairRefusal(fromId: String): String? {
+        if (PairedDeviceStore.isBlocked(fromId)) return "blocked"
+        val p = pending
+        if (p != null && p.device.id != fromId) return "busy"
+        val now = System.currentTimeMillis()
+        val last = lastPairRequestAt[fromId]
+        if (last != null && now - last < PAIR_REQUEST_GAP_MS) {
+            return "wait:${(PAIR_REQUEST_GAP_MS - (now - last) + 999) / 1000}"
+        }
+        lastPairRequestAt[fromId] = now
+        return null
+    }
+
+    override fun blockPairing() {
+        val p = pending ?: return
+        PairedDeviceStore.block(p.device)
+        pending = null
+        _pairing.value = null
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        _paired.value = PairedDeviceStore.pairedDevices()
+        publishDiscovered()
+    }
+
+    override fun unblock(deviceId: String) {
+        PairedDeviceStore.unblock(deviceId)
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        publishDiscovered()
+    }
+
+    private fun handleSend(body: ByteArray, input: DataInputStream, output: DataOutputStream) {
+        // body = [idLen:int][fromId bytes][sealed meta]
+        val bb = DataInputStream(body.inputStream())
+        val idLen = bb.readInt()
+        val idBytes = ByteArray(idLen).also { bb.readFully(it) }
+        val fromId = idBytes.decodeToString()
+        val sealed = bb.readBytes()
+        val key = PairedDeviceStore.keyFor(fromId)
+        if (key == null) {
+            // "pending" = this user is still looking at the code for that device (the sender
+            // waits); "not paired" = no pairing at all, e.g. it was unpaired here (the sender stops).
+            val reason = when {
+                PairedDeviceStore.isBlocked(fromId) -> "blocked"
+                pending?.device?.id == fromId -> "pending"
+                else -> endedPairingReason(fromId) ?: "not paired"
+            }
+            if (reason != "pending") println("FJSYNC send from $fromId refused: $reason")
+            writeFrame(output, T_ERR, reason.encodeToByteArray()); return
+        }
+        val metaJson =
+            runCatching { CryptoBox.open(key, sealed).decodeToString() }.getOrNull() ?: run {
+                writeFrame(output, T_ERR, "bad key".encodeToByteArray()); return
+            }
+        val meta =
+            runCatching { json.decodeFromString(SendMeta.serializer(), metaJson) }.getOrNull()
+                ?: run {
+                    writeFrame(output, T_ERR, "bad meta".encodeToByteArray()); return
+                }
+        // Paired and able to read the meta: tell the sender it may stream now. Until it sees this
+        // it holds the file, so a not-yet-confirmed pairing gets a clean T_ERR, not a broken pipe.
+        writeFrame(output, T_READY, ByteArray(0))
+        output.flush()
+        val written = ArrayList<String>()
+        val dir = File(tempDir, "recv-${System.currentTimeMillis()}")
+        if (meta.files.isNotEmpty()) dir.mkdirs()
+        try {
+            for (fm in meta.files) {
+                val outFile = File(dir, safeWireName(fm.name) ?: throw IllegalStateException("bad file name"))
+                outFile.outputStream().buffered().use { fileOut ->
+                    while (true) {
+                        val (t, b) = readFrame(input) ?: throw IllegalStateException("stream ended")
+                        if (t == T_FILE_END) break
+                        if (t != T_FILE_CHUNK) throw IllegalStateException("unexpected frame")
+                        fileOut.write(CryptoBox.open(key, b))
+                    }
+                }
+                written.add(outFile.absolutePath)
+            }
+            onReceive(meta.payload.copy(fromDeviceId = fromId), written)
+            writeFrame(output, T_ACK, ByteArray(0))
+        } catch (t: Throwable) {
+            runCatching { writeFrame(output, T_ERR, (t.message ?: "error").encodeToByteArray()) }
+        }
+    }
+
+    // ---- client (sender side) --------------------------------------------
+
+    override fun startPairing(deviceId: String) {
+        val device = synchronized(seen) { seen[deviceId] } ?: return
+        connectAndPair(device.host, device.port, device.name)
+    }
+
+    override fun startPairingWithHost(host: String) {
+        connectAndPair(host, SYNC_TCP_PORT, host)
+    }
+
+    private fun connectAndPair(host: String, port: Int, displayName: String) {
+        _pairing.value = PairingState.Connecting(displayName)
+        scope.launch {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), 5000)
+                    val input = DataInputStream(socket.getInputStream().buffered())
+                    val output = DataOutputStream(socket.getOutputStream().buffered())
+                    val kp = newEcKeyPair()
+                    val pubA = kp.public.encoded
+                    val hello = Hello(selfId, selfName, platformName, Base64.encode(pubA))
+                    writeFrame(
+                        output,
+                        T_HELLO,
+                        json.encodeToString(Hello.serializer(), hello).encodeToByteArray()
+                    )
+                    output.flush()
+                    val (type, b) = readFrame(input) ?: throw IllegalStateException("no reply")
+                    // Refused there: "blocked", "busy" or "wait:<seconds>" (shown translated).
+                    if (type == T_ERR) throw IllegalStateException(b.decodeToString())
+                    if (type != T_HELLO_ACK) throw IllegalStateException("bad reply")
+                    val ack = json.decodeFromString(Hello.serializer(), b.decodeToString())
+                    val pubB = Base64.decode(ack.pub)
+                    val key = deriveKey(kp, pubB)
+                    val code = pairingCode(pubA, pubB)
+                    val disc = DiscoveredDevice(
+                        ack.id, ack.name, ack.plat, host, port,
+                        PairedDeviceStore.isPaired(ack.id)
+                    )
+                    synchronized(seen) { seen[ack.id] = disc }
+                    lastSeenAt[ack.id] = System.currentTimeMillis()
+                    publishDiscovered()
+                    pending = Pending(
+                        PairedDevice(
+                            ack.id,
+                            ack.name,
+                            ack.plat,
+                            System.currentTimeMillis()
+                        ), key
+                    )
+                    _pairing.value = PairingState.Confirm(ack.name, ack.id, code)
+                }
+            } catch (t: Throwable) {
+                _pairing.value = PairingState.Failed(displayName, t.message ?: "failed")
+            }
+        }
+    }
+
+    override fun confirmPairing() {
+        val p = pending ?: return
+        PairedDeviceStore.addPairing(p.device, p.key)
+        pending = null
+        _pairing.value = null
+        _paired.value = PairedDeviceStore.pairedDevices()
+        publishDiscovered()
+    }
+
+    /**
+     * Device id -> (when, why) its pairing code was closed without "Codes match": "declined" (the
+     * user cancelled) or "expired" (nobody answered). Its send then hears that reason.
+     */
+    private val endedPairings = HashMap<String, Pair<Long, String>>()
+
+    override fun cancelPairing() {
+        pending?.let { endPairing(it, "declined") } ?: run { _pairing.value = null }
+    }
+
+    private fun endPairing(p: Pending, why: String) {
+        println("FJSYNC pairing code for ${p.device.name} closed: $why")
+        synchronized(endedPairings) { endedPairings[p.device.id] = System.currentTimeMillis() to why }
+        pending = null
+        _pairing.value = null
+    }
+
+    /** "declined" / "expired" if that device's code was closed here in the last 2 minutes. */
+    private fun endedPairingReason(id: String): String? = synchronized(endedPairings) {
+        val (at, why) = endedPairings[id] ?: return null
+        if (System.currentTimeMillis() - at < 120_000L) why else null
+    }
+
+    override fun unpair(deviceId: String) {
+        val key = PairedDeviceStore.keyFor(deviceId)
+        val device = synchronized(seen) { seen[deviceId] }
+        forgetPairing(deviceId)
+        // Tell the other device too (best effort: only if it is on the network and visible now),
+        // so it does not keep showing this one as paired.
+        if (key != null && device != null && device.host.isNotBlank() && device.port > 0) {
+            scope.launch {
+                runCatching {
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(device.host, device.port), 3000)
+                        val output = DataOutputStream(socket.getOutputStream().buffered())
+                        writeFrame(output, T_UNPAIR, idAndSealed(CryptoBox.seal(key, "unpair".encodeToByteArray())))
+                        output.flush()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun forgetPairing(deviceId: String) {
+        PairedDeviceStore.removePairing(deviceId)
+        _paired.value = PairedDeviceStore.pairedDevices()
+        publishDiscovered()
+    }
+
+    /** The other device unpaired this one: drop it here too, if the notice is really from it. */
+    private fun handleUnpair(body: ByteArray) {
+        val bb = DataInputStream(body.inputStream())
+        val idLen = bb.readInt()
+        val fromId = ByteArray(idLen).also { bb.readFully(it) }.decodeToString()
+        val key = PairedDeviceStore.keyFor(fromId) ?: return
+        val ok = runCatching { CryptoBox.open(key, bb.readBytes()).decodeToString() == "unpair" }
+            .getOrDefault(false)
+        if (ok) {
+            println("FJSYNC unpaired by $fromId")
+            forgetPairing(fromId)
+        }
+    }
+
+    /** `[idLen:int][selfId][sealed]`, the body of a frame that says who sends it. */
+    private fun idAndSealed(sealed: ByteArray): ByteArray {
+        val baos = java.io.ByteArrayOutputStream()
+        DataOutputStream(baos).apply {
+            val idBytes = selfId.encodeToByteArray()
+            writeInt(idBytes.size); write(idBytes); write(sealed); flush()
+        }
+        return baos.toByteArray()
+    }
+
+    @Volatile
+    private var sendCancelled = false
+
+    override fun cancelSend() {
+        sendCancelled = true
+    }
+
+    override fun send(request: SendRequest, onResult: (Boolean) -> Unit) {
+        val device = synchronized(seen) { seen[request.deviceId] }
+            ?: _paired.value.firstOrNull { it.id == request.deviceId }?.let {
+                DiscoveredDevice(it.id, it.name, it.platform, "", 0, true)
+            }
+        val host = (device as? DiscoveredDevice)?.host
+        val port = (device as? DiscoveredDevice)?.port ?: 0
+        val name = device?.name ?: request.deviceId
+        val key = PairedDeviceStore.keyFor(request.deviceId)
+        if (host.isNullOrBlank() || port == 0 || key == null) {
+            _sending.value =
+                SendState.Failed(name, "device offline or not paired"); onResult(false); return
+        }
+        sendCancelled = false
+        _sending.value = SendState.Sending(name, 0f)
+        scope.launch {
+            val deadline = System.currentTimeMillis() + ACCEPT_WAIT_MS
+            while (scope.isActive) {
+                val outcome = runCatching { trySendOnce(host, port, key, request, name) }
+                    .getOrElse { SendOutcome.Fail(it.message ?: "failed") }
+                when (outcome) {
+                    SendOutcome.Success -> {
+                        _sending.value = SendState.Done(name); onResult(true); return@launch
+                    }
+
+                    SendOutcome.WaitAccept -> {
+                        if (System.currentTimeMillis() >= deadline) {
+                            // Never confirmed there: do not keep a one-sided pairing here.
+                            forgetPairing(request.deviceId)
+                            _sending.value = SendState.Failed(name, "expired")
+                            onResult(false); return@launch
+                        }
+                        _sending.value = SendState.Waiting(name)
+                        kotlinx.coroutines.delay(1500)
+                        if (sendCancelled) {
+                            _sending.value = null; onResult(false); return@launch
+                        }
+                    }
+
+                    SendOutcome.NotPaired -> {
+                        // It forgot this device (unpaired there): forget it here too, so the next
+                        // send starts a fresh pairing instead of waiting for nothing.
+                        forgetPairing(request.deviceId)
+                        _sending.value = SendState.Failed(
+                            name, "the other device unpaired this one; send again to pair"
+                        )
+                        onResult(false); return@launch
+                    }
+
+                    is SendOutcome.Fail -> {
+                        if (outcome.reason in setOf("blocked", "declined", "expired")) forgetPairing(request.deviceId)
+                        _sending.value = SendState.Failed(name, outcome.reason)
+                        onResult(false); return@launch
+                    }
+                }
+            }
+        }
+    }
+
+    private sealed interface SendOutcome {
+        object Success : SendOutcome
+        object WaitAccept : SendOutcome
+        object NotPaired : SendOutcome
+        data class Fail(val reason: String) : SendOutcome
+    }
+
+    /** One connect + handshake. Streams the file only after the receiver replies [T_READY]. */
+    private fun trySendOnce(
+        host: String,
+        port: Int,
+        key: ByteArray,
+        request: SendRequest,
+        name: String
+    ): SendOutcome {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(host, port), 5000)
+            val input = DataInputStream(socket.getInputStream().buffered())
+            val output = DataOutputStream(socket.getOutputStream().buffered())
+            // What travels under TRANSFER_AND_CONTINUE: the resume pieces if any are still on disk,
+            // otherwise the finished file as one complete piece (its own `.chunks` saying so) so the
+            // other side finalizes at 100% without downloading it again. Nothing for LINK_ONLY.
+            val outgoing: List<OutgoingFile> = when {
+                request.mode != SendMode.TRANSFER_AND_CONTINUE -> emptyList()
+                request.partialFiles.isNotEmpty() ->
+                    request.partialFiles.map { File(it) }.filter { it.exists() }
+                        .map { OutgoingFile(it.name, it, null) }
+
+                request.completedFilePath.isNotBlank() && File(request.completedFilePath).exists() -> {
+                    val finished = File(request.completedFilePath)
+                    val base = request.payload.fileName.ifBlank { finished.name }
+                    val manifest =
+                        "0 0 ${(finished.length() - 1).coerceAtLeast(0)}".encodeToByteArray()
+                    listOf(
+                        OutgoingFile("$base.chunks", null, manifest),
+                        OutgoingFile("$base.part0", finished, null)
+                    )
+                }
+
+                else -> emptyList()
+            }
+            val meta = SendMeta(
+                payload = request.payload,
+                mode = request.mode.name,
+                files = outgoing.map { FileMeta(it.wireName, it.size) }
+            )
+            val sealedMeta = CryptoBox.seal(
+                key,
+                json.encodeToString(SendMeta.serializer(), meta).encodeToByteArray()
+            )
+            val baos = java.io.ByteArrayOutputStream()
+            DataOutputStream(baos).apply {
+                val idBytes = selfId.encodeToByteArray()
+                writeInt(idBytes.size); write(idBytes); write(sealedMeta); flush()
+            }
+            writeFrame(output, T_SEND_META, baos.toByteArray())
+            output.flush()
+            // Wait for the receiver to accept before sending the file: "pending" = the other user
+            // has not confirmed the code yet; "not paired" = it does not know this device any more.
+            val (reply, rbody) = readFrame(input) ?: return SendOutcome.Fail("no reply")
+            if (reply == T_ERR) {
+                return when (val reason = rbody.decodeToString()) {
+                    "pending" -> SendOutcome.WaitAccept
+                    "not paired" -> SendOutcome.NotPaired
+                    else -> SendOutcome.Fail(reason)
+                }
+            }
+            if (reply != T_READY) return SendOutcome.Fail("unexpected reply")
+            val total = outgoing.sumOf { it.size }.coerceAtLeast(1)
+            var sent = 0L
+            fun progress(n: Int) {
+                sent += n
+                _sending.value = SendState.Sending(name, (sent.toFloat() / total).coerceIn(0f, 1f))
+            }
+            for (o in outgoing) {
+                val inline = o.inlineBytes
+                if (inline != null) {
+                    writeFrame(output, T_FILE_CHUNK, CryptoBox.seal(key, inline))
+                    progress(inline.size)
+                } else o.file!!.inputStream().buffered().use { fin ->
+                    val buffer = ByteArray(CHUNK)
+                    while (true) {
+                        val n = fin.read(buffer)
+                        if (n <= 0) break
+                        writeFrame(output, T_FILE_CHUNK, CryptoBox.seal(key, buffer.copyOf(n)))
+                        progress(n)
+                    }
+                }
+                writeFrame(output, T_FILE_END, ByteArray(0))
+            }
+            output.flush()
+            val (type, _) = readFrame(input) ?: return SendOutcome.Fail("no ack")
+            return if (type == T_ACK) SendOutcome.Success else SendOutcome.Fail("receiver rejected")
+        }
+    }
+
+    // ---- crypto / framing -------------------------------------------------
+
+    private fun newEcKeyPair(): KeyPair =
+        KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
+
+    private fun deriveKey(mine: KeyPair, peerPubEncoded: ByteArray): ByteArray {
+        val peerPub =
+            KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(peerPubEncoded))
+        val agree =
+            KeyAgreement.getInstance("ECDH").apply { init(mine.private); doPhase(peerPub, true) }
+        return MessageDigest.getInstance("SHA-256").digest(agree.generateSecret())
+    }
+
+    private fun pairingCode(pubA: ByteArray, pubB: ByteArray): String {
+        val ordered = if (compareBytes(pubA, pubB) <= 0) pubA + pubB else pubB + pubA
+        val h = MessageDigest.getInstance("SHA-256").digest(ordered)
+        val n =
+            ((h[0].toInt() and 0xff) shl 16) or ((h[1].toInt() and 0xff) shl 8) or (h[2].toInt() and 0xff)
+        return (n % 1_000_000).toString().padStart(6, '0')
+    }
+
+    private fun compareBytes(a: ByteArray, b: ByteArray): Int {
+        val n = minOf(a.size, b.size)
+        for (i in 0 until n) {
+            val c = (a[i].toInt() and 0xff) - (b[i].toInt() and 0xff)
+            if (c != 0) return c
+        }
+        return a.size - b.size
+    }
+
+    private fun readFrame(input: DataInputStream): Pair<Byte, ByteArray>? = try {
+        val type = input.readByte()
+        val len = input.readInt()
+        require(len in 0..(64 * 1024 * 1024)) { "frame too big" }
+        val body = ByteArray(len)
+        input.readFully(body)
+        type to body
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun writeFrame(output: DataOutputStream, type: Byte, body: ByteArray) {
+        output.writeByte(type.toInt())
+        output.writeInt(body.size)
+        output.write(body)
+    }
+}

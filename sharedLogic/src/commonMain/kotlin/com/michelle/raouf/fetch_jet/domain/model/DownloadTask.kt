@@ -62,6 +62,8 @@ data class DownloadTask(
     val originalUrl: String? = null,
     /** A captured video-only stream's audio stream: both are fetched and merged by ffmpeg. */
     val pairedAudioUrl: String? = null,
+    val subtitleTracks: List<SubtitleTrack> = emptyList(),
+    val embedSubtitles: Boolean = false,
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,
@@ -111,6 +113,15 @@ fun DownloadTask.canResume(): Boolean? = when (engineType) {
     // Needs "Accept-Ranges: bytes" and a known length, else the file is streamed again from 0.
     EngineType.HTTP_DIRECT -> serverSupportsResume
 }
+
+/** "Send to device": never a torrent; otherwise a finished download or one that keeps its bytes. */
+fun DownloadTask.canSendToDevice(): Boolean =
+    engineType != EngineType.BITTORRENT &&
+            (status == DownloadStatus.COMPLETED || canResume() != false)
+
+/** The finished file, or the bytes fetched so far, can travel and the other device continues. */
+fun DownloadTask.canTransferToDevice(): Boolean =
+    canSendToDevice() && (status == DownloadStatus.COMPLETED || canResume() == true)
 
 /** Seconds left at the current speed, null when it cannot be estimated. */
 fun DownloadTask.etaSeconds(): Long? {

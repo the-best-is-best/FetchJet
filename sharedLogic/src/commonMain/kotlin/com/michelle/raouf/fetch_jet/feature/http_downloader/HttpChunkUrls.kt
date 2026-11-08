@@ -67,7 +67,7 @@ internal suspend fun HttpChunkDownloader.resolveFinalUrlAndMetadata(
 
 internal fun extractRedirectUrlFromHtml(html: String): String? {
     val metaRegex = Regex(
-        """(?i)<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]+content\s*=\s*["']?[^"'>]*url\s*=\s*([^"'>\s]+)""",
+        """(?i)<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]+content\s*=\s*["']?[^"'>]*url\s*=\s*["']?([^"'>\s]+)""",
         RegexOption.IGNORE_CASE
     )
     val match = metaRegex.find(html)

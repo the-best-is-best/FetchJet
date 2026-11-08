@@ -88,6 +88,8 @@ data class DashboardUiState(
     val disableTorrentUpload: Boolean = false,
 
     val isDarkMode: Boolean = true,
+    /** "system", "light" or "dark"; the UI resolves "system" from the device. */
+    val themeMode: String = "system",
 
     val isAddDialogVisible: Boolean = false,
 
@@ -133,6 +135,8 @@ data class DashboardUiState(
     val checksumInput: String = "",
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
+    val inspectedSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val embedSubtitles: Boolean = false,
 
     val inspectMediaError: String? = null,
 
@@ -181,6 +185,8 @@ data class DashboardUiState(
     val isClipRangeEnabled: Boolean = false,
     /** Clip: download the whole video at full speed and cut it afterwards (uses more data). */
     val clipFastMode: Boolean = false,
+    /** Audio-only downloads are converted to this format (null = keep the original). */
+    val audioConvertFormat: String? = null,
     /** A playlist / channel link: its videos (null = a single video). */
     val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
     val linkList: List<LinkListEntry> = emptyList(),
@@ -199,14 +205,26 @@ data class DashboardUiState(
     /** Named quick speed presets (Settings > Speed), picked fast from the header. */
     val speedPresetLowBytes: Long = 256L * 1024,
     val speedPresetLowUnit: String = "KB/s",
-    val speedPresetMediumBytes: Long = 5L * 1024 * 1024,
+    val speedPresetMediumBytes: Long = 2L * 1024 * 1024,
     val speedPresetMediumUnit: String = "MB/s",
+    val speedPresetFastBytes: Long = 3L * 1024 * 1024,
+    val speedPresetFastUnit: String = "MB/s",
     val speedPresetHighBytes: Long = 20L * 1024 * 1024,
-    val speedPresetHighUnit: String = "MB/s"
+    val speedPresetHighUnit: String = "MB/s",
+    /** The task whose "Send to device" sheet is open (null = closed). */
+    val deviceShareTaskId: String? = null,
+    /** Devices found on the LAN running FetchJet. */
+    val discoveredDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice> = emptyList(),
+    val pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    val blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    /** Non-null while a secure pairing handshake with a device is in progress. */
+    val devicePairing: com.michelle.raouf.fetch_jet.feature.device_sync.PairingState? = null,
+    /** Non-null while a send is in progress / just finished. */
+    val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null
 )
 
-/** Which named quick speed preset a setting refers to. */
-enum class SpeedPreset { LOW, MEDIUM, HIGH }
+/** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
+enum class SpeedPreset { LOW, MEDIUM, FAST, HIGH }
 
 
 sealed interface DashboardUiEvent {
@@ -243,6 +261,7 @@ sealed interface DashboardUiEvent {
     data class OnClipEndTimeChanged(val time: String) : DashboardUiEvent
     data class OnToggleClipRange(val enabled: Boolean) : DashboardUiEvent
     data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
+    data class OnAudioConvertFormatSelected(val format: String?) : DashboardUiEvent
     data class OnPlaylistEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistSelectAll(val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistFolderChanged(val name: String) : DashboardUiEvent
@@ -282,6 +301,9 @@ sealed interface DashboardUiEvent {
     data object OnResumeAllClicked : DashboardUiEvent
 
     data object OnThemeToggled : DashboardUiEvent
+
+    /** "system", "light" or "dark". */
+    data class OnThemeModeChanged(val mode: String) : DashboardUiEvent
     data class OnLanguageChanged(val choice: String) : DashboardUiEvent
 
     data object OnAddDownloadClicked : DashboardUiEvent
@@ -334,6 +356,12 @@ sealed interface DashboardUiEvent {
 
         DashboardUiEvent
 
+    data class OnSubtitleToggled(val langCode: String, val isSelected: Boolean) :
+        DashboardUiEvent
+
+    data class OnToggleEmbedSubtitles(val embed: Boolean) :
+        DashboardUiEvent
+
     data class OnTorrentFileSelectionToggled(val fileIndex: Int, val isSelected: Boolean) :
 
         DashboardUiEvent
@@ -371,6 +399,49 @@ sealed interface DashboardUiEvent {
     ) :
 
         DashboardUiEvent
+
+
+    data class OnTaskPriorityChanged(
+
+        val taskId: String,
+
+        val priority: Int
+
+    ) :
+
+        DashboardUiEvent
+
+    /** Open the "Send to device" sheet for a task. */
+    data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent
+
+    /** Close the "Send to device" sheet. */
+    data object OnDismissShareSheet : DashboardUiEvent
+
+    /** Send the shared task to a chosen device (pairs first if needed). */
+    data class OnSendToDeviceClicked(
+        val taskId: String,
+        val deviceId: String,
+        val mode: com.michelle.raouf.fetch_jet.feature.device_sync.SendMode,
+        val deleteAfterSuccess: Boolean
+    ) : DashboardUiEvent
+
+    /** User confirmed the 6-digit pairing code matches on both devices. */
+    data object OnConfirmPairingClicked : DashboardUiEvent
+
+    /** User cancelled / rejected the pairing. */
+    data object OnCancelPairingClicked : DashboardUiEvent
+
+    /** Forget a previously paired device. */
+    data class OnUnpairDeviceClicked(val deviceId: String) : DashboardUiEvent
+
+    /** Block the device asking to pair now. */
+    data object OnBlockPairingClicked : DashboardUiEvent
+
+    /** Allow a blocked device to ask again. */
+    data class OnUnblockDeviceClicked(val deviceId: String) : DashboardUiEvent
+
+    /** Pair by typing the other device's IP (for networks that block UDP discovery). */
+    data class OnManualConnectClicked(val ip: String) : DashboardUiEvent
 
 }
 

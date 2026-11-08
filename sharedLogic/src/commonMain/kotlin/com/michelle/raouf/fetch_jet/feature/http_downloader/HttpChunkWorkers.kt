@@ -14,7 +14,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okio.FileSystem
@@ -201,6 +203,9 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
                 var left = piece.length
                 val buf = ByteArray(256 * 1024)
                 while (left > 0) {
+                    // Honour cancel()/pause() mid-merge: a big file (e.g. a handed-over 100%
+                    // file) must not block Delete while we copy it piece by piece.
+                    currentCoroutineContext().ensureActive()
                     val n = src.read(buf, 0, min(buf.size.toLong(), left).toInt())
                     if (n <= 0) break
                     finalSink.write(buf, 0, n)

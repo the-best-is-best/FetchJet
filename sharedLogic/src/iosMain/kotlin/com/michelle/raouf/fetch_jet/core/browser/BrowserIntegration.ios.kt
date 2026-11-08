@@ -11,6 +11,13 @@ actual object BrowserIntegration {
 
     actual fun setUpOnFirstRun() {}
 
+    actual fun browsers(): List<BrowserInfo> = emptyList()
+    actual fun addExtension(id: String): AddExtensionResult = AddExtensionResult.NotInstalled
+    actual fun openFolder(folder: String) {}
+    actual fun installXpi(id: String, bytes: ByteArray, fileName: String): AddExtensionResult =
+        AddExtensionResult.NotInstalled
+    actual fun openBrowser(id: String) {}
+
     actual val canKeepReadyForBrowser: Boolean get() = false
     actual val canPopUpOverBrowser: Boolean get() = false
     actual fun isPopUpAllowed(): Boolean = true
