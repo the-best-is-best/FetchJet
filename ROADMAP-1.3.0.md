@@ -128,8 +128,12 @@ was reverted from the 1.2.0 branch and should be redone here.
 
 **Done, tested 2026-11-08:** A56 (SoundCloud → MP3 and OPUS) and the iOS simulator (MP3, OPUS,
 OGG; File not found). iOS ffmpeg has no libopus / libvorbis: OPUS / OGG use ffmpeg's own encoders
-there (`c41be02`). Windows desktop: MP3, and a SoundCloud set (link list) with "Convert all
-audio to" FLAC, 2 tracks into the set's folder.
+there (`c41be02`). Windows desktop: MP3, a SoundCloud set (link list) to FLAC, a mixed list
+(SoundCloud M4A + YouTube WEBM audio, first chip "Original") to MP3 and OPUS, a YouTube playlist
+"Audio only" to WAV, File not found. Android **release** build (R8) on the A56: OGG + File not
+found, no crash. iOS simulator: mixed list to OGG, no `download_file` folder (`ecba631`).
+macOS desktop (owner clicked, Mac session checked the files): WAV, mixed list to OGG with no
+`download_file` folder, File not found + Remove from list.
 
 - [x] "Convert to" chips when the selected quality is audio-only (`ui/AudioConvertSection.kt`): the
   first chip is the file's own format (e.g. M4A), selected by default = no re-encode; then the
