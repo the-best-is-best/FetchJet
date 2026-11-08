@@ -359,7 +359,7 @@ internal class DeviceSyncImpl(
         // instead of leaving it on screen for a pairing nobody is waiting for any more.
         scope.launch {
             kotlinx.coroutines.delay(ACCEPT_WAIT_MS)
-            if (pending === p) cancelPairing()
+            if (pending === p) endPairing(p, "expired")
         }
     }
 
@@ -412,8 +412,7 @@ internal class DeviceSyncImpl(
             val reason = when {
                 PairedDeviceStore.isBlocked(fromId) -> "blocked"
                 pending?.device?.id == fromId -> "pending"
-                declinedRecently(fromId) -> "declined"
-                else -> "not paired"
+                else -> endedPairingReason(fromId) ?: "not paired"
             }
             writeFrame(output, T_ERR, reason.encodeToByteArray()); return
         }
@@ -521,18 +520,26 @@ internal class DeviceSyncImpl(
         publishDiscovered()
     }
 
-    /** Device id -> when this user cancelled its pairing code (its send then hears "declined"). */
-    private val recentlyDeclined = HashMap<String, Long>()
+    /**
+     * Device id -> (when, why) its pairing code was closed without "Codes match": "declined" (the
+     * user cancelled) or "expired" (nobody answered). Its send then hears that reason.
+     */
+    private val endedPairings = HashMap<String, Pair<Long, String>>()
 
     override fun cancelPairing() {
-        pending?.let { synchronized(recentlyDeclined) { recentlyDeclined[it.device.id] = System.currentTimeMillis() } }
+        pending?.let { endPairing(it, "declined") } ?: run { _pairing.value = null }
+    }
+
+    private fun endPairing(p: Pending, why: String) {
+        synchronized(endedPairings) { endedPairings[p.device.id] = System.currentTimeMillis() to why }
         pending = null
         _pairing.value = null
     }
 
-    private fun declinedRecently(id: String): Boolean = synchronized(recentlyDeclined) {
-        val at = recentlyDeclined[id] ?: return false
-        System.currentTimeMillis() - at < 120_000L
+    /** "declined" / "expired" if that device's code was closed here in the last 2 minutes. */
+    private fun endedPairingReason(id: String): String? = synchronized(endedPairings) {
+        val (at, why) = endedPairings[id] ?: return null
+        if (System.currentTimeMillis() - at < 120_000L) why else null
     }
 
     override fun unpair(deviceId: String) {
@@ -621,8 +628,7 @@ internal class DeviceSyncImpl(
                         if (System.currentTimeMillis() >= deadline) {
                             // Never confirmed there: do not keep a one-sided pairing here.
                             forgetPairing(request.deviceId)
-                            _sending.value =
-                                SendState.Failed(name, "the other device didn't accept")
+                            _sending.value = SendState.Failed(name, "expired")
                             onResult(false); return@launch
                         }
                         _sending.value = SendState.Waiting(name)
@@ -643,7 +649,7 @@ internal class DeviceSyncImpl(
                     }
 
                     is SendOutcome.Fail -> {
-                        if (outcome.reason == "blocked" || outcome.reason == "declined") forgetPairing(request.deviceId)
+                        if (outcome.reason in setOf("blocked", "declined", "expired")) forgetPairing(request.deviceId)
                         _sending.value = SendState.Failed(name, outcome.reason)
                         onResult(false); return@launch
                     }

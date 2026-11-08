@@ -906,6 +906,7 @@ object IndonesianProvider : AppLocalization {
     override val pairRefusedWait = "Tunggu {seconds} dtk sebelum meminta lagi ke perangkat ini"
     override val pairRefusedBusy = "Perangkat lain sedang menjawab permintaan pemasangan lain. Coba lagi sebentar lagi."
     override val pairDeclined = "Perangkat lain menolak pemasangan. Kirim lagi untuk mencoba sekali lagi."
+    override val pairExpired = "Perangkat lain tidak menjawab tepat waktu. Kirim lagi untuk mencoba sekali lagi."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

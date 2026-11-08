@@ -614,8 +614,9 @@ Bridges:
       refusal codes must be made in both files.**
     - Refusal codes travel as English words and are translated only in the UI
       (`deviceSyncReason` in `DeviceSendDialog.kt`): `pending` (other user still reading the code:
-      the sender waits), `not paired` (forgot this device: sender drops its pairing), `declined`,
-      `blocked`, `busy`, `wait:<seconds>`.
+      the sender waits), `not paired` (forgot this device: sender drops its pairing), `declined`
+      (the user cancelled the code), `expired` (nobody answered the code within 90 s; also the
+      sender's own timeout), `blocked`, `busy`, `wait:<seconds>`.
     - Owner's send rules (`DownloadTask.canSendToDevice` / `canTransferToDevice`): torrent never;
       resumable → send the scratch folder and continue; finished → send the file; non-resumable
       unfinished → not sendable. The owner argued hard for "parts are just files, same as resuming

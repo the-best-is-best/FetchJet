@@ -837,6 +837,7 @@ object KoreanProvider : AppLocalization {
     override val pairRefusedWait = "이 기기에 다시 요청하기 전에 {seconds}초 기다리세요"
     override val pairRefusedBusy = "상대 기기가 다른 페어링 요청에 응답 중입니다. 잠시 후 다시 시도하세요."
     override val pairDeclined = "상대 기기가 페어링을 거절했습니다. 다시 보내면 한 번 더 시도합니다."
+    override val pairExpired = "상대 기기가 제시간에 응답하지 않았습니다. 다시 보내면 한 번 더 시도합니다."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

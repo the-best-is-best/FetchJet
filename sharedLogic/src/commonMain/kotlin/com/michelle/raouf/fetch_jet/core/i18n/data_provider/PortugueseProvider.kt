@@ -943,6 +943,7 @@ object PortugueseProvider : AppLocalization {
     override val pairRefusedWait = "Aguarde {seconds} s antes de pedir de novo a este dispositivo"
     override val pairRefusedBusy = "O outro dispositivo está respondendo outro pedido de pareamento. Tente de novo em instantes."
     override val pairDeclined = "O outro dispositivo recusou o pareamento. Envie de novo para tentar outra vez."
+    override val pairExpired = "O outro dispositivo não respondeu a tempo. Envie de novo para tentar outra vez."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

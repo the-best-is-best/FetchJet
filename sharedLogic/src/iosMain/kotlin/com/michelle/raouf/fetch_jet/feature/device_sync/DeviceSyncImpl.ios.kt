@@ -269,7 +269,7 @@ internal class IosDeviceSync(
         // The sender stops waiting after ACCEPT_WAIT_MS: close the code then too (as declined).
         scope.launch {
             delay(ACCEPT_WAIT_MS)
-            if (pending === p) cancelPairing()
+            if (pending === p) endPairing(p, "expired")
         }
     }
 
@@ -284,8 +284,7 @@ internal class IosDeviceSync(
             val reason = when {
                 PairedDeviceStore.isBlocked(fromId) -> "blocked"
                 pending?.device?.id == fromId -> "pending"
-                declinedRecently(fromId) -> "declined"
-                else -> "not paired"
+                else -> endedPairingReason(fromId) ?: "not paired"
             }
             writeFrame(connId, T_ERR, reason.encodeToByteArray()); return
         }
@@ -424,18 +423,23 @@ internal class IosDeviceSync(
         publishDiscovered()
     }
 
-    /** Device id -> when this user cancelled its pairing code (its send then hears "declined"). */
-    private val recentlyDeclined = HashMap<String, Long>()
+    /** Device id -> (when, why) its code was closed without "Codes match": "declined" / "expired". */
+    private val endedPairings = HashMap<String, Pair<Long, String>>()
 
     override fun cancelPairing() {
-        pending?.let { p -> locked { recentlyDeclined[p.device.id] = nowMs() } }
+        val p = pending
+        if (p != null) endPairing(p, "declined") else _pairing.value = null
+    }
+
+    private fun endPairing(p: Pending, why: String) {
+        locked { endedPairings[p.device.id] = nowMs() to why }
         pending = null
         _pairing.value = null
     }
 
-    private fun declinedRecently(id: String): Boolean = locked {
-        val at = recentlyDeclined[id]
-        at != null && nowMs() - at < 120_000L
+    private fun endedPairingReason(id: String): String? = locked {
+        val e = endedPairings[id]
+        if (e != null && nowMs() - e.first < 120_000L) e.second else null
     }
 
     override fun unpair(deviceId: String) {
@@ -518,8 +522,7 @@ internal class IosDeviceSync(
                     SendOutcome.WaitAccept -> {
                         if (nowMs() >= deadline) {
                             forgetPairing(request.deviceId)
-                            _sending.value =
-                                SendState.Failed(name, "the other device didn't accept")
+                            _sending.value = SendState.Failed(name, "expired")
                             onResult(false); return@launch
                         }
                         _sending.value = SendState.Waiting(name)
@@ -538,7 +541,7 @@ internal class IosDeviceSync(
                     }
 
                     is SendOutcome.Fail -> {
-                        if (outcome.reason == "blocked" || outcome.reason == "declined") forgetPairing(request.deviceId)
+                        if (outcome.reason in setOf("blocked", "declined", "expired")) forgetPairing(request.deviceId)
                         _sending.value = SendState.Failed(name, outcome.reason)
                         onResult(false); return@launch
                     }

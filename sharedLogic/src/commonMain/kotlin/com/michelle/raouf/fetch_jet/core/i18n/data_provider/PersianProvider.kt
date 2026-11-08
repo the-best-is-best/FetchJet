@@ -906,6 +906,7 @@ object PersianProvider : AppLocalization {
     override val pairRefusedWait = "{seconds} ثانیه صبر کنید تا دوباره از این دستگاه درخواست کنید"
     override val pairRefusedBusy = "دستگاه دیگر در حال پاسخ به درخواست جفت‌سازی دیگری است. کمی بعد دوباره امتحان کنید."
     override val pairDeclined = "دستگاه دیگر جفت‌سازی را رد کرد. برای تلاش دوباره، دوباره ارسال کنید."
+    override val pairExpired = "دستگاه دیگر به‌موقع پاسخ نداد. برای تلاش دوباره، دوباره ارسال کنید."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

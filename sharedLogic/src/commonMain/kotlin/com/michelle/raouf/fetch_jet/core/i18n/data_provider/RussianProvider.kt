@@ -936,6 +936,7 @@ object RussianProvider : AppLocalization {
     override val pairRefusedWait = "Подождите {seconds} с, прежде чем снова отправлять запрос этому устройству"
     override val pairRefusedBusy = "Другое устройство отвечает на другой запрос сопряжения. Попробуйте чуть позже."
     override val pairDeclined = "Другое устройство отклонило сопряжение. Отправьте ещё раз, чтобы повторить."
+    override val pairExpired = "Другое устройство не ответило вовремя. Отправьте ещё раз, чтобы повторить."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

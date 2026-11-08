@@ -948,6 +948,7 @@ object SpanishProvider : AppLocalization {
     override val pairRefusedWait = "Espera {seconds} s antes de volver a pedírselo a este dispositivo"
     override val pairRefusedBusy = "El otro dispositivo está respondiendo otra solicitud de vinculación. Inténtalo en un momento."
     override val pairDeclined = "El otro dispositivo rechazó la vinculación. Vuelve a enviar para intentarlo de nuevo."
+    override val pairExpired = "El otro dispositivo no respondió a tiempo. Vuelve a enviar para intentarlo de nuevo."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

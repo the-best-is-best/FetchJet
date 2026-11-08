@@ -900,6 +900,7 @@ object HindiProvider : AppLocalization {
     override val pairRefusedWait = "इस डिवाइस से दोबारा अनुरोध करने से पहले {seconds} सेकंड रुकें"
     override val pairRefusedBusy = "दूसरा डिवाइस किसी और पेयरिंग अनुरोध का जवाब दे रहा है। थोड़ी देर में फिर कोशिश करें।"
     override val pairDeclined = "दूसरे डिवाइस ने पेयरिंग अस्वीकार कर दी। फिर से कोशिश करने के लिए दोबारा भेजें।"
+    override val pairExpired = "दूसरे डिवाइस ने समय पर जवाब नहीं दिया। फिर से कोशिश करने के लिए दोबारा भेजें।"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

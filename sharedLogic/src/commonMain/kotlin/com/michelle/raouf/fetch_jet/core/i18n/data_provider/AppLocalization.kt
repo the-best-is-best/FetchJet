@@ -751,6 +751,7 @@ interface AppLocalization : LocalizationProvider {
     val pairRefusedWait: String
     val pairRefusedBusy: String
     val pairDeclined: String
+    val pairExpired: String
     val sysDevicePairedLabel: String
     val sysDeviceThisDevice: String
     val sysDeviceManualConnect: String

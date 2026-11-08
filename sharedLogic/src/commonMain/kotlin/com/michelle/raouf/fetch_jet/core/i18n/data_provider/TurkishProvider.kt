@@ -901,6 +901,7 @@ object TurkishProvider : AppLocalization {
     override val pairRefusedWait = "Bu cihaza tekrar istek göndermeden önce {seconds} sn bekleyin"
     override val pairRefusedBusy = "Diğer cihaz başka bir eşleştirme isteğini yanıtlıyor. Birazdan tekrar deneyin."
     override val pairDeclined = "Diğer cihaz eşleştirmeyi reddetti. Tekrar denemek için yeniden gönderin."
+    override val pairExpired = "Diğer cihaz zamanında yanıt vermedi. Tekrar denemek için yeniden gönderin."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
