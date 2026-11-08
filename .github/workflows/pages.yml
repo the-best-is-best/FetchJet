@@ -1,0 +1,37 @@
+# Publishes docs/ (the downloads page) to GitHub Pages. The built-in "Deploy from a branch"
+# build clones every submodule, and packages/kmp-localization is a private repo it cannot read,
+# so it failed on every push. This one checks out without submodules and uploads docs/ as is.
+name: Pages
+
+on:
+  push:
+    branches: [ master ]
+    paths: [ "docs/**", ".github/workflows/pages.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          sparse-checkout: docs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

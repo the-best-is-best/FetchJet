@@ -52,11 +52,12 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.2.0"` (branch `release-v1.2.0`;
-  `master` has 1.1.0)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.2.0`,
-  `CURRENT_PROJECT_VERSION = 4`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.2.0` (also `manifest.safari.json`)
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.3.0"` and
+  `EXTENSION_VERSION = "3.3.0"` (`release-v1.3.0`, merged into `master` 2026-11-08, PR #5)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.3.0`,
+  `CURRENT_PROJECT_VERSION = 5`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.3.0` (also `manifest.safari.json`);
+  must equal `EXTENSION_VERSION`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
 
@@ -257,7 +258,7 @@ Bridges:
   text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
   install the Chrome build.
 
-## Current state (master, 1.1.0)
+## Current state (master = 1.3.0; 1.2.0 released 2026-11-05)
 
 - **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
   never ask or offer to commit.
@@ -699,8 +700,9 @@ Bridges:
 
 - **1.3.0:** branch `release-v1.3.0`, work list `ROADMAP-1.3.0.md` (1.2.0 was released
   2026-11-05). When the owner asks what is next, take the first unchecked item there.
-- **1.2.0:** branch `release-v1.2.0` (from `master`, 2026-11-02). Ordered work list:
-  `ROADMAP-1.2.0.md`.
+- **1.3.0:** merged into `master` 2026-11-08 (PR #5); the release run was started the same day.
+- **1.2.0:** released 2026-11-05 (in `master`); its branch `release-v1.2.0` was deleted
+  2026-11-08 (tag `v1.2.0` kept). Work list: `ROADMAP-1.2.0.md`.
 
 - 1.1.0 history: a
   `release-v1.2.0` branch existed for one night (2026-11-01); the owner then decided to ship all of
