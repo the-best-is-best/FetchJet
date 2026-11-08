@@ -78,6 +78,16 @@ internal fun GeneralPage(
                 onChange = onClipboardVideoPagesChanged
             )
         }
+        val visibleToDevices by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+            .visibleToDevices.collectAsState()
+        SettingsGroup(title = LocalizationManager.Strings.sysDeviceSendTitle) {
+            SettingSwitch(
+                title = LocalizationManager.Strings.visibleToDevices,
+                subtitle = LocalizationManager.Strings.visibleToDevicesHint,
+                checked = visibleToDevices,
+                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVisibleToDevices(it) }
+            )
+        }
         val diag = com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog
         if (diag.canExport) {
             var savedTo by remember { mutableStateOf<String?>(null) }

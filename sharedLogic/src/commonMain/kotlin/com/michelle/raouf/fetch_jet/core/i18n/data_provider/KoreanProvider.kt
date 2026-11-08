@@ -816,6 +816,8 @@ object KoreanProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "다른 기기에 표시"
+    override val visibleToDevicesHint = "이 네트워크의 다른 FetchJet 기기가 이 기기를 찾아 다운로드를 보낼 수 있습니다. 끄면: 여전히 다른 기기로 보낼 수 있습니다."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

@@ -880,6 +880,8 @@ object TurkishProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "Diğer cihazlara görünür"
+    override val visibleToDevicesHint = "Bu ağdaki diğer FetchJet cihazları bu cihazı bulup ona indirme gönderebilir. Kapalı: siz yine de onlara gönderebilirsiniz."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

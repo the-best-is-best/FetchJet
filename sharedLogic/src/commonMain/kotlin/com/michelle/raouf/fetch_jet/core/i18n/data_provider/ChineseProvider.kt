@@ -827,6 +827,8 @@ object ChineseProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "对其他设备可见"
+    override val visibleToDevicesHint = "此网络上的其他 FetchJet 设备可以找到本设备并向其发送下载。关闭时：你仍可以发送给它们。"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

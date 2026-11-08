@@ -885,6 +885,8 @@ object PersianProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "برای دستگاه‌های دیگر قابل مشاهده"
+    override val visibleToDevicesHint = "دستگاه‌های دیگر FetchJet در این شبکه می‌توانند این دستگاه را پیدا کنند و برایش دانلود بفرستند. خاموش: همچنان می‌توانید برای آن‌ها بفرستید."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

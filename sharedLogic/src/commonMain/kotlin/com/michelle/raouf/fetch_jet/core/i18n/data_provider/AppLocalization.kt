@@ -730,6 +730,8 @@ interface AppLocalization : LocalizationProvider {
     val sysDeviceSent: String
     val sysDeviceSendFailed: String
     val sysDeviceReceived: String
+    val visibleToDevices: String
+    val visibleToDevicesHint: String
     val sysDevicePairedLabel: String
     val sysDeviceThisDevice: String
     val sysDeviceManualConnect: String

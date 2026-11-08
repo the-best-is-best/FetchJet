@@ -896,6 +896,8 @@ object JapaneseProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "他のデバイスに表示"
+    override val visibleToDevicesHint = "このネットワーク上の他の FetchJet デバイスがこのデバイスを見つけて、ダウンロードを送れます。オフでも、こちらからは送信できます。"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

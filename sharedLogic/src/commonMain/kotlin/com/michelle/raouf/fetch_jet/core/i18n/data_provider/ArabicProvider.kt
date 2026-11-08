@@ -898,6 +898,8 @@ object ArabicProvider : AppLocalization {
     override val sysDeviceSent = "اتبعت لـ {name}"
     override val sysDeviceSendFailed = "ماقدرش يبعت"
     override val sysDeviceReceived = "وصل تنزيل من {name}"
+    override val visibleToDevices = "يظهر للأجهزة الأخرى"
+    override val visibleToDevicesHint = "يمكن لأجهزة FetchJet الأخرى على هذه الشبكة العثور على هذا الجهاز وإرسال التنزيلات إليه. عند الإيقاف يظل بإمكانك الإرسال إليها."
     override val sysDevicePairedLabel = "مقترن"
     override val sysDeviceThisDevice = "الجهاز ده"
     override val sysDeviceManualConnect = "اتصال يدوي بالـIP"

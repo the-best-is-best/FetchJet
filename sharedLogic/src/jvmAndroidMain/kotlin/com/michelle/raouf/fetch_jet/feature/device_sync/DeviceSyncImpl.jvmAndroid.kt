@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.feature.device_sync
 import com.michelle.raouf.fetch_jet.core.security.CryptoBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,31 +108,58 @@ internal class DeviceSyncImpl(
     override fun start() {
         if (started) return
         started = true
-        val server = ServerSocket()
-        server.reuseAddress = true
-        try {
-            server.bind(InetSocketAddress(SYNC_TCP_PORT))
-        } catch (_: Throwable) {
-            server.bind(InetSocketAddress(0))
-        }
-        serverSocket = server
-        println("FJSYNC start selfId=$selfId name=$selfName tcpPort=${server.localPort}")
+        println("FJSYNC start selfId=$selfId name=$selfName visible=$visible")
         multicastToken = MulticastLock.acquire()
-        scope.launch { acceptLoop(server) }
-        scope.launch { announceLoop(server.localPort) }
         scope.launch { discoveryListenLoop() }
         scope.launch { expireLoop() }
+        applyVisibility()
     }
 
     override fun stop() {
         started = false
+        closeServer()
+        MulticastLock.release(multicastToken)
+        multicastToken = null
+    }
+
+    @Volatile
+    private var visible = false
+    private var announceJob: Job? = null
+
+    override fun setVisible(visible: Boolean) {
+        this.visible = visible
+        if (started) applyVisibility()
+    }
+
+    @Synchronized
+    private fun applyVisibility() {
+        if (visible && serverSocket == null) {
+            val server = ServerSocket()
+            server.reuseAddress = true
+            try {
+                server.bind(InetSocketAddress(SYNC_TCP_PORT))
+            } catch (_: Throwable) {
+                server.bind(InetSocketAddress(0))
+            }
+            serverSocket = server
+            println("FJSYNC visible tcpPort=${server.localPort}")
+            scope.launch { acceptLoop(server) }
+            announceJob = scope.launch { announceLoop(server.localPort) }
+        } else if (!visible && serverSocket != null) {
+            closeServer()
+            println("FJSYNC hidden")
+        }
+    }
+
+    @Synchronized
+    private fun closeServer() {
+        announceJob?.cancel()
+        announceJob = null
         try {
             serverSocket?.close()
         } catch (_: Throwable) {
         }
         serverSocket = null
-        MulticastLock.release(multicastToken)
-        multicastToken = null
     }
 
     // ---- discovery --------------------------------------------------------
@@ -143,24 +171,27 @@ internal class DeviceSyncImpl(
             Announce(id = selfId, name = selfName, plat = platformName, port = tcpPort)
         ).encodeToByteArray()
         var loggedTargets: String? = null
-        while (scope.isActive && started) {
-            val targets = broadcastAddresses()
-            val sig = targets.joinToString { it.hostAddress ?: "" }
-            if (sig != loggedTargets) {
-                loggedTargets = sig
-                println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
-            }
-            for (addr in targets) {
-                try {
-                    socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
-                } catch (_: Throwable) {
-                }
-            }
-            kotlinx.coroutines.delay(ANNOUNCE_EVERY_MS)
-        }
         try {
-            socket.close()
-        } catch (_: Throwable) {
+            while (scope.isActive && started && visible) {
+                val targets = broadcastAddresses()
+                val sig = targets.joinToString { it.hostAddress ?: "" }
+                if (sig != loggedTargets) {
+                    loggedTargets = sig
+                    println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
+                }
+                for (addr in targets) {
+                    try {
+                        socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
+                    } catch (_: Throwable) {
+                    }
+                }
+                kotlinx.coroutines.delay(ANNOUNCE_EVERY_MS)
+            }
+        } finally {
+            try {
+                socket.close()
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -268,7 +299,7 @@ internal class DeviceSyncImpl(
             val socket = try {
                 server.accept()
             } catch (_: Throwable) {
-                if (!started) break else continue
+                if (!started || server.isClosed) break else continue
             }
             scope.launch { handle(socket) }
         }

@@ -4,6 +4,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,28 +113,63 @@ internal class IosDeviceSync(
     override fun start() {
         if (started) return
         started = true
-        val tcpListener = object : IosTcpConnectionListener {
-            override fun onConnection(connId: Long) {
-                scope.launch { handle(connId) }
-            }
-        }
-        tcpPort = native.startTcpServer(SYNC_TCP_PORT, tcpListener)
-            .let { if (it <= 0) SYNC_TCP_PORT else it }
-        println("FJSYNC start selfId=$selfId name=$selfName tcpPort=$tcpPort")
+        println("FJSYNC start selfId=$selfId name=$selfName visible=$visible")
         val udpListener = object : IosUdpPacketListener {
             override fun onPacket(senderIp: String, data: NSData) {
                 onDiscoveryPacket(senderIp, data)
             }
         }
         native.startUdpListen(DISCOVERY_PORT, udpListener)
-        scope.launch { announceLoop() }
         scope.launch { expireLoop() }
+        applyVisibility()
     }
 
     override fun stop() {
         started = false
-        native.stopTcpServer()
+        closeServer()
         native.stopUdp()
+    }
+
+    private var visible = false
+    private var serverOpen = false
+    private var announceJob: Job? = null
+
+    override fun setVisible(visible: Boolean) {
+        this.visible = visible
+        if (started) applyVisibility()
+    }
+
+    private fun applyVisibility() {
+        locked { applyVisibilityLocked() }
+    }
+
+    private fun applyVisibilityLocked() {
+        if (visible && !serverOpen) {
+            val tcpListener = object : IosTcpConnectionListener {
+                override fun onConnection(connId: Long) {
+                    scope.launch { handle(connId) }
+                }
+            }
+            tcpPort = native.startTcpServer(SYNC_TCP_PORT, tcpListener)
+                .let { if (it <= 0) SYNC_TCP_PORT else it }
+            serverOpen = true
+            println("FJSYNC visible tcpPort=$tcpPort")
+            announceJob = scope.launch { announceLoop() }
+        } else if (!visible && serverOpen) {
+            closeServerLocked()
+            println("FJSYNC hidden")
+        }
+    }
+
+    private fun closeServer() {
+        locked { closeServerLocked() }
+    }
+
+    private fun closeServerLocked() {
+        announceJob?.cancel()
+        announceJob = null
+        if (serverOpen) native.stopTcpServer()
+        serverOpen = false
     }
 
     // ---- discovery --------------------------------------------------------
@@ -143,7 +179,7 @@ internal class IosDeviceSync(
             Announce.serializer(),
             Announce(id = selfId, name = selfName, plat = platformName, port = tcpPort)
         ).encodeToByteArray()
-        while (scope.isActive && started) {
+        while (scope.isActive && started && visible) {
             native.sendUdpBroadcast(DISCOVERY_PORT, body.toNSData())
             delay(ANNOUNCE_EVERY_MS)
         }

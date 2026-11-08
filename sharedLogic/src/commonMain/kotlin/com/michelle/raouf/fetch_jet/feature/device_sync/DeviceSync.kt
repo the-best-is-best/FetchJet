@@ -74,9 +74,15 @@ interface DeviceSync {
     val selfName: String
     fun setSelfName(name: String)
 
-    /** Begin announcing/listening on the LAN. Safe to call again. */
+    /** Begin listening on the LAN (and announcing, when visible). Safe to call again. */
     fun start()
     fun stop()
+
+    /**
+     * Visible: announce this device and accept pairing / sends. Hidden: no announce and no open
+     * port, so nobody can find or reach it; it can still see other devices and send to them.
+     */
+    fun setVisible(visible: Boolean)
 
     fun startPairing(deviceId: String)
 

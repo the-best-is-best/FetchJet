@@ -200,7 +200,8 @@ public final class NativeDeviceSyncBridge: NSObject, IosDeviceSyncNative {
         serverFd = fd
         serverRunning = true
         Thread.detachNewThread { [weak self] in
-            while self?.serverRunning == true {
+            // Ends when this server is stopped, even if a new one was started since.
+            while self?.serverRunning == true && self?.serverFd == fd {
                 let client = accept(fd, nil, nil)
                 if client < 0 { continue }
                 guard let self = self else { close(client); break }

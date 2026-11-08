@@ -879,6 +879,8 @@ object HindiProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "दूसरे डिवाइस को दिखे"
+    override val visibleToDevicesHint = "इस नेटवर्क के दूसरे FetchJet डिवाइस इसे ढूंढकर डाउनलोड भेज सकते हैं। बंद होने पर भी आप उन्हें भेज सकते हैं।"
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"

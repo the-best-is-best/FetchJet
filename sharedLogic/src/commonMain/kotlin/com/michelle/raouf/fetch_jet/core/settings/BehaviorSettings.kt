@@ -45,6 +45,16 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _visibleToDevices =
+        MutableStateFlow(read("visibleToDevices")?.toBooleanStrictOrNull() ?: false)
+
+    /** Device sync: other FetchJet devices on the network can find this one and send to it. */
+    val visibleToDevices: StateFlow<Boolean> = _visibleToDevices.asStateFlow()
+
+    fun setVisibleToDevices(on: Boolean) {
+        _visibleToDevices.value = on; write("visibleToDevices", on.toString())
+    }
+
     private val _connections =
         MutableStateFlow(read("connections")?.toIntOrNull()?.coerceIn(0, 32) ?: 0)
 

@@ -20,6 +20,7 @@ private object NoopDeviceSync : DeviceSync {
     override fun setSelfName(name: String) {}
     override fun start() {}
     override fun stop() {}
+    override fun setVisible(visible: Boolean) {}
     override fun startPairing(deviceId: String) {}
     override fun startPairingWithHost(host: String) {}
     override fun confirmPairing() {}

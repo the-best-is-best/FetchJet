@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.SystemNotice
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -30,7 +31,11 @@ import okio.SYSTEM
 
 internal fun DashboardViewModel.initDeviceSync() {
     removeEmptyReceiveFolders()
+    deviceSync.setVisible(BehaviorSettings.visibleToDevices.value)
     deviceSync.start()
+    scope.launch {
+        BehaviorSettings.visibleToDevices.collect { deviceSync.setVisible(it) }
+    }
     scope.launch {
         deviceSync.discovered.collect { list ->
             _uiState.update { it.copy(discoveredDevices = list) }

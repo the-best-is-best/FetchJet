@@ -885,6 +885,8 @@ object IndonesianProvider : AppLocalization {
     override val sysDeviceSent = "Sent to {name}"
     override val sysDeviceSendFailed = "Couldn't send"
     override val sysDeviceReceived = "Download received from {name}"
+    override val visibleToDevices = "Terlihat oleh perangkat lain"
+    override val visibleToDevicesHint = "Perangkat FetchJet lain di jaringan ini dapat menemukan perangkat ini dan mengirim unduhan ke sini. Mati: Anda tetap bisa mengirim ke mereka."
     override val sysDevicePairedLabel = "Paired"
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
