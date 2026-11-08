@@ -178,7 +178,11 @@ fun FdmSettingsPanel(
 
         SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
-        SettingsSection.BROWSER -> (if (isJvm) "Edge · Firefox · Chrome" else "Firefox for Android") to null
+        SettingsSection.BROWSER -> (when {
+            isJvm -> "Edge · Firefox · Chrome"
+            isIos -> "Safari"
+            else -> "Firefox for Android"
+        }) to null
         SettingsSection.DEVICES ->
             (if (visibleToDevices) LocalizationManager.Strings.summaryVisible else LocalizationManager.Strings.summaryHidden) +
                     (if (pairedDevices.isNotEmpty()) " · ${pairedDevices.size}" else "") to

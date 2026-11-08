@@ -52,10 +52,11 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.3.0"` and
-  `EXTENSION_VERSION = "3.3.0"` (`release-v1.3.0`, merged into `master` 2026-11-08, PR #5)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.3.0`,
-  `CURRENT_PROJECT_VERSION = 5`
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.3.1"` and
+  `EXTENSION_VERSION = "3.3.0"` (1.3.0 released 2026-11-08 from `master`, PR #5; 1.3.1 is the
+  next fix release)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.3.1`,
+  `CURRENT_PROJECT_VERSION = 6`
 - `extension/manifest.json` and `manifest.firefox.json` → `3.3.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
