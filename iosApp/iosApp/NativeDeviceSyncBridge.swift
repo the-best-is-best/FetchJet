@@ -127,6 +127,66 @@ public final class NativeDeviceSyncBridge: NSObject, IosDeviceSyncNative {
         }
     }
 
+    public func sendUdpTo(host: String, port: Int32, data: Data) {
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = UInt16(truncatingIfNeeded: port).bigEndian
+        if inet_pton(AF_INET, host, &addr.sin_addr) != 1 { return }
+        sendUdp([addr], data: data)
+    }
+
+    /// Unicast to every other host of each up, non-loopback IPv4 subnet (capped at the /24
+    /// around this device), so discovery works where broadcasts are not allowed.
+    public func sendUdpToSubnet(port: Int32, data: Data) {
+        var targets: [sockaddr_in] = []
+        var ifap: UnsafeMutablePointer<ifaddrs>?
+        if getifaddrs(&ifap) != 0 { return }
+        defer { freeifaddrs(ifap) }
+        var p = ifap
+        while let cur = p {
+            let flags = Int32(cur.pointee.ifa_flags)
+            if (flags & IFF_UP) != 0, (flags & IFF_LOOPBACK) == 0,
+               let a = cur.pointee.ifa_addr, a.pointee.sa_family == UInt8(AF_INET),
+               let m = cur.pointee.ifa_netmask {
+                let ip = UInt32(bigEndian: a.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr.s_addr })
+                var mask = UInt32(bigEndian: m.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr.s_addr })
+                if mask < 0xFFFF_FF00 { mask = 0xFFFF_FF00 } // never sweep more than 254 hosts
+                let network = ip & mask
+                let count = ~mask
+                if count >= 2 {
+                    for i in 1..<count {
+                        let host = network | i
+                        if host == ip { continue }
+                        var addr = sockaddr_in()
+                        addr.sin_family = sa_family_t(AF_INET)
+                        addr.sin_port = UInt16(truncatingIfNeeded: port).bigEndian
+                        addr.sin_addr = in_addr(s_addr: host.bigEndian)
+                        targets.append(addr)
+                    }
+                }
+            }
+            p = cur.pointee.ifa_next
+        }
+        sendUdp(targets, data: data)
+    }
+
+    private func sendUdp(_ targets: [sockaddr_in], data: Data) {
+        if targets.isEmpty { return }
+        let fd = socket(AF_INET, SOCK_DGRAM, 0)
+        if fd < 0 { return }
+        defer { close(fd) }
+        for var addr in targets {
+            _ = data.withUnsafeBytes { raw in
+                withUnsafePointer(to: &addr) { p in
+                    p.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                        sendto(fd, raw.baseAddress, data.count, 0, $0,
+                               socklen_t(MemoryLayout<sockaddr_in>.size))
+                    }
+                }
+            }
+        }
+    }
+
     public func stopUdp() {
         udpListening = false
         if udpListenFd >= 0 { close(udpListenFd); udpListenFd = -1 }

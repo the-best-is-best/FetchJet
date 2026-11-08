@@ -49,6 +49,9 @@ private const val T_READY: Byte = 8
 private const val T_UNPAIR: Byte = 9
 private const val PAIR_REQUEST_GAP_MS = 30_000L
 
+/** Test switch: env FETCHJET_SYNC_NO_BROADCAST=1 sends no broadcast (as a real iPhone would). */
+private val NO_BROADCAST: Boolean = System.getenv("FETCHJET_SYNC_NO_BROADCAST") == "1"
+
 @Serializable
 private data class Announce(
     val t: String = "fj-ann",
@@ -120,6 +123,7 @@ internal class DeviceSyncImpl(
         multicastToken = MulticastLock.acquire()
         scope.launch { discoveryListenLoop() }
         scope.launch { expireLoop() }
+        scope.launch { announceLoop() }
         applyVisibility()
     }
 
@@ -132,7 +136,6 @@ internal class DeviceSyncImpl(
 
     @Volatile
     private var visible = false
-    private var announceJob: Job? = null
 
     override fun setVisible(visible: Boolean) {
         this.visible = visible
@@ -152,7 +155,6 @@ internal class DeviceSyncImpl(
             serverSocket = server
             println("FJSYNC visible tcpPort=${server.localPort}")
             scope.launch { acceptLoop(server) }
-            announceJob = scope.launch { announceLoop(server.localPort) }
         } else if (!visible && serverSocket != null) {
             closeServer()
             println("FJSYNC hidden")
@@ -161,8 +163,6 @@ internal class DeviceSyncImpl(
 
     @Synchronized
     private fun closeServer() {
-        announceJob?.cancel()
-        announceJob = null
         try {
             serverSocket?.close()
         } catch (_: Throwable) {
@@ -172,24 +172,51 @@ internal class DeviceSyncImpl(
 
     // ---- discovery --------------------------------------------------------
 
-    private suspend fun announceLoop(tcpPort: Int) {
-        val socket = DatagramSocket().apply { broadcast = true }
-        val body = json.encodeToString(
+    /** This device's announce ("fj-ann", visible) or a probe ("fj-probe", hidden: asks only). */
+    private fun announceBytes(): ByteArray {
+        val port = serverSocket?.localPort ?: 0
+        val shown = visible && port > 0
+        return json.encodeToString(
             Announce.serializer(),
-            Announce(id = selfId, name = selfName, plat = platformName, port = tcpPort)
+            Announce(
+                t = if (shown) "fj-ann" else "fj-probe",
+                id = selfId, name = selfName, plat = platformName, port = if (shown) port else 0
+            )
         ).encodeToByteArray()
+    }
+
+    /**
+     * Every 2 s: the announce by broadcast (visible only), and to every known device directly.
+     * The direct copy is for devices that cannot hear broadcasts — a real iPhone needs an
+     * Apple entitlement for them — and keeps them seeing this one. Hidden, it sends a probe
+     * instead, so visible devices answer without this one appearing anywhere.
+     */
+    private suspend fun announceLoop() {
+        val socket = DatagramSocket().apply { broadcast = true }
         var loggedTargets: String? = null
         try {
-            while (scope.isActive && started && visible) {
-                val targets = broadcastAddresses()
-                val sig = targets.joinToString { it.hostAddress ?: "" }
-                if (sig != loggedTargets) {
-                    loggedTargets = sig
-                    println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
+            while (scope.isActive && started) {
+                val body = announceBytes()
+                if (visible && serverSocket != null && !NO_BROADCAST) {
+                    val targets = broadcastAddresses()
+                    val sig = targets.joinToString { it.hostAddress ?: "" }
+                    if (sig != loggedTargets) {
+                        loggedTargets = sig
+                        println("FJSYNC announce -> [$sig]:$DISCOVERY_PORT")
+                    }
+                    for (addr in targets) {
+                        try {
+                            socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
+                        } catch (_: Throwable) {
+                        }
+                    }
                 }
-                for (addr in targets) {
+                val hosts = synchronized(seen) {
+                    seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }.map { it.host }
+                }.distinct()
+                for (h in hosts) {
                     try {
-                        socket.send(DatagramPacket(body, body.size, addr, DISCOVERY_PORT))
+                        socket.send(DatagramPacket(body, body.size, InetAddress.getByName(h), DISCOVERY_PORT))
                     } catch (_: Throwable) {
                     }
                 }
@@ -259,8 +286,22 @@ internal class DeviceSyncImpl(
                 val text = String(packet.data, packet.offset, packet.length)
                 val ann =
                     runCatching { json.decodeFromString(Announce.serializer(), text) }.getOrNull()
-                if (ann == null || ann.t != "fj-ann" || ann.id == selfId) continue
-                println("FJSYNC heard ${ann.name} @ ${packet.address.hostAddress}:${ann.port}")
+                if (ann == null || ann.id == selfId) continue
+                if (ann.t == "fj-probe") {
+                    // Someone asks who is here (a device that may not hear broadcasts): answer
+                    // it directly if visible. The asker is not added to the list.
+                    if (visible && serverSocket != null && !PairedDeviceStore.isBlocked(ann.id)) {
+                        val reply = announceBytes()
+                        runCatching { socket.send(DatagramPacket(reply, reply.size, packet.address, DISCOVERY_PORT)) }
+                    }
+                    continue
+                }
+                if (ann.t != "fj-ann" || PairedDeviceStore.isBlocked(ann.id)) continue
+                // Announces arrive every 2 s per device: log only a device that is new or moved.
+                val known = synchronized(seen) { seen[ann.id] }
+                if (known == null || known.host != packet.address.hostAddress || known.port != ann.port) {
+                    println("FJSYNC heard ${ann.name} @ ${packet.address.hostAddress}:${ann.port}")
+                }
                 val device = DiscoveredDevice(
                     id = ann.id, name = ann.name, platform = ann.plat,
                     host = packet.address.hostAddress ?: continue, port = ann.port,

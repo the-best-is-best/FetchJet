@@ -64,6 +64,12 @@ interface IosDeviceSyncNative {
     /** Send [data] to the IPv4 broadcast address(es) on [port]. */
     fun sendUdpBroadcast(port: Int, data: NSData)
 
+    /** Send [data] to one IPv4 [host] on [port] (unicast: allowed without Apple's multicast entitlement). */
+    fun sendUdpTo(host: String, port: Int, data: NSData)
+
+    /** Send [data] to every other host of this device's own subnet(s) (at most a /24 each), one by one. */
+    fun sendUdpToSubnet(port: Int, data: NSData)
+
     fun stopUdp()
 
     // ---- TCP server (receiver) --------------------------------------------

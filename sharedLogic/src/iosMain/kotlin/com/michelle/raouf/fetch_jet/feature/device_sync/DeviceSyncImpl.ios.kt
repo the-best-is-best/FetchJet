@@ -42,6 +42,12 @@ private const val T_ERR: Byte = 7
 private const val T_READY: Byte = 8
 private const val T_UNPAIR: Byte = 9
 private const val PAIR_REQUEST_GAP_MS = 30_000L
+private const val SWEEP_EVERY_MS = 30_000L
+
+/** Test switch: env FETCHJET_SYNC_NO_BROADCAST=1 sends no broadcast (as a real iPhone can't). */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private val NO_BROADCAST: Boolean =
+    platform.Foundation.NSProcessInfo.processInfo.environment["FETCHJET_SYNC_NO_BROADCAST"] == "1"
 
 @Serializable
 private data class Announce(
@@ -126,6 +132,7 @@ internal class IosDeviceSync(
         }
         native.startUdpListen(DISCOVERY_PORT, udpListener)
         scope.launch { expireLoop() }
+        scope.launch { announceLoop() }
         applyVisibility()
     }
 
@@ -137,7 +144,6 @@ internal class IosDeviceSync(
 
     private var visible = false
     private var serverOpen = false
-    private var announceJob: Job? = null
 
     override fun setVisible(visible: Boolean) {
         this.visible = visible
@@ -159,7 +165,6 @@ internal class IosDeviceSync(
                 .let { if (it <= 0) SYNC_TCP_PORT else it }
             serverOpen = true
             println("FJSYNC visible tcpPort=$tcpPort")
-            announceJob = scope.launch { announceLoop() }
         } else if (!visible && serverOpen) {
             closeServerLocked()
             println("FJSYNC hidden")
@@ -171,21 +176,44 @@ internal class IosDeviceSync(
     }
 
     private fun closeServerLocked() {
-        announceJob?.cancel()
-        announceJob = null
         if (serverOpen) native.stopTcpServer()
         serverOpen = false
     }
 
     // ---- discovery --------------------------------------------------------
 
-    private suspend fun announceLoop() {
-        val body = json.encodeToString(
+    /** This device's announce ("fj-ann", visible) or a probe ("fj-probe", hidden: asks only). */
+    private fun announceBytes(): NSData {
+        val shown = visible && serverOpen
+        return json.encodeToString(
             Announce.serializer(),
-            Announce(id = selfId, name = selfName, plat = platformName, port = tcpPort)
-        ).encodeToByteArray()
-        while (scope.isActive && started && visible) {
-            native.sendUdpBroadcast(DISCOVERY_PORT, body.toNSData())
+            Announce(
+                t = if (shown) "fj-ann" else "fj-probe",
+                id = selfId, name = selfName, plat = platformName, port = if (shown) tcpPort else 0
+            )
+        ).encodeToByteArray().toNSData()
+    }
+
+    /**
+     * A real iPhone cannot send or hear broadcasts without Apple's multicast entitlement, so
+     * besides the broadcast this sends the announce (or, hidden, a probe) to every known device
+     * directly every 2 s, and to every host of the subnet one by one every [SWEEP_EVERY_MS].
+     * Desktop / Android answer a probe directly and send their announce to known devices too.
+     */
+    private suspend fun announceLoop() {
+        var lastSweep = 0L
+        while (scope.isActive && started) {
+            val body = announceBytes()
+            if (visible && serverOpen && !NO_BROADCAST) native.sendUdpBroadcast(DISCOVERY_PORT, body)
+            val hosts = locked {
+                seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }.map { it.host }
+            }.distinct()
+            hosts.forEach { native.sendUdpTo(it, DISCOVERY_PORT, body) }
+            val now = nowMs()
+            if (now - lastSweep >= SWEEP_EVERY_MS) {
+                lastSweep = now
+                native.sendUdpToSubnet(DISCOVERY_PORT, body)
+            }
             delay(ANNOUNCE_EVERY_MS)
         }
     }
@@ -193,7 +221,14 @@ internal class IosDeviceSync(
     private fun onDiscoveryPacket(senderIp: String, data: NSData) {
         val text = data.toByteArray().decodeToString()
         val ann = runCatching { json.decodeFromString(Announce.serializer(), text) }.getOrNull()
-        if (ann == null || ann.t != "fj-ann" || ann.id == selfId) return
+        if (ann == null || ann.id == selfId) return
+        if (ann.t == "fj-probe") {
+            if (visible && serverOpen && !PairedDeviceStore.isBlocked(ann.id)) {
+                native.sendUdpTo(senderIp, DISCOVERY_PORT, announceBytes())
+            }
+            return
+        }
+        if (ann.t != "fj-ann" || PairedDeviceStore.isBlocked(ann.id)) return
         val device = DiscoveredDevice(
             id = ann.id, name = ann.name, platform = ann.plat,
             host = senderIp, port = ann.port, paired = PairedDeviceStore.isPaired(ann.id)
