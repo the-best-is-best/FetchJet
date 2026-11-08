@@ -46,6 +46,8 @@ private const val T_FILE_END: Byte = 5
 private const val T_ACK: Byte = 6
 private const val T_ERR: Byte = 7
 private const val T_READY: Byte = 8
+private const val T_UNPAIR: Byte = 9
+private const val PAIR_REQUEST_GAP_MS = 30_000L
 
 @Serializable
 private data class Announce(
@@ -91,6 +93,11 @@ internal class DeviceSyncImpl(
     override val pairing: StateFlow<PairingState?> = _pairing.asStateFlow()
     private val _sending = MutableStateFlow<SendState?>(null)
     override val sending: StateFlow<SendState?> = _sending.asStateFlow()
+    private val _blocked = MutableStateFlow(PairedDeviceStore.blockedDevices())
+    override val blocked: StateFlow<List<PairedDevice>> = _blocked.asStateFlow()
+
+    /** Device id -> when its last pairing request was shown (one per [PAIR_REQUEST_GAP_MS]). */
+    private val lastPairRequestAt = HashMap<String, Long>()
 
     override val selfId: String = PairedDeviceStore.selfId
     override val selfName: String get() = PairedDeviceStore.selfName.ifBlank { platformName }
@@ -287,7 +294,8 @@ internal class DeviceSyncImpl(
 
     private fun publishDiscovered() {
         val list = synchronized(seen) {
-            seen.values.map { it.copy(paired = PairedDeviceStore.isPaired(it.id)) }
+            seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }
+                .map { it.copy(paired = PairedDeviceStore.isPaired(it.id)) }
         }
         _discovered.value = list
     }
@@ -313,6 +321,7 @@ internal class DeviceSyncImpl(
             when (type) {
                 T_HELLO -> handleHello(body, output)
                 T_SEND_META -> handleSend(body, input, output)
+                T_UNPAIR -> handleUnpair(body)
                 else -> writeFrame(output, T_ERR, "unknown".encodeToByteArray())
             }
             output.flush()
@@ -327,6 +336,10 @@ internal class DeviceSyncImpl(
             )
         }.getOrNull()
             ?: return
+        pairRefusal(hello.id)?.let { reason ->
+            println("FJSYNC pairing from ${hello.name} refused: $reason")
+            writeFrame(output, T_ERR, reason.encodeToByteArray()); output.flush(); return
+        }
         val kp = newEcKeyPair()
         val pubB = kp.public.encoded
         val pubA = Base64.decode(hello.pub)
@@ -344,6 +357,41 @@ internal class DeviceSyncImpl(
         _pairing.value = PairingState.Confirm(hello.name, hello.id, code)
     }
 
+    /**
+     * Why a pairing request from [fromId] is refused, or null to show it: "blocked"; "busy" while
+     * another device's request is on screen (a second one must not replace the code being read);
+     * "wait:<seconds>" for a repeat within [PAIR_REQUEST_GAP_MS].
+     */
+    @Synchronized
+    private fun pairRefusal(fromId: String): String? {
+        if (PairedDeviceStore.isBlocked(fromId)) return "blocked"
+        val p = pending
+        if (p != null && p.device.id != fromId) return "busy"
+        val now = System.currentTimeMillis()
+        val last = lastPairRequestAt[fromId]
+        if (last != null && now - last < PAIR_REQUEST_GAP_MS) {
+            return "wait:${(PAIR_REQUEST_GAP_MS - (now - last) + 999) / 1000}"
+        }
+        lastPairRequestAt[fromId] = now
+        return null
+    }
+
+    override fun blockPairing() {
+        val p = pending ?: return
+        PairedDeviceStore.block(p.device)
+        pending = null
+        _pairing.value = null
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        _paired.value = PairedDeviceStore.pairedDevices()
+        publishDiscovered()
+    }
+
+    override fun unblock(deviceId: String) {
+        PairedDeviceStore.unblock(deviceId)
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        publishDiscovered()
+    }
+
     private fun handleSend(body: ByteArray, input: DataInputStream, output: DataOutputStream) {
         // body = [idLen:int][fromId bytes][sealed meta]
         val bb = DataInputStream(body.inputStream())
@@ -353,7 +401,14 @@ internal class DeviceSyncImpl(
         val sealed = bb.readBytes()
         val key = PairedDeviceStore.keyFor(fromId)
         if (key == null) {
-            writeFrame(output, T_ERR, "not paired".encodeToByteArray()); return
+            // "pending" = this user is still looking at the code for that device (the sender
+            // waits); "not paired" = no pairing at all, e.g. it was unpaired here (the sender stops).
+            val reason = when {
+                PairedDeviceStore.isBlocked(fromId) -> "blocked"
+                pending?.device?.id == fromId -> "pending"
+                else -> "not paired"
+            }
+            writeFrame(output, T_ERR, reason.encodeToByteArray()); return
         }
         val metaJson =
             runCatching { CryptoBox.open(key, sealed).decodeToString() }.getOrNull() ?: run {
@@ -420,6 +475,8 @@ internal class DeviceSyncImpl(
                     )
                     output.flush()
                     val (type, b) = readFrame(input) ?: throw IllegalStateException("no reply")
+                    // Refused there: "blocked", "busy" or "wait:<seconds>" (shown translated).
+                    if (type == T_ERR) throw IllegalStateException(b.decodeToString())
                     if (type != T_HELLO_ACK) throw IllegalStateException("bad reply")
                     val ack = json.decodeFromString(Hello.serializer(), b.decodeToString())
                     val pubB = Base64.decode(ack.pub)
@@ -463,9 +520,60 @@ internal class DeviceSyncImpl(
     }
 
     override fun unpair(deviceId: String) {
+        val key = PairedDeviceStore.keyFor(deviceId)
+        val device = synchronized(seen) { seen[deviceId] }
+        forgetPairing(deviceId)
+        // Tell the other device too (best effort: only if it is on the network and visible now),
+        // so it does not keep showing this one as paired.
+        if (key != null && device != null && device.host.isNotBlank() && device.port > 0) {
+            scope.launch {
+                runCatching {
+                    Socket().use { socket ->
+                        socket.connect(InetSocketAddress(device.host, device.port), 3000)
+                        val output = DataOutputStream(socket.getOutputStream().buffered())
+                        writeFrame(output, T_UNPAIR, idAndSealed(CryptoBox.seal(key, "unpair".encodeToByteArray())))
+                        output.flush()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun forgetPairing(deviceId: String) {
         PairedDeviceStore.removePairing(deviceId)
         _paired.value = PairedDeviceStore.pairedDevices()
         publishDiscovered()
+    }
+
+    /** The other device unpaired this one: drop it here too, if the notice is really from it. */
+    private fun handleUnpair(body: ByteArray) {
+        val bb = DataInputStream(body.inputStream())
+        val idLen = bb.readInt()
+        val fromId = ByteArray(idLen).also { bb.readFully(it) }.decodeToString()
+        val key = PairedDeviceStore.keyFor(fromId) ?: return
+        val ok = runCatching { CryptoBox.open(key, bb.readBytes()).decodeToString() == "unpair" }
+            .getOrDefault(false)
+        if (ok) {
+            println("FJSYNC unpaired by $fromId")
+            forgetPairing(fromId)
+        }
+    }
+
+    /** `[idLen:int][selfId][sealed]`, the body of a frame that says who sends it. */
+    private fun idAndSealed(sealed: ByteArray): ByteArray {
+        val baos = java.io.ByteArrayOutputStream()
+        DataOutputStream(baos).apply {
+            val idBytes = selfId.encodeToByteArray()
+            writeInt(idBytes.size); write(idBytes); write(sealed); flush()
+        }
+        return baos.toByteArray()
+    }
+
+    @Volatile
+    private var sendCancelled = false
+
+    override fun cancelSend() {
+        sendCancelled = true
     }
 
     override fun send(request: SendRequest, onResult: (Boolean) -> Unit) {
@@ -481,6 +589,7 @@ internal class DeviceSyncImpl(
             _sending.value =
                 SendState.Failed(name, "device offline or not paired"); onResult(false); return
         }
+        sendCancelled = false
         _sending.value = SendState.Sending(name, 0f)
         scope.launch {
             val deadline = System.currentTimeMillis() + ACCEPT_WAIT_MS
@@ -500,9 +609,23 @@ internal class DeviceSyncImpl(
                         }
                         _sending.value = SendState.Waiting(name)
                         kotlinx.coroutines.delay(1500)
+                        if (sendCancelled) {
+                            _sending.value = null; onResult(false); return@launch
+                        }
+                    }
+
+                    SendOutcome.NotPaired -> {
+                        // It forgot this device (unpaired there): forget it here too, so the next
+                        // send starts a fresh pairing instead of waiting for nothing.
+                        forgetPairing(request.deviceId)
+                        _sending.value = SendState.Failed(
+                            name, "the other device unpaired this one; send again to pair"
+                        )
+                        onResult(false); return@launch
                     }
 
                     is SendOutcome.Fail -> {
+                        if (outcome.reason == "blocked") forgetPairing(request.deviceId)
                         _sending.value = SendState.Failed(name, outcome.reason)
                         onResult(false); return@launch
                     }
@@ -514,6 +637,7 @@ internal class DeviceSyncImpl(
     private sealed interface SendOutcome {
         object Success : SendOutcome
         object WaitAccept : SendOutcome
+        object NotPaired : SendOutcome
         data class Fail(val reason: String) : SendOutcome
     }
 
@@ -567,13 +691,15 @@ internal class DeviceSyncImpl(
             }
             writeFrame(output, T_SEND_META, baos.toByteArray())
             output.flush()
-            // Wait for the receiver to accept before sending the file. "not paired" = the other
-            // user has not confirmed the code yet, so keep waiting instead of failing.
+            // Wait for the receiver to accept before sending the file: "pending" = the other user
+            // has not confirmed the code yet; "not paired" = it does not know this device any more.
             val (reply, rbody) = readFrame(input) ?: return SendOutcome.Fail("no reply")
             if (reply == T_ERR) {
-                val reason = rbody.decodeToString()
-                return if (reason == "not paired") SendOutcome.WaitAccept
-                else SendOutcome.Fail(reason)
+                return when (val reason = rbody.decodeToString()) {
+                    "pending" -> SendOutcome.WaitAccept
+                    "not paired" -> SendOutcome.NotPaired
+                    else -> SendOutcome.Fail(reason)
+                }
             }
             if (reply != T_READY) return SendOutcome.Fail("unexpected reply")
             val total = outgoing.sumOf { it.size }.coerceAtLeast(1)

@@ -40,6 +40,8 @@ private const val T_FILE_END: Byte = 5
 private const val T_ACK: Byte = 6
 private const val T_ERR: Byte = 7
 private const val T_READY: Byte = 8
+private const val T_UNPAIR: Byte = 9
+private const val PAIR_REQUEST_GAP_MS = 30_000L
 
 @Serializable
 private data class Announce(
@@ -85,6 +87,9 @@ internal class IosDeviceSync(
     override val paired: StateFlow<List<PairedDevice>> = _paired.asStateFlow()
     private val _pairing = MutableStateFlow<PairingState?>(null)
     override val pairing: StateFlow<PairingState?> = _pairing.asStateFlow()
+    private val _blocked = MutableStateFlow(PairedDeviceStore.blockedDevices())
+    override val blocked: StateFlow<List<PairedDevice>> = _blocked.asStateFlow()
+    private val lastPairRequestAt = HashMap<String, Long>()
     private val _sending = MutableStateFlow<SendState?>(null)
     override val sending: StateFlow<SendState?> = _sending.asStateFlow()
 
@@ -215,7 +220,8 @@ internal class IosDeviceSync(
 
     private fun publishDiscovered() {
         _discovered.value = locked {
-            seen.values.map { it.copy(paired = PairedDeviceStore.isPaired(it.id)) }
+            seen.values.filterNot { PairedDeviceStore.isBlocked(it.id) }
+                .map { it.copy(paired = PairedDeviceStore.isPaired(it.id)) }
         }
     }
 
@@ -227,6 +233,7 @@ internal class IosDeviceSync(
             when (type) {
                 T_HELLO -> handleHello(body, connId)
                 T_SEND_META -> handleSend(body, connId)
+                T_UNPAIR -> handleUnpair(body)
                 else -> writeFrame(connId, T_ERR, "unknown".encodeToByteArray())
             }
         } finally {
@@ -238,6 +245,10 @@ internal class IosDeviceSync(
         val hello = runCatching {
             json.decodeFromString(Hello.serializer(), body.decodeToString())
         }.getOrNull() ?: return
+        pairRefusal(hello.id)?.let { reason ->
+            println("FJSYNC pairing from ${hello.name} refused: $reason")
+            writeFrame(connId, T_ERR, reason.encodeToByteArray()); return
+        }
         val kp = native.generateEcKeyPair() ?: return
         val pubB = kp.publicX509.toByteArray()
         val pubA = Base64.decode(hello.pub)
@@ -264,7 +275,12 @@ internal class IosDeviceSync(
         val sealed = body.copyOfRange(off, body.size)
         val key = PairedDeviceStore.keyFor(fromId)
         if (key == null) {
-            writeFrame(connId, T_ERR, "not paired".encodeToByteArray()); return
+            val reason = when {
+                PairedDeviceStore.isBlocked(fromId) -> "blocked"
+                pending?.device?.id == fromId -> "pending"
+                else -> "not paired"
+            }
+            writeFrame(connId, T_ERR, reason.encodeToByteArray()); return
         }
         val metaJson =
             native.aesOpen(key.toNSData(), sealed.toNSData())?.toByteArray()?.decodeToString()
@@ -335,6 +351,7 @@ internal class IosDeviceSync(
                     json.encodeToString(Hello.serializer(), hello).encodeToByteArray()
                 )
                 val (type, b) = readFrame(connId) ?: throw IllegalStateException("no reply")
+                if (type == T_ERR) throw IllegalStateException(b.decodeToString())
                 if (type != T_HELLO_ACK) throw IllegalStateException("bad reply")
                 val ack = json.decodeFromString(Hello.serializer(), b.decodeToString())
                 val pubB = Base64.decode(ack.pub)
@@ -367,15 +384,94 @@ internal class IosDeviceSync(
         publishDiscovered()
     }
 
+    /** "blocked", "busy" (another request on screen), "wait:<seconds>", or null to show it. */
+    private fun pairRefusal(fromId: String): String? = locked {
+        val now = nowMs()
+        val last = lastPairRequestAt[fromId]
+        when {
+            PairedDeviceStore.isBlocked(fromId) -> "blocked"
+            pending.let { it != null && it.device.id != fromId } -> "busy"
+            last != null && now - last < PAIR_REQUEST_GAP_MS ->
+                "wait:${(PAIR_REQUEST_GAP_MS - (now - last) + 999) / 1000}"
+
+            else -> {
+                lastPairRequestAt[fromId] = now
+                null
+            }
+        }
+    }
+
+    override fun blockPairing() {
+        val p = pending ?: return
+        PairedDeviceStore.block(p.device)
+        pending = null
+        _pairing.value = null
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        _paired.value = PairedDeviceStore.pairedDevices()
+        publishDiscovered()
+    }
+
+    override fun unblock(deviceId: String) {
+        PairedDeviceStore.unblock(deviceId)
+        _blocked.value = PairedDeviceStore.blockedDevices()
+        publishDiscovered()
+    }
+
     override fun cancelPairing() {
         pending = null
         _pairing.value = null
     }
 
     override fun unpair(deviceId: String) {
+        val key = PairedDeviceStore.keyFor(deviceId)
+        val device = locked { seen[deviceId] }
+        forgetPairing(deviceId)
+        // Tell the other device too (best effort: only if it is on the network and visible now).
+        if (key != null && device != null && device.host.isNotBlank() && device.port > 0) {
+            scope.launch {
+                val connId = native.tcpConnect(device.host, device.port, 3000)
+                if (connId >= 0) {
+                    try {
+                        val sealed = native.aesSeal(key.toNSData(), "unpair".encodeToByteArray().toNSData())
+                            ?.toByteArray()
+                        if (sealed != null) writeFrame(connId, T_UNPAIR, idAndSealed(sealed))
+                    } finally {
+                        native.tcpClose(connId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun forgetPairing(deviceId: String) {
         PairedDeviceStore.removePairing(deviceId)
         _paired.value = PairedDeviceStore.pairedDevices()
         publishDiscovered()
+    }
+
+    /** The other device unpaired this one: drop it here too, if the notice is really from it. */
+    private fun handleUnpair(body: ByteArray) {
+        val idLen = readInt(body, 0)
+        val fromId = body.copyOfRange(4, 4 + idLen).decodeToString()
+        val key = PairedDeviceStore.keyFor(fromId) ?: return
+        val opened = native.aesOpen(key.toNSData(), body.copyOfRange(4 + idLen, body.size).toNSData())
+            ?.toByteArray()?.decodeToString()
+        if (opened == "unpair") {
+            println("FJSYNC unpaired by $fromId")
+            forgetPairing(fromId)
+        }
+    }
+
+    /** `[idLen:int][selfId][sealed]`, the body of a frame that says who sends it. */
+    private fun idAndSealed(sealed: ByteArray): ByteArray {
+        val idBytes = selfId.encodeToByteArray()
+        return writeInt(idBytes.size) + idBytes + sealed
+    }
+
+    private var sendCancelled = false
+
+    override fun cancelSend() {
+        sendCancelled = true
     }
 
     override fun send(request: SendRequest, onResult: (Boolean) -> Unit) {
@@ -391,6 +487,7 @@ internal class IosDeviceSync(
             _sending.value =
                 SendState.Failed(name, "device offline or not paired"); onResult(false); return
         }
+        sendCancelled = false
         _sending.value = SendState.Sending(name, 0f)
         scope.launch {
             val deadline = nowMs() + ACCEPT_WAIT_MS
@@ -410,9 +507,21 @@ internal class IosDeviceSync(
                         }
                         _sending.value = SendState.Waiting(name)
                         delay(1500)
+                        if (sendCancelled) {
+                            _sending.value = null; onResult(false); return@launch
+                        }
+                    }
+
+                    SendOutcome.NotPaired -> {
+                        forgetPairing(request.deviceId)
+                        _sending.value = SendState.Failed(
+                            name, "the other device unpaired this one; send again to pair"
+                        )
+                        onResult(false); return@launch
                     }
 
                     is SendOutcome.Fail -> {
+                        if (outcome.reason == "blocked") forgetPairing(request.deviceId)
                         _sending.value = SendState.Failed(name, outcome.reason)
                         onResult(false); return@launch
                     }
@@ -424,6 +533,7 @@ internal class IosDeviceSync(
     private sealed interface SendOutcome {
         object Success : SendOutcome
         object WaitAccept : SendOutcome
+        object NotPaired : SendOutcome
         data class Fail(val reason: String) : SendOutcome
     }
 
@@ -482,8 +592,11 @@ internal class IosDeviceSync(
             val (reply, rbody) = readFrame(connId) ?: return SendOutcome.Fail("no reply")
             if (reply == T_ERR) {
                 val reason = rbody.decodeToString()
-                return if (reason == "not paired") SendOutcome.WaitAccept
-                else SendOutcome.Fail(reason)
+                return when (reason) {
+                    "pending" -> SendOutcome.WaitAccept
+                    "not paired" -> SendOutcome.NotPaired
+                    else -> SendOutcome.Fail(reason)
+                }
             }
             if (reply != T_READY) return SendOutcome.Fail("unexpected reply")
             val total = outgoing.sumOf { it.size }.coerceAtLeast(1)

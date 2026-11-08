@@ -34,7 +34,9 @@ object PairedDeviceStore {
     private data class DeviceFile(
         val selfId: String = "",
         val selfName: String = "",
-        val peers: List<StoredPeer> = emptyList()
+        val peers: List<StoredPeer> = emptyList(),
+        /** Devices whose pairing requests (and sends) are refused. */
+        val blocked: List<PairedDevice> = emptyList()
     )
 
     private var cache: DeviceFile = load()
@@ -109,5 +111,23 @@ object PairedDeviceStore {
 
     fun removePairing(deviceId: String) {
         save(cache.copy(peers = cache.peers.filterNot { it.id == deviceId }))
+    }
+
+    fun blockedDevices(): List<PairedDevice> = cache.blocked
+
+    fun isBlocked(deviceId: String): Boolean = cache.blocked.any { it.id == deviceId }
+
+    /** Block [device]: its pairing requests and sends are refused; any pairing with it is removed. */
+    fun block(device: PairedDevice) {
+        save(
+            cache.copy(
+                peers = cache.peers.filterNot { it.id == device.id },
+                blocked = cache.blocked.filterNot { it.id == device.id } + device
+            )
+        )
+    }
+
+    fun unblock(deviceId: String) {
+        save(cache.copy(blocked = cache.blocked.filterNot { it.id == deviceId }))
     }
 }

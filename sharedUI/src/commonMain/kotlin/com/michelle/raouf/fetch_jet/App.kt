@@ -791,7 +791,8 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                 com.michelle.raouf.fetch_jet.ui.DevicePairingDialog(
                     pairing = pairState,
                     onConfirm = { viewModel.onEvent(DashboardUiEvent.OnConfirmPairingClicked) },
-                    onCancel = { viewModel.onEvent(DashboardUiEvent.OnCancelPairingClicked) }
+                    onCancel = { viewModel.onEvent(DashboardUiEvent.OnCancelPairingClicked) },
+                    onBlock = { viewModel.onEvent(DashboardUiEvent.OnBlockPairingClicked) }
                 )
             }
 

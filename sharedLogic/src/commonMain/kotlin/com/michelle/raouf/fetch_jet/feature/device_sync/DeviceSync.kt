@@ -90,10 +90,18 @@ interface DeviceSync {
     fun startPairingWithHost(host: String)
     fun confirmPairing()
     fun cancelPairing()
+
+    /** Refuse the device asking to pair now, and every request or send from it after. */
+    fun blockPairing()
+    fun unblock(deviceId: String)
+    val blocked: StateFlow<List<PairedDevice>>
     fun unpair(deviceId: String)
 
     /** Sends in the background; [onResult] is true only after the receiver confirmed full receipt. */
     fun send(request: SendRequest, onResult: (Boolean) -> Unit)
+
+    /** Stop a send that is still waiting for the other device to accept. */
+    fun cancelSend()
 }
 
 /**

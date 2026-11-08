@@ -78,16 +78,6 @@ internal fun GeneralPage(
                 onChange = onClipboardVideoPagesChanged
             )
         }
-        val visibleToDevices by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
-            .visibleToDevices.collectAsState()
-        SettingsGroup(title = LocalizationManager.Strings.sysDeviceSendTitle) {
-            SettingSwitch(
-                title = LocalizationManager.Strings.visibleToDevices,
-                subtitle = LocalizationManager.Strings.visibleToDevicesHint,
-                checked = visibleToDevices,
-                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVisibleToDevices(it) }
-            )
-        }
         val diag = com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog
         if (diag.canExport) {
             var savedTo by remember { mutableStateOf<String?>(null) }
@@ -149,6 +139,102 @@ internal fun GeneralPage(
         }
         if (StartupLauncher.isSupported) StartupSettingsCard()
         WhenDoneSettingsCard()
+    }
+}
+
+/** Settings > Devices: whether others can find this device, and the devices paired with it. */
+@Composable
+internal fun DevicesPage(
+    pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice>,
+    onUnpair: (String) -> Unit,
+    blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    onUnblock: (String) -> Unit = {}
+) {
+    val visible by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+        .visibleToDevices.collectAsState()
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        SettingsGroup(title = LocalizationManager.Strings.sysDeviceSendTitle) {
+            SettingSwitch(
+                title = LocalizationManager.Strings.visibleToDevices,
+                subtitle = LocalizationManager.Strings.visibleToDevicesHint,
+                checked = visible,
+                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVisibleToDevices(it) }
+            )
+        }
+        DeviceListGroup(
+            title = LocalizationManager.Strings.pairedDevicesTitle,
+            empty = LocalizationManager.Strings.noPairedDevices,
+            devices = pairedDevices,
+            action = LocalizationManager.Strings.unpairDevice,
+            actionIsDanger = true,
+            onAction = onUnpair
+        )
+        DeviceListGroup(
+            title = LocalizationManager.Strings.blockedDevicesTitle,
+            empty = LocalizationManager.Strings.noBlockedDevices,
+            devices = blockedDevices,
+            action = LocalizationManager.Strings.unblockDevice,
+            actionIsDanger = false,
+            onAction = onUnblock
+        )
+    }
+}
+
+/** A titled list of devices (name, platform) with one button per row. */
+@Composable
+private fun DeviceListGroup(
+    title: String,
+    empty: String,
+    devices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice>,
+    action: String,
+    actionIsDanger: Boolean,
+    onAction: (String) -> Unit
+) {
+    SettingsGroup(title = title) {
+        if (devices.isEmpty()) {
+            Text(
+                empty,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        devices.sortedBy { it.name.lowercase() }.forEachIndexed { i, device ->
+            if (i > 0) SettingDivider()
+            val host = device.name.substringBefore(" · ")
+            val plat = device.name.substringAfter(" · ", "").ifBlank { device.platform }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        host,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    if (plat.isNotBlank() && !plat.equals(host, ignoreCase = true)) {
+                        Text(
+                            plat,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = { onAction(device.id) },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        action,
+                        color = if (actionIsDanger) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
 }
 

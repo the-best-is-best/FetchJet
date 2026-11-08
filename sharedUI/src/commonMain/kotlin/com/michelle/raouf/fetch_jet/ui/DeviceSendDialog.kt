@@ -1,8 +1,12 @@
 package com.michelle.raouf.fetch_jet.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,10 +27,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,14 +67,25 @@ fun DeviceSendSheet(
     val devices = state.discoveredDevices
 
     var selectedId by remember(taskId) { mutableStateOf<String?>(null) }
-    var mode by remember(taskId) { mutableStateOf(SendMode.LINK_ONLY) }
+    var mode by remember(taskId, canTransfer) {
+        mutableStateOf(if (canTransfer) SendMode.TRANSFER_AND_CONTINUE else SendMode.LINK_ONLY)
+    }
+    // Pick the first device (paired first) so Send is ready; keep the user's choice while it's there.
+    LaunchedEffect(devices) {
+        if (devices.none { it.id == selectedId }) {
+            selectedId = devices.sortedWith(compareBy({ !it.paired }, { it.name.lowercase() }))
+                .firstOrNull()?.id
+        }
+    }
     var deleteAfter by remember(taskId) { mutableStateOf(false) }
 
     val sending = state.deviceSending
     val isBusy = sending is SendState.Sending || sending is SendState.Waiting
+    // While only waiting for the other side, the user can still back out; not mid-stream.
+    val streaming = sending is SendState.Sending
 
     AlertDialog(
-        onDismissRequest = { if (!isBusy) onEvent(DashboardUiEvent.OnDismissShareSheet) },
+        onDismissRequest = { if (!streaming) onEvent(DashboardUiEvent.OnDismissShareSheet) },
         title = {
             Text(
                 text = LocalizationManager.Strings.sysDeviceSendTitle,
@@ -119,81 +134,64 @@ fun DeviceSendSheet(
                         )
                     }
                 } else {
-                    devices.forEach { device ->
-                        val selected = device.id == selectedId
-                        val host = device.name.substringBefore(" · ")
-                        val plat = device.name.substringAfter(" · ", "")
-                            .ifBlank { device.platform }
-                        val showPlat = plat.isNotBlank() && !plat.equals(host, ignoreCase = true)
-                        Surface(
-                            onClick = { selectedId = device.id },
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (selected)
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            border = BorderStroke(
-                                if (selected) 1.5.dp else 1.dp,
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outlineVariant
-                            ),
+                    var query by remember(taskId) { mutableStateOf("") }
+                    if (devices.size > 5) {
+                        FetchJetTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = LocalizationManager.Strings.sysDeviceSearch,
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(
-                                                alpha = if (selected) 0.22f else 0.12f
-                                            ),
-                                            RoundedCornerShape(12.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = deviceEmoji(device.name + " " + device.platform),
-                                        fontSize = 20.sp
-                                    )
-                                }
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = host,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (showPlat || device.paired) {
-                                        Spacer(Modifier.width(0.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (showPlat) {
-                                                Text(
-                                                    text = plat,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                            if (device.paired) {
-                                                if (showPlat) Spacer(Modifier.width(6.dp))
-                                                PairedChip()
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                RadioButton(
-                                    selected = selected,
-                                    onClick = { selectedId = device.id }
+                        )
+                    }
+                    val shown = devices
+                        .filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+                        .sortedWith(compareBy({ !it.paired }, { it.name.lowercase() }))
+                    // A capped, scrolling list: with many devices the send options and the Send
+                    // button below must stay on screen.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 236.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        if (shown.isEmpty()) {
+                            Text(
+                                text = LocalizationManager.Strings.sysDeviceNoMatch,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+                        var lastGroup: Boolean? = null
+                        shown.forEach { device ->
+                            if (device.paired == lastGroup) {
+                                Divider(
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                    modifier = Modifier.padding(start = 52.dp)
                                 )
                             }
+                            if (device.paired != lastGroup) {
+                                lastGroup = device.paired
+                                Text(
+                                    text = if (device.paired) LocalizationManager.Strings.sysDevicePairedLabel
+                                    else LocalizationManager.Strings.sysDeviceOthers,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp)
+                                )
+                            }
+                            DeviceRow(
+                                device = device,
+                                selected = device.id == selectedId,
+                                onSelect = { selectedId = device.id }
+                            )
                         }
                     }
 
@@ -223,10 +221,12 @@ fun DeviceSendSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = deleteAfter, onCheckedChange = { deleteAfter = it })
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
                             text = LocalizationManager.Strings.sysDeviceDeleteAfter,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -295,7 +295,7 @@ fun DeviceSendSheet(
                     }
 
                     is SendState.Failed -> Text(
-                        text = LocalizationManager.Strings.sysDeviceSendFailed + ": " + sending.reason,
+                        text = LocalizationManager.Strings.sysDeviceSendFailed + ": " + deviceSyncReason(sending.reason),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -328,13 +328,73 @@ fun DeviceSendSheet(
         },
         dismissButton = {
             OutlinedButton(
-                enabled = !isBusy,
+                enabled = !streaming,
                 onClick = { onEvent(DashboardUiEvent.OnDismissShareSheet) }
             ) {
                 Text(LocalizationManager.Strings.cancel)
             }
         }
     )
+}
+
+/** One compact device line: icon, name · platform, Paired badge, radio. */
+@Composable
+private fun DeviceRow(
+    device: com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    val host = device.name.substringBefore(" · ")
+    val plat = device.name.substringAfter(" · ", "").ifBlank { device.platform }
+    val showPlat = plat.isNotBlank() && !plat.equals(host, ignoreCase = true)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                else androidx.compose.ui.graphics.Color.Transparent
+            )
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = if (selected) 0.22f else 0.12f),
+                    RoundedCornerShape(9.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = deviceEmoji(device.name + " " + device.platform), fontSize = 15.sp)
+        }
+        Spacer(Modifier.width(10.dp))
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = host,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (showPlat) {
+                Text(
+                    text = " · $plat",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+        if (device.paired) {
+            Spacer(Modifier.width(6.dp))
+            PairedChip()
+        }
+        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
 /** Small rounded "Paired" badge shown next to a device that has been paired before. */
@@ -384,6 +444,7 @@ private fun ModeRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Text(
@@ -395,12 +456,23 @@ private fun ModeRow(
     }
 }
 
+/** A refusal code from the other device ("blocked", "busy", "wait:<seconds>") in words. */
+internal fun deviceSyncReason(reason: String): String = when {
+    reason == "blocked" -> LocalizationManager.Strings.pairRefusedBlocked
+    reason == "busy" -> LocalizationManager.Strings.pairRefusedBusy
+    reason.startsWith("wait:") ->
+        LocalizationManager.Strings.pairRefusedWait.replace("{seconds}", reason.removePrefix("wait:"))
+
+    else -> reason
+}
+
 /** Shown on both devices during first-time pairing: compare the 6-digit code, then confirm. */
 @Composable
 fun DevicePairingDialog(
     pairing: PairingState,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onBlock: () -> Unit = {}
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
@@ -446,7 +518,7 @@ fun DevicePairingDialog(
                     }
 
                     is PairingState.Failed -> Text(
-                        text = LocalizationManager.Strings.sysDevicePairFailed + ": " + pairing.reason,
+                        text = LocalizationManager.Strings.sysDevicePairFailed + ": " + deviceSyncReason(pairing.reason),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -461,8 +533,19 @@ fun DevicePairingDialog(
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onCancel) {
-                Text(LocalizationManager.Strings.cancel)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (pairing is PairingState.Confirm) {
+                    TextButton(onClick = onBlock) {
+                        Text(
+                            LocalizationManager.Strings.blockDevice,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
+                OutlinedButton(onClick = onCancel) {
+                    Text(LocalizationManager.Strings.cancel)
+                }
             }
         }
     )

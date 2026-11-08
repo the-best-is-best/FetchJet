@@ -52,6 +52,7 @@ internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
     BROWSER("⧉"),
+    DEVICES("⇄"),
     NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
@@ -62,6 +63,7 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneral
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
             BROWSER -> LocalizationManager.Strings.sectionBrowser
+            DEVICES -> LocalizationManager.Strings.sectionDevices
             NETWORK -> LocalizationManager.Strings.sectionNetwork
             MEDIA -> LocalizationManager.Strings.sectionMedia
             TORRENT -> LocalizationManager.Strings.sectionTorrent
@@ -73,6 +75,7 @@ internal enum class SettingsSection(val glyph: String) {
             GENERAL -> LocalizationManager.Strings.sectionGeneralBlurb
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
             BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
+            DEVICES -> LocalizationManager.Strings.sectionDevicesBlurb
             NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
             MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
             TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
@@ -123,6 +126,10 @@ fun FdmSettingsPanel(
     onClipboardVideoPagesChanged: (Boolean) -> Unit = {},
     onSortIntoFoldersChanged: (Boolean) -> Unit = {},
     onDefaultConnectionsChanged: (Int) -> Unit = {},
+    pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    onUnpairDevice: (String) -> Unit = {},
+    blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    onUnblockDevice: (String) -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onThemeToggled: () -> Unit,
     onLanguageChanged: (String) -> Unit = {},
@@ -137,6 +144,8 @@ fun FdmSettingsPanel(
     val isIos = getPlatform().name.startsWith("iOS", ignoreCase = true)
     val updateState by UpdateManager.state.collectAsState()
     val maxAtOnce by QueueManagerRepository.getInstance().maxConcurrentDownloads.collectAsState()
+    val visibleToDevices by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+        .visibleToDevices.collectAsState()
     val netProxy by NetworkSettings.proxy.collectAsState()
     val netLogins by NetworkSettings.logins.collectAsState()
     val sections = SettingsSection.entries.filter {
@@ -168,6 +177,10 @@ fun FdmSettingsPanel(
         SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
         SettingsSection.BROWSER -> (if (isJvm) "Edge · Firefox · Chrome" else "Firefox for Android") to null
+        SettingsSection.DEVICES ->
+            (if (visibleToDevices) LocalizationManager.Strings.summaryVisible else LocalizationManager.Strings.summaryHidden) +
+                    (if (pairedDevices.isNotEmpty()) " · ${pairedDevices.size}" else "") to
+                    (if (visibleToDevices) StatusCompleted else null)
         SettingsSection.UPDATES -> updateState.available?.let {
             LocalizationManager.Strings.summaryVersionAvailable(
                 it.version
@@ -224,6 +237,7 @@ fun FdmSettingsPanel(
 
             SettingsSection.UPDATES -> UpdatesSettingsCard()
             SettingsSection.BROWSER -> BrowserExtensionPage(isJvm)
+            SettingsSection.DEVICES -> DevicesPage(pairedDevices, onUnpairDevice, blockedDevices, onUnblockDevice)
         }
     }
 

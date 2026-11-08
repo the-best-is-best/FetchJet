@@ -25,8 +25,12 @@ private object NoopDeviceSync : DeviceSync {
     override fun startPairingWithHost(host: String) {}
     override fun confirmPairing() {}
     override fun cancelPairing() {}
+    override fun blockPairing() {}
+    override fun unblock(deviceId: String) {}
+    override val blocked = MutableStateFlow<List<PairedDevice>>(emptyList()).asStateFlow()
     override fun unpair(deviceId: String) {}
     override fun send(request: SendRequest, onResult: (Boolean) -> Unit) = onResult(false)
+    override fun cancelSend() {}
 }
 
 actual fun createDeviceSync(

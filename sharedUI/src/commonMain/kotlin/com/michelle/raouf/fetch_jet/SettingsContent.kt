@@ -59,6 +59,10 @@ internal fun SettingsContentView(
             )
         },
         onSortIntoFoldersChanged = { viewModel.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(it)) },
+        pairedDevices = state.pairedDevices,
+        onUnpairDevice = { viewModel.onEvent(DashboardUiEvent.OnUnpairDeviceClicked(it)) },
+        blockedDevices = state.blockedDevices,
+        onUnblockDevice = { viewModel.onEvent(DashboardUiEvent.OnUnblockDeviceClicked(it)) },
         onDefaultConnectionsChanged = {
             viewModel.onEvent(
                 DashboardUiEvent.OnDefaultConnectionsChanged(

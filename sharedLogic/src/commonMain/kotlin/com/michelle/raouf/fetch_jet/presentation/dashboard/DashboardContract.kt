@@ -211,6 +211,8 @@ data class DashboardUiState(
     val deviceShareTaskId: String? = null,
     /** Devices found on the LAN running FetchJet. */
     val discoveredDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice> = emptyList(),
+    val pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
+    val blockedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
     /** Non-null while a secure pairing handshake with a device is in progress. */
     val devicePairing: com.michelle.raouf.fetch_jet.feature.device_sync.PairingState? = null,
     /** Non-null while a send is in progress / just finished. */
@@ -423,6 +425,12 @@ sealed interface DashboardUiEvent {
 
     /** Forget a previously paired device. */
     data class OnUnpairDeviceClicked(val deviceId: String) : DashboardUiEvent
+
+    /** Block the device asking to pair now. */
+    data object OnBlockPairingClicked : DashboardUiEvent
+
+    /** Allow a blocked device to ask again. */
+    data class OnUnblockDeviceClicked(val deviceId: String) : DashboardUiEvent
 
     /** Pair by typing the other device's IP (for networks that block UDP discovery). */
     data class OnManualConnectClicked(val ip: String) : DashboardUiEvent

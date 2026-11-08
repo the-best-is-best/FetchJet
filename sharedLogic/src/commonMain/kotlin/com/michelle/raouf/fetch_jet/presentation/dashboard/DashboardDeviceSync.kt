@@ -42,6 +42,16 @@ internal fun DashboardViewModel.initDeviceSync() {
         }
     }
     scope.launch {
+        deviceSync.paired.collect { list ->
+            _uiState.update { it.copy(pairedDevices = list) }
+        }
+    }
+    scope.launch {
+        deviceSync.blocked.collect { list ->
+            _uiState.update { it.copy(blockedDevices = list) }
+        }
+    }
+    scope.launch {
         deviceSync.pairing.collect { state ->
             _uiState.update { it.copy(devicePairing = state) }
         }
@@ -145,8 +155,10 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnShareTaskClicked ->
             _uiState.update { it.copy(deviceShareTaskId = event.taskId, deviceSending = null) }
 
-        DashboardUiEvent.OnDismissShareSheet ->
+        DashboardUiEvent.OnDismissShareSheet -> {
+            deviceSync.cancelSend()
             _uiState.update { it.copy(deviceShareTaskId = null) }
+        }
 
         is DashboardUiEvent.OnSendToDeviceClicked -> startDeviceSend(event)
 
@@ -166,6 +178,14 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         }
 
         is DashboardUiEvent.OnUnpairDeviceClicked -> deviceSync.unpair(event.deviceId)
+
+        DashboardUiEvent.OnBlockPairingClicked -> {
+            deviceSync.blockPairing()
+            pendingDeviceSend = null
+            _uiState.update { it.copy(devicePairing = null) }
+        }
+
+        is DashboardUiEvent.OnUnblockDeviceClicked -> deviceSync.unblock(event.deviceId)
 
         is DashboardUiEvent.OnManualConnectClicked -> {
             val ip = event.ip.trim()

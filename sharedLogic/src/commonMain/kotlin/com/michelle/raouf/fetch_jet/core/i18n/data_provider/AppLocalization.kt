@@ -732,6 +732,23 @@ interface AppLocalization : LocalizationProvider {
     val sysDeviceReceived: String
     val visibleToDevices: String
     val visibleToDevicesHint: String
+    val sysDeviceSearch: String
+    val sysDeviceOthers: String
+    val sysDeviceNoMatch: String
+    val sectionDevices: String
+    val sectionDevicesBlurb: String
+    val pairedDevicesTitle: String
+    val noPairedDevices: String
+    val unpairDevice: String
+    val summaryVisible: String
+    val summaryHidden: String
+    val blockDevice: String
+    val unblockDevice: String
+    val blockedDevicesTitle: String
+    val noBlockedDevices: String
+    val pairRefusedBlocked: String
+    val pairRefusedWait: String
+    val pairRefusedBusy: String
     val sysDevicePairedLabel: String
     val sysDeviceThisDevice: String
     val sysDeviceManualConnect: String
