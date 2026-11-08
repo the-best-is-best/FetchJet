@@ -34,6 +34,12 @@ val fetchJetVerboseLogs: Boolean =
         ?.toString() ?: "false")
         .trim().equals("true", ignoreCase = true)
 
+// Memory measuring run: env FETCHJET_NMT=true (or fetchjet.nmt=true) turns on the JVM's native
+// memory tracking, read with `jcmd <pid> VM.native_memory summary`. Never on in a release.
+val fetchJetNativeMemoryTracking: Boolean =
+    (System.getenv("FETCHJET_NMT") ?: project.findProperty("fetchjet.nmt")?.toString() ?: "false")
+        .trim().equals("true", ignoreCase = true)
+
 // The Chromium extension ships inside the app (resources fetchjet-extension/chromium): the app
 // unpacks it for "Load unpacked", so it works without the Chrome / Edge stores.
 val bundledExtensionDir = layout.buildDirectory.dir("generated/fetchjetExtension")
@@ -67,7 +73,17 @@ tasks.named("processResources") { dependsOn(bundleExtension) }
 compose.desktop {
     application {
         mainClass = "com.michelle.raouf.fetch_jet.MainKt"
-        jvmArgs += listOf("-Dfetchjet.verboseLogs=$fetchJetVerboseLogs")
+        jvmArgs += listOf(
+            "-Dfetchjet.verboseLogs=$fetchJetVerboseLogs",
+            "-XX:+UseSerialGC",
+            "-Xms32m",
+            "-Xmx1g",
+            "-XX:MinHeapFreeRatio=10",
+            "-XX:MaxHeapFreeRatio=30"
+        )
+        if (fetchJetNativeMemoryTracking) jvmArgs += listOf("-XX:NativeMemoryTracking=summary")
+        System.getenv("FETCHJET_JVM_ARGS")?.split(' ')?.filter { it.isNotBlank() }
+            ?.let { jvmArgs += it }
 
         // packageRelease* would run ProGuard with no keep rules for ktor/okhttp/okio and
         // the packaged app would crash at startup. Keep it off until rules exist.

@@ -12,19 +12,46 @@ Why: the owner compared with IDM (under 5 MB). FetchJet runs on the JVM with Com
 ~100 MB is the floor and IDM's number cannot be matched, but the app holds much more than it needs
 today.
 
-- [ ] Measure first (owner, Task Manager > Details > Memory (private working set)): window open and
-  idle, and hidden in the tray. Same on the MSI and the Store MSIX.
-- [ ] JVM limits: `desktopApp/build.gradle.kts` passes only `-Dfetchjet.verboseLogs`, so the heap
-  may grow to 1/4 of the RAM and is rarely given back. Try a max heap, a GC that returns free
-  memory to Windows, and measure again.
-- [ ] Hidden in the tray, the window is only made invisible (`main.kt` `Window(visible =
-  isWindowVisible)`), so the whole UI and its Skia surfaces stay in memory. Dispose the window
-  while hidden (downloads keep running), rebuild it on show. Check the Windows focus trick and the
-  bridge `onShowAndFocus` still work.
-- [ ] libtorrent: start the session only when a torrent exists, stop it when none is left.
-- [ ] Measure again, write the before / after numbers here.
+- [x] Measured 2026-11-08 on Windows (NVIDIA GPU), dev run with `FETCHJET_NMT=true` and
+  `jcmd <pid> VM.native_memory summary`: process 456 MB private, the same open or in the tray.
+  JVM part 225 MB (G1 bookkeeping 61, heap 44 committed / ~30 used, metaspace + symbols 73,
+  JIT code 17). The other ~230 MB is the NVIDIA DirectX 12 driver Skia draws with. libtorrent
+  was not even loaded. Hiding to the tray frees nothing.
+- [x] Software drawing (`SKIKO_RENDER_API=SOFTWARE`): 339 MB private (-118), outside-JVM part
+  ~90 MB; idle CPU 0.8 % of one core; the window renders correctly.
+- [x] Applied: Windows draws in software unless `skiko.renderApi` / `SKIKO_RENDER_API` is set
+  (`main.kt`, first lines of `main`); JVM `-XX:+UseSerialGC -Xms32m -Xmx1g
+  -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30` (`desktopApp/build.gradle.kts`). `-Xms32m`
+  matters: without it SerialGC keeps the default 512 MB start heap (1/64 of RAM) committed
+  forever. Measured with 302 tasks, hard scrolling + Settings and back, then 30 s idle:
+  software 247 MB at start, 276 MB after; GPU (`SKIKO_RENDER_API=DIRECT3D`) 389 / 432 MB.
+  CPU while scrolling: 89 % of one core on both. GC bookkeeping 61 -> 2 MB.
+- [ ] Owner: use the dev build / next release normally and say if anything feels slow
+  (resize, big lists, dialogs). Then measure the installed MSIX once.
+- [x] Tried and dropped (2026-11-08, same 302-task list, idle 30 s, no mouse): AppCDS dynamic
+  archive (`jcmd VM.cds dynamic_dump`, 68 MB file) 247 -> 237 MB; plus C1-only JIT
+  (`-XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=64m`) 227 MB. Metaspace 50 -> 3 MB, but
+  Windows counts the mapped archive (80 MB) as private, so the gain is only 10-20 MB, for a
+  per-build archive in CI that must match the bundled JVM and slower hot code. Not worth it.
+  Dev hook kept: env `FETCHJET_JVM_ARGS` adds JVM flags to `:desktopApp:run`.
+- [ ] Dropped for now: disposing the window in the tray (the GPU / UI memory did not change when
+  hidden, the measured cost is the driver itself) and lazy libtorrent (not loaded at idle).
 
-## 2. Carried over from 1.3.0 (checks)
+## 2. Android status bar in dark and light (small)
+
+Why: the owner sees a problem with the status bar on Android (reported 2026-11-08). Not looked
+at yet: reproduce first.
+
+- [ ] On the A56, check the status bar (and the navigation bar) with Appearance = Light, Dark and
+  System (device in light and in dark), and after switching the theme while the app is open:
+  icon color readable against the top bar, no wrong background.
+- [ ] Check the screens that are their own window: task details on the phone (a `Dialog`), the Add
+  dialog, the pairing / send sheets. A dialog window does not inherit the activity's bar settings.
+- [ ] Code today: `MainActivity.onCreate` calls `enableEdgeToEdge` with light bars before the
+  theme is known, then `setContent` re-applies it from `App(onDarkModeChanged)` and sets
+  `isAppearanceLightStatusBars`. Fix where the check shows the fault; test both themes again.
+
+## 3. Carried over from 1.3.0 (checks)
 
 - [x] Release notes in the app's language (1.3.0 item 6): an installed 1.3.0 in Arabic shows
   the 1.3.1 notes in Arabic in the update dialog (`release-notes-ar.md` on the release).
@@ -36,7 +63,7 @@ today.
   Closer than the simulator: the IPA under PlayCover on the Mac (works, 2026-11-08), but it is
   not an iPhone's network sandbox.
 
-## 3. External, waiting
+## 4. External, waiting
 
 - [ ] Edge Android listing: waiting for Microsoft's answer. Edge iOS: not tested
   (see `docs/edge-android-test-cases.docx`).

@@ -688,6 +688,11 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
 }
 
 fun main(rawArgs: Array<String>) {
+    if (System.getProperty("os.name").orEmpty().startsWith("Windows") &&
+        System.getProperty("skiko.renderApi") == null && System.getenv("SKIKO_RENDER_API") == null
+    ) {
+        System.setProperty("skiko.renderApi", "SOFTWARE")
+    }
     installCrashLog()
     LocalizationManager.start()
     // Baked in at build time (-Dfetchjet.verboseLogs) or switched on for one run with the
