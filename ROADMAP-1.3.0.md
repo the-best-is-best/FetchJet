@@ -174,6 +174,20 @@ the app's own language (asked 2026-11-05 while finishing 1.2.0).
 
 ## Also done in 1.3.0 (not on the list)
 
+- [x] **Browser extension inside the app** (`d4e1d31`, owner's request 2026-11-08: the stores are
+  slow / not accepting). Settings > Browser extension lists the browsers on the device (desktop:
+  Chrome, Edge, Brave, Firefox, Opera, Vivaldi; Android: Firefox) as installed or not; a missing
+  one shows a warning + download link. Chromium: the extension ships in the desktop app and is
+  unpacked for Load unpacked (refreshed at every start, so it updates with the app). The
+  extension sends its version (`X-FetchJet-Ext`); the app shows "connected · <version>" and, when
+  it is older than `EXTENSION_VERSION`, sends the user to the store (when the store has the
+  version), the app's own copy (Chromium) or the signed .xpi of the GitHub release (Firefox:
+  opened in Firefox on desktop, Downloads + "Install extension from file" steps on Android). CI
+  signs an unlisted .xpi for every release (store copy = `<version>.1`). Owner-tested on the A56:
+  CI-signed 3.3.68 installed in Firefox 159 from file, app showed "✓ Extension connected ·
+  3.3.68". Not testable before 1.3.0 is published: the in-app download from GitHub (the app does
+  not see drafts).
+
 - [x] Theme: Settings > General > Appearance = System / Light / Dark, **default System**, follows
   the device live on Android, Windows and iOS (`1b3187b`, iOS host fix `83ed970`).
 - [x] Snackbar messages show over the task details page on phones / tablets (`db58363`).

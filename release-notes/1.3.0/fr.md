@@ -1,6 +1,7 @@
 ## Nouveautés de la 1.3.0
 
 - **Envoyer vers un autre appareil :** envoyez un téléchargement, terminé ou en cours, vers vos autres appareils sur le même Wi-Fi (Windows, macOS, Linux, Android, iPhone) et continuez-le là-bas. Direct et chiffré, sans cloud.
+- **Extension de navigateur intégrée :** Paramètres > Extension de navigateur affiche vos navigateurs, ajoute l'extension (Chrome, Edge et Brave directement depuis l'app, Firefox depuis sa boutique ou la version publiée) et vous prévient quand elle doit être mise à jour.
 - **L'audio dans tous les formats :** enregistrez l'audio en MP3, M4A, OPUS, FLAC, WAV ou OGG.
 - **Sous-titres :** téléchargez les sous-titres d'une vidéo ou intégrez-les à la vidéo.
 - **Planning de vitesse :** limitez la vitesse à certaines heures, pleine vitesse le reste de la journée.

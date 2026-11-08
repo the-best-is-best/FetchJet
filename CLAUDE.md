@@ -638,6 +638,26 @@ Bridges:
 - 1.3.0 snackbar: on phones / tablets the task details are a separate `Dialog` window, so
   `App.kt` has a second `SnackbarHost` inside it; a message shown while details are open would
   otherwise be hidden behind them.
+- 1.3.0 browser extension inside the app (details: ROADMAP-1.3.0 "Also done"). Things to know:
+    - Versions: `EXTENSION_VERSION` in `AppVersion.kt` must equal `extension/manifest.json`
+      (desktop build fails otherwise). CI publishes `<major.minor>.<run>` (unlisted .xpi on the
+      release) and `<...>.1` to AMO, both >= `EXTENSION_VERSION`. Bump both when the app needs a
+      newer extension.
+    - Desktop: `desktopApp` task `bundleExtension` puts the Chromium build in the jar
+      (`fetchjet-extension/chromium`); `DesktopBrowsers.kt` detects browsers, unpacks to
+      `~/.fetch_jet/extension/chromium`, opens Firefox with the .xpi. Android:
+      `BrowserIntegration.android.kt` (Firefox packages in `<queries>`), .xpi saved to
+      Downloads via MediaStore.
+    - The app knows a browser has the extension from `X-FetchJet-Ext` / the token / an
+      extension Origin on `/config` (`BridgePairing.noteBrowser`, `seenBrowsers` /
+      `seenVersions` in bridge.json, by User-Agent; Brave looks like Chrome). The app must be
+      running (Android: open or "Keep ready") when the extension starts. Store versions before
+      3.3 report nothing until they send a download.
+    - `ExtensionStore.kt`: store versions (AMO API, Edge update XML) and the newest signed .xpi
+      of the published releases (drafts are invisible to the app).
+    - Firefox for Android installs a signed .xpi only from Settings > "Install extension from
+      file", shown after tapping the logo 5 times in About Firefox (checked on Firefox 159). A
+      link to the .xpi just downloads it.
 
 ## Open issues
 
