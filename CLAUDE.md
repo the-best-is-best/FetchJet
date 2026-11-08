@@ -612,6 +612,11 @@ Bridges:
       `DeviceSyncImpl.ios.kt` with the same logic over the Swift bridge
       `NativeDeviceSyncBridge.swift` (CryptoKit + POSIX). **A change to the protocol or the
       refusal codes must be made in both files.**
+    - Discovery does not rely on broadcast (a real iPhone needs Apple's multicast entitlement for
+      it): announces also go directly to known devices every 2 s, a hidden device sends
+      `fj-probe` (answered directly, the asker is not listed), iOS sweeps its /24 every 30 s.
+      Test with env `FETCHJET_SYNC_NO_BROADCAST=1` (JVM env var; iOS simulator:
+      `SIMCTL_CHILD_FETCHJET_SYNC_NO_BROADCAST=1 xcrun simctl launch ...`).
     - Refusal codes travel as English words and are translated only in the UI
       (`deviceSyncReason` in `DeviceSendDialog.kt`): `pending` (other user still reading the code:
       the sender waits), `not paired` (forgot this device: sender drops its pairing), `declined`

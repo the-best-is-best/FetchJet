@@ -101,8 +101,14 @@ Commits on `release-v1.3.0`: `2b3c84b` … `de162f6`, `f5ba90c` (iOS), `573d276`
   hidden, Visible on/off on Windows, macOS, iOS.
 - [x] The local-network permission prompt shows on a real iPhone (owner's screenshot, before the
   iOS sync code; the Info.plist description was added after it).
-- [ ] Not tested: an actual send / receive on a **real iPhone** after "Allow" (all iOS sync tests
-  so far were on the simulator); `3ebbaa3` in an iOS build.
+- [x] Discovery without broadcast (`f3526b1`): a real iPhone may not send or hear UDP broadcasts
+  without Apple's multicast entitlement (the simulator does not enforce it). Every device now also
+  sends its announce to known devices directly, a hidden one sends a `fj-probe` that visible
+  devices answer directly, and iOS sweeps its /24 every 30 s. Verified with
+  `FETCHJET_SYNC_NO_BROADCAST=1` on both Windows and the iOS simulator: they found each other,
+  hidden iOS still saw Windows, and a link was sent iOS → Windows.
+- [ ] Not tested: a **real iPhone** (no device available, 2026-11-08). If discovery fails there,
+  "Connect by IP" and sends after pairing still work (unicast).
 
 ## 5. Audio format conversion (medium)
 
