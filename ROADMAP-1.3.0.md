@@ -5,22 +5,25 @@ are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that
 competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
 value / cost. Mark an item `[x]` when the owner has tested it.
 
+**State (2026-11-08):** 1, 2 and 4 done. 3 is built and waits for the owner's test. **Next to
+build: 5** (audio format conversion), then 6.
+
 ## 1. Subtitles with the video (medium) — DONE
 
-**Done** (code in tree, owner-noted 2026-11-07): `domain/model/SubtitleTrack.kt`,
+**Done** (commit `b846cc5`, owner-noted 2026-11-07): `domain/model/SubtitleTrack.kt`,
 `SubtitlesSelectionCard` in `AddDownloadMedia.kt` (language list + embed toggle), events
 `OnSubtitleToggled` / `OnToggleEmbedSubtitles`, download + embed in `MediaDownloadSteps.kt`,
 `subtitlesTitle` etc. in all 15 providers.
 
 Why: a real "ahead" feature — Ezoo / IDM do not download or embed subtitles.
 
-- [ ] List the subtitle tracks a video offers (yt-dlp `-j` already returns `subtitles` and
+- [x] List the subtitle tracks a video offers (yt-dlp `-j` already returns `subtitles` and
   `automatic_captions`): show the languages in the Add dialog, let the user pick none / one / some,
   with an "auto-generated" marker.
-- [ ] Download the picked tracks next to the video, and an option to **embed** them into the
+- [x] Download the picked tracks next to the video, and an option to **embed** them into the
   container with ffmpeg (soft subs: `-c:s mov_text` for mp4, `srt`/`ass` for mkv). ffmpeg is
   already bundled on every platform.
-- [ ] Works on desktop, Android, iOS (the resolver and the ffmpeg step are common code; only the
+- [x] Works on desktop, Android, iOS (the resolver and the ffmpeg step are common code; only the
   tool paths differ per platform, as the media download already does).
 
 ## 2. Speed schedule by time of day (medium) — DONE
@@ -30,15 +33,15 @@ Why: a real "ahead" feature — Ezoo / IDM do not download or embed subtitles.
 
 Why: throttle during the day, full speed at night — on top of the quick "turtle" toggle in 1.2.0.
 
-- [ ] Settings: one or more time windows (from / to) each with a speed cap, plus "unlimited outside
+- [x] Settings: one or more time windows (from / to) each with a speed cap, plus "unlimited outside
   the windows".
-- [ ] A ticker flips `_globalDownloadSpeedLimit` when a window starts / ends; the limit already
+- [x] A ticker flips `_globalDownloadSpeedLimit` when a window starts / ends; the limit already
   applies live. One expect/actual ticker per platform (desktop timer, Android via the running
   service, iOS while the app / background session is alive).
-- [ ] The current window shows in the UI (e.g. the turtle bar) so it is clear why the speed is
+- [x] The current window shows in the UI (e.g. the turtle bar) so it is clear why the speed is
   capped.
 
-## 3. Task priority (medium)
+## 3. Task priority (medium) — BUILT (`9696bca`), waiting for the owner's test
 
 Why: no task-level priority exists today (the `priority` field in `TaskCache` is per torrent file,
 not the queue order).
@@ -154,6 +157,15 @@ the app's own language (asked 2026-11-05 while finishing 1.2.0).
 - **Note:** only takes effect from the *next* release onward — the pre-update dialog is drawn by the
   already-installed (old) app, which has no language-aware fetch, so e.g. 1.2.0 → 1.3.0 still shows
   English; 1.3.0 → 1.4.0 is the first update that can use it.
+
+## Also done in 1.3.0 (not on the list)
+
+- [x] Theme: Settings > General > Appearance = System / Light / Dark, **default System**, follows
+  the device live on Android, Windows and iOS (`1b3187b`, iOS host fix `83ed970`).
+- [x] Snackbar messages show over the task details page on phones / tablets (`db58363`).
+- [x] Custom `AppScrollbar` in the list views (`90c54d1`).
+- [x] Settings time picker in 12-hour format with AM/PM (`5c1f318`).
+- [x] "Fast" speed preset (`b846cc5`).
 
 ## Carried over from 1.2.0 (external, waiting)
 
