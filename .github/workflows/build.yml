@@ -596,27 +596,32 @@ jobs:
       - name: Package Chrome and Firefox builds
         run: ./extension/build.sh
 
-      # Submits the new version to the public Firefox Add-ons store (listed). Mozilla reviews
-      # it and Firefox users get the update by themselves; nothing to wait for here, so the
-      # .xpi is not attached to the GitHub release (an unsigned one would not install).
-      - name: Submit the Firefox version to addons.mozilla.org
-        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
-        run: |
-          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
-            --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
-            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
-          rm -f build/extension/*.xpi
-
-      # "Submit to stores" off: a signed, installable .xpi for testing (unlisted = nobody sees
-      # it on AMO). It is attached to the release below.
-      - name: Sign the Firefox build unlisted (test file)
-        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores != 'true' }}
+      # Every release carries a signed .xpi of its own (unlisted = Mozilla signs it in minutes,
+      # no review, nobody sees it on AMO). The app installs it when the store is behind the
+      # version the app needs. Same add-on ID as the store listing, so it is one extension.
+      - name: Sign the Firefox build unlisted (attached to the release)
+        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' }}
         run: |
           npx --yes web-ext@8 sign --channel unlisted \
             --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
           rm -f build/extension/*.xpi
           cp build/extension/signed/*.xpi build/extension/
+
+      # Submits the new version to the public Firefox Add-ons store (listed). Mozilla reviews
+      # it and Firefox users get the update by themselves. AMO signs a version number once, so
+      # the store copy is <version>.1: higher than the unlisted one above, and once approved it
+      # replaces it on its own.
+      - name: Submit the Firefox version to addons.mozilla.org
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
+        run: |
+          rm -rf build/extension/firefox-listed
+          cp -r build/extension/firefox build/extension/firefox-listed
+          sed -i -E 's/("version": *")([^"]*)"/\1\2.1"/' build/extension/firefox-listed/manifest.json
+          grep '"version"' build/extension/firefox-listed/manifest.json
+          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
+            --source-dir build/extension/firefox-listed --artifacts-dir build/extension/signed-listed \
+            --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 
       # Same idea for Microsoft Edge Add-ons: the Chrome build is submitted for certification
       # and Edge users get updates from the store. Needs the EDGE_* secrets (Partner Center ->

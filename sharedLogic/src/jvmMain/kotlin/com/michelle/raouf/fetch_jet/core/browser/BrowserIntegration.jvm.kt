@@ -117,8 +117,20 @@ actual object BrowserIntegration {
         }
     }
 
+    actual fun browsers(): List<BrowserInfo> = DesktopBrowsers.browsers()
+
+    actual fun addExtension(id: String): AddExtensionResult = DesktopBrowsers.addExtension(id)
+
+    actual fun openFolder(folder: String) = DesktopBrowsers.openFolder(folder)
+
+    actual fun installXpi(id: String, bytes: ByteArray, fileName: String): AddExtensionResult =
+        DesktopBrowsers.installXpi(id, bytes, fileName)
+
+    actual fun openBrowser(id: String) = DesktopBrowsers.openBrowser(id)
+
     actual fun setUpOnFirstRun() {
         registerUrlScheme()
+        Thread { DesktopBrowsers.refreshUnpackedExtension() }.apply { isDaemon = true }.start()
         if (!isWindows) return
         try {
             val marker =

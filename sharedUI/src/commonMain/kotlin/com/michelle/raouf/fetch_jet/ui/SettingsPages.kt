@@ -668,93 +668,19 @@ internal fun limitText(bytes: Long): String =
 
 // ---------------------------------------------------------------- browser extension
 
-private const val AMO_URL = "https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/"
-private const val EDGE_STORE_URL =
-    "https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj"
-private const val MANUAL_INSTALL_URL = "https://the-best-is-best.github.io/FetchJet/#extension"
-
 /**
- * Where to get the extension for each browser (like FDM's "Browser Integration"). The stores
- * keep it updated; Chrome has no store listing, so it gets the .zip with the developer-mode steps.
+ * The browsers on this device and the extension in each one ([BrowserInstallRows]): Chromium
+ * browsers load the copy bundled in the app, Firefox installs from Firefox Add-ons.
  */
 @Composable
 internal fun BrowserExtensionPage(isDesktop: Boolean) {
-    val uri = LocalUriHandler.current
-
-    @Composable
-    fun storeButton(text: String, url: String, primary: Boolean = true) {
-        if (primary) Button(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
-            Text(text, fontWeight = FontWeight.SemiBold)
-        } else OutlinedButton(onClick = { uri.openUri(url) }, shape = RoundedCornerShape(10.dp)) {
-            Text(text, fontWeight = FontWeight.SemiBold)
-        }
-    }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(
             title = LocalizationManager.Strings.extInstallGroup,
             footer = LocalizationManager.Strings.extensionInstallFooter
         ) {
-            if (isDesktop) {
-                val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
-                if (bi.canAddToEdgeAutomatically) {
-                    // Windows: the registry hand-off, like IDM. Edge asks to turn it on.
-                    var registered by remember { mutableStateOf(bi.isEdgeRegistered()) }
-                    var note by remember { mutableStateOf<String?>(null) }
-                    SettingRow(
-                        "Microsoft Edge",
-                        note
-                            ?: if (registered) LocalizationManager.Strings.edgeAddedHint
-                            else LocalizationManager.Strings.edgeFromStoreHint
-                    ) {
-                        if (registered) storeButton(
-                            LocalizationManager.Strings.openInEdgeStore,
-                            EDGE_STORE_URL,
-                            primary = false
-                        )
-                        else Button(onClick = {
-                            bi.addToEdge()
-                                .onSuccess {
-                                    registered = true; note =
-                                    LocalizationManager.Strings.edgeAddedNote
-                                }
-                                .onFailure { uri.openUri(EDGE_STORE_URL) }
-                        }, shape = RoundedCornerShape(10.dp)) {
-                            Text(
-                                LocalizationManager.Strings.extAddToEdge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                } else {
-                    SettingRow(
-                        "Microsoft Edge",
-                        LocalizationManager.Strings.edgeFromStoreHint
-                    ) {
-                        storeButton(LocalizationManager.Strings.extAddToEdge, EDGE_STORE_URL)
-                    }
-                }
-                SettingDivider()
-                SettingRow("Firefox", LocalizationManager.Strings.firefoxFromStoreHint) {
-                    storeButton(LocalizationManager.Strings.extAddToFirefox, AMO_URL)
-                }
-                SettingDivider()
-                SettingRow(
-                    "Chrome, Brave, Opera, Vivaldi",
-                    LocalizationManager.Strings.chromeZipHint
-                ) {
-                    storeButton(
-                        LocalizationManager.Strings.getTheZip,
-                        MANUAL_INSTALL_URL,
-                        primary = false
-                    )
-                }
-            } else {
-                SettingRow(
-                    "Firefox for Android",
-                    LocalizationManager.Strings.firefoxAndroidHint
-                ) {
-                    storeButton(LocalizationManager.Strings.extAddToFirefox, AMO_URL)
-                }
+            BrowserInstallRows()
+            if (!isDesktop) {
                 val bi = com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration
                 if (bi.canKeepReadyForBrowser) {
                     var keepReady by remember { mutableStateOf(bi.isKeptReadyForBrowser()) }

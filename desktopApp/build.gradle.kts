@@ -34,6 +34,36 @@ val fetchJetVerboseLogs: Boolean =
         ?.toString() ?: "false")
         .trim().equals("true", ignoreCase = true)
 
+// The Chromium extension ships inside the app (resources fetchjet-extension/chromium): the app
+// unpacks it for "Load unpacked", so it works without the Chrome / Edge stores.
+val bundledExtensionDir = layout.buildDirectory.dir("generated/fetchjetExtension")
+val extensionManifestVersion: String = Regex(""""version"\s*:\s*"([^"]+)"""")
+    .find(rootProject.file("extension/manifest.json").readText())?.groupValues?.get(1)
+    ?: error("version not found in extension/manifest.json")
+val appExtensionVersion: String = Regex("""EXTENSION_VERSION\s*=\s*"([^"]+)"""")
+    .find(
+        rootProject.file(
+            "sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt"
+        ).readText()
+    )?.groupValues?.get(1) ?: error("EXTENSION_VERSION not found in AppVersion.kt")
+check(extensionManifestVersion == appExtensionVersion) {
+    "extension/manifest.json is $extensionManifestVersion but EXTENSION_VERSION in AppVersion.kt is $appExtensionVersion"
+}
+val bundleExtension by tasks.registering(Sync::class) {
+    from(rootProject.file("extension")) {
+        include(
+            "background.js", "yt-core.js", "content.js", "popup.html", "popup.js",
+            "options.html", "options.js", "icon16.png", "icon48.png", "icon128.png",
+            "manifest.json", "platform.js", "i18n/**"
+        )
+    }
+    into(bundledExtensionDir.map { it.dir("fetchjet-extension/chromium") })
+}
+sourceSets.main {
+    resources.srcDir(bundledExtensionDir)
+}
+tasks.named("processResources") { dependsOn(bundleExtension) }
+
 compose.desktop {
     application {
         mainClass = "com.michelle.raouf.fetch_jet.MainKt"

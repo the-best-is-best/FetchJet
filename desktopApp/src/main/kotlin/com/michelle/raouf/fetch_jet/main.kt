@@ -214,14 +214,17 @@ private fun isTrustedRequest(exchange: HttpExchange): Boolean {
 }
 
 private const val BRIDGE_ALLOWED_HEADERS =
-    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing"
+    "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing, X-FetchJet-Ext"
 
 /**
  * The app's token ([BridgePairing]), or an old extension the user allowed. Otherwise 401: an
  * extension from before 1.2.0 (it does not send `X-FetchJet-Pairing`) makes the app ask once.
  */
 private fun HttpExchange.isAuthorized(onShowAndFocus: () -> Unit): Boolean {
-    if (BridgePairing.isPaired(requestHeaders.getFirst(BridgePairing.TOKEN_HEADER))) return true
+    if (BridgePairing.isPaired(requestHeaders.getFirst(BridgePairing.TOKEN_HEADER))) {
+        BridgePairing.noteBrowser(requestHeaders.getFirst("User-Agent"), System.currentTimeMillis(), requestHeaders.getFirst("X-FetchJet-Ext"))
+        return true
+    }
     val origin = requestHeaders.getFirst("Origin")
     if (BridgePairing.isLegacyAllowed(origin)) return true
     if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
@@ -411,6 +414,16 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
                 return@createContext
             }
             val features = com.michelle.raouf.fetch_jet.core.edition.AppFeatures
+            if (BridgePairing.isPaired(exchange.requestHeaders.getFirst(BridgePairing.TOKEN_HEADER)) ||
+                BridgePairing.isExtensionOrigin(exchange.requestHeaders.getFirst("Origin")) ||
+                !exchange.requestHeaders.getFirst("X-FetchJet-Ext").isNullOrBlank()
+            ) {
+                BridgePairing.noteBrowser(
+                    exchange.requestHeaders.getFirst("User-Agent"),
+                    System.currentTimeMillis(),
+                    exchange.requestHeaders.getFirst("X-FetchJet-Ext")
+                )
+            }
             val json =
                 """{"app":"FetchJet","version":"${jsonEscape(System.getProperty("jpackage.app-version") ?: "dev")}","bridge":2,""" +
                         """"mediaExtractor":${features.mediaExtractor},"torrent":${features.torrent},""" +
@@ -451,6 +464,11 @@ fun startLocalHttpServer(onShowAndFocus: () -> Unit) {
             SwingUtilities.invokeLater { onShowAndFocus() }
             val allowed =
                 kotlinx.coroutines.runBlocking { BridgePairing.ask(origin, legacy = false) }
+            if (allowed) BridgePairing.noteBrowser(
+                exchange.requestHeaders.getFirst("User-Agent"),
+                System.currentTimeMillis(),
+                exchange.requestHeaders.getFirst("X-FetchJet-Ext")
+            )
             if (allowed) exchange.reply(
                 200, """{"token":"${BridgePairing.token}"}""", "application/json; charset=UTF-8"
             ) else exchange.reply(403, "refused")

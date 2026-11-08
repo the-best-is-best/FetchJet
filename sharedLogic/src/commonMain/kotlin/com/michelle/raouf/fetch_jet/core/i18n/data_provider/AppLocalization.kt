@@ -194,6 +194,32 @@ interface AppLocalization : LocalizationProvider {
     val audioOriginal: String
     val fileMissingTitle: String
     fun fileMissingMessage(name: String): String
+    val browserNotInstalled: String
+    val extensionConnected: String
+    val extensionNotAddedYet: String
+    val addExtension: String
+    fun browserMissingTitle(name: String): String
+    fun browserMissingMessage(name: String): String
+    fun downloadBrowser(name: String): String
+    fun loadUnpackedTitle(name: String): String
+    fun loadUnpackedSteps(name: String, page: String): String
+    val loadUnpackedUpdates: String
+    val copyPath: String
+    fun extensionConnectedVersion(version: String): String
+    fun extensionNeedsUpdate(found: String, wanted: String): String
+    fun extensionOldVersion(wanted: String): String
+    val updateExtension: String
+    fun storeHasUpdate(version: String): String
+    val updateFromAppHint: String
+    fun storeWaiting(wanted: String): String
+    val openStore: String
+    val updateFromApp: String
+    fun updateFromGitHubHint(version: String): String
+    val updateFromGitHub: String
+    val extensionDownloadFailed: String
+    fun installFromFileTitle(name: String): String
+    fun installFromFileSteps(name: String, file: String): String
+    fun openBrowser(name: String): String
     fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String): String
     val clipStartTimeFrom: String
     val clipEndTimeTo: String

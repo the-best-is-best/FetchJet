@@ -37,6 +37,9 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="content" />
         </intent>
+        <package android:name="org.mozilla.firefox" />
+        <package android:name="org.mozilla.firefox_beta" />
+        <package android:name="org.mozilla.fenix" />
     </queries>
 
     <application
