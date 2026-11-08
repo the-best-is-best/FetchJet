@@ -5,7 +5,8 @@ are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that
 competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
 value / cost. Mark an item `[x]` when the owner has tested it.
 
-**State (2026-11-08):** 1, 2, 3 and 4 done. **Now: 5** (audio format conversion), then 6.
+**State (2026-11-08):** 1 to 5 done (5: desktop and the list / playlist "Convert all to" not
+checked yet). **Now: 6** (release notes in the app's language).
 
 ## 1. Subtitles with the video (medium) — DONE
 
@@ -112,7 +113,7 @@ Commits on `release-v1.3.0`: `2b3c84b` … `de162f6`, `f5ba90c` (iOS), `573d276`
 - [ ] Not tested: a **real iPhone** (no device available, 2026-11-08). If discovery fails there,
   "Connect by IP" and sends after pairing still work (unicast).
 
-## 5. Audio format conversion (medium)
+## 5. Audio format conversion (medium) — DONE (`cdf6bcb`, `c41be02`)
 
 Why: let the user grab the best-quality audio and get it as any format they want (MP3 for the car,
 FLAC to keep, etc.) without a second tool. Moved out of 1.2.0 (2026-11-04, owner's decision): the
