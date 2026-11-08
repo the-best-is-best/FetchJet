@@ -510,6 +510,13 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
                                         )
                                     }
                                 }
+                                // The details are their own window: messages shown while they are
+                                // open (e.g. "Sent to <device>") would be hidden behind it.
+                                androidx.compose.material3.SnackbarHost(
+                                    snackbarHostState,
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                        .padding(bottom = 24.dp)
+                                )
                             }
                         }
                     }
