@@ -5,8 +5,9 @@ are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that
 competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
 value / cost. Mark an item `[x]` when the owner has tested it.
 
-**State (2026-11-08):** 1 to 6 done. Waiting: item 6 needs a published release to be checked end
-to end, item 4 on a real iPhone.
+**State (2026-11-08):** released (1.3.0, then 1.3.1). Closed: the open checks (item 4 on a real
+iPhone, item 6 end to end, the in-app .xpi download) and the Edge Android wait moved to
+`ROADMAP-1.4.0.md`.
 
 ## 1. Subtitles with the video (medium) — DONE
 
@@ -157,7 +158,7 @@ macOS desktop (owner clicked, Mac session checked the files): WAV, mixed list to
 Why: the in-app "update available" dialog shows the changelog in English only; the owner wants it in
 the app's own language (asked 2026-11-05 while finishing 1.2.0).
 
-**Code done 2026-11-08, not tested end to end** (needs a published release with the files).
+**Done:** 1.3.0 → 1.3.1 showed the Arabic notes (owner, iOS app under PlayCover, 2026-11-08).
 
 - [x] Highlights per version in the repo: `release-notes/<version>/<lang>.md` (15 files for 1.3.0:
   en ar fr de es pt it ru tr id zh ja ko hi fa). Before each release: write `en.md`, translate it

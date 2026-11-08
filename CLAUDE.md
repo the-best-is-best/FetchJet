@@ -52,11 +52,11 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.3.1"` and
-  `EXTENSION_VERSION = "3.3.0"` (1.3.0 released 2026-11-08 from `master`, PR #5; 1.3.1 is the
-  next fix release)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.3.1`,
-  `CURRENT_PROJECT_VERSION = 6`
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.4.0"` and
+  `EXTENSION_VERSION = "3.3.0"` (1.3.0 and 1.3.1 released 2026-11-08 from `master`; 1.4.0 is
+  being built on `release-v1.4.0`)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.4.0`,
+  `CURRENT_PROJECT_VERSION = 7`
 - `extension/manifest.json` and `manifest.firefox.json` → `3.3.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
@@ -99,6 +99,9 @@ extension\build.ps1
   that adds it, run `git submodule update --init --recursive`, else every Gradle build fails with
   "Configuring project ':kmpLocalization' without an existing directory" (in Xcode this shows only
   as "Command PhaseScriptExecution failed with a nonzero exit code").
+- iOS on a Mac without an iPhone: the owner runs the IPA through PlayCover (Apple Silicon) and it
+  works (2026-11-08). It is still a Mac, not an iPhone: local-network / multicast rules, Safari
+  extension and background limits of a real device are not covered by it.
 - iOS dev loop: `scripts/ios-dev-build.command [gradle|xcode|all]` → `build/ios-dev-build.log`.
   An incremental build does not re-embed `FetchJetSafariExtension.appex` into `FetchJet.app` when
   only `extension/` JS changed: rsync `Debug-iphonesimulator/FetchJetSafariExtension.appex` into
@@ -259,7 +262,7 @@ Bridges:
   text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
   install the Chrome build.
 
-## Current state (master = 1.3.0; 1.2.0 released 2026-11-05)
+## Current state (master = 1.3.1; working branch `release-v1.4.0`)
 
 - **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
   never ask or offer to commit.
@@ -699,9 +702,14 @@ Bridges:
 
 ## Release plan
 
-- **1.3.0:** branch `release-v1.3.0`, work list `ROADMAP-1.3.0.md` (1.2.0 was released
-  2026-11-05). When the owner asks what is next, take the first unchecked item there.
-- **1.3.0:** merged into `master` 2026-11-08 (PR #5); the release run was started the same day.
+- **1.4.0:** branch `release-v1.4.0` (cut from `master` = 1.3.1 on 2026-11-08), work list
+  `ROADMAP-1.4.0.md` (RAM use on desktop first, then the checks carried over from 1.3.0). When
+  the owner asks what is next, take the first unchecked item there. Before the release: write
+  `release-notes/1.4.0/en.md` + the 14 translations.
+- **1.3.1:** released 2026-11-08 from `master` (Store update check fix, Safari label on iOS,
+  store listings in 15 languages: AMO, Edge Add-ons, Microsoft Store all filled).
+- **1.3.0:** merged into `master` 2026-11-08 (PR #5) and released. Work list `ROADMAP-1.3.0.md`
+  (its open checks moved to `ROADMAP-1.4.0.md`); branch `release-v1.3.0` can be deleted.
 - **1.2.0:** released 2026-11-05 (in `master`); its branch `release-v1.2.0` was deleted
   2026-11-08 (tag `v1.2.0` kept). Work list: `ROADMAP-1.2.0.md`.
 
