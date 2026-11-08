@@ -152,14 +152,17 @@ there (`c41be02`). Not checked yet: desktop, the link-list / playlist "Convert a
 Why: the in-app "update available" dialog shows the changelog in English only; the owner wants it in
 the app's own language (asked 2026-11-05 while finishing 1.2.0).
 
-- [ ] The release uploads a notes file per language: `release-notes.md` (English = default /
-  fallback) plus `release-notes-<lang>.md` for the 15 app languages (en ar fr de es pt it ru tr id
-  zh ja ko hi fa). CI just uploads whatever `release-notes*.md` files exist.
-- [ ] `UpdateManager` fetches `release-notes-<AppLanguage code>.md` first, falls back to
-  `release-notes.md` (const `RELEASE_NOTES_FILE`). Keep the `<!-- fetchjet-unchanged: ... -->`
-  marker in every file.
-- [ ] Translate the Highlights into the 15 languages (Claude can produce them; English stays the
-  base).
+**Code done 2026-11-08, not tested end to end** (needs a published release with the files).
+
+- [x] Highlights per version in the repo: `release-notes/<version>/<lang>.md` (15 files for 1.3.0:
+  en ar fr de es pt it ru tr id zh ja ko hi fa). Before each release: write `en.md`, translate it
+  into the other 14.
+- [x] CI (`release` job, sparse checkout of `release-notes/`): `en.md` goes into the English notes
+  (release body + `release-notes.md`) above GitHub's change list; every other `<lang>.md` is
+  uploaded as `release-notes-<lang>.md` with the `<!-- fetchjet-... -->` markers copied in front.
+  Checksums skip `release-notes*.md`. Checked locally on sample data.
+- [x] `UpdateManager.withNotesInAppLanguage`: when the release has `release-notes-<app language>.md`
+  it replaces the notes (markers of the English notes kept); otherwise English.
 - **Note:** only takes effect from the *next* release onward — the pre-update dialog is drawn by the
   already-installed (old) app, which has no language-aware fetch, so e.g. 1.2.0 → 1.3.0 still shows
   English; 1.3.0 → 1.4.0 is the first update that can use it.

@@ -226,7 +226,7 @@ object UpdateManager {
                 messageIsError = if (manual) false else it.messageIsError
             )
         }
-        val result = runCatching { fetchLatestRelease() }
+        val result = runCatching { fetchLatestRelease()?.let { withNotesInAppLanguage(it) } }
         val now = nowEpochMs()
         result.onSuccess { latest ->
             val isNewerVersion = latest != null && isNewer(latest.version, APP_VERSION)
@@ -273,6 +273,25 @@ object UpdateManager {
                 )
             }
         }
+    }
+
+    /**
+     * Swaps the notes for `release-notes-<lang>.md` when the release has one for the app's
+     * language. The `<!-- fetchjet-... -->` markers of the original notes are kept.
+     */
+    private suspend fun withNotesInAppLanguage(release: AppRelease): AppRelease {
+        val lang = com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value
+            .substringBefore('-').substringBefore('_').lowercase()
+        if (lang.isBlank() || lang == "en") return release
+        val file = release.assets.firstOrNull { it.name == releaseNotesFileFor(lang) } ?: return release
+        val text = runCatching {
+            client.get(file.url) { header("User-Agent", "FetchJet/$APP_VERSION") }
+                .takeIf { it.status.isSuccess() }?.bodyAsText()?.trim()
+        }.getOrNull()
+        if (text.isNullOrBlank()) return release
+        val markers = release.notes.lines().filter { it.trim().startsWith("<!-- fetchjet-") }
+            .filter { m -> !text.contains(m.trim()) }
+        return release.copy(notes = (markers + text).joinToString("\n"))
     }
 
     private suspend fun fetchLatestRelease(): AppRelease? {
@@ -496,6 +515,9 @@ const val MICROSOFT_STORE_PAGE = "ms-windows-store://pdp/?productid=9NP3HJRHMPJS
 
 /** Release file with the raw notes (markers included), uploaded by CI next to the builds. */
 const val RELEASE_NOTES_FILE = "release-notes.md"
+
+/** The notes in one app language (e.g. `release-notes-ar.md`); English is [RELEASE_NOTES_FILE]. */
+fun releaseNotesFileFor(lang: String): String = "release-notes-$lang.md"
 
 /**
  * The notes shown on a GitHub release page, as plain markdown-like text. Used for releases

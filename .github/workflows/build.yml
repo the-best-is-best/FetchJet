@@ -661,6 +661,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: v${{ needs.plan.outputs.version }}
     steps:
+      # Only the translated highlights (release-notes/<version>/<lang>.md) are needed here.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release-notes
+          sparse-checkout-cone-mode: true
+
       # The files are already in the draft (uploaded by each build job). Write the notes:
       # which platforms are in it, which are unchanged (read by the app and the downloads
       # page), then GitHub's list of changes since the previous release.
@@ -673,6 +679,7 @@ jobs:
           IOS: ${{ needs.plan.outputs.ios }}
           EXTENSION: ${{ needs.plan.outputs.extension }}
           BETA: ${{ needs.plan.outputs.beta }}
+          NOTES_DIR: release-notes/${{ needs.plan.outputs.version }}
         run: |
           BUILT=""; UNCHANGED=""
           add() { if [ "$2" = "true" ]; then BUILT="${BUILT:+$BUILT, }$1"; else UNCHANGED="${UNCHANGED:+$UNCHANGED,}$1"; fi; }
@@ -703,6 +710,7 @@ jobs:
               echo "**Unchanged (not included):** $(echo "$UNCHANGED" | sed 's/,/, /g') — the latest build for these is in an earlier release; see the downloads page."
             fi
             echo
+            if [ -f "$NOTES_DIR/en.md" ]; then cat "$NOTES_DIR/en.md"; echo; fi
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body 2>/dev/null || true
           } > notes.md
           cat notes.md
@@ -711,6 +719,15 @@ jobs:
           # (the release web page drops the fetchjet-unchanged / fetchjet-beta markers).
           cp notes.md release-notes.md
           gh release upload "$TAG" release-notes.md --repo "$GITHUB_REPOSITORY" --clobber
+          # The same highlights in the app's other languages (release-notes-<lang>.md): the
+          # update dialog shows the one for the app's language, English when there is none.
+          for f in "$NOTES_DIR"/*.md; do
+            [ -f "$f" ] || continue
+            lang=$(basename "$f" .md)
+            [ "$lang" = "en" ] && continue
+            { grep '^<!-- fetchjet-' notes.md || true; echo; cat "$f"; } > "release-notes-$lang.md"
+            gh release upload "$TAG" "release-notes-$lang.md" --repo "$GITHUB_REPOSITORY" --clobber
+          done
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
 
       # Publish SHA256 checksums so a user who downloads a file by hand can verify it
@@ -724,7 +741,7 @@ jobs:
             cd sums
             rm -f SHA256SUMS.txt
             # Hash the distributable files only — not signatures or notes metadata.
-            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes.md' -printf '%P\n' \
+            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes*.md' -printf '%P\n' \
               | sort | xargs -r sha256sum > SHA256SUMS.txt
             cat SHA256SUMS.txt
           )
