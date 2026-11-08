@@ -72,7 +72,11 @@ internal fun openDownloadedFile(fullPath: String) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
+fun App(
+    onDarkModeChanged: ((Boolean) -> Unit)? = null,
+    /** The user's explicit choice: true / false, or null for System (the host must not force it). */
+    onForcedDarkChanged: ((Boolean?) -> Unit)? = null
+) {
     val viewModel: DashboardViewModel =
         androidx.lifecycle.viewmodel.compose.viewModel { DashboardViewModel() }
 
@@ -146,6 +150,15 @@ fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null) {
     }
     LaunchedEffect(darkMode) {
         onDarkModeChanged?.invoke(darkMode)
+    }
+    LaunchedEffect(state.themeMode) {
+        onForcedDarkChanged?.invoke(
+            when (state.themeMode) {
+                "light" -> false
+                "dark" -> true
+                else -> null
+            }
+        )
     }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }

@@ -2,11 +2,11 @@ import SwiftUI
 import SharedUI
 
 struct ComposeView: UIViewControllerRepresentable {
-    var onDarkModeChanged: (Bool) -> Void
+    var onForcedDarkChanged: (Bool?) -> Void
 
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController { isDark in
-            onDarkModeChanged(isDark.boolValue)
+        MainViewControllerKt.MainViewController { forced in
+            onForcedDarkChanged(forced?.boolValue)
         }
     }
 
@@ -14,15 +14,17 @@ struct ComposeView: UIViewControllerRepresentable {
 }
 
 struct ContentView: View {
-    @State private var isDarkMode: Bool? = nil
+    /// nil = the app's theme is System: force nothing, so the window (and Compose's
+    /// isSystemInDarkTheme) follows the device's appearance live.
+    @State private var forcedDark: Bool? = nil
 
     var body: some View {
-        ComposeView { isDark in
-            self.isDarkMode = isDark
+        ComposeView { forced in
+            self.forcedDark = forced
         }
         .ignoresSafeArea()
         .ignoresSafeArea(.keyboard)
-        .preferredColorScheme(isDarkMode == nil ? nil : (isDarkMode! ? .dark : .light))
+        .preferredColorScheme(forcedDark.map { $0 ? .dark : .light })
     }
 }
 
