@@ -55,6 +55,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
@@ -877,7 +878,9 @@ internal fun TaskDetailsPane(
                         )
                     )
                 },
-                onShare = { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
+                onShare = if (task.canSendToDevice()) {
+                    { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
+                } else null
             )
         }
     }

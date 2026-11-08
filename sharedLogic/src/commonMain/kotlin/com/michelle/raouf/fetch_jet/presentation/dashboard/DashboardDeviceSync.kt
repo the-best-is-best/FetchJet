@@ -4,6 +4,9 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
+import com.michelle.raouf.fetch_jet.domain.model.canTransferToDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest
@@ -58,14 +61,29 @@ internal fun DashboardViewModel.onDeviceReceive(
             if (payload.referer.isNotBlank()) put("Referer", payload.referer)
             if (payload.userAgent.isNotBlank()) put("User-Agent", payload.userAgent)
         }
-        val transfer = localPartialFiles.isNotEmpty() && engine == EngineType.HTTP_DIRECT
+        val transfer = localPartialFiles.isNotEmpty() && engine != EngineType.BITTORRENT
         // Hold a transfer QUEUED for a moment so we can drop the received parts into its scratch
-        // folder before the engine starts; it then resumes from the manifest instead of refetching.
+        // folder before the engine starts; it then resumes from them instead of refetching.
         val scheduledAt = if (transfer) nowEpochMs() + 4000 else 0L
+        // Media: the same format as on the sender, so the received pieces belong to that stream.
+        val quality = if (engine == EngineType.MEDIA_STREAM && payload.formatId.isNotBlank()) listOf(
+            MediaQualityEntry(
+                index = 0,
+                qualityLabel = "",
+                directUrl = url,
+                format = payload.fileName.substringAfterLast('.', ""),
+                formatId = payload.formatId,
+                originalUrl = payload.originalUrl.ifBlank { url }
+            )
+        ) else emptyList()
         val result = queueRepository.enqueueTask(
             url = url,
             customFileName = payload.fileName.takeIf { it.isNotBlank() },
+            mediaQualities = quality,
             forcedEngineType = engine,
+            clipStart = payload.clipStart.takeIf { it.isNotBlank() },
+            clipEnd = payload.clipEnd.takeIf { it.isNotBlank() },
+            clipByCutting = payload.clipByCutting,
             requestHeaders = headers,
             scheduledAtMs = scheduledAt
         )
@@ -144,29 +162,40 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
 
 private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToDeviceClicked) {
     val task = queueRepository.allTasksFlow.value.firstOrNull { it.id == event.taskId } ?: return
+    if (!task.canSendToDevice()) return
+    val mode = if (event.mode == SendMode.TRANSFER_AND_CONTINUE && task.canTransferToDevice())
+        SendMode.TRANSFER_AND_CONTINUE else SendMode.LINK_ONLY
+    val transfer = mode == SendMode.TRANSFER_AND_CONTINUE
+    // Finished: the file itself travels as one complete piece (any engine), and the other device
+    // takes it as a finished direct download, with no network. Not finished: the scratch files
+    // travel and the other device continues from them, like after a pause.
+    val completedFile = if (transfer && task.status == DownloadStatus.COMPLETED)
+        completedTransferFile(task) else ""
+    val partialFiles = when {
+        !transfer || task.status == DownloadStatus.COMPLETED -> emptyList()
+        task.engineType == EngineType.HTTP_DIRECT -> gatherPartialFiles(task.id, task.fileName)
+        else -> gatherScratchFiles(task.id)
+    }
     val headers = task.requestHeaders
     val payload = SendPayload(
         url = task.url,
         fileName = task.fileName,
-        engineType = task.engineType.name,
+        engineType = (if (completedFile.isNotBlank()) EngineType.HTTP_DIRECT else task.engineType).name,
         formatId = task.formatId.orEmpty(),
         originalUrl = task.originalUrl.orEmpty(),
         cookie = headers["Cookie"] ?: headers["cookie"] ?: "",
         referer = headers["Referer"] ?: headers["referer"] ?: "",
         userAgent = headers["User-Agent"] ?: headers["user-agent"] ?: "",
         fromDeviceId = deviceSync.selfId,
-        fromDeviceName = deviceSync.selfName
+        fromDeviceName = deviceSync.selfName,
+        clipStart = task.clipStart.orEmpty(),
+        clipEnd = task.clipEnd.orEmpty(),
+        clipByCutting = task.clipByCutting
     )
-    val partialFiles = if (event.mode == SendMode.TRANSFER_AND_CONTINUE)
-        gatherPartialFiles(task.id, task.fileName) else emptyList()
-    // Finished download: no pieces left on disk, so send the whole finished file as one complete
-    // piece — the other device lands at 100% instead of downloading it all over again.
-    val completedFile = if (event.mode == SendMode.TRANSFER_AND_CONTINUE && partialFiles.isEmpty())
-        completedTransferFile(task) else ""
     val request = SendRequest(
         deviceId = event.deviceId,
         payload = payload,
-        mode = event.mode,
+        mode = mode,
         deleteAfterSuccess = event.deleteAfterSuccess,
         partialFiles = partialFiles,
         completedFilePath = completedFile,
@@ -182,15 +211,23 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
     }
 }
 
-/**
- * A finished direct download's saved file, if it is really there — so "Transfer what's downloaded"
- * on a 100% task hands over the whole file instead of silently re-downloading it on the other side.
- */
+/** A finished download's saved file, if it is really there. */
 private fun DashboardViewModel.completedTransferFile(task: DownloadTask): String {
-    if (task.engineType != EngineType.HTTP_DIRECT || task.status != DownloadStatus.COMPLETED) return ""
+    if (task.engineType == EngineType.BITTORRENT || task.status != DownloadStatus.COMPLETED) return ""
     if (task.fileName.isBlank()) return ""
     val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
     return if (FileSystem.SYSTEM.exists(path.toPath())) path else ""
+}
+
+/** Every file in a media task's scratch folder (own-engine pieces, HLS segments, yt-dlp .part). */
+private fun DashboardViewModel.gatherScratchFiles(taskId: String): List<String> {
+    val dir = "${queueRepository.pathResolver.getTempDirectory()}/task_$taskId".toPath()
+    if (!FileSystem.SYSTEM.exists(dir)) return emptyList()
+    return runCatching {
+        FileSystem.SYSTEM.list(dir)
+            .filter { FileSystem.SYSTEM.metadataOrNull(it)?.isRegularFile == true }
+            .map { it.toString() }
+    }.getOrDefault(emptyList())
 }
 
 /** The task's downloaded pieces: `<temp>/task_<id>/<name>.partN` + `<name>.chunks`. */

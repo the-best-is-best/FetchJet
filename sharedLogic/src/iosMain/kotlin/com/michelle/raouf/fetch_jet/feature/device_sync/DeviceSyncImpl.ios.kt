@@ -243,7 +243,7 @@ internal class IosDeviceSync(
         NSFileManager.defaultManager.createDirectoryAtPath(dir, true, null, null)
         try {
             for (fm in meta.files) {
-                val outPath = "$dir/${fm.name}"
+                val outPath = "$dir/${safeWireName(fm.name) ?: throw IllegalStateException("bad file name")}"
                 val handle = FileChunkWriter(outPath)
                 try {
                     while (true) {

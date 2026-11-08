@@ -341,7 +341,7 @@ internal class DeviceSyncImpl(
         val dir = File(tempDir, "recv-${System.currentTimeMillis()}").apply { mkdirs() }
         try {
             for (fm in meta.files) {
-                val outFile = File(dir, fm.name)
+                val outFile = File(dir, safeWireName(fm.name) ?: throw IllegalStateException("bad file name"))
                 outFile.outputStream().buffered().use { fileOut ->
                     while (true) {
                         val (t, b) = readFrame(input) ?: throw IllegalStateException("stream ended")

@@ -38,9 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
-import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
-import com.michelle.raouf.fetch_jet.domain.model.EngineType
-import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.domain.model.canTransferToDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
@@ -61,11 +59,7 @@ fun DeviceSendSheet(
 ) {
     val taskId = state.deviceShareTaskId ?: return
     val task = state.allTasks.firstOrNull { it.id == taskId }
-    // "Transfer what's downloaded" only helps when the other device can actually use the bytes:
-    // a finished file (sent whole) always can; a part-done one only if the link supports resume,
-    // otherwise it would just restart from zero there, so we hide the option instead of misleading.
-    val canTransfer = task?.engineType == EngineType.HTTP_DIRECT &&
-            (task.status == DownloadStatus.COMPLETED || task.canResume() == true)
+    val canTransfer = task?.canTransferToDevice() == true
     val devices = state.discoveredDevices
 
     var selectedId by remember(taskId) { mutableStateOf<String?>(null) }

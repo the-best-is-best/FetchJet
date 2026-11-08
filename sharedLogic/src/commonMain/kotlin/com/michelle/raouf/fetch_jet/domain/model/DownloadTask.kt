@@ -114,6 +114,15 @@ fun DownloadTask.canResume(): Boolean? = when (engineType) {
     EngineType.HTTP_DIRECT -> serverSupportsResume
 }
 
+/** "Send to device": never a torrent; otherwise a finished download or one that keeps its bytes. */
+fun DownloadTask.canSendToDevice(): Boolean =
+    engineType != EngineType.BITTORRENT &&
+            (status == DownloadStatus.COMPLETED || canResume() != false)
+
+/** The finished file, or the bytes fetched so far, can travel and the other device continues. */
+fun DownloadTask.canTransferToDevice(): Boolean =
+    canSendToDevice() && (status == DownloadStatus.COMPLETED || canResume() == true)
+
 /** Seconds left at the current speed, null when it cannot be estimated. */
 fun DownloadTask.etaSeconds(): Long? {
     if (status != DownloadStatus.DOWNLOADING || postProcessLabel != null) return null

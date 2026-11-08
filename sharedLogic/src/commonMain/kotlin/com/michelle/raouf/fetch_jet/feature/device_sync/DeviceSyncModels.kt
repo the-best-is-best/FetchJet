@@ -41,5 +41,17 @@ data class SendPayload(
     val userAgent: String = "",
     /** Set by the sender so the receiver can show "from <device>" and ignore an unpaired sender. */
     val fromDeviceId: String = "",
-    val fromDeviceName: String = ""
+    val fromDeviceName: String = "",
+    val clipStart: String = "",
+    val clipEnd: String = "",
+    val clipByCutting: Boolean = false
 )
+
+/**
+ * A file name that came over the wire, reduced to a bare name inside the receive folder: a paired
+ * peer must not be able to write outside it with `../` or an absolute path. Null = refuse it.
+ */
+internal fun safeWireName(name: String): String? {
+    val bare = name.substringAfterLast('/').substringAfterLast('\\').trim()
+    return bare.takeIf { it.isNotEmpty() && it != "." && it != ".." }
+}
