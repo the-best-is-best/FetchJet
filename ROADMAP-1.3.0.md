@@ -125,8 +125,9 @@ ends in `.mp3`; there is **no UI** to pick a format. An earlier generalized atte
 dialog's `FileNameSection`, and `audioConvertTo` / `audioOriginal` i18n strings in all 15 providers)
 was reverted from the 1.2.0 branch and should be redone here.
 
-**Done, Android-tested 2026-11-08** (SoundCloud → MP3 on the A56: real MP3, full 3:33). Not
-checked yet: iOS (Mac build), desktop, the link-list / playlist "Convert all to".
+**Done, tested 2026-11-08:** A56 (SoundCloud → MP3 and OPUS) and the iOS simulator (MP3, OPUS,
+OGG; File not found). iOS ffmpeg has no libopus / libvorbis: OPUS / OGG use ffmpeg's own encoders
+there (`c41be02`). Not checked yet: desktop, the link-list / playlist "Convert all to".
 
 - [x] "Convert to" chips when the selected quality is audio-only (`ui/AudioConvertSection.kt`): the
   first chip is the file's own format (e.g. M4A), selected by default = no re-encode; then the
