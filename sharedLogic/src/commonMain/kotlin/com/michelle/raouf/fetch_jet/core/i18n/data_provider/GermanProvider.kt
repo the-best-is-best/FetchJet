@@ -234,6 +234,11 @@ object GermanProvider : AppLocalization {
         if (isAudio) "Audioausschnitt (optional)" else "Videoausschnitt (optional)"
 
     override val clipSectionHint = "Nur einen bestimmten Zeitraum herunterladen"
+    override val audioConvertTo = "Umwandeln in"
+    override val audioConvertAllTo = "Alle Audios umwandeln in"
+    override val audioOriginal = "Original"
+    override val fileMissingTitle = "Datei nicht gefunden"
+    override fun fileMissingMessage(name: String) = "„$name“ ist nicht mehr auf diesem Gerät. Sie wurde vielleicht verschoben, umbenannt oder gelöscht."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "Audiolänge" else "Videolänge"}: $clock ($friendly) - standardmäßig komplett ausgewählt"
 

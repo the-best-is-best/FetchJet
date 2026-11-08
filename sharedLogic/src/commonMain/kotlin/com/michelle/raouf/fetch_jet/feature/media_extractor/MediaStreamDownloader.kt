@@ -234,6 +234,7 @@ class MediaStreamDownloader(
                 // URLs; FetchJet downloads them in pieces (several connections, pause/resume,
                 // piece map) and merges with the local ffmpeg. Anything it cannot do — HLS/DASH
                 // fragments, section clips, a failure midway — falls back to yt-dlp below.
+                val hlsOutputPath = hlsOutputFor(cacheDir, fileName, cacheTargetPath)
                 var directDone = false
                 if (!useOwnHls && !isClipping) {
                     directDone = try {
@@ -250,6 +251,10 @@ class MediaStreamDownloader(
                         throw e
                     } catch (e: Exception) {
                         com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: own engine failed, using yt-dlp: ${e.message}")
+                        try {
+                            FileSystem.SYSTEM.delete(cacheTargetPath)
+                        } catch (_: Exception) {
+                        }
                         updateTaskState(taskId) {
                             if (it.status == DownloadStatus.PAUSED) it
                             else it.copy(
@@ -281,7 +286,7 @@ class MediaStreamDownloader(
                             initialTask,
                             downloadSourceUrl,
                             cacheDir,
-                            cacheTargetPath
+                            hlsOutputPath
                         )
                     } else {
                         com.michelle.raouf.fetch_jet.core.log.AppLog.d {
@@ -319,7 +324,9 @@ class MediaStreamDownloader(
                     )
                 }
 
-                val foundCachePath = findFinishedFileInCache(cacheDir, cacheTargetPath, fileName)
+                val foundCachePath = (if (hlsOutputPath != cacheTargetPath && FileSystem.SYSTEM.exists(hlsOutputPath)) hlsOutputPath
+                else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
+                    ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
                 downloadedRealFile =
                     moveFinishedFileIntoPlace(
                         taskId,

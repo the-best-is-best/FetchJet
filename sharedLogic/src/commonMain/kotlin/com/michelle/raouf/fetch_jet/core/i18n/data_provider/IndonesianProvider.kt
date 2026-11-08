@@ -225,6 +225,11 @@ object IndonesianProvider : AppLocalization {
         if (isAudio) "Potong bagian audio (opsional)" else "Potong bagian video (opsional)"
 
     override val clipSectionHint = "Unduh hanya rentang waktu tertentu"
+    override val audioConvertTo = "Ubah ke"
+    override val audioConvertAllTo = "Ubah semua audio ke"
+    override val audioOriginal = "Asli"
+    override val fileMissingTitle = "File tidak ditemukan"
+    override fun fileMissingMessage(name: String) = "\"$name\" sudah tidak ada di perangkat ini. Mungkin telah dipindahkan, diganti nama, atau dihapus."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "Durasi ${if (isAudio) "audio" else "video"}: $clock ($friendly) - Seluruh rentang dipilih secara default"
 

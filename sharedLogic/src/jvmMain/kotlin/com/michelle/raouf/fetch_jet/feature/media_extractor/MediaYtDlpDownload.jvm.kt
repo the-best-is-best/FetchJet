@@ -146,7 +146,9 @@ actual suspend fun downloadMediaWithPlatformTool(
     )
     // "-o" is a yt-dlp *template*: a literal '%' in the title or folder must be doubled, while
     // the fallback template keeps its own %(..)s fields.
-    val outputTemplate = if (fileName.isNotBlank() && !isScript) {
+    val outputTemplate = if (fileName.isNotBlank() && !isScript && isAudio) {
+        File(destinationDir, fileName.substringBeforeLast('.')).absolutePath.replace("%", "%%") + ".%(ext)s"
+    } else if (fileName.isNotBlank() && !isScript) {
         File(destinationDir, fileName).absolutePath.replace("%", "%%")
     } else {
         File(destinationDir.replace("%", "%%"), "%(title)s.%(ext)s").path

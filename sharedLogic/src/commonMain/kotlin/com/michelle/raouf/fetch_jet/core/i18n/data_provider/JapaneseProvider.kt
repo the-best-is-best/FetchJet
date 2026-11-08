@@ -224,6 +224,11 @@ object JapaneseProvider : AppLocalization {
         if (isAudio) "音声の一部を切り出す（任意）" else "動画の一部を切り出す（任意）"
 
     override val clipSectionHint = "指定した時間の範囲だけをダウンロード"
+    override val audioConvertTo = "変換先"
+    override val audioConvertAllTo = "すべての音声の変換先"
+    override val audioOriginal = "元のまま"
+    override val fileMissingTitle = "ファイルが見つかりません"
+    override fun fileMissingMessage(name: String) = "「$name」はこのデバイスにありません。移動、名前の変更、または削除された可能性があります。"
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "音声" else "動画"}の長さ: ${clock}（${friendly}）- 初期設定では全体を選択"
 

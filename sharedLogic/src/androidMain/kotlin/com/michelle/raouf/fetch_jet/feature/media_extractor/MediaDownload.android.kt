@@ -80,15 +80,12 @@ actual suspend fun downloadMediaWithPlatformTool(
                 !it.contains('+') && (it.contains("audio") || it.contains("ba") || it == "140" || it == "251")
             } ?: false)
 
-    val ext = if (isAudio) "mp3" else "%(ext)s"
-    val outputTemplate = File(outDir, "$cleanName.$ext").absolutePath
+    val outputTemplate = File(outDir, "$cleanName.%(ext)s").absolutePath
     request.addOption("-o", outputTemplate)
     ytDlpHeaderArgs(requestHeaders, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
     request.addOption("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
 
     if (isAudio) {
-        request.addOption("-x")
-        request.addOption("--audio-format", "mp3")
         if (!formatId.isNullOrBlank()) {
             request.addOption("-f", "$formatId/bestaudio/best")
         } else {

@@ -222,6 +222,11 @@ object HindiProvider : AppLocalization {
         if (isAudio) "ऑडियो का हिस्सा काटें (वैकल्पिक)" else "वीडियो का हिस्सा काटें (वैकल्पिक)"
 
     override val clipSectionHint = "सिर्फ़ एक तय समय का हिस्सा डाउनलोड करें"
+    override val audioConvertTo = "में बदलें"
+    override val audioConvertAllTo = "सभी ऑडियो इसमें बदलें"
+    override val audioOriginal = "मूल"
+    override val fileMissingTitle = "फ़ाइल नहीं मिली"
+    override fun fileMissingMessage(name: String) = "\"$name\" अब इस डिवाइस पर नहीं है। हो सकता है इसे हटाया, नाम बदला या मिटाया गया हो।"
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "ऑडियो" else "वीडियो"} की अवधि: $clock ($friendly) - डिफ़ॉल्ट रूप से पूरा हिस्सा चुना गया"
 

@@ -228,6 +228,11 @@ object ItalianProvider : AppLocalization {
         if (isAudio) "Ritaglia una parte dell'audio (facoltativo)" else "Ritaglia una parte del video (facoltativo)"
 
     override val clipSectionHint = "Scarica solo un intervallo di tempo"
+    override val audioConvertTo = "Converti in"
+    override val audioConvertAllTo = "Converti tutto l'audio in"
+    override val audioOriginal = "Originale"
+    override val fileMissingTitle = "File non trovato"
+    override fun fileMissingMessage(name: String) = "\"$name\" non è più su questo dispositivo. Potrebbe essere stato spostato, rinominato o eliminato."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "Durata ${if (isAudio) "audio" else "video"}: $clock ($friendly) - intera durata selezionata"
 

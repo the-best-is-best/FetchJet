@@ -323,7 +323,7 @@ internal fun TaskListArea(
                             RowAction.OPEN -> {
                                 val dest = task.destinationPath.trimEnd('/', '\\')
                                 val sep = if (dest.contains('\\')) "\\" else "/"
-                                openDownloadedFile(decodeUnicodeText("$dest$sep${task.fileName}").trim())
+                                openDownloadedFile(decodeUnicodeText("$dest$sep${task.fileName}").trim(), task.id)
                             }
 
                             RowAction.NONE -> {}

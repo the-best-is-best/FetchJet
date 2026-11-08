@@ -5,8 +5,7 @@ are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that
 competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
 value / cost. Mark an item `[x]` when the owner has tested it.
 
-**State (2026-11-08):** 1, 2 and 4 done. 3 is built and waits for the owner's test. **Next to
-build: 5** (audio format conversion), then 6.
+**State (2026-11-08):** 1, 2, 3 and 4 done. **Now: 5** (audio format conversion), then 6.
 
 ## 1. Subtitles with the video (medium) — DONE
 
@@ -41,7 +40,7 @@ Why: throttle during the day, full speed at night — on top of the quick "turtl
 - [x] The current window shows in the UI (e.g. the turtle bar) so it is clear why the speed is
   capped.
 
-## 3. Task priority (medium) — BUILT (`9696bca`), waiting for the owner's test
+## 3. Task priority (medium) — DONE (`9696bca`, owner-tested 2026-11-08)
 
 Why: no task-level priority exists today (the `priority` field in `TaskCache` is per torrent file,
 not the queue order).
@@ -49,12 +48,12 @@ not the queue order).
 (Drag-to-reorder the list was dropped on the owner's decision, 2026-11-07 — "just list ordering,
 not worth it". Do not bring it back unless the owner asks.)
 
-- [ ] A per-task priority (High / Normal / Low): shown as a tappable chip on each row (one tap
+- [x] A per-task priority (High / Normal / Low): shown as a tappable chip on each row (one tap
   cycles High/Normal/Low, `TaskRows.kt` `PriorityChip`), decides which queued task starts next when
   a slot frees up, AND splits the global speed limit by weight among the running downloads
   (High:Normal:Low = 3:2:1, `getEffectiveDownloadLimit`, live via the `RateLimiter`). Also: the Add
   dialog's duplicate check now compares the full file name incl. extension, so the same link with a
-  different name is a separate download. Needs the owner's test.
+  different name is a separate download.
 
 ## 4. Send a download to another device (large) — DONE (owner-tested 2026-11-08)
 
@@ -126,20 +125,25 @@ ends in `.mp3`; there is **no UI** to pick a format. An earlier generalized atte
 dialog's `FileNameSection`, and `audioConvertTo` / `audioOriginal` i18n strings in all 15 providers)
 was reverted from the 1.2.0 branch and should be redone here.
 
-- [ ] When the selected quality is audio-only, show a "Convert to" picker whose default is
-  **Original** (the native format that downloads — no re-encode, no quality loss), plus
-  MP3 · M4A · OPUS · FLAC · WAV · OGG. The app downloads best-quality audio and converts with
-  ffmpeg.
-- [ ] Generalize the own-engine convert step to `audioEncoderArgs(targetExt)` (libmp3lame -q:a 2,
-  aac 192k, libopus 160k, libvorbis -q:a 5, flac, pcm_s16le); keep the atomic-move fast path when
-  the source extension already equals the target.
-- [ ] **Fix the HLS path** (`HlsDownloader`, used by SoundCloud): today it only does `-c copy` into
-  the output container, so a chosen audio format is ignored. Add a transcode-to-target-extension
-  step (or a post-merge convert) so conversion works for HLS audio too. Verify on SoundCloud.
-- [ ] Offer the picker in the link-list and playlist views as well (a global "Convert all to"
-  control that rewrites each selected audio track's output extension), per the owner's request.
-- [ ] i18n: `audioConvertTo` / `audioOriginal` (and any new strings) in `AppLocalization` + all 15
-  providers.
+**Done, Android-tested 2026-11-08** (SoundCloud → MP3 on the A56: real MP3, full 3:33). Not
+checked yet: iOS (Mac build), desktop, the link-list / playlist "Convert all to".
+
+- [x] "Convert to" chips when the selected quality is audio-only (`ui/AudioConvertSection.kt`): the
+  first chip is the file's own format (e.g. M4A), selected by default = no re-encode; then the
+  other formats of MP3 · M4A · OPUS · FLAC · WAV · OGG. The choice only changes the file name's
+  extension (`audioConvertFormat` in the UI state, `mediaExt()` in `DashboardAddDownload.kt`).
+- [x] One convert step for every engine (`MediaAudioConvert.kt`, `convertAudioIfNeeded`): after
+  the download, if the file's extension differs from the name's, ffmpeg converts (tries `-c:a copy`
+  first, then `audioEncoderArgs`: libmp3lame -q:a 2, aac 192k, libopus 160k, libvorbis -q:a 5,
+  flac, pcm_s16le). A failed convert keeps the native file. yt-dlp no longer forces MP3 on
+  Android / iOS (no `-x`), and on desktop an audio download is saved as `%(ext)s`.
+- [x] HLS (SoundCloud): writes to `<name>.mka` first (`hlsOutputFor`), then converts; a failed own
+  engine deletes its half-written target so yt-dlp's fallback is not mistaken for the result.
+- [x] Link list and playlist ("Audio only"): the same chips as "Convert all audio to".
+- [x] i18n: `audioConvertTo` / `audioConvertAllTo` / `audioOriginal` in all 16 files.
+- [x] Also: Open file on a file that is gone from disk shows "File not found" with Remove from list
+  (`ui/MissingFileDialog.kt`, `PathResolver.fileExists`), instead of the file manager.
+  Owner-tested on Android.
 
 ## 6. Release notes in the app's language (small / medium)
 

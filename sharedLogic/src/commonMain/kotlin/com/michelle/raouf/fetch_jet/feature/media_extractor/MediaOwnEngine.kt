@@ -73,7 +73,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
             task.copy(requestHeaders = resolved.hlsHeaders + headersUsed),
             hlsUrl,
             cacheDir,
-            cacheTargetPath.toPath()
+            hlsOutputFor(cacheDir, fileName, cacheTargetPath.toPath())
         )
     }
     // video first, then audio
@@ -193,21 +193,13 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
                     )
         }
 
-        audioTarget && targetExt == "mp3" -> {
-            reportPostProcess(taskId, "Converting to MP3", 0.3f)
-            runLocalFfmpeg(
-                listOf(
-                    "-y",
-                    "-i",
-                    files[0],
-                    "-vn",
-                    "-c:a",
-                    "libmp3lame",
-                    "-q:a",
-                    "2",
-                    target
-                )
-            )
+        isAudioConvertTarget(fileName) && !files[0].substringAfterLast('.').equals(targetExt, true) -> {
+            val converted = convertAudioIfNeeded(taskId, files[0].toPath(), fileName, cacheDir)
+            converted.toString() == target || (converted.toString() != files[0] && try {
+                FileSystem.SYSTEM.atomicMove(converted, target.toPath()); true
+            } catch (_: Exception) {
+                false
+            })
         }
 
         files[0].substringAfterLast('.').equals(targetExt, true) -> {

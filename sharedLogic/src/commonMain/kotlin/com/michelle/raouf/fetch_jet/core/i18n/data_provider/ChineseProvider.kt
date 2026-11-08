@@ -214,6 +214,11 @@ object ChineseProvider : AppLocalization {
         if (isAudio) "剪切音频片段（可选）" else "剪切视频片段（可选）"
 
     override val clipSectionHint = "只下载指定的时间段"
+    override val audioConvertTo = "转换为"
+    override val audioConvertAllTo = "全部音频转换为"
+    override val audioOriginal = "原始"
+    override val fileMissingTitle = "找不到文件"
+    override fun fileMissingMessage(name: String) = "“$name”已不在此设备上，可能已被移动、重命名或删除。"
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "音频" else "视频"}时长：${clock}（${friendly}）- 默认选择全部"
 

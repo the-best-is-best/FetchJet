@@ -229,6 +229,11 @@ object RussianProvider : AppLocalization {
         if (isAudio) "Вырезать фрагмент аудио (необязательно)" else "Вырезать фрагмент видео (необязательно)"
 
     override val clipSectionHint = "Скачать только заданный отрезок времени"
+    override val audioConvertTo = "Преобразовать в"
+    override val audioConvertAllTo = "Преобразовать всё аудио в"
+    override val audioOriginal = "Оригинал"
+    override val fileMissingTitle = "Файл не найден"
+    override fun fileMissingMessage(name: String) = "«$name» больше нет на этом устройстве. Возможно, он был перемещён, переименован или удалён."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "Длительность ${if (isAudio) "аудио" else "видео"}: $clock ($friendly) - по умолчанию выбрано целиком"
 

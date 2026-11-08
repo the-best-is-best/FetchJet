@@ -232,6 +232,11 @@ object ArabicProvider : AppLocalization {
         if (isAudio) "قص جزء من الصوت (اختياري)" else "قص جزء من الفيديو (اختياري)"
 
     override val clipSectionHint = "نزّل نطاقًا زمنيًا محددًا فقط"
+    override val audioConvertTo = "تحويل إلى"
+    override val audioConvertAllTo = "تحويل كل الصوتيات إلى"
+    override val audioOriginal = "الأصلي"
+    override val fileMissingTitle = "الملف غير موجود"
+    override fun fileMissingMessage(name: String) = "\"$name\" لم يعد موجودًا على هذا الجهاز. ربما تم نقله أو إعادة تسميته أو حذفه."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "مدة ${if (isAudio) "الصوت" else "الفيديو"}: $clock ($friendly) - المدة كاملة محددة افتراضيًا"
 

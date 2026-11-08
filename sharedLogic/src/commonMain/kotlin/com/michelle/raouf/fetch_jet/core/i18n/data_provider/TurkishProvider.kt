@@ -222,6 +222,11 @@ object TurkishProvider : AppLocalization {
         if (isAudio) "Sesten bölüm kes (isteğe bağlı)" else "Videodan bölüm kes (isteğe bağlı)"
 
     override val clipSectionHint = "Yalnızca belirli bir zaman aralığını indirin"
+    override val audioConvertTo = "Dönüştür"
+    override val audioConvertAllTo = "Tüm sesleri dönüştür"
+    override val audioOriginal = "Orijinal"
+    override val fileMissingTitle = "Dosya bulunamadı"
+    override fun fileMissingMessage(name: String) = "\"$name\" artık bu cihazda değil. Taşınmış, yeniden adlandırılmış veya silinmiş olabilir."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "Ses" else "Video"} süresi: $clock ($friendly) - Varsayılan olarak tamamı seçili"
 

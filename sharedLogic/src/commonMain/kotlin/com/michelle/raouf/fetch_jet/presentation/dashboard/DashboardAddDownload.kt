@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -125,7 +126,7 @@ internal fun DashboardViewModel.addDownload(
             if (!typed.contains('.') && ext.isNotBlank()) "$typed.$ext" else typed
         }
     val customFileName = overrideFileName ?: typedName ?: if (!videoTitle.isNullOrBlank()) {
-        val ext = selectedQuality?.format ?: "mp4"
+        val ext = mediaExt(selectedQuality, currentState.audioConvertFormat)
         val sanitized = queueRepository.pathResolver.sanitizeFileName(videoTitle)
         if (sanitized.endsWith(".$ext", ignoreCase = true)) sanitized else "$sanitized.$ext"
     } else null
@@ -264,7 +265,7 @@ internal fun DashboardViewModel.addSeveralQualities(
                 q.qualityLabel.substringBefore(" (").replace("Audio Only", "Audio").trim()
                     .ifBlank { q.format }
             )
-            val ext = q.format.ifBlank { "mp4" }
+            val ext = mediaExt(q, state.audioConvertFormat)
             var fileName = "$baseName ($tag).$ext"
             if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
                 var n = 2
@@ -372,13 +373,17 @@ internal fun DashboardViewModel.addPlaylist(
         var added = 0
         var failed = 0
         val usedNames = mutableSetOf<String>()
+        val playlistExt =
+            if (quality == com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO)
+                state.audioConvertFormat ?: quality.extension
+            else quality.extension
         for (entry in selected) {
             val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
             var fileName = if (name.endsWith(
-                    ".${quality.extension}",
+                    ".$playlistExt",
                     ignoreCase = true
                 )
-            ) name else "$name.${quality.extension}"
+            ) name else "$name.$playlistExt"
             // Two videos with the same title, or a file already in the folder: "Title (2).mp4".
             if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
                 val base = fileName.substringBeforeLast('.')
@@ -508,7 +513,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
             }
             val quality = entry.mediaQualities.firstOrNull { it.isSelected }
             val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
-                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + quality.format.ifBlank { "mp4" }
+                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + mediaExt(quality, state.audioConvertFormat)
             else null
             queueRepository.enqueueTask(
                 url = entry.url,
@@ -630,4 +635,14 @@ internal fun DashboardViewModel.inspectListedTorrents() {
                 }
         }
     }
+}
+
+internal fun mediaExt(
+    quality: com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry?,
+    audioConvertFormat: String?
+): String {
+    val native = quality?.format?.ifBlank { null } ?: "mp4"
+    return if (audioConvertFormat != null && quality != null &&
+        quality.isAudioOnly
+    ) audioConvertFormat else native
 }

@@ -209,6 +209,11 @@ object KoreanProvider : AppLocalization {
         if (isAudio) "오디오 구간 자르기 (선택 사항)" else "동영상 구간 자르기 (선택 사항)"
 
     override val clipSectionHint = "원하는 시간 구간만 다운로드"
+    override val audioConvertTo = "변환"
+    override val audioConvertAllTo = "모든 오디오 변환"
+    override val audioOriginal = "원본"
+    override val fileMissingTitle = "파일을 찾을 수 없음"
+    override fun fileMissingMessage(name: String) = "\"$name\" 파일이 이 기기에 더 이상 없습니다. 이동되었거나 이름이 바뀌었거나 삭제되었을 수 있습니다."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "${if (isAudio) "오디오" else "동영상"} 길이: $clock ($friendly) - 기본으로 전체 구간 선택됨"
 

@@ -58,13 +58,19 @@ import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
 import com.tbib.kmp_localization.LocalizationManager
 
+/** The task whose file is gone from disk: shown in [MissingFileDialog]. */
+internal val missingFileTaskId = androidx.compose.runtime.mutableStateOf<String?>(null)
+
 /**
- * Opens a finished download with the system's default app. If the file cannot be opened
- * (no associated app, the engine renamed it, or the OS refused), reveal it in its folder
- * instead so the click never does nothing.
+ * Opens a finished download with the system's default app. A file that is no longer on disk
+ * shows [MissingFileDialog]; a file no app can open is revealed in its folder instead.
  */
-internal fun openDownloadedFile(fullPath: String) {
+internal fun openDownloadedFile(fullPath: String, taskId: String) {
     val resolver = PathResolver()
+    if (!resolver.fileExists(fullPath)) {
+        missingFileTaskId.value = taskId
+        return
+    }
     if (!resolver.openFile(fullPath)) {
         resolver.openFileLocation(fullPath)
     }
@@ -661,6 +667,10 @@ fun App(
                             )
                         )
                     },
+                    audioConvertFormat = state.audioConvertFormat,
+                    onAudioConvertFormatSelected = {
+                        viewModel.onEvent(DashboardUiEvent.OnAudioConvertFormatSelected(it))
+                    },
                     inspectedPlaylist = state.inspectedPlaylist,
                     playlistQuality = state.playlistQuality,
                     onPlaylistEntryToggled = { i, sel ->
@@ -770,6 +780,19 @@ fun App(
                     },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissRemoveDialog) },
                     count = if (state.removeConfirmationTaskId != null) 1 else state.removeConfirmationTaskIds.size
+                )
+            }
+
+            missingFileTaskId.value?.let { missingId ->
+                val missingTask = state.allTasks.firstOrNull { it.id == missingId }
+                if (missingTask != null) com.michelle.raouf.fetch_jet.ui.MissingFileDialog(
+                    fileName = missingTask.fileName,
+                    onRemove = {
+                        missingFileTaskId.value = null
+                        viewModel.onEvent(DashboardUiEvent.OnRemoveClicked(missingId))
+                        viewModel.onEvent(DashboardUiEvent.OnConfirmRemoveClicked(false))
+                    },
+                    onDismiss = { missingFileTaskId.value = null }
                 )
             }
 

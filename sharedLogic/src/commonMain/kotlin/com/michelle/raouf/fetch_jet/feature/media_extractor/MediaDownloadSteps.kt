@@ -230,9 +230,9 @@ internal fun findFinishedFileInCache(
             } ?: list.filter {
                 val n = it.name.lowercase()
                 !n.endsWith(".part") && !n.endsWith(".ytdl") && !n.endsWith(".temp") &&
-                        (n.endsWith(".mp4") || n.endsWith(".mkv") || n.endsWith(".webm") || n.endsWith(
-                            ".m4a"
-                        ) || n.endsWith(".mp3"))
+                        n.substringAfterLast('.') in listOf(
+                            "mp4", "mkv", "webm", "m4a", "mp3", "opus", "ogg", "flac", "wav", "aac", "mka"
+                        )
             }.maxByOrNull {
                 try {
                     FileSystem.SYSTEM.metadata(it).lastModifiedAtMillis ?: 0L

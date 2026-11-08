@@ -185,6 +185,8 @@ data class DashboardUiState(
     val isClipRangeEnabled: Boolean = false,
     /** Clip: download the whole video at full speed and cut it afterwards (uses more data). */
     val clipFastMode: Boolean = false,
+    /** Audio-only downloads are converted to this format (null = keep the original). */
+    val audioConvertFormat: String? = null,
     /** A playlist / channel link: its videos (null = a single video). */
     val inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? = null,
     val linkList: List<LinkListEntry> = emptyList(),
@@ -259,6 +261,7 @@ sealed interface DashboardUiEvent {
     data class OnClipEndTimeChanged(val time: String) : DashboardUiEvent
     data class OnToggleClipRange(val enabled: Boolean) : DashboardUiEvent
     data class OnToggleClipFastMode(val enabled: Boolean) : DashboardUiEvent
+    data class OnAudioConvertFormatSelected(val format: String?) : DashboardUiEvent
     data class OnPlaylistEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistSelectAll(val selected: Boolean) : DashboardUiEvent
     data class OnPlaylistFolderChanged(val name: String) : DashboardUiEvent

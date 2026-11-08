@@ -612,7 +612,7 @@ internal fun DownloadTaskItem(
                         DetailPrimaryButton(
                             LocalizationManager.Strings.detailsOpenFile,
                             m
-                        ) { openDownloadedFile(fullPath) }
+                        ) { openDownloadedFile(fullPath, task.id) }
                         if (canFolder) DetailSecondaryButton(
                             LocalizationManager.Strings.detailsOpenFolder,
                             m,

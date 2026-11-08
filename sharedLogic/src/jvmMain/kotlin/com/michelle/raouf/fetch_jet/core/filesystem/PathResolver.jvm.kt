@@ -231,6 +231,8 @@ actual class PathResolver actual constructor() {
         }
     }
 
+    actual fun fileExists(filePath: String): Boolean = resolveExistingFile(filePath) != null
+
     actual fun openFile(filePath: String): Boolean {
         val file = resolveExistingFile(filePath) ?: return false
         if (file.isDirectory) return openDirectoryInExplorer(file.absolutePath)

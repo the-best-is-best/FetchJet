@@ -189,6 +189,11 @@ interface AppLocalization : LocalizationProvider {
     val inspectVideoQuality: String
     fun clipSectionTitle(isAudio: Boolean): String
     val clipSectionHint: String
+    val audioConvertTo: String
+    val audioConvertAllTo: String
+    val audioOriginal: String
+    val fileMissingTitle: String
+    fun fileMissingMessage(name: String): String
     fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String): String
     val clipStartTimeFrom: String
     val clipEndTimeTo: String

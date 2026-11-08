@@ -224,6 +224,11 @@ object PersianProvider : AppLocalization {
         if (isAudio) "برش بخشی از صدا (اختیاری)" else "برش بخشی از ویدیو (اختیاری)"
 
     override val clipSectionHint = "فقط یک بازه زمانی مشخص دانلود شود"
+    override val audioConvertTo = "تبدیل به"
+    override val audioConvertAllTo = "تبدیل همه صداها به"
+    override val audioOriginal = "اصلی"
+    override val fileMissingTitle = "فایل پیدا نشد"
+    override fun fileMissingMessage(name: String) = "«$name» دیگر روی این دستگاه نیست. شاید جابه‌جا، تغییر نام یا حذف شده باشد."
     override fun mediaDurationFullRange(isAudio: Boolean, clock: String, friendly: String) =
         "مدت ${if (isAudio) "صدا" else "ویدیو"}: $clock ($friendly) - به‌طور پیش‌فرض کل بازه انتخاب شده است"
 
