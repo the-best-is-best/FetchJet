@@ -89,9 +89,13 @@ internal fun DashboardViewModel.addDownload(
                 if (!typed.contains('.') && suggestedExt.isNotBlank()) "$typed.$suggestedExt" else typed
             }
         val duplicate = allTasks.find { task ->
-            isSameDownload(task, url) &&
-                    (typedFullName == null ||
-                            task.fileName.trim().equals(typedFullName, ignoreCase = true))
+            isSameDownload(task, url) && when {
+                typedFullName != null -> task.fileName.trim().equals(typedFullName, ignoreCase = true)
+                currentState.detectedEngine == EngineType.MEDIA_STREAM &&
+                        suggestedExt.isNotBlank() && task.fileName.contains('.') ->
+                    task.fileName.substringAfterLast('.').equals(suggestedExt, ignoreCase = true)
+                else -> true
+            }
         }
         if (duplicate != null) {
             _uiState.update { it.copy(duplicateTaskAlert = duplicate) }
