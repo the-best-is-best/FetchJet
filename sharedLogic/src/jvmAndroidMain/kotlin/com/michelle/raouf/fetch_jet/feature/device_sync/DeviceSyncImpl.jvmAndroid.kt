@@ -109,6 +109,7 @@ internal class DeviceSyncImpl(
     private val seen = LinkedHashMap<String, DiscoveredDevice>()
     private var serverSocket: ServerSocket? = null
     private var multicastToken: Any? = null
+    @Volatile
     private var pending: Pending? = null
     private var started = false
 
@@ -414,6 +415,7 @@ internal class DeviceSyncImpl(
                 pending?.device?.id == fromId -> "pending"
                 else -> endedPairingReason(fromId) ?: "not paired"
             }
+            if (reason != "pending") println("FJSYNC send from $fromId refused: $reason")
             writeFrame(output, T_ERR, reason.encodeToByteArray()); return
         }
         val metaJson =
@@ -531,6 +533,7 @@ internal class DeviceSyncImpl(
     }
 
     private fun endPairing(p: Pending, why: String) {
+        println("FJSYNC pairing code for ${p.device.name} closed: $why")
         synchronized(endedPairings) { endedPairings[p.device.id] = System.currentTimeMillis() to why }
         pending = null
         _pairing.value = null

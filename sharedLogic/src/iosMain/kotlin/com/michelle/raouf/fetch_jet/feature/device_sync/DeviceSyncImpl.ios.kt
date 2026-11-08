@@ -286,6 +286,7 @@ internal class IosDeviceSync(
                 pending?.device?.id == fromId -> "pending"
                 else -> endedPairingReason(fromId) ?: "not paired"
             }
+            if (reason != "pending") println("FJSYNC send from $fromId refused: $reason")
             writeFrame(connId, T_ERR, reason.encodeToByteArray()); return
         }
         val metaJson =
@@ -432,6 +433,7 @@ internal class IosDeviceSync(
     }
 
     private fun endPairing(p: Pending, why: String) {
+        println("FJSYNC pairing code for ${p.device.name} closed: $why")
         locked { endedPairings[p.device.id] = nowMs() to why }
         pending = null
         _pairing.value = null
