@@ -5,8 +5,8 @@ are the medium / large features from the Ezoo 1.0.9 comparison (2026-11-04) that
 competitors, kept out of 1.2.0 because they are bigger than the quick wins there. Ordered by
 value / cost. Mark an item `[x]` when the owner has tested it.
 
-**State (2026-11-08):** 1 to 5 done (5: desktop and the list / playlist "Convert all to" not
-checked yet). **Now: 6** (release notes in the app's language).
+**State (2026-11-08):** 1 to 6 done. Waiting: item 6 needs a published release to be checked end
+to end, item 4 on a real iPhone.
 
 ## 1. Subtitles with the video (medium) — DONE
 
@@ -128,7 +128,8 @@ was reverted from the 1.2.0 branch and should be redone here.
 
 **Done, tested 2026-11-08:** A56 (SoundCloud → MP3 and OPUS) and the iOS simulator (MP3, OPUS,
 OGG; File not found). iOS ffmpeg has no libopus / libvorbis: OPUS / OGG use ffmpeg's own encoders
-there (`c41be02`). Not checked yet: desktop, the link-list / playlist "Convert all to".
+there (`c41be02`). Windows desktop: MP3, and a SoundCloud set (link list) with "Convert all
+audio to" FLAC, 2 tracks into the set's folder.
 
 - [x] "Convert to" chips when the selected quality is audio-only (`ui/AudioConvertSection.kt`): the
   first chip is the file's own format (e.g. M4A), selected by default = no re-encode; then the

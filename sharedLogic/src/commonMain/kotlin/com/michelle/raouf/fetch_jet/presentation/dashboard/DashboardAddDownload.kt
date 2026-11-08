@@ -494,8 +494,9 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
     }
     val chosenDir =
         state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
-    val folder = queueRepository.pathResolver.sanitizeFileName(state.linkListFolder.trim()).trim()
-        .trimEnd('.')
+    val folder = state.linkListFolder.trim().takeIf { it.isNotBlank() }
+        ?.let { queueRepository.pathResolver.sanitizeFileName(it).trim().trimEnd('.') }
+        .orEmpty()
     val destDir = if (folder.isBlank()) chosenDir else "${chosenDir.trimEnd('/', '\\')}/$folder"
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
@@ -507,7 +508,15 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         var added = 0
         var skipped = 0
         for (entry in selected) {
-            if (existing.any { isSameDownload(it, entry.url) }) {
+            val quality = entry.mediaQualities.firstOrNull { it.isSelected }
+            val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
+                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + mediaExt(quality, state.audioConvertFormat)
+            else null
+            val wantedExt = videoName?.substringAfterLast('.')
+            if (existing.any {
+                    isSameDownload(it, entry.url) &&
+                            (wantedExt == null || it.fileName.substringAfterLast('.').equals(wantedExt, ignoreCase = true))
+                }) {
                 skipped++
                 continue
             }
@@ -515,10 +524,6 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 skipped++
                 continue
             }
-            val quality = entry.mediaQualities.firstOrNull { it.isSelected }
-            val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
-                queueRepository.pathResolver.sanitizeFileName(entry.mediaTitle) + "." + mediaExt(quality, state.audioConvertFormat)
-            else null
             queueRepository.enqueueTask(
                 url = entry.url,
                 customDestinationPath = destDir,
