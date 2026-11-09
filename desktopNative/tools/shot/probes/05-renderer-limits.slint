@@ -1,0 +1,202 @@
+component Tile inherits Rectangle {
+    in property <string> caption;
+    in property <color> ink: #64748B;
+    width: 190px;
+    height: 120px;
+    border-width: 1px;
+    border-color: #334155;
+    Text { x: 4px; y: 2px; width: parent.width - 8px; text: root.caption; color: root.ink; font-size: 9px; wrap: word-wrap; }
+    @children
+}
+
+component Row inherits HorizontalLayout {
+    spacing: 8px;
+    alignment: start;
+}
+
+component Spinner inherits Path {
+    in property <float> progress: 0.7;
+    in property <color> tint: #00E5FF;
+    width: 44px;
+    height: 44px;
+    viewbox-width: 44;
+    viewbox-height: 44;
+    stroke: root.tint;
+    stroke-width: 4px;
+    stroke-line-cap: round;
+    fill: transparent;
+    MoveTo { x: 22; y: 4; }
+    ArcTo {
+        radius-x: 18;
+        radius-y: 18;
+        x: 22 + 18 * sin(root.progress * 360deg);
+        y: 22 - 18 * cos(root.progress * 360deg);
+        sweep: true;
+        large-arc: root.progress > 0.5;
+    }
+}
+
+export component RendererLimits inherits Window {
+    in property <color> page: #080D1A;
+    in property <color> ink: #F1F5F9;
+    in property <color> card: #0F1728;
+    preferred-width: 1210px;
+    preferred-height: 1050px;
+    background: root.page;
+    default-font-family: "Segoe UI";
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 8px;
+        alignment: start;
+
+        Row {
+            Tile { caption: "1a rounded clip: child bigger than a radius 20 box";
+                Rectangle { y: 30px; width: 120px; height: 70px; border-radius: 20px; clip: true; background: #172238;
+                    Rectangle { x: -10px; y: -10px; width: 80px; height: 60px; background: #F43F5E; }
+                    Rectangle { x: 70px; y: 30px; width: 80px; height: 60px; background: #34D399; } } }
+            Tile { caption: "1b rounded clip of an Image";
+                Rectangle { y: 30px; width: 150px; height: 70px; border-radius: 24px; clip: true;
+                    Image { source: @image-url("assets/checker.png"); width: 100%; height: 100%; image-fit: cover; } } }
+            Tile { caption: "1c circle clip (radius = half) + border on top";
+                Rectangle { y: 30px; width: 70px; height: 70px; border-radius: 35px; clip: true; border-width: 3px; border-color: #00E5FF;
+                    Image { source: @image-url("../../../ui/logo.png"); width: 100%; height: 100%; } } }
+            Tile { caption: "1d per-corner radius (top 16, bottom 0)";
+                Rectangle { y: 34px; width: 140px; height: 60px; background: #0C3D60; border-top-left-radius: 16px; border-top-right-radius: 16px; border-width: 2px; border-color: #00E5FF; } }
+            Tile { caption: "2 borders with alpha: 1px 35%, 2px 50%, 6px 30% over a filled box";
+                Row { y: 34px; x: 8px; height: 60px; spacing: 8px;
+                    Rectangle { width: 50px; border-radius: 12px; background: root.card; border-width: 1px; border-color: #94A3B8.with-alpha(0.35); }
+                    Rectangle { width: 50px; border-radius: 12px; background: root.card; border-width: 2px; border-color: #00E5FF.with-alpha(0.5); }
+                    Rectangle { width: 50px; border-radius: 12px; background: #F43F5E; border-width: 6px; border-color: #FFFFFF.with-alpha(0.3); } } }
+            Tile { caption: "3a linear gradients 90deg, 135deg, with alpha stop";
+                Row { y: 34px; x: 8px; height: 60px; spacing: 8px;
+                    Rectangle { width: 50px; border-radius: 10px; background: @linear-gradient(90deg, #00E5FF 0%, #818CF8 100%); }
+                    Rectangle { width: 50px; border-radius: 10px; background: @linear-gradient(135deg, #00E5FF 0%, #818CF8 50%, #F43F5E 100%); }
+                    Rectangle { width: 50px; border-radius: 10px; background: @linear-gradient(180deg, #00E5FF 0%, transparent 100%); } } }
+        }
+        Row {
+            Tile { caption: "3b radial and conic gradients";
+                Row { y: 34px; x: 8px; height: 60px; spacing: 8px;
+                    Rectangle { width: 60px; border-radius: 30px; background: @radial-gradient(circle, #00E5FF 0%, #0C3D60 60%, transparent 100%); }
+                    Rectangle { width: 60px; border-radius: 30px; background: @conic-gradient(#00E5FF 0deg, #818CF8 120deg, #F43F5E 240deg, #00E5FF 360deg); } } }
+            Tile { caption: "4a drop-shadow-blur 12, offset-y 4, black 60% (card)";
+                Rectangle { y: 36px; width: 120px; height: 56px; border-radius: 12px; background: #172238;
+                    drop-shadow-blur: 12px; drop-shadow-offset-y: 4px; drop-shadow-color: #000000.with-alpha(0.6); } }
+            Tile { caption: "4b drop-shadow-blur 10, cyan 55% (focus glow)";
+                Rectangle { y: 40px; width: 130px; height: 44px; border-radius: 12px; background: root.card; border-width: 1px; border-color: #00E5FF;
+                    drop-shadow-blur: 10px; drop-shadow-color: #00E5FF.with-alpha(0.55); } }
+            Tile { caption: "4c glow from 4 stacked translucent rings";
+                Rectangle { y: 40px; width: 130px; height: 44px;
+                    Rectangle { x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px; border-radius: 16px; border-width: 1px; border-color: #00E5FF.with-alpha(0.06); }
+                    Rectangle { x: -3px; y: -3px; width: parent.width + 6px; height: parent.height + 6px; border-radius: 15px; border-width: 1px; border-color: #00E5FF.with-alpha(0.12); }
+                    Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; border-radius: 14px; border-width: 1px; border-color: #00E5FF.with-alpha(0.2); }
+                    Rectangle { x: -1px; y: -1px; width: parent.width + 2px; height: parent.height + 2px; border-radius: 13px; border-width: 1px; border-color: #00E5FF.with-alpha(0.32); }
+                    Rectangle { border-radius: 12px; background: root.card; border-width: 1px; border-color: #00E5FF; } } }
+            Tile { caption: "4d glow from a nine-slice PNG (96 px, blur 8)";
+                Rectangle { y: 40px; width: 130px; height: 44px;
+                    Image { x: -24px; y: -24px; width: parent.width + 48px; height: parent.height + 48px; source: @image-url("assets/glow-cyan.png", nine-slice(40)); }
+                    Rectangle { border-radius: 12px; background: root.card; border-width: 1px; border-color: #00E5FF; } } }
+            Tile { caption: "4e card shadow from a nine-slice PNG";
+                Rectangle { y: 36px; width: 120px; height: 56px;
+                    Image { x: -24px; y: -24px; width: parent.width + 48px; height: parent.height + 48px; source: @image-url("assets/shadow-black.png", nine-slice(40)); }
+                    Rectangle { border-radius: 12px; background: #172238; } } }
+        }
+        Row {
+            Tile { caption: "5 opacity 0.45 on a group (button + text), next to opacity 1";
+                Row { y: 40px; x: 8px; height: 40px; spacing: 10px;
+                    Rectangle { width: 80px; border-radius: 10px; background: #00E5FF; Text { text: "Enabled"; color: #031625; font-size: 12px; font-weight: 600; } }
+                    Rectangle { width: 80px; border-radius: 10px; background: #00E5FF; opacity: 0.45; Text { text: "Disabled"; color: #031625; font-size: 12px; font-weight: 600; } } } }
+            Tile { caption: "6a rotation-angle on Image 0 / 30 / 90 deg";
+                Row { y: 44px; x: 10px; height: 44px; spacing: 14px;
+                    Image { source: @image-url("../../../ui/logo.png"); width: 44px; height: 44px; }
+                    Image { source: @image-url("../../../ui/logo.png"); width: 44px; height: 44px; rotation-angle: 30deg; }
+                    Image { source: @image-url("../../../ui/logo.png"); width: 44px; height: 44px; rotation-angle: 90deg; } } }
+            Tile { caption: "6b rotation-angle on Text 0 / -20 / 90, transform-rotation on a Rectangle";
+                Row { y: 44px; x: 10px; height: 44px; spacing: 14px;
+                    Text { text: "Abc"; color: root.ink; font-size: 14px; }
+                    Text { text: "Abc"; color: root.ink; font-size: 14px; rotation-angle: -20deg; }
+                    Text { text: "Abc"; color: root.ink; font-size: 14px; rotation-angle: 90deg; }
+                    Rectangle { width: 30px; height: 30px; background: #F43F5E; transform-rotation: 30deg; } } }
+            Tile { caption: "7a Path strokes 1 / 1.5 / 2 / 3 px, round caps";
+                Row { y: 40px; x: 10px; height: 44px; spacing: 10px;
+                    Path { width: 32px; height: 32px; viewbox-width: 24; viewbox-height: 24; stroke: root.ink; stroke-width: 1px; commands: "M 10.5 4 A 6.5 6.5 0 1 0 10.5 17 A 6.5 6.5 0 1 0 10.5 4 Z M 15.5 15.5 L 20.5 20.5"; }
+                    Path { width: 32px; height: 32px; viewbox-width: 24; viewbox-height: 24; stroke: root.ink; stroke-width: 1.5px; commands: "M 10.5 4 A 6.5 6.5 0 1 0 10.5 17 A 6.5 6.5 0 1 0 10.5 4 Z M 15.5 15.5 L 20.5 20.5"; }
+                    Path { width: 32px; height: 32px; viewbox-width: 24; viewbox-height: 24; stroke: root.ink; stroke-width: 2px; stroke-line-cap: round; commands: "M 10.5 4 A 6.5 6.5 0 1 0 10.5 17 A 6.5 6.5 0 1 0 10.5 4 Z M 15.5 15.5 L 20.5 20.5"; }
+                    Path { width: 32px; height: 32px; viewbox-width: 24; viewbox-height: 24; stroke: #00E5FF; stroke-width: 3px; stroke-line-cap: round; stroke-line-join: round; commands: "M 5 12 L 10 17 L 19 7"; } } }
+            Tile { caption: "7b Path fills: Material icons (24 px viewbox) at 18 / 24 / 36";
+                Row { y: 44px; x: 10px; height: 40px; spacing: 12px;
+                    Path { width: 18px; height: 18px; viewbox-width: 24; viewbox-height: 24; fill: root.ink; commands: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"; }
+                    Path { width: 24px; height: 24px; viewbox-width: 24; viewbox-height: 24; fill: #00E5FF; commands: "M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"; }
+                    Path { width: 36px; height: 36px; viewbox-width: 24; viewbox-height: 24; fill: #FBBF24; commands: "M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"; }
+                    Path { width: 36px; height: 36px; viewbox-width: 24; viewbox-height: 24; fill: #F43F5E; fill-rule: evenodd; commands: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"; } } }
+            Tile { caption: "7c arc progress ring 0.2 / 0.7 / 0.95 (ArcTo)";
+                Row { y: 44px; x: 10px; height: 44px; spacing: 14px;
+                    Spinner { progress: 0.2; }
+                    Spinner { progress: 0.7; tint: #34D399; }
+                    Spinner { progress: 0.95; tint: #FBBF24; } } }
+        }
+        Row {
+            Tile { caption: "8a logo.svg (gradients) at 16 / 24 / 32 / 64"; width: 250px;
+                Row { y: 40px; x: 10px; height: 64px; spacing: 12px;
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.svg"); width: 16px; height: 16px; } }
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.svg"); width: 24px; height: 24px; } }
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.svg"); width: 32px; height: 32px; } }
+                    Image { source: @image-url("../../../ui/logo.svg"); width: 64px; height: 64px; } } }
+            Tile { caption: "8b logo.png 512 px scaled to 16 / 24 / 32 / 64 (smooth)"; width: 250px;
+                Row { y: 40px; x: 10px; height: 64px; spacing: 12px;
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.png"); width: 16px; height: 16px; } }
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.png"); width: 24px; height: 24px; } }
+                    VerticalLayout { alignment: center; Image { source: @image-url("../../../ui/logo.png"); width: 32px; height: 32px; } }
+                    Image { source: @image-url("../../../ui/logo.png"); width: 64px; height: 64px; } } }
+            Tile { caption: "8c checker.png 256x64 scaled to 96x24: smooth, pixelated, and 2x up"; width: 330px;
+                Row { y: 40px; x: 10px; height: 64px; spacing: 10px;
+                    VerticalLayout { alignment: center; Image { source: @image-url("assets/checker.png"); width: 96px; height: 24px; } }
+                    VerticalLayout { alignment: center; Image { source: @image-url("assets/checker.png"); width: 96px; height: 24px; image-rendering: pixelated; } }
+                    Rectangle { width: 100px; clip: true; Image { x: 0; source: @image-url("assets/checker.png"); width: 512px; height: 128px; } } } }
+            Tile { caption: "8d colorize on PNG and SVG (white, cyan)"; width: 160px;
+                Row { y: 44px; x: 10px; height: 40px; spacing: 12px;
+                    Image { source: @image-url("../../../ui/logo.png"); width: 36px; height: 36px; colorize: white; }
+                    Image { source: @image-url("../../../ui/logo.svg"); width: 36px; height: 36px; colorize: #00E5FF; } } }
+            Tile { caption: "9 text stroke, letter-spacing 2px, underline via Rectangle"; width: 180px;
+                VerticalLayout { y: 30px; x: 10px; height: 80px; spacing: 2px; alignment: start;
+                    Text { text: "Outline"; color: transparent; stroke: #00E5FF; stroke-width: 1px; font-size: 22px; font-weight: 800; }
+                    Text { text: "SPACED"; color: root.ink; letter-spacing: 2px; font-size: 12px; font-weight: 700; }
+                    Text { text: "Italic text"; color: root.ink; font-italic: true; font-size: 13px; } } }
+        }
+        Rectangle {
+            height: 250px;
+            border-width: 1px;
+            border-color: #334155;
+            Text { x: 4px; y: 2px; text: "10 text at 10 / 11 / 12 / 13 / 14 px, weights 400 / 500 / 600 / 700, dark and light"; color: #64748B; font-size: 9px; }
+            HorizontalLayout {
+                y: 16px;
+                height: parent.height - 18px;
+                padding: 6px;
+                spacing: 8px;
+                for dark in [true, false]: Rectangle {
+                    background: dark ? #0F1728 : #FFFFFF;
+                    border-radius: 8px;
+                    VerticalLayout {
+                        padding: 8px;
+                        spacing: 1px;
+                        alignment: start;
+                        for s in [10, 11, 12, 13, 14]: HorizontalLayout {
+                            spacing: 14px;
+                            alignment: start;
+                            Text { text: s + "px 400: Queue: 3 at a time · 42% · 8.1 MB/s"; color: dark ? #F1F5F9 : #0F172A; font-size: s * 1px; font-weight: 400; }
+                            Text { text: "600: ubuntu-26.04-desktop-amd64.iso"; color: dark ? #F1F5F9 : #0F172A; font-size: s * 1px; font-weight: 600; }
+                        }
+                        for s in [11, 12, 13]: HorizontalLayout {
+                            spacing: 14px;
+                            alignment: start;
+                            Text { text: s + "px 500: Waiting in queue · Paused · 31%"; color: dark ? #94A3B8 : #475569; font-size: s * 1px; font-weight: 500; }
+                            Text { text: "700: NAME SIZE PROGRESS SPEED LEFT"; color: dark ? #94A3B8 : #475569; font-size: s * 1px; font-weight: 700; }
+                        }
+                        Text { text: "13px Arabic: جاري التنزيل · في الانتظار · مكتمل · الإعدادات العامة"; color: dark ? #F1F5F9 : #0F172A; font-size: 13px; }
+                        Text { text: "11px Arabic: جاري التنزيل · في الانتظار · مكتمل · الإعدادات العامة"; color: dark ? #94A3B8 : #475569; font-size: 11px; }
+                    }
+                }
+            }
+        }
+    }
+}

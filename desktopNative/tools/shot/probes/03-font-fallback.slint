@@ -1,0 +1,34 @@
+component Line inherits Rectangle {
+    in property <string> caption;
+    in property <string> sample;
+    in property <length> size: 16px;
+    in property <int> weight: 400;
+    height: 46px;
+    border-width: 1px; border-color: #334155; background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    Text { x: 8px; y: 14px; text: root.sample; color: white; font-size: root.size; font-weight: root.weight; }
+}
+
+export component FontFallback inherits Window {
+    preferred-width: 860px;
+    preferred-height: 760px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 10px; spacing: 5px; alignment: start;
+        Line { caption: "1 all scripts in ONE Text, default-font-family Segoe UI"; sample: "English 中文简体 繁體 日本語かなカナ 한국어 हिन्दी Русский Türkçe ğüşiöçİı العربية فارسی 🐢📥⚡🎬🧲"; }
+        Line { caption: "2 Chinese simplified (zh)"; sample: "下载管理器 设置 正在下载 已完成 暂停全部 速度限制 12.5 MB/s"; }
+        Line { caption: "3 Chinese traditional"; sample: "下載管理器 設定 正在下載 已完成 暫停全部"; }
+        Line { caption: "4 Japanese (ja)"; sample: "ダウンロード マネージャー 設定 すべて一時停止 完了しました 直接"; }
+        Line { caption: "5 Korean (ko)"; sample: "다운로드 관리자 설정 모두 일시 중지 완료됨 대기 중"; }
+        Line { caption: "6 Hindi (hi), conjuncts and matras"; sample: "डाउनलोड प्रबंधक सेटिंग्स सभी रोकें पूर्ण हुआ प्रतीक्षा में क्षत्रिय श्री"; }
+        Line { caption: "7 Russian (ru)"; sample: "Менеджер загрузок Настройки Приостановить все Завершено Ожидание Ёё Щщ"; }
+        Line { caption: "8 Turkish (tr)"; sample: "İndirme Yöneticisi Ayarlar Tümünü duraklat Tamamlandı Bekliyor ğ ü ş ı ö ç İ I"; }
+        Line { caption: "9 Indonesian, German, French, Spanish, Portuguese, Italian accents"; sample: "Größe Übertragung Téléchargé à ç é è ñ ¿Qué? ã õ ç perché più"; }
+        Line { caption: "10 emoji and symbols used by the Compose UI (monochrome expected)"; sample: "🐢 📥 ⚡ 🎬 🧲 🎵 📂 ⏸ ▶ ⬇ ⏳ ✓ ✕ ↺ ↗ ↓ ↑ ▼ 🔗 ⚙ 🌙 ☀ ❤ 👍🏽 🇪🇬 👨‍👩‍👧"; size: 20px; }
+        Line { caption: "11 CJK bold 700 (does the fallback font get a bold face?)"; sample: "下载 ダウンロード 다운로드 डाउनलोड Загрузка"; weight: 700; }
+        Line { caption: "12 CJK at 11px"; sample: "下载管理器 设置 ダウンロード 設定 다운로드 설정 डाउनलोड Настройки İndirme"; size: 11px; }
+        Line { caption: "13 CJK at 13px"; sample: "下载管理器 设置 ダウンロード 設定 다운로드 설정 डाउनलोड Настройки İndirme"; size: 13px; }
+        Line { caption: "14 unknown glyphs: Thai, Hebrew, Greek, Armenian, Georgian, Tamil, Ethiopic"; sample: "ไทย עברית Ελληνικά Հայերեն ქართული தமிழ் አማርኛ"; }
+    }
+}

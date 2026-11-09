@@ -63,7 +63,23 @@ Steps:
 - Estimate road B, Windows: ~25-35 MB for the whole app (core 12-15 + UI ~10), against 13 MB
   Ezoo, 217 MB road A, ~250 MB today. Work: several weeks (core actuals, C API between the
   Kotlin DLL and the Slint UI, the UI itself, torrents), then macOS.
-- [ ] Decision with the owner, on the measured numbers: A, B, or A now and B later.
+- [x] Decision (owner, 2026-11-09): road B, on branch `desktop-native`; target: the FetchJet
+  process stays under 50 MB when idle or running normal downloads (yt-dlp / ffmpeg run as their
+  own processes, like Ezoo's aria2c).
+- [x] First native build on `desktop-native` (2026-11-09): `desktopNative/` = Slint UI
+  (`ui/app.slint`, `ui/theme.slint`: sidebar with counts, top bar, list, Add dialog, Settings,
+  dark / light with the app's colors) + `main.cpp` (loads the engine, polls it every 500 ms) +
+  `desktopNative/core` = Kotlin/Native `mingwX64` `fjcore.dll` (ktor WinHttp, 4 Range pieces,
+  pause / resume from the `.partN` files, global rate limit; C API `fj_add`, `fj_toggle`,
+  `fj_set_limit`, `fj_snapshot`, `fj_free`, `fj_set_destination`). Build: `core\gradlew.bat
+  linkReleaseSharedMingwX64`, then `desktopNativeuild.cmd` (VS 2026 + Slint in `E:	ools\slint`).
+  Measured with a real download at 20 KB/s: **15.8-18 MB private** (UI + engine), writes at
+  20 KB/s. Test limit default 20 KB/s (env `FETCHJET_LIMIT_KBS`), `FETCHJET_ADD=<url>` adds a link
+  at start. Note: a rate limit throttles what the app reads; Windows still fills the TCP receive
+  buffer first, so a small file (1 MB) arrives whole on the wire anyway.
+  Known: synthetic clicks (automation tool) in the top ~60 px are not delivered as clicks; the
+  owner's real mouse works there.
+
 - [ ] Then the chosen road, platform by platform (Windows first: the owner's machine and the
   Store), with every feature checked against the current app before the switch.
 

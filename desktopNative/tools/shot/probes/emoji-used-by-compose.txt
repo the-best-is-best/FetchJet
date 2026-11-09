@@ -1,0 +1,63 @@
+↓	12	U+2193	FdmSettingsPanel.kt, HindiProvider.kt, HomeNavigation.kt, ItalianProvider.kt, KoreanProvider.kt, RussianProvider.kt
+✕	11	U+2715	AddDownloadSections.kt, DirectoryPickerDialog.kt, HomeNavigation.kt, SettingsPages.kt, TaskDetails.kt, TaskList.kt, Time
+⚠️	11	U+26A0 U+FE0F	AddDownloadMedia.kt, AddDownloadSections.kt, AddDownloadTorrent.kt, BrowserInstallSection.kt, FileOverwriteDialog.kt, Ta
+📁	9	U+1F4C1	AddDownloadLinkList.kt, AddDownloadSections.kt, DirectoryPickerDialog.kt, PlaylistScheduleUi.kt, SettingsPages.kt, TaskD
+→	9	U+2192	BehaviorSettings.kt, DashboardDeviceSync.kt, DashboardViewModel.kt, MediaStreamDownloader.kt, MediaUrls.kt, PiecesBar.kt
+⚡	7	U+26A1	AddDownloadMedia.kt, AddDownloadSections.kt, HomeNavigation.kt, SpeedPresetRow.kt, TaskDetails.kt, TrafficLimitSelector.
+▾	7	U+25BE	AddDownloadLinkList.kt, DeviceSendDialog.kt, HomeNavigation.kt, SettingsPages.kt, TaskList.kt
+↑	7	U+2191	HindiProvider.kt, HomeNavigation.kt, ItalianProvider.kt, KoreanProvider.kt, RussianProvider.kt
+⏳	6	U+23F3	AddDownloadMedia.kt, AddDownloadSections.kt, TaskDetails.kt, TaskList.kt
+🎬	5	U+1F3AC	AddDownloadMedia.kt, AddDownloadSections.kt, HomeNavigation.kt
+✓	5	U+2713	BrowserInstallSection.kt, HomeNavigation.kt, TaskList.kt
+⏱️	5	U+23F1 U+FE0F	AddDownloadMedia.kt, AddDownloadModalDialog.kt, TimeRangePickerDialog.kt
+🔄	5	U+1F504	AddDownloadMedia.kt, AddDownloadSections.kt, AddDownloadTorrent.kt, DuplicateDownloadDialog.kt
+▼	4	U+25BC	TaskDetails.kt, TaskList.kt, TimeRangePickerDialog.kt
+▶	4	U+25B6	FdmSettingsPanel.kt, TaskList.kt, TaskRows.kt
+📥	3	U+1F4E5	AddDownloadSections.kt, HomeNavigation.kt, TaskList.kt
+✅	3	U+2705	HomeNavigation.kt, TaskDetails.kt
+🧲	3	U+1F9F2	AddDownloadSections.kt, AddDownloadTorrent.kt, HomeNavigation.kt
+🕒	3	U+1F552	AddDownloadMedia.kt, HomeNavigation.kt
+▲	3	U+25B2	TaskDetails.kt, TimeRangePickerDialog.kt
+🎵	3	U+1F3B5	AddDownloadMedia.kt, TaskDetails.kt
+⏸	3	U+23F8	TaskList.kt, TaskRows.kt
+⚙️	2	U+2699 U+FE0F	HomeNavigation.kt, TaskDetails.kt
+☀	2	U+2600	HomeNavigation.kt
+☾	2	U+263E	HomeNavigation.kt
+🕑	2	U+1F551	PlaylistScheduleUi.kt, TaskDetails.kt
+🔗	2	U+1F517	AddDownloadSections.kt, TaskDetails.kt
+←	2	U+2190	FdmSettingsPanel.kt, TaskDetails.kt
+✂️	2	U+2702 U+FE0F	AddDownloadMedia.kt
+📄	2	U+1F4C4	AddDownloadSections.kt
+📂	2	U+1F4C2	AddDownloadSections.kt
+📝	2	U+1F4DD	AddDownloadSections.kt, FileOverwriteDialog.kt
+💻	2	U+1F4BB	AddDownloadSections.kt, DeviceSendDialog.kt
+👁️	2	U+1F441 U+FE0F	DirectoryPickerDialog.kt
+●	2	U+25CF	SettingsKit.kt
+↗	2	U+2197	TaskRows.kt, UpdateUi.kt
+🐢	1	U+1F422	HomeNavigation.kt
+⌕	1	U+2315	HomeNavigation.kt
+▴	1	U+25B4	HomeNavigation.kt
+⚙	1	U+2699	HomeNavigation.kt
+⚪	1	U+26AA	TaskDetails.kt
+❌	1	U+274C	TaskDetails.kt
+🔍	1	U+1F50D	TaskList.kt
+⬇	1	U+2B07	TaskList.kt
+🗑	1	U+1F5D1	TaskList.kt
+💬	1	U+1F4AC	AddDownloadMedia.kt
+◉	1	U+25C9	AddDownloadMedia.kt
+○	1	U+25CB	AddDownloadMedia.kt
+📋	1	U+1F4CB	AddDownloadSections.kt
+↺	1	U+21BA	AddDownloadSections.kt
+️	1	U+FE0F	AddDownloadSections.kt
+▸	1	U+25B8	DeviceSendDialog.kt
+📱	1	U+1F4F1	DeviceSendDialog.kt
+⬆️	1	U+2B06 U+FE0F	DirectoryPickerDialog.kt
+➕	1	U+2795	DirectoryPickerDialog.kt
+▶️	1	U+25B6 U+FE0F	DuplicateDownloadDialog.kt
+◐	1	U+25D0	FdmSettingsPanel.kt
+⇄	1	U+21C4	FdmSettingsPanel.kt
+◎	1	U+25CE	FdmSettingsPanel.kt
+⇅	1	U+21C5	FdmSettingsPanel.kt
+↻	1	U+21BB	FdmSettingsPanel.kt
+📃	1	U+1F4C3	PlaylistScheduleUi.kt
+🎉	1	U+1F389	UpdateUi.kt

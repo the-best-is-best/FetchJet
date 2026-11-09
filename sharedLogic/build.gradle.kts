@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+val nativeDesktop = providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true"
+
 kotlin {
     // Java 21 everywhere: the desktop app bundles a Java 21 runtime and Android desugars it.
     jvmToolchain(21)
@@ -26,6 +28,10 @@ kotlin {
     }
 
     jvm()
+
+    if (nativeDesktop) {
+        mingwX64()
+    }
 
     android {
         namespace = "com.michelle.raouf.fetch_jet.sharedLogic"
@@ -94,6 +100,12 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+        if (nativeDesktop) {
+            getByName("mingwX64Main").dependencies {
+                implementation(libs.ktor.client.winhttp)
+                implementation(libs.ktor.network)
+            }
         }
     }
 }

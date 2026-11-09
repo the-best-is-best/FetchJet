@@ -1,0 +1,32 @@
+export global Fonts {
+    in-out property <string> ui: "Segoe UI";
+}
+
+component NameCell inherits Rectangle {
+    in property <string> text;
+    in property <bool> han;
+    height: 30px;
+    border-width: 1px; border-color: #1E2B42; background: #0F1728;
+    Text { x: 8px; text: root.text; color: white; font-size: 13px; font-weight: 600; vertical-alignment: center;
+        font-family: root.han ? "Microsoft YaHei UI" : Fonts.ui; }
+}
+
+export component FontPerLanguage inherits Window {
+    preferred-width: 620px;
+    preferred-height: 330px;
+    background: #080D1A;
+    default-font-family: Fonts.ui;
+    VerticalLayout {
+        padding: 10px; spacing: 5px; alignment: start;
+        Text { text: "default-font-family = " + Fonts.ui; color: #64748B; font-size: 10px; }
+        Text { text: "下载管理器 设置 正在下载 暂停全部 速度限制 12.5 MB/s Download Settings"; color: white; font-size: 14px; }
+        Text { text: "Queue: 3 at a time · 42% · 8.1 MB/s · ubuntu-26.04-desktop-amd64.iso"; color: white; font-size: 13px; }
+        Text { text: "العربية فارسی हिन्दी 한국어 日本語かな Русский"; color: white; font-size: 14px; }
+        Text { text: "file names: per-Text family chosen by the core (han flag)"; color: #64748B; font-size: 10px; }
+        NameCell { text: "ubuntu-26.04-desktop-amd64.iso"; han: false; }
+        NameCell { text: "【高清】下载测试视频 第12集 简体中文字幕.mp4"; han: true; }
+        NameCell { text: "【高清】下载测试视频 第12集 简体中文字幕.mp4 (han flag off)"; han: false; }
+        NameCell { text: "日本語のファイル名 テスト動画.mkv"; han: true; }
+        NameCell { text: "한국어 파일 이름 테스트.zip"; han: false; }
+    }
+}

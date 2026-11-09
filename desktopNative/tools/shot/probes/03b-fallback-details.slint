@@ -1,0 +1,47 @@
+component Line inherits Rectangle {
+    in property <string> caption;
+    in property <string> sample;
+    in property <string> family;
+    in property <length> size: 18px;
+    height: 46px;
+    border-width: 1px; border-color: #334155; background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    Text { x: 8px; y: 14px; text: root.sample; color: white; font-size: root.size; font-family: root.family; }
+}
+
+component Glyphs inherits Rectangle {
+    in property <string> caption;
+    in property <[string]> items;
+    in property <string> family;
+    height: 50px;
+    border-width: 1px; border-color: #334155; background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    HorizontalLayout { x: 8px; y: 14px; height: 32px; spacing: 4px; alignment: start;
+        for g in root.items: Rectangle { width: 30px; border-width: 1px; border-color: #1E2B42;
+            Text { text: g; color: white; font-size: 18px; font-family: root.family; } }
+    }
+}
+
+export component FallbackDetails inherits Window {
+    property <[string]> symbols: ["🐢", "📥", "⚡", "🎬", "🧲", "🎵", "📂", "⏸", "▶", "⬇", "⏳", "✓", "✕", "↺", "↗", "↓", "↑", "▼", "🔗", "⚙", "🌙", "☀", "✔", "✖", "⟳", "⋮", "☰", "…", "•", "·", "—", "⚠", "ℹ", "★"];
+    preferred-width: 1240px;
+    preferred-height: 720px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 10px; spacing: 5px; alignment: start;
+        Glyphs { caption: "1 each symbol in its own Text, family unset (Segoe UI default)"; items: root.symbols; }
+        Glyphs { caption: "2 each symbol in its own Text, font-family: Segoe UI Symbol"; items: root.symbols; family: "Segoe UI Symbol"; }
+        Glyphs { caption: "3 each symbol in its own Text, font-family: Segoe UI Emoji"; items: root.symbols; family: "Segoe UI Emoji"; }
+        Glyphs { caption: "4 each symbol in its own Text, font-family: Segoe Fluent Icons (private-use icon font, most are not in it)"; items: root.symbols; family: "Segoe Fluent Icons"; }
+        Line { caption: "5 one Text: ✓ ✕ ↺ ↗ mixed with letters, family unset"; sample: "a ✓ b ✕ c ↺ d ↗ e ✔ f ✖ g ⟳ h"; }
+        Line { caption: "6 one Text, family unset: simplified Chinese"; sample: "下载管理器 设置 正在下载 暂停全部 简体 载 设 暂"; }
+        Line { caption: "7 font-family: Microsoft YaHei UI"; sample: "下载管理器 设置 正在下载 暂停全部 简体 Download 12.5 MB/s 日本語かな 한국어"; family: "Microsoft YaHei UI"; }
+        Line { caption: "8 font-family: \"Segoe UI, Microsoft YaHei UI\" (comma list)"; sample: "下载管理器 设置 正在下载 暂停全部 简体 Download 12.5 MB/s 日本語かな 한국어"; family: "Segoe UI, Microsoft YaHei UI"; }
+        Line { caption: "9 font-family: \"Segoe UI, Microsoft YaHei UI, Malgun Gothic, Segoe UI Symbol, Segoe UI Emoji\""; sample: "下载 设置 简体 Download 日本語かな 한국어 ✓ ✕ ↺ ↗ 🐢 📥 العربية हिन्दी"; family: "Segoe UI, Microsoft YaHei UI, Malgun Gothic, Segoe UI Symbol, Segoe UI Emoji"; }
+        Line { caption: "10 font-family: Yu Gothic UI"; sample: "下载管理器 设置 简体 ダウンロード 設定"; family: "Yu Gothic UI"; }
+        Line { caption: "11 font-family: Microsoft JhengHei UI"; sample: "下载管理器 设置 简体 下載管理器 設定"; family: "Microsoft JhengHei UI"; }
+        Line { caption: "12 font-family: a font that does not exist (NoSuchFont)"; sample: "Fallback when the family is missing 下载 ✕"; family: "NoSuchFont"; }
+        Line { caption: "13 Hindi at 22px"; sample: "क्षत्रिय श्री प्रतीक्षा सेटिंग्स हिन्दी"; size: 22px; }
+    }
+}

@@ -1,0 +1,94 @@
+import { LineEdit, Button, CheckBox, Switch, ComboBox, Slider, ProgressIndicator, SpinBox, ScrollView } from "std-widgets.slint";
+
+component Tile inherits Rectangle {
+    in property <string> caption;
+    width: 230px;
+    height: 120px;
+    border-width: 1px;
+    border-color: #334155;
+    Text { x: 4px; y: 2px; width: parent.width - 8px; text: root.caption; color: #64748B; font-size: 9px; wrap: word-wrap; }
+    @children
+}
+
+component GlowField inherits Rectangle {
+    in property <color> tint;
+    in property <color> fill;
+    in property <bool> focused: true;
+    width: 150px;
+    height: 40px;
+    if root.focused: Image {
+        x: -24px;
+        y: -24px;
+        width: parent.width + 48px;
+        height: parent.height + 48px;
+        source: @image-url("assets/glow-white.png", nine-slice(40));
+        colorize: root.tint;
+    }
+    Rectangle { border-radius: 12px; background: root.fill; border-width: root.focused ? 2px : 1px; border-color: root.tint; }
+}
+
+export component RendererDetails inherits Window {
+    preferred-width: 980px;
+    preferred-height: 520px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 10px;
+        spacing: 8px;
+        alignment: start;
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            Tile { caption: "1 white nine-slice glow + colorize: cyan on dark";
+                GlowField { y: 50px; tint: #00E5FF; fill: #0F1728; } }
+            Tile { caption: "2 same PNG, colorize: #0284C7 on a light card"; background: #F8FAFC;
+                GlowField { y: 50px; tint: #0284C7; fill: #FFFFFF; } }
+            Tile { caption: "3 Segoe UI Variable Text 400 / 500 / 600 / 700 at 13px";
+                VerticalLayout { y: 28px; x: 8px; height: 90px; alignment: start; spacing: 1px;
+                    Text { text: "Weight 400 Download"; font-family: "Segoe UI Variable Text"; font-weight: 400; color: white; font-size: 13px; }
+                    Text { text: "Weight 500 Download"; font-family: "Segoe UI Variable Text"; font-weight: 500; color: white; font-size: 13px; }
+                    Text { text: "Weight 600 Download"; font-family: "Segoe UI Variable Text"; font-weight: 600; color: white; font-size: 13px; }
+                    Text { text: "Weight 700 Download"; font-family: "Segoe UI Variable Text"; font-weight: 700; color: white; font-size: 13px; }
+                    Text { text: "Segoe UI 500 Download"; font-weight: 500; color: #94A3B8; font-size: 13px; }
+                } }
+            Tile { caption: "4 rounded container with rounded children instead of clip";
+                Rectangle { y: 34px; width: 150px; height: 70px; border-radius: 16px; background: #172238;
+                    Rectangle { x: 0; y: 0; width: parent.width; height: 26px; border-top-left-radius: 16px; border-top-right-radius: 16px; background: #0C3D60; Text { text: "Header"; color: white; font-size: 12px; } }
+                } }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            Tile { caption: "5 std-widgets fluent: Button, CheckBox, Switch"; width: 310px;
+                HorizontalLayout { y: 40px; x: 8px; height: 40px; spacing: 10px; alignment: start;
+                    Button { text: "Button"; }
+                    Button { text: "Primary"; primary: true; }
+                    VerticalLayout { alignment: center; CheckBox { text: "Check"; checked: true; } }
+                    VerticalLayout { alignment: center; Switch { text: ""; checked: true; } }
+                } }
+            Tile { caption: "6 std-widgets fluent: ComboBox, Slider, SpinBox, ProgressIndicator"; width: 400px;
+                HorizontalLayout { y: 40px; x: 8px; height: 40px; spacing: 10px; alignment: start;
+                    ComboBox { model: ["Newest first", "Oldest first"]; width: 130px; }
+                    VerticalLayout { alignment: center; Slider { width: 90px; value: 40; } }
+                    SpinBox { value: 8; width: 80px; }
+                    VerticalLayout { alignment: center; ProgressIndicator { width: 50px; progress: 0.6; } }
+                } }
+            Tile { caption: "7 elide in the middle is not built in: 'overflow: elide' cuts the end"; width: 230px;
+                Text { y: 50px; x: 8px; width: 200px; overflow: elide; text: "a-very-long-download-file-name-that-does-not-fit.tar.gz"; color: white; font-size: 13px; } }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            Tile { caption: "8 ScrollView with rounded card rows (rectangular clip at the viewport edge)"; width: 310px; height: 150px;
+                ScrollView { y: 26px; x: 8px; width: 290px; height: 116px; viewport-height: 260px;
+                    for i in 6: Rectangle { x: 0; y: i * 42px - 14px; width: 270px; height: 36px; border-radius: 12px; background: #0F1728; border-width: 1px; border-color: #1E2B42;
+                        Text { text: "Row " + i; color: white; font-size: 12px; } }
+                } }
+            Tile { caption: "9 translucent overlay (dialog scrim #000000a0) over content, then a card"; width: 310px; height: 150px;
+                Text { y: 60px; text: "content under the scrim"; color: white; font-size: 14px; }
+                Rectangle { y: 24px; width: parent.width - 2px; height: parent.height - 26px; background: #000000a0; }
+                Rectangle { y: 50px; width: 180px; height: 70px; border-radius: 18px; background: #0F1728; border-width: 1px; border-color: #1E2B42;
+                    Text { text: "Dialog card"; color: white; font-size: 14px; font-weight: 700; } } }
+        }
+    }
+}

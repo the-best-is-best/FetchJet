@@ -1,0 +1,63 @@
+import { HBox, DText, Dir } from "02-rtl-layout.slint";
+export { Dir }
+
+component Sq inherits Rectangle {
+    in property <string> t;
+    width: 30px; height: 24px; border-radius: 4px; background: #0C3D60;
+    Text { text: root.t; color: white; font-size: 11px; }
+}
+
+component Line inherits Rectangle {
+    in property <string> caption;
+    height: 52px;
+    border-width: 1px; border-color: #334155; background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    @children
+}
+
+export component HBoxFeatures inherits Window {
+    in property <bool> extra: true;
+    in property <[string]> items: ["a", "b", "c"];
+    preferred-width: 640px;
+    preferred-height: 560px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 10px; spacing: 6px; alignment: start;
+        Line { caption: "1 if + for children inside HBox, spacing 6, padding-start 20, padding-end 4";
+            HBox { y: 14px; height: 34px; spacing: 6px; padding-start: 20px; padding-end: 4px; cross-axis-alignment: center;
+                Sq { t: "1"; }
+                if root.extra: Sq { t: "if"; background: #7C3AED; }
+                for s in root.items: Sq { t: s; background: #047857; }
+                DText { text: "stretch text منتصف"; color: white; horizontal-stretch: 1; vertical-alignment: center; overflow: elide; }
+                Sq { t: "9"; }
+            } }
+        Line { caption: "2 Rectangle { width: box.preferred-width } around an HBox (chip sized by its content)";
+            Rectangle { x: Dir.rtl ? parent.width - self.width - 8px : 8px; y: 16px; height: 30px; width: box.preferred-width; border-radius: 8px; background: #172238;
+                box := HBox { padding-start: 10px; padding-end: 10px; spacing: 8px; cross-axis-alignment: center;
+                    Text { text: "↓ 12.4 MB/s"; color: #00E5FF; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                    Text { text: "↑ 0 B/s"; color: #94A3B8; font-size: 12px; vertical-alignment: center; }
+                } } }
+        Line { caption: "3 alignment: start";
+            HBox { y: 14px; height: 34px; spacing: 6px; alignment: start; cross-axis-alignment: center; Sq { t: "1"; } Sq { t: "2"; } Sq { t: "3"; } } }
+        Line { caption: "4 alignment: end";
+            HBox { y: 14px; height: 34px; spacing: 6px; alignment: end; cross-axis-alignment: center; Sq { t: "1"; } Sq { t: "2"; } Sq { t: "3"; } } }
+        Line { caption: "5 alignment: center";
+            HBox { y: 14px; height: 34px; spacing: 6px; alignment: center; cross-axis-alignment: center; Sq { t: "1"; } Sq { t: "2"; } Sq { t: "3"; } } }
+        Line { caption: "6 alignment: space-between";
+            HBox { y: 14px; height: 34px; spacing: 6px; alignment: space-between; cross-axis-alignment: center; Sq { t: "1"; } Sq { t: "2"; } Sq { t: "3"; } } }
+        Line { caption: "7 spacer Rectangle { horizontal-stretch: 1 } between items, HBox nested in HBox";
+            HBox { y: 14px; height: 34px; spacing: 6px; cross-axis-alignment: center;
+                Sq { t: "1"; }
+                Rectangle { horizontal-stretch: 1; }
+                HBox { spacing: 2px; cross-axis-alignment: center; Sq { t: "a"; background: #B45309; } Sq { t: "b"; background: #B45309; } }
+                Sq { t: "3"; }
+            } }
+        Line { caption: "8 two stretch children 1 : 2 and a fixed 100px";
+            HBox { y: 14px; height: 34px; spacing: 6px;
+                Rectangle { horizontal-stretch: 1; background: #7C3AED; Text { text: "1"; color: white; } }
+                Rectangle { horizontal-stretch: 2; background: #047857; Text { text: "2"; color: white; } }
+                Rectangle { width: 100px; background: #B45309; Text { text: "100px"; color: white; } }
+            } }
+    }
+}

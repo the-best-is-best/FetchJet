@@ -1,0 +1,58 @@
+export global Dir { in-out property <bool> rtl: false; }
+
+export component NameText inherits Rectangle {
+    in property <string> text;
+    in property <bool> text-rtl;
+    in property <color> ink: #F1F5F9;
+    in property <color> behind: #0F1728;
+    in property <length> font-size: 13px;
+    in property <int> font-weight: 600;
+    height: t.preferred-height;
+    min-width: 0;
+    preferred-width: t.preferred-width;
+    horizontal-stretch: 1;
+    clip: true;
+    t := Text {
+        x: 0;
+        width: parent.width;
+        text: root.text;
+        color: root.ink;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        overflow: root.text-rtl ? clip : elide;
+        horizontal-alignment: Dir.rtl ? right : left;
+    }
+    if root.text-rtl && t.preferred-width > root.width: Rectangle {
+        x: 0;
+        width: 28px;
+        background: @linear-gradient(90deg, root.behind 0%, root.behind.with-alpha(0.92) 35%, root.behind.transparentize(1) 100%);
+    }
+}
+
+component Sample inherits Rectangle {
+    in property <string> caption;
+    in property <string> text;
+    in property <bool> text-rtl;
+    in property <length> box: 260px;
+    height: 46px;
+    border-width: 1px; border-color: #334155; background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    Rectangle { x: Dir.rtl ? parent.width - self.width - 8px : 8px; y: 16px; width: root.box; height: 24px; border-width: 1px; border-color: #F43F5E.with-alpha(0.5);
+        NameText { text: root.text; text-rtl: root.text-rtl; width: parent.width; }
+    }
+}
+
+export component ElideWorkaround inherits Window {
+    preferred-width: 560px;
+    preferred-height: 300px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 10px; spacing: 5px; alignment: start;
+        Sample { caption: "1 Latin name, too long: built-in elide"; text: "ubuntu-26.04-desktop-amd64-final-release.iso"; }
+        Sample { caption: "2 Arabic name, too long: clip + fade on the left"; text: "تقرير المبيعات السنوي النهائي لعام ٢٠٢٦ نسخة منقحة.pdf"; text-rtl: true; }
+        Sample { caption: "3 Arabic name that fits: no fade"; text: "تقرير قصير.pdf"; text-rtl: true; }
+        Sample { caption: "4 Latin name that fits"; text: "short.zip"; }
+        Sample { caption: "5 Persian name, too long, box 180"; text: "گزارش نهایی فروش سالانه شرکت نسخه ویرایش شده.xlsx"; text-rtl: true; box: 180px; }
+    }
+}

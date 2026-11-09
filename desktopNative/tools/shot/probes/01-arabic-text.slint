@@ -1,0 +1,75 @@
+import { LineEdit } from "std-widgets.slint";
+
+component Cell inherits Rectangle {
+    in property <string> caption;
+    height: 44px;
+    border-width: 1px;
+    border-color: #334155;
+    background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    @children
+}
+
+export component ArabicText inherits Window {
+    in-out property <string> typed: "تنزيل الملف file-12.zip الآن";
+    preferred-width: 760px;
+    preferred-height: 900px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 12px;
+        spacing: 6px;
+        Cell { caption: "1 Arabic, default alignment";
+            Text { y: 14px; width: parent.width - 16px; text: "مرحبا بك في فتش جت، مدير التنزيلات السريع"; color: white; font-size: 16px; } }
+        Cell { caption: "2 Persian (gaf, che, pe, zhe, ZWNJ), default alignment";
+            Text { y: 14px; width: parent.width - 16px; text: "می‌خواهم پرونده‌های گوناگون را بارگیری کنم؛ چه ژرف!"; color: white; font-size: 16px; } }
+        Cell { caption: "3 Arabic + English + numbers, default alignment";
+            Text { y: 14px; width: parent.width - 16px; text: "تم تنزيل 3 ملفات من FetchJet بسرعة 12.5 MB/s في 4m 12s"; color: white; font-size: 16px; } }
+        Cell { caption: "4 English first, Arabic inside, default alignment";
+            Text { y: 14px; width: parent.width - 16px; text: "File تقرير نهائي (2).pdf saved in التنزيلات at 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "5 horizontal-alignment: left";
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: left; text: "السرعة: 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "6 horizontal-alignment: right";
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: right; text: "السرعة: 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "7 horizontal-alignment: start";
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: start; text: "السرعة: 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "8 horizontal-alignment: end";
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: end; text: "السرعة: 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "9 English, horizontal-alignment: start / end";
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: start; text: "Speed: 6.41 MB/s (start)"; color: white; font-size: 16px; }
+            Text { y: 14px; width: parent.width - 16px; horizontal-alignment: end; text: "(end) Speed: 6.41 MB/s"; color: white; font-size: 16px; } }
+        Cell { caption: "10 Arabic, overflow: elide, width 300px";
+            Text { y: 14px; x: 8px; width: 300px; overflow: elide; text: "هذا اسم ملف عربي طويل جدا لا يكفيه العرض المتاح في الصف.mp4"; color: white; font-size: 16px; }
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 28px; border-width: 1px; border-color: #F43F5E; } }
+        Cell { caption: "11 mixed, overflow: elide, width 300px";
+            Text { y: 14px; x: 8px; width: 300px; overflow: elide; text: "Ubuntu 26.04 نسخة سطح المكتب desktop-amd64 الإصدار الكامل.iso"; color: white; font-size: 16px; }
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 28px; border-width: 1px; border-color: #F43F5E; } }
+        Cell { caption: "12 Arabic, wrap: word-wrap, width 300px"; height: 84px;
+            Text { y: 14px; x: 8px; width: 300px; wrap: word-wrap; text: "يدعم التطبيق التنزيل متعدد الاتصالات وتنزيل الفيديو والتورنت مع جدولة ذكية للمهام."; color: white; font-size: 16px; }
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 68px; border-width: 1px; border-color: #F43F5E; } }
+        Cell { caption: "13 Arabic weights 400 / 600 / 800 and sizes 11 / 13 / 22";
+            HorizontalLayout { y: 14px; height: 28px; padding-left: 8px; spacing: 14px; alignment: start;
+                Text { text: "تنزيل"; color: white; font-size: 16px; font-weight: 400; vertical-alignment: center; }
+                Text { text: "تنزيل"; color: white; font-size: 16px; font-weight: 600; vertical-alignment: center; }
+                Text { text: "تنزيل"; color: white; font-size: 16px; font-weight: 800; vertical-alignment: center; }
+                Text { text: "الإعدادات العامة"; color: white; font-size: 11px; vertical-alignment: center; }
+                Text { text: "الإعدادات العامة"; color: white; font-size: 13px; vertical-alignment: center; }
+                Text { text: "الإعدادات العامة"; color: white; font-size: 22px; vertical-alignment: center; }
+            } }
+        Cell { caption: "14 Arabic diacritics and lam-alef ligature";
+            Text { y: 14px; width: parent.width - 16px; text: "اللُّغَةُ العَرَبِيَّةُ — لا إله إلا الله — الأهلي"; color: white; font-size: 18px; } }
+        Cell { caption: "15 TextInput, Arabic + English"; height: 48px;
+            Rectangle { x: 8px; y: 14px; width: 420px; height: 28px; border-width: 1px; border-color: #00E5FF; border-radius: 6px;
+                ti := TextInput { x: 6px; width: parent.width - 12px; text <=> root.typed; color: white; font-size: 15px; vertical-alignment: center; single-line: true; }
+            } }
+        Cell { caption: "16 TextInput, horizontal-alignment: right"; height: 48px;
+            Rectangle { x: 8px; y: 14px; width: 420px; height: 28px; border-width: 1px; border-color: #00E5FF; border-radius: 6px;
+                TextInput { x: 6px; width: parent.width - 12px; text: "رابط التنزيل https://a.com/x.bin"; horizontal-alignment: right; color: white; font-size: 15px; vertical-alignment: center; single-line: true; }
+            } }
+        Cell { caption: "17 std-widgets LineEdit (fluent), Arabic text and Arabic placeholder"; height: 56px;
+            HorizontalLayout { y: 16px; height: 34px; padding-left: 8px; spacing: 10px; alignment: start;
+                LineEdit { width: 300px; text: "ملف عربي.zip"; }
+                LineEdit { width: 300px; placeholder-text: "الصق الروابط أو المغناطيس"; }
+            } }
+    }
+}

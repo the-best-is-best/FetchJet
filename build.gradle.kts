@@ -10,3 +10,16 @@ plugins {
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.androidLint) apply false
 }
+
+if (providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true") {
+    project(":kmpLocalization") {
+        pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+            extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension> {
+                mingwX64()
+                sourceSets.getByName("mingwX64Main").kotlin.srcDir(
+                    rootProject.file("desktopNative/kmpLocalization-mingw")
+                )
+            }
+        }
+    }
+}

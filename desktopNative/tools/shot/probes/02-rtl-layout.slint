@@ -1,0 +1,306 @@
+export global Dir {
+    in-out property <bool> rtl: false;
+    out property <TextHorizontalAlignment> start: rtl ? TextHorizontalAlignment.right : TextHorizontalAlignment.left;
+    out property <TextHorizontalAlignment> end: rtl ? TextHorizontalAlignment.left : TextHorizontalAlignment.right;
+}
+
+export global Theme {
+    out property <color> background: #080D1A;
+    out property <color> surface: #0F1728;
+    out property <color> on-surface: #F1F5F9;
+    out property <color> on-surface-variant: #94A3B8;
+    out property <color> outline-variant: #1E2B42;
+    out property <color> primary: #00E5FF;
+    out property <color> on-primary: #031625;
+}
+
+export struct RowData {
+    name: string,
+    status: string,
+    tag: string,
+    size: string,
+    progress: float,
+    speed: string,
+    left: string,
+}
+
+export component HBox inherits FlexboxLayout {
+    in property <length> padding-start;
+    in property <length> padding-end;
+    flex-direction: Dir.rtl ? row-reverse : row;
+    flex-wrap: no-wrap;
+    alignment: stretch;
+    padding-left: Dir.rtl ? root.padding-end : root.padding-start;
+    padding-right: Dir.rtl ? root.padding-start : root.padding-end;
+}
+
+export component DText inherits Text {
+    horizontal-alignment: Dir.start;
+}
+
+component CheckBoxMark inherits Rectangle {
+    width: 24px;
+    height: 24px;
+    Rectangle { width: 16px; height: 16px; border-radius: 3px; border-width: 2px; border-color: Theme.on-surface-variant; }
+}
+
+component KindSquare inherits Rectangle {
+    in property <string> tag;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: Theme.on-surface.with-alpha(0.06);
+    Text { text: root.tag; font-size: 9px; font-weight: 800; color: #C4B5FD; }
+}
+
+component ThinBar inherits Rectangle {
+    in property <float> value;
+    height: 5px;
+    border-radius: 3px;
+    background: Theme.on-surface.with-alpha(0.08);
+    Rectangle {
+        x: Dir.rtl ? parent.width - self.width : 0;
+        width: parent.width * clamp(root.value, 0, 1);
+        height: parent.height;
+        border-radius: 3px;
+        background: Theme.primary;
+    }
+}
+
+component Chip inherits Rectangle {
+    height: 22px;
+    width: lbl.preferred-width + 14px;
+    border-radius: 6px;
+    background: Theme.on-surface-variant.with-alpha(0.15);
+    border-width: 1px;
+    border-color: Theme.on-surface-variant.with-alpha(0.4);
+    lbl := Text { text: Dir.rtl ? "عادي" : "Normal"; color: Theme.on-surface-variant; font-size: 10px; font-weight: 600; }
+}
+
+component Action inherits Rectangle {
+    width: 34px;
+    height: 34px;
+    border-radius: 17px;
+    border-width: 1px;
+    border-color: Theme.outline-variant;
+    Text { text: "⏸"; color: Theme.on-surface; font-size: 13px; }
+}
+
+component RowFrame inherits Rectangle {
+    height: 54px;
+    border-radius: 12px;
+    background: Theme.surface;
+    border-width: 1px;
+    border-color: Theme.outline-variant;
+}
+
+export component RowH inherits RowFrame {
+    in property <RowData> d;
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 12px;
+        VerticalLayout { alignment: center; CheckBoxMark { } }
+        VerticalLayout { alignment: center; KindSquare { tag: root.d.tag; } }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.d.name; color: Theme.on-surface; font-size: 13px; font-weight: 600; overflow: elide; }
+            Text { text: root.d.status; color: Theme.on-surface-variant; font-size: 11px; overflow: elide; }
+        }
+        Text { text: root.d.size; color: Theme.on-surface-variant; width: 76px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout {
+            width: 140px;
+            alignment: center;
+            spacing: 3px;
+            ThinBar { value: root.d.progress; }
+            Text { text: floor(root.d.progress * 100) + "%"; color: Theme.on-surface-variant; font-size: 11px; }
+        }
+        Text { text: root.d.speed; color: Theme.on-surface; width: 84px; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+        Text { text: root.d.left; color: Theme.on-surface-variant; width: 64px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout { alignment: center; Chip { } }
+        VerticalLayout { alignment: center; Action { } }
+    }
+}
+
+export component RowF inherits RowFrame {
+    in property <RowData> d;
+    HBox {
+        padding-start: 12px;
+        padding-end: 12px;
+        spacing: 12px;
+        VerticalLayout { alignment: center; CheckBoxMark { } }
+        VerticalLayout { alignment: center; KindSquare { tag: root.d.tag; } }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            DText { text: root.d.name; color: Theme.on-surface; font-size: 13px; font-weight: 600; overflow: elide; }
+            DText { text: root.d.status; color: Theme.on-surface-variant; font-size: 11px; overflow: elide; }
+        }
+        DText { text: root.d.size; color: Theme.on-surface-variant; width: 76px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout {
+            width: 140px;
+            alignment: center;
+            spacing: 3px;
+            ThinBar { value: root.d.progress; }
+            DText { text: floor(root.d.progress * 100) + "%"; color: Theme.on-surface-variant; font-size: 11px; }
+        }
+        DText { text: root.d.speed; color: Theme.on-surface; width: 84px; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+        DText { text: root.d.left; color: Theme.on-surface-variant; width: 64px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout { alignment: center; Chip { } }
+        VerticalLayout { alignment: center; Action { } }
+    }
+}
+
+export component RowG inherits RowFrame {
+    in property <RowData> d;
+    GridLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 12px;
+        VerticalLayout { row: 0; col: Dir.rtl ? 8 : 0; alignment: center; CheckBoxMark { } }
+        VerticalLayout { row: 0; col: Dir.rtl ? 7 : 1; alignment: center; KindSquare { tag: root.d.tag; } }
+        VerticalLayout {
+            row: 0;
+            col: Dir.rtl ? 6 : 2;
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            DText { text: root.d.name; color: Theme.on-surface; font-size: 13px; font-weight: 600; overflow: elide; }
+            DText { text: root.d.status; color: Theme.on-surface-variant; font-size: 11px; overflow: elide; }
+        }
+        DText { row: 0; col: Dir.rtl ? 5 : 3; text: root.d.size; color: Theme.on-surface-variant; width: 76px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout {
+            row: 0;
+            col: Dir.rtl ? 4 : 4;
+            width: 140px;
+            alignment: center;
+            spacing: 3px;
+            ThinBar { value: root.d.progress; }
+            DText { text: floor(root.d.progress * 100) + "%"; color: Theme.on-surface-variant; font-size: 11px; }
+        }
+        DText { row: 0; col: Dir.rtl ? 3 : 5; text: root.d.speed; color: Theme.on-surface; width: 84px; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+        DText { row: 0; col: Dir.rtl ? 2 : 6; text: root.d.left; color: Theme.on-surface-variant; width: 64px; font-size: 12px; vertical-alignment: center; }
+        VerticalLayout { row: 0; col: Dir.rtl ? 1 : 7; alignment: center; Chip { } }
+        VerticalLayout { row: 0; col: Dir.rtl ? 0 : 8; alignment: center; Action { } }
+    }
+}
+
+component SideItem inherits Rectangle {
+    in property <string> label;
+    in property <int> count;
+    in property <bool> selected;
+    height: 38px;
+    border-radius: 9px;
+    background: root.selected ? Theme.on-surface.with-alpha(0.08) : transparent;
+    HBox {
+        padding-start: 10px;
+        padding-end: 10px;
+        spacing: 8px;
+        DText {
+            text: root.label;
+            color: root.selected ? Theme.on-surface : Theme.on-surface-variant;
+            font-size: 14px;
+            font-weight: root.selected ? 600 : 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: max(24px, cnt.preferred-width + 14px);
+                height: 18px;
+                border-radius: 9px;
+                background: root.selected ? Theme.primary : Theme.on-surface.with-alpha(0.07);
+                cnt := Text { text: root.count; color: root.selected ? Theme.on-primary : Theme.on-surface-variant; font-size: 11px; font-weight: 700; }
+            }
+        }
+    }
+}
+
+component Caption inherits Text {
+    color: #64748B;
+    font-size: 10px;
+    height: 14px;
+}
+
+export component RtlLayout inherits Window {
+    in property <[RowData]> rows: [
+        { name: "ubuntu-26.04-desktop-amd64.iso", status: "42% · 8.1 MB/s · 4m 12s left", tag: "ISO", size: "5.80 GB", progress: 0.42, speed: "8.1 MB/s", left: "4m 12s" },
+        { name: "تقرير المبيعات السنوي النهائي.pdf", status: "جاري التنزيل · \u{2066}77%\u{2069}", tag: "PDF", size: "\u{2066}712.4 MB\u{2069}", progress: 0.77, speed: "\u{2066}4.3 MB/s\u{2069}", left: "\u{2066}38s\u{2069}" },
+    ];
+    in property <[string]> nav: Dir.rtl
+        ? ["كل التنزيلات", "جاري التنزيل", "في الانتظار", "مكتمل"]
+        : ["All downloads", "Downloading", "Waiting", "Completed"];
+    preferred-width: 980px;
+    preferred-height: 560px;
+    background: Theme.background;
+    default-font-family: "Segoe UI";
+
+    HBox {
+        Rectangle {
+            width: 200px;
+            background: Theme.background.mix(#172238, 0.7);
+            VerticalLayout {
+                padding: 12px;
+                spacing: 2px;
+                alignment: start;
+                for n[i] in root.nav: SideItem { label: n; count: 6 - i; selected: i == 0; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding: 14px;
+            spacing: 6px;
+            alignment: start;
+            Caption { text: "A  HorizontalLayout (baseline, never mirrors)"; }
+            for r in root.rows: RowH { d: r; }
+            Caption { text: "B  HBox = FlexboxLayout { flex-direction: Dir.rtl ? row-reverse : row; flex-wrap: no-wrap; alignment: stretch }"; }
+            for r in root.rows: RowF { d: r; }
+            Caption { text: "C  GridLayout with col: Dir.rtl ? (n - 1 - i) : i"; }
+            for r in root.rows: RowG { d: r; }
+        }
+    }
+}
+
+export component ManyH inherits Window {
+    in property <int> count: 300;
+    preferred-width: 900px;
+    preferred-height: 600px;
+    background: Theme.background;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        alignment: start;
+        spacing: 6px;
+        for i in root.count: RowH { d: { name: "file-" + i + ".bin", status: "Waiting in queue", tag: "BIN", size: "64.0 MB", progress: 0.3, speed: "1.0 MB/s", left: "1m 04s" }; }
+    }
+}
+
+export component ManyF inherits Window {
+    in property <int> count: 300;
+    preferred-width: 900px;
+    preferred-height: 600px;
+    background: Theme.background;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        alignment: start;
+        spacing: 6px;
+        for i in root.count: RowF { d: { name: "file-" + i + ".bin", status: "Waiting in queue", tag: "BIN", size: "64.0 MB", progress: 0.3, speed: "1.0 MB/s", left: "1m 04s" }; }
+    }
+}
+
+export component ManyG inherits Window {
+    in property <int> count: 300;
+    preferred-width: 900px;
+    preferred-height: 600px;
+    background: Theme.background;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        alignment: start;
+        spacing: 6px;
+        for i in root.count: RowG { d: { name: "file-" + i + ".bin", status: "Waiting in queue", tag: "BIN", size: "64.0 MB", progress: 0.3, speed: "1.0 MB/s", left: "1m 04s" }; }
+    }
+}

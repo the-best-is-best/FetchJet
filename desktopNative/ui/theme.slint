@@ -1,0 +1,22 @@
+export global Theme {
+    in-out property <bool> dark: true;
+
+    out property <color> background: dark ? #080D1A : #F8FAFC;
+    out property <color> surface: dark ? #0F1728 : #FFFFFF;
+    out property <color> surface-variant: dark ? #172238 : #F1F5F9;
+    out property <color> on-surface: dark ? #F1F5F9 : #0F172A;
+    out property <color> on-surface-variant: dark ? #94A3B8 : #475569;
+    out property <color> outline: dark ? #334155 : #94A3B8;
+    out property <color> outline-variant: dark ? #1E2B42 : #CBD5E1;
+    out property <color> primary: dark ? #00E5FF : #0284C7;
+    out property <color> on-primary: dark ? #031625 : #FFFFFF;
+    out property <color> primary-container: dark ? #0C3D60 : #E0F2FE;
+    out property <color> on-primary-container: dark ? #C7F1FF : #0369A1;
+    out property <color> secondary: dark ? #818CF8 : #4F46E5;
+    out property <color> tertiary: dark ? #F43F5E : #E11D48;
+    out property <color> error: dark ? #F87171 : #DC2626;
+    out property <color> completed: #34D399;
+    out property <color> paused: #FBBF24;
+    out property <color> status-paused: #F59E0B;
+    out property <color> connecting: #38BDF8;
+}

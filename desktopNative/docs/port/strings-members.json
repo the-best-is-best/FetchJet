@@ -1,0 +1,4646 @@
+[
+  {
+    "name": "languageName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "ok",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "cancel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "close",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "save",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "delete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "remove",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "open",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "copy",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "copied",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "retry",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pause",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "resume",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "apply",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reset",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "yes",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "no",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "back",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "done",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "selectAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "selectNone",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "language",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "languageHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "systemLanguage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSettings",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTabAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTabActive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTabDone",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTabTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTabMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSidebarTypeHeader",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSearchDownloadsPlaceholder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeAddDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homePauseAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeResumeAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSortBy",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "option",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "homeLightTheme",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDarkTheme",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeUpdatingMediaTools",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "tool",
+        "type": "String"
+      },
+      {
+        "name": "percent",
+        "type": "Int?"
+      }
+    ]
+  },
+  {
+    "name": "homeSearchDownloadsByNamePlaceholder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeNoDownloadsMatch",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "query",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "homeNoTasksInView",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTryAnotherName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeAddDownloadToGetStarted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDownloadingWaitingSummary",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "running",
+        "type": "Int"
+      },
+      {
+        "name": "waiting",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeQueueStatus",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "maxAtOnce",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeSpeedLimitStatus",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "limit",
+        "type": "String?"
+      }
+    ]
+  },
+  {
+    "name": "homeGroupDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeGroupWaiting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeGroupPausedFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeGroupCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSelectedCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeExport",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeStartsAt",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "homeWaitingInQueue",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeWaitingInQueuePosition",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "position",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeConnecting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeStarting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeTimeLeft",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "eta",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "homePausedState",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "percent",
+        "type": "Int"
+      },
+      {
+        "name": "restartsOnResume",
+        "type": "Boolean"
+      }
+    ]
+  },
+  {
+    "name": "homeFailedState",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String?"
+      }
+    ]
+  },
+  {
+    "name": "homeCompletedState",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "size",
+        "type": "String?"
+      }
+    ]
+  },
+  {
+    "name": "homeStartNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeColumnName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeColumnSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeColumnProgress",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeColumnSpeed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeColumnLeft",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterAllDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterWaiting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterPaused",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeFilterTorrents",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeCantResumeTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeCantResumeClipText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeCantResumeServerText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homePauseAnyway",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeKeepDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeMagnetLink",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeClipboardOfferTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeClipboardOfferHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeNotNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeBrowserFallbackTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "bridgePairTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "bridgePairText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "bridgePairOldText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "bridgePairAllow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "bridgePairBlock",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extConnectionsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extConnectionsFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extAllowedLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extBlockedLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extRevoke",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extUnblock",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeBrowserFallbackText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDownloadInBrowser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeNoDiscard",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeQueueTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeQueueFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeDownloadsAtSameTime",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeNoLimit",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeAtATime",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homePiecesLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "homeSegmentsCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homePiecesCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeActiveCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeWaitingCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeDoneCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "homeSegmentsProgress",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "finished",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      },
+      {
+        "name": "downloading",
+        "type": "String?"
+      }
+    ]
+  },
+  {
+    "name": "homeRetryingNote",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "note",
+        "type": "String?"
+      }
+    ]
+  },
+  {
+    "name": "clipStartAfterEnd",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "start",
+        "type": "String"
+      },
+      {
+        "name": "end",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "clipEndExceedsVideo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "end",
+        "type": "String"
+      },
+      {
+        "name": "duration",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "clipStartExceedsVideo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "duration",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "setStartTimeTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "setEndTimeTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addDialogTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addDialogSubtitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addLinkLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addImportTxt",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "openTorrentFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "urlPlaceholder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addPaste",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addDownloadEngine",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "engineDirect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "engineMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "engineTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addFileNameLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "findingName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "saveDestination",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "quickFolderDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "quickFolderDocuments",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "quickFolderMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "quickFolderDesktop",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addRetryInspect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addStarting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addInspecting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addInspectionFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addEnterUrl",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleLinks",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "downloadLinks",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "inspectVideoFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectTorrentFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "invalidTimeRange",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleVideos",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "downloadVideos",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "addScheduleDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addStartDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "availableAudioFormats",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "availableQualities",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "subtitlesTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "subtitlesAuto",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "subtitlesEmbedInVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "subtitlesSeparateFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addSelectAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addClearSelection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "selectedOfAvailable",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "selected",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "qualityFormatLine",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "format",
+        "type": "String"
+      },
+      {
+        "name": "details",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "inspectingVideoQualities",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectingVideoQualitiesHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "readingCourseLectures",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "done",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "readingCourseLecturesHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "videoInspectionFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addRetryInspection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaEngineStarting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaEngineNotReady",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaEngineRequiresYtDlp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "preparingEngine",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startMediaEngine",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectAudioFormats",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectVideoQuality",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipSectionTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "isAudio",
+        "type": "Boolean"
+      }
+    ]
+  },
+  {
+    "name": "clipSectionHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioConvertTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioConvertAllTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioOriginal",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fileMissingTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fileMissingMessage",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "browserNotInstalled",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extensionConnected",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extensionNotAddedYet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addExtension",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "browserMissingTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "browserMissingMessage",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "downloadBrowser",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "loadUnpackedTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "loadUnpackedSteps",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "page",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "loadUnpackedUpdates",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "copyPath",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extensionConnectedVersion",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "extensionNeedsUpdate",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "found",
+        "type": "String"
+      },
+      {
+        "name": "wanted",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "extensionOldVersion",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "wanted",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "updateExtension",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "storeHasUpdate",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "updateFromAppHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "storeWaiting",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "wanted",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "openStore",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateFromApp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateFromGitHubHint",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "updateFromGitHub",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extensionDownloadFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installFromFileTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "installFromFileSteps",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "file",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "openBrowser",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "mediaDurationFullRange",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "isAudio",
+        "type": "Boolean"
+      },
+      {
+        "name": "clock",
+        "type": "String"
+      },
+      {
+        "name": "friendly",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "clipStartTimeFrom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipEndTimeTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fullMediaChip",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "isAudio",
+        "type": "Boolean"
+      },
+      {
+        "name": "duration",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "clipFirst5Min",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipFirst15Min",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipFirst30Min",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipFirst1Hour",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipModeTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipOnlyTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipOnlyLine1",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipOnlyLine2",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipOnlyLine3",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fullThenCutTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "isAudio",
+        "type": "Boolean"
+      }
+    ]
+  },
+  {
+    "name": "fullThenCutLine1",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "isAudio",
+        "type": "Boolean"
+      },
+      {
+        "name": "sizeText",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "fullThenCutLine2",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fullThenCutLine3",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fullThenCutLine4",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectingTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectingTorrentHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentInspectionFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "inspectTorrentFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "disableTorrentUpload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addDeselectAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentPriorityHigh",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentPriorityLow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentPriorityNormal",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "selectedOfLinks",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "selected",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "readingTorrentFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "couldNotReadTorrentFiles",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "error",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "linkTagVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "linkTagAudio",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "linkTagTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "linkTagFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "linkListMagnet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "linkListYouTubeVideo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "id",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "playlistSummary",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "videos",
+        "type": "Int"
+      },
+      {
+        "name": "selected",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "qualityForAllVideos",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "playlistFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "playlistFolderHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "qualityForAllVideosHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadOnlyThisVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenToStart",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleIn30Min",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleIn1Hour",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleAtTime",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleDayLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleToday",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleTomorrow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleIn2Days",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleIn3Days",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleInAWeek",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleTimePassed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleHourLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleMinuteLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleSet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleSetTime",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleStartsAt",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "addConnectionsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "connectionsAuto",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "connectionsAutoWithDefault",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "pickerExceedsVideo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "duration",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerMustBeAfterStart",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "start",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerStartZero",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pickerHours",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pickerMinutes",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pickerSeconds",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pickerSelectedTime",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      },
+      {
+        "name": "summary",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerEndOfVideo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerMin",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerApply",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "pickerInvalidTime",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerSelectFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerUp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerSubfolders",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "dirPickerHiddenOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerHiddenOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerNewFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerFolderName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerCreateFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerCreate",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerNoSubfolders",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "dirPickerHiddenTag",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitUnlimited",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetsFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetHigh",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetFast",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetMedium",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedPresetLow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleFrom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleActive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedScheduleEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "priorityLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "priorityHigh",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "priorityNormal",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "priorityLow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checksumLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checksumHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checksumVerified",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checksumMismatch",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checksumChecking",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitNoLimit",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitCustom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitValue",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scheduleAm",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "schedulePm",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsChipMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsChipTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsChipFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsChipResumable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsChipNoResume",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsClipChip",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "start",
+        "type": "String"
+      },
+      {
+        "name": "end",
+        "type": "String?"
+      },
+      {
+        "name": "cutAfterDownload",
+        "type": "Boolean"
+      }
+    ]
+  },
+  {
+    "name": "detailsTorrentFiles",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "selected",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "detailsPriorityHigh",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsPriorityLow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsPriorityNormal",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusPaused",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusWaiting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusQueued",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStatusNotStarted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsUnknownSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsMergingAudioVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsTorrentSpeedUploadDisabled",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "download",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "detailsTorrentSpeed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "download",
+        "type": "String"
+      },
+      {
+        "name": "upload",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "detailsConnecting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStartsAt",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "time",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "detailsWaitingInQueuePosition",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "position",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "detailsWaitingInQueue",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsDownloaded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsSpeed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsState",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsTimeLeft",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsAdded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsSavedTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsSource",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsPage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsOpenFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsOpenFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsStartNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsRemoveFromList",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsCancelDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsHeaderDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsHeaderDetails",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "detailsAddedToday",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "clock",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "detailsAddedYesterday",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "clock",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "removeDialogTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "removeDialogMessage",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "removeDialogAlsoDeleteFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "duplicateDialogTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "duplicateDialogSubtitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "duplicateDialogStatus",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "status",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "duplicateDialogQuestion",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "duplicateDialogResumeExisting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "duplicateDialogRedownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogSubtitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogFileNameLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogFolderLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogNewCopyLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogQuestion",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "overwriteDialogSaveAsCopy",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "overwriteDialogOverwriteExisting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "desktopWindowTagline",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "desktopTrayIdleTooltip",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "desktopTrayDownloadsHeader",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "desktopTrayMore",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "desktopTrayShowApp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "desktopTrayCloseApp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionGeneral",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionGeneralBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionDownloadsBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionBrowser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionBrowserBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionSpeed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionSpeedBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionMediaBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionTorrentBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionUpdates",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionUpdatesBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryNoQueueLimit",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryAtATime",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "summaryNoSpeedLimit",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summarySetupNeeded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryUploadingOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryUploadingOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryVersionAvailable",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "summaryVersion",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "changesSavedAutomatically",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsAllSettings",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipboardGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "clipboardFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "watchClipboard",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "watchClipboardOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "alsoVideoPages",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "alsoVideoPagesHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "diagnosticsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "logSavedTo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "path",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "diagnosticsFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "saveLogToDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "logCouldNotSave",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "appearanceGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "themeTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "themeHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsThemeDark",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsThemeSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsThemeLight",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedShownIn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedShownInHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "saveLocationGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "saveLocationFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsFolderPath",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsChooseFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsUseDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsConnectionsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "connectionsFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsConnectionsPerDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsConnectionsAuto",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "organizeGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "organizeFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sortIntoFolders",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sortIntoFoldersOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sortIntoFoldersOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitsFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitsFooterIos",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitUploadTorrents",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentSharingGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadOnlyNoUpload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadOnlyNoUploadHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentEngineGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsReady",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsNotReady",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extInstallGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extensionInstallFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "edgeAddedHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "edgeFromStoreHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "openInEdgeStore",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "edgeAddedNote",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extAddToEdge",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "firefoxFromStoreHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extAddToFirefox",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "chromeZipHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "getTheZip",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "firefoxAndroidHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "keepReadyForBrowser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "keepReadyOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "keepReadyOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "popUpOverBrowser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "popUpOverBrowserOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "popUpOverBrowserOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaToolsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "ytDlpHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "settingsMissing",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "ffmpegHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "ffmpegMissing",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "jsRuntimeTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "jsRuntimeHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "missingPress",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "button",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "mediaToolsFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaUpdatingTools",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaDownloadingTools",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaDownloadingTool",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "mediaDownloadingToolPercent",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "percent",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "mediaUpdateTools",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mediaDownloadTheTools",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateNewVersionAvailable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateVersionLine",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      },
+      {
+        "name": "current",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "updateWhatsNew",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateNoReleaseNotes",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadingUpdate",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "percent",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "updateDownloadedAndroid",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateDownloadedDesktop",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "storeInstallsItselfOpenNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateInstall",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateRestartAndUpdate",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateDownloadAndInstall",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateOpenMicrosoftStore",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateDownloadWithSize",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "size",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "updateOpenReleasePage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateSkipThisVersion",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateLater",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "versionIsAvailable",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "youHaveLatest",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateSeeWhatsNew",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateChecking",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateCheckNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checkUpdatesAutomatically",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "checkUpdatesAutomaticallyHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadUpdatesAutomatically",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadUpdatesAutomaticallyHintAndroid",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "downloadUpdatesAutomaticallyHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installingUpdates",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installingUpdatesStore",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installingUpdatesManual",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateReleaseNotes",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "updateReleaseNotesHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintReleasePage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintApk",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintIpa",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintDmg",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintDeb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "installHintOther",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupStoreFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupStartAtLogin",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupManagedByWindows",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupOpenWindowsSettings",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupStartHidden",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupStartHiddenHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupStartAtLoginHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "startupCouldNotChange",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "whenDoneGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneNothing",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneExit",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneSleep",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneShutDown",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneExitIn",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "seconds",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "whenDoneSleepIn",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "seconds",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "whenDoneShutDownIn",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "seconds",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "whenDoneNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "whenDoneBanner",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "action",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "whenDoneFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sectionNetwork",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionNetworkBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyHost",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyPort",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyUser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyPassword",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netUser",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netSave",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netSaved",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyHintIos",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netProxyBadPort",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginsHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginSite",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginsEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netRemove",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netLoginsCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "n",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysTabAllDownloads",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTabActive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTabCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTabMediaExtractor",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTabSettings",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSortNewestFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSortOldestFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSortLargestFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSortSmallestFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSortNameAz",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysEnterValidUrlOrMagnet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCannotStartVideoInspectionFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCannotStartTorrentInspectionFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysClipEndExceedsDuration",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysClipStartAfterEnd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysStartedDownload",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysFailedToQueueDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysQualitiesNotAdded",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysAddedQualityDownloads",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      },
+      {
+        "name": "title",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysSelectAtLeastOnePlaylistVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysVideosNotAdded",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysAddedPlaylistVideos",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      },
+      {
+        "name": "playlistTitle",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysSelectAtLeastOneLink",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysAddedLinkDownloads",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "added",
+        "type": "Int"
+      },
+      {
+        "name": "skipped",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysCouldNotReadTorrent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCouldNotStartDownload",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "reason",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysUnknownError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysQueuedFromBrowser",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "added",
+        "type": "Int"
+      },
+      {
+        "name": "skipped",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysEnterTorrentOrMagnetFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysFailedToParseTorrentMetadata",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysEnterMediaUrlFirst",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysUnableToFetchFormatsWithReason",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "reason",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysUnableToFetchFormats",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysFailedToInspectMediaQualities",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTorrentEngineError",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysTorrentEngineInstallFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysMediaToolsDownloaded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysMediaToolsDownloadFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysMediaToolsUpdated",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysSavedLinks",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      },
+      {
+        "name": "path",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysCouldNotSaveLinks",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "reason",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysErrorFallback",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadFailedNetwork",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCouldNotStart",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysUnknownErrorCapital",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCouldNotSaveFileTo",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "dir",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysPlaylistFallbackTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysPlaylistQualityBest",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysPlaylistQualityAudioOnly",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysToolsReadyYtDlpFfmpeg",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysToolsReadyYtDlpNoFfmpeg",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysToolsNotInstalled",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysToolsInstalledBuiltIn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysYtDlpVersionReady",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysMediaEngineBridgeNotRegistered",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysWebKitBuiltIn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTorrentEngineBuiltIn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTorrentEngineReadyVersion",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysTorrentEngineFailedToLoad",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysTorrentEngineAvailable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTorrentEngineMissing",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTorrentEngineNotAvailable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysCouldNotStartInstaller",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysCheckingForUpdates",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysNoPublishedRelease",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysVersionNoChangesForDevice",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      },
+      {
+        "name": "current",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysVersionAvailable",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysUpToDate",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "current",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysCouldNotCheckForUpdates",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "reason",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysNetworkError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysUpdateNoInstallerForSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadingAsset",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysVersionReadyToInstall",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "version",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysUpdateDownloadFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "message",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysAllowUnknownAppsThenInstall",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadsChannelName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadsChannelDescription",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysNotificationAppTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysAppRunningInBackground",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysNotificationDownloadsFallback",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysFilesDownloading",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysPercentActive",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "percent",
+        "type": "Int"
+      },
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysActiveCount",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysDownloadCompleteSize",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "size",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysMoreDownloading",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysComplete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysNotificationDownloadsTitle",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "speed",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysDownloadingPercent",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      },
+      {
+        "name": "percent",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "sysDownloadTaskFallback",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysBrowserReadyTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysBrowserReadyText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysTurnOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysBrowserReadyChannelName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysBrowserReadyChannelDescription",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadingFileFallback",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysUnknownSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysStatusCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysStatusDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDownloadCompleteTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysFinishedDownloading",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "size",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysSentToFetchJet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysLinksChannelName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysLinksChannelDescription",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysLinkReceivedTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysLinkReceivedText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCompleted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepSeeding",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepFetchingMetadata",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepConnectingToPeers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCheckingFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCheckingResumeData",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepDownloading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepFinished",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepConnecting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepPaused",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepResolvingStreams",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepDownloadingParts",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepPreparingDownload",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepClippingVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepDownloadingMedia",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepAlreadyDownloaded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepDownloadingVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepDownloadingAudio",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepMergingAudioVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepConvertingToMp3",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCuttingClip",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepSavingToFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepFinalizingVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepConvertingVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepRepackagingVideo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepYtDlpFallback",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepNotPlainStream",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepSingleConnection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepServerNoRanges",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepAgeRestrictedExpiredCookies",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepAgeRestrictedPlaceCookies",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepPreparingMediaEngine",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepMediaEngineNotStarted",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepNumber",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "step",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "stepSavingAs",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "ext",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "stepJoiningParts",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "count",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "stepNoDataFor",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "seconds",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "stepPeers",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "peers",
+        "type": "Int"
+      },
+      {
+        "name": "seeds",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "stepDownloadingFrom",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "host",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "stepMediaEngineNotReady",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "error",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "stepTorrentEngineFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "error",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "stepReadyWith",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "details",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "sysDeviceSendTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceNoDevices",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSearching",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceModeLink",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceModeLinkDesc",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceModeTransfer",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceModeTransferDesc",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceDeleteAfter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSend",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairBody",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairConfirm",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairConnecting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSending",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceWaitingAccept",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSent",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSendFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceReceived",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "visibleToDevices",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "visibleToDevicesHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceSearch",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceOthers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceNoMatch",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionDevices",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sectionDevicesBlurb",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairedDevicesTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "noPairedDevices",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "unpairDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryVisible",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "summaryHidden",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "blockDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "unblockDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "blockedDevicesTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "noBlockedDevices",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairRefusedBlocked",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairRefusedWait",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairRefusedBusy",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairDeclined",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "pairExpired",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDevicePairedLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceThisDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceManualConnect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceConnect",
+    "kind": "val",
+    "params": []
+  }
+]

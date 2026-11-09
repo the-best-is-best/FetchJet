@@ -1,0 +1,25 @@
+export component Basic inherits Window {
+    in property <string> label: "Hello FetchJet 12.5 MB/s";
+    in property <color> tint: #00E5FF;
+    preferred-width: 420px;
+    preferred-height: 160px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 16px;
+        spacing: 8px;
+        Text { text: root.label; color: white; font-size: 18px; font-weight: 700; }
+        Text { text: "Segoe UI 13px regular: The quick brown fox jumps"; color: #94A3B8; font-size: 13px; }
+        Rectangle {
+            height: 44px;
+            border-radius: 12px;
+            background: root.tint;
+            Text { text: "+  Add"; color: #031625; font-size: 14px; font-weight: 700; }
+        }
+        Path {
+            width: 24px; height: 24px; viewbox-width: 24; viewbox-height: 24;
+            stroke: white; stroke-width: 2px;
+            commands: "M 7 10 L 12 15 L 17 10";
+        }
+    }
+}

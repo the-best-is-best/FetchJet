@@ -1,0 +1,89 @@
+export global Emoji {
+    pure callback icon(string, int) -> image;
+    in property <image> turtle;
+    in property <image> inbox;
+}
+
+export component EmojiIcon inherits Image {
+    in property <string> glyph;
+    in property <length> size: 18px;
+    width: root.size;
+    height: root.size;
+    source: Emoji.icon(root.glyph, round(root.size / 1phx));
+}
+
+component Strip inherits Rectangle {
+    in property <length> size;
+    in property <color> ink;
+    in property <[string]> glyphs;
+    in property <bool> as-text;
+    height: root.size + 14px;
+    HorizontalLayout {
+        padding: 7px;
+        spacing: max(6px, root.size / 4);
+        alignment: start;
+        Text { text: (root.as-text ? "Text " : "") + root.size / 1px + " px"; color: root.ink; font-size: 11px; width: 60px; vertical-alignment: center; }
+        if !root.as-text: HorizontalLayout {
+            spacing: max(6px, root.size / 4);
+            for g in root.glyphs: EmojiIcon { glyph: g; size: root.size; }
+        }
+        if root.as-text: HorizontalLayout {
+            spacing: max(6px, root.size / 4);
+            for g in root.glyphs: Text { text: g; color: root.ink; font-size: root.size * 0.8; vertical-alignment: center; width: root.size; horizontal-alignment: center; }
+        }
+    }
+}
+
+component Panel inherits Rectangle {
+    in property <color> ink;
+    in property <color> accent;
+    in property <[string]> glyphs;
+    VerticalLayout {
+        padding: 8px;
+        spacing: 2px;
+        alignment: start;
+        Strip { size: 14px; ink: root.ink; glyphs: root.glyphs; }
+        Strip { size: 18px; ink: root.ink; glyphs: root.glyphs; }
+        Strip { size: 24px; ink: root.ink; glyphs: root.glyphs; }
+        Strip { size: 48px; ink: root.ink; glyphs: root.glyphs; }
+        Strip { size: 18px; ink: root.ink; glyphs: root.glyphs; as-text: true; }
+        HorizontalLayout {
+            padding: 7px;
+            spacing: 10px;
+            alignment: start;
+            Rectangle {
+                height: 34px; width: l1.preferred-width; border-radius: 10px; border-width: 1px; border-color: root.accent;
+                l1 := HorizontalLayout { padding-left: 12px; padding-right: 12px; spacing: 6px;
+                    VerticalLayout { alignment: center; EmojiIcon { glyph: "⚡"; size: 14px; } }
+                    Text { text: "Direct"; color: root.accent; font-size: 12px; font-weight: 600; vertical-alignment: center; } }
+            }
+            Rectangle {
+                height: 34px; width: l2.preferred-width; border-radius: 10px; border-width: 1px; border-color: root.accent;
+                l2 := HorizontalLayout { padding-left: 12px; padding-right: 12px; spacing: 6px;
+                    VerticalLayout { alignment: center; EmojiIcon { glyph: "🎬"; size: 14px; } }
+                    Text { text: "Media"; color: root.accent; font-size: 12px; font-weight: 600; vertical-alignment: center; } }
+            }
+            Rectangle {
+                height: 34px; width: l3.preferred-width; border-radius: 10px; border-width: 1px; border-color: root.accent;
+                l3 := HorizontalLayout { padding-left: 12px; padding-right: 12px; spacing: 6px;
+                    VerticalLayout { alignment: center; EmojiIcon { glyph: "🧲"; size: 14px; } }
+                    Text { text: "Torrent"; color: root.accent; font-size: 12px; font-weight: 600; vertical-alignment: center; } }
+            }
+            Rectangle { width: 38px; height: 34px; border-radius: 10px; background: root.accent.with-alpha(0.22); EmojiIcon { glyph: "🐢"; size: 18px; } }
+            Image { source: Emoji.turtle; width: 18px; height: 18px; }
+            Image { source: Emoji.inbox; width: 48px; height: 48px; }
+            Text { text: "property images (18, 48)"; color: root.ink; font-size: 11px; vertical-alignment: center; }
+        }
+    }
+}
+
+export component EmojiProbe inherits Window {
+    in property <[string]> glyphs: ["🐢", "📥", "⚡", "🎬", "🧲", "🎵", "📁", "📂", "⏸", "▶️", "⏳", "🔗", "⚙️", "🔄", "✅", "❌", "⚠️", "🗑", "🔍", "📋", "💻", "📱", "🎉", "👍🏽", "🇪🇬", "👨‍👩‍👧"];
+    preferred-width: 1560px;
+    preferred-height: 600px;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        Panel { background: #0F1728; ink: #F1F5F9; accent: #00E5FF; glyphs: root.glyphs; }
+        Panel { background: #FFFFFF; ink: #0F172A; accent: #0284C7; glyphs: root.glyphs; }
+    }
+}

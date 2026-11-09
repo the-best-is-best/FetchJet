@@ -1,0 +1,37 @@
+export component ScaleProbe inherits Window {
+    preferred-width: 330px;
+    preferred-height: 150px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 10px;
+        VerticalLayout {
+            width: 70px;
+            spacing: 5px;
+            alignment: start;
+            for i in 8: Rectangle { height: 1px; background: #94A3B8; }
+            for i in 4: Rectangle { height: 5px; border-radius: 3px; background: #1E2B42; Rectangle { x: 0; width: parent.width * (i + 1) / 5; border-radius: 3px; background: #00E5FF; } }
+        }
+        VerticalLayout {
+            width: 80px;
+            spacing: 4px;
+            alignment: start;
+            for i in 4: Rectangle { height: 24px; border-radius: 6px; border-width: 1px; border-color: #94A3B8; background: #0F1728; Text { text: "Row " + i; color: white; font-size: 11px; } }
+        }
+        VerticalLayout {
+            spacing: 4px;
+            alignment: start;
+            HorizontalLayout { spacing: 6px; alignment: start;
+                for s in [16, 18, 20, 24]: Path { width: s * 1px; height: s * 1px; viewbox-width: 24; viewbox-height: 24; stroke: white; stroke-width: 2px; commands: "M 7 10 L 12 15 L 17 10"; }
+            }
+            HorizontalLayout { spacing: 6px; alignment: start;
+                for s in [16, 20, 24]: Rectangle { width: s * 1px; height: s * 1px; border-radius: s * 0.5px; border-width: 1px; border-color: #00E5FF; }
+                Rectangle { width: 16px; height: 16px; border-radius: 3px; border-width: 2px; border-color: #94A3B8; }
+            }
+            Text { text: "11px The quick brown fox 0123456789"; color: white; font-size: 11px; }
+            Text { text: "12px The quick brown fox 0123"; color: white; font-size: 12px; }
+            Text { text: "13px The quick brown fox"; color: white; font-size: 13px; font-weight: 600; }
+        }
+    }
+}

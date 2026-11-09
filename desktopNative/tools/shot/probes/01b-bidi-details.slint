@@ -1,0 +1,64 @@
+component Cell inherits Rectangle {
+    in property <string> caption;
+    height: 44px;
+    border-width: 1px;
+    border-color: #334155;
+    background: #0F1728;
+    Text { x: 4px; y: 1px; text: root.caption; color: #64748B; font-size: 9px; }
+    @children
+}
+
+component Box inherits Rectangle {
+    x: 8px; y: 12px; width: 300px; height: 28px;
+    border-width: 1px; border-color: #F43F5E;
+}
+
+export component BidiDetails inherits Window {
+    in-out property <string> typed: "";
+    preferred-width: 760px;
+    preferred-height: 760px;
+    background: #080D1A;
+    default-font-family: "Segoe UI";
+    VerticalLayout {
+        padding: 12px;
+        spacing: 6px;
+        Cell { caption: "1 plain: Arabic label + size";
+            Text { y: 14px; x: 8px; text: "السرعة: 6.41 MB/s من 128.00 MB"; color: white; font-size: 16px; } }
+        Cell { caption: "2 size wrapped in LRI U+2066 ... PDI U+2069 (what the Compose app's ltr() does)";
+            Text { y: 14px; x: 8px; text: "السرعة: \u{2066}6.41 MB/s\u{2069} من \u{2066}128.00 MB\u{2069}"; color: white; font-size: 16px; } }
+        Cell { caption: "3 size wrapped in LRE U+202A ... PDF U+202C";
+            Text { y: 14px; x: 8px; text: "السرعة: \u{202A}6.41 MB/s\u{202C} من \u{202A}128.00 MB\u{202C}"; color: white; font-size: 16px; } }
+        Cell { caption: "4 LRM U+200E after each size";
+            Text { y: 14px; x: 8px; text: "السرعة: 6.41 MB/s\u{200E} من 128.00 MB\u{200E}"; color: white; font-size: 16px; } }
+        Cell { caption: "5 English sentence forced RTL with RLM U+200F first / RLI U+2067";
+            Text { y: 14px; x: 8px; text: "\u{200F}Hello (world) 3 files!"; color: white; font-size: 16px; }
+            Text { y: 14px; x: 300px; text: "\u{2067}Hello (world) 3 files!\u{2069}"; color: white; font-size: 16px; } }
+        Cell { caption: "6 brackets mirror and Arabic-Indic digits";
+            Text { y: 14px; x: 8px; text: "(مرحبا) [تنزيل] ٣ ملفات ١٢٫٥ م.ب/ث"; color: white; font-size: 16px; } }
+        Cell { caption: "7 Arabic elide + horizontal-alignment: right, width 300";
+            Text { y: 14px; x: 8px; width: 300px; overflow: elide; horizontal-alignment: right; text: "هذا اسم ملف عربي طويل جدا لا يكفيه العرض المتاح في الصف.mp4"; color: white; font-size: 16px; }
+            Box { } }
+        Cell { caption: "8 Arabic elide inside Rectangle { clip: true }, width 300";
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 28px; clip: true;
+                Text { x: 0; width: parent.width; overflow: elide; text: "هذا اسم ملف عربي طويل جدا لا يكفيه العرض المتاح في الصف.mp4"; color: white; font-size: 16px; vertical-alignment: center; } }
+            Box { } }
+        Cell { caption: "9 Arabic overflow: clip, width 300";
+            Text { y: 14px; x: 8px; width: 300px; overflow: clip; text: "هذا اسم ملف عربي طويل جدا لا يكفيه العرض المتاح في الصف.mp4"; color: white; font-size: 16px; }
+            Box { } }
+        Cell { caption: "10 Arabic file name that starts with Latin, elide, width 300";
+            Text { y: 14px; x: 8px; width: 300px; overflow: elide; text: "IMG_2041 صور العطلة الصيفية في الإسكندرية مع العائلة.jpg"; color: white; font-size: 16px; }
+            Box { } }
+        Cell { caption: "11 Arabic wrap + horizontal-alignment: right, width 300"; height: 84px;
+            Text { y: 14px; x: 8px; width: 300px; wrap: word-wrap; horizontal-alignment: right; text: "يدعم التطبيق التنزيل متعدد الاتصالات وتنزيل الفيديو والتورنت مع جدولة ذكية للمهام."; color: white; font-size: 16px; }
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 68px; border-width: 1px; border-color: #F43F5E; } }
+        Cell { caption: "12 English wrap + horizontal-alignment: right, width 300"; height: 84px;
+            Text { y: 14px; x: 8px; width: 300px; wrap: word-wrap; horizontal-alignment: right; text: "FetchJet downloads with many connections, video and torrents with a smart queue."; color: white; font-size: 16px; }
+            Rectangle { x: 8px; y: 12px; width: 300px; height: 68px; border-width: 1px; border-color: #F43F5E; } }
+        Cell { caption: "13 TextInput (click, then typed by the tool): cursor and selection"; height: 48px;
+            Rectangle { x: 8px; y: 14px; width: 420px; height: 28px; border-width: 1px; border-color: ti.has-focus ? #00E5FF : #334155; border-radius: 6px;
+                ti := TextInput { x: 6px; width: parent.width - 12px; text <=> root.typed; color: white; font-size: 15px; vertical-alignment: center; single-line: true; selection-background-color: #0C3D60; selection-foreground-color: white; }
+            } }
+        Cell { caption: "14 TextInput read back";
+            Text { y: 14px; x: 8px; text: "text = [" + root.typed + "]  length " + root.typed.character-count; color: #94A3B8; font-size: 14px; } }
+    }
+}

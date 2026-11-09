@@ -1,0 +1,146 @@
+{
+  "down-speed": "12.4 MB/s",
+  "up-speed": "0 B/s",
+  "limit-text": "High",
+  "limited": false,
+  "summary": "2 downloading · 1 waiting",
+  "queue-text": "Queue: 3 at a time",
+  "limit-status": "Speed limit: off",
+  "version": "v1.4.0-native",
+  "any-pausable": true,
+  "any-resumable": true,
+  "filter": 0,
+  "nav": [
+    {
+      "label": "All downloads",
+      "count": 6
+    },
+    {
+      "label": "Downloading",
+      "count": 2
+    },
+    {
+      "label": "Waiting",
+      "count": 1
+    },
+    {
+      "label": "Paused",
+      "count": 1
+    },
+    {
+      "label": "Completed",
+      "count": 1
+    },
+    {
+      "label": "Failed",
+      "count": 1
+    },
+    {
+      "label": "Video & audio",
+      "count": 2
+    },
+    {
+      "label": "Files",
+      "count": 4
+    },
+    {
+      "label": "Torrents",
+      "count": 0
+    }
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "name": "ubuntu-26.04-desktop-amd64.iso",
+      "tag": "ISO",
+      "status": "42% · 8.1 MB/s · 4m 12s left",
+      "state": 1,
+      "size": "5.80 GB",
+      "progress": 0.42,
+      "speed": "8.1 MB/s",
+      "left": "4m 12s",
+      "header": "Downloading",
+      "header-icon": "⬇",
+      "header-count": 2,
+      "header-kind": 0
+    },
+    {
+      "id": 2,
+      "name": "Big Buck Bunny 4K.mp4",
+      "tag": "VID",
+      "status": "77% · 4.3 MB/s · 38s left",
+      "state": 1,
+      "size": "712.4 MB",
+      "progress": 0.77,
+      "speed": "4.3 MB/s",
+      "left": "38s",
+      "header": "",
+      "header-icon": "",
+      "header-count": 0,
+      "header-kind": 0
+    },
+    {
+      "id": 3,
+      "name": "تحميل ملف عربي طويل الاسم.zip",
+      "tag": "ZIP",
+      "status": "Waiting in queue",
+      "state": 4,
+      "size": "64.0 MB",
+      "progress": 0.0,
+      "speed": "—",
+      "left": "—",
+      "header": "Waiting",
+      "header-icon": "⏳",
+      "header-count": 1,
+      "header-kind": 1
+    },
+    {
+      "id": 4,
+      "name": "podcast-episode-118.mp3",
+      "tag": "AUD",
+      "status": "Paused · 31%",
+      "state": 2,
+      "size": "48.2 MB",
+      "progress": 0.31,
+      "speed": "—",
+      "left": "—",
+      "header": "Paused & failed",
+      "header-icon": "⏸",
+      "header-count": 2,
+      "header-kind": 2
+    },
+    {
+      "id": 5,
+      "name": "setup-x64.exe",
+      "tag": "EXE",
+      "status": "Failed: HTTP 403",
+      "state": 3,
+      "size": "—",
+      "progress": 0.08,
+      "speed": "—",
+      "left": "—",
+      "header": "",
+      "header-icon": "",
+      "header-count": 0,
+      "header-kind": 2
+    },
+    {
+      "id": 6,
+      "name": "128MB.bin",
+      "tag": "BIN",
+      "status": "Completed · 128.00 MB",
+      "state": 0,
+      "size": "128.00 MB",
+      "progress": 1.0,
+      "speed": "—",
+      "left": "—",
+      "header": "Completed",
+      "header-icon": "✓",
+      "header-count": 1,
+      "header-kind": 3
+    }
+  ],
+  "Theme": {
+    "dark": true
+  }
+}
