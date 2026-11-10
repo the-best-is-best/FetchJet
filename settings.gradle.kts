@@ -40,3 +40,8 @@ include(":sharedUI")
 
 include(":kmpLocalization")
 project(":kmpLocalization").projectDir = file("packages/kmp-localization/kmpLocalization")
+
+if (providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true") {
+    include(":desktopNativeCore")
+    project(":desktopNativeCore").projectDir = file("desktopNative/core")
+}

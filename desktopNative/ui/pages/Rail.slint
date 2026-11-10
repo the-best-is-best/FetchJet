@@ -1,0 +1,100 @@
+import { Theme, Dir } from "../theme.slint";
+import { Hover } from "../widgets/Base.slint";
+import { Core } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component RailItem inherits Rectangle {
+    in property <string> label;
+    in property <int> count;
+    in property <string> glyph;
+    in property <bool> selected;
+    callback clicked();
+    private property <bool> counted: root.glyph == "";
+    width: 68px;
+    height: 73px;
+    border-radius: 12px;
+    background: root.selected ? Theme.on-surface.with-alpha(0.08) : transparent;
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        y: 8px;
+        width: max(26px, badge.preferred-width + 12px);
+        height: 28px;
+        border-radius: 11px;
+        background: root.selected && root.counted ? Theme.primary : Theme.on-surface.with-alpha(0.07);
+        badge := Text {
+            text: root.counted ? root.count : root.glyph;
+            color: root.selected && root.counted ? Theme.on-primary : root.selected ? Theme.primary : Theme.on-surface-variant;
+            font-family: root.counted ? Theme.font : "Segoe UI Symbol";
+            font-size: root.counted ? 11px : 15px;
+            font-weight: 700;
+            letter-spacing: root.counted ? 0.5px : 0px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Text {
+        y: 41px;
+        width: parent.width;
+        height: 24px;
+        text: root.label;
+        color: root.selected ? Theme.on-surface : Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Hover {
+        border-radius: 12px;
+        ink: Theme.on-background;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component Rail inherits Rectangle {
+    width: 84px;
+    background: Theme.sidebar;
+    VerticalLayout {
+        padding-top: 14px;
+        padding-bottom: 14px;
+        spacing: 4px;
+        alignment: start;
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                width: 38px;
+                height: 38px;
+                source: @image-url("../logo.png");
+            }
+        }
+        Rectangle {
+            height: 10px;
+        }
+        for entry in Core.chrome.navRail: HorizontalLayout {
+            alignment: center;
+            RailItem {
+                label: entry.label;
+                count: entry.count;
+                selected: entry.selected;
+                clicked => { Act.setFilter(entry.filter); }
+            }
+        }
+    }
+    HorizontalLayout {
+        y: parent.height - 14px - 73px;
+        height: 73px;
+        alignment: center;
+        RailItem {
+            label: Tr.homeSettings;
+            glyph: "⚙";
+            selected: Core.chrome.settingsOpen;
+            clicked => { Act.openSettings(); }
+        }
+    }
+}

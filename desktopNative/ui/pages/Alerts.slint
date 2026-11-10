@@ -1,0 +1,222 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { Core, AlertDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+
+component BodyText inherits Text {
+    color: Theme.on-surface-variant;
+    font-family: Theme.font;
+    font-size: 14px;
+    letter-spacing: Dir.rtl ? 0px : 0.2px;
+    horizontal-alignment: Dir.start;
+    wrap: word-wrap;
+}
+
+component SmallText inherits Text {
+    color: Theme.on-surface-variant;
+    font-family: Theme.font;
+    font-size: 12px;
+    letter-spacing: Dir.rtl ? 0px : 0.4px;
+    horizontal-alignment: Dir.start;
+    wrap: char-wrap;
+    overflow: elide;
+    max-height: 32px;
+}
+
+component AlertOverlay inherits Rectangle {
+    in property <AlertDto> data;
+    in-out property <bool> checked: false;
+    private property <length> radius: root.data.titleSmall || root.data.round ? 28px : 18px;
+    private property <length> button-radius: root.data.titleSmall || root.data.round ? 20px : 10px;
+    background: #00000099;
+    init => { keys.focus(); }
+    scrim := TouchArea {
+        clicked => {
+            if !root.data.locked {
+                Act.alertDismiss(root.data.kind, true);
+            }
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                if !root.data.locked {
+                    Act.alertDismiss(root.data.kind, true);
+                }
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    card := Rectangle {
+        width: clamp(content.preferred-width, 280px, max(280px, min(560px, root.width - 48px)));
+        height: content.preferred-height;
+        border-radius: root.radius;
+        background: Theme.surface-container-high;
+        TouchArea { }
+        content := VerticalLayout {
+            padding: 24px;
+            spacing: 0px;
+            Text {
+                text: root.data.title;
+                color: Theme.on-surface;
+                font-family: Theme.font;
+                font-size: root.data.titleSmall ? 16px : 24px;
+                font-weight: 700;
+                letter-spacing: Dir.rtl || !root.data.titleSmall ? 0px : 0.2px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+            Rectangle {
+                height: 16px;
+            }
+            if root.data.text != "": BodyText {
+                text: root.data.text;
+            }
+            if root.data.strong != "": BodyText {
+                text: root.data.strong;
+                font-weight: 600;
+                wrap: char-wrap;
+                overflow: elide;
+                max-height: 40px;
+            }
+            if root.data.detail != "": Rectangle {
+                height: root.data.strong != "" ? 6px : 8px;
+            }
+            if root.data.detail != "": SmallText {
+                text: root.data.detail;
+            }
+            if root.data.mono != "": Rectangle {
+                height: 10px;
+            }
+            if root.data.mono != "": Rectangle {
+                height: path.preferred-height + 20px;
+                border-radius: 8px;
+                background: Theme.surface-variant;
+                path := TextInput {
+                    x: 10px;
+                    y: 10px;
+                    width: parent.width - 20px;
+                    text: root.data.mono;
+                    read-only: true;
+                    single-line: false;
+                    wrap: char-wrap;
+                    color: Theme.on-surface;
+                    font-family: "Consolas";
+                    font-size: 12px;
+                    selection-background-color: Theme.primary.with-alpha(0.4);
+                    selection-foreground-color: Theme.on-surface;
+                }
+            }
+            if root.data.hint != "": Rectangle {
+                height: root.data.mono != "" ? 10px : 8px;
+            }
+            if root.data.hint != "": SmallText {
+                text: root.data.hint;
+                wrap: word-wrap;
+                max-height: 64px;
+            }
+            if root.data.checkLabel != "": Rectangle {
+                height: 12px;
+            }
+            if root.data.checkLabel != "": Rectangle {
+                height: 48px;
+                row := TouchArea {
+                    clicked => { root.checked = !root.checked; }
+                }
+                HBox {
+                    spacing: 8px;
+                    cross-axis-alignment: center;
+                    Rectangle {
+                        width: 48px;
+                        height: 48px;
+                        CheckBox {
+                            checked: root.checked;
+                            toggled(on) => { root.checked = on; }
+                        }
+                    }
+                    T {
+                        text: root.data.checkLabel;
+                        line: 20px;
+                        tracking: 0.2px;
+                        font-size: 14px;
+                        color: Theme.on-surface;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                }
+            }
+            if root.data.progressShown: Rectangle {
+                height: 12px;
+            }
+            if root.data.progressShown: LinearProgress {
+                value: root.data.progress;
+            }
+            Rectangle {
+                height: 24px;
+            }
+            HBox {
+                height: 40px;
+                spacing: 8px;
+                alignment: end;
+                if root.data.extraLabel != "": TextButton {
+                    text: root.data.extraLabel;
+                    clicked => { Act.alertExtra(root.data.kind); }
+                }
+                if root.data.dismissLabel != "" && root.data.flatDismiss: TextButton {
+                    text: root.data.dismissLabel;
+                    clicked => { Act.alertDismiss(root.data.kind, false); }
+                }
+                if root.data.dismissLabel != "" && !root.data.flatDismiss: OutlinedButton {
+                    text: root.data.dismissLabel;
+                    border-radius: root.button-radius;
+                    clicked => { Act.alertDismiss(root.data.kind, false); }
+                }
+                FilledButton {
+                    text: root.data.confirmLabel;
+                    border-radius: root.button-radius;
+                    container: root.data.confirmDanger ? Theme.error : Theme.primary;
+                    ink: root.data.confirmDanger ? Theme.on-error : Theme.on-primary;
+                    clicked => { Act.alertConfirm(root.data.kind, root.checked); }
+                }
+            }
+        }
+    }
+}
+
+export component Alerts inherits Rectangle {
+    for alert in Core.alerts: AlertOverlay {
+        data: alert;
+    }
+}
+
+export component Toast inherits Rectangle {
+    private property <bool> shown: Core.shell.toastShown;
+    height: 48px + 24px;
+    card := Rectangle {
+        width: min(600px, max(120px, min(parent.width - 24px, label.preferred-width + 32px)));
+        height: 48px;
+        border-radius: 4px;
+        background: Theme.inverse-surface;
+        opacity: root.shown ? 1 : 0;
+        animate opacity { duration: 150ms; }
+        label := Text {
+            x: 16px;
+            width: parent.width - 32px;
+            text: Core.shell.toastText;
+            color: Theme.inverse-on-surface;
+            font-family: Theme.font;
+            font-size: 14px;
+            letter-spacing: Dir.rtl ? 0px : 0.2px;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}

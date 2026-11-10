@@ -1,0 +1,37 @@
+import { Theme, Dir } from "../theme.slint";
+
+export component ElideText inherits Rectangle {
+    in property <string> text;
+    in property <bool> text-rtl;
+    in property <bool> text-han;
+    in property <color> ink: Theme.on-surface;
+    in property <color> behind: Theme.surface;
+    in property <length> font-size: 13px;
+    in property <int> font-weight: 400;
+    in property <length> line: 24px;
+    in property <length> tracking: 0.5px;
+    height: root.line;
+    min-width: 0;
+    preferred-width: t.preferred-width;
+    horizontal-stretch: 1;
+    clip: true;
+    t := Text {
+        x: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.ink;
+        font-family: root.text-han ? "Microsoft YaHei UI" : Theme.font;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        letter-spacing: root.text-rtl || Dir.rtl ? 0px : root.tracking;
+        vertical-alignment: center;
+        overflow: root.text-rtl ? clip : elide;
+        horizontal-alignment: root.text-rtl && self.preferred-width > root.width ? right : Dir.start;
+    }
+    if root.text-rtl && t.preferred-width > root.width: Rectangle {
+        x: 0;
+        width: 28px;
+        background: @linear-gradient(90deg, root.behind 0%, root.behind.with-alpha(0.92) 35%, root.behind.transparentize(1) 100%);
+    }
+}

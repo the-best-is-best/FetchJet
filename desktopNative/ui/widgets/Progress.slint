@@ -1,0 +1,62 @@
+import { Theme, Dir } from "../theme.slint";
+
+export component ThinBar inherits Rectangle {
+    in property <float> value;
+    in property <color> ink: Theme.primary;
+    height: 5px;
+    border-radius: self.height / 2;
+    background: Theme.on-surface.with-alpha(0.08);
+    Rectangle {
+        x: Dir.rtl ? parent.width - self.width : 0;
+        width: parent.width * clamp(root.value, 0, 1);
+        height: parent.height;
+        border-radius: parent.height / 2;
+        background: root.ink;
+    }
+}
+
+export component LinearProgress inherits Rectangle {
+    in property <float> value;
+    in property <bool> indeterminate;
+    in property <color> ink: Theme.primary;
+    in property <color> track: Theme.secondary-container;
+    private property <float> clamped: clamp(root.value, 0, 1);
+    private property <length> filled: root.width * root.clamped;
+    private property <float> phase: Math.mod(animation-tick() / 1750ms, 1);
+    height: 4px;
+    if !root.indeterminate: Rectangle {
+        x: Dir.rtl ? 0 : min(parent.width, root.filled + (root.clamped > 0 ? 4px : 0px));
+        width: max(0px, parent.width - root.filled - (root.clamped > 0 ? 4px : 0px));
+        height: 4px;
+        border-radius: 2px;
+        background: root.track;
+    }
+    if !root.indeterminate: Rectangle {
+        x: Dir.rtl ? parent.width - self.width : 0;
+        width: root.filled;
+        height: 4px;
+        border-radius: 2px;
+        background: root.ink;
+    }
+    if !root.indeterminate: Rectangle {
+        x: Dir.rtl ? 0 : parent.width - 4px;
+        width: 4px;
+        height: 4px;
+        border-radius: 2px;
+        background: root.ink;
+    }
+    if root.indeterminate: Rectangle {
+        width: parent.width;
+        height: 4px;
+        border-radius: 2px;
+        background: root.track;
+        clip: true;
+        Rectangle {
+            x: parent.width * (root.phase * 1.4 - 0.4);
+            width: parent.width * 0.4;
+            height: 4px;
+            border-radius: 2px;
+            background: root.ink;
+        }
+    }
+}

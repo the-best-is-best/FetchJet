@@ -1,0 +1,106 @@
+export component FjScrollBar inherits Rectangle {
+    in property <length> content-size;
+    in property <length> page-size;
+    in-out property <length> offset;
+    in property <color> thumb-color: #64748b;
+    out property <bool> active: ta.has-hover || ta.pressed;
+    callback scrolled();
+    private property <length> maximum: max(0px, root.content-size - root.page-size);
+    private property <length> thumb-length: root.maximum <= 0px ? 0px : max(28px, root.height * root.page-size / root.content-size);
+    private property <length> pressed-offset;
+    width: root.active ? 10px : 6px;
+    visible: root.maximum > 0px;
+    animate width { duration: 120ms; }
+    thumb := Rectangle {
+        x: 1px;
+        width: parent.width - 2px;
+        y: root.maximum <= 0px ? 0px : (root.height - self.height) * (-root.offset / root.maximum);
+        height: root.thumb-length;
+        border-radius: self.width / 2;
+        background: root.thumb-color.with-alpha(root.active ? 0.9 : 0.5);
+    }
+    ta := TouchArea {
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                if self.mouse-y < thumb.y || self.mouse-y > thumb.y + thumb.height {
+                    root.offset = -max(0px, min(root.maximum, root.maximum * (self.mouse-y - thumb.height / 2) / (root.height - thumb.height)));
+                    root.scrolled();
+                }
+                root.pressed-offset = -root.offset;
+            }
+        }
+        moved => {
+            if self.pressed && root.height > thumb.height {
+                root.offset = -max(0px, min(root.maximum, root.pressed-offset + (self.mouse-y - self.pressed-y) * root.maximum / (root.height - thumb.height)));
+                root.scrolled();
+            }
+        }
+    }
+}
+
+export component ListView inherits Rectangle {
+    in-out property <length> content-y <=> fl.content-y;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-width <=> fl.content-width;
+    out property <length> visible-width <=> fl.width;
+    out property <length> visible-height <=> fl.height;
+    in property <color> thumb-color: #64748b;
+    callback scrolled();
+    public function scroll-to-y(y: length) {
+        fl.content-y = -max(0px, min(max(0px, fl.content-height - fl.height), y));
+    }
+    public function ensure-visible(y: length, h: length) {
+        if y < -fl.content-y {
+            fl.content-y = -y;
+        } else if y + h > -fl.content-y + fl.height {
+            fl.content-y = -(y + h - fl.height);
+        }
+    }
+    min-height: 50px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    preferred-width: 100%;
+    preferred-height: 100%;
+    fl := Flickable {
+        x: 0;
+        width: parent.width - 12px;
+        mouse-drag-pan-enabled: false;
+        flicked => { root.scrolled(); }
+        @children
+    }
+    bar := FjScrollBar {
+        x: parent.width - self.width - 1px;
+        height: parent.height;
+        content-size: fl.content-height;
+        page-size: fl.height;
+        offset <=> fl.content-y;
+        thumb-color: root.thumb-color;
+        scrolled => { root.scrolled(); }
+    }
+}
+
+export component FjScrollArea inherits Rectangle {
+    in-out property <length> content-y <=> fl.content-y;
+    out property <length> visible-height <=> fl.height;
+    in property <color> thumb-color: #64748b;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    fl := Flickable {
+        x: 0;
+        width: parent.width - 12px;
+        mouse-drag-pan-enabled: false;
+        content-height: inner.preferred-height;
+        inner := VerticalLayout {
+            alignment: start;
+            @children
+        }
+    }
+    FjScrollBar {
+        x: parent.width - self.width - 1px;
+        height: parent.height;
+        content-size: fl.content-height;
+        page-size: fl.height;
+        offset <=> fl.content-y;
+        thumb-color: root.thumb-color;
+    }
+}

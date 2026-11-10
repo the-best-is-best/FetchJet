@@ -1,19 +1,32 @@
-plugins { kotlin("multiplatform") version "2.4.20" }
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.kotlinSerialization)
+}
+
 kotlin {
+    compilerOptions {
+        optIn.add("kotlinx.cinterop.ExperimentalForeignApi")
+        optIn.add("kotlin.experimental.ExperimentalNativeApi")
+    }
+
     mingwX64 {
         binaries {
             sharedLib {
                 baseName = "fjcore"
-                freeCompilerArgs += listOf("-Xallocator=std")
+                binaryOption("pagedAllocator", "false")
+                linkerOpts("-lole32")
             }
         }
     }
+
     sourceSets {
-        mingwX64Main.dependencies {
-            implementation("io.ktor:ktor-client-core:3.6.1")
-            implementation("io.ktor:ktor-client-winhttp:3.6.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-            implementation("com.squareup.okio:okio:3.18.2")
+        getByName("mingwX64Main").dependencies {
+            implementation(project(":sharedLogic"))
+            implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.network)
+            implementation(libs.okio)
         }
     }
 }

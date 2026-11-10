@@ -1,0 +1,58 @@
+import { Theme, Dir } from "../theme.slint";
+
+export component HBox inherits FlexboxLayout {
+    in property <length> padding-start;
+    in property <length> padding-end;
+    flex-direction: Dir.rtl ? row-reverse : row;
+    flex-wrap: no-wrap;
+    alignment: stretch;
+    padding-left: Dir.rtl ? root.padding-end : root.padding-start;
+    padding-right: Dir.rtl ? root.padding-start : root.padding-end;
+}
+
+export component T inherits Text {
+    in property <length> line: 24px;
+    in property <length> tracking: 0.5px;
+    height: root.line;
+    vertical-alignment: center;
+    horizontal-alignment: Dir.start;
+    font-family: Theme.font;
+    font-size: 14px;
+    color: Theme.on-surface;
+    letter-spacing: Dir.rtl ? 0px : root.tracking;
+}
+
+export component Hover inherits Rectangle {
+    in property <color> ink: Theme.on-surface;
+    in property <bool> hovered;
+    in property <bool> pressed;
+    background: root.ink.with-alpha(root.pressed ? 0.10 : root.hovered ? 0.08 : 0);
+}
+
+export component Clickable inherits Rectangle {
+    in property <color> ink: Theme.on-surface;
+    in property <bool> enabled: true;
+    out property <bool> has-hover: ta.has-hover;
+    out property <bool> pressed: ta.pressed;
+    callback clicked();
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    @children
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+}
+
+export component Divider inherits Rectangle {
+    height: 1px;
+    background: Theme.outline-variant;
+}
+
+export component Spacer inherits Rectangle {
+    horizontal-stretch: 1;
+}

@@ -1,0 +1,258 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { Spinner } from "../widgets/Kit.slint";
+import { ScrollArea } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { Core, TorrentFileRowDto, TorrentStateCode } from "../generated/dto.slint";
+import { Tr } from "../generated/tr.slint";
+import { Act } from "../generated/actions.slint";
+
+component FileRow inherits Rectangle {
+    in property <TorrentFileRowDto> data;
+    callback toggled(selected: bool);
+    callback cycled();
+    private property <color> flag: root.data.priority == 1 ? #EF4444 : root.data.priority == -1 ? #3B82F6 : Theme.on-surface-variant;
+    height: 56px;
+    border-radius: 6px;
+    background: root.data.selected ? Theme.primary-container.with-alpha(0.4) : transparent;
+    ta := TouchArea {
+        clicked => { root.toggled(!root.data.selected); }
+    }
+    Hover {
+        border-radius: 6px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Rectangle {
+        x: Dir.rtl ? parent.width - 54px : 6px;
+        width: 48px;
+        height: 48px;
+        CheckBox {
+            checked: root.data.selected;
+            tint: #0284C7;
+            idle: #64748B;
+            toggled(on) => { root.toggled(on); }
+        }
+    }
+    T {
+        x: Dir.rtl ? 12px + chip.width : 60px;
+        y: 4px;
+        width: parent.width - 72px - chip.width;
+        text: root.data.path;
+        font-size: 12px;
+        overflow: elide;
+    }
+    T {
+        x: Dir.rtl ? 12px + chip.width : 60px;
+        y: 28px;
+        width: parent.width - 72px - chip.width;
+        text: root.data.size;
+        font-size: 10px;
+        color: Theme.on-surface-variant;
+        overflow: elide;
+    }
+    chip := Rectangle {
+        x: Dir.rtl ? 6px : parent.width - 6px - self.width;
+        width: word.preferred-width + 12px;
+        height: 28px;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: root.flag.with-alpha(0.4);
+        background: root.flag.with-alpha(0.15);
+        tap := TouchArea {
+            clicked => { root.cycled(); }
+        }
+        word := Text {
+            text: root.data.priorityLabel;
+            color: root.flag;
+            font-family: Theme.font;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: 4px;
+            ink: root.flag;
+            hovered: tap.has-hover;
+            pressed: tap.pressed;
+        }
+    }
+}
+
+export component TorrentFilesCard inherits Rectangle {
+    in property <string> name;
+    in property <[TorrentFileRowDto]> files;
+    in property <bool> all-selected;
+    callback toggled(index: int, selected: bool);
+    callback cycled(index: int);
+    callback select-all(selected: bool);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.6);
+    background: Theme.surface-variant.with-alpha(0.35);
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 48px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            T {
+                horizontal-stretch: 1;
+                text: root.name;
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            TextButton {
+                text: root.all-selected ? Tr.addDeselectAll : Tr.addSelectAll;
+                pad: 6px;
+                font-size: 11px;
+                clicked => { root.select-all(!root.all-selected); }
+            }
+        }
+        Rectangle {
+            height: 6px;
+        }
+        Rectangle {
+            height: min(140px, list.preferred-height + 8px);
+            border-radius: 8px;
+            background: Theme.surface;
+            clip: true;
+            ScrollArea {
+                x: 4px;
+                y: 4px;
+                width: parent.width - 8px;
+                height: parent.height - 8px;
+                list := VerticalLayout {
+                    spacing: 2px;
+                    for file in root.files: FileRow {
+                        data: file;
+                        toggled(on) => { root.toggled(file.index, on); }
+                        cycled => { root.cycled(file.index); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component TorrentSection inherits VerticalLayout {
+    spacing: 0px;
+    Rectangle {
+        height: 12px;
+    }
+    if Core.addTorrent.state == TorrentStateCode.inspecting: Rectangle {
+        height: 74px;
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: Theme.primary.with-alpha(0.4);
+        background: Theme.primary-container.with-alpha(0.3);
+        HBox {
+            padding-start: 14px;
+            padding-end: 14px;
+            spacing: 12px;
+            cross-axis-alignment: center;
+            Spinner {
+                size: 20px;
+                stroke: 2.5px;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 2px;
+                T {
+                    text: Tr.inspectingTorrent;
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: Theme.primary;
+                    overflow: elide;
+                }
+                T {
+                    text: Tr.inspectingTorrentHint;
+                    font-size: 11px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+    if Core.addTorrent.state == TorrentStateCode.error: Rectangle {
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: Theme.error.with-alpha(0.6);
+        background: Theme.error-container.with-alpha(0.25);
+        VerticalLayout {
+            padding: 12px;
+            spacing: 0px;
+            HBox {
+                height: 24px;
+                spacing: 6px;
+                cross-axis-alignment: center;
+                EmojiIcon {
+                    glyph: "⚠️";
+                    size: 17px;
+                    ink: Theme.error;
+                }
+                T {
+                    horizontal-stretch: 1;
+                    text: Tr.torrentInspectionFailed;
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: Theme.error;
+                    overflow: elide;
+                }
+            }
+            Rectangle {
+                height: 4px;
+            }
+            Text {
+                text: Core.addTorrent.error;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 11px;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+            Rectangle {
+                height: 10px;
+            }
+            HBox {
+                height: 40px;
+                alignment: end;
+                FilledButton {
+                    text: "🔄 " + Tr.addRetryInspection;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    container: Theme.error;
+                    ink: Theme.on-error;
+                    clicked => { Act.inspectTorrent(); }
+                }
+            }
+        }
+    }
+    if Core.addTorrent.state == TorrentStateCode.not-inspected: OutlinedButton {
+        text: "🧲 " + Tr.inspectTorrentFiles;
+        enabled: Core.addTorrent.inspectEnabled;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        ink: #38BDF8;
+        line: #0284C7;
+        clicked => { Act.inspectTorrent(); }
+    }
+    if Core.addTorrent.state == TorrentStateCode.files: TorrentFilesCard {
+        name: Core.addTorrent.name;
+        files: Core.addTorrentFiles;
+        all-selected: Core.addTorrent.allSelected;
+        toggled(index, on) => { Act.toggleTorrentFile(index, on); }
+        cycled(index) => { Act.cycleTorrentFilePriority(index); }
+        select-all(on) => { Act.selectAllTorrentFiles(on); }
+    }
+}

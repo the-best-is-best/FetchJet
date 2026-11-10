@@ -1,0 +1,283 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { TextButton } from "../widgets/Buttons.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { Spinner } from "../widgets/Kit.slint";
+import { PickMenu } from "../widgets/Menu.slint";
+import { TorrentFilesCard } from "AddTorrent.slint";
+import { Core, LinkRowDto, LinkLineCode, LinkTagCode } from "../generated/dto.slint";
+import { Tr } from "../generated/tr.slint";
+import { Act } from "../generated/actions.slint";
+
+component QualityChip inherits Rectangle {
+    in property <LinkRowDto> data;
+    in property <length> limit;
+    width: min(root.limit, name.preferred-width + arrow.preferred-width + 28px);
+    height: 36px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.primary.with-alpha(0.5);
+    background: Theme.primary.with-alpha(0.08);
+    tap := TouchArea {
+        clicked => { menu.show(); }
+    }
+    name := Text {
+        x: Dir.rtl ? 10px + arrow.preferred-width + 8px : 10px;
+        width: parent.width - arrow.preferred-width - 28px;
+        text: root.data.lineText;
+        color: Theme.primary;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    arrow := Text {
+        x: Dir.rtl ? 10px : parent.width - 10px - self.preferred-width;
+        width: self.preferred-width;
+        text: "▾";
+        color: Theme.primary;
+        font-family: "Segoe UI Symbol";
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 8px;
+        ink: Theme.primary;
+        hovered: tap.has-hover;
+        pressed: tap.pressed;
+    }
+    menu := PickMenu {
+        x: Dir.rtl ? min(0px, root.width - self.width) : 0;
+        options: root.data.qualities;
+        pick: root.data.qualityPick;
+        font-size: 13px;
+        anchor-top: root.absolute-position.y;
+        anchor-height: root.height;
+        picked(i) => { Act.setLinkQuality(root.data.index, root.data.qualityIndexes[i]); }
+    }
+}
+
+component LinkRow inherits VerticalLayout {
+    in property <LinkRowDto> data;
+    in property <bool> divider;
+    private property <bool> torrent: root.data.tagCode == LinkTagCode.torrent;
+    private property <length> line-start: root.torrent ? 12px : 48px;
+    private property <length> line-bottom: root.torrent ? 10px : 8px;
+    private property <color> tag-ink: root.data.tagCode == LinkTagCode.audio ? #FBBF24
+        : root.data.tagCode == LinkTagCode.video ? #E879F9
+        : root.torrent ? #34D399 : #38BDF8;
+    spacing: 0px;
+    if root.divider: Rectangle {
+        height: 1px;
+        background: Theme.outline-variant.with-alpha(0.35);
+    }
+    Rectangle {
+        height: 60px;
+        ta := TouchArea {
+            clicked => { Act.toggleLink(root.data.index, !root.data.selected); }
+        }
+        Hover {
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+        Rectangle {
+            x: Dir.rtl ? parent.width - 44px : 4px;
+            width: 40px;
+            height: 40px;
+            CheckBox {
+                checked: root.data.selected;
+                toggled(on) => { Act.toggleLink(root.data.index, on); }
+            }
+        }
+        tag := Rectangle {
+            x: Dir.rtl ? 12px : parent.width - 12px - self.width;
+            width: word.preferred-width + 14px;
+            height: 30px;
+            border-radius: 6px;
+            background: root.tag-ink.with-alpha(0.15);
+            word := Text {
+                text: root.data.tag;
+                color: root.tag-ink;
+                font-family: Theme.font;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        T {
+            x: Dir.rtl ? 12px + tag.width + 8px : 48px;
+            y: 6px;
+            width: parent.width - 68px - tag.width;
+            text: root.data.title;
+            font-size: 13px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        T {
+            x: Dir.rtl ? 12px + tag.width + 8px : 48px;
+            y: 30px;
+            width: parent.width - 68px - tag.width;
+            text: root.data.host;
+            font-size: 11px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+    }
+    if root.data.line == LinkLineCode.inspecting: Rectangle {
+        height: 24px + root.line-bottom;
+        Rectangle {
+            x: Dir.rtl ? parent.width - root.line-start - 14px : root.line-start;
+            y: 5px;
+            width: 14px;
+            height: 14px;
+            Spinner {
+                size: 14px;
+            }
+        }
+        T {
+            x: Dir.rtl ? 12px : root.line-start + 22px;
+            y: 0;
+            width: parent.width - root.line-start - 34px;
+            text: root.data.lineText;
+            font-size: 12px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+    }
+    if root.data.line == LinkLineCode.qualities: Rectangle {
+        height: 36px + 8px;
+        QualityChip {
+            x: Dir.rtl ? parent.width - 48px - self.width : 48px;
+            y: 0;
+            limit: parent.width - 60px;
+            data: root.data;
+        }
+    }
+    if root.data.line == LinkLineCode.failed: Rectangle {
+        height: 48px + 8px;
+        HBox {
+            x: Dir.rtl ? 12px : 48px;
+            y: 0;
+            width: parent.width - 60px;
+            height: 48px;
+            spacing: 8px;
+            alignment: start;
+            cross-axis-alignment: center;
+            T {
+                text: root.data.lineText;
+                font-size: 12px;
+                color: Theme.error;
+                overflow: elide;
+            }
+            TextButton {
+                text: Tr.retry;
+                font-size: 12px;
+                font-weight: 600;
+                clicked => { Act.retryLinkInspect(root.data.index); }
+            }
+        }
+    }
+    if root.data.line == LinkLineCode.files: VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 10px;
+        TorrentFilesCard {
+            name: root.data.filesName;
+            files: root.data.files;
+            all-selected: root.data.filesAllSelected;
+            toggled(index, on) => { Act.toggleLinkTorrentFile(root.data.index, index, on); }
+            cycled(index) => { Act.cycleLinkTorrentFilePriority(root.data.index, index); }
+            select-all(on) => { Act.selectAllLinkTorrentFiles(root.data.index, on); }
+        }
+    }
+    if root.data.line == LinkLineCode.error: VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 10px;
+        Text {
+            min-height: 24px;
+            text: root.data.lineText;
+            color: Theme.error;
+            font-family: Theme.font;
+            font-size: 12px;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+}
+
+export component LinkListSection inherits VerticalLayout {
+    spacing: 0px;
+    HBox {
+        height: 48px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        T {
+            horizontal-stretch: 1;
+            text: Core.add.linkSummary;
+            font-size: 13px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        TextButton {
+            text: Core.add.linkAllSelected ? Tr.selectNone : Tr.selectAll;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { Act.selectAllLinks(!Core.add.linkAllSelected); }
+        }
+    }
+    Rectangle {
+        height: 29px;
+        T {
+            x: Dir.rtl ? 0 : 4px;
+            y: 0;
+            width: parent.width - 4px;
+            text: Tr.playlistFolder;
+            tracking: 0.3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: folder.has-focus ? Theme.primary : Theme.on-surface-variant;
+            overflow: elide;
+        }
+    }
+    folder := TextField {
+        leading-emoji: "📁";
+        value: Core.add.linkFolder;
+        rev: Core.add.linkFolderRev;
+        edited(text) => { Act.setLinkFolder(text); }
+    }
+    Rectangle {
+        height: 36px;
+        T {
+            x: 0;
+            y: 4px;
+            width: parent.width;
+            text: Tr.playlistFolderHint;
+            font-size: 10px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+    }
+    Rectangle {
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        background: Theme.surface-variant.with-alpha(0.25);
+        clip: true;
+        VerticalLayout {
+            padding: 1px;
+            spacing: 0px;
+            for row[i] in Core.addLinks: LinkRow {
+                data: row;
+                divider: i > 0;
+            }
+        }
+    }
+}

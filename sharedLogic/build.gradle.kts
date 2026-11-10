@@ -103,7 +103,6 @@ kotlin {
         }
         if (nativeDesktop) {
             getByName("mingwX64Main").dependencies {
-                implementation(libs.ktor.client.winhttp)
                 implementation(libs.ktor.network)
             }
         }

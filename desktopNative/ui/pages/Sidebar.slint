@@ -1,0 +1,145 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { Core, NavEntryDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component NavItem inherits Rectangle {
+    in property <string> label;
+    in property <int> count;
+    in property <bool> has-count: true;
+    in property <bool> selected;
+    callback clicked();
+    height: (root.has-count ? 44px : 38px) + 2px;
+    Rectangle {
+        y: 1px;
+        height: parent.height - 2px;
+        border-radius: 9px;
+        background: root.selected ? Theme.on-surface.with-alpha(0.08) : transparent;
+        ta := TouchArea {
+            clicked => { root.clicked(); }
+        }
+        HBox {
+            padding-start: 10px;
+            padding-end: 10px;
+            spacing: 0px;
+            cross-axis-alignment: center;
+            T {
+                text: root.label;
+                line: 20px;
+                tracking: 0.2px;
+                font-size: 14px;
+                font-weight: root.selected ? 600 : 500;
+                color: root.selected ? Theme.on-surface : Theme.on-surface-variant;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            if root.has-count: Rectangle {
+                width: badge.preferred-width + 14px;
+                height: 26px;
+                border-radius: 10px;
+                background: root.selected ? Theme.primary : Theme.on-surface.with-alpha(0.07);
+                badge := Text {
+                    text: root.count;
+                    color: root.selected ? Theme.on-primary : Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        Hover {
+            border-radius: 9px;
+            ink: Theme.on-background;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+    }
+}
+
+export component Sidebar inherits Rectangle {
+    width: 232px;
+    background: Theme.sidebar;
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        spacing: 0px;
+        HBox {
+            height: 32px + 18px;
+            padding-start: 6px;
+            spacing: 10px;
+            Rectangle {
+                width: 32px;
+                height: 50px;
+                Image {
+                    y: 0;
+                    width: 32px;
+                    height: 32px;
+                    source: @image-url("../logo.png");
+                }
+            }
+            Rectangle {
+                height: 50px;
+                horizontal-stretch: 1;
+                T {
+                    x: 0;
+                    y: 4px;
+                    width: parent.width;
+                    text: "FetchJet";
+                    line: 24px;
+                    tracking: 0.2px;
+                    font-size: 16px;
+                    font-weight: 700;
+                }
+            }
+        }
+        for entry in Core.chrome.navState: NavItem {
+            label: entry.label;
+            count: entry.count;
+            selected: entry.selected;
+            clicked => { Act.setFilter(entry.filter); }
+        }
+        Rectangle {
+            height: 21px;
+            Rectangle {
+                x: 8px;
+                width: parent.width - 16px;
+                height: 1px;
+                background: Theme.outline-variant.with-alpha(0.4);
+            }
+        }
+        Rectangle {
+            height: 20px;
+            T {
+                x: Dir.rtl ? 0 : 10px;
+                y: 0;
+                width: parent.width - 10px;
+                text: Tr.homeSidebarTypeHeader;
+                line: 16px;
+                font-size: 11px;
+                font-weight: 700;
+                color: Theme.on-surface-variant;
+            }
+        }
+        for entry in Core.chrome.navType: NavItem {
+            label: entry.label;
+            count: entry.count;
+            selected: entry.selected;
+            clicked => { Act.setFilter(entry.filter); }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+        }
+        NavItem {
+            label: Tr.homeSettings;
+            has-count: false;
+            selected: Core.chrome.settingsOpen;
+            clicked => { Act.openSettings(); }
+        }
+    }
+}

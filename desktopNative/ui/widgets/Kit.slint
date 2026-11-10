@@ -1,0 +1,143 @@
+import { Theme, Dir } from "../theme.slint";
+import { T, Hover } from "Base.slint";
+
+export component SectionLabel inherits T {
+    line: 24px;
+    font-size: 12px;
+    font-weight: 600;
+    color: Theme.on-surface;
+}
+
+export component Gap inherits Rectangle {
+    in property <length> size: 14px;
+    height: root.size;
+}
+
+export component ChoiceChip inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked();
+    width: text.preferred-width + 24px;
+    height: 36px;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: root.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
+    background: root.selected ? Theme.primary.with-alpha(0.18) : Theme.surface.with-alpha(0.6);
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    text := Text {
+        text: root.label;
+        color: root.selected ? Theme.primary : Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: root.selected ? 700 : 400;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 16px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component SmallChip inherits Rectangle {
+    in property <string> label;
+    in property <color> container: Theme.surface-variant.with-alpha(0.6);
+    in property <color> line: Theme.outline-variant.with-alpha(0.5);
+    in property <length> pad: 8px;
+    in property <length> font-size: 10px;
+    callback clicked();
+    width: text.preferred-width + 2 * root.pad;
+    height: 32px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: root.line;
+    background: root.container;
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    text := Text {
+        text: root.label;
+        color: Theme.on-surface;
+        font-family: Theme.font;
+        font-size: root.font-size;
+        font-weight: 500;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: root.border-radius;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component Spinner inherits Rectangle {
+    in property <color> ink: Theme.primary;
+    in property <length> size: 16px;
+    in property <length> stroke: 2px;
+    private property <float> turn: Math.mod(animation-tick() / 1100ms, 1);
+    width: root.size;
+    height: root.size;
+    Path {
+        width: root.size;
+        height: root.size;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        stroke: root.ink;
+        stroke-width: root.stroke;
+        fill: transparent;
+        MoveTo {
+            x: 12 + 10 * Math.cos(root.turn * 360deg);
+            y: 12 + 10 * Math.sin(root.turn * 360deg);
+        }
+        ArcTo {
+            x: 12 + 10 * Math.cos(root.turn * 360deg + 250deg);
+            y: 12 + 10 * Math.sin(root.turn * 360deg + 250deg);
+            radius-x: 10;
+            radius-y: 10;
+            large-arc: true;
+            sweep: true;
+        }
+    }
+}
+
+export component Switch inherits Rectangle {
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(checked: bool);
+    width: 52px;
+    height: 32px;
+    border-radius: 16px;
+    border-width: root.checked ? 0px : 2px;
+    border-color: Theme.outline;
+    background: root.checked ? Theme.primary : Theme.surface-container-highest;
+    opacity: root.enabled ? 1 : 0.38;
+    animate background { duration: 120ms; }
+    Rectangle {
+        x: Dir.rtl ? (root.checked ? 4px : parent.width - 8px - self.width)
+            : (root.checked ? parent.width - 4px - self.width : 8px);
+        width: root.checked ? 24px : 16px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: root.checked ? Theme.on-primary : Theme.outline;
+        animate x, width { duration: 120ms; }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.toggled(!root.checked); }
+    }
+}
+
+export component RadioMark inherits Text {
+    in property <bool> selected;
+    text: root.selected ? "◉" : "○";
+    color: root.selected ? Theme.primary : Theme.on-surface-variant;
+    font-family: "Segoe UI Symbol";
+    font-size: 14px;
+    vertical-alignment: center;
+}

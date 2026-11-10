@@ -1,0 +1,116 @@
+import { Theme, Dir } from "../theme.slint";
+
+export component ScrollBar inherits Rectangle {
+    in property <length> content-size;
+    in property <length> page-size;
+    in-out property <length> offset;
+    in property <bool> scrolling;
+    out property <bool> active: ta.has-hover || ta.pressed;
+    callback scrolled();
+    private property <length> track: root.height - 4px;
+    private property <length> maximum: max(0px, root.content-size - root.page-size);
+    private property <length> thumb-length: root.maximum <= 0px ? 0px : clamp(root.track * root.track / (root.track + root.maximum), min(28px, root.track), root.track);
+    private property <length> travel: max(root.track - root.thumb-length, 1px);
+    private property <length> pressed-offset;
+    width: 12px;
+    visible: root.maximum > 0px;
+    thumb := Rectangle {
+        x: Dir.rtl ? 0 : parent.width - self.width;
+        width: 6px;
+        y: 2px + clamp(-root.offset / max(root.maximum, 1px) * root.travel, 0px, root.travel);
+        height: root.thumb-length;
+        border-radius: 3px;
+        background: Theme.on-surface.with-alpha(root.active || root.scrolling ? 0.55 : 0.28);
+        animate background { duration: 180ms; }
+    }
+    ta := TouchArea {
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                if self.mouse-y < thumb.y || self.mouse-y > thumb.y + thumb.height {
+                    root.offset = -clamp((self.mouse-y - 2px - root.thumb-length / 2) / root.travel, 0, 1) * root.maximum;
+                    root.scrolled();
+                }
+                root.pressed-offset = -root.offset;
+            }
+        }
+        moved => {
+            if self.pressed {
+                root.offset = -clamp(root.pressed-offset + (self.mouse-y - self.pressed-y) / root.travel * root.maximum, 0px, root.maximum);
+                root.scrolled();
+            }
+        }
+    }
+}
+
+export component ListView inherits Rectangle {
+    in-out property <length> content-y <=> fl.content-y;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-width <=> fl.content-width;
+    out property <length> visible-width: fl.width;
+    out property <length> visible-height: fl.height;
+    in property <length> bar-space: 0px;
+    callback scrolled();
+    public function scroll-to-y(y: length) {
+        fl.content-y = -max(0px, min(max(0px, fl.content-height - fl.height), y));
+    }
+    public function ensure-visible(y: length, h: length) {
+        if y < -fl.content-y {
+            fl.content-y = -y;
+        } else if y + h > -fl.content-y + fl.height {
+            fl.content-y = -(y + h - fl.height);
+        }
+    }
+    min-height: 50px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    preferred-width: 100%;
+    preferred-height: 100%;
+    fl := Flickable {
+        x: Dir.rtl ? root.bar-space : 0;
+        width: parent.width - root.bar-space;
+        mouse-drag-pan-enabled: false;
+        flicked => { root.scrolled(); }
+        @children
+    }
+    ScrollBar {
+        x: Dir.rtl ? 0 : parent.width - self.width;
+        height: parent.height;
+        content-size: fl.content-height;
+        page-size: fl.height;
+        offset <=> fl.content-y;
+        scrolled => { root.scrolled(); }
+    }
+}
+
+export component ScrollArea inherits Rectangle {
+    in-out property <length> content-y <=> fl.content-y;
+    out property <length> visible-height: fl.height;
+    out property <length> visible-width: fl.width;
+    in property <length> bar-space: 0px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    fl := Flickable {
+        x: Dir.rtl ? root.bar-space : 0;
+        width: parent.width - root.bar-space;
+        mouse-drag-pan-enabled: false;
+        content-width: self.width;
+        content-height: inner.preferred-height;
+        changed content-height => {
+            if -self.content-y > max(0px, self.content-height - self.height) {
+                self.content-y = -max(0px, self.content-height - self.height);
+            }
+        }
+        inner := VerticalLayout {
+            width: fl.width;
+            alignment: start;
+            @children
+        }
+    }
+    ScrollBar {
+        x: Dir.rtl ? 0 : parent.width - self.width;
+        height: parent.height;
+        content-size: fl.content-height;
+        page-size: fl.height;
+        offset <=> fl.content-y;
+    }
+}

@@ -1,0 +1,692 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
+import { TextField, TextArea, FieldIconButton, FieldChipButton } from "../widgets/TextField.slint";
+import { ScrollArea } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { SectionLabel, Gap, ChoiceChip, Spinner } from "../widgets/Kit.slint";
+import { MediaSection, AudioConvertSection } from "AddMedia.slint";
+import { LinkListSection } from "AddLinks.slint";
+import { TorrentSection } from "AddTorrent.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { Core, ChoiceDto, EngineChoiceDto, QuickFolderDto, MediaStateCode, AddModeCode, TorrentStateCode } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component ChipRow inherits Rectangle {
+    in property <[ChoiceDto]> choices;
+    callback picked(value: int);
+    height: 36px;
+    clip: true;
+    HBox {
+        spacing: 6px;
+        alignment: start;
+        for choice in root.choices: ChoiceChip {
+            label: choice.label;
+            selected: choice.selected;
+            clicked => { root.picked(choice.value); }
+        }
+    }
+}
+
+component EngineChip inherits Rectangle {
+    in property <EngineChoiceDto> data;
+    height: 36px;
+    horizontal-stretch: 1;
+    border-radius: 10px;
+    border-width: 1.2px;
+    border-color: root.data.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
+    background: root.data.selected ? Theme.primary : Theme.surface-variant.with-alpha(0.5);
+    ta := TouchArea {
+        clicked => { Act.setEngine(root.data.engine); }
+    }
+    HBox {
+        x: (parent.width - self.preferred-width) / 2;
+        width: self.preferred-width;
+        spacing: 4px;
+        cross-axis-alignment: center;
+        EmojiIcon {
+            glyph: root.data.icon;
+            size: 14px;
+            ink: root.data.selected ? Theme.on-primary : Theme.on-surface;
+        }
+        Text {
+            text: root.data.label;
+            color: root.data.selected ? Theme.on-primary : Theme.on-surface;
+            font-family: Theme.font;
+            font-size: 12px;
+            font-weight: root.data.selected ? 700 : 500;
+            letter-spacing: Dir.rtl ? 0px : 0.4px;
+            vertical-alignment: center;
+        }
+    }
+    Hover {
+        border-radius: 10px;
+        ink: root.data.selected ? Theme.on-primary : Theme.on-surface;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+component QuickFolderButton inherits Rectangle {
+    in property <QuickFolderDto> data;
+    height: 40px;
+    horizontal-stretch: 1;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.6);
+    background: Theme.surface-variant.with-alpha(0.5);
+    clip: true;
+    ta := TouchArea {
+        clicked => { Act.setQuickFolder(root.data.path); }
+    }
+    HBox {
+        x: max(6px, (parent.width - self.preferred-width) / 2);
+        width: min(parent.width - 12px, self.preferred-width);
+        spacing: 4px;
+        cross-axis-alignment: center;
+        EmojiIcon {
+            glyph: root.data.icon;
+            size: 13px;
+        }
+        Text {
+            text: root.data.label;
+            color: Theme.on-surface;
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    Hover {
+        border-radius: 8px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+component AddHeader inherits Rectangle {
+    height: 48px;
+    HBox {
+        spacing: 10px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: Theme.primary-container.with-alpha(0.4);
+            EmojiIcon {
+                glyph: "⚡";
+                size: 20px;
+                ink: Theme.primary;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 0px;
+            T {
+                text: Tr.addDialogTitle;
+                font-size: 18px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            T {
+                text: Tr.addDialogSubtitle;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+        Rectangle {
+            width: 32px;
+            height: 32px;
+            border-radius: 16px;
+            background: Theme.surface-variant;
+            close := TouchArea {
+                clicked => { Act.showAddDialog(false); }
+            }
+            Text {
+                text: "✕";
+                color: Theme.on-surface-variant;
+                font-family: "Segoe UI Symbol";
+                font-size: 14px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Hover {
+                border-radius: 16px;
+                hovered: close.has-hover;
+                pressed: close.pressed;
+            }
+        }
+    }
+}
+
+component UrlSection inherits VerticalLayout {
+    spacing: 0px;
+    HBox {
+        height: Core.add.canImportTxt || Core.add.canOpenTorrent ? 40px : 24px;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        SectionLabel {
+            text: Tr.addLinkLabel;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        if Core.add.canImportTxt: TextButton {
+            text: "📄 " + Tr.addImportTxt;
+            pad: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { Act.importLinksFile(); }
+        }
+        if Core.add.canOpenTorrent: TextButton {
+            text: "📂 " + Tr.openTorrentFile;
+            pad: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { Act.openTorrentFile(); }
+        }
+    }
+    Gap {
+        size: 6px;
+    }
+    field := TextArea {
+        placeholder: Tr.urlPlaceholder;
+        leading-emoji: "🔗";
+        has-trailing: true;
+        trailing-width: self.text != "" ? 30px : paste.width;
+        value: Core.add.url;
+        rev: Core.add.urlRev;
+        edited(text) => { Act.setUrl(text); }
+        if field.text != "": FieldIconButton {
+            clicked => {
+                field.set-text("");
+                Act.setUrl("");
+            }
+            glyph: "✕";
+        }
+        paste := FieldChipButton {
+            visible: field.text == "";
+            emoji: "📋";
+            text: Tr.addPaste;
+            clicked => { Act.pasteUrl(); }
+        }
+    }
+}
+
+component ScheduleSection inherits VerticalLayout {
+    spacing: 0px;
+    SectionLabel {
+        text: Tr.whenToStart;
+    }
+    Gap {
+        size: 6px;
+    }
+    Rectangle {
+        height: 36px;
+        clip: true;
+        HBox {
+            spacing: 6px;
+            alignment: start;
+            ChoiceChip {
+                label: Tr.scheduleNow;
+                selected: Core.add.scheduleNow;
+                clicked => { Act.scheduleQuick(0); }
+            }
+            ChoiceChip {
+                label: Tr.scheduleIn30Min;
+                clicked => { Act.scheduleQuick(30); }
+            }
+            ChoiceChip {
+                label: Tr.scheduleIn1Hour;
+                clicked => { Act.scheduleQuick(60); }
+            }
+            ChoiceChip {
+                label: Tr.scheduleAtTime;
+                selected: Core.add.scheduleAtTime;
+                clicked => { Act.scheduleAtTime(); }
+            }
+        }
+    }
+    if Core.add.scheduleAtTime: VerticalLayout {
+        spacing: 0px;
+        Gap {
+            size: 8px;
+        }
+        T {
+            text: Tr.scheduleDayLabel;
+            font-size: 11px;
+            color: Theme.on-surface-variant;
+        }
+        Gap {
+            size: 4px;
+        }
+        ChipRow {
+            choices: Core.add.scheduleDays;
+            picked(value) => { Act.setScheduleDay(value); }
+        }
+        Gap {
+            size: 8px;
+        }
+        HBox {
+            height: 21px + 48px;
+            spacing: 0px;
+            alignment: start;
+            cross-axis-alignment: end;
+            VerticalLayout {
+                width: 80px;
+                spacing: 5px;
+                T {
+                    text: Tr.scheduleHourLabel;
+                    line: 16px;
+                    tracking: 0.3px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: hour.has-focus ? Theme.primary : Theme.on-surface-variant;
+                    overflow: elide;
+                }
+                hour := TextField {
+                    centered: true;
+                    font-size: 16px;
+                    font-weight: 500;
+                    input-type: InputType.number;
+                    value: Core.add.scheduleHour;
+                    rev: Core.add.scheduleRev;
+                    edited(text) => { Act.setScheduleHour(text); }
+                }
+            }
+            Rectangle {
+                width: colon.preferred-width;
+                height: 48px;
+                colon := Text {
+                    text: " : ";
+                    color: Theme.on-surface;
+                    font-family: Theme.font;
+                    font-size: 16px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+            VerticalLayout {
+                width: 80px;
+                spacing: 5px;
+                T {
+                    text: Tr.scheduleMinuteLabel;
+                    line: 16px;
+                    tracking: 0.3px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: minute.has-focus ? Theme.primary : Theme.on-surface-variant;
+                    overflow: elide;
+                }
+                minute := TextField {
+                    centered: true;
+                    font-size: 16px;
+                    font-weight: 500;
+                    input-type: InputType.number;
+                    value: Core.add.scheduleMinute;
+                    rev: Core.add.scheduleRev;
+                    edited(text) => { Act.setScheduleMinute(text); }
+                }
+            }
+            Rectangle {
+                width: 8px;
+            }
+            Rectangle {
+                width: am.width;
+                height: 48px;
+                am := ChoiceChip {
+                    label: Tr.scheduleAm;
+                    selected: !Core.add.schedulePm;
+                    clicked => { Act.setSchedulePm(false); }
+                }
+            }
+            Rectangle {
+                width: 4px;
+            }
+            Rectangle {
+                width: pm.width;
+                height: 48px;
+                pm := ChoiceChip {
+                    label: Tr.schedulePm;
+                    selected: Core.add.schedulePm;
+                    clicked => { Act.setSchedulePm(true); }
+                }
+            }
+            Rectangle {
+                width: 10px;
+            }
+            Rectangle {
+                width: set.min-width;
+                height: 48px;
+                set := FilledButton {
+                    text: Tr.scheduleSet;
+                    border-radius: 10px;
+                    font-size: 12px;
+                    clicked => { Act.applyScheduleTime(); }
+                }
+            }
+        }
+        if Core.add.scheduleError != "": T {
+            text: Core.add.scheduleError;
+            line: 28px;
+            font-size: 11px;
+            color: Theme.error;
+        }
+    }
+    if Core.add.scheduleStartsAt != "": Gap {
+        size: 6px;
+    }
+    if Core.add.scheduleStartsAt != "": Rectangle {
+        height: 36px;
+        border-radius: 8px;
+        background: Theme.primary-container.with-alpha(0.45);
+        HBox {
+            padding-start: 10px;
+            padding-end: 10px;
+            spacing: 4px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "🕑";
+                size: 13px;
+            }
+            T {
+                text: Core.add.scheduleStartsAt;
+                font-size: 11px;
+                font-weight: 600;
+                color: Theme.primary;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component AddActions inherits VerticalLayout {
+    spacing: 0px;
+    if Core.add.error != "": Rectangle {
+        border-radius: 8px;
+        background: Theme.error-container.with-alpha(0.35);
+        GridLayout {
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 6px;
+            padding-bottom: 6px;
+            spacing: 6px;
+            Rectangle {
+                row: 0;
+                col: Dir.rtl ? 1 : 0;
+                width: 18px;
+                EmojiIcon {
+                    glyph: "⚠️";
+                    size: 15px;
+                    ink: Theme.error;
+                }
+            }
+            Text {
+                row: 0;
+                col: Dir.rtl ? 0 : 1;
+                text: Core.add.error;
+                color: Theme.error;
+                font-family: Theme.font;
+                font-size: 11px;
+                font-weight: 500;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                min-height: 24px;
+                wrap: word-wrap;
+            }
+        }
+    }
+    if Core.add.error != "": Gap {
+        size: 12px;
+    }
+    HBox {
+        height: 48px;
+        spacing: 0px;
+        alignment: end;
+        cross-axis-alignment: center;
+        OutlinedButton {
+            text: Tr.cancel;
+            border-radius: 10px;
+            font-size: 13px;
+            ink: Theme.on-surface;
+            clicked => { Act.showAddDialog(false); }
+        }
+        Rectangle {
+            width: 10px;
+        }
+        if Core.add.showRetry: FilledButton {
+            text: "🔄 " + Tr.addRetryInspect;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            container: Theme.error;
+            ink: Theme.on-error;
+            clicked => { Act.retryInspect(); }
+        }
+        if Core.add.showRetry: Rectangle {
+            width: 8px;
+        }
+        Rectangle {
+            width: start.min-width + (Core.add.loading ? 24px : 0px);
+            height: 40px;
+            border-radius: 10px;
+            background: Core.add.primaryEnabled ? Theme.primary : Theme.surface-variant;
+            start := FilledButton {
+                x: Core.add.loading ? 24px : 0;
+                text: Core.add.primaryLabel;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 700;
+                container: transparent;
+                ink: Core.add.primaryEnabled ? Theme.on-primary : Theme.on-surface-variant.with-alpha(0.6);
+                enabled: Core.add.primaryEnabled;
+                clicked => { Act.startDownload(); }
+            }
+            if Core.add.loading: Spinner {
+                x: Dir.rtl ? parent.width - 40px : 24px;
+                ink: Theme.on-surface;
+            }
+        }
+    }
+}
+
+component AddBody inherits VerticalLayout {
+    private property <bool> links: Core.add.mode == AddModeCode.link-list;
+    padding: 20px;
+    spacing: 0px;
+    alignment: start;
+    AddHeader { }
+    Gap {
+        size: 16px;
+    }
+    UrlSection { }
+    Gap { }
+    if root.links: LinkListSection { }
+    if !root.links: SectionLabel {
+        text: Tr.addDownloadEngine;
+    }
+    if !root.links: Gap {
+        size: 6px;
+    }
+    if !root.links: HBox {
+        height: 36px;
+        spacing: 8px;
+        for choice in Core.add.engines: EngineChip {
+            data: choice;
+        }
+    }
+    if !root.links && Core.addTorrent.state != TorrentStateCode.hidden: TorrentSection { }
+    if !root.links && Core.addMedia.state != MediaStateCode.hidden: MediaSection { }
+    Gap { }
+    ScheduleSection { }
+    Gap { }
+    if Core.add.connectionsShown: SectionLabel {
+        text: Tr.addConnectionsTitle;
+    }
+    if Core.add.connectionsShown: Gap {
+        size: 6px;
+    }
+    if Core.add.connectionsShown: ChipRow {
+        choices: Core.add.connections;
+        picked(value) => { Act.setConnections(value); }
+    }
+    if Core.add.connectionsShown: Gap { }
+    if Core.addMedia.audioShown: AudioConvertSection { }
+    if Core.add.fileNameShown: SectionLabel {
+        text: Tr.addFileNameLabel;
+    }
+    if Core.add.fileNameShown: Gap {
+        size: 6px;
+    }
+    if Core.add.fileNameShown: TextField {
+        leading-emoji: Core.add.fileNameBusy ? "⏳" : "📝";
+        enabled: !Core.add.fileNameBusy;
+        has-trailing: Core.add.fileNameCanReset;
+        value: Core.add.fileName;
+        rev: Core.add.fileNameRev;
+        edited(text) => { Act.setFileName(text); }
+        if Core.add.fileNameCanReset: Rectangle {
+            width: 36px;
+            FieldIconButton {
+                x: Dir.rtl ? 0 : 6px;
+                glyph: "↺";
+                clicked => { Act.resetFileName(); }
+            }
+        }
+    }
+    if Core.add.fileNameShown: Gap { }
+    if Core.add.checksumShown: SectionLabel {
+        text: Tr.checksumLabel;
+    }
+    if Core.add.checksumShown: Gap {
+        size: 6px;
+    }
+    if Core.add.checksumShown: checksum := TextField {
+        placeholder: Tr.checksumHint;
+        leading: "#";
+        has-trailing: self.text != "";
+        value: Core.add.checksum;
+        rev: Core.add.checksumRev;
+        edited(text) => { Act.setChecksum(text); }
+        if checksum.text != "": Rectangle {
+            width: 36px;
+            FieldIconButton {
+                x: Dir.rtl ? 0 : 6px;
+                glyph: "✕";
+                clicked => {
+                    checksum.set-text("");
+                    Act.setChecksum("");
+                }
+            }
+        }
+    }
+    if Core.add.checksumShown: Gap { }
+    SectionLabel {
+        text: Tr.saveDestination;
+    }
+    Gap {
+        size: 6px;
+    }
+    TextField {
+        leading-emoji: "📁";
+        has-trailing: true;
+        value: Core.add.destination;
+        rev: Core.add.destinationRev;
+        edited(text) => { Act.setDestination(text); }
+        Rectangle {
+            width: 36px;
+            FieldIconButton {
+                x: Dir.rtl ? 0 : 6px;
+                emoji: "📂";
+                clicked => { Act.pickDestination(); }
+            }
+        }
+    }
+    Gap {
+        size: 8px;
+    }
+    HBox {
+        height: 40px;
+        spacing: 8px;
+        for folder in Core.add.quickFolders: QuickFolderButton {
+            data: folder;
+        }
+    }
+    if Core.add.leechShown: Rectangle {
+        height: 10px + 48px;
+        leech := TouchArea {
+            y: 10px;
+            height: 48px;
+            clicked => { Act.setLeech(!Core.add.leech); }
+        }
+        Rectangle {
+            x: Dir.rtl ? parent.width - 48px : 0;
+            y: 10px;
+            width: 48px;
+            height: 48px;
+            CheckBox {
+                checked: Core.add.leech;
+                tint: #0284C7;
+                idle: #64748B;
+                toggled(on) => { Act.setLeech(on); }
+            }
+        }
+        T {
+            x: Dir.rtl ? 0 : 54px;
+            y: 22px;
+            width: parent.width - 54px;
+            text: Tr.disableTorrentUpload;
+            font-size: 12px;
+            overflow: elide;
+        }
+    }
+    Gap {
+        size: 20px;
+    }
+    AddActions { }
+}
+
+export component AddDialog inherits Rectangle {
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.showAddDialog(false); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.showAddDialog(false);
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: clamp(root.width * 0.94, 340px, 660px);
+        height: min(body.preferred-height + 2px, min(696px, root.height - 24px));
+        border-radius: 20px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        background: Theme.surface;
+        clip: true;
+        TouchArea {
+            clicked => { keys.focus(); }
+        }
+        ScrollArea {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 2px;
+            height: parent.height - 2px;
+            body := AddBody { }
+        }
+    }
+}

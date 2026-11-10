@@ -1,0 +1,189 @@
+component FjButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    callback clicked();
+    forward-focus: fs;
+    min-width: 88px;
+    height: 36px;
+    border-radius: 8px;
+    border-width: fs.has-focus ? 2px : 0px;
+    border-color: #38bdf8;
+    background: root.primary ? #0284c7 : ta.has-hover ? #334155 : #1e293b;
+    opacity: root.enabled ? 1 : 0.5;
+    fs := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if e.text == Key.Return || e.text == Key.Space {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            fs.focus();
+            root.clicked();
+        }
+    }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        Text { text: root.text; color: white; vertical-alignment: center; horizontal-alignment: center; }
+    }
+}
+
+export component ModalOverlay inherits Rectangle {
+    in property <bool> open;
+    in property <bool> dismiss-on-outside: true;
+    in property <length> dialog-width: 420px;
+    callback dismissed();
+    callback accepted();
+    visible: root.open;
+    background: #000000a0;
+    opacity: root.open ? 1 : 0;
+    animate opacity { duration: 150ms; }
+    z: 100;
+    changed open => {
+        if root.open {
+            trap.focus();
+        }
+    }
+    blocker := TouchArea {
+        enabled: root.open;
+        clicked => {
+            if root.dismiss-on-outside {
+                root.dismissed();
+            }
+        }
+        scroll-event(e) => { accept }
+    }
+    trap := FocusScope {
+        enabled: root.open;
+        capture-key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.dismissed();
+                return accept;
+            }
+            reject
+        }
+        key-pressed(e) => {
+            if e.text == Key.Return {
+                root.accepted();
+                return accept;
+            }
+            if e.text == Key.Tab || e.text == Key.Backtab {
+                return accept;
+            }
+            accept
+        }
+        card := Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: root.dialog-width;
+            height: content.preferred-height;
+            background: #0f172a;
+            border-radius: 16px;
+            TouchArea { }
+            content := VerticalLayout {
+                padding: 20px;
+                spacing: 12px;
+                @children
+            }
+        }
+    }
+}
+
+export component MainWindow inherits Window {
+    in-out property <bool> confirm-open: false;
+    in property <string> confirm-text: "Remove 3 downloads?";
+    in-out property <bool> delete-files: false;
+    callback confirm-accepted(delete-files: bool);
+    title: "FetchJet";
+    preferred-width: 900px;
+    preferred-height: 600px;
+    min-width: 640px;
+    min-height: 420px;
+    main := FocusScope {
+        enabled: !root.confirm-open;
+        VerticalLayout {
+            padding: 16px;
+            alignment: start;
+            FjButton { text: "Delete"; clicked => { root.confirm-open = true; } }
+        }
+    }
+    ModalOverlay {
+        open: root.confirm-open;
+        dismissed => { root.confirm-open = false; }
+        accepted => {
+            root.confirm-accepted(root.delete-files);
+            root.confirm-open = false;
+        }
+        Text { text: root.confirm-text; color: white; font-size: 16px; wrap: word-wrap; }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 8px;
+            FjButton { text: "Cancel"; clicked => { root.confirm-open = false; } }
+            FjButton {
+                text: "Delete";
+                primary: true;
+                clicked => {
+                    root.confirm-accepted(root.delete-files);
+                    root.confirm-open = false;
+                }
+            }
+        }
+    }
+}
+
+export component PairingDialog inherits Window {
+    in property <string> origin;
+    callback allow();
+    callback block();
+    title: "Allow this browser?";
+    always-on-top: true;
+    no-frame: false;
+    width: 420px;
+    height: 180px;
+    forward-focus: block-button;
+    FocusScope {
+        capture-key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.hide();
+                return accept;
+            }
+            reject
+        }
+        VerticalLayout {
+            padding: 20px;
+            spacing: 12px;
+            Text { text: root.origin; wrap: word-wrap; }
+            HorizontalLayout {
+                alignment: end;
+                spacing: 8px;
+                FjButton { text: "Allow"; clicked => { root.allow(); root.hide(); } }
+                block-button := FjButton { text: "Block"; primary: true; clicked => { root.block(); root.hide(); } }
+            }
+        }
+    }
+}
+
+export component StdDialog inherits Dialog {
+    title: "Dialog element";
+    callback more();
+    Text { text: "Main content"; }
+    Rectangle {
+        dialog-button-role: accept;
+        width: 80px;
+        height: 30px;
+        background: #0284c7;
+    }
+    Rectangle {
+        dialog-button-role: reject;
+        width: 80px;
+        height: 30px;
+        background: #334155;
+    }
+}

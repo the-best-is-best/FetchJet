@@ -1,0 +1,772 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, IconButton } from "../widgets/Buttons.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { ScrollArea, ListView } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { Core, ChipDto, ConnectionDto, FileRowDto, PieceDto, PieceStateCode, DetailActionCode } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component DetailChip inherits Rectangle {
+    in property <ChipDto> chip;
+    in property <bool> pill;
+    private property <color> tone: Theme.tone(root.chip.tone);
+    width: content.preferred-width;
+    height: 30px;
+    border-radius: root.pill ? 15px : 6px;
+    background: root.pill && root.chip.tone == 1 ? Theme.surface-variant.with-alpha(0.5) : root.tone.with-alpha(0.14);
+    content := HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 5px;
+        if root.chip.dot: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 6px;
+                height: 6px;
+                border-radius: 3px;
+                background: root.tone;
+            }
+        }
+        Text {
+            text: root.chip.text;
+            color: root.tone;
+            font-family: Theme.font;
+            font-size: root.pill ? 10px : 11px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component DetailStat inherits VerticalLayout {
+    in property <string> label;
+    in property <string> value;
+    in property <string> icon;
+    in property <color> ink: Theme.on-surface;
+    spacing: 2px;
+    alignment: start;
+    horizontal-stretch: 1;
+    T {
+        text: root.label;
+        line: 16px;
+        font-size: 11px;
+        font-weight: 500;
+        color: Theme.on-surface-variant;
+        overflow: elide;
+    }
+    GridLayout {
+        spacing: 0px;
+        if root.icon != "": Rectangle {
+            row: 0;
+            col: Dir.rtl ? 1 : 0;
+            width: 20px;
+            height: 20px;
+            EmojiIcon {
+                x: Dir.rtl ? 6px : 0;
+                glyph: root.icon;
+                size: 14px;
+                ink: root.ink;
+            }
+        }
+        Text {
+            row: 0;
+            col: Dir.rtl ? 0 : 1;
+            text: root.value;
+            color: root.ink;
+            font-family: Theme.font;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.2px;
+            horizontal-alignment: Dir.start;
+            horizontal-stretch: 1;
+            wrap: word-wrap;
+            overflow: elide;
+            max-height: 40px;
+        }
+    }
+}
+
+component ConnectionCard inherits Rectangle {
+    in property <ConnectionDto> data;
+    private property <color> tint: root.data.active ? Theme.piece-active : Theme.status-paused;
+    height: 52px;
+    horizontal-stretch: 1;
+    border-radius: 10px;
+    background: Theme.surface-variant.with-alpha(0.35);
+    HBox {
+        x: 10px;
+        y: 8px;
+        width: parent.width - 20px;
+        height: 26px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: badge.preferred-width + 12px;
+            height: 26px;
+            border-radius: 5px;
+            background: root.tint.with-alpha(0.18);
+            badge := Text {
+                text: root.data.label;
+                color: root.tint;
+                font-family: Theme.font;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        T {
+            text: root.data.text;
+            font-size: 11px;
+            font-weight: 600;
+            color: root.data.active ? Theme.on-surface : root.tint;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        T {
+            text: root.data.percent;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface.with-alpha(0.85);
+        }
+    }
+    Rectangle {
+        x: 10px;
+        y: 40px;
+        width: parent.width - 20px;
+        height: 4px;
+        border-radius: 2px;
+        background: Theme.surface-variant;
+        Rectangle {
+            x: Dir.rtl ? parent.width - self.width : 0;
+            width: parent.width * clamp(root.data.fraction, 0, 1);
+            height: 4px;
+            border-radius: 2px;
+            background: root.tint;
+        }
+    }
+}
+
+component PieceMap inherits Rectangle {
+    private property <length> gap: Core.detailPieces.length == 0 ? 0px
+        : root.width / Core.detailPieces.length > 60px ? 2px
+        : root.width / Core.detailPieces.length > 6px ? 1px : 0px;
+    private property <float> sheen: Math.mod(animation-tick() / 1600ms, 1) * 1.8 - 0.4;
+    height: 22px;
+    border-radius: 6px;
+    clip: true;
+    for piece in Core.detailPieces: Rectangle {
+        private property <length> seg: max(1px, root.width * (piece.end - piece.start) - root.gap);
+        x: root.width * piece.start + root.gap / 2;
+        width: self.seg;
+        height: root.height;
+        background: piece.state == PieceStateCode.completed ? Theme.primary : Theme.surface-variant.with-alpha(0.55);
+        if piece.state == PieceStateCode.active && piece.fill > 0: Rectangle {
+            x: 0;
+            width: parent.seg * piece.fill;
+            background: @linear-gradient(90deg, Theme.primary 0%, Theme.piece-active 100%);
+            clip: true;
+            Rectangle {
+                x: parent.width * (root.sheen - 0.18);
+                width: parent.width * 0.36;
+                background: @linear-gradient(90deg, #ffffff00 0%, #ffffff73 50%, #ffffff00 100%);
+            }
+        }
+        if piece.state == PieceStateCode.idle && piece.fill > 0: Rectangle {
+            x: 0;
+            width: parent.seg * piece.fill;
+            background: Theme.primary.with-alpha(0.6);
+        }
+        if piece.state == PieceStateCode.waiting && piece.fill > 0: Rectangle {
+            x: 0;
+            width: parent.seg * piece.fill;
+            background: Theme.status-paused.with-alpha(0.85);
+        }
+        if piece.state == PieceStateCode.waiting && piece.fill <= 0: Rectangle {
+            x: 0;
+            y: parent.height - 3px;
+            height: 3px;
+            background: Theme.status-paused.with-alpha(0.5);
+        }
+    }
+}
+
+component PiecesBar inherits VerticalLayout {
+    spacing: 0px;
+    HBox {
+        height: 30px;
+        spacing: 6px;
+        cross-axis-alignment: center;
+        T {
+            text: Tr.homePiecesLabel;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            color: Theme.on-surface-variant;
+            horizontal-stretch: 1;
+        }
+        for pill in Core.details.piecePills: DetailChip {
+            chip: pill;
+            pill: true;
+        }
+    }
+    Rectangle {
+        height: 8px;
+    }
+    PieceMap { }
+    if Core.details.piecesSummary != "": Rectangle {
+        height: 6px;
+    }
+    if Core.details.piecesSummary != "": Text {
+        text: Core.details.piecesSummary;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 11px;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+    }
+    if Core.detailConnections.length > 0: Rectangle {
+        height: 10px;
+    }
+    for card[index] in Core.detailConnections: Rectangle {
+        height: Math.mod(index, 2) == 0 ? 58px : 0px;
+        if Math.mod(index, 2) == 0: HBox {
+            y: 0;
+            height: 52px;
+            spacing: 8px;
+            ConnectionCard {
+                data: card;
+            }
+            if index + 1 < Core.detailConnections.length: ConnectionCard {
+                data: Core.detailConnections[index + 1];
+            }
+            if index + 1 >= Core.detailConnections.length: Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
+component FileRow inherits Rectangle {
+    in property <FileRowDto> data;
+    private property <color> tone: root.data.priority > 0 ? Theme.primary : root.data.priority < 0 ? Theme.error : Theme.on-surface-variant;
+    height: 52px + 2px;
+    HBox {
+        y: 2px;
+        height: 48px;
+        padding-start: 4px;
+        padding-end: 4px;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 48px;
+            height: 48px;
+            CheckBox {
+                checked: root.data.selected;
+                toggled(on) => { Act.toggleDetailFile(root.data.index, on); }
+            }
+        }
+        Rectangle {
+            width: 4px + 18px;
+            height: 20px;
+            EmojiIcon {
+                x: Dir.rtl ? 0 : 4px;
+                glyph: root.data.completed ? "✅" : "⚪";
+                size: 13px;
+            }
+        }
+        ElideText {
+            text: root.data.path;
+            text-rtl: root.data.pathRtl;
+            behind: Theme.surface;
+            ink: root.data.selected ? Theme.on-surface : Theme.on-surface-variant.with-alpha(0.5);
+            font-size: 12px;
+            line: 16px;
+            tracking: 0.4px;
+        }
+        Rectangle {
+            width: label.preferred-width + 12px;
+            height: 20px;
+            border-radius: 4px;
+            background: root.tone.with-alpha(0.15);
+            ta := TouchArea {
+                clicked => { Act.cycleDetailFilePriority(root.data.index); }
+            }
+            label := Text {
+                text: root.data.priorityLabel;
+                color: root.tone;
+                font-family: Theme.font;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Hover {
+                border-radius: 4px;
+                ink: root.tone;
+                hovered: ta.has-hover;
+                pressed: ta.pressed;
+            }
+        }
+        Rectangle {
+            width: 8px;
+        }
+        T {
+            text: root.data.sizeText;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            color: Theme.on-surface-variant;
+        }
+    }
+}
+
+component DetailsBody inherits VerticalLayout {
+    in-out property <bool> show-files: false;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 8px;
+    padding-bottom: 20px;
+    spacing: 0px;
+    alignment: start;
+    Text {
+        text: Core.details.name;
+        color: Theme.on-surface;
+        font-family: Core.details.nameHan ? "Microsoft YaHei UI" : Theme.font;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: Dir.rtl || Core.details.nameRtl ? 0px : 0.2px;
+        horizontal-alignment: Dir.start;
+        wrap: char-wrap;
+    }
+    Rectangle {
+        height: 10px;
+    }
+    FlexboxLayout {
+        flex-direction: Dir.rtl ? row-reverse : row;
+        flex-wrap: wrap;
+        spacing: 6px;
+        for chip in Core.details.chips: DetailChip {
+            chip: chip;
+        }
+    }
+    if Core.details.hasFiles: Rectangle {
+        height: 6px;
+    }
+    if Core.details.hasFiles: Rectangle {
+        height: 20px;
+        files := TouchArea {
+            clicked => { root.show-files = !root.show-files; }
+        }
+        HBox {
+            spacing: 4px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "📁";
+                size: 13px;
+            }
+            T {
+                text: Core.details.filesTitle + (root.show-files ? " ▲" : " ▼");
+                line: 16px;
+                tracking: 0.4px;
+                font-size: 12px;
+                font-weight: 700;
+                color: Theme.primary;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    if Core.details.hasFiles && root.show-files: Rectangle {
+        height: 4px;
+    }
+    if Core.details.hasFiles && root.show-files: Rectangle {
+        height: 110px;
+        border-radius: 6px;
+        background: Theme.surface-variant.with-alpha(0.4);
+        ListView {
+            x: 4px;
+            y: 4px;
+            width: parent.width - 8px;
+            height: parent.height - 8px;
+            for file in Core.detailFiles: FileRow {
+                data: file;
+            }
+        }
+    }
+    Rectangle {
+        height: 8px;
+    }
+    Rectangle {
+        border-radius: 14px;
+        background: Theme.surface-variant.with-alpha(0.35);
+        VerticalLayout {
+            padding: 14px;
+            spacing: 0px;
+            Rectangle {
+                height: 30px;
+                Text {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    y: (parent.height - self.height) / 2 - 3px;
+                    width: self.preferred-width;
+                    height: self.preferred-height;
+                    text: Core.details.percent;
+                    color: Theme.on-surface;
+                    font-family: Theme.font;
+                    font-size: 30px;
+                    font-weight: 700;
+                }
+                T {
+                    x: Dir.rtl ? 0 : parent.width - self.width;
+                    y: 8px;
+                    width: self.preferred-width;
+                    text: Core.details.statusWord;
+                    line: 16px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    color: Theme.on-surface-variant;
+                }
+            }
+            Rectangle {
+                height: 4px;
+            }
+            if Core.details.stepLine != "": Rectangle {
+                height: 4px + 24px;
+                Rectangle {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    y: 4px;
+                    width: min(parent.width, step.preferred-width);
+                    height: 24px;
+                    border-radius: 6px;
+                    background: Theme.primary-container.with-alpha(0.7);
+                    clip: true;
+                    step := HBox {
+                        padding-start: 8px;
+                        padding-end: 8px;
+                        spacing: 4px;
+                        cross-axis-alignment: center;
+                        EmojiIcon {
+                            glyph: "⚡";
+                            size: 12px;
+                            ink: Theme.on-primary-container;
+                        }
+                        T {
+                            text: Core.details.stepLine;
+                            line: 16px;
+                            font-size: 11px;
+                            font-weight: 700;
+                            color: Theme.on-primary-container;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                height: 8px;
+                border-radius: 4px;
+                background: Theme.secondary-container;
+                clip: true;
+                Rectangle {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    width: parent.width * clamp(Core.details.progress, 0, 1);
+                    height: 8px;
+                    border-radius: 4px;
+                    background: Theme.primary;
+                }
+            }
+            if Core.details.postShown: Rectangle {
+                height: 6px;
+            }
+            if Core.details.postShown: HBox {
+                height: 16px;
+                spacing: 4px;
+                cross-axis-alignment: center;
+                EmojiIcon {
+                    glyph: Core.details.postIcon;
+                    size: 12px;
+                    ink: Theme.tertiary;
+                }
+                T {
+                    text: Core.details.postLabel;
+                    line: 16px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: Theme.tertiary;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                T {
+                    text: Core.details.postRight;
+                    line: 16px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: Theme.on-surface-variant;
+                }
+            }
+            if Core.details.postShown: Rectangle {
+                height: 4px;
+            }
+            if Core.details.postShown: LinearProgress {
+                height: 5px;
+                value: Core.details.postProgress;
+                indeterminate: Core.details.postIndeterminate;
+                ink: Theme.tertiary;
+            }
+            Rectangle {
+                height: 8px;
+            }
+            GridLayout {
+                spacing: 12px;
+                DetailStat {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    label: Tr.detailsDownloaded;
+                    value: Core.details.downloaded;
+                }
+                DetailStat {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    label: Core.details.speedLabel;
+                    icon: Core.details.speedIcon;
+                    value: Core.details.speedValue;
+                    ink: Theme.tone(Core.details.speedTone);
+                }
+            }
+            Rectangle {
+                height: 10px;
+            }
+            GridLayout {
+                spacing: 12px;
+                DetailStat {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    label: Tr.detailsTimeLeft;
+                    value: Core.details.timeLeft;
+                }
+                DetailStat {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    label: Tr.detailsAdded;
+                    value: Core.details.added;
+                }
+            }
+        }
+    }
+    if Core.details.piecesShown: Rectangle {
+        height: 12px;
+    }
+    if Core.details.piecesShown: PiecesBar { }
+    if Core.details.error != "": Rectangle {
+        height: 6px;
+    }
+    if Core.details.error != "": Text {
+        text: "⚠ " + Core.details.error;
+        color: Theme.error;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: Dir.rtl ? 0px : 0.4px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+    }
+    Rectangle {
+        height: 14px;
+    }
+    T {
+        text: Tr.detailsSavedTo;
+        line: 16px;
+        font-size: 11px;
+        font-weight: 500;
+        color: Theme.on-surface-variant;
+    }
+    Rectangle {
+        height: 3px;
+    }
+    Text {
+        text: Core.details.fullPath;
+        color: Theme.on-surface.with-alpha(0.75);
+        font-family: Theme.font;
+        font-size: 12px;
+        letter-spacing: Dir.rtl || Core.details.fullPathRtl ? 0px : 0.4px;
+        horizontal-alignment: Dir.start;
+        wrap: char-wrap;
+        overflow: elide;
+        max-height: 48px;
+    }
+    for link in Core.details.links: VerticalLayout {
+        spacing: 0px;
+        Rectangle {
+            height: 10px;
+        }
+        HBox {
+            height: 20px;
+            spacing: 0px;
+            cross-axis-alignment: center;
+            T {
+                text: link.label;
+                line: 16px;
+                font-size: 11px;
+                font-weight: 500;
+                color: Theme.on-surface-variant;
+                horizontal-stretch: 1;
+            }
+            Rectangle {
+                width: copy.preferred-width + 12px;
+                height: 20px;
+                border-radius: 4px;
+                ta := TouchArea {
+                    clicked => { Act.copyText(link.url); }
+                }
+                copy := Text {
+                    text: Tr.copy;
+                    color: Theme.primary;
+                    font-family: Theme.font;
+                    font-size: 11px;
+                    font-weight: 600;
+                    letter-spacing: Dir.rtl ? 0px : 0.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                Hover {
+                    border-radius: 4px;
+                    ink: Theme.primary;
+                    hovered: ta.has-hover;
+                    pressed: ta.pressed;
+                }
+            }
+        }
+        Rectangle {
+            height: 3px;
+        }
+        Text {
+            text: link.url;
+            color: Theme.on-surface.with-alpha(0.75);
+            font-family: Theme.font;
+            font-size: 12px;
+            letter-spacing: 0.4px;
+            horizontal-alignment: Dir.start;
+            wrap: char-wrap;
+            overflow: elide;
+            max-height: 64px;
+        }
+    }
+    if Core.details.checksumShown: Rectangle {
+        height: 13px;
+    }
+    if Core.details.checksumShown: HBox {
+        height: 16px;
+        spacing: 4px;
+        cross-axis-alignment: center;
+        EmojiIcon {
+            glyph: Core.details.checksumIcon;
+            size: 13px;
+        }
+        T {
+            text: Core.details.checksumText;
+            line: 16px;
+            tracking: 0.4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: Theme.tone(Core.details.checksumTone);
+            horizontal-stretch: 1;
+        }
+    }
+    Rectangle {
+        height: 18px;
+    }
+    HBox {
+        height: 42px;
+        spacing: 8px;
+        FilledButton {
+            text: Core.details.primaryLabel;
+            height: 42px;
+            border-radius: 10px;
+            pad: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            horizontal-stretch: 1;
+            clicked => { Act.detailsAction(Core.details.primaryAction, true); }
+        }
+        if Core.details.secondaryAction != DetailActionCode.none: OutlinedButton {
+            text: Core.details.secondaryLabel;
+            height: 42px;
+            border-radius: 10px;
+            pad: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            ink: Theme.on-surface;
+            line: Theme.outline-variant.with-alpha(0.6);
+            horizontal-stretch: 1;
+            clicked => { Act.detailsAction(Core.details.secondaryAction, false); }
+        }
+    }
+    if Core.details.canShare: Rectangle {
+        height: 8px;
+    }
+    if Core.details.canShare: OutlinedButton {
+        text: Tr.sysDeviceSendTitle;
+        height: 42px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        clicked => { Act.detailsShare(); }
+    }
+    Rectangle {
+        height: 8px;
+    }
+    OutlinedButton {
+        text: Core.details.removeLabel;
+        height: 42px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        ink: Theme.error;
+        line: Theme.error.with-alpha(0.35);
+        clicked => { Act.detailsRemove(); }
+    }
+}
+
+export component DetailsPane inherits Rectangle {
+    in property <color> surface: Theme.surface;
+    out property <length> wanted-height: 60px + body.preferred-height;
+    background: root.surface;
+    VerticalLayout {
+        spacing: 0px;
+        HBox {
+            height: 8px + 48px + 4px;
+            padding-start: 8px;
+            padding-end: 8px;
+            spacing: 0px;
+            cross-axis-alignment: center;
+            Rectangle {
+                width: 8px;
+            }
+            T {
+                text: Tr.detailsHeaderDetails;
+                line: 16px;
+                tracking: 0.8px;
+                font-size: 12px;
+                font-weight: 700;
+                color: Theme.on-surface-variant;
+                horizontal-stretch: 1;
+            }
+            IconButton {
+                glyph: "✕";
+                glyph-size: 15px;
+                ink: Theme.on-surface;
+                clicked => { Act.closeDetails(); }
+            }
+        }
+        ScrollArea {
+            vertical-stretch: 1;
+            body := DetailsBody { }
+        }
+    }
+}

@@ -72,7 +72,7 @@ Steps:
   `desktopNative/core` = Kotlin/Native `mingwX64` `fjcore.dll` (ktor WinHttp, 4 Range pieces,
   pause / resume from the `.partN` files, global rate limit; C API `fj_add`, `fj_toggle`,
   `fj_set_limit`, `fj_snapshot`, `fj_free`, `fj_set_destination`). Build: `core\gradlew.bat
-  linkReleaseSharedMingwX64`, then `desktopNativeuild.cmd` (VS 2026 + Slint in `E:	ools\slint`).
+  linkReleaseSharedMingwX64`, then `desktopNative\build.cmd` (VS 2026 + Slint in `E:\tools\slint`).
   Measured with a real download at 20 KB/s: **15.8-18 MB private** (UI + engine), writes at
   20 KB/s. Test limit default 20 KB/s (env `FETCHJET_LIMIT_KBS`), `FETCHJET_ADD=<url>` adds a link
   at start. Note: a rate limit throttles what the app reads; Windows still fills the TCP receive
@@ -80,8 +80,66 @@ Steps:
   Known: synthetic clicks (automation tool) in the top ~60 px are not delivered as clicks; the
   owner's real mouse works there.
 
-- [ ] Then the chosen road, platform by platform (Windows first: the owner's machine and the
-  Store), with every feature checked against the current app before the switch.
+- [x] Map of the code to port (2026-11-09): `desktopNative/docs/port/01` ... `12` (the 44
+  platform `expect`s with work packages, the presentation surface, six UI specs with port units,
+  the desktop shell and packaging, i18n, the torrent plan) and the contract
+  `desktopNative/ARCHITECTURE.md`.
+- [x] Probes (2026-11-09), reports `desktopNative/docs/port/13` ... `18`. What they settled:
+    - Renderer: Slint software renderer (14.6 MB private; Skia software 32 MB). Off-screen
+      screenshot tool `desktopNative/tools/shot` (any page to a PNG in 0.2 s, no window) and
+      `deskrun` (runs the app on a hidden desktop for RAM numbers).
+    - Arabic / Persian: shaping and bidi are right; Slint has no layout mirroring, so the UI has
+      its own mirrored row / text widgets; simplified Chinese needs the YaHei font; colour emoji
+      come from an atlas drawn once by a child process (in-process drawing keeps 13 MB).
+    - No std-widgets (too heavy): own widget set. Dialogs are overlays, lists are virtualized.
+    - Kotlin `Dispatchers.Main` runs on the UI thread through the host; the Kotlin / C++ bridge
+      (snapshots out, actions in) was tested: 700 000 state updates in 3 s reach the UI as 28
+      notifications.
+    - Memory: binary option `pagedAllocator=false` (5 to 11 MB where the default allocator keeps
+      22 to 53 MB). Unicode and long paths work with the EXE manifest (UTF-8 code page).
+    - Windows helper layer `sharedLogic/src/mingwX64Main/.../platform/win/` (files, crypto,
+      DPAPI, registry, shell, clipboard, processes, zip, HTTP engine) with a test program
+      `desktopNative/tests/winhelpers` (155 checks pass; crypto and secrets are byte-compatible
+      with the JVM app, so both apps can share one app home).
+    - HTTP: ktor's WinHttp engine keeps the connection open after a cancel and has no proxy login
+      for HTTPS, so the app has its own engine on raw WinHTTP (`WinHttpEngine.kt`). SOCKS5 needs a
+      small forwarder inside the app (not written yet).
+    - Local test servers `desktopNative/tools/testserver` (HTTP / HTTPS / proxies on 127.0.0.1).
+- [x] The 44 `mingwX64` actuals (2026-11-09):
+  `gradlew :sharedLogic:compileKotlinMingwX64 -Pfetchjet.nativeDesktop=true` passes and the JVM
+  build is unchanged. Four parts are placeholders for now (list and state:
+  `desktopNative/docs/port/STATUS.md`): send to device, torrents, SOCKS5 proxy, the speed-limit
+  proxy of yt-dlp downloads.
+- [x] Core module `:desktopNativeCore` (2026-11-09): `fjcore.dll` holds the real engines and the
+  view model behind a small C API (`fj_start`, `fj_action`, `fj_snapshot`, `fj_call`). First
+  test without any window (`desktopNative/tests/corehost`, Python loads the DLL with a scratch
+  home, files come from the local test server): 29 checks pass (direct download on 4 connections
+  with the right SHA-256, the Add dialog path, pause closes the connection, resume continues
+  with ranges, remove deletes the file, `tasks_cache.json` and `app.log` are written).
+- [x] Foundations (2026-11-10): the UI protocol (DTOs in channels, actions, presenter), one
+  generator (`desktopNative/tools/gen/gen.py`: Slint structs, strings, the C++ bridge), theme and
+  widgets, the C++ host `FetchJet.exe`.
+- [x] The UI pages (2026-11-10), each drawn from the state of the real core and checked as
+  pictures (dark, light, Arabic): home, details, alerts, Add dialog (direct, media, playlist,
+  link list, torrent part), settings (every page of the desktop app; BitTorrent and Devices
+  stay hidden until their engines work), update dialog, extension dialogs, the send-to-device
+  sheet and pairing dialog (checked with made-up devices).
+- [x] Browser bridge on 127.0.0.1:28450 inside the core (2026-11-10): every endpoint of the
+  desktop app, pairing dialog, 31 checks with a test port.
+- [x] Launch and single instance (2026-11-10): link / `fetchjet://` / login-start arguments, a
+  second start hands its link to the running app and ends in 0.1 s (checked with the real EXE
+  on hidden desktops). Colour emoji in the real app (pictures from a child process, cached).
+- [ ] Integration: engine tests against the local server pass (`desktopNative/tests/corehost`,
+  300 checks in 9 files, plus 8 with the real EXE; no internet). RAM with the debug core: 24 to
+  33 MB private. Left: RAM of the release build under load, a look by the owner on a real
+  desktop (mouse, keyboard, tray, close to tray, clipboard watcher): `desktopNative\run-dev.cmd`.
+- [ ] Engines still missing (state and next steps: `desktopNative/docs/port/STATUS.md`, "Work in
+  progress"): send to device (written, not compiled), SOCKS5 forwarder and the yt-dlp speed-limit
+  proxy, torrents (libtorrent 2.1.2 sources downloaded 2026-11-10 with the owner's OK; the
+  wrapper DLL is a draft, not compiled).
+- [ ] Release build and installers: the release core links (20.3 MB); MSI / MSIX, the version
+  resource check and CI are left.
+- [ ] Then macOS and Linux, with every feature checked against the current app before the switch.
 
 ## Step 0 (done): JVM tuning on desktop
 

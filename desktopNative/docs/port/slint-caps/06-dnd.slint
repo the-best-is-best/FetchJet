@@ -1,0 +1,88 @@
+export global DropApi {
+    pure callback accepts(data: data-transfer) -> bool;
+    callback dropped(data: data-transfer, x: length, y: length);
+    pure callback row-payload(id: int) -> data-transfer;
+    callback row-drag-finished(id: int, moved: bool);
+    callback copy-text(text: string);
+    callback read-clipboard() -> string;
+}
+
+export component Demo inherits Window {
+    in-out property <string> url;
+    out property <bool> drag-over: drop.has-drag;
+    out property <DragAction> action: drop.current-action;
+    preferred-width: 600px;
+    preferred-height: 400px;
+    drop := DropArea {
+        can-drop(event) => {
+            DropApi.accepts(event.data) ? DragAction.copy : DragAction.none
+        }
+        dropped(event) => {
+            DropApi.dropped(event.data, event.position.x, event.position.y);
+            return DragAction.copy;
+        }
+        Rectangle {
+            background: drop.has-drag ? #0c3d60 : #0f172a;
+            border-width: drop.has-drag ? 2px : 0px;
+            border-color: #00e5ff;
+        }
+        VerticalLayout {
+            padding: 16px;
+            spacing: 8px;
+            alignment: start;
+            Rectangle {
+                height: 48px;
+                background: source.dragging ? #334155 : #1e293b;
+                source := DragArea {
+                    data: DropApi.row-payload(7);
+                    allow-copy: true;
+                    allow-move: true;
+                    drag-finished(action) => {
+                        DropApi.row-drag-finished(7, action == DragAction.move);
+                    }
+                    TouchArea { }
+                }
+                Text { text: "drag this row out"; color: white; }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                input := TextInput { text <=> root.url; horizontal-stretch: 1; color: white; }
+                Rectangle {
+                    width: 60px;
+                    height: 28px;
+                    background: #334155;
+                    Text { text: "Paste"; color: white; }
+                    TouchArea {
+                        clicked => {
+                            root.url = DropApi.read-clipboard();
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 60px;
+                    height: 28px;
+                    background: #334155;
+                    Text { text: "Copy"; color: white; }
+                    TouchArea {
+                        clicked => {
+                            DropApi.copy-text(root.url);
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 90px;
+                    height: 28px;
+                    background: #334155;
+                    Text { text: "Copy via input"; color: white; }
+                    TouchArea {
+                        clicked => {
+                            input.select-all();
+                            input.copy();
+                            input.clear-selection();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

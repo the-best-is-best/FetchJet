@@ -1,0 +1,100 @@
+export struct TrayEntry {
+    id: int,
+    title: string,
+    enabled: bool,
+    checked: bool,
+}
+
+export component AppTray inherits SystemTrayIcon {
+    in property <image> tray-icon;
+    in property <string> tip: "FetchJet";
+    in property <bool> paused;
+    in property <[TrayEntry]> when-done;
+    in property <string> show-label: "Show App";
+    in property <string> quit-label: "Close App";
+    callback show-app();
+    callback quit-app();
+    callback toggle-pause();
+    callback when-done-picked(id: int);
+    icon: root.tray-icon;
+    tooltip: root.tip;
+    title: "FetchJet";
+    clicked => { root.show-app(); }
+    Menu {
+        MenuItem { title: root.show-label; activated => { root.show-app(); } }
+        MenuItem {
+            title: "Pause all";
+            checkable: true;
+            checked: root.paused;
+            activated => { root.toggle-pause(); }
+        }
+        Menu {
+            title: "When downloads finish";
+            for e in root.when-done: MenuItem {
+                title: e.title;
+                enabled: e.enabled;
+                checkable: true;
+                checked: e.checked;
+                activated => { root.when-done-picked(e.id); }
+            }
+        }
+        MenuSeparator { }
+        MenuItem { title: root.quit-label; activated => { root.quit-app(); } }
+    }
+}
+
+export component MainWindow inherits Window {
+    in property <string> window-title: "FetchJet";
+    in property <image> window-icon;
+    in property <bool> on-top: false;
+    in-out property <bool> is-maximized <=> self.maximized;
+    in-out property <bool> is-minimized <=> self.minimized;
+    in-out property <bool> is-fullscreen <=> self.full-screen;
+    out property <length> current-width: self.width;
+    out property <length> current-height: self.height;
+    callback minimize-to-tray();
+    title: root.window-title;
+    icon: root.window-icon;
+    always-on-top: root.on-top;
+    preferred-width: 1100px;
+    preferred-height: 720px;
+    min-width: 720px;
+    min-height: 480px;
+    background: #080d1a;
+    default-font-family: "Segoe UI";
+    default-font-size: 14px;
+    Text { text: "main"; color: white; }
+}
+
+export component FramelessWindow inherits Window {
+    in property <string> caption;
+    callback close-clicked();
+    no-frame: true;
+    resize-border-width: 6px;
+    preferred-width: 480px;
+    preferred-height: 320px;
+    background: #0f172a;
+    VerticalLayout {
+        Rectangle {
+            height: 36px;
+            background: #172238;
+            WindowMoveArea {
+                HorizontalLayout {
+                    padding-left: 12px;
+                    Text { text: root.caption; color: white; vertical-alignment: center; }
+                    Rectangle {
+                        width: 44px;
+                        Text { text: "x"; color: white; }
+                        TouchArea {
+                            clicked => {
+                                root.close-clicked();
+                                root.close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Rectangle { }
+    }
+}

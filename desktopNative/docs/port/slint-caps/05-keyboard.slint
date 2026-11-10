@@ -1,0 +1,123 @@
+export global Shortcuts {
+    callback select-all();
+    callback delete-selected();
+    callback clear-selection();
+    callback paste-link();
+    callback find();
+    callback key-fallback(text: string, control: bool, shift: bool, alt: bool, meta: bool, repeat: bool) -> bool;
+    in property <bool> list-shortcuts-enabled: true;
+    in property <keys> custom-add: @keys(Control + N);
+    out property <string> paste-label: @keys(Control + V).to-string();
+}
+
+component Chip inherits Rectangle {
+    in property <string> text;
+    callback activated();
+    forward-focus: fs;
+    height: 30px;
+    min-width: 60px;
+    border-radius: 15px;
+    border-width: fs.has-focus ? 2px : 1px;
+    border-color: fs.has-focus ? #38bdf8 : #334155;
+    fs := FocusScope {
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        key-pressed(e) => {
+            if e.text == Key.Return || e.text == " " {
+                root.activated();
+                return accept;
+            }
+            reject
+        }
+        focus-gained(reason) => {
+            if reason == FocusReason.tab-navigation {
+                debug("tab focus");
+            }
+        }
+    }
+    TouchArea { clicked => { fs.focus(); root.activated(); } }
+    Text { text: root.text; color: white; }
+}
+
+export component Demo inherits Window {
+    in-out property <string> last;
+    out property <bool> text-focused: TextInputInterface.text-input-focused;
+    preferred-width: 600px;
+    preferred-height: 300px;
+    forward-focus: list-scope;
+    global-scope := FocusScope {
+        focus-on-click: false;
+        focus-on-tab-navigation: false;
+        capture-key-pressed(e) => {
+            if e.text == Key.F5 {
+                root.last = "refresh";
+                return accept;
+            }
+            reject
+        }
+        KeyBinding {
+            keys: @keys(Control + F);
+            activated => { Shortcuts.find(); search.focus(); }
+        }
+        KeyBinding {
+            keys: Shortcuts.custom-add;
+            activated => { root.last = "add"; }
+        }
+        KeyBinding {
+            keys: @keys(Control + Shift + Delete);
+            activated => { root.last = "ctrl-shift-delete"; }
+        }
+        VerticalLayout {
+            padding: 12px;
+            spacing: 8px;
+            HorizontalLayout {
+                spacing: 8px;
+                Chip { text: "One"; activated => { root.last = "one"; } }
+                Chip { text: "Two"; activated => { root.last = "two"; } }
+                search := TextInput {
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                    key-pressed(e) => {
+                        if e.text == Key.Escape {
+                            list-scope.focus();
+                            return accept;
+                        }
+                        reject
+                    }
+                }
+            }
+            list-scope := FocusScope {
+                vertical-stretch: 1;
+                KeyBinding {
+                    keys: @keys(Control + A);
+                    enabled: Shortcuts.list-shortcuts-enabled;
+                    activated => { Shortcuts.select-all(); }
+                }
+                KeyBinding {
+                    keys: @keys(Delete);
+                    enabled: Shortcuts.list-shortcuts-enabled;
+                    activated => { Shortcuts.delete-selected(); }
+                }
+                KeyBinding {
+                    keys: @keys(Escape);
+                    activated => { Shortcuts.clear-selection(); }
+                }
+                KeyBinding {
+                    keys: @keys(Control + V);
+                    activated => { Shortcuts.paste-link(); }
+                }
+                key-pressed(e) => {
+                    if e.text == Key.UpArrow || e.text == Key.DownArrow || e.text == Key.Home || e.text == Key.End || e.text == Key.PageUp || e.text == Key.PageDown {
+                        return Shortcuts.key-fallback(e.text, e.modifiers.control, e.modifiers.shift, e.modifiers.alt, e.modifiers.meta, e.repeat) ? accept : reject;
+                    }
+                    reject
+                }
+                Rectangle {
+                    border-width: list-scope.has-focus ? 1px : 0px;
+                    border-color: #38bdf8;
+                    Text { text: "list (" + Shortcuts.paste-label + " pastes a link) " + root.last; color: white; }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,570 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton, IconButton } from "../widgets/Buttons.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { Gap, SmallChip } from "../widgets/Kit.slint";
+import { Core, ChoiceDialogDto, BadgeToneCode, ClipPickerField } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component ChoiceOverlay inherits Rectangle {
+    in property <ChoiceDialogDto> data;
+    private property <color> badge-ink: root.data.badgeTone == BadgeToneCode.completed ? Theme.status-completed
+        : root.data.badgeTone == BadgeToneCode.running ? Theme.status-connecting
+        : root.data.badgeTone == BadgeToneCode.paused ? Theme.status-paused
+        : root.data.badgeTone == BadgeToneCode.error ? Theme.status-error : Theme.on-surface-variant;
+    private property <color> badge-fill: root.data.badgeTone == BadgeToneCode.completed ? #064E3B
+        : root.data.badgeTone == BadgeToneCode.running ? Theme.primary-container
+        : root.data.badgeTone == BadgeToneCode.paused ? #78350F
+        : root.data.badgeTone == BadgeToneCode.error ? Theme.error-container : Theme.surface-variant;
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.choiceDismiss(root.data.kind); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.choiceDismiss(root.data.kind);
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: min(520px, root.width * 0.94);
+        height: content.preferred-height + 2px;
+        border-radius: 20px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        background: Theme.surface;
+        TouchArea { }
+        content := VerticalLayout {
+            padding: 21px;
+            spacing: 0px;
+            HBox {
+                height: 48px;
+                spacing: 12px;
+                cross-axis-alignment: center;
+                Rectangle {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 12px;
+                    background: root.data.danger ? Theme.error-container.with-alpha(0.4) : Theme.primary-container.with-alpha(0.4);
+                    EmojiIcon {
+                        glyph: root.data.icon;
+                        size: 24px;
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 0px;
+                    T {
+                        text: root.data.title;
+                        font-size: 17px;
+                        font-weight: 700;
+                        overflow: elide;
+                    }
+                    T {
+                        text: root.data.subtitle;
+                        font-size: 12px;
+                        color: Theme.on-surface-variant;
+                        overflow: elide;
+                    }
+                }
+            }
+            Gap {
+                size: 16px;
+            }
+            Rectangle {
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: Theme.outline-variant.with-alpha(0.6);
+                background: Theme.surface-variant.with-alpha(0.35);
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 0px;
+                    if root.data.name != "": Text {
+                        text: root.data.name;
+                        color: Theme.on-surface;
+                        font-family: Theme.font;
+                        font-size: 13px;
+                        font-weight: 700;
+                        letter-spacing: Dir.rtl || root.data.nameRtl ? 0px : 0.5px;
+                        horizontal-alignment: Dir.start;
+                        wrap: char-wrap;
+                        overflow: elide;
+                        min-height: 24px;
+                        max-height: 48px;
+                    }
+                    if root.data.badge != "": Gap {
+                        size: 8px;
+                    }
+                    if root.data.badge != "": HBox {
+                        height: 30px;
+                        spacing: 8px;
+                        cross-axis-alignment: center;
+                        Rectangle {
+                            width: badge.preferred-width + 16px;
+                            height: 30px;
+                            border-radius: 6px;
+                            background: root.badge-fill;
+                            badge := Text {
+                                text: root.data.badge;
+                                color: root.badge-ink;
+                                font-family: Theme.font;
+                                font-size: 11px;
+                                font-weight: 700;
+                                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+                        T {
+                            text: root.data.percent;
+                            font-size: 12px;
+                            font-weight: 700;
+                            color: Theme.status-connecting;
+                        }
+                    }
+                    if root.data.barShown: Gap {
+                        size: 8px;
+                    }
+                    if root.data.barShown: Rectangle {
+                        height: 6px;
+                        border-radius: 3px;
+                        background: Theme.surface-variant;
+                        Rectangle {
+                            x: Dir.rtl ? parent.width - self.width : 0;
+                            width: parent.width * clamp(root.data.progress, 0, 1);
+                            height: 6px;
+                            border-radius: 3px;
+                            background: Theme.primary;
+                        }
+                    }
+                    for line[index] in root.data.lines: GridLayout {
+                        padding-top: index == 0 ? 0px : 8px;
+                        spacing: 4px;
+                        Text {
+                            row: 0;
+                            col: Dir.rtl ? 1 : 0;
+                            text: line.label;
+                            color: line.accent ? Theme.primary : Theme.on-surface-variant;
+                            font-family: Theme.font;
+                            font-size: 12px;
+                            font-weight: 700;
+                            letter-spacing: Dir.rtl ? 0px : 0.5px;
+                            vertical-alignment: top;
+                            min-height: 24px;
+                        }
+                        Text {
+                            row: 0;
+                            col: Dir.rtl ? 0 : 1;
+                            text: line.text;
+                            color: line.accent ? Theme.primary : Theme.on-surface;
+                            font-family: Theme.font;
+                            font-size: 12px;
+                            font-weight: line.strong ? 600 : 400;
+                            letter-spacing: Dir.rtl ? 0px : 0.5px;
+                            horizontal-alignment: Dir.start;
+                            horizontal-stretch: 1;
+                            wrap: char-wrap;
+                            overflow: elide;
+                            min-height: 24px;
+                            max-height: 48px;
+                        }
+                    }
+                }
+            }
+            Gap { }
+            Text {
+                text: root.data.question;
+                color: Theme.on-surface;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+                min-height: 24px;
+            }
+            Gap {
+                size: 18px;
+            }
+            Rectangle {
+                height: 48px;
+                FilledButton {
+                    width: parent.width;
+                    text: root.data.primaryIcon + " " + root.data.primaryLabel;
+                    border-radius: 10px;
+                    font-weight: 700;
+                    clicked => { Act.choicePrimary(root.data.kind); }
+                }
+            }
+            Gap {
+                size: 8px;
+            }
+            Rectangle {
+                height: 48px;
+                OutlinedButton {
+                    width: parent.width;
+                    text: root.data.secondaryIcon + " " + root.data.secondaryLabel;
+                    border-radius: 10px;
+                    ink: root.data.secondaryDanger ? Theme.error : Theme.on-surface;
+                    line: root.data.secondaryDanger ? Theme.error : Theme.outline-variant.with-alpha(0.6);
+                    clicked => { Act.choiceSecondary(root.data.kind); }
+                }
+            }
+            Gap {
+                size: 8px;
+            }
+            Rectangle {
+                height: 48px;
+                TextButton {
+                    width: parent.width;
+                    text: root.data.cancelLabel;
+                    font-size: 13px;
+                    ink: Theme.on-surface-variant;
+                    clicked => { Act.choiceDismiss(root.data.kind); }
+                }
+            }
+        }
+    }
+}
+
+export component ChoiceDialogs inherits Rectangle {
+    for choice in Core.choices: ChoiceOverlay {
+        data: choice;
+    }
+}
+
+component TimeColumn inherits Rectangle {
+    in property <string> label;
+    in property <string> value;
+    in property <int> rev;
+    in property <int> field;
+    in property <bool> up-enabled;
+    in property <bool> down-enabled;
+    width: 80px;
+    height: 40px + 4px + 64px + 4px + 40px + 4px + 16px;
+    IconButton {
+        x: 20px;
+        y: 0;
+        size: 40px;
+        glyph: "▲";
+        glyph-size: 16px;
+        glyph-weight: 700;
+        ink: Theme.primary;
+        enabled: root.up-enabled;
+        clicked => { Act.clipPickerStep(root.field, true); }
+    }
+    Rectangle {
+        y: 44px;
+        width: 80px;
+        height: 64px;
+        border-radius: 12px;
+        background: Theme.primary-container.with-alpha(input.has-focus ? 0.9 : 0.6);
+        box := TouchArea {
+            clicked => { input.focus(); }
+        }
+        input := TextInput {
+            x: 6px;
+            width: parent.width - 12px;
+            height: self.preferred-height;
+            y: (parent.height - self.height) / 2;
+            single-line: true;
+            horizontal-alignment: center;
+            input-type: InputType.number;
+            font-family: Theme.font;
+            font-size: 32px;
+            font-weight: 700;
+            color: Theme.on-primary-container;
+            selection-background-color: Theme.primary.with-alpha(0.4);
+            text-cursor-width: 1.5px;
+            edited => { Act.clipPickerType(root.field, self.text); }
+            changed has-focus => {
+                if !self.has-focus {
+                    self.text = root.value;
+                }
+            }
+        }
+    }
+    IconButton {
+        x: 20px;
+        y: 112px;
+        size: 40px;
+        glyph: "▼";
+        glyph-size: 16px;
+        glyph-weight: 700;
+        ink: Theme.primary;
+        enabled: root.down-enabled;
+        clicked => { Act.clipPickerStep(root.field, false); }
+    }
+    Text {
+        y: 156px;
+        width: parent.width;
+        height: 16px;
+        text: root.label;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    changed rev => { input.text = root.value; }
+    init => { input.text = root.value; }
+}
+
+component TimeColon inherits Rectangle {
+    width: 16px + colon.preferred-width;
+    height: 172px;
+    colon := Text {
+        y: 44px;
+        height: 64px;
+        text: ":";
+        color: Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 36px;
+        font-weight: 700;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+}
+
+export component ClipPickerDialog inherits Rectangle {
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.clipPickerClose(); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.clipPickerClose();
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: min(480px, root.width * 0.92);
+        height: content.preferred-height;
+        border-radius: 18px;
+        background: Theme.surface;
+        TouchArea {
+            clicked => { keys.focus(); }
+        }
+        content := VerticalLayout {
+            padding: 20px;
+            spacing: 0px;
+            HBox {
+                height: 48px;
+                spacing: 6px;
+                cross-axis-alignment: center;
+                EmojiIcon {
+                    glyph: "⏱️";
+                    size: 17px;
+                }
+                T {
+                    text: Core.clipPicker.title;
+                    tracking: 0.2px;
+                    font-size: 16px;
+                    font-weight: 700;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                IconButton {
+                    size: 48px;
+                    glyph: "✕";
+                    glyph-size: 16px;
+                    ink: Theme.on-surface-variant;
+                    clicked => { Act.clipPickerClose(); }
+                }
+            }
+            Gap { }
+            HorizontalLayout {
+                alignment: center;
+                spacing: 0px;
+                TimeColumn {
+                    label: Tr.pickerHours;
+                    field: ClipPickerField.hours;
+                    value: Core.clipPicker.hours;
+                    rev: Core.clipPicker.hoursRev;
+                    up-enabled: Core.clipPicker.upEnabled;
+                    down-enabled: Core.clipPicker.hoursDownEnabled;
+                }
+                TimeColon { }
+                TimeColumn {
+                    label: Tr.pickerMinutes;
+                    field: ClipPickerField.minutes;
+                    value: Core.clipPicker.minutes;
+                    rev: Core.clipPicker.minutesRev;
+                    up-enabled: Core.clipPicker.upEnabled;
+                    down-enabled: Core.clipPicker.minutesDownEnabled;
+                }
+                TimeColon { }
+                TimeColumn {
+                    label: Tr.pickerSeconds;
+                    field: ClipPickerField.seconds;
+                    value: Core.clipPicker.seconds;
+                    rev: Core.clipPicker.secondsRev;
+                    up-enabled: Core.clipPicker.upEnabled;
+                    down-enabled: Core.clipPicker.secondsDownEnabled;
+                }
+            }
+            Gap { }
+            Rectangle {
+                height: 32px;
+                border-radius: 8px;
+                background: Theme.surface-variant.with-alpha(0.4);
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    VerticalLayout {
+                        alignment: center;
+                        EmojiIcon {
+                            glyph: "⏱️";
+                            size: 13px;
+                        }
+                    }
+                    Text {
+                        text: Core.clipPicker.summary;
+                        color: Theme.primary;
+                        font-family: Theme.font;
+                        font-size: 12px;
+                        font-weight: 600;
+                        letter-spacing: Dir.rtl ? 0px : 0.4px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            if Core.clipPicker.error != "": Gap {
+                size: 8px;
+            }
+            if Core.clipPicker.error != "": Rectangle {
+                border-radius: 8px;
+                background: Theme.error-container.with-alpha(0.8);
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 6px;
+                    padding-bottom: 6px;
+                    Text {
+                        text: "⚠ " + Core.clipPicker.error;
+                        color: Theme.on-error-container;
+                        font-family: Theme.font;
+                        font-size: 12px;
+                        font-weight: 700;
+                        letter-spacing: Dir.rtl ? 0px : 0.4px;
+                        horizontal-alignment: Dir.start;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            Gap { }
+            Rectangle {
+                height: 32px;
+                clip: true;
+                HBox {
+                    spacing: 6px;
+                    alignment: start;
+                    SmallChip {
+                        label: "+5m";
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: transparent;
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(0); }
+                    }
+                    SmallChip {
+                        label: "+15m";
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: transparent;
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(1); }
+                    }
+                    SmallChip {
+                        label: "+30m";
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: transparent;
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(2); }
+                    }
+                    SmallChip {
+                        label: "+1h";
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: transparent;
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(3); }
+                    }
+                    if Core.clipPicker.endChip != "": SmallChip {
+                        label: Core.clipPicker.endChip;
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: Theme.secondary-container.with-alpha(0.5);
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(4); }
+                    }
+                    SmallChip {
+                        label: Core.clipPicker.minChip;
+                        border-radius: 16px;
+                        pad: 12px;
+                        font-size: 11px;
+                        container: transparent;
+                        line: Theme.outline;
+                        clicked => { Act.clipPickerQuick(5); }
+                    }
+                }
+            }
+            Gap {
+                size: 18px;
+            }
+            Rectangle {
+                height: 1px;
+                background: Theme.outline-variant.with-alpha(0.4);
+            }
+            Gap {
+                size: 16px;
+            }
+            GridLayout {
+                spacing: 10px;
+                OutlinedButton {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    text: Tr.cancel;
+                    border-radius: 8px;
+                    horizontal-stretch: 1;
+                    clicked => { Act.clipPickerClose(); }
+                }
+                FilledButton {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    text: Core.clipPicker.applyLabel;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    horizontal-stretch: 1;
+                    enabled: Core.clipPicker.valid;
+                    clicked => { Act.clipPickerApply(); }
+                }
+            }
+        }
+    }
+}

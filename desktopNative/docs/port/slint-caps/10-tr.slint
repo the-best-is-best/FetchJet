@@ -1,0 +1,33 @@
+export global Strings {
+    in property <string> add-download: "Add download";
+    in property <string> pause-all: "Pause all";
+    in property <string> remove-confirm: "Remove {0} downloads?";
+    in property <string> links-count: "{0} links";
+    in property <bool> rtl: false;
+    pure callback step(text: string) -> string;
+    pure callback format1(pattern: string, a: string) -> string;
+}
+
+export component Demo inherits Window {
+    in property <int> count: 3;
+    in property <string> engine-step: "Merging video and audio";
+    preferred-width: 500px;
+    preferred-height: 300px;
+    VerticalLayout {
+        padding: 12px;
+        spacing: 6px;
+        Text { text: Strings.add-download; horizontal-alignment: Strings.rtl ? right : left; }
+        Text { text: Strings.format1(Strings.remove-confirm, root.count); }
+        Text { text: Strings.step(root.engine-step); }
+        Text { text: @tr("Pause all"); }
+        Text { text: @tr("Settings" => "General"); }
+        Text { text: @tr("{n} link" | "{n} links" % root.count); }
+        Text { text: @tr("Hello {0}, speed {1}", "x", "6.4 MB/s"); }
+        HorizontalLayout {
+            spacing: 6px;
+            Rectangle { width: 40px; background: red; layout-order: Strings.rtl ? 2 : 0; }
+            Rectangle { background: green; layout-order: 1; }
+            Rectangle { width: 40px; background: blue; layout-order: Strings.rtl ? 0 : 2; }
+        }
+    }
+}

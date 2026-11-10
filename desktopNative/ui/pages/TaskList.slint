@@ -1,0 +1,327 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton, IconButton } from "../widgets/Buttons.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { OptionsMenu } from "../widgets/Menu.slint";
+import { ListView } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { TaskRow } from "TaskRow.slint";
+import { Core, ListKeyCode } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component SortMenu inherits OptionsMenu {
+    options: Core.chrome.sortOptions;
+    font-size: 13px;
+    check-first: true;
+    picked(index) => { Act.setSort(index); }
+}
+
+component ToolsBanner inherits Rectangle {
+    height: 46px + 8px;
+    Rectangle {
+        y: 0;
+        height: 46px;
+        border-radius: 12px;
+        background: Theme.primary.with-alpha(0.1);
+        T {
+            x: 14px;
+            y: 10px;
+            width: parent.width - 28px;
+            text: Core.chrome.toolsBannerText;
+            line: 16px;
+            tracking: 0.4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: Theme.primary;
+            overflow: elide;
+        }
+        LinearProgress {
+            x: 14px;
+            y: 32px;
+            width: parent.width - 28px;
+            value: Core.chrome.toolsBannerFraction;
+            indeterminate: Core.chrome.toolsBannerIndeterminate;
+        }
+    }
+}
+
+component WhenDoneBanner inherits Rectangle {
+    height: 48px + 8px;
+    Rectangle {
+        y: 0;
+        height: 48px;
+        border-radius: 12px;
+        background: Theme.tertiary.with-alpha(0.12);
+        HBox {
+            padding-start: 14px;
+            padding-end: 4px;
+            spacing: 0px;
+            cross-axis-alignment: center;
+            T {
+                text: Core.chrome.whenDoneBannerText;
+                line: 16px;
+                tracking: 0.4px;
+                font-size: 12px;
+                font-weight: 600;
+                color: Theme.tertiary;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            TextButton {
+                text: Tr.cancel;
+                clicked => { Act.cancelWhenDone(); }
+            }
+        }
+    }
+}
+
+component ListToolbar inherits Rectangle {
+    height: 34px + 8px;
+    HBox {
+        y: 0;
+        height: 34px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        OutlinedButton {
+            glyph: "⏸";
+            text: Tr.homePauseAll;
+            height: 34px;
+            border-radius: 10px;
+            pad: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            enabled: Core.chrome.anyPausable;
+            clicked => { Act.pauseAll(); }
+        }
+        OutlinedButton {
+            glyph: Dir.rtl ? "◀" : "▶";
+            text: Tr.homeResumeAll;
+            height: 34px;
+            border-radius: 10px;
+            pad: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            enabled: Core.chrome.anyResumable;
+            clicked => { Act.resumeAll(); }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+        sort := TextButton {
+            text: Core.chrome.sortLabel;
+            trail: "▾";
+            height: 34px;
+            pad: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { menu.show(); }
+            menu := SortMenu {
+                x: Dir.rtl ? 0 : sort.width - self.width;
+                y: sort.height;
+            }
+        }
+    }
+}
+
+component SelectionBar inherits Rectangle {
+    height: 34px + 8px;
+    HBox {
+        y: 0;
+        height: 34px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        IconButton {
+            size: 34px;
+            glyph: "✕";
+            glyph-size: 14px;
+            clicked => { Act.clearChecks(); }
+        }
+        T {
+            text: Core.chrome.selectedCountText;
+            font-size: 13px;
+            font-weight: 600;
+            color: Theme.on-background;
+        }
+        TextButton {
+            text: Core.chrome.allChecked ? Tr.selectNone : Tr.selectAll;
+            height: 34px;
+            pad: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { Act.checkAll(!Core.chrome.allChecked); }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+        OutlinedButton {
+            text: Tr.homeExport;
+            height: 34px;
+            border-radius: 10px;
+            pad: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            clicked => { Act.exportChecked(); }
+        }
+        FilledButton {
+            text: "🗑  " + Tr.delete;
+            height: 34px;
+            border-radius: 10px;
+            pad: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            container: Theme.error;
+            ink: Theme.on-error;
+            clicked => { Act.removeChecked(); }
+        }
+    }
+}
+
+component ColumnsHeader inherits Rectangle {
+    height: 24px + 4px;
+    HBox {
+        y: 0;
+        height: 24px;
+        padding-start: 12px;
+        padding-end: 12px;
+        spacing: 12px;
+        cross-axis-alignment: center;
+        CheckBox {
+            checked: Core.chrome.allChecked;
+            indeterminate: Core.chrome.selectionMode && !Core.chrome.allChecked;
+            toggled => { Act.checkAll(!Core.chrome.allChecked); }
+        }
+        Rectangle {
+            width: 34px;
+        }
+        T {
+            text: Tr.homeColumnName;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface-variant;
+            horizontal-stretch: 1;
+        }
+        T {
+            width: 76px;
+            text: Tr.homeColumnSize;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface-variant;
+        }
+        T {
+            width: 140px;
+            text: Tr.homeColumnProgress;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface-variant;
+        }
+        T {
+            width: 84px;
+            text: Tr.homeColumnSpeed;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface-variant;
+        }
+        T {
+            width: 64px;
+            text: Tr.homeColumnLeft;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: Theme.on-surface-variant;
+        }
+        Rectangle {
+            width: 34px;
+        }
+    }
+}
+
+component EmptyState inherits Rectangle {
+    VerticalLayout {
+        alignment: center;
+        spacing: 0px;
+        HorizontalLayout {
+            alignment: center;
+            EmojiIcon {
+                glyph: "📥";
+                size: 56px;
+                ink: Theme.on-surface-variant;
+            }
+        }
+        Rectangle {
+            height: 12px;
+        }
+        Text {
+            height: 24px;
+            text: Core.chrome.emptyTitle;
+            color: Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: Dir.rtl ? 0px : 0.2px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Text {
+            height: 16px;
+            text: Core.chrome.emptyHint;
+            color: Theme.on-surface-variant.with-alpha(0.7);
+            font-family: Theme.font;
+            font-size: 12px;
+            letter-spacing: Dir.rtl ? 0px : 0.4px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component TaskList inherits Rectangle {
+    public function scroll-to-top() {
+        list.scroll-to-y(0px);
+    }
+    forward-focus: keys;
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.modifiers.control && (e.text == "a" || e.text == "A") {
+                Act.listKey(ListKeyCode.select-all);
+                return accept;
+            }
+            if e.text == Key.Escape && Core.chrome.selectionMode {
+                Act.listKey(ListKeyCode.escape);
+                return accept;
+            }
+            if e.text == Key.Delete {
+                Act.listKey(ListKeyCode.delete);
+                return accept;
+            }
+            reject
+        }
+        VerticalLayout {
+            spacing: 0px;
+            if Core.chrome.toolsBannerShown: ToolsBanner { }
+            if Core.chrome.whenDoneBannerShown: WhenDoneBanner { }
+            if Core.chrome.selectionMode: SelectionBar { }
+            if !Core.chrome.selectionMode && Core.chrome.showToolbar: ListToolbar { }
+            if !Core.chrome.listEmpty && root.width >= 720px: ColumnsHeader { }
+            Rectangle {
+                vertical-stretch: 1;
+                if Core.chrome.listEmpty: EmptyState { }
+                list := ListView {
+                    y: 4px;
+                    height: parent.height - 4px;
+                    visible: !Core.chrome.listEmpty;
+                    for item in Core.tasks: TaskRow {
+                        data: item;
+                        selection-mode: Core.chrome.selectionMode;
+                        focus-list => { keys.focus(); }
+                    }
+                }
+            }
+        }
+    }
+}

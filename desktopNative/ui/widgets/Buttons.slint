@@ -1,0 +1,227 @@
+import { Theme, Dir } from "../theme.slint";
+import { Hover, HBox } from "Base.slint";
+
+export component FilledButton inherits Rectangle {
+    in property <string> text;
+    in property <string> glyph;
+    in property <string> trail;
+    in property <bool> enabled: true;
+    in property <length> pad: 24px;
+    in property <length> font-size: 14px;
+    in property <int> font-weight: 500;
+    in property <color> container: Theme.primary;
+    in property <color> ink: Theme.on-primary;
+    callback clicked();
+    height: 40px;
+    min-width: max(58px, content.preferred-width + 2 * root.pad);
+    preferred-width: self.min-width;
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    background: root.enabled ? root.container : Theme.on-surface.with-alpha(0.1);
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    content := HBox {
+        x: (parent.width - self.preferred-width) / 2;
+        width: self.preferred-width;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        if root.glyph != "": Text {
+            text: root.glyph;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.text;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: Theme.font;
+            font-size: root.font-size;
+            font-weight: root.font-weight;
+            letter-spacing: Dir.rtl ? 0px : 0.1px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if root.trail != "": Text {
+            text: root.trail;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.end;
+            vertical-alignment: center;
+        }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+}
+
+export component OutlinedButton inherits Rectangle {
+    in property <string> text;
+    in property <string> glyph;
+    in property <string> trail;
+    in property <bool> enabled: true;
+    in property <length> pad: 24px;
+    in property <length> font-size: 14px;
+    in property <int> font-weight: 500;
+    in property <color> ink: Theme.on-surface-variant;
+    in property <color> line: Theme.outline-variant;
+    callback clicked();
+    height: 40px;
+    min-width: max(58px, content.preferred-width + 2 * root.pad);
+    preferred-width: self.min-width;
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    border-width: 1px;
+    border-color: root.enabled ? root.line : root.line.with-alpha(0.1);
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    content := HBox {
+        x: (parent.width - self.preferred-width) / 2;
+        width: self.preferred-width;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        if root.glyph != "": Text {
+            text: root.glyph;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.text;
+            color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
+            font-family: Theme.font;
+            font-size: root.font-size;
+            font-weight: root.font-weight;
+            letter-spacing: Dir.rtl ? 0px : 0.1px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if root.trail != "": Text {
+            text: root.trail;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.end;
+            vertical-alignment: center;
+        }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+}
+
+export component TextButton inherits Rectangle {
+    in property <string> text;
+    in property <string> glyph;
+    in property <string> trail;
+    in property <bool> enabled: true;
+    in property <length> pad: 12px;
+    in property <length> font-size: 14px;
+    in property <int> font-weight: 500;
+    in property <color> ink: Theme.primary;
+    callback clicked();
+    height: 40px;
+    min-width: max(58px, content.preferred-width + 2 * root.pad);
+    preferred-width: self.min-width;
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    content := HBox {
+        x: (parent.width - self.preferred-width) / 2;
+        width: self.preferred-width;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        if root.glyph != "": Text {
+            text: root.glyph;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.text;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: Theme.font;
+            font-size: root.font-size;
+            font-weight: root.font-weight;
+            letter-spacing: Dir.rtl ? 0px : 0.1px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if root.trail != "": Text {
+            text: root.trail;
+            width: self.preferred-width + 8px;
+            color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
+            font-family: "Segoe UI Symbol";
+            font-size: root.font-size;
+            horizontal-alignment: Dir.end;
+            vertical-alignment: center;
+        }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+}
+
+export component IconButton inherits Rectangle {
+    in property <string> glyph;
+    in property <bool> enabled: true;
+    in property <length> size: 48px;
+    in property <length> circle: min(40px, root.size);
+    in property <length> glyph-size: 18px;
+    in property <int> glyph-weight: 400;
+    in property <color> ink: Theme.on-background;
+    in property <string> glyph-font: "Segoe UI Symbol";
+    out property <bool> has-hover: ta.has-hover;
+    callback clicked();
+    width: root.size;
+    height: root.size;
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        width: root.circle;
+        height: root.circle;
+        border-radius: root.circle / 2;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+    if root.glyph != "": Text {
+        text: root.glyph;
+        color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
+        font-family: root.glyph-font;
+        font-size: root.glyph-size;
+        font-weight: root.glyph-weight;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    @children
+}

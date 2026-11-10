@@ -1,0 +1,153 @@
+import { FjScrollArea } from "lib/fj-scroll.slint";
+
+export global Ui {
+    in property <bool> rtl: false;
+    in property <bool> compact: false;
+}
+
+component Row inherits FlexboxLayout {
+    flex-direction: Ui.rtl ? FlexboxLayoutDirection.row-reverse : FlexboxLayoutDirection.row;
+    flex-wrap: FlexboxLayoutWrap.no-wrap;
+    alignment: LayoutAlignment.stretch;
+    cross-axis-alignment: CrossAxisAlignment.center;
+}
+
+component Chip inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> on;
+    height: 28px;
+    width: label.preferred-width + 24px;
+    border-radius: 14px;
+    background: #1e293b;
+    border-width: 1px;
+    border-color: transparent;
+    label := Text { text: root.text; color: white; }
+    TouchArea { clicked => { root.on = !root.on; } }
+    states [
+        active when root.on: {
+            background: #0c3d60;
+            border-color: #00e5ff;
+            label.color: #c7f1ff;
+            in {
+                animate background, border-color { duration: 150ms; easing: ease-out; }
+            }
+            out {
+                animate background { duration: 300ms; }
+            }
+        }
+    ]
+}
+
+component Expander inherits Rectangle {
+    in property <string> title;
+    in-out property <bool> expanded: false;
+    height: header.height + (root.expanded ? body.preferred-height : 0px);
+    clip: true;
+    animate height { duration: 180ms; easing: ease-in-out; }
+    header := Rectangle {
+        y: 0;
+        height: 36px;
+        Text { text: root.title; color: white; }
+        TouchArea { clicked => { root.expanded = !root.expanded; } }
+    }
+    body := VerticalLayout {
+        y: header.height;
+        height: self.preferred-height;
+        @children
+    }
+}
+
+export component Demo inherits Window {
+    in property <[string]> tags: ["mp4", "1080p", "audio", "subtitles", "playlist", "torrent"];
+    in property <bool> show-details: true;
+    in property <float> progress: 0.4;
+    preferred-width: 900px;
+    preferred-height: 600px;
+    min-width: 480px;
+    background: #080d1a;
+    HorizontalLayout {
+        sidebar := Rectangle {
+            width: Ui.compact ? 64px : 240px;
+            background: #0f1728;
+            animate width { duration: 200ms; easing: ease-in-out; }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            padding: 16px;
+            spacing: 12px;
+            Row {
+                spacing: 8px;
+                Rectangle { width: 40px; height: 40px; background: #334155; }
+                Text { text: "Title that stretches"; color: white; horizontal-stretch: 1; overflow: elide; }
+                Rectangle { width: 80px; height: 32px; background: #0284c7; }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                Rectangle { horizontal-stretch: 2; height: 24px; background: #1e293b; }
+                Rectangle { horizontal-stretch: 1; height: 24px; background: #334155; min-width: 60px; max-width: 200px; }
+                Rectangle { horizontal-stretch: 0; width: 24px; height: 24px; background: #475569; }
+            }
+            FlexboxLayout {
+                spacing: 6px;
+                flex-wrap: wrap;
+                for t in root.tags: Chip { text: t; }
+            }
+            Rectangle {
+                height: preview.height;
+                preview := Rectangle {
+                    x: 0;
+                    width: min(parent.width, 480px);
+                    height: self.width * 9 / 16;
+                    background: #1e293b;
+                    border-radius: 12px;
+                    clip: true;
+                    Rectangle {
+                        x: 0;
+                        y: parent.height - 6px;
+                        height: 6px;
+                        width: parent.width * root.progress;
+                        background: @linear-gradient(90deg, #00e5ff 0%, #818cf8 100%);
+                        animate width { duration: 250ms; easing: ease-out; }
+                    }
+                    badge := Rectangle {
+                        z: 5;
+                        x: parent.width - self.width - 8px;
+                        y: 8px;
+                        width: 44px;
+                        height: 20px;
+                        border-radius: 6px;
+                        background: #000000a0;
+                        Text { text: "4K"; color: white; font-size: 11px; }
+                    }
+                }
+            }
+            FjScrollArea {
+                vertical-stretch: 1;
+                Expander {
+                    title: "Details";
+                    expanded: root.show-details;
+                    GridLayout {
+                        spacing: 6px;
+                        padding: 8px;
+                        Row {
+                            Text { text: "Source"; color: #94a3b8; }
+                            Text { text: "https://example.com/file"; color: white; overflow: elide; horizontal-stretch: 1; }
+                        }
+                        Row {
+                            Text { text: "Page"; color: #94a3b8; }
+                            Text { text: "https://example.com/"; color: white; overflow: elide; }
+                        }
+                        Text { row: 2; col: 0; colspan: 2; text: "spans two columns"; color: white; }
+                    }
+                }
+                if root.show-details: Text { text: "conditional element"; color: white; }
+                for i in 5: Rectangle {
+                    height: 40px;
+                    background: mod(i, 2) == 0 ? #0f1728 : #172238;
+                    opacity: root.show-details ? 1 : 0.5;
+                    animate opacity { duration: 200ms; }
+                }
+            }
+        }
+    }
+}

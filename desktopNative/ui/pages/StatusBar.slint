@@ -1,0 +1,25 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T } from "../widgets/Base.slint";
+import { Core } from "../generated/dto.slint";
+
+component StatusText inherits T {
+    line: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: Theme.on-surface-variant;
+}
+
+export component StatusBar inherits Rectangle {
+    height: 22px;
+    HBox {
+        y: 6px;
+        height: 16px;
+        spacing: 18px;
+        cross-axis-alignment: center;
+        StatusText { text: Core.status.summary; }
+        StatusText { text: Core.status.queue; }
+        StatusText { text: Core.status.limit; }
+        Rectangle { horizontal-stretch: 1; }
+        StatusText { text: Core.status.version; }
+    }
+}

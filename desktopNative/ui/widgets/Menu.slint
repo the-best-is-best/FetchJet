@@ -1,0 +1,177 @@
+import { Theme, Dir } from "../theme.slint";
+import { Hover } from "Base.slint";
+import { MenuOptionDto } from "../generated/dto.slint";
+
+export component OptionsMenu inherits PopupWindow {
+    in property <[MenuOptionDto]> options;
+    in property <length> font-size: 14px;
+    in property <bool> check-first: false;
+    callback picked(index: int);
+    close-policy: PopupClosePolicy.close-on-click-outside;
+    forward-focus: keys;
+    Rectangle {
+        background: Theme.surface-container;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.close();
+                return accept;
+            }
+            reject
+        }
+        VerticalLayout {
+            padding-top: 8px;
+            padding-bottom: 8px;
+            for option[i] in root.options: Rectangle {
+                height: 48px;
+                min-width: 112px;
+                max-width: 280px;
+                ta := TouchArea {
+                    clicked => {
+                        root.close();
+                        root.picked(i);
+                    }
+                }
+                HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    spacing: 0px;
+                    if root.check-first && !Dir.rtl: Text {
+                        width: 24px;
+                        text: option.checked ? "✓" : "";
+                        color: Theme.on-surface;
+                        font-family: "Segoe UI Symbol";
+                        font-size: root.font-size;
+                        vertical-alignment: center;
+                    }
+                    if !root.check-first && Dir.rtl: Text {
+                        width: 28px;
+                        text: option.checked ? "✓" : "";
+                        color: Theme.on-surface;
+                        font-family: "Segoe UI Symbol";
+                        font-size: root.font-size;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: option.label;
+                        color: Theme.on-surface;
+                        font-family: Theme.font;
+                        font-size: root.font-size;
+                        font-weight: 500;
+                        letter-spacing: Dir.rtl ? 0px : 0.1px;
+                        vertical-alignment: center;
+                        horizontal-alignment: Dir.start;
+                        horizontal-stretch: 1;
+                    }
+                    if root.check-first && Dir.rtl: Text {
+                        width: 24px;
+                        text: option.checked ? "✓" : "";
+                        color: Theme.on-surface;
+                        font-family: "Segoe UI Symbol";
+                        font-size: root.font-size;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                    if !root.check-first && !Dir.rtl: Text {
+                        width: 28px;
+                        text: option.checked ? "✓" : "";
+                        color: Theme.on-surface;
+                        font-family: "Segoe UI Symbol";
+                        font-size: root.font-size;
+                        vertical-alignment: center;
+                        horizontal-alignment: right;
+                    }
+                }
+                Hover {
+                    ink: Theme.on-surface;
+                    hovered: ta.has-hover;
+                    pressed: ta.pressed;
+                }
+            }
+        }
+    }
+}
+
+export global Screen {
+    in-out property <length> height: 750px;
+}
+
+export component PickMenu inherits PopupWindow {
+    in property <[string]> options;
+    in property <int> pick;
+    in property <length> font-size: 14px;
+    in property <length> anchor-top;
+    in property <length> anchor-height;
+    in property <int> han: 0;
+    private property <length> tall: min(root.options.length * 48px + 16px, max(160px, Screen.height - 96px));
+    callback picked(index: int);
+    y: (root.anchor-top + root.anchor-height + root.tall <= Screen.height - 48px ? root.anchor-top + root.anchor-height
+        : root.anchor-top - root.tall >= 48px ? root.anchor-top - root.tall
+        : root.anchor-top + root.anchor-height / 2 < Screen.height / 2 ? 48px
+        : Screen.height - 48px - root.tall) - root.anchor-top;
+    width: clamp(measure.preferred-width + 24px, 112px, 280px);
+    height: root.tall;
+    close-policy: PopupClosePolicy.close-on-click-outside;
+    forward-focus: keys;
+    Rectangle {
+        background: Theme.surface-container;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+    }
+    measure := VerticalLayout {
+        visible: false;
+        for option in root.options: Text {
+            text: option;
+            font-family: Theme.font;
+            font-size: root.font-size;
+            font-weight: 700;
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.close();
+                return accept;
+            }
+            reject
+        }
+        Flickable {
+            content-width: self.width;
+            content-height: root.options.length * 48px + 16px;
+            for option[i] in root.options: Rectangle {
+                x: 0;
+                y: 8px + i * 48px;
+                width: parent.width;
+                height: 48px;
+                tap := TouchArea {
+                    clicked => {
+                        root.close();
+                        root.picked(i);
+                    }
+                }
+                Text {
+                    x: 12px;
+                    width: parent.width - 24px;
+                    text: option;
+                    color: i + 1 == root.pick ? Theme.primary : Theme.on-surface;
+                    font-family: i + 1 == root.han ? "Microsoft YaHei UI" : Theme.font;
+                    font-size: root.font-size;
+                    font-weight: i + 1 == root.pick ? 700 : 400;
+                    letter-spacing: Dir.rtl ? 0px : 0.1px;
+                    horizontal-alignment: Dir.start;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                Hover {
+                    hovered: tap.has-hover;
+                    pressed: tap.pressed;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,320 @@
+import { Theme, Dir } from "../theme.slint";
+import { Hover, HBox } from "Base.slint";
+import { EmojiIcon } from "Icons.slint";
+
+export component FieldIconButton inherits Rectangle {
+    in property <string> glyph;
+    in property <string> emoji;
+    in property <length> glyph-size: 14px;
+    callback clicked();
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    background: ta.has-hover ? Theme.on-surface.with-alpha(0.08) : transparent;
+    animate background { duration: 150ms; }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    if root.emoji == "": Text {
+        text: root.glyph;
+        color: Theme.on-surface-variant;
+        font-family: "Segoe UI Symbol";
+        font-size: root.glyph-size;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    if root.emoji != "": EmojiIcon {
+        glyph: root.emoji;
+        size: 16px;
+        ink: Theme.on-surface-variant;
+    }
+}
+
+export component FieldChipButton inherits Rectangle {
+    in property <string> text;
+    in property <string> emoji;
+    callback clicked();
+    width: content.preferred-width;
+    height: 34px;
+    border-radius: 8px;
+    background: Theme.primary.with-alpha(0.12);
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    content := HBox {
+        padding-start: 10px;
+        padding-end: 10px;
+        spacing: 4px;
+        cross-axis-alignment: center;
+        if root.emoji != "": EmojiIcon {
+            glyph: root.emoji;
+            size: 14px;
+            ink: Theme.primary;
+        }
+        Text {
+            text: root.text;
+            color: Theme.primary;
+            font-family: Theme.font;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            vertical-alignment: center;
+        }
+    }
+    Hover {
+        border-radius: 8px;
+        ink: Theme.primary;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component TextField inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    in property <string> leading;
+    in property <string> leading-emoji;
+    in property <string> value;
+    in property <int> rev;
+    in property <bool> has-error: false;
+    in property <bool> has-trailing: false;
+    in property <bool> read-only <=> input.read-only;
+    in property <bool> enabled <=> input.enabled;
+    in property <bool> centered: false;
+    in property <bool> select-all-on-focus: false;
+    in property <length> font-size: 14px;
+    in property <int> font-weight: 400;
+    in property <length> pad-start: 14px;
+    in property <length> pad-end: 14px;
+    in property <InputType> input-type: InputType.text;
+    out property <bool> has-focus: input.has-focus;
+    callback accepted(text: string);
+    callback edited(text: string);
+    callback escaped();
+    public function set-text(value: string) {
+        if input.text != value {
+            input.text = value;
+        }
+    }
+    public function select-all() { input.select-all(); }
+    public function paste() { input.paste(); }
+    public function focus-field() { input.focus(); }
+    public function unfocus() { input.clear-focus(); }
+
+    changed rev => { root.set-text(root.value); }
+    init => { root.set-text(root.value); }
+    forward-focus: input;
+    height: 48px;
+    min-width: 60px;
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    opacity: root.enabled ? 1 : 0.6;
+    border-radius: 12px;
+    border-width: input.has-focus || root.has-error ? 1.5px : 1px;
+    border-color: root.has-error ? Theme.error : input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
+    background: input.has-focus ? Theme.field-focused : Theme.field;
+    animate border-color, background { duration: 180ms; }
+
+    hover := TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => { input.focus(); }
+    }
+
+    HBox {
+        padding-start: root.leading != "" || root.leading-emoji != "" ? 10px : root.pad-start;
+        padding-end: root.has-trailing ? 6px : root.pad-end;
+        spacing: 0px;
+        if root.leading != "": Text {
+            text: root.leading;
+            width: self.preferred-width + 8px;
+            color: Theme.on-surface-variant.with-alpha(input.has-focus ? 1 : 0.75);
+            font-family: "Segoe UI Symbol";
+            font-size: 17px;
+            vertical-alignment: center;
+            horizontal-alignment: Dir.start;
+        }
+        if root.leading-emoji != "": Rectangle {
+            width: 20px + 8px;
+            opacity: input.has-focus ? 1 : 0.75;
+            EmojiIcon {
+                x: Dir.rtl ? 8px : 0;
+                glyph: root.leading-emoji;
+                size: 18px;
+                ink: Theme.on-surface-variant;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            clip: true;
+            Text {
+                x: 0;
+                width: 100%;
+                height: 100%;
+                vertical-alignment: center;
+                horizontal-alignment: root.centered ? center : Dir.start;
+                text: (input.text == "" && input.preedit-text == "") ? root.placeholder : "";
+                color: Theme.on-surface-variant.with-alpha(0.65);
+                font-family: Theme.font;
+                font-size: root.font-size;
+                letter-spacing: Dir.rtl ? 0px : 0.2px;
+                overflow: elide;
+            }
+            input := TextInput {
+                property <length> shift;
+                property <length> margin: 2px;
+                x: min(0px, max(parent.width - self.width - self.text-cursor-width, self.shift));
+                width: max(parent.width - self.text-cursor-width, self.preferred-width);
+                height: 100%;
+                single-line: true;
+                vertical-alignment: center;
+                horizontal-alignment: root.centered ? center : Dir.start;
+                font-family: Theme.font;
+                font-size: root.font-size;
+                font-weight: root.font-weight;
+                letter-spacing: Dir.rtl ? 0px : 0.2px;
+                color: Theme.on-surface;
+                selection-background-color: Theme.primary.with-alpha(0.4);
+                selection-foreground-color: Theme.on-surface;
+                text-cursor-width: 1.5px;
+                input-type: root.input-type;
+                cursor-position-changed(pos) => {
+                    if pos.x + self.shift < self.margin {
+                        self.shift = -pos.x + self.margin;
+                    } else if pos.x + self.shift > parent.width - self.margin - self.text-cursor-width {
+                        self.shift = parent.width - pos.x - self.margin - self.text-cursor-width;
+                    }
+                }
+                changed has-focus => {
+                    if self.has-focus && root.select-all-on-focus {
+                        self.select-all();
+                    }
+                }
+                accepted => { root.accepted(self.text); }
+                edited => { root.edited(self.text); }
+                key-pressed(event) => {
+                    if event.text == Key.Escape {
+                        self.clear-focus();
+                        root.escaped();
+                        return accept;
+                    }
+                    reject
+                }
+            }
+        }
+        @children
+    }
+}
+
+export component TextArea inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    in property <string> leading-emoji;
+    in property <string> value;
+    in property <int> rev;
+    in property <bool> has-trailing: false;
+    in property <length> font-size: 14px;
+    in property <int> max-lines: 3;
+    out property <bool> has-focus: input.has-focus;
+    callback edited(text: string);
+    in property <length> trailing-width: 0px;
+    private property <length> line: 20px;
+    private property <length> shift;
+    private property <length> lead: root.leading-emoji != "" ? 38px : 14px;
+    private property <length> trail: root.has-trailing ? root.trailing-width + 12px : 14px;
+    public function set-text(value: string) {
+        if input.text != value {
+            input.text = value;
+        }
+    }
+    public function focus-field() { input.focus(); }
+    changed rev => { root.set-text(root.value); }
+    init => { root.set-text(root.value); }
+    forward-focus: input;
+    height: clamp(input.preferred-height + 20px, 48px, root.line * root.max-lines + 20px);
+    min-width: 60px;
+    horizontal-stretch: 1;
+    border-radius: 12px;
+    border-width: input.has-focus ? 1.5px : 1px;
+    border-color: input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
+    background: input.has-focus ? Theme.field-focused : Theme.field;
+    animate border-color, background { duration: 180ms; }
+    hover := TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => { input.focus(); }
+    }
+    if root.leading-emoji != "": Rectangle {
+        x: Dir.rtl ? root.width - 10px - 20px : 10px;
+        width: 20px;
+        opacity: input.has-focus ? 1 : 0.75;
+        EmojiIcon {
+            glyph: root.leading-emoji;
+            size: 18px;
+            ink: Theme.on-surface-variant;
+        }
+    }
+    Rectangle {
+        x: Dir.rtl ? root.trail : root.lead;
+        width: root.width - root.lead - root.trail;
+        Rectangle {
+            horizontal-stretch: 1;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                height: clamp(input.preferred-height, root.line, root.line * root.max-lines);
+                clip: true;
+                Text {
+                    x: 0;
+                    y: 0;
+                    width: 100%;
+                    height: root.line;
+                    vertical-alignment: center;
+                    horizontal-alignment: Dir.start;
+                    text: (input.text == "" && input.preedit-text == "") ? root.placeholder : "";
+                    color: Theme.on-surface-variant.with-alpha(0.65);
+                    font-family: Theme.font;
+                    font-size: root.font-size;
+                    letter-spacing: Dir.rtl ? 0px : 0.2px;
+                    overflow: elide;
+                }
+                input := TextInput {
+                    x: 0;
+                    y: min(0px, max(parent.height - self.height, root.shift));
+                    width: parent.width;
+                    height: max(parent.height, self.preferred-height);
+                    single-line: false;
+                    wrap: char-wrap;
+                    horizontal-alignment: Dir.start;
+                    font-family: Theme.font;
+                    font-size: root.font-size;
+                    letter-spacing: Dir.rtl ? 0px : 0.2px;
+                    color: Theme.on-surface;
+                    selection-background-color: Theme.primary.with-alpha(0.4);
+                    selection-foreground-color: Theme.on-surface;
+                    text-cursor-width: 1.5px;
+                    cursor-position-changed(pos) => {
+                        if pos.y + root.shift < 0px {
+                            root.shift = -pos.y;
+                        } else if pos.y + root.line + root.shift > parent.height {
+                            root.shift = parent.height - pos.y - root.line;
+                        }
+                    }
+                    edited => { root.edited(self.text); }
+                    key-pressed(event) => {
+                        if event.text == Key.Return {
+                            return accept;
+                        }
+                        if event.text == Key.Escape {
+                            self.clear-focus();
+                            return accept;
+                        }
+                        reject
+                    }
+                }
+            }
+        }
+    }
+    Rectangle {
+        x: Dir.rtl ? 6px : root.width - 6px - root.trailing-width;
+        width: root.trailing-width;
+        @children
+    }
+}

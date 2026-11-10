@@ -1,0 +1,406 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { ThinBar } from "../widgets/Progress.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { TaskRowDto, RowKind, RowActionCode, BarColorCode, GroupColorCode } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+
+component KindSquare inherits Rectangle {
+    in property <string> tag;
+    in property <int> tag-color;
+    in property <length> size: 34px;
+    width: root.size;
+    height: root.size;
+    border-radius: root.size == 40px ? 10px : 8px;
+    background: Theme.on-surface.with-alpha(0.06);
+    Text {
+        text: root.tag;
+        color: Theme.tag-color(root.tag-color);
+        font-family: Theme.font;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component PriorityChip inherits Rectangle {
+    in property <int> priority;
+    in property <string> label;
+    callback clicked();
+    private property <color> tone: root.priority > 0 ? Theme.priority-high : root.priority < 0 ? Theme.priority-low : Theme.on-surface-variant;
+    width: max(48px, chip.width);
+    height: 48px;
+    chip := Rectangle {
+        width: text.preferred-width + 14px;
+        height: 30px;
+        border-radius: 6px;
+        background: root.tone.with-alpha(0.15);
+        border-width: 1px;
+        border-color: root.tone.with-alpha(0.4);
+        text := Text {
+            text: root.label;
+            color: root.tone;
+            font-family: Theme.font;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: 6px;
+            ink: root.tone;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component QuickAction inherits Rectangle {
+    in property <int> action;
+    in property <length> size: 34px;
+    callback clicked();
+    width: root.size;
+    height: root.size;
+    if root.action != RowActionCode.none: Rectangle {
+        border-radius: root.size / 2;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.7);
+        ta := TouchArea {
+            clicked => { root.clicked(); }
+        }
+        Text {
+            text: root.action == RowActionCode.pause ? "⏸" : root.action == RowActionCode.open ? "↗" : "▶";
+            color: Theme.on-surface;
+            font-family: "Segoe UI Symbol";
+            font-size: 13px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: root.size / 2;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+    }
+}
+
+component SectionHeader inherits Rectangle {
+    in property <TaskRowDto> data;
+    private property <color> tone: root.data.headerColor == GroupColorCode.primary ? Theme.primary
+        : root.data.headerColor == GroupColorCode.muted ? Theme.on-surface-variant
+        : root.data.headerColor == GroupColorCode.paused ? Theme.status-paused : Theme.tertiary;
+    height: 32px;
+    border-radius: 8px;
+    ta := TouchArea {
+        clicked => { Act.toggleGroup(root.data.headerKey); }
+    }
+    HBox {
+        y: 6px;
+        height: 24px;
+        spacing: 0px;
+        cross-axis-alignment: center;
+        Text {
+            width: self.preferred-width + 6px;
+            height: 24px;
+            text: root.data.headerCollapsed ? (Dir.rtl ? "◀" : "▶") : "▼";
+            color: root.tone;
+            font-family: "Segoe UI Symbol";
+            font-size: 11px;
+            vertical-alignment: center;
+            horizontal-alignment: Dir.start;
+        }
+        Text {
+            width: self.preferred-width + 6px;
+            height: 24px;
+            text: root.data.headerIcon;
+            color: Theme.on-background;
+            font-family: "Segoe UI Symbol";
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-alignment: Dir.start;
+        }
+        T {
+            text: root.data.headerTitle;
+            line: 20px;
+            tracking: 0.1px;
+            font-size: 14px;
+            font-weight: 700;
+            color: root.tone;
+        }
+        Rectangle {
+            width: 8px;
+        }
+        Rectangle {
+            width: count.preferred-width + 16px;
+            height: 20px;
+            border-radius: 10px;
+            background: root.tone.with-alpha(0.15);
+            count := Text {
+                text: root.data.headerCount;
+                color: root.tone;
+                font-family: Theme.font;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            width: 10px;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            height: 24px;
+            Rectangle {
+                height: 1px;
+                background: Theme.outline-variant.with-alpha(0.5);
+            }
+        }
+    }
+    Hover {
+        border-radius: 8px;
+        ink: Theme.on-background;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component TaskRow inherits Rectangle {
+    in property <TaskRowDto> data;
+    in property <bool> selection-mode;
+    callback focus-list();
+    private property <bool> wide: root.width >= 720px;
+    private property <bool> is-header: root.data.kind == RowKind.header;
+    private property <color> surface-color: root.data.selected ? Theme.primary.mix(Theme.background, 0.09) : Theme.surface;
+    private property <color> bar-ink: root.data.barColor == BarColorCode.error ? Theme.error
+        : root.data.barColor == BarColorCode.completed ? Theme.bar-completed
+        : root.data.barColor == BarColorCode.paused ? Theme.bar-paused : Theme.primary;
+    private property <bool> ctrl;
+    private property <bool> shift;
+    height: (root.is-header ? 32px : root.wide ? 68px : root.data.completed ? 75px : 90px) + 6px;
+
+    if root.is-header: SectionHeader {
+        y: 0;
+        height: 32px;
+        data: root.data;
+    }
+
+    if !root.is-header: Rectangle {
+        y: 0;
+        height: parent.height - 6px;
+        border-radius: 12px;
+        background: root.surface-color;
+        border-width: 1px;
+        border-color: root.data.selected ? Theme.primary.with-alpha(0.45) : Theme.outline-variant.with-alpha(0.35);
+        ta := TouchArea {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down {
+                    root.ctrl = e.modifiers.control;
+                    root.shift = e.modifiers.shift;
+                }
+            }
+            clicked => {
+                root.focus-list();
+                Act.rowClick(root.data.id, root.ctrl, root.shift);
+            }
+        }
+        Hover {
+            border-radius: 12px;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+        if root.wide: GridLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 9px;
+            padding-bottom: 9px;
+            spacing: 12px;
+            VerticalLayout {
+                row: 0;
+                col: Dir.rtl ? 7 : 0;
+                alignment: center;
+                CheckBox {
+                    checked: root.data.checked;
+                    toggled(on) => {
+                        root.focus-list();
+                        Act.rowCheck(root.data.id, on);
+                    }
+                }
+            }
+            VerticalLayout {
+                row: 0;
+                col: Dir.rtl ? 6 : 1;
+                alignment: center;
+                KindSquare {
+                    tag: root.data.tag;
+                    tag-color: root.data.tagColor;
+                }
+            }
+            VerticalLayout {
+                row: 0;
+                col: Dir.rtl ? 5 : 2;
+                alignment: center;
+                spacing: 2px;
+                horizontal-stretch: 1;
+                ElideText {
+                    text: root.data.name;
+                    text-rtl: root.data.nameRtl;
+                    text-han: root.data.nameHan;
+                    behind: root.surface-color;
+                    font-size: 13px;
+                    font-weight: 600;
+                }
+                ElideText {
+                    text: root.data.stateLine;
+                    text-rtl: Dir.rtl;
+                    behind: root.surface-color;
+                    ink: root.data.stateIsError ? Theme.error : Theme.on-surface-variant;
+                    font-size: 11px;
+                }
+            }
+            T {
+                row: 0;
+                col: Dir.rtl ? 4 : 3;
+                width: 76px;
+                height: 50px;
+                text: root.data.size;
+                font-size: 12px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+            VerticalLayout {
+                row: 0;
+                col: Dir.rtl ? 3 : 4;
+                width: 140px;
+                alignment: center;
+                spacing: 3px;
+                ThinBar {
+                    value: root.data.progress;
+                    ink: root.bar-ink;
+                }
+                T {
+                    text: root.data.percent;
+                    font-size: 11px;
+                    color: Theme.on-surface-variant;
+                }
+            }
+            T {
+                row: 0;
+                col: Dir.rtl ? 2 : 5;
+                width: 84px;
+                height: 50px;
+                text: root.data.speed;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            T {
+                row: 0;
+                col: Dir.rtl ? 1 : 6;
+                width: 64px;
+                height: 50px;
+                text: root.data.left;
+                font-size: 12px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+            Rectangle {
+                row: 0;
+                col: Dir.rtl ? 0 : 7;
+                width: root.data.completed ? 34px : chip.width + 12px + 34px;
+                height: 50px;
+                chip := PriorityChip {
+                    x: Dir.rtl ? 34px + 12px : 0;
+                    visible: !root.data.completed;
+                    priority: root.data.priority;
+                    label: root.data.priorityLabel;
+                    clicked => { Act.cyclePriority(root.data.id); }
+                }
+                QuickAction {
+                    x: Dir.rtl ? 0 : parent.width - 34px;
+                    action: root.data.action;
+                    clicked => { Act.rowQuickAction(root.data.id); }
+                }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            padding: 12px;
+            spacing: 10px;
+            alignment: start;
+            HBox {
+                height: 51px;
+                spacing: 0px;
+                cross-axis-alignment: center;
+                if root.selection-mode: Rectangle {
+                    width: 36px;
+                    height: 24px;
+                    CheckBox {
+                        x: Dir.rtl ? 12px : 0;
+                        checked: root.data.checked;
+                        toggled(on) => {
+                            root.focus-list();
+                            Act.rowCheck(root.data.id, on);
+                        }
+                    }
+                }
+                KindSquare {
+                    tag: root.data.tag;
+                    tag-color: root.data.tagColor;
+                    size: 40px;
+                }
+                Rectangle {
+                    width: 12px;
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 3px;
+                    ElideText {
+                        text: root.data.name;
+                        text-rtl: root.data.nameRtl;
+                        text-han: root.data.nameHan;
+                        behind: root.surface-color;
+                        font-size: 14px;
+                        font-weight: 600;
+                    }
+                    ElideText {
+                        text: root.data.stateLine;
+                        text-rtl: Dir.rtl;
+                        behind: root.surface-color;
+                        ink: root.data.stateIsError ? Theme.error : Theme.on-surface-variant;
+                        font-size: 12px;
+                    }
+                }
+                if !root.data.completed: Rectangle {
+                    width: 8px;
+                }
+                if !root.data.completed: PriorityChip {
+                    priority: root.data.priority;
+                    label: root.data.priorityLabel;
+                    clicked => { Act.cyclePriority(root.data.id); }
+                }
+                Rectangle {
+                    width: 8px;
+                }
+                if !root.selection-mode: QuickAction {
+                    size: 44px;
+                    action: root.data.action;
+                    clicked => { Act.rowQuickAction(root.data.id); }
+                }
+            }
+            if !root.data.completed: ThinBar {
+                value: root.data.progress;
+                ink: root.bar-ink;
+            }
+        }
+    }
+}

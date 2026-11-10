@@ -1,0 +1,125 @@
+export enum TaskState { queued, downloading, paused, completed, failed }
+
+export struct Piece {
+    start: float,
+    end: float,
+    done: bool,
+}
+
+export struct Quality {
+    id: string,
+    label: string,
+    size: string,
+    audio-only: bool,
+}
+
+export struct TorrentFile {
+    index: int,
+    name: string,
+    selected: bool,
+    priority: int,
+}
+
+export struct TaskVm {
+    id: int,
+    name: string,
+    state: TaskState,
+    progress: float,
+    speed: string,
+    thumbnail: image,
+    pieces: [Piece],
+    qualities: [Quality],
+    files: [TorrentFile],
+    tags: [string],
+}
+
+export global Core {
+    in property <[TaskVm]> tasks;
+    in property <[string]> filters;
+    in-out property <int> selected-filter;
+    in property <image> logo;
+    callback toggle(id: int);
+    callback remove(ids: [int], delete-files: bool);
+    callback pick-folder(current: string) -> string;
+    callback set-file-selected(task: int, file: int, selected: bool);
+    pure callback format-bytes(bytes: float) -> string;
+    pure callback tr(key: string) -> string;
+    pure callback count-in(filter: int) -> int;
+    public pure function percent(p: float) -> string {
+        return round(p * 100) + "%";
+    }
+}
+
+component PieceBar inherits Rectangle {
+    in property <[Piece]> pieces;
+    height: 6px;
+    background: #1e293b;
+    clip: true;
+    for p in root.pieces: Rectangle {
+        x: parent.width * p.start;
+        width: parent.width * (p.end - p.start);
+        background: p.done ? #34d399 : #00e5ff;
+    }
+}
+
+export component Demo inherits Window {
+    in-out property <string> folder;
+    in property <int> tick;
+    callback ready();
+    preferred-width: 700px;
+    preferred-height: 500px;
+    init => { root.ready(); }
+    timer := Timer {
+        interval: 1s;
+        running: Core.tasks.length > 0;
+        triggered => { debug("tick"); }
+    }
+    VerticalLayout {
+        padding: 12px;
+        spacing: 6px;
+        Image { source: Core.logo; width: 32px; height: 32px; }
+        HorizontalLayout {
+            spacing: 6px;
+            for f[i] in Core.filters: Rectangle {
+                height: 28px;
+                background: i == Core.selected-filter ? #0c3d60 : #1e293b;
+                Text { text: f + " " + Core.count-in(i); color: white; }
+                TouchArea { clicked => { Core.selected-filter = i; } }
+            }
+        }
+        for t[i] in Core.tasks: VerticalLayout {
+            spacing: 2px;
+            HorizontalLayout {
+                spacing: 8px;
+                Image { source: t.thumbnail; width: 40px; height: 24px; image-fit: cover; }
+                Text { text: t.name; color: white; horizontal-stretch: 1; overflow: elide; }
+                Text { text: Core.percent(t.progress); color: white; }
+                Text { text: t.state == TaskState.downloading ? t.speed : Core.tr("state." + t.id); color: #94a3b8; }
+                TouchArea {
+                    width: 24px;
+                    clicked => { Core.toggle(t.id); }
+                }
+            }
+            PieceBar { pieces: t.pieces; }
+            for file in t.files: HorizontalLayout {
+                Rectangle {
+                    width: 16px;
+                    height: 16px;
+                    background: file.selected ? #00e5ff : #334155;
+                    TouchArea { clicked => { Core.set-file-selected(t.id, file.index, !file.selected); } }
+                }
+                Text { text: file.name; color: white; }
+            }
+        }
+        Rectangle {
+            height: 30px;
+            Text { text: root.folder; color: white; }
+            TouchArea {
+                clicked => {
+                    root.folder = Core.pick-folder(root.folder);
+                    Core.remove([1, 2, 3], false);
+                }
+            }
+        }
+    }
+}

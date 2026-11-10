@@ -1,0 +1,155 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { ScrollArea } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { Core } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+
+export component UpdateDialog inherits Rectangle {
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.updateLater(true); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.updateLater(true);
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: max(280px, min(560px, root.width - 48px));
+        height: content.preferred-height;
+        border-radius: 18px;
+        background: Theme.surface-container-high;
+        TouchArea { }
+        content := VerticalLayout {
+            padding: 24px;
+            spacing: 0px;
+            Rectangle {
+                height: 32px;
+                EmojiIcon {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    glyph: "🎉";
+                    size: 26px;
+                }
+                T {
+                    x: Dir.rtl ? 0 : 34px;
+                    width: parent.width - 34px;
+                    text: Core.updateDialog.title;
+                    line: 32px;
+                    tracking: 0px;
+                    font-size: 24px;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+            }
+            Rectangle {
+                height: 4px;
+            }
+            T {
+                text: Core.updateDialog.versionLine;
+                line: 20px;
+                tracking: 0.2px;
+                font-weight: 600;
+                color: Theme.primary;
+                overflow: elide;
+            }
+            Rectangle {
+                height: 16px;
+            }
+            T {
+                text: Core.updateDialog.notesLabel;
+                line: 20px;
+                tracking: 0.1px;
+                font-weight: 600;
+                color: Theme.on-surface-variant;
+            }
+            Rectangle {
+                height: 6px;
+            }
+            Rectangle {
+                height: min(260px, notes.preferred-height + 24px);
+                border-radius: 10px;
+                background: Theme.surface-variant.with-alpha(0.4);
+                clip: true;
+                ScrollArea {
+                    VerticalLayout {
+                        padding: 12px;
+                        notes := Text {
+                            text: Core.updateDialog.notes;
+                            color: Theme.on-surface-variant;
+                            font-family: Theme.font;
+                            font-size: 12px;
+                            letter-spacing: Dir.rtl ? 0px : 0.4px;
+                            horizontal-alignment: Dir.start;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+            if Core.updateDialog.status != "": Rectangle {
+                height: 12px;
+            }
+            if Core.updateDialog.status != "": Text {
+                text: Core.updateDialog.status;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.4px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+            if Core.updateDialog.progressShown: Rectangle {
+                height: 4px;
+            }
+            if Core.updateDialog.progressShown: LinearProgress {
+                value: Core.updateDialog.progress;
+                indeterminate: Core.updateDialog.indeterminate;
+            }
+            if Core.updateDialog.error != "": Rectangle {
+                height: 8px;
+            }
+            if Core.updateDialog.error != "": Text {
+                text: Core.updateDialog.error;
+                color: Theme.error;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.4px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+            Rectangle {
+                height: 24px;
+            }
+            HBox {
+                height: 40px;
+                spacing: 8px;
+                alignment: end;
+                if Core.updateDialog.skipLabel != "": TextButton {
+                    text: Core.updateDialog.skipLabel;
+                    clicked => { Act.updateSkip(); }
+                }
+                OutlinedButton {
+                    text: Core.updateDialog.laterLabel;
+                    border-radius: 10px;
+                    clicked => { Act.updateLater(false); }
+                }
+                FilledButton {
+                    text: Core.updateDialog.confirmLabel;
+                    enabled: Core.updateDialog.confirmEnabled;
+                    border-radius: 10px;
+                    clicked => { Act.updateConfirm(); }
+                }
+            }
+        }
+    }
+}

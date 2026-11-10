@@ -151,6 +151,7 @@ written;
 }
 
 int wmain(int argc, wchar_t **argv) {
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     DWORD timeout = 15000;
     DWORD settle = 0;
     std::wstring capture;

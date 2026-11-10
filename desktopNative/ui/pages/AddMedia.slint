@@ -1,0 +1,920 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { ListView } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { SectionLabel, Gap, ChoiceChip, SmallChip, Spinner, Switch, RadioMark } from "../widgets/Kit.slint";
+import { Core, MediaStateCode, QualityRowDto, SubtitleRowDto, PlaylistRowDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component SectionCard inherits Rectangle {
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.6);
+    background: Theme.surface-variant.with-alpha(0.35);
+}
+
+component LoadingBanner inherits Rectangle {
+    height: 74px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: Theme.primary.with-alpha(0.4);
+    background: Theme.primary-container.with-alpha(0.3);
+    HBox {
+        padding-start: 14px;
+        padding-end: 14px;
+        spacing: 12px;
+        cross-axis-alignment: center;
+        Spinner {
+            size: 20px;
+            stroke: 2.5px;
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            T {
+                text: Core.addMedia.bannerTitle;
+                font-size: 13px;
+                font-weight: 700;
+                color: Theme.primary;
+                overflow: elide;
+            }
+            T {
+                text: Core.addMedia.bannerHint;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component InspectError inherits Rectangle {
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: Theme.error.with-alpha(0.6);
+    background: Theme.error-container.with-alpha(0.25);
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 24px;
+            spacing: 6px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "⚠️";
+                size: 17px;
+                ink: Theme.error;
+            }
+            T {
+                text: Tr.videoInspectionFailed;
+                font-size: 13px;
+                font-weight: 700;
+                color: Theme.error;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+        }
+        Gap {
+            size: 4px;
+        }
+        Text {
+            text: Core.addMedia.error;
+            color: Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 11px;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: Dir.start;
+            wrap: word-wrap;
+        }
+        Gap {
+            size: 10px;
+        }
+        HBox {
+            height: 40px;
+            alignment: end;
+            FilledButton {
+                text: "🔄 " + Tr.addRetryInspection;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                container: Theme.error;
+                ink: Theme.on-error;
+                clicked => { Act.inspectMedia(); }
+            }
+        }
+    }
+}
+
+component EngineMissing inherits Rectangle {
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: #DC2626;
+    background: #451A1A;
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 24px;
+            spacing: 6px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: Core.addMedia.enginePreparing ? "⏳" : "⚠️";
+                size: 15px;
+            }
+            T {
+                text: Core.addMedia.engineTitle;
+                font-size: 13px;
+                font-weight: 700;
+                color: Core.addMedia.enginePreparing ? #FDE68A : Theme.error;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+        }
+        Gap {
+            size: 2px;
+        }
+        Text {
+            text: Core.addMedia.engineStatus;
+            color: #FEE2E2;
+            font-family: Theme.font;
+            font-size: 11px;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: Dir.start;
+            wrap: word-wrap;
+        }
+        Gap {
+            size: 8px;
+        }
+        Rectangle {
+            height: 40px;
+            OutlinedButton {
+                width: parent.width;
+                text: Core.addMedia.enginePreparing ? Tr.preparingEngine : Tr.startMediaEngine;
+                border-radius: 10px;
+                font-size: 12px;
+                enabled: !Core.addMedia.enginePreparing;
+                clicked => { Act.downloadTools(); }
+            }
+            if Core.addMedia.enginePreparing: Spinner {
+                x: Dir.rtl ? parent.width - 30px : 16px;
+                size: 14px;
+            }
+        }
+    }
+}
+
+component CheckRow inherits Rectangle {
+    in property <bool> selected;
+    callback toggled(selected: bool);
+    height: 56px + 2px;
+    Rectangle {
+        y: 0;
+        height: 56px;
+        border-radius: 6px;
+        background: root.selected ? Theme.primary-container.with-alpha(0.4) : transparent;
+        ta := TouchArea {
+            clicked => { root.toggled(!root.selected); }
+        }
+        Hover {
+            border-radius: 6px;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
+        HBox {
+            padding-start: 6px;
+            padding-end: 6px;
+            spacing: 6px;
+            cross-axis-alignment: center;
+            Rectangle {
+                width: 48px;
+                height: 48px;
+                CheckBox {
+                    checked: root.selected;
+                    toggled(on) => { root.toggled(on); }
+                }
+            }
+            @children
+        }
+    }
+}
+
+component QualitiesCard inherits SectionCard {
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 40px;
+            spacing: 4px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: Core.addMedia.qualitiesIcon;
+                size: 15px;
+            }
+            ElideText {
+                text: Core.addMedia.qualitiesTitle;
+                text-rtl: Core.addMedia.qualitiesTitleRtl;
+                behind: Theme.surface;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            TextButton {
+                text: Tr.addSelectAll;
+                pad: 6px;
+                font-size: 11px;
+                font-weight: 500;
+                clicked => { Act.selectAllQualities(true); }
+            }
+            TextButton {
+                text: Tr.addClearSelection;
+                pad: 6px;
+                font-size: 11px;
+                font-weight: 500;
+                ink: Theme.on-surface-variant;
+                clicked => { Act.selectAllQualities(false); }
+            }
+        }
+        T {
+            text: Core.addMedia.qualitiesCount;
+            font-size: 11px;
+            font-weight: 600;
+            color: Theme.primary;
+        }
+        Gap {
+            size: 8px;
+        }
+        Rectangle {
+            height: min(140px, Core.addQualities.length * 58px + 8px);
+            border-radius: 8px;
+            background: Theme.surface;
+            clip: true;
+            ListView {
+                x: 4px;
+                y: 4px;
+                width: parent.width - 8px;
+                height: parent.height - 8px;
+                for quality in Core.addQualities: CheckRow {
+                    selected: quality.selected;
+                    toggled(on) => { Act.toggleQuality(quality.index, on); }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        alignment: center;
+                        spacing: 0px;
+                        T {
+                            text: quality.label;
+                            font-size: 12px;
+                            font-weight: 600;
+                            overflow: elide;
+                        }
+                        T {
+                            text: quality.line;
+                            font-size: 10px;
+                            color: Theme.on-surface-variant;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+component OptionCard inherits Rectangle {
+    in property <bool> selected;
+    in property <string> icon;
+    in property <string> title;
+    in property <[string]> lines;
+    callback clicked();
+    horizontal-stretch: 1;
+    border-radius: 10px;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.5);
+    background: root.selected ? Theme.primary.with-alpha(0.12) : Theme.surface-variant.with-alpha(0.25);
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        border-radius: 10px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    VerticalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        spacing: 0px;
+        alignment: start;
+        HBox {
+            height: 24px;
+            spacing: 6px;
+            cross-axis-alignment: center;
+            RadioMark {
+                selected: root.selected;
+            }
+            if root.icon != "": EmojiIcon {
+                glyph: root.icon;
+                size: 13px;
+            }
+            T {
+                text: root.title;
+                font-size: 12px;
+                font-weight: 700;
+                color: root.selected ? Theme.primary : Theme.on-surface;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+        }
+        Gap {
+            size: 4px;
+        }
+        for line in root.lines: Text {
+            text: "• " + line;
+            color: Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 10px;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: Dir.start;
+            min-height: 24px;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+}
+
+component SubtitlesCard inherits SectionCard {
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 24px;
+            spacing: 4px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "💬";
+                size: 15px;
+            }
+            T {
+                text: Tr.subtitlesTitle;
+                font-size: 13px;
+                font-weight: 700;
+                horizontal-stretch: 1;
+            }
+        }
+        Gap {
+            size: 8px;
+        }
+        Rectangle {
+            height: min(120px, Core.addSubtitles.length * 58px + 8px);
+            border-radius: 8px;
+            background: Theme.surface;
+            clip: true;
+            ListView {
+                x: 4px;
+                y: 4px;
+                width: parent.width - 8px;
+                height: parent.height - 8px;
+                for sub in Core.addSubtitles: CheckRow {
+                    selected: sub.selected;
+                    toggled(on) => { Act.toggleSubtitle(sub.code, on); }
+                    T {
+                        text: sub.name;
+                        font-size: 12px;
+                        font-weight: 600;
+                        overflow: elide;
+                    }
+                    if sub.automatic: Rectangle {
+                        width: auto.preferred-width + 8px;
+                        height: 26px;
+                        border-radius: 4px;
+                        background: Theme.surface-variant.with-alpha(0.7);
+                        auto := Text {
+                            text: Tr.subtitlesAuto;
+                            color: Theme.on-surface-variant;
+                            font-family: Theme.font;
+                            font-size: 9px;
+                            letter-spacing: Dir.rtl ? 0px : 0.5px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                    Rectangle {
+                        horizontal-stretch: 1;
+                    }
+                }
+            }
+        }
+        if Core.addMedia.subtitlesAnySelected: Gap {
+            size: 10px;
+        }
+        if Core.addMedia.subtitlesAnySelected: GridLayout {
+            spacing: 8px;
+            OptionCard {
+                row: 0;
+                col: Dir.rtl ? 1 : 0;
+                selected: Core.addMedia.embedSubtitles;
+                title: Tr.subtitlesEmbedInVideo;
+                clicked => { Act.setEmbedSubtitles(true); }
+            }
+            OptionCard {
+                row: 0;
+                col: Dir.rtl ? 0 : 1;
+                selected: !Core.addMedia.embedSubtitles;
+                title: Tr.subtitlesSeparateFile;
+                clicked => { Act.setEmbedSubtitles(false); }
+            }
+        }
+    }
+}
+
+component TimeCard inherits Rectangle {
+    in property <string> label;
+    in property <string> time;
+    in property <string> friendly;
+    in property <bool> has-error;
+    callback clicked();
+    height: 96px;
+    horizontal-stretch: 1;
+    border-radius: 10px;
+    border-width: root.has-error ? 1.5px : 1px;
+    border-color: root.has-error ? Theme.error : Theme.primary.with-alpha(0.5);
+    background: root.has-error ? Theme.error-container.with-alpha(0.15) : Theme.surface;
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        border-radius: 10px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    VerticalLayout {
+        padding: 10px;
+        spacing: 0px;
+        HBox {
+            height: 24px;
+            spacing: 4px;
+            cross-axis-alignment: center;
+            T {
+                text: root.label;
+                font-size: 11px;
+                font-weight: 600;
+                color: root.has-error ? Theme.error : Theme.on-surface-variant;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            EmojiIcon {
+                glyph: "🕒";
+                size: 13px;
+            }
+        }
+        Gap {
+            size: 4px;
+        }
+        T {
+            text: root.time;
+            font-size: 20px;
+            font-weight: 700;
+            color: root.has-error ? Theme.error : Theme.primary;
+        }
+        T {
+            text: root.friendly;
+            font-size: 10px;
+            color: Theme.on-surface-variant;
+        }
+    }
+}
+
+component ClipCard inherits SectionCard {
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        Rectangle {
+            height: 48px;
+            head := TouchArea {
+                clicked => { Act.setClipEnabled(!Core.addMedia.clipEnabled); }
+            }
+            HBox {
+                spacing: 8px;
+                cross-axis-alignment: center;
+                EmojiIcon {
+                    glyph: "✂️";
+                    size: 17px;
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: center;
+                    spacing: 0px;
+                    T {
+                        text: Core.addMedia.clipTitle;
+                        font-size: 13px;
+                        font-weight: 700;
+                        overflow: elide;
+                    }
+                    T {
+                        text: Tr.clipSectionHint;
+                        font-size: 10px;
+                        color: Theme.on-surface-variant;
+                        overflow: elide;
+                    }
+                }
+                Switch {
+                    checked: Core.addMedia.clipEnabled;
+                    toggled(on) => { Act.setClipEnabled(on); }
+                }
+            }
+        }
+        if Core.addMedia.clipEnabled: VerticalLayout {
+            spacing: 0px;
+            Gap {
+                size: 10px;
+            }
+            if Core.addMedia.clipFullRange != "": Rectangle {
+                height: 28px;
+                border-radius: 8px;
+                background: Theme.primary-container.with-alpha(0.45);
+                HBox {
+                    padding-start: 10px;
+                    padding-end: 10px;
+                    spacing: 4px;
+                    cross-axis-alignment: center;
+                    EmojiIcon {
+                        glyph: "⏱️";
+                        size: 12px;
+                    }
+                    T {
+                        text: Core.addMedia.clipFullRange;
+                        line: 16px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        color: Theme.primary;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                }
+            }
+            if Core.addMedia.clipFullRange != "": Gap {
+                size: 8px;
+            }
+            GridLayout {
+                spacing: 10px;
+                TimeCard {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    label: Tr.clipStartTimeFrom;
+                    time: Core.addMedia.clipStart;
+                    friendly: Core.addMedia.clipStartFriendly;
+                    has-error: Core.addMedia.clipStartError;
+                    clicked => { Act.openClipPicker(false); }
+                }
+                TimeCard {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    label: Tr.clipEndTimeTo;
+                    time: Core.addMedia.clipEnd;
+                    friendly: Core.addMedia.clipEndFriendly;
+                    has-error: Core.addMedia.clipEndError;
+                    clicked => { Act.openClipPicker(true); }
+                }
+            }
+            if Core.addMedia.clipError != "": Gap {
+                size: 8px;
+            }
+            if Core.addMedia.clipError != "": Rectangle {
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.error.with-alpha(0.5);
+                background: Theme.error-container.with-alpha(0.35);
+                GridLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    padding-top: 6px;
+                    padding-bottom: 6px;
+                    spacing: 6px;
+                    Rectangle {
+                        row: 0;
+                        col: Dir.rtl ? 1 : 0;
+                        width: 16px;
+                        EmojiIcon {
+                            glyph: "⚠️";
+                            size: 13px;
+                            ink: Theme.error;
+                        }
+                    }
+                    Text {
+                        row: 0;
+                        col: Dir.rtl ? 0 : 1;
+                        text: Core.addMedia.clipError;
+                        color: Theme.error;
+                        font-family: Theme.font;
+                        font-size: 11px;
+                        font-weight: 500;
+                        letter-spacing: Dir.rtl ? 0px : 0.5px;
+                        horizontal-alignment: Dir.start;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                        min-height: 24px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            Gap {
+                size: 8px;
+            }
+            Rectangle {
+                height: 32px;
+                clip: true;
+                HBox {
+                    spacing: 6px;
+                    alignment: start;
+                    for chip in Core.addMedia.clipChips: SmallChip {
+                        label: chip.label;
+                        clicked => { Act.setClipRange(chip.start, chip.end); }
+                    }
+                }
+            }
+            Gap {
+                size: 12px;
+            }
+            SectionLabel {
+                text: Tr.clipModeTitle;
+            }
+            Gap {
+                size: 6px;
+            }
+            GridLayout {
+                spacing: 8px;
+                OptionCard {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    selected: !Core.addMedia.clipFastMode;
+                    icon: "✂️";
+                    title: Tr.clipOnlyTitle;
+                    lines: [Tr.clipOnlyLine1, Tr.clipOnlyLine2, Tr.clipOnlyLine3];
+                    clicked => { Act.setClipFastMode(false); }
+                }
+                OptionCard {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    selected: Core.addMedia.clipFastMode;
+                    icon: "⚡";
+                    title: Core.addMedia.fullThenCutTitle;
+                    lines: [Core.addMedia.fullThenCutLine1, Tr.fullThenCutLine2, Tr.fullThenCutLine3, Tr.fullThenCutLine4];
+                    clicked => { Act.setClipFastMode(true); }
+                }
+            }
+        }
+    }
+}
+
+component PlaylistCard inherits SectionCard {
+    VerticalLayout {
+        padding: 12px;
+        spacing: 0px;
+        HBox {
+            height: 48px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "📃";
+                size: 17px;
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 0px;
+                ElideText {
+                    text: Core.addMedia.playlistTitle;
+                    text-rtl: Core.addMedia.playlistTitleRtl;
+                    behind: Theme.surface;
+                    font-size: 13px;
+                    font-weight: 700;
+                }
+                T {
+                    text: Core.addMedia.playlistSummary;
+                    font-size: 11px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
+            }
+            TextButton {
+                text: Core.addMedia.playlistAllSelected ? Tr.selectNone : Tr.selectAll;
+                font-size: 12px;
+                font-weight: 500;
+                clicked => { Act.selectAllPlaylist(!Core.addMedia.playlistAllSelected); }
+            }
+        }
+        Gap {
+            size: 8px;
+        }
+        T {
+            x: 4px;
+            text: Tr.playlistFolder;
+            line: 24px;
+            tracking: 0.3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: folder.has-focus ? Theme.primary : Theme.on-surface-variant;
+        }
+        Gap {
+            size: 5px;
+        }
+        folder := TextField {
+            leading-emoji: "📁";
+            value: Core.addMedia.playlistFolder;
+            rev: Core.addMedia.playlistFolderRev;
+            edited(text) => { Act.setPlaylistFolder(text); }
+        }
+        T {
+            text: Tr.playlistFolderHint;
+            line: 28px;
+            font-size: 10px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+        if !Core.addMedia.playlistFromBrowser: VerticalLayout {
+            spacing: 0px;
+            Gap {
+                size: 8px;
+            }
+            SectionLabel {
+                text: Tr.qualityForAllVideos;
+            }
+            Gap {
+                size: 6px;
+            }
+            Rectangle {
+                height: 36px;
+                clip: true;
+                HBox {
+                    spacing: 6px;
+                    alignment: start;
+                    for choice in Core.addMedia.playlistQualities: ChoiceChip {
+                        label: choice.label;
+                        selected: choice.selected;
+                        clicked => { Act.setPlaylistQuality(choice.value); }
+                    }
+                }
+            }
+            T {
+                text: Tr.qualityForAllVideosHint;
+                line: 28px;
+                font-size: 10px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+        Gap {
+            size: 8px;
+        }
+        Rectangle {
+            height: min(260px, Core.addPlaylist.length * 48px);
+            border-radius: 8px;
+            background: Theme.surface.with-alpha(0.6);
+            clip: true;
+            ListView {
+                for entry in Core.addPlaylist: Rectangle {
+                    height: 48px;
+                    row := TouchArea {
+                        clicked => { Act.togglePlaylistEntry(entry.index, !entry.selected); }
+                    }
+                    Hover {
+                        hovered: row.has-hover;
+                        pressed: row.pressed;
+                    }
+                    HBox {
+                        padding-start: 4px;
+                        padding-end: 4px;
+                        spacing: 0px;
+                        cross-axis-alignment: center;
+                        Rectangle {
+                            width: 48px;
+                            height: 48px;
+                            CheckBox {
+                                checked: entry.selected;
+                                toggled(on) => { Act.togglePlaylistEntry(entry.index, on); }
+                            }
+                        }
+                        if entry.number != "": T {
+                            width: 30px;
+                            text: entry.number;
+                            font-size: 11px;
+                            color: Theme.on-surface-variant;
+                        }
+                        ElideText {
+                            text: entry.title;
+                            text-rtl: entry.titleRtl;
+                            behind: Theme.surface;
+                            font-size: 12px;
+                        }
+                        if entry.duration != "": T {
+                            width: self.preferred-width + 10px;
+                            text: entry.duration;
+                            font-size: 11px;
+                            color: Theme.on-surface-variant;
+                            horizontal-alignment: Dir.end;
+                        }
+                    }
+                }
+            }
+        }
+        if Core.addMedia.playlistCanUseSingle: HBox {
+            height: 48px;
+            alignment: end;
+            cross-axis-alignment: center;
+            TextButton {
+                text: Tr.downloadOnlyThisVideo;
+                font-size: 12px;
+                font-weight: 500;
+                clicked => { Act.useSingleVideo(); }
+            }
+        }
+    }
+}
+
+export component MediaSection inherits VerticalLayout {
+    private property <int> state: Core.addMedia.state;
+    spacing: 0px;
+    Gap {
+        size: 12px;
+    }
+    if root.state == MediaStateCode.course-reading || root.state == MediaStateCode.inspecting: LoadingBanner { }
+    if root.state == MediaStateCode.error: InspectError { }
+    if root.state == MediaStateCode.engine-missing: EngineMissing { }
+    if root.state == MediaStateCode.playlist: PlaylistCard { }
+    if root.state == MediaStateCode.not-inspected: OutlinedButton {
+        text: Core.addMedia.inspectIcon + " " + Core.addMedia.inspectLabel;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        ink: #38BDF8;
+        line: #0284C7;
+        enabled: Core.addMedia.inspectEnabled;
+        clicked => { Act.inspectMedia(); }
+    }
+    if root.state == MediaStateCode.qualities: QualitiesCard { }
+    if root.state == MediaStateCode.qualities && Core.addMedia.subtitlesShown: Gap {
+        size: 10px;
+    }
+    if root.state == MediaStateCode.qualities && Core.addMedia.subtitlesShown: SubtitlesCard { }
+    if root.state == MediaStateCode.qualities && Core.addMedia.clipAvailable: Gap {
+        size: 10px;
+    }
+    if root.state == MediaStateCode.qualities && Core.addMedia.clipAvailable: ClipCard { }
+}
+
+component FormatChip inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked();
+    width: text.preferred-width + 24px;
+    height: 40px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: root.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
+    background: root.selected ? Theme.primary : Theme.surface-variant.with-alpha(0.5);
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    text := Text {
+        text: root.label;
+        color: root.selected ? Theme.on-primary : Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: root.selected ? 700 : 500;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 10px;
+        ink: root.selected ? Theme.on-primary : Theme.on-surface;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component AudioConvertSection inherits VerticalLayout {
+    spacing: 0px;
+    SectionLabel {
+        text: Core.addMedia.audioTitle;
+    }
+    Gap {
+        size: 6px;
+    }
+    FlexboxLayout {
+        flex-direction: Dir.rtl ? row-reverse : row;
+        flex-wrap: wrap;
+        spacing: 6px;
+        for format in Core.addMedia.audioFormats: FormatChip {
+            label: format.label;
+            selected: format.selected;
+            clicked => { Act.setAudioFormat(format.value); }
+        }
+    }
+    Gap { }
+}

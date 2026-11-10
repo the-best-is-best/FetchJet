@@ -1,0 +1,51 @@
+import { Theme } from "../theme.slint";
+import { Hover } from "Base.slint";
+
+export component CheckBox inherits Rectangle {
+    in property <bool> checked;
+    in property <bool> indeterminate;
+    in property <bool> enabled: true;
+    in property <color> tint: Theme.primary;
+    in property <color> idle: Theme.on-surface-variant;
+    callback toggled(checked: bool);
+    private property <bool> filled: root.checked || root.indeterminate;
+    width: 24px;
+    height: 24px;
+    Hover {
+        x: -8px;
+        y: -8px;
+        width: 40px;
+        height: 40px;
+        border-radius: 20px;
+        ink: root.filled ? root.tint : Theme.on-surface;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+    Rectangle {
+        width: 20px;
+        height: 20px;
+        border-radius: 2px;
+        border-width: 2px;
+        border-color: !root.enabled ? Theme.on-surface.with-alpha(0.38) : root.filled ? root.tint : root.idle;
+        background: root.filled ? (root.enabled ? root.tint : Theme.on-surface.with-alpha(0.38)) : transparent;
+    }
+    if root.checked && !root.indeterminate: Path {
+        width: 20px;
+        height: 20px;
+        viewbox-width: 20;
+        viewbox-height: 20;
+        commands: "M 4 10 L 8 14 L 16 6";
+        stroke: Theme.on-primary;
+        stroke-width: 2px;
+        fill: transparent;
+    }
+    if root.indeterminate: Rectangle {
+        width: 12px;
+        height: 2px;
+        background: Theme.on-primary;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.toggled(!root.checked); }
+    }
+}

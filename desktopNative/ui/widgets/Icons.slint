@@ -1,0 +1,49 @@
+import { Theme } from "../theme.slint";
+
+export global Emoji {
+    in property <bool> ready: false;
+    in property <int> revision: 0;
+    pure callback icon(string, int, int) -> image;
+}
+
+export component EmojiIcon inherits Rectangle {
+    in property <string> glyph;
+    in property <length> size: 18px;
+    in property <color> ink: Theme.on-surface;
+    private property <image> picture: Emoji.icon(root.glyph, round(root.size / 1phx), Emoji.revision);
+    private property <bool> drawn: Emoji.ready && root.picture.width > 0;
+    width: root.size;
+    height: root.size;
+    if root.drawn: Image {
+        width: root.size;
+        height: root.size;
+        source: root.picture;
+    }
+    if !root.drawn: Text {
+        text: root.glyph;
+        color: root.ink;
+        font-family: "Segoe UI Emoji";
+        font-size: root.size * 0.78;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component Sym inherits Text {
+    font-family: "Segoe UI Symbol";
+    color: Theme.on-surface;
+    horizontal-alignment: center;
+    vertical-alignment: center;
+}
+
+export component PathIcon inherits Path {
+    in property <color> ink: Theme.on-surface;
+    in property <length> size: 18px;
+    width: root.size;
+    height: root.size;
+    viewbox-width: 24;
+    viewbox-height: 24;
+    stroke: root.ink;
+    stroke-width: 2px;
+    fill: transparent;
+}

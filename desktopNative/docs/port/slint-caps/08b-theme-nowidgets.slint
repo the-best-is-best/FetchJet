@@ -1,0 +1,16 @@
+export enum ThemeMode { system, light, dark }
+
+export global Theme {
+    in-out property <ThemeMode> mode: ThemeMode.system;
+    in-out property <bool> system-dark: true;
+    out property <bool> dark: root.mode == ThemeMode.dark || (root.mode == ThemeMode.system && root.system-dark);
+    out property <color> background: root.dark ? #080D1A : #F8FAFC;
+    out property <color> on-surface: root.dark ? #F1F5F9 : #0F172A;
+}
+
+export component Demo inherits Window {
+    background: Theme.background;
+    preferred-width: 400px;
+    preferred-height: 200px;
+    Text { text: Theme.dark ? "dark" : "light"; color: Theme.on-surface; }
+}

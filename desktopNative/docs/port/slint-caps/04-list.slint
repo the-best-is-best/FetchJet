@@ -1,0 +1,120 @@
+import { ListView, FjScrollArea } from "lib/fj-scroll.slint";
+
+export struct TaskRow {
+    id: int,
+    name: string,
+    status: string,
+    progress: float,
+    selected: bool,
+    header: string,
+    header-count: int,
+}
+
+export global ListApi {
+    callback row-clicked(index: int, id: int, control: bool, shift: bool);
+    callback row-double-clicked(index: int, id: int);
+    callback row-context(index: int, id: int, x: length, y: length);
+    callback key(text: string, control: bool, shift: bool) -> bool;
+    pure callback row-y(index: int) -> length;
+    in property <length> row-height: 64px;
+    in property <length> header-height: 36px;
+}
+
+component TaskRowView inherits Rectangle {
+    in property <TaskRow> task;
+    in property <int> index;
+    in property <bool> focused;
+    callback context(x: length, y: length);
+    private property <bool> has-header: root.task.header != "";
+    height: ListApi.row-height + (root.has-header ? ListApi.header-height : 0px);
+    if root.has-header: Rectangle {
+        y: 0;
+        height: ListApi.header-height;
+        HorizontalLayout {
+            padding-left: 12px;
+            spacing: 8px;
+            Text { text: root.task.header; color: #94a3b8; font-weight: 600; vertical-alignment: center; }
+            Text { text: root.task.header-count; color: #64748b; vertical-alignment: center; }
+            Rectangle { }
+        }
+    }
+    body := Rectangle {
+        y: root.has-header ? ListApi.header-height : 0px;
+        height: ListApi.row-height;
+        border-radius: 10px;
+        background: root.task.selected ? #0c3d60 : ta.has-hover ? #172238 : transparent;
+        border-width: root.focused ? 1px : 0px;
+        border-color: #38bdf8;
+        ta := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+                    ListApi.row-clicked(root.index, root.task.id, e.modifiers.control, e.modifiers.shift);
+                }
+                if e.kind == PointerEventKind.up && e.button == PointerEventButton.right {
+                    root.context(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    ListApi.row-context(root.index, root.task.id, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                }
+            }
+            double-clicked => { ListApi.row-double-clicked(root.index, root.task.id); }
+        }
+        HorizontalLayout {
+            padding: 10px;
+            spacing: 10px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 4px;
+                Text { text: root.task.name; color: white; overflow: elide; }
+                Rectangle {
+                    height: 4px;
+                    border-radius: 2px;
+                    background: #1e293b;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * clamp(root.task.progress, 0, 1);
+                        border-radius: 2px;
+                        background: #00e5ff;
+                    }
+                }
+                Text { text: root.task.status; color: #94a3b8; font-size: 12px; overflow: elide; }
+            }
+        }
+    }
+}
+
+export component Demo inherits Window {
+    in property <[TaskRow]> rows;
+    in-out property <int> focus-index: -1;
+    out property <length> list-content-y: list.content-y;
+    out property <length> list-visible-height: list.visible-height;
+    public function scroll-to-row(index: int) {
+        list.ensure-visible(ListApi.row-y(index), ListApi.row-height + ListApi.header-height);
+    }
+    public function scroll-to-top() {
+        list.scroll-to-y(0px);
+    }
+    preferred-width: 800px;
+    preferred-height: 500px;
+    forward-focus: keys;
+    keys := FocusScope {
+        key-pressed(e) => {
+            if ListApi.key(e.text, e.modifiers.control, e.modifiers.shift) {
+                return accept;
+            }
+            reject
+        }
+        menu := ContextMenuArea {
+            Menu {
+                MenuItem { title: "Open"; }
+                MenuItem { title: "Delete"; }
+            }
+            list := ListView {
+                for row[i] in root.rows: TaskRowView {
+                    task: row;
+                    index: i;
+                    focused: i == root.focus-index && keys.has-focus;
+                }
+            }
+        }
+    }
+}

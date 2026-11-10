@@ -1,0 +1,930 @@
+import { Theme, Dir } from "../theme.slint";
+import { T, Hover } from "../widgets/Base.slint";
+import { TextField, FieldIconButton } from "../widgets/TextField.slint";
+import { Switch, Spinner } from "../widgets/Kit.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { ScrollArea } from "../widgets/Scroll.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { PickMenu } from "../widgets/Menu.slint";
+import { Core, SettingRowDto, SettingFieldDto, SettingButtonDto, SettingsSectionDto, SettingKind } from "../generated/dto.slint";
+import { Tr } from "../generated/tr.slint";
+import { Act } from "../generated/actions.slint";
+
+component SetButton inherits Rectangle {
+    in property <SettingButtonDto> data;
+    in property <length> spinner: 14px;
+    callback clicked();
+    private property <length> pad: root.data.flat ? 12px : 24px;
+    private property <color> ink: !root.data.enabled ? Theme.on-surface-variant.with-alpha(0.38)
+        : root.data.filled ? Theme.on-primary
+        : root.data.tone != 0 ? Theme.tone(root.data.tone)
+        : root.data.flat ? Theme.primary : Theme.on-surface-variant;
+    width: max(58px, inner.preferred-width + 2 * root.pad);
+    height: 40px;
+    border-radius: root.data.round || root.data.flat ? 20px : 10px;
+    border-width: root.data.filled || root.data.flat ? 0px : 1px;
+    border-color: Theme.outline-variant.with-alpha(root.data.enabled ? 1 : 0.1);
+    background: !root.data.filled ? transparent : root.data.enabled ? Theme.primary : Theme.on-surface.with-alpha(0.1);
+    ta := TouchArea {
+        enabled: root.data.enabled;
+        clicked => { root.clicked(); }
+    }
+    inner := HorizontalLayout {
+        x: (parent.width - self.preferred-width) / 2;
+        width: self.preferred-width;
+        spacing: 8px;
+        if root.data.busy && !Dir.rtl: Rectangle {
+            width: root.spinner;
+            Spinner {
+                size: root.spinner;
+            }
+        }
+        Text {
+            text: root.data.label;
+            color: root.ink;
+            font-family: Theme.font;
+            font-size: 14px;
+            font-weight: root.data.strong ? 600 : 500;
+            letter-spacing: Dir.rtl ? 0px : 0.1px;
+            vertical-alignment: center;
+        }
+        if root.data.busy && Dir.rtl: Rectangle {
+            width: root.spinner;
+            Spinner {
+                size: root.spinner;
+            }
+        }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.data.enabled;
+        pressed: ta.pressed && root.data.enabled;
+    }
+}
+
+component StatusLabel inherits Rectangle {
+    in property <string> text;
+    in property <color> ink;
+    width: 14px + label.preferred-width;
+    height: 24px;
+    Rectangle {
+        x: Dir.rtl ? parent.width - 8px : 0;
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background: root.ink;
+    }
+    label := Text {
+        x: Dir.rtl ? 0 : 14px;
+        height: 24px;
+        text: root.text;
+        color: root.ink;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        vertical-alignment: center;
+    }
+}
+
+component Segmented inherits Rectangle {
+    in property <[string]> options;
+    in property <int> pick;
+    in property <bool> units: false;
+    callback picked(index: int);
+    width: inner.preferred-width;
+    height: root.units ? 46px : 44px;
+    border-radius: 10px;
+    border-width: root.units ? 1px : 0px;
+    border-color: Theme.outline-variant.with-alpha(0.4);
+    background: Theme.surface-variant.with-alpha(root.units ? 0.6 : 0.45);
+    inner := HorizontalLayout {
+        padding: 3px;
+        spacing: root.units ? 3px : 2px;
+        for unused[slot] in root.options: seg := Rectangle {
+            property <int> i: Dir.rtl ? root.options.length - 1 - slot : slot;
+            property <bool> selected: self.i + 1 == root.pick;
+            width: label.preferred-width + (root.units ? 20px : 24px);
+            border-radius: 8px;
+            background: !seg.selected ? transparent : root.units ? Theme.primary-container : Theme.primary;
+            ta := TouchArea {
+                clicked => { root.picked(seg.i); }
+            }
+            label := Text {
+                text: root.options[seg.i];
+                color: !seg.selected ? (root.units ? Theme.on-surface-variant : Theme.on-surface)
+                    : root.units ? Theme.on-primary-container : Theme.on-primary;
+                font-family: Theme.font;
+                font-size: 12px;
+                font-weight: seg.selected ? 700 : 500;
+                letter-spacing: Dir.rtl ? 0px : 0.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Hover {
+                border-radius: 8px;
+                hovered: ta.has-hover;
+                pressed: ta.pressed;
+            }
+        }
+    }
+}
+
+component FilterChips inherits Rectangle {
+    in property <[string]> options;
+    in property <int> pick;
+    in property <bool> small;
+    callback picked(index: int);
+    private property <length> side: measure.preferred-width > root.width ? 9px : 16px;
+    height: 48px;
+    clip: true;
+    measure := HorizontalLayout {
+        visible: false;
+        spacing: 6px;
+        for option in root.options: Rectangle {
+            width: probe.preferred-width + 32px;
+            probe := Text {
+                text: option;
+                font-family: Theme.font;
+                font-size: root.small ? 12px : 14px;
+                font-weight: 500;
+                letter-spacing: Dir.rtl ? 0px : 0.1px;
+            }
+        }
+    }
+    HorizontalLayout {
+        alignment: Dir.rtl ? end : start;
+        spacing: 6px;
+        for unused[slot] in root.options: cell := Rectangle {
+            property <int> i: Dir.rtl ? root.options.length - 1 - slot : slot;
+            property <bool> selected: self.i + 1 == root.pick;
+            width: label.preferred-width + 2 * root.side;
+            Rectangle {
+                height: 32px;
+                border-radius: 8px;
+                border-width: cell.selected ? 0px : 1px;
+                border-color: Theme.outline-variant;
+                background: cell.selected ? Theme.secondary-container : transparent;
+                ta := TouchArea {
+                    clicked => { root.picked(cell.i); }
+                }
+                label := Text {
+                    text: root.options[cell.i];
+                    color: cell.selected ? Theme.on-secondary-container : Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: root.small ? 12px : 14px;
+                    font-weight: 500;
+                    letter-spacing: Dir.rtl ? 0px : 0.1px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                Hover {
+                    border-radius: 8px;
+                    hovered: ta.has-hover;
+                    pressed: ta.pressed;
+                }
+            }
+        }
+    }
+}
+
+component Field inherits VerticalLayout {
+    in property <SettingFieldDto> data;
+    private property <string> field-id: root.data.id;
+    spacing: 0px;
+    alignment: end;
+    horizontal-stretch: root.data.width > 0 ? 0 : 1;
+    min-width: root.data.width > 0 ? root.data.width * 1px : 60px;
+    max-width: root.data.width > 0 ? root.data.width * 1px : 100000px;
+    changed field-id => { input.set-text(root.data.value); }
+    if root.data.label != "": Rectangle {
+        height: 29px;
+        Text {
+            x: Dir.rtl ? 0 : 4px;
+            y: 0;
+            width: parent.width - 4px;
+            height: 24px;
+            text: root.data.label;
+            color: (input.has-focus ? Theme.primary : Theme.on-surface-variant).with-alpha(root.data.enabled ? 1 : 0.6);
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: Dir.rtl ? 0px : 0.3px;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    input := TextField {
+        height: root.data.slim ? 42px : 48px;
+        value: root.data.value;
+        rev: root.data.rev;
+        placeholder: root.data.placeholder;
+        leading-emoji: root.data.emoji;
+        enabled: root.data.enabled;
+        input-type: root.data.secret ? InputType.password : InputType.text;
+        has-trailing: root.data.toggle != "";
+        edited(text) => { Act.settingText(root.data.id, text); }
+        if root.data.toggle != "": Rectangle {
+            width: chip.width;
+            chip := Rectangle {
+                width: word.preferred-width + 20px;
+                height: 36px;
+                border-radius: 8px;
+                background: Theme.primary.with-alpha(0.14);
+                tap := TouchArea {
+                    clicked => { Act.settingClick(root.data.toggleId); }
+                }
+                word := Text {
+                    text: root.data.toggle;
+                    color: Theme.primary;
+                    font-family: Theme.font;
+                    font-size: 12px;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                Hover {
+                    border-radius: 8px;
+                    ink: Theme.primary;
+                    hovered: tap.has-hover;
+                    pressed: tap.pressed;
+                }
+            }
+        }
+    }
+}
+
+component TitleRow inherits Rectangle {
+    in property <SettingRowDto> data;
+    in property <bool> has-trailing;
+    in property <bool> round-top;
+    in property <bool> round-bottom;
+    callback clicked();
+    private property <float> fade: root.data.enabled ? 1 : 0.45;
+    min-height: root.data.compact ? 0px : 56px;
+    ta := TouchArea {
+        enabled: root.data.clickable && root.data.enabled;
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        y: root.round-top ? 0px : -20px;
+        height: parent.height + (root.round-top ? 0px : 20px) + (root.round-bottom ? 0px : 20px);
+        border-radius: 14px;
+        background: Theme.on-surface.with-alpha(!ta.enabled ? 0 : ta.pressed ? 0.10 : ta.has-hover ? 0.08 : 0);
+    }
+    GridLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: root.data.compact ? 10px : 12px;
+        padding-bottom: root.data.compact ? 10px : 12px;
+        spacing: 0px;
+        VerticalLayout {
+            row: 0;
+            col: Dir.rtl ? 1 : 0;
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            Text {
+                min-height: 20px;
+                text: root.data.title;
+                color: Theme.on-surface.with-alpha(root.fade);
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: root.data.compact ? 500 : 600;
+                letter-spacing: Dir.rtl ? 0px : 0.2px;
+                horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                wrap: word-wrap;
+            }
+            if root.data.subtitle != "": Rectangle {
+                height: max(16px, hint.preferred-height);
+                hint := Text {
+                    width: parent.width;
+                    height: parent.height;
+                    text: (root.data.subtitleEmoji != "" ? "  " : "") + root.data.subtitle;
+                    color: Theme.on-surface-variant.with-alpha(root.fade);
+                    font-family: Theme.font;
+                    font-size: 12px;
+                    letter-spacing: Dir.rtl ? 0px : 0.4px;
+                    horizontal-alignment: Dir.start;
+                    vertical-alignment: top;
+                    wrap: word-wrap;
+                }
+                if root.data.subtitleEmoji != "": EmojiIcon {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    y: 1px;
+                    glyph: root.data.subtitleEmoji;
+                    size: 13px;
+                    ink: Theme.status-paused;
+                }
+            }
+        }
+        HorizontalLayout {
+            row: 0;
+            col: Dir.rtl ? 0 : 1;
+            horizontal-stretch: 0;
+            padding-left: root.has-trailing && !Dir.rtl ? 16px : 0px;
+            padding-right: root.has-trailing && Dir.rtl ? 16px : 0px;
+            spacing: 8px;
+            @children
+        }
+    }
+}
+
+component MenuRow inherits TitleRow {
+    has-trailing: true;
+    clicked => { menu.show(); }
+    anchor := Rectangle {
+        width: opener.width;
+        min-height: 48px;
+        opener := Rectangle {
+            width: max(58px, word.preferred-width + 8px + arrow.preferred-width + 24px);
+            height: 40px;
+            border-radius: 20px;
+            tap := TouchArea {
+                clicked => { menu.show(); }
+            }
+            word := Text {
+                x: Dir.rtl ? 12px + arrow.preferred-width + 8px : 12px;
+                width: self.preferred-width;
+                text: root.data.side;
+                color: Theme.primary;
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: Dir.rtl ? 0px : 0.1px;
+                vertical-alignment: center;
+            }
+            arrow := Text {
+                x: Dir.rtl ? 12px : parent.width - 12px - self.preferred-width;
+                width: self.preferred-width;
+                text: "▾";
+                color: Theme.primary;
+                font-family: "Segoe UI Symbol";
+                font-size: 14px;
+                vertical-alignment: center;
+            }
+            Hover {
+                border-radius: 20px;
+                ink: Theme.primary;
+                hovered: tap.has-hover;
+                pressed: tap.pressed;
+            }
+        }
+        menu := PickMenu {
+            x: Dir.rtl ? 0 : min(0px, anchor.width - self.width);
+            options: root.data.options;
+            pick: root.data.pick;
+            han: root.data.hanOption;
+            anchor-top: anchor.absolute-position.y;
+            anchor-height: anchor.height;
+            picked(i) => { Act.settingPick(root.data.id, i); }
+        }
+    }
+}
+
+component RowView inherits VerticalLayout {
+    in property <SettingRowDto> data;
+    in property <int> index;
+    private property <length> side-pad: root.data.bare ? 0px : 16px;
+    private property <int> kind: root.data.kind;
+    spacing: 0px;
+    if root.data.first && root.index > 0: Rectangle {
+        height: 24px;
+    }
+    if root.data.caption != "": Rectangle {
+        height: 24px;
+        Text {
+            x: Dir.rtl ? 0 : 4px;
+            y: 0;
+            width: parent.width - 4px;
+            height: 16px;
+            text: root.data.caption;
+            color: Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: Dir.rtl ? 0px : 0.8px;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    Rectangle {
+        clip: !root.data.bare;
+        if !root.data.bare: Rectangle {
+            y: root.data.first ? 0px : -20px;
+            height: parent.height + (root.data.first ? 0px : 20px) + (root.data.last ? 0px : 20px);
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: Theme.outline-variant.with-alpha(0.35);
+            background: Theme.surface;
+        }
+        VerticalLayout {
+            spacing: 0px;
+            if root.data.divider: Rectangle {
+                height: 1px;
+                Rectangle {
+                    x: 16px;
+                    width: parent.width - 32px;
+                    background: Theme.outline-variant.with-alpha(0.3);
+                }
+            }
+            if root.kind == SettingKind.switch || root.kind == SettingKind.info
+                || (root.kind == SettingKind.picker && root.data.title != ""): TitleRow {
+                data: root.data;
+                round-top: root.data.first;
+                round-bottom: root.data.last && root.kind != SettingKind.picker;
+                has-trailing: root.kind == SettingKind.switch || root.data.status != "" || root.data.side != ""
+                    || root.data.buttons.length > 0 || (root.kind == SettingKind.picker && !root.data.below);
+                clicked => {
+                    if root.kind == SettingKind.switch {
+                        Act.settingToggle(root.data.id, !root.data.checked);
+                    } else {
+                        Act.settingClick(root.data.id);
+                    }
+                }
+                if root.kind == SettingKind.switch: Rectangle {
+                    width: 52px;
+                    min-height: 48px;
+                    Switch {
+                        checked: root.data.checked;
+                        enabled: root.data.enabled;
+                        toggled(on) => { Act.settingToggle(root.data.id, on); }
+                    }
+                }
+                if root.data.status != "": Rectangle {
+                    width: status.width;
+                    status := StatusLabel {
+                        text: root.data.status;
+                        ink: Theme.tone(root.data.statusTone);
+                    }
+                }
+                if root.data.side != "": Rectangle {
+                    width: side.preferred-width;
+                    side := Text {
+                        text: root.data.side;
+                        color: Theme.tone(root.data.sideTone);
+                        font-family: Theme.font;
+                        font-size: 16px;
+                        font-weight: root.data.side == "↗" ? 700 : 600;
+                        letter-spacing: Dir.rtl ? 0px : 0.5px;
+                        vertical-alignment: center;
+                    }
+                }
+                for item in root.data.buttons: Rectangle {
+                    width: action.width;
+                    min-height: 48px;
+                    action := SetButton {
+                        data: item;
+                        clicked => { Act.settingClick(item.id); }
+                    }
+                }
+                if root.kind == SettingKind.picker && !root.data.below: Rectangle {
+                    width: choice.width;
+                    choice := Segmented {
+                        options: root.data.options;
+                        pick: root.data.pick;
+                        picked(i) => { Act.settingPick(root.data.id, i); }
+                    }
+                }
+            }
+            if root.kind == SettingKind.menu: MenuRow {
+                data: root.data;
+                round-top: root.data.first;
+                round-bottom: root.data.last;
+            }
+            if root.kind == SettingKind.picker && root.data.below: Rectangle {
+                height: root.data.top * 1px + 44px + root.data.bottom * 1px;
+                clip: true;
+                Segmented {
+                    x: Dir.rtl ? parent.width - 16px - self.width : 16px;
+                    y: root.data.top * 1px;
+                    options: root.data.options;
+                    pick: root.data.pick;
+                    picked(i) => { Act.settingPick(root.data.id, i); }
+                }
+            }
+            if root.kind == SettingKind.chips: VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: root.data.title != "" ? 12px : root.data.top * 1px - 8px;
+                padding-bottom: root.data.title != "" ? 12px : root.data.bottom * 1px - 8px;
+                spacing: 8px;
+                if root.data.title != "": T {
+                    text: root.data.title;
+                    line: 20px;
+                    tracking: 0.2px;
+                    font-weight: 500;
+                    overflow: elide;
+                }
+                FilterChips {
+                    options: root.data.options;
+                    pick: root.data.pick;
+                    small: root.data.compact;
+                    picked(i) => { Act.settingPick(root.data.id, i); }
+                }
+            }
+            if root.kind == SettingKind.limit-box: Rectangle {
+                height: root.data.top * 1px + 62px + root.data.bottom * 1px;
+                Rectangle {
+                    x: 16px;
+                    y: root.data.top * 1px;
+                    width: parent.width - 32px;
+                    height: 62px;
+                    border-radius: 12px;
+                    border-width: 1px;
+                    border-color: Theme.outline-variant.with-alpha(0.5);
+                    background: Theme.surface-variant.with-alpha(0.35);
+                    Field {
+                        x: Dir.rtl ? parent.width - 142px : 12px;
+                        y: 8px;
+                        width: 130px;
+                        height: 42px;
+                        data: root.data.one;
+                    }
+                    units := Segmented {
+                        x: Dir.rtl ? parent.width - 152px - self.width : 152px;
+                        y: 8px;
+                        units: true;
+                        options: root.data.options;
+                        pick: root.data.pick;
+                        picked(i) => { Act.settingPick(root.data.id, i); }
+                    }
+                    T {
+                        x: Dir.rtl ? 12px : 152px + units.width + 10px;
+                        y: 8px;
+                        width: max(0px, parent.width - 174px - units.width);
+                        text: root.data.hint;
+                        line: 46px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        color: Theme.primary;
+                        overflow: elide;
+                    }
+                }
+            }
+            if root.kind == SettingKind.note: VerticalLayout {
+                padding-left: root.side-pad;
+                padding-right: root.side-pad;
+                padding-top: root.data.top * 1px;
+                padding-bottom: root.data.bottom * 1px;
+                Text {
+                    min-height: root.data.large ? 20px : 16px;
+                    text: root.data.title;
+                    color: Theme.tone(root.data.tone);
+                    font-family: Theme.font;
+                    font-size: root.data.large ? 14px : 12px;
+                    letter-spacing: Dir.rtl ? 0px : root.data.large ? 0.2px : 0.4px;
+                    horizontal-alignment: Dir.start;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+            if root.kind == SettingKind.fields: HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: root.data.top * 1px;
+                padding-bottom: root.data.bottom * 1px;
+                spacing: 10px;
+                if Dir.rtl && root.data.removeId != "": Rectangle {
+                    width: 30px;
+                    FieldIconButton {
+                        y: parent.height - 36px;
+                        glyph: "✕";
+                        clicked => { Act.settingClick(root.data.removeId); }
+                    }
+                }
+                if Dir.rtl && root.data.two.id != "": Field {
+                    data: root.data.two;
+                }
+                Field {
+                    data: root.data.one;
+                }
+                if !Dir.rtl && root.data.two.id != "": Field {
+                    data: root.data.two;
+                }
+                if !Dir.rtl && root.data.removeId != "": Rectangle {
+                    width: 30px;
+                    FieldIconButton {
+                        y: parent.height - 36px;
+                        glyph: "✕";
+                        clicked => { Act.settingClick(root.data.removeId); }
+                    }
+                }
+            }
+            if root.kind == SettingKind.preset: VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: root.data.top * 1px;
+                padding-bottom: root.data.bottom * 1px;
+                spacing: 0px;
+                Rectangle {
+                    height: 24px;
+                    T {
+                        x: Dir.rtl ? amount.preferred-width + 8px : 0;
+                        width: parent.width - amount.preferred-width - 8px;
+                        text: root.data.title;
+                        line: 24px;
+                        tracking: 0.2px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        overflow: elide;
+                    }
+                    amount := Text {
+                        x: Dir.rtl ? 0 : parent.width - self.preferred-width;
+                        width: self.preferred-width;
+                        text: root.data.side;
+                        color: Theme.tone(root.data.sideTone);
+                        font-family: Theme.font;
+                        font-size: 12px;
+                        font-weight: 700;
+                        letter-spacing: Dir.rtl ? 0px : 0.5px;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.data.one.id != "": Rectangle {
+                    height: 8px + 46px;
+                    Field {
+                        x: Dir.rtl ? parent.width - 130px : 0;
+                        y: 8px;
+                        width: 130px;
+                        height: 42px;
+                        data: root.data.one;
+                    }
+                    Segmented {
+                        x: Dir.rtl ? parent.width - 140px - self.width : 140px;
+                        y: 8px;
+                        units: true;
+                        options: root.data.options;
+                        pick: root.data.pick;
+                        picked(i) => { Act.settingPick(root.data.id, i); }
+                    }
+                }
+            }
+            if root.kind == SettingKind.buttons: Rectangle {
+                height: root.data.top * 1px + 48px + root.data.bottom * 1px;
+                HorizontalLayout {
+                    x: root.side-pad;
+                    y: root.data.top * 1px;
+                    width: parent.width - 2 * root.side-pad;
+                    height: 48px;
+                    alignment: root.data.alignEnd != Dir.rtl ? end : start;
+                    spacing: 8px;
+                    if !Dir.rtl && root.data.status != "": Rectangle {
+                        width: saved.width + 4px;
+                        saved := StatusLabel {
+                            x: 0;
+                            text: root.data.status;
+                            ink: Theme.tone(root.data.statusTone);
+                        }
+                    }
+                    for unused[slot] in root.data.buttons: holder := Rectangle {
+                        property <int> i: Dir.rtl ? root.data.buttons.length - 1 - slot : slot;
+                        width: press.width;
+                        press := SetButton {
+                            data: root.data.buttons[holder.i];
+                            spinner: root.data.bare ? 16px : 14px;
+                            clicked => { Act.settingClick(root.data.buttons[holder.i].id); }
+                        }
+                    }
+                    if Dir.rtl && root.data.status != "": Rectangle {
+                        width: saved-rtl.width + 4px;
+                        saved-rtl := StatusLabel {
+                            x: 4px;
+                            text: root.data.status;
+                            ink: Theme.tone(root.data.statusTone);
+                        }
+                    }
+                }
+            }
+            if root.kind == SettingKind.progress: LinearProgress {
+                value: root.data.progress;
+                indeterminate: root.data.indeterminate;
+            }
+        }
+    }
+    if root.data.footer != "": VerticalLayout {
+        padding-top: 8px;
+        padding-left: 4px;
+        padding-right: 4px;
+        Text {
+            text: root.data.footer;
+            color: Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 12px;
+            letter-spacing: Dir.rtl ? 0px : 0.4px;
+            horizontal-alignment: Dir.start;
+            wrap: word-wrap;
+        }
+    }
+}
+
+component NavItem inherits Rectangle {
+    in property <SettingsSectionDto> data;
+    in property <bool> selected;
+    in property <bool> chevron;
+    callback clicked();
+    private property <length> text-width: root.width - 66px - (root.chevron ? 20px : 0px);
+    height: 60px;
+    border-radius: 12px;
+    background: root.selected ? Theme.primary.with-alpha(0.12) : transparent;
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        x: Dir.rtl ? parent.width - 44px : 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: root.selected ? Theme.primary.with-alpha(0.2) : Theme.surface-variant.with-alpha(0.5);
+        Text {
+            text: root.data.glyph;
+            color: root.selected ? Theme.primary : Theme.on-surface-variant;
+            font-family: "Segoe UI Symbol";
+            font-size: 16px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    T {
+        x: Dir.rtl ? parent.width - 56px - root.text-width : 56px;
+        y: 8px;
+        width: root.text-width;
+        text: root.data.title;
+        line: 20px;
+        tracking: 0.2px;
+        font-weight: 600;
+        color: root.selected ? Theme.primary : Theme.on-surface;
+        overflow: elide;
+    }
+    T {
+        x: Dir.rtl ? parent.width - 56px - root.text-width : 56px;
+        y: 28px;
+        width: root.text-width;
+        text: root.data.hint;
+        font-size: 12px;
+        color: Theme.tone(root.data.hintTone);
+        overflow: elide;
+    }
+    if root.chevron: Text {
+        x: Dir.rtl ? 10px : parent.width - 10px - self.width;
+        width: 14px;
+        text: Dir.rtl ? "‹" : "›";
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 22px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 12px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+component NavList inherits Rectangle {
+    in property <bool> narrow;
+    ScrollArea {
+        VerticalLayout {
+            padding-left: root.narrow ? 4px : Dir.rtl ? 12px : 0px;
+            padding-right: root.narrow ? 4px : Dir.rtl ? 0px : 12px;
+            padding-top: 4px;
+            padding-bottom: 4px;
+            spacing: root.narrow ? 6px : 4px;
+            for section[i] in Core.settingsNav.sections: NavItem {
+                data: section;
+                selected: !root.narrow && section.selected;
+                chevron: root.narrow;
+                clicked => {
+                    if root.narrow || !section.selected {
+                        Act.setSettingsSection(i);
+                    }
+                }
+            }
+            VerticalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                padding-top: root.narrow ? 8px : 12px;
+                padding-bottom: 8px;
+                Text {
+                    text: Tr.changesSavedAutomatically;
+                    color: Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: 11px;
+                    font-weight: 500;
+                    letter-spacing: Dir.rtl ? 0px : 0.5px;
+                    horizontal-alignment: Dir.start;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}
+
+component Page inherits Rectangle {
+    in property <bool> wide;
+    private property <length> start-pad: root.wide ? 28px : 4px;
+    private property <length> end-pad: 14px + max(0px, root.width - root.start-pad - 14px - 720px);
+    ScrollArea {
+        VerticalLayout {
+            padding-left: Dir.rtl ? root.end-pad : root.start-pad;
+            padding-right: Dir.rtl ? root.start-pad : root.end-pad;
+            padding-top: root.wide ? 4px : 0px;
+            padding-bottom: root.wide ? 28px : 24px;
+            spacing: 0px;
+            if !root.wide: Rectangle {
+                height: 40px;
+                Rectangle {
+                    x: Dir.rtl ? parent.width - self.width : 0;
+                    width: 12px + arrow.preferred-width + 8px + all.preferred-width;
+                    border-radius: 10px;
+                    back := TouchArea {
+                        clicked => { Act.setSettingsSection(-1); }
+                    }
+                    arrow := Text {
+                        x: Dir.rtl ? parent.width - 6px - self.preferred-width : 6px;
+                        width: self.preferred-width;
+                        text: Dir.rtl ? "→" : "←";
+                        color: Theme.primary;
+                        font-family: Theme.font;
+                        font-size: 18px;
+                        vertical-alignment: center;
+                    }
+                    all := Text {
+                        x: Dir.rtl ? 6px : 6px + arrow.preferred-width + 8px;
+                        width: self.preferred-width;
+                        text: Tr.settingsAllSettings;
+                        color: Theme.primary;
+                        font-family: Theme.font;
+                        font-size: 14px;
+                        font-weight: 500;
+                        letter-spacing: Dir.rtl ? 0px : 0.1px;
+                        vertical-alignment: center;
+                    }
+                    Hover {
+                        border-radius: 10px;
+                        ink: Theme.primary;
+                        hovered: back.has-hover;
+                        pressed: back.pressed;
+                    }
+                }
+            }
+            T {
+                text: Core.settingsNav.title;
+                line: 32px;
+                tracking: 0px;
+                font-size: 24px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Rectangle {
+                height: 4px;
+            }
+            Text {
+                min-height: 20px;
+                text: Core.settingsNav.blurb;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 14px;
+                letter-spacing: Dir.rtl ? 0px : 0.2px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+            Rectangle {
+                height: 20px;
+            }
+            for row[i] in Core.settingsRows: RowView {
+                data: row;
+                index: i;
+            }
+        }
+    }
+}
+
+export component SettingsPanel inherits Rectangle {
+    private property <bool> wide: root.width >= 720px;
+    if root.wide: NavList {
+        x: Dir.rtl ? parent.width - 250px : 0;
+        width: 250px;
+        narrow: false;
+    }
+    if root.wide: Rectangle {
+        x: Dir.rtl ? parent.width - 251px : 250px;
+        width: 1px;
+        background: Theme.outline-variant.with-alpha(0.35);
+    }
+    if !root.wide && !Core.settingsNav.pageOpen: NavList {
+        narrow: true;
+    }
+    if root.wide || Core.settingsNav.pageOpen: Page {
+        x: root.wide && !Dir.rtl ? 251px : 0;
+        width: root.wide ? parent.width - 251px : parent.width;
+        wide: root.wide;
+    }
+}

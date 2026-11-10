@@ -1,0 +1,46 @@
+import { Palette } from "std-widgets.slint";
+
+export enum ThemeMode { system, light, dark }
+
+export global Theme {
+    in-out property <ThemeMode> mode: ThemeMode.system;
+    in property <bool> system-dark: Palette.color-scheme == ColorScheme.dark;
+    out property <bool> dark: root.mode == ThemeMode.dark || (root.mode == ThemeMode.system && root.system-dark);
+    out property <color> background: root.dark ? #080D1A : #F8FAFC;
+    out property <color> surface: root.dark ? #0F1728 : #FFFFFF;
+    out property <color> on-surface: root.dark ? #F1F5F9 : #0F172A;
+    out property <color> primary: root.dark ? #00E5FF : #0284C7;
+    out property <brush> accent-gradient: @linear-gradient(90deg, root.primary 0%, #818CF8 100%);
+    in-out property <bool> rtl: false;
+    in-out property <length> font-scale-size: 14px;
+    public pure function alpha(c: color, a: float) -> color {
+        return c.with-alpha(a);
+    }
+    public function apply-to-widgets() {
+        Palette.color-scheme = root.dark ? ColorScheme.dark : ColorScheme.light;
+    }
+}
+
+export component Demo inherits Window {
+    in property <bool> follow-system: true;
+    out property <ColorScheme> scheme: Palette.color-scheme;
+    out property <string> style: Platform.style-name;
+    out property <OperatingSystemType> os: Platform.os;
+    background: Theme.background;
+    preferred-width: 400px;
+    preferred-height: 200px;
+    changed scheme => {
+        Theme.apply-to-widgets();
+    }
+    Rectangle {
+        width: 200px;
+        height: 60px;
+        border-radius: 12px;
+        background: Theme.accent-gradient;
+        Text {
+            text: Theme.dark ? "dark" : "light";
+            color: Theme.alpha(Theme.on-surface, 0.8);
+            font-size: Theme.font-scale-size;
+        }
+    }
+}

@@ -1,0 +1,192 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, IconButton } from "../widgets/Buttons.slint";
+import { TextField, FieldIconButton } from "../widgets/TextField.slint";
+import { OptionsMenu } from "../widgets/Menu.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { Core } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component SpeedMenu inherits OptionsMenu {
+    options: Core.chrome.speedOptions;
+    picked(index) => { Act.pickSpeedOption(index); }
+}
+
+export component SpeedControl inherits Rectangle {
+    height: 36px;
+    width: row.preferred-width;
+    horizontal-stretch: 0;
+    row := HBox {
+        spacing: 4px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 40px;
+            height: 36px;
+            border-radius: 10px;
+            background: Core.chrome.turtleActive ? Theme.primary.with-alpha(0.22) : transparent;
+            turtle := TouchArea {
+                clicked => { Act.toggleTurtle(); }
+            }
+            EmojiIcon {
+                glyph: "🐢";
+                size: 22px;
+            }
+            Hover {
+                border-radius: 10px;
+                hovered: turtle.has-hover;
+                pressed: turtle.pressed;
+            }
+        }
+        chip := Rectangle {
+            width: content.preferred-width;
+            height: 36px;
+            border-radius: 10px;
+            background: Core.chrome.capped ? Theme.primary.with-alpha(0.18) : Theme.surface-variant.with-alpha(0.4);
+            mode := TouchArea {
+                clicked => { menu.show(); }
+            }
+            content := HBox {
+                padding-start: 9px;
+                padding-end: 9px;
+                spacing: 0px;
+                cross-axis-alignment: center;
+                if Core.chrome.scheduled: Rectangle {
+                    width: 20px;
+                    height: 24px;
+                    EmojiIcon {
+                        x: Dir.rtl ? 6px : 0;
+                        glyph: "🕒";
+                        size: 14px;
+                    }
+                }
+                T {
+                    text: Core.chrome.modeLabel;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: Core.chrome.capped ? Theme.primary : Theme.on-surface-variant;
+                }
+                Text {
+                    text: " ▾";
+                    width: self.preferred-width + 2px;
+                    height: 24px;
+                    color: Theme.on-surface-variant;
+                    font-family: "Segoe UI Symbol";
+                    font-size: 10px;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+            }
+            Hover {
+                border-radius: 10px;
+                hovered: mode.has-hover;
+                pressed: mode.pressed;
+            }
+            menu := SpeedMenu {
+                x: Dir.rtl ? chip.width - self.width : 0;
+                y: chip.height;
+            }
+        }
+    }
+}
+
+component SearchField inherits TextField {
+    height: 44px;
+    placeholder: Tr.homeSearchDownloadsPlaceholder;
+    leading: "⌕";
+    has-trailing: self.text != "";
+    value: Core.chrome.search;
+    rev: Core.chrome.searchRev;
+    edited(text) => { Act.setSearch(text); }
+    if root.text != "": Rectangle {
+        width: 36px;
+        FieldIconButton {
+            glyph: "✕";
+            clicked => {
+                root.set-text("");
+                Act.setSearch("");
+            }
+        }
+    }
+}
+
+export component TopBar inherits Rectangle {
+    in property <bool> compact;
+    private property <bool> show-search: !Core.chrome.settingsOpen;
+    height: root.compact && root.show-search ? 48px + 10px + 44px + 10px : 48px + 10px;
+    HBox {
+        y: 0;
+        height: 48px;
+        spacing: 10px;
+        cross-axis-alignment: center;
+        if !root.compact && root.show-search: SearchField {
+            horizontal-stretch: 1;
+        }
+        if root.compact || !root.show-search: T {
+            text: Core.chrome.title;
+            line: 32px;
+            tracking: 0px;
+            font-size: 24px;
+            font-weight: 700;
+            color: Theme.on-background;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        if !root.compact: Rectangle {
+            width: speeds.preferred-width;
+            height: 44px;
+            border-radius: 12px;
+            background: Theme.surface-variant.with-alpha(0.45);
+            speeds := HBox {
+                padding-start: 12px;
+                padding-end: 12px;
+                spacing: 10px;
+                cross-axis-alignment: center;
+                T {
+                    text: "↓ " + Core.status.downSpeed;
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: Theme.primary;
+                }
+                T {
+                    text: "↑ " + Core.status.upSpeed;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: Theme.on-surface-variant;
+                }
+            }
+        }
+        if root.compact: T {
+            text: "↓ " + Core.status.downSpeed;
+            font-size: 12px;
+            font-weight: 700;
+            color: Theme.primary;
+        }
+        if root.compact: T {
+            text: "↑ " + Core.status.upSpeed;
+            font-size: 12px;
+            font-weight: 600;
+            color: Theme.on-surface-variant;
+        }
+        SpeedControl { }
+        IconButton {
+            glyph: Theme.dark ? "☀" : "☾";
+            glyph-size: 18px;
+            ink: Theme.on-background;
+            clicked => { Act.toggleTheme(); }
+        }
+        FilledButton {
+            text: "+  " + (root.compact ? Tr.homeAdd : Tr.homeAddDownload);
+            height: 44px;
+            border-radius: 12px;
+            pad: root.compact ? 16px : 18px;
+            font-weight: 700;
+            clicked => { Act.showAddDialog(true); }
+        }
+    }
+    if root.compact && root.show-search: SearchField {
+        x: 0;
+        y: 58px;
+        width: parent.width;
+    }
+}

@@ -1,22 +1,66 @@
 export global Theme {
     in-out property <bool> dark: true;
+    in-out property <string> font: "Segoe UI";
 
-    out property <color> background: dark ? #080D1A : #F8FAFC;
-    out property <color> surface: dark ? #0F1728 : #FFFFFF;
-    out property <color> surface-variant: dark ? #172238 : #F1F5F9;
-    out property <color> on-surface: dark ? #F1F5F9 : #0F172A;
-    out property <color> on-surface-variant: dark ? #94A3B8 : #475569;
-    out property <color> outline: dark ? #334155 : #94A3B8;
-    out property <color> outline-variant: dark ? #1E2B42 : #CBD5E1;
     out property <color> primary: dark ? #00E5FF : #0284C7;
     out property <color> on-primary: dark ? #031625 : #FFFFFF;
     out property <color> primary-container: dark ? #0C3D60 : #E0F2FE;
     out property <color> on-primary-container: dark ? #C7F1FF : #0369A1;
     out property <color> secondary: dark ? #818CF8 : #4F46E5;
+    out property <color> on-secondary: dark ? #1E1B4B : #FFFFFF;
+    out property <color> secondary-container: dark ? #2C2F63 : #EEF2FF;
+    out property <color> on-secondary-container: dark ? #E0E7FF : #312E81;
     out property <color> tertiary: dark ? #F43F5E : #E11D48;
+    out property <color> background: dark ? #080D1A : #F8FAFC;
+    out property <color> on-background: dark ? #F8FAFC : #0F172A;
+    out property <color> surface: dark ? #0F1728 : #FFFFFF;
+    out property <color> on-surface: dark ? #F1F5F9 : #0F172A;
+    out property <color> surface-variant: dark ? #172238 : #F1F5F9;
+    out property <color> on-surface-variant: dark ? #94A3B8 : #475569;
     out property <color> error: dark ? #F87171 : #DC2626;
-    out property <color> completed: #34D399;
-    out property <color> paused: #FBBF24;
+    out property <color> on-error: dark ? #450A0A : #FFFFFF;
+    out property <color> error-container: dark ? #451A1A : #FEE2E2;
+    out property <color> on-error-container: dark ? #FECACA : #991B1B;
+    out property <color> outline: dark ? #334155 : #94A3B8;
+    out property <color> outline-variant: dark ? #1E2B42 : #CBD5E1;
+    out property <color> inverse-surface: dark ? #E6E0E9 : #322F35;
+    out property <color> inverse-on-surface: dark ? #322F35 : #F5EFF7;
+    out property <color> surface-container: dark ? #211F26 : #F3EDF7;
+    out property <color> surface-container-high: dark ? #2B2930 : #ECE6F0;
+    out property <color> surface-container-highest: dark ? #36343B : #E6E0E9;
+    out property <color> scrim: #000000;
+
+    out property <color> sidebar: dark ? #0C1323 : #F6F8FB;
+    out property <color> field: dark ? #121B2E : #FAFCFD;
+    out property <color> field-focused: dark ? #0E2335 : #F0F8FC;
+
+    out property <color> status-completed: #10B981;
     out property <color> status-paused: #F59E0B;
-    out property <color> connecting: #38BDF8;
+    out property <color> status-connecting: #38BDF8;
+    out property <color> status-error: #F87171;
+    out property <color> engine-torrent: #10B981;
+    out property <color> engine-media: #818CF8;
+    out property <color> bar-completed: #34D399;
+    out property <color> bar-paused: #FBBF24;
+    out property <color> priority-high: #EF4444;
+    out property <color> priority-low: #3B82F6;
+    out property <color> piece-active: #7DF9FF;
+    out property <color> checksum-ok: #2E7D32;
+
+    pure public function tone(code: int) -> color {
+        return code == 0 ? root.on-surface : code == 1 ? root.on-surface-variant : code == 2 ? root.primary
+            : code == 3 ? root.status-completed : code == 4 ? root.status-paused : code == 5 ? root.error
+            : code == 6 ? root.engine-torrent : code == 7 ? root.engine-media : code == 8 ? root.tertiary
+            : code == 9 ? root.piece-active : root.checksum-ok;
+    }
+
+    pure public function tag-color(code: int) -> color {
+        return code == 0 ? #C4B5FD : code == 1 ? #6EE7B7 : code == 2 ? #F9A8D4 : code == 3 ? #FCD34D : code == 4 ? #93C5FD : code == 5 ? #FDBA74 : #B7C0D8;
+    }
+}
+
+export global Dir {
+    in-out property <bool> rtl: false;
+    out property <TextHorizontalAlignment> start: rtl ? TextHorizontalAlignment.right : TextHorizontalAlignment.left;
+    out property <TextHorizontalAlignment> end: rtl ? TextHorizontalAlignment.left : TextHorizontalAlignment.right;
 }
