@@ -1,10 +1,9 @@
 ﻿package com.michelle.raouf.fetch_jet.core.settings
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 data class AppSettings(
     val destinationPath: String,
@@ -51,8 +50,8 @@ class AppSettingsRepository(
         var highUnit = "MB/s"
 
         try {
-            if (FileSystem.SYSTEM.exists(settingsFile)) {
-                val content = FileSystem.SYSTEM.read(settingsFile) { readUtf8() }
+            if (AppFileSystem.exists(settingsFile)) {
+                val content = AppFileSystem.read(settingsFile) { readUtf8() }
                 val lines = content.lineSequence()
                 for (line in lines) {
                     val trimmed = line.trim()
@@ -116,8 +115,8 @@ class AppSettingsRepository(
 
     fun saveSettings(settings: AppSettings) {
         try {
-            settingsFile.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(settingsFile) {
+            settingsFile.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(settingsFile) {
                 writeUtf8("# FetchJet Settings\n")
                 writeUtf8("destinationPath=${settings.destinationPath}\n")
                 writeUtf8("disableTorrentUpload=${settings.disableTorrentUpload}\n")

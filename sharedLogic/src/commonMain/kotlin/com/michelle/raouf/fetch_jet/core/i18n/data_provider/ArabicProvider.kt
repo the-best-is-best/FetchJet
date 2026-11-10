@@ -955,6 +955,14 @@ object ArabicProvider : AppLocalization {
     override val sysDeviceThisDevice = "الجهاز ده"
     override val sysDeviceManualConnect = "اتصال يدوي بالـIP"
     override val sysDeviceConnect = "اتصال"
+    override val sysDeviceOfferTitle = "تستلم التحميل ده؟"
+    override val sysDeviceOfferFrom = "من {device}"
+    override val sysDeviceOfferAccept = "قبول"
+    override val sysDeviceOfferReject = "رفض"
+    override val deviceNoAnswer = "الجهاز الآخر ما ردش، حاول تاني"
+    override val stepPreparingFile = "تهيئة الملف"
+    override val sysDeviceReceivingTitle = "جارٍ استلام تنزيل"
+    override val sysDeviceReceiveFailed = "فشل الاستلام"
 }
 
 private fun arCount(

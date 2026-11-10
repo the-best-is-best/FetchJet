@@ -3,7 +3,7 @@ import { HBox, T, Hover } from "../widgets/Base.slint";
 import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
 import { TextField } from "../widgets/TextField.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
-import { Spinner } from "../widgets/Kit.slint";
+import { Spinner, Gap } from "../widgets/Kit.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { ScrollArea } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
@@ -183,6 +183,9 @@ component Overlay inherits Rectangle {
     callback dismissed();
     background: #00000099;
     init => { keys.focus(); }
+    public function refocus() {
+        keys.focus();
+    }
     TouchArea {
         clicked => {
             if !root.locked {
@@ -204,7 +207,179 @@ component Overlay inherits Rectangle {
     @children
 }
 
+component ConfirmLine inherits Rectangle {
+    in property <string> glyph;
+    in property <string> text;
+    in property <string> detail;
+    in property <color> ink: Theme.on-surface;
+    in property <int> weight: 400;
+    GridLayout {
+        spacing: 10px;
+        Rectangle {
+            row: 0;
+            col: Dir.rtl ? 1 : 0;
+            width: 24px;
+            EmojiIcon {
+                y: 1px;
+                glyph: root.glyph;
+                size: 16px;
+            }
+        }
+        VerticalLayout {
+            row: 0;
+            col: Dir.rtl ? 0 : 1;
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 0px;
+            Text {
+                text: root.text;
+                color: root.ink;
+                font-family: Theme.font;
+                font-size: 13px;
+                font-weight: root.weight;
+                horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                wrap: char-wrap;
+                overflow: elide;
+                min-height: 22px;
+                max-height: 44px;
+            }
+            if root.detail != "": Text {
+                text: root.detail;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.4px;
+                horizontal-alignment: Dir.start;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+component SendConfirm inherits Rectangle {
+    callback approved();
+    callback rejected();
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { root.rejected(); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.rejected();
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: 0.94 * min(440px, root.width);
+        height: content.preferred-height + 2px;
+        border-radius: 20px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        background: Theme.surface;
+        TouchArea { }
+        content := VerticalLayout {
+            padding: 21px;
+            spacing: 0px;
+            HBox {
+                height: 48px;
+                spacing: 12px;
+                cross-axis-alignment: center;
+                Rectangle {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 12px;
+                    background: Theme.primary-container.with-alpha(0.4);
+                    EmojiIcon {
+                        glyph: "📤";
+                        size: 24px;
+                    }
+                }
+                T {
+                    horizontal-stretch: 1;
+                    text: Tr.sysDeviceSendTitle;
+                    font-size: 17px;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+            }
+            Gap {
+                size: 16px;
+            }
+            Rectangle {
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: Theme.outline-variant.with-alpha(0.6);
+                background: Theme.surface-variant.with-alpha(0.35);
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 8px;
+                    ConfirmLine {
+                        glyph: "📄";
+                        text: Core.deviceSheet.fileName;
+                        weight: 700;
+                    }
+                    if Core.deviceSheet.fileSize != "": ConfirmLine {
+                        glyph: "💾";
+                        text: Core.deviceSheet.fileSize;
+                    }
+                    if Core.deviceSheet.deviceName != "": ConfirmLine {
+                        glyph: Core.deviceSheet.deviceEmoji;
+                        text: Core.deviceSheet.deviceName;
+                        ink: Theme.primary;
+                        weight: 600;
+                    }
+                    ConfirmLine {
+                        glyph: Core.deviceSheet.transfer ? "📦" : "🔗";
+                        text: Core.deviceSheet.transfer ? Tr.sysDeviceModeTransfer : Tr.sysDeviceModeLink;
+                        detail: Core.deviceSheet.transfer ? Tr.sysDeviceModeTransferDesc : Tr.sysDeviceModeLinkDesc;
+                        weight: 600;
+                    }
+                    if Core.deviceSheet.deleteAfter: ConfirmLine {
+                        glyph: "🗑️";
+                        text: Tr.sysDeviceDeleteAfter;
+                        ink: Theme.error;
+                    }
+                }
+            }
+            Gap {
+                size: 18px;
+            }
+            GridLayout {
+                spacing: 10px;
+                OutlinedButton {
+                    row: 0;
+                    col: Dir.rtl ? 1 : 0;
+                    text: Tr.back;
+                    border-radius: 8px;
+                    horizontal-stretch: 1;
+                    clicked => { root.rejected(); }
+                }
+                FilledButton {
+                    row: 0;
+                    col: Dir.rtl ? 0 : 1;
+                    glyph: "✓";
+                    text: Tr.sysDeviceSend;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    horizontal-stretch: 1;
+                    enabled: Core.deviceSheet.sendEnabled;
+                    clicked => { root.approved(); }
+                }
+            }
+        }
+    }
+}
+
 export component DeviceSheet inherits Overlay {
+    private property <bool> confirming;
     locked: Core.deviceSheet.locked;
     dismissed => { Act.deviceDismiss(); }
     Rectangle {
@@ -417,14 +592,31 @@ export component DeviceSheet inherits Overlay {
                 FilledButton {
                     text: Tr.sysDeviceSend;
                     enabled: Core.deviceSheet.sendEnabled;
-                    clicked => { Act.deviceSend(); }
+                    clicked => { root.confirming = true; }
                 }
             }
+        }
+    }
+    if root.confirming: SendConfirm {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        approved => {
+            root.confirming = false;
+            root.refocus();
+            Act.deviceSend();
+        }
+        rejected => {
+            root.confirming = false;
+            root.refocus();
         }
     }
 }
 
 export component PairingDialog inherits Overlay {
+    private property <bool> receive: Core.devicePairing.state == PairingCode.receiving || Core.devicePairing.state == PairingCode.receive-failed;
+    private property <bool> named: Core.devicePairing.state == PairingCode.offer || root.receive;
     dismissed => { Act.pairingCancel(); }
     Rectangle {
         width: max(280px, min(420px, root.width - 48px));
@@ -436,7 +628,7 @@ export component PairingDialog inherits Overlay {
             padding: 24px;
             spacing: 0px;
             T {
-                text: Tr.sysDevicePairTitle;
+                text: Core.devicePairing.state == PairingCode.offer ? Tr.sysDeviceOfferTitle : root.receive ? Tr.sysDeviceReceivingTitle : Tr.sysDevicePairTitle;
                 line: 24px;
                 tracking: 0.2px;
                 font-size: 16px;
@@ -455,14 +647,43 @@ export component PairingDialog inherits Overlay {
                     stroke: 4px;
                 }
             }
+            if root.named: Text {
+                text: Core.devicePairing.fileName;
+                color: Theme.on-surface;
+                font-family: Theme.font;
+                font-size: 16px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+            if Core.devicePairing.state == PairingCode.offer && Core.devicePairing.fileSize != "": Text {
+                text: Core.devicePairing.fileSize;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.4px;
+                horizontal-alignment: center;
+            }
             Text {
                 text: Core.devicePairing.text;
-                color: Core.devicePairing.state == PairingCode.failed ? Theme.error : Theme.on-surface-variant;
+                color: Core.devicePairing.state == PairingCode.failed || Core.devicePairing.state == PairingCode.receive-failed ? Theme.error : Theme.on-surface-variant;
                 font-family: Theme.font;
                 font-size: 14px;
                 letter-spacing: Dir.rtl ? 0px : 0.2px;
                 horizontal-alignment: center;
                 wrap: word-wrap;
+            }
+            if Core.devicePairing.state == PairingCode.receiving: LinearProgress {
+                value: Core.devicePairing.progress;
+                indeterminate: Core.devicePairing.indeterminate;
+            }
+            if Core.devicePairing.state == PairingCode.receiving && Core.devicePairing.percent != "": Text {
+                text: Core.devicePairing.percent;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                letter-spacing: Dir.rtl ? 0px : 0.4px;
+                horizontal-alignment: center;
             }
             if Core.devicePairing.state == PairingCode.confirm: Text {
                 text: Core.devicePairing.code;
@@ -496,11 +717,15 @@ export component PairingDialog inherits Overlay {
                     clicked => { Act.pairingBlock(); }
                 }
                 OutlinedButton {
-                    text: Tr.cancel;
+                    text: Core.devicePairing.state == PairingCode.offer ? Tr.sysDeviceOfferReject : root.receive ? Tr.close : Tr.cancel;
                     clicked => { Act.pairingCancel(); }
                 }
                 if Core.devicePairing.state == PairingCode.confirm: FilledButton {
                     text: Tr.sysDevicePairConfirm;
+                    clicked => { Act.pairingConfirm(); }
+                }
+                if Core.devicePairing.state == PairingCode.offer: FilledButton {
+                    text: Tr.sysDeviceOfferAccept;
                     clicked => { Act.pairingConfirm(); }
                 }
             }

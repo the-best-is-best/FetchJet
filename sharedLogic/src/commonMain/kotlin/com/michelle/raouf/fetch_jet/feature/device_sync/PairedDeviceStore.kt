@@ -1,12 +1,11 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.security.Secrets
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -42,10 +41,10 @@ object PairedDeviceStore {
     private var cache: DeviceFile = load()
 
     private fun load(): DeviceFile = try {
-        if (!FileSystem.SYSTEM.exists(file)) DeviceFile()
+        if (!AppFileSystem.exists(file)) DeviceFile()
         else json.decodeFromString(
             DeviceFile.serializer(),
-            FileSystem.SYSTEM.read(file) { readUtf8() })
+            AppFileSystem.read(file) { readUtf8() })
     } catch (_: Throwable) {
         DeviceFile()
     }
@@ -53,8 +52,8 @@ object PairedDeviceStore {
     private fun save(updated: DeviceFile) {
         cache = updated
         try {
-            file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) {
+            file.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(file) {
                 writeUtf8(
                     json.encodeToString(
                         DeviceFile.serializer(),
@@ -130,4 +129,32 @@ object PairedDeviceStore {
     fun unblock(deviceId: String) {
         save(cache.copy(blocked = cache.blocked.filterNot { it.id == deviceId }))
     }
+}
+
+internal class SharedPairedDeviceStore(private val lock: SyncLock) : DeviceSyncStore {
+    override val selfId: String get() = lock.withLock { PairedDeviceStore.selfId }
+
+    override var selfName: String
+        get() = lock.withLock { PairedDeviceStore.selfName }
+        set(value) {
+            lock.withLock { PairedDeviceStore.selfName = value }
+        }
+
+    override fun pairedDevices(): List<PairedDevice> = lock.withLock { PairedDeviceStore.pairedDevices() }
+
+    override fun isPaired(deviceId: String): Boolean = lock.withLock { PairedDeviceStore.isPaired(deviceId) }
+
+    override fun keyFor(deviceId: String): ByteArray? = lock.withLock { PairedDeviceStore.keyFor(deviceId) }
+
+    override fun addPairing(device: PairedDevice, key: ByteArray) = lock.withLock { PairedDeviceStore.addPairing(device, key) }
+
+    override fun removePairing(deviceId: String) = lock.withLock { PairedDeviceStore.removePairing(deviceId) }
+
+    override fun blockedDevices(): List<PairedDevice> = lock.withLock { PairedDeviceStore.blockedDevices() }
+
+    override fun isBlocked(deviceId: String): Boolean = lock.withLock { PairedDeviceStore.isBlocked(deviceId) }
+
+    override fun block(device: PairedDevice) = lock.withLock { PairedDeviceStore.block(device) }
+
+    override fun unblock(deviceId: String) = lock.withLock { PairedDeviceStore.unblock(deviceId) }
 }

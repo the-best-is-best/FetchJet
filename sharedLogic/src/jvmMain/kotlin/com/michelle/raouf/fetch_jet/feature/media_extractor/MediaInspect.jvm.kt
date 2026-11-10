@@ -111,7 +111,7 @@ actual suspend fun inspectPlatformQualities(
     requestHeaders: Map<String, String>
 ): List<MediaQualityEntry> {
     getExistingYtDlpBinary()
-        ?: throw Exception("yt-dlp tool is not found. Please click 'Download Tools' in Settings.")
+        ?: throw MediaToolMissingException("yt-dlp is not installed. Open Settings > Media tools and click Download tools.")
 
     val output =
         runYtDlp(

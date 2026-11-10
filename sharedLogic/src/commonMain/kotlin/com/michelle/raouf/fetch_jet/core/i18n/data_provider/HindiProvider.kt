@@ -936,4 +936,12 @@ object HindiProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "डाउनलोड प्राप्त करें?"
+    override val sysDeviceOfferFrom = "{device} से"
+    override val sysDeviceOfferAccept = "स्वीकार करें"
+    override val sysDeviceOfferReject = "अस्वीकार करें"
+    override val deviceNoAnswer = "दूसरे डिवाइस ने जवाब नहीं दिया, फिर से कोशिश करें"
+    override val stepPreparingFile = "फ़ाइल तैयार हो रही है"
+    override val sysDeviceReceivingTitle = "डाउनलोड प्राप्त हो रहा है"
+    override val sysDeviceReceiveFailed = "प्राप्त करना विफल रहा"
 }

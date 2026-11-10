@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +46,8 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.canResume
 import com.michelle.raouf.fetch_jet.domain.model.etaSeconds
+import com.michelle.raouf.fetch_jet.domain.model.STEP_PREPARING_FILE
+import com.michelle.raouf.fetch_jet.domain.model.isPreparingFile
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
@@ -90,6 +93,10 @@ private fun etaText(seconds: Long): String = when {
 /** The one-line state under the name. */
 fun taskStateLine(task: DownloadTask, speedUnit: String): String {
     val pct = (task.progress.coerceIn(0f, 1f) * 100).toInt()
+    if (task.isPreparingFile()) {
+        val step = localizeStep(STEP_PREPARING_FILE)
+        return if (task.totalBytes > 0L) "$step · ${formatBytes(task.downloadedBytes)} / ${formatBytes(task.totalBytes)}" else step
+    }
     if (task.waitingInQueue) {
         return if (task.scheduledAtMs > currentEpochMs()) LocalizationManager.Strings.homeStartsAt(
             formatLocalSchedule(task.scheduledAtMs)
@@ -158,6 +165,7 @@ fun rowActionFor(task: DownloadTask): RowAction = when {
 private fun barColor(task: DownloadTask): Color = when {
     task.status == DownloadStatus.ERROR -> MaterialTheme.colorScheme.error
     task.status == DownloadStatus.COMPLETED -> Color(0xFF34D399)
+    task.isPreparingFile() -> MaterialTheme.colorScheme.primary
     task.status == DownloadStatus.PAUSED || task.waitingInQueue -> Color(0xFFFBBF24)
     else -> MaterialTheme.colorScheme.primary
 }
@@ -181,7 +189,15 @@ private fun KindSquare(tag: String, size: Int) {
 }
 
 @Composable
-private fun ThinBar(fraction: Float, color: Color, height: Int = 5) {
+private fun ThinBar(fraction: Float, color: Color, height: Int = 5, indeterminate: Boolean = false) {
+    if (indeterminate) {
+        LinearProgressIndicator(
+            modifier = Modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape(height.dp)),
+            color = color,
+            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        )
+        return
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,7 +339,7 @@ fun TaskRow(
                         maxLines = 1
                     )
                     Column(modifier = Modifier.width(140.dp)) {
-                        ThinBar(task.progress, barColor(task))
+                        ThinBar(task.progress, barColor(task), indeterminate = task.isPreparingFile())
                         Text(
                             if (task.status == DownloadStatus.COMPLETED) "100%" else "${
                                 (task.progress.coerceIn(
@@ -390,7 +406,7 @@ fun TaskRow(
                     }
                     if (task.status != DownloadStatus.COMPLETED) {
                         Spacer(modifier = Modifier.height(10.dp))
-                        ThinBar(task.progress, barColor(task))
+                        ThinBar(task.progress, barColor(task), indeterminate = task.isPreparingFile())
                     }
                 }
             }

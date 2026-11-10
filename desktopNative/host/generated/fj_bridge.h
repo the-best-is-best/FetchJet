@@ -131,6 +131,9 @@ namespace PairingCode {
     inline constexpr int Connecting = 1;
     inline constexpr int Confirm = 2;
     inline constexpr int Failed = 3;
+    inline constexpr int Offer = 4;
+    inline constexpr int Receiving = 5;
+    inline constexpr int ReceiveFailed = 6;
 }
 
 namespace EffectKind {
@@ -639,6 +642,9 @@ inline DeviceSheetDto parse_DeviceSheetDto(const fj::Json &j) {
     DeviceSheetDto d{};
     d.open = fj::flag(j, "open");
     d.fileName = fj::text(j, "fileName");
+    d.fileSize = fj::text(j, "fileSize");
+    d.deviceName = fj::text(j, "deviceName");
+    d.deviceEmoji = fj::text(j, "deviceEmoji");
     d.searching = fj::flag(j, "searching");
     d.searchShown = fj::flag(j, "searchShown");
     d.search = fj::text(j, "search");
@@ -666,6 +672,11 @@ inline DevicePairingDto parse_DevicePairingDto(const fj::Json &j) {
     d.text = fj::text(j, "text");
     d.code = fj::text(j, "code");
     d.peer = fj::text(j, "peer");
+    d.fileName = fj::text(j, "fileName");
+    d.fileSize = fj::text(j, "fileSize");
+    d.progress = fj::real(j, "progress");
+    d.indeterminate = fj::flag(j, "indeterminate");
+    d.percent = fj::text(j, "percent");
     return d;
 }
 
@@ -753,6 +764,7 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     d.stateIsError = fj::flag(j, "stateIsError");
     d.size = fj::text(j, "size");
     d.progress = fj::real(j, "progress");
+    d.preparing = fj::flag(j, "preparing");
     d.percent = fj::text(j, "percent");
     d.barColor = fj::integer(j, "barColor");
     d.speed = fj::text(j, "speed");
@@ -1597,6 +1609,14 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysDeviceThisDevice(next());
     tr.set_sysDeviceManualConnect(next());
     tr.set_sysDeviceConnect(next());
+    tr.set_sysDeviceOfferTitle(next());
+    tr.set_sysDeviceOfferFrom(next());
+    tr.set_sysDeviceOfferAccept(next());
+    tr.set_sysDeviceOfferReject(next());
+    tr.set_deviceNoAnswer(next());
+    tr.set_stepPreparingFile(next());
+    tr.set_sysDeviceReceivingTitle(next());
+    tr.set_sysDeviceReceiveFailed(next());
 }
 
 template <class Send> void bind_actions(const Act &act, Send send) {

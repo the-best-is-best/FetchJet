@@ -838,6 +838,15 @@ fun App(
                     onBlock = { viewModel.onEvent(DashboardUiEvent.OnBlockPairingClicked) }
                 )
             }
+            val receiveState = state.deviceReceiving
+            if (state.devicePairing == null && (receiveState is com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState.Receiving ||
+                    receiveState is com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState.Failed)
+            ) {
+                com.michelle.raouf.fetch_jet.ui.DeviceReceiveDialog(
+                    receiving = receiveState,
+                    onClose = { viewModel.onEvent(DashboardUiEvent.OnDismissReceiveClicked) }
+                )
+            }
 
             // "Download in browser instead?" (only for plain file links sent by the extension)
             state.browserFallbackUrl?.let { url ->

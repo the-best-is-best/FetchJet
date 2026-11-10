@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
@@ -10,10 +11,8 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 internal suspend fun MediaStreamDownloader.resolveMediaFileName(
     initialTask: DownloadTask,
@@ -215,11 +214,11 @@ internal fun findFinishedFileInCache(
     val baseName = fileName.substringBeforeLast(".")
     val searchPrefix = baseName.take(15)
     var foundCachePath: Path? = null
-    if (FileSystem.SYSTEM.exists(cacheTargetPath)) {
+    if (AppFileSystem.exists(cacheTargetPath)) {
         foundCachePath = cacheTargetPath
     } else {
         try {
-            val list = FileSystem.SYSTEM.list(cacheDir.toPath())
+            val list = AppFileSystem.list(cacheDir.toPath())
             foundCachePath = list.firstOrNull {
                 val n = it.name
                 !n.endsWith(".part") && !n.endsWith(".ytdl") && !n.endsWith(".temp") &&
@@ -235,7 +234,7 @@ internal fun findFinishedFileInCache(
                         )
             }.maxByOrNull {
                 try {
-                    FileSystem.SYSTEM.metadata(it).lastModifiedAtMillis ?: 0L
+                    AppFileSystem.metadata(it).lastModifiedAtMillis ?: 0L
                 } catch (_: Exception) {
                     0L
                 }
@@ -254,15 +253,15 @@ internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
     cacheDir: String
 ): Boolean {
     var downloadedRealFile = false
-    if (foundCachePath != null && FileSystem.SYSTEM.exists(foundCachePath)) {
+    if (foundCachePath != null && AppFileSystem.exists(foundCachePath)) {
         val completedSize = try {
-            FileSystem.SYSTEM.metadata(foundCachePath).size ?: 0L
+            AppFileSystem.metadata(foundCachePath).size ?: 0L
         } catch (_: Exception) {
             0L
         }
         if (completedSize > 1024L) {
             try {
-                finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                finalTargetPath.parent?.let { AppFileSystem.createDirectories(it) }
             } catch (_: Exception) {
             }
             val actualFinalPath =
@@ -319,7 +318,7 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
     val videoName = task.fileName
     if (videoName.isBlank()) return
     val videoPath = "$destDir/$videoName".toPath()
-    if (!FileSystem.SYSTEM.exists(videoPath)) return
+    if (!AppFileSystem.exists(videoPath)) return
     val baseName = videoName.substringBeforeLast('.', videoName)
     val videoExt = videoName.substringAfterLast('.', "mp4").lowercase()
 
@@ -327,7 +326,7 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
 
     val tempDir = "$destDir/.fjsubs_$taskId"
     try {
-        FileSystem.SYSTEM.createDirectories(tempDir.toPath())
+        AppFileSystem.createDirectories(tempDir.toPath())
     } catch (_: Exception) {
     }
 
@@ -343,13 +342,13 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
             if (raw.isBlank()) continue
             val rawExt = track.ext.ifBlank { "vtt" }.lowercase()
             val rawPath = "$tempDir/${track.langCode}.$rawExt".toPath()
-            FileSystem.SYSTEM.write(rawPath) { writeUtf8(raw) }
+            AppFileSystem.write(rawPath) { writeUtf8(raw) }
             if (rawExt == "srt") {
                 srtFiles.add(track to rawPath)
             } else {
                 val srtPath = "$tempDir/${track.langCode}.srt".toPath()
                 val ok = runLocalFfmpeg(listOf("-y", "-i", rawPath.toString(), srtPath.toString()))
-                srtFiles.add(track to if (ok && FileSystem.SYSTEM.exists(srtPath)) srtPath else rawPath)
+                srtFiles.add(track to if (ok && AppFileSystem.exists(srtPath)) srtPath else rawPath)
             }
         } catch (e: CancellationException) {
             deleteRecursively(tempDir.toPath())
@@ -390,17 +389,17 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
         } catch (_: Exception) {
             false
         }
-        val muxedSize = if (ok && FileSystem.SYSTEM.exists(muxedPath)) {
+        val muxedSize = if (ok && AppFileSystem.exists(muxedPath)) {
             try {
-                FileSystem.SYSTEM.metadata(muxedPath).size ?: 0L
+                AppFileSystem.metadata(muxedPath).size ?: 0L
             } catch (_: Exception) {
                 0L
             }
         } else 0L
         if (muxedSize > 1024L) {
             try {
-                FileSystem.SYSTEM.delete(videoPath)
-                FileSystem.SYSTEM.copy(muxedPath, videoPath)
+                AppFileSystem.delete(videoPath)
+                AppFileSystem.copy(muxedPath, videoPath)
                 embedded = true
             } catch (_: Exception) {
             }
@@ -412,8 +411,8 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
             try {
                 val outName = "$baseName.${track.langCode}${if (track.isAuto) ".auto" else ""}.srt"
                 val outPath = "$destDir/$outName".toPath()
-                if (FileSystem.SYSTEM.exists(outPath)) FileSystem.SYSTEM.delete(outPath)
-                FileSystem.SYSTEM.copy(p, outPath)
+                if (AppFileSystem.exists(outPath)) AppFileSystem.delete(outPath)
+                AppFileSystem.copy(p, outPath)
             } catch (_: Exception) {
             }
         }
@@ -460,13 +459,13 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
                 if (contentType.contains("video") || contentType.contains("octet-stream")) {
                     downloadStreamToPath(taskId, response, cacheTargetPath)
                     try {
-                        finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                        finalTargetPath.parent?.let { AppFileSystem.createDirectories(it) }
                     } catch (_: Exception) {
                     }
-                    if (FileSystem.SYSTEM.exists(finalTargetPath)) {
-                        FileSystem.SYSTEM.delete(finalTargetPath)
+                    if (AppFileSystem.exists(finalTargetPath)) {
+                        AppFileSystem.delete(finalTargetPath)
                     }
-                    FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
+                    AppFileSystem.copy(cacheTargetPath, finalTargetPath)
                     deleteRecursively(cacheDir.toPath())
                     downloadedRealFile = true
                     null
@@ -501,13 +500,13 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
                 if (videoResponse.status.isSuccess()) {
                     downloadStreamToPath(taskId, videoResponse, cacheTargetPath)
                     try {
-                        finalTargetPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                        finalTargetPath.parent?.let { AppFileSystem.createDirectories(it) }
                     } catch (_: Exception) {
                     }
-                    if (FileSystem.SYSTEM.exists(finalTargetPath)) {
-                        FileSystem.SYSTEM.delete(finalTargetPath)
+                    if (AppFileSystem.exists(finalTargetPath)) {
+                        AppFileSystem.delete(finalTargetPath)
                     }
-                    FileSystem.SYSTEM.copy(cacheTargetPath, finalTargetPath)
+                    AppFileSystem.copy(cacheTargetPath, finalTargetPath)
                     deleteRecursively(cacheDir.toPath())
                     downloadedRealFile = true
                 } else {

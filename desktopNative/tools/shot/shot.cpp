@@ -1,6 +1,7 @@
 #include "headless.h"
 #include "json.h"
 #include "emoji_d2d.h"
+#include "../../host/emoji_files.h"
 
 #include <slint-interpreter.h>
 
@@ -12,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
@@ -63,6 +65,8 @@ namespace {
         std::vector <Step> steps;
         std::string emojiCallback;
         std::string emojiFamily = "Segoe UI Emoji";
+        std::string emojiDir;
+        std::vector <std::string> fontDirs;
         bool list = false;
         bool wrap = false;
         std::string wrapBackground = "#ffffff";
@@ -186,6 +190,10 @@ namespace {
                                                  uint8_t(v));
         return slint::Color::from_argb_uint8(uint8_t(v), uint8_t(v >> 24), uint8_t(v >> 16),
                                              uint8_t(v >> 8));
+    }
+
+    std::filesystem::path shotPath(const std::string &text) {
+        return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t *>(text.data()), text.size()));
     }
 
     std::optional <slint::Image> emojiImage(Context &ctx, const std::string &spec) {
@@ -631,6 +639,13 @@ namespace {
             } else if (a == "--emoji-family") {
                 if (!next(o.emojiFamily))
                     return false;
+            } else if (a == "--emoji-dir") {
+                if (!next(o.emojiDir))
+                    return false;
+            } else if (a == "--font-dir") {
+                if (!next(v))
+                    return false;
+                o.fontDirs.push_back(v);
             } else if (a == "--list") {
                 o.list = true;
             } else if (a == "--quiet") {
@@ -1019,6 +1034,18 @@ namespace {
 
         auto instance = def->create();
         instance->window();
+        for (const auto &folder: o.fontDirs) {
+            std::error_code fontError;
+            for (const auto &entry: std::filesystem::directory_iterator(shotPath(folder), fontError)) {
+                std::u8string wide = entry.path().u8string();
+                std::string path(reinterpret_cast<const char *>(wide.data()), wide.size());
+                if (path.size() < 4 || path.compare(path.size() - 4, 4, ".ttf") != 0)
+                    continue;
+                auto refused = const_cast<slint::private_api::WindowAdapterRc &>(instance->window().window_handle()).register_font_from_path(slint::SharedString(path));
+                if (refused)
+                    fprintf(stderr, "shot: font %s: %s\n", path.c_str(), std::string(refused->data(), refused->size()).c_str());
+            }
+        }
         if (adapters->empty()) {
             fprintf(stderr, "shot: no window adapter was created\n");
             return 1;
@@ -1099,7 +1126,7 @@ namespace {
             Context *ctxPtr = &ctx;
             bool set = instance->set_global_callback(
                     t.global, normalized(t.property),
-                    [ctxPtr, emojiCache](std::span<const Value> a) -> Value {
+                    [ctxPtr, emojiCache, emojiDir = o.emojiDir](std::span<const Value> a) -> Value {
                         if (a.size() < 2)
                             return Value(slint::Image());
                         auto text = a[0].to_string();
@@ -1111,6 +1138,15 @@ namespace {
                         auto found = emojiCache->find({key, px});
                         if (found != emojiCache->end())
                             return Value(found->second);
+                        if (!emojiDir.empty()) {
+                            std::string file = fj::emoji_file_name(key.data(), key.size(), px);
+                            std::error_code missing;
+                            if (!file.empty() && std::filesystem::exists(shotPath(emojiDir + "/" + file), missing)) {
+                                slint::Image bundled = slint::Image::load_from_path(slint::SharedString(emojiDir + "/" + file));
+                                emojiCache->emplace(std::make_pair(key, px), bundled);
+                                return Value(bundled);
+                            }
+                        }
                         std::wstring family = shot::widen(ctxPtr->emojiFamily);
                         slint::Image img(ctxPtr->emoji.renderIcon(shot::widen(key), uint32_t(px),
                                                                   family.c_str()));

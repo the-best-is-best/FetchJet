@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.log.AppLog
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -18,9 +19,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * FetchJet's own HLS (.m3u8) engine, for sites whose CDN turns yt-dlp / ffmpeg away
@@ -275,7 +274,7 @@ object HlsDownloader {
         clipStartSec: Double? = null,
         clipEndSec: Double? = null
     ): Boolean = withContext(Dispatchers.Default) {
-        val fs = FileSystem.SYSTEM
+        val fs = AppFileSystem
         val dir = workDir.toPath()
         fs.createDirectories(dir)
         val (allSegments, headerLines) = readMedia(client, playlistUrl, headers)

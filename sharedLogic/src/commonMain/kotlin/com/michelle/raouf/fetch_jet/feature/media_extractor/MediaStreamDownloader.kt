@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.NetworkClient
@@ -10,6 +11,8 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.domain.model.STEP_PREPARING_FILE
+import com.michelle.raouf.fetch_jet.domain.model.withoutStalePreparingStep
 import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
@@ -33,9 +36,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.coroutines.coroutineContext
 
 class MediaStreamDownloader(
@@ -176,7 +177,7 @@ class MediaStreamDownloader(
             if (it.status == DownloadStatus.PAUSED) it
             else it.copy(
                 status = DownloadStatus.CONNECTING,
-                currentStepText = "Connecting...",
+                currentStepText = if (it.currentStepText == STEP_PREPARING_FILE) it.currentStepText else "Connecting...",
                 errorMessage = null
             )
         }
@@ -202,7 +203,7 @@ class MediaStreamDownloader(
         val cacheTargetPath = "$cacheDir/$fileName".toPath()
         val finalTargetPath = "${initialTask.destinationPath}/$fileName".toPath()
         try {
-            FileSystem.SYSTEM.createDirectories(cacheDir.toPath())
+            AppFileSystem.createDirectories(cacheDir.toPath())
         } catch (_: Exception) {
         }
 
@@ -252,7 +253,7 @@ class MediaStreamDownloader(
                     } catch (e: Exception) {
                         com.michelle.raouf.fetch_jet.core.log.AppLog.e("MediaStream: own engine failed, using yt-dlp: ${e.message}")
                         try {
-                            FileSystem.SYSTEM.delete(cacheTargetPath)
+                            AppFileSystem.delete(cacheTargetPath)
                         } catch (_: Exception) {
                         }
                         updateTaskState(taskId) {
@@ -324,7 +325,7 @@ class MediaStreamDownloader(
                     )
                 }
 
-                val foundCachePath = (if (hlsOutputPath != cacheTargetPath && FileSystem.SYSTEM.exists(hlsOutputPath)) hlsOutputPath
+                val foundCachePath = (if (hlsOutputPath != cacheTargetPath && AppFileSystem.exists(hlsOutputPath)) hlsOutputPath
                 else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
                     ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
                 downloadedRealFile =
@@ -494,7 +495,7 @@ class MediaStreamDownloader(
     internal fun updateTaskState(taskId: String, transform: (DownloadTask) -> DownloadTask) {
         tasksState.update { current ->
             val existing = current[taskId] ?: return@update current
-            var next = transform(existing)
+            var next = transform(existing).withoutStalePreparingStep()
             // The post-processing line only exists while the task is running.
             if (next.postProcessLabel != null && next.status != DownloadStatus.DOWNLOADING &&
                 next.status != DownloadStatus.CONNECTING
@@ -524,6 +525,7 @@ class MediaStreamDownloader(
         val list = mutableListOf<MediaQualityEntry>()
 
         var currentIndex = 0
+        var toolMissing: MediaToolMissingException? = null
 
         try {
             val titleStarted = kotlin.time.TimeSource.Monotonic.markNow()
@@ -541,7 +543,13 @@ class MediaStreamDownloader(
             // The browser's Cookie/Referer help on sites that need a login (Udemy) but can make
             // others serve a page the extractor cannot read (Facebook, logged in). Try with the
             // headers first, then without them.
-            val platformQualities = inspectPlatformWithCookieRetry(effectiveUrl, requestHeaders)
+            val platformQualities = try {
+                inspectPlatformWithCookieRetry(effectiveUrl, requestHeaders)
+            } catch (e: MediaToolMissingException) {
+                com.michelle.raouf.fetch_jet.core.log.AppLog.e("Inspect: ${e.message}")
+                toolMissing = e
+                emptyList()
+            }
             lastSubtitles = MediaSubtitleStore.last(effectiveUrl)
 
             if (platformQualities.isNotEmpty()) return withTitleAndDuration(
@@ -596,6 +604,7 @@ class MediaStreamDownloader(
             list[0] = list[0].copy(isSelected = true)
         }
 
+        if (list.isEmpty()) toolMissing?.let { throw it }
         return list
     }
 
@@ -621,14 +630,14 @@ class MediaStreamDownloader(
 
     internal fun deleteRecursively(path: okio.Path) {
         try {
-            if (!FileSystem.SYSTEM.exists(path)) return
-            val metadata = FileSystem.SYSTEM.metadataOrNull(path)
+            if (!AppFileSystem.exists(path)) return
+            val metadata = AppFileSystem.metadataOrNull(path)
             if (metadata?.isDirectory == true) {
-                FileSystem.SYSTEM.listOrNull(path)?.forEach { child ->
+                AppFileSystem.listOrNull(path)?.forEach { child ->
                     deleteRecursively(child)
                 }
             }
-            FileSystem.SYSTEM.delete(path)
+            AppFileSystem.delete(path)
         } catch (_: Exception) {
         }
     }

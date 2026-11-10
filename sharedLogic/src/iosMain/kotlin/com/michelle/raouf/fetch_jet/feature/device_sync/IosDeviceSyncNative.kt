@@ -23,7 +23,7 @@ interface IosTcpConnectionListener {
 
 /**
  * The native (Swift / CryptoKit + POSIX sockets) half of iOS device sync. The protocol, state and
- * flows live in Kotlin ([DeviceSyncImpl] in iosMain); only the two things that must be native are
+ * flows live in Kotlin ([DeviceSyncEngine] in commonMain); only the two things that must be native are
  * here: the crypto (so it byte-matches the JVM/Android `CryptoBox` + ECDH) and the raw LAN sockets.
  *
  * Set by the Swift app at startup through [IosDeviceSyncNativeRegistry].

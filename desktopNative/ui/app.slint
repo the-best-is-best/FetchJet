@@ -122,7 +122,7 @@ export component AppWindow inherits Window {
     }
     if !root.side-panel && Core.chrome.detailsOpen: DetailsSheet { }
     Toast {
-        y: parent.height - 88px - self.height;
+        y: parent.height - (!root.side-panel && Core.chrome.detailsOpen ? 24px : 88px) - self.height;
         visible: Core.shell.toastText != "";
     }
     if Core.add.visible: AddDialog { }

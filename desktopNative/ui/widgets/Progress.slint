@@ -2,13 +2,23 @@ import { Theme, Dir } from "../theme.slint";
 
 export component ThinBar inherits Rectangle {
     in property <float> value;
+    in property <bool> indeterminate;
     in property <color> ink: Theme.primary;
+    private property <float> phase: root.indeterminate ? Math.mod(animation-tick() / 1750ms, 1) : 0;
     height: 5px;
     border-radius: self.height / 2;
     background: Theme.on-surface.with-alpha(0.08);
-    Rectangle {
+    clip: root.indeterminate;
+    if !root.indeterminate: Rectangle {
         x: Dir.rtl ? parent.width - self.width : 0;
         width: parent.width * clamp(root.value, 0, 1);
+        height: parent.height;
+        border-radius: parent.height / 2;
+        background: root.ink;
+    }
+    if root.indeterminate: Rectangle {
+        x: parent.width * (root.phase * 1.4 - 0.4);
+        width: parent.width * 0.4;
         height: parent.height;
         border-radius: parent.height / 2;
         background: root.ink;

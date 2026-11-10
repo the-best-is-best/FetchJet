@@ -308,7 +308,10 @@
    "NONE",
    "CONNECTING",
    "CONFIRM",
-   "FAILED"
+   "FAILED",
+   "OFFER",
+   "RECEIVING",
+   "RECEIVE_FAILED"
   ],
   "EffectKind": [
    "TOAST",
@@ -1531,6 +1534,18 @@
     "String"
    ],
    [
+    "fileSize",
+    "String"
+   ],
+   [
+    "deviceName",
+    "String"
+   ],
+   [
+    "deviceEmoji",
+    "String"
+   ],
+   [
     "searching",
     "Boolean"
    ],
@@ -1618,6 +1633,26 @@
    ],
    [
     "peer",
+    "String"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "fileSize",
+    "String"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "indeterminate",
+    "Boolean"
+   ],
+   [
+    "percent",
     "String"
    ]
   ],
@@ -1859,6 +1894,10 @@
    [
     "progress",
     "Float"
+   ],
+   [
+    "preparing",
+    "Boolean"
    ],
    [
     "percent",
@@ -3543,6 +3582,14 @@
   "sysDevicePairedLabel",
   "sysDeviceThisDevice",
   "sysDeviceManualConnect",
-  "sysDeviceConnect"
+  "sysDeviceConnect",
+  "sysDeviceOfferTitle",
+  "sysDeviceOfferFrom",
+  "sysDeviceOfferAccept",
+  "sysDeviceOfferReject",
+  "deviceNoAnswer",
+  "stepPreparingFile",
+  "sysDeviceReceivingTitle",
+  "sysDeviceReceiveFailed"
  ]
 }

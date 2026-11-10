@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
@@ -23,9 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 class DashboardViewModel(
 
@@ -338,7 +337,7 @@ class DashboardViewModel(
             // The file is already in the folder: ask, like the Add dialog does, instead of
             // quietly saving "name (1).mp4".
             if (fileName != null && !forceOverwrite && overrideFileName == null &&
-                FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())
+                AppFileSystem.exists("$destDir/$fileName".toPath())
             ) {
                 pendingExternalConflict = request
                 _uiState.update {
@@ -461,7 +460,7 @@ class DashboardViewModel(
             val destDir =
                 if (folder.isBlank()) chosenDir else "${chosenDir.trimEnd('/', '\\')}/$folder"
             if (folder.isNotBlank()) try {
-                FileSystem.SYSTEM.createDirectories(destDir.toPath())
+                AppFileSystem.createDirectories(destDir.toPath())
             } catch (_: Exception) {
             }
             for (req in requests) {
@@ -621,6 +620,7 @@ class DashboardViewModel(
             DashboardUiEvent.OnCancelPairingClicked,
             is DashboardUiEvent.OnUnpairDeviceClicked,
             DashboardUiEvent.OnBlockPairingClicked,
+            DashboardUiEvent.OnDismissReceiveClicked,
             is DashboardUiEvent.OnUnblockDeviceClicked,
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
         }
@@ -931,7 +931,7 @@ class DashboardViewModel(
 
     /** The name itself when it is free, else "name (n).ext". */
     internal fun freeFileName(destDir: String, fileName: String): String =
-        if (FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) getUniqueFileName(
+        if (AppFileSystem.exists("$destDir/$fileName".toPath())) getUniqueFileName(
             destDir,
             fileName
         ) else fileName
@@ -961,7 +961,7 @@ class DashboardViewModel(
             if (originalFileName.contains('.')) ".${originalFileName.substringAfterLast('.')}" else ""
         var counter = 1
         var candidate = "$nameWithoutExt ($counter)$ext"
-        while (FileSystem.SYSTEM.exists("$destDir/$candidate".toPath())) {
+        while (AppFileSystem.exists("$destDir/$candidate".toPath())) {
             counter++
             candidate = "$nameWithoutExt ($counter)$ext"
         }

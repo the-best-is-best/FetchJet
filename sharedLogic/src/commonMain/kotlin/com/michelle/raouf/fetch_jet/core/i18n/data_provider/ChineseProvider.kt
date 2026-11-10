@@ -884,4 +884,12 @@ object ChineseProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "接收下载？"
+    override val sysDeviceOfferFrom = "来自 {device}"
+    override val sysDeviceOfferAccept = "接受"
+    override val sysDeviceOfferReject = "拒绝"
+    override val deviceNoAnswer = "另一台设备没有响应，请重试"
+    override val stepPreparingFile = "正在准备文件"
+    override val sysDeviceReceivingTitle = "正在接收下载"
+    override val sysDeviceReceiveFailed = "接收失败"
 }

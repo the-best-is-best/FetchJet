@@ -20,14 +20,20 @@ desktop app, at 50 MB RAM or less (the JVM app idles at about 250 MB).
 ## 2. Tree
 
 ```
+sharedLogic/src/nativeDesktopMain/kotlin/com/michelle/raouf/fetch_jet/
+    platform/desktop/    DesktopOs / DesktopApp (expect), HostHooks: the OS contract (docs/port/LINUX.md)
+    core/... feature/... the actuals shared by Windows and Linux
 sharedLogic/src/mingwX64Main/kotlin/com/michelle/raouf/fetch_jet/
     platform/win/        low-level Windows helpers: WinCore, WinFiles, WinCrypto, WinSystem,
                          WinProcess, WinZip, WinHttpEngine (reports 17, 18)
-    core/... feature/... the mingwX64 actuals, in the same package as their expect
+    platform/desktop/    DesktopOs.mingw.kt: the contract on top of platform/win
+    core/... feature/... the Windows-only actuals, in the same package as their expect
+sharedLogic/src/linuxX64Main/...   the Linux layer (platform/linux, DesktopOs.linux.kt, placeholders)
 desktopNative/
     ARCHITECTURE.md      this file
-    core/                Gradle module :desktopNativeCore -> fjcore.dll (depends on :sharedLogic)
-        src/mingwX64Main/kotlin/com/michelle/raouf/fetch_jet/nativeapp/
+    core/                Gradle module :desktopNativeCore -> fjcore.dll / libfjcore.so (depends on :sharedLogic)
+        src/nativeDesktopMain/kotlin/com/michelle/raouf/fetch_jet/nativeapp/   (shared by both targets;
+            three device-sync files still under src/mingwX64Main, compiled as part of nativeDesktopMain)
             Exports.kt       the C API (section 5)
             NativeApp.kt     start order, host wiring; Launch.kt: arguments and single instance
             DebugCalls.kt    `fj_call("debug....")`, only with `"debug": true` (tests, pictures)
@@ -39,8 +45,10 @@ desktopNative/
             bridge/          the 127.0.0.1:28450 server for the browser extension
             host/            HostServices: calls into the C++ host (file and folder dialogs)
             generated/       generated Kotlin (string table)
-    host/                C++ host: main.cpp (window, tray, single instance, effects),
-                         core_api.h, json.h, bridge_support.h, emoji_atlas.h
+    host/                C++ host: app.cpp (shared start flow, snapshots, actions, effects),
+                         app_host.h (the OS contract), core_api.h, json.h, bridge_support.h
+        win/             platform_win.cpp (tray, single instance, dialogs, focus), emoji_atlas.h
+        linux/           platform_linux.cpp (dlopen of libfjcore.so, flock single instance)
         generated/       generated C++ (fj_bridge.h: parsers, row diff, action senders, strings)
     ui/                  theme.slint, widgets/, pages/, app.slint
         generated/       generated Slint (dto.slint, actions.slint, tr.slint) + protocol.json
@@ -66,6 +74,8 @@ generator and commit its output with the change.
 - The `mingwX64` target of `sharedLogic` (and of `:kmpLocalization`, added from the root build
   script without touching the submodule) exists only with `-Pfetchjet.nativeDesktop=true`. Without
   the property the JVM, Android and iOS builds are exactly as before.
+- The same property adds `linuxX64` (shared source set `nativeDesktopMain` between the two;
+  Linux build and run commands in `docs/port/LINUX.md`).
 - `:desktopNativeCore` is included by `settings.gradle.kts` under the same property.
 - Core:
   `gradlew :desktopNativeCore:linkDebugSharedMingwX64 -Pfetchjet.nativeDesktop=true --priority low`

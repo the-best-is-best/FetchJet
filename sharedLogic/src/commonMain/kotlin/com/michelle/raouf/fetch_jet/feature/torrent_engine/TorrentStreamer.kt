@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -11,7 +12,6 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import okio.FileSystem
 import okio.Path
 import okio.buffer
 
@@ -62,9 +62,9 @@ internal suspend fun streamUrlWithClient(
             val channel = response.bodyAsChannel()
             val useAppending = (responseCode == 206 && startByte > 0)
             val sink = if (useAppending) {
-                FileSystem.SYSTEM.appendingSink(targetPath).buffer()
+                AppFileSystem.appendingSink(targetPath).buffer()
             } else {
-                FileSystem.SYSTEM.sink(targetPath).buffer()
+                AppFileSystem.sink(targetPath).buffer()
             }
             val buffer = ByteArray(256 * 1024)
             var downloaded = 0L

@@ -4,7 +4,7 @@ import { TextField, FieldIconButton } from "../widgets/TextField.slint";
 import { Switch, Spinner } from "../widgets/Kit.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { ScrollArea } from "../widgets/Scroll.slint";
-import { EmojiIcon } from "../widgets/Icons.slint";
+import { EmojiIcon, Glyph } from "../widgets/Icons.slint";
 import { PickMenu } from "../widgets/Menu.slint";
 import { Core, SettingRowDto, SettingFieldDto, SettingButtonDto, SettingsSectionDto, SettingKind } from "../generated/dto.slint";
 import { Tr } from "../generated/tr.slint";
@@ -363,7 +363,7 @@ component MenuRow inherits TitleRow {
                 width: self.preferred-width;
                 text: "▾";
                 color: Theme.primary;
-                font-family: "Segoe UI Symbol";
+                font-family: Theme.symbol-font;
                 font-size: 14px;
                 vertical-alignment: center;
             }
@@ -741,10 +741,10 @@ component NavItem inherits Rectangle {
         height: 34px;
         border-radius: 9px;
         background: root.selected ? Theme.primary.with-alpha(0.2) : Theme.surface-variant.with-alpha(0.5);
-        Text {
+        Glyph {
             text: root.data.glyph;
             color: root.selected ? Theme.primary : Theme.on-surface-variant;
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: 16px;
             font-weight: 700;
             horizontal-alignment: center;

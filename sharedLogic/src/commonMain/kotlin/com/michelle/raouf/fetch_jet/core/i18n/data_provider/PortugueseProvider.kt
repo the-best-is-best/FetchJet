@@ -979,4 +979,12 @@ object PortugueseProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "Receber um download?"
+    override val sysDeviceOfferFrom = "De {device}"
+    override val sysDeviceOfferAccept = "Aceitar"
+    override val sysDeviceOfferReject = "Recusar"
+    override val deviceNoAnswer = "O outro dispositivo não respondeu, tente novamente"
+    override val stepPreparingFile = "Preparando o arquivo"
+    override val sysDeviceReceivingTitle = "Recebendo um download"
+    override val sysDeviceReceiveFailed = "Falha ao receber"
 }

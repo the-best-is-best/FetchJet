@@ -1,12 +1,11 @@
 package com.michelle.raouf.fetch_jet.core.settings
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * Small on/off behaviours of the app (settings folder, behavior.properties), read anywhere
@@ -66,8 +65,8 @@ object BehaviorSettings {
     }
 
     private fun read(key: String): String? = try {
-        if (!FileSystem.SYSTEM.exists(file)) null
-        else FileSystem.SYSTEM.read(file) { readUtf8() }.lineSequence().map { it.trim() }
+        if (!AppFileSystem.exists(file)) null
+        else AppFileSystem.read(file) { readUtf8() }.lineSequence().map { it.trim() }
             .firstOrNull { it.startsWith("$key=") }?.substringAfter('=')?.trim()
     } catch (_: Throwable) {
         null
@@ -75,13 +74,13 @@ object BehaviorSettings {
 
     private fun write(key: String, value: String) {
         try {
-            val lines = if (FileSystem.SYSTEM.exists(file))
-                FileSystem.SYSTEM.read(file) { readUtf8() }.lineSequence()
+            val lines = if (AppFileSystem.exists(file))
+                AppFileSystem.read(file) { readUtf8() }.lineSequence()
                     .filter { it.isNotBlank() && !it.trim().startsWith("$key=") }.toMutableList()
             else mutableListOf("# FetchJet behaviour settings")
             lines.add("$key=$value")
-            file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) { writeUtf8(lines.joinToString("\n") + "\n") }
+            file.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(file) { writeUtf8(lines.joinToString("\n") + "\n") }
         } catch (_: Throwable) {
         }
     }

@@ -787,6 +787,14 @@ interface AppLocalization : LocalizationProvider {
     val sysDeviceThisDevice: String
     val sysDeviceManualConnect: String
     val sysDeviceConnect: String
+    val sysDeviceOfferTitle: String
+    val sysDeviceOfferFrom: String
+    val sysDeviceOfferAccept: String
+    val sysDeviceOfferReject: String
+    val deviceNoAnswer: String
+    val stepPreparingFile: String
+    val sysDeviceReceivingTitle: String
+    val sysDeviceReceiveFailed: String
 }
 
 val LocalizationManager.Strings: AppLocalization

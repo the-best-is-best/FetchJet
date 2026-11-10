@@ -44,7 +44,9 @@ data class SendPayload(
     val fromDeviceName: String = "",
     val clipStart: String = "",
     val clipEnd: String = "",
-    val clipByCutting: Boolean = false
+    val clipByCutting: Boolean = false,
+    val totalBytes: Long = 0L,
+    val downloadedBytes: Long = 0L
 )
 
 /**

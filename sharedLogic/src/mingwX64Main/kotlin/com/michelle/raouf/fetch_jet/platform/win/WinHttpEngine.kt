@@ -25,9 +25,9 @@ import io.ktor.http.fullPath
 import io.ktor.http.isSecure
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ClosedByteChannelException
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.toByteArray
-import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writer
 import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.AtomicReference
@@ -56,15 +56,17 @@ import kotlinx.cinterop.staticCFunction
 import kotlinx.cinterop.toCPointer
 import kotlinx.cinterop.toKStringFromUtf16
 import kotlinx.cinterop.toLong
-import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.cinterop.wcstr
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.job
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.io.Buffer
 import kotlinx.io.IOException
+import kotlinx.io.Source
 import platform.windows.GetLastError
 import platform.winhttp.WINHTTP_ASYNC_RESULT
 import platform.winhttp.WinHttpCloseHandle
@@ -279,10 +281,24 @@ private class WinHttpCall(private val session: COpaquePointer, private val data:
         await(CALLBACK_HEADERS_AVAILABLE, "No answer from the server") { WinHttpReceiveResponse(request, null) != 0 }
     }
 
-    suspend fun read(buffer: Pinned<ByteArray>, size: Int): Int =
-        await(CALLBACK_READ_COMPLETE, "The download was interrupted") {
-            WinHttpReadData(request, buffer.addressOf(0), size.toUInt(), null) != 0
+    private val bodyBuffer = AtomicReference<Pinned<ByteArray>?>(null)
+
+    suspend fun read(size: Int): Pair<ByteArray, Int> {
+        var pinned = bodyBuffer.value
+        if (pinned == null) {
+            val made = ByteArray(size).pin()
+            bodyBuffer.value = made
+            if (released.value != 0) {
+                bodyBuffer.getAndSet(null)?.unpin()
+                throw WinHttpException(ERROR_OPERATION_CANCELLED, "The download was interrupted")
+            }
+            pinned = made
         }
+        val read = await(CALLBACK_READ_COMPLETE, "The download was interrupted") {
+            WinHttpReadData(request, pinned.addressOf(0), pinned.get().size.toUInt(), null) != 0
+        }
+        return pinned.get() to read
+    }
 
     fun statusCode(): Int = memScoped {
         val code = alloc<UIntVar>()
@@ -324,6 +340,7 @@ private class WinHttpCall(private val session: COpaquePointer, private val data:
         }
         pinnedBody?.unpin()
         pinnedBody = null
+        bodyBuffer.getAndSet(null)?.unpin()
         self.dispose()
     }
 }
@@ -383,7 +400,7 @@ private class WinHttpNativeEngine(override val config: WinHttpConfig) : HttpClie
             val cut = line.indexOf(':')
             if (cut > 0) responseHeaders.append(line.substring(0, cut).trim(), line.substring(cut + 1).trim())
         }
-        val body = readBody(call, callContext)
+        val body = WinHttpBodyChannel(call, config.readBufferBytes)
         return HttpResponseData(HttpStatusCode(status, reason), requestTime, responseHeaders.build(), version, body, callContext)
     }
 
@@ -395,19 +412,44 @@ private class WinHttpNativeEngine(override val config: WinHttpConfig) : HttpClie
         is OutgoingContent.ContentWrapper -> bodyBytes(body.delegate(), callContext)
         is OutgoingContent.ProtocolUpgrade -> throw IOException("Protocol upgrades are not supported by this engine")
     }
+}
 
-    private fun readBody(call: WinHttpCall, callContext: CoroutineContext): ByteReadChannel =
-        GlobalScope.writer(callContext) {
-            val buffer = ByteArray(config.readBufferBytes)
-            buffer.usePinned { pinned ->
-                while (true) {
-                    val read = call.read(pinned, buffer.size)
-                    if (read <= 0) break
-                    channel.writeFully(buffer, 0, read)
-                    channel.flush()
-                }
+private class WinHttpBodyChannel(private val call: WinHttpCall, private val readSize: Int) : ByteReadChannel {
+    private val buffer = Buffer()
+    private val failure = AtomicReference<Throwable?>(null)
+    private var ended = false
+
+    override val closedCause: Throwable?
+        get() = failure.value
+
+    override val isClosedForRead: Boolean
+        get() = failure.value != null || (ended && buffer.exhausted())
+
+    override val readBuffer: Source
+        get() {
+            failure.value?.let { throw it }
+            return buffer
+        }
+
+    override suspend fun awaitContent(min: Int): Boolean {
+        failure.value?.let { throw it }
+        while (buffer.size < min && !ended) {
+            val (bytes, read) = try {
+                call.read(readSize)
+            } catch (e: Throwable) {
+                val cause = if (e is CancellationException) CancellationException(e.message, e) else ClosedByteChannelException(e)
+                failure.compareAndSet(null, cause)
+                throw failure.value ?: cause
             }
-        }.channel
+            if (read <= 0) ended = true else buffer.write(bytes, 0, read)
+        }
+        return buffer.size >= min
+    }
+
+    override fun cancel(cause: Throwable?) {
+        failure.compareAndSet(null, ClosedByteChannelException(cause))
+        call.close()
+    }
 }
 
 @OptIn(ExperimentalStdlibApi::class)

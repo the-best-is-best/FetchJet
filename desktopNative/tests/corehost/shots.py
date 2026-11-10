@@ -19,7 +19,9 @@ def shot(core, name, width=1200, height=760, extra=None):
     fixture = os.path.join(OUT, name + ".json")
     data = core.fixture(fixture, {"Emoji": {"ready": True}})
     command = [SHOT, APP, "AppWindow", "--json", fixture, "--width", str(width), "--height", str(height),
-               "--emoji-callback", "Emoji.icon", "--out", os.path.join(OUT, name + ".png"), "--quiet"]
+               "--emoji-callback", "Emoji.icon", "--out", os.path.join(OUT, name + ".png"), "--quiet",
+               "--font-dir", os.path.join(REPO, "desktopNative", "res", "fonts"),
+               "--emoji-dir", os.path.join(REPO, "desktopNative", "res", "emoji")]
     command.append("--dark" if data["Theme"]["dark"] else "--light")
     if extra:
         command += extra

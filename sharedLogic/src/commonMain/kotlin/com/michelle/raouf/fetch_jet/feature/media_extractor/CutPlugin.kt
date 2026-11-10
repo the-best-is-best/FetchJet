@@ -1,8 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
-import okio.FileSystem
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * A tiny yt-dlp post-processor plugin that cuts the finished download to [start, end] with a
@@ -64,7 +63,7 @@ class FetchJetCutPP(FFmpegPostProcessor):
 fun ensureCutPluginDir(baseDir: String): String? = try {
     val root = baseDir.trimEnd('/', '\\').toPath() / "fetchjet-ytdlp-plugins"
     val file = root / "fetchjet" / "yt_dlp_plugins" / "postprocessor" / "fetchjetcut.py"
-    val fs = FileSystem.SYSTEM
+    val fs = AppFileSystem
     val current = if (fs.exists(file)) fs.read(file) { readUtf8() } else null
     if (current != FETCHJET_CUT_PLUGIN_PY) {
         file.parent?.let { fs.createDirectories(it) }

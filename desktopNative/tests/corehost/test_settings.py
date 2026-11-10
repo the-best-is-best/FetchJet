@@ -12,6 +12,9 @@ ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
 GENERAL, DOWNLOADS, BROWSER, NETWORK, MEDIA, UPDATES = range(6)
 
 
+UPDATE_ASSET = "fetchjet_9.9.0_amd64.deb" if sys.platform.startswith("linux") else "FetchJet-9.9.0.msi"
+
+
 def nav(core):
     return core.snapshot("settingsNav") or {}
 
@@ -283,7 +286,7 @@ def run():
         print("a new version")
         core.check("no update dialog", not (core.snapshot("updateDialog") or {}).get("open", False))
         core.debug("update", {"version": "9.9.0", "notes": "## New\n- **Fast** start\n- [Notes](https://example.com/n)\n",
-                              "assetName": "FetchJet-9.9.0.msi", "assetSize": "1048576"})
+                              "assetName": UPDATE_ASSET, "assetSize": "1048576"})
         core.pump(0.5)
         dialog = core.snapshot("updateDialog")
         core.check("the dialog opens with both versions", dialog.get("open") and "9.9.0" in dialog.get("versionLine", "") and
@@ -300,7 +303,7 @@ def run():
         core.action("SettingClick", id="updateSee")
         core.pump(0.4)
         core.check("'see what is new' opens it again", core.snapshot("updateDialog").get("open"))
-        core.debug("update", {"version": "9.9.0", "notes": "x", "assetName": "FetchJet-9.9.0.msi", "canInstall": "true", "progress": "0.5"})
+        core.debug("update", {"version": "9.9.0", "notes": "x", "assetName": UPDATE_ASSET, "canInstall": "true", "progress": "0.5"})
         core.pump(0.4)
         dialog = core.snapshot("updateDialog")
         core.check("while downloading: progress, no skip, the button waits", dialog.get("progressShown") and abs(dialog.get("progress", 0) - 0.5) < 0.01 and

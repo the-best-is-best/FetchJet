@@ -16,8 +16,12 @@ if (providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true") {
         pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
             extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension> {
                 mingwX64()
+                linuxX64()
                 sourceSets.getByName("mingwX64Main").kotlin.srcDir(
                     rootProject.file("desktopNative/kmpLocalization-mingw")
+                )
+                sourceSets.getByName("linuxX64Main").kotlin.srcDir(
+                    rootProject.file("desktopNative/kmpLocalization-linux")
                 )
             }
         }

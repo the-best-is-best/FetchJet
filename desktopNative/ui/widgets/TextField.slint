@@ -2,6 +2,21 @@ import { Theme, Dir } from "../theme.slint";
 import { Hover, HBox } from "Base.slint";
 import { EmojiIcon } from "Icons.slint";
 
+component FieldGlow inherits Rectangle {
+    in property <length> radius;
+    in property <float> level;
+    in property <color> ink: Theme.primary;
+    visible: root.level > 0.01;
+    for k in 5: Rectangle {
+        x: -(k + 1) * 2px;
+        y: -(k + 1) * 2px + 2px;
+        width: root.width + (k + 1) * 4px;
+        height: root.height + (k + 1) * 4px;
+        border-radius: root.radius + (k + 1) * 2px;
+        background: root.ink.with-alpha(0.035 * root.level);
+    }
+}
+
 export component FieldIconButton inherits Rectangle {
     in property <string> glyph;
     in property <string> emoji;
@@ -18,7 +33,7 @@ export component FieldIconButton inherits Rectangle {
     if root.emoji == "": Text {
         text: root.glyph;
         color: Theme.on-surface-variant;
-        font-family: "Segoe UI Symbol";
+        font-family: Theme.symbol-font;
         font-size: root.glyph-size;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -110,10 +125,21 @@ export component TextField inherits Rectangle {
     vertical-stretch: 0;
     opacity: root.enabled ? 1 : 0.6;
     border-radius: 12px;
-    border-width: input.has-focus || root.has-error ? 1.5px : 1px;
-    border-color: root.has-error ? Theme.error : input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
-    background: input.has-focus ? Theme.field-focused : Theme.field;
-    animate border-color, background { duration: 180ms; }
+    private property <float> glow: input.has-focus || root.has-error ? 1 : 0;
+    animate glow { duration: 220ms; }
+
+    FieldGlow {
+        radius: root.border-radius;
+        level: root.glow;
+        ink: root.has-error ? Theme.error : Theme.primary;
+    }
+    Rectangle {
+        border-radius: root.border-radius;
+        border-width: input.has-focus || root.has-error ? 1.5px : 1px;
+        border-color: root.has-error ? Theme.error : input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
+        background: input.has-focus ? Theme.field-focused : Theme.field;
+        animate border-color, background { duration: 180ms; }
+    }
 
     hover := TouchArea {
         mouse-cursor: MouseCursor.text;
@@ -128,7 +154,7 @@ export component TextField inherits Rectangle {
             text: root.leading;
             width: self.preferred-width + 8px;
             color: Theme.on-surface-variant.with-alpha(input.has-focus ? 1 : 0.75);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: 17px;
             vertical-alignment: center;
             horizontal-alignment: Dir.start;
@@ -234,10 +260,19 @@ export component TextArea inherits Rectangle {
     min-width: 60px;
     horizontal-stretch: 1;
     border-radius: 12px;
-    border-width: input.has-focus ? 1.5px : 1px;
-    border-color: input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
-    background: input.has-focus ? Theme.field-focused : Theme.field;
-    animate border-color, background { duration: 180ms; }
+    private property <float> glow: input.has-focus ? 1 : 0;
+    animate glow { duration: 220ms; }
+    FieldGlow {
+        radius: root.border-radius;
+        level: root.glow;
+    }
+    Rectangle {
+        border-radius: root.border-radius;
+        border-width: input.has-focus ? 1.5px : 1px;
+        border-color: input.has-focus ? Theme.primary : hover.has-hover ? Theme.outline : Theme.outline-variant.with-alpha(0.7);
+        background: input.has-focus ? Theme.field-focused : Theme.field;
+        animate border-color, background { duration: 180ms; }
+    }
     hover := TouchArea {
         mouse-cursor: MouseCursor.text;
         clicked => { input.focus(); }

@@ -1,33 +1,27 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.michelle.raouf.fetch_jet.platform.win.winGetEnv
+import com.michelle.raouf.fetch_jet.platform.win.winHostName
 
-private object InertDeviceSync : DeviceSync {
-    override val discovered = MutableStateFlow<List<DiscoveredDevice>>(emptyList()).asStateFlow()
-    override val paired = MutableStateFlow<List<PairedDevice>>(emptyList()).asStateFlow()
-    override val pairing = MutableStateFlow<PairingState?>(null).asStateFlow()
-    override val sending = MutableStateFlow<SendState?>(null).asStateFlow()
-    override val blocked = MutableStateFlow<List<PairedDevice>>(emptyList()).asStateFlow()
-    override val selfId = ""
-    override val selfName = ""
-    override fun setSelfName(name: String) {}
-    override fun start() {}
-    override fun stop() {}
-    override fun setVisible(visible: Boolean) {}
-    override fun startPairing(deviceId: String) {}
-    override fun startPairingWithHost(host: String) {}
-    override fun confirmPairing() {}
-    override fun cancelPairing() {}
-    override fun blockPairing() {}
-    override fun unblock(deviceId: String) {}
-    override fun unpair(deviceId: String) {}
-    override fun send(request: SendRequest, onResult: (Boolean) -> Unit) = onResult(false)
-    override fun cancelSend() {}
+private fun deviceSyncPlatformName(): String {
+    val host = try {
+        winHostName().substringBefore('.').trim()
+    } catch (_: Throwable) {
+        ""
+    }
+    return if (host.isBlank() || host.equals("localhost", ignoreCase = true)) "Windows" else "$host · Windows"
 }
 
 actual fun createDeviceSync(
     settingsDir: String,
     scratchDirFor: (taskId: String) -> String,
     onReceive: (SendPayload, localPartialFiles: List<String>) -> Unit
-): DeviceSync = InertDeviceSync
+): DeviceSync = winDeviceSync(
+    platformName = deviceSyncPlatformName(),
+    tempDir = "$settingsDir/device-sync-tmp",
+    store = SharedPairedDeviceStore(WinSyncLock()),
+    onReceive = onReceive,
+    discoveryPort = winGetEnv("FETCHJET_SYNC_UDP_PORT")?.toIntOrNull() ?: DEVICE_SYNC_DISCOVERY_PORT,
+    tcpPort = winGetEnv("FETCHJET_SYNC_TCP_PORT")?.toIntOrNull() ?: DEVICE_SYNC_TCP_PORT,
+    bindHost = winGetEnv("FETCHJET_SYNC_BIND_HOST")?.takeIf { it.isNotBlank() } ?: DEVICE_SYNC_ANY_HOST,
+)

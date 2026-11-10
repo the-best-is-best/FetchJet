@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.SystemNotice
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
@@ -8,6 +9,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.domain.model.STEP_PREPARING_FILE
 import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.domain.model.canTransferToDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
@@ -16,11 +18,11 @@ import com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest
 import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * ViewModel glue for "Send a download to another device" (ROADMAP-1.3.0 item 4). The transport is
@@ -35,6 +37,9 @@ internal fun DashboardViewModel.initDeviceSync() {
     deviceSync.start()
     scope.launch {
         BehaviorSettings.visibleToDevices.collect { deviceSync.setVisible(it) }
+    }
+    scope.launch {
+        uiState.map { it.deviceShareTaskId != null }.distinctUntilChanged().collect { deviceSync.setActive(it) }
     }
     scope.launch {
         deviceSync.discovered.collect { list ->
@@ -61,10 +66,15 @@ internal fun DashboardViewModel.initDeviceSync() {
             _uiState.update { it.copy(deviceSending = state) }
         }
     }
+    scope.launch {
+        deviceSync.receiving.collect { state ->
+            _uiState.update { it.copy(deviceReceiving = state) }
+        }
+    }
 }
 
 /** A download arrived from another device. Add it here; continue from the sent bytes if any. */
-internal fun DashboardViewModel.onDeviceReceive(
+fun DashboardViewModel.onDeviceReceive(
     payload: SendPayload,
     localPartialFiles: List<String>
 ) {
@@ -103,7 +113,10 @@ internal fun DashboardViewModel.onDeviceReceive(
             clipEnd = payload.clipEnd.takeIf { it.isNotBlank() },
             clipByCutting = payload.clipByCutting,
             requestHeaders = headers,
-            scheduledAtMs = scheduledAt
+            scheduledAtMs = scheduledAt,
+            initialStepText = STEP_PREPARING_FILE,
+            displayTotalBytes = payload.totalBytes,
+            displayDownloadedBytes = if (transfer) payload.downloadedBytes else 0L
         )
         val task = result.getOrNull()
         if (task != null && transfer) {
@@ -120,33 +133,33 @@ internal fun DashboardViewModel.onDeviceReceive(
 private fun DashboardViewModel.removeEmptyReceiveFolders() {
     val root = "${queueRepository.pathResolver.getSettingsDirectory()}/device-sync-tmp".toPath()
     runCatching {
-        FileSystem.SYSTEM.listOrNull(root)
-            ?.filter { it.name.startsWith("recv-") && FileSystem.SYSTEM.listOrNull(it)?.isEmpty() == true }
-            ?.forEach { FileSystem.SYSTEM.delete(it) }
+        AppFileSystem.listOrNull(root)
+            ?.filter { it.name.startsWith("recv-") && AppFileSystem.listOrNull(it)?.isEmpty() == true }
+            ?.forEach { AppFileSystem.delete(it) }
     }
 }
 
 /** Move the received `.partN` / `.chunks` files into the new task's scratch dir so it resumes. */
 private fun DashboardViewModel.placeReceivedParts(taskId: String, files: List<String>) {
     val destDir = "${queueRepository.pathResolver.getTempDirectory()}/task_$taskId"
-    runCatching { FileSystem.SYSTEM.createDirectories(destDir.toPath()) }
+    runCatching { AppFileSystem.createDirectories(destDir.toPath()) }
     for (path in files) {
         val src = path.toPath()
         val name = src.name
         val dst = "$destDir/$name".toPath()
         runCatching {
-            if (FileSystem.SYSTEM.exists(dst)) FileSystem.SYSTEM.delete(dst)
+            if (AppFileSystem.exists(dst)) AppFileSystem.delete(dst)
             // Same volume (both under the app temp dir) → atomic rename; else copy.
-            runCatching { FileSystem.SYSTEM.atomicMove(src, dst) }
+            runCatching { AppFileSystem.atomicMove(src, dst) }
                 .onFailure {
-                    FileSystem.SYSTEM.copy(src, dst)
-                    runCatching { FileSystem.SYSTEM.delete(src) }
+                    AppFileSystem.copy(src, dst)
+                    runCatching { AppFileSystem.delete(src) }
                 }
         }
     }
     // The now-empty `recv-<ts>` staging folders would otherwise pile up in the settings dir.
     files.mapNotNull { it.toPath().parent }.distinct().forEach { recv ->
-        runCatching { FileSystem.SYSTEM.deleteRecursively(recv) }
+        runCatching { AppFileSystem.deleteRecursively(recv) }
     }
 }
 
@@ -163,7 +176,9 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnSendToDeviceClicked -> startDeviceSend(event)
 
         DashboardUiEvent.OnConfirmPairingClicked -> {
+            val offer = _uiState.value.devicePairing is com.michelle.raouf.fetch_jet.feature.device_sync.PairingState.Offer
             deviceSync.confirmPairing()
+            if (offer) return
             // Send only if the pairing was really stored. One try: while the other user is still
             // reading the code, the send itself waits ("pending"); a refusal there is final, and
             // retrying would only replace its message with "not paired".
@@ -176,8 +191,9 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         }
 
         DashboardUiEvent.OnCancelPairingClicked -> {
+            val offer = _uiState.value.devicePairing is com.michelle.raouf.fetch_jet.feature.device_sync.PairingState.Offer
             deviceSync.cancelPairing()
-            pendingDeviceSend = null
+            if (!offer) pendingDeviceSend = null
             _uiState.update { it.copy(devicePairing = null) }
         }
 
@@ -190,6 +206,11 @@ internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
         }
 
         is DashboardUiEvent.OnUnblockDeviceClicked -> deviceSync.unblock(event.deviceId)
+
+        DashboardUiEvent.OnDismissReceiveClicked -> {
+            deviceSync.clearReceiving()
+            _uiState.update { it.copy(deviceReceiving = null) }
+        }
 
         is DashboardUiEvent.OnManualConnectClicked -> {
             val ip = event.ip.trim()
@@ -230,7 +251,13 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
         fromDeviceName = deviceSync.selfName,
         clipStart = task.clipStart.orEmpty(),
         clipEnd = task.clipEnd.orEmpty(),
-        clipByCutting = task.clipByCutting
+        clipByCutting = task.clipByCutting,
+        totalBytes = if (task.totalBytes > 0L) task.totalBytes else task.approximateTotalBytes,
+        downloadedBytes = when {
+            !transfer -> 0L
+            task.status == DownloadStatus.COMPLETED -> task.totalBytes
+            else -> task.downloadedBytes
+        }
     )
     val request = SendRequest(
         deviceId = event.deviceId,
@@ -256,16 +283,16 @@ private fun DashboardViewModel.completedTransferFile(task: DownloadTask): String
     if (task.engineType == EngineType.BITTORRENT || task.status != DownloadStatus.COMPLETED) return ""
     if (task.fileName.isBlank()) return ""
     val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
-    return if (FileSystem.SYSTEM.exists(path.toPath())) path else ""
+    return if (AppFileSystem.exists(path.toPath())) path else ""
 }
 
 /** Every file in a media task's scratch folder (own-engine pieces, HLS segments, yt-dlp .part). */
 private fun DashboardViewModel.gatherScratchFiles(taskId: String): List<String> {
     val dir = "${queueRepository.pathResolver.getTempDirectory()}/task_$taskId".toPath()
-    if (!FileSystem.SYSTEM.exists(dir)) return emptyList()
+    if (!AppFileSystem.exists(dir)) return emptyList()
     return runCatching {
-        FileSystem.SYSTEM.list(dir)
-            .filter { FileSystem.SYSTEM.metadataOrNull(it)?.isRegularFile == true }
+        AppFileSystem.list(dir)
+            .filter { AppFileSystem.metadataOrNull(it)?.isRegularFile == true }
             .map { it.toString() }
     }.getOrDefault(emptyList())
 }
@@ -273,9 +300,9 @@ private fun DashboardViewModel.gatherScratchFiles(taskId: String): List<String> 
 /** The task's downloaded pieces: `<temp>/task_<id>/<name>.partN` + `<name>.chunks`. */
 private fun DashboardViewModel.gatherPartialFiles(taskId: String, fileName: String): List<String> {
     val dir = "${queueRepository.pathResolver.getTempDirectory()}/task_$taskId".toPath()
-    if (!FileSystem.SYSTEM.exists(dir)) return emptyList()
+    if (!AppFileSystem.exists(dir)) return emptyList()
     return runCatching {
-        FileSystem.SYSTEM.list(dir).filter { p ->
+        AppFileSystem.list(dir).filter { p ->
             val n = p.name
             n.startsWith("$fileName.part") || n == "$fileName.chunks"
         }.map { it.toString() }

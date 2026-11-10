@@ -32,8 +32,8 @@ export component OptionsMenu inherits PopupWindow {
                 max-width: 280px;
                 ta := TouchArea {
                     clicked => {
-                        root.close();
                         root.picked(i);
+                        root.close();
                     }
                 }
                 HorizontalLayout {
@@ -44,7 +44,7 @@ export component OptionsMenu inherits PopupWindow {
                         width: 24px;
                         text: option.checked ? "✓" : "";
                         color: Theme.on-surface;
-                        font-family: "Segoe UI Symbol";
+                        font-family: Theme.symbol-font;
                         font-size: root.font-size;
                         vertical-alignment: center;
                     }
@@ -52,7 +52,7 @@ export component OptionsMenu inherits PopupWindow {
                         width: 28px;
                         text: option.checked ? "✓" : "";
                         color: Theme.on-surface;
-                        font-family: "Segoe UI Symbol";
+                        font-family: Theme.symbol-font;
                         font-size: root.font-size;
                         vertical-alignment: center;
                     }
@@ -71,7 +71,7 @@ export component OptionsMenu inherits PopupWindow {
                         width: 24px;
                         text: option.checked ? "✓" : "";
                         color: Theme.on-surface;
-                        font-family: "Segoe UI Symbol";
+                        font-family: Theme.symbol-font;
                         font-size: root.font-size;
                         vertical-alignment: center;
                         horizontal-alignment: right;
@@ -80,7 +80,7 @@ export component OptionsMenu inherits PopupWindow {
                         width: 28px;
                         text: option.checked ? "✓" : "";
                         color: Theme.on-surface;
-                        font-family: "Segoe UI Symbol";
+                        font-family: Theme.symbol-font;
                         font-size: root.font-size;
                         vertical-alignment: center;
                         horizontal-alignment: right;
@@ -150,8 +150,8 @@ export component PickMenu inherits PopupWindow {
                 height: 48px;
                 tap := TouchArea {
                     clicked => {
-                        root.close();
                         root.picked(i);
+                        root.close();
                     }
                 }
                 Text {

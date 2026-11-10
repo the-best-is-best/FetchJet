@@ -131,17 +131,22 @@ export component UpdateDialog inherits Rectangle {
                 height: 24px;
             }
             HBox {
-                height: 40px;
+                height: 48px;
                 spacing: 8px;
                 alignment: end;
-                if Core.updateDialog.skipLabel != "": TextButton {
-                    text: Core.updateDialog.skipLabel;
-                    clicked => { Act.updateSkip(); }
-                }
-                OutlinedButton {
-                    text: Core.updateDialog.laterLabel;
-                    border-radius: 10px;
-                    clicked => { Act.updateLater(false); }
+                cross-axis-alignment: center;
+                HBox {
+                    height: 40px;
+                    spacing: 4px;
+                    if Core.updateDialog.skipLabel != "": TextButton {
+                        text: Core.updateDialog.skipLabel;
+                        clicked => { Act.updateSkip(); }
+                    }
+                    OutlinedButton {
+                        text: Core.updateDialog.laterLabel;
+                        border-radius: 10px;
+                        clicked => { Act.updateLater(false); }
+                    }
                 }
                 FilledButton {
                     text: Core.updateDialog.confirmLabel;

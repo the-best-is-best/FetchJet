@@ -96,8 +96,9 @@ component InspectError inherits Rectangle {
             size: 10px;
         }
         HBox {
-            height: 40px;
+            height: 48px;
             alignment: end;
+            cross-axis-alignment: center;
             FilledButton {
                 text: "🔄 " + Tr.addRetryInspection;
                 border-radius: 8px;
@@ -152,7 +153,7 @@ component EngineMissing inherits Rectangle {
             size: 8px;
         }
         Rectangle {
-            height: 40px;
+            height: 48px;
             OutlinedButton {
                 width: parent.width;
                 text: Core.addMedia.enginePreparing ? Tr.preparingEngine : Tr.startMediaEngine;
@@ -209,7 +210,7 @@ component QualitiesCard inherits SectionCard {
         padding: 12px;
         spacing: 0px;
         HBox {
-            height: 40px;
+            height: 48px;
             spacing: 4px;
             cross-axis-alignment: center;
             EmojiIcon {
@@ -871,30 +872,34 @@ component FormatChip inherits Rectangle {
     in property <string> label;
     in property <bool> selected;
     callback clicked();
-    width: text.preferred-width + 24px;
-    height: 40px;
-    border-radius: 10px;
-    border-width: 1px;
-    border-color: root.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
-    background: root.selected ? Theme.primary : Theme.surface-variant.with-alpha(0.5);
+    width: max(48px, text.preferred-width + 24px);
+    height: 48px;
     ta := TouchArea {
         clicked => { root.clicked(); }
     }
-    text := Text {
-        text: root.label;
-        color: root.selected ? Theme.on-primary : Theme.on-surface;
-        font-family: Theme.font;
-        font-size: 12px;
-        font-weight: root.selected ? 700 : 500;
-        letter-spacing: Dir.rtl ? 0px : 0.5px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
-    Hover {
+    chip := Rectangle {
+        width: text.preferred-width + 24px;
+        height: 40px;
         border-radius: 10px;
-        ink: root.selected ? Theme.on-primary : Theme.on-surface;
-        hovered: ta.has-hover;
-        pressed: ta.pressed;
+        border-width: 1px;
+        border-color: root.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
+        background: root.selected ? Theme.primary : Theme.surface-variant.with-alpha(0.5);
+        text := Text {
+            text: root.label;
+            color: root.selected ? Theme.on-primary : Theme.on-surface;
+            font-family: Theme.font;
+            font-size: 12px;
+            font-weight: root.selected ? 700 : 500;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: 10px;
+            ink: root.selected ? Theme.on-primary : Theme.on-surface;
+            hovered: ta.has-hover;
+            pressed: ta.pressed;
+        }
     }
 }
 

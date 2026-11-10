@@ -613,10 +613,15 @@ Bridges:
 - 1.3.0 "Send to device" (LAN device sync, ROADMAP-1.3.0 item 4, owner-tested 2026-11-08): all
   details, rules and commits are in that item. Things to know before touching it:
     - One wire protocol on every platform (UDP 28461 announce, TCP 28462, frame types `T_*` incl.
-      `T_READY` 8 and `T_UNPAIR` 9). JVM + Android share `DeviceSyncImpl.jvmAndroid.kt`; iOS has
-      `DeviceSyncImpl.ios.kt` with the same logic over the Swift bridge
-      `NativeDeviceSyncBridge.swift` (CryptoKit + POSIX). **A change to the protocol or the
-      refusal codes must be made in both files.**
+      `T_READY` 8 and `T_UNPAIR` 9). Since 2026-11-10 the protocol and state machine exist
+      **once**, in `sharedLogic/src/commonMain/.../feature/device_sync/` (`DeviceSyncEngine.kt`
+      lifecycle, `SyncDiscovery.kt`, `SyncPairing.kt` codes / offers / unpair, `SyncReceiver.kt`,
+      `SyncSender.kt`, `SyncFrames.kt`, `SyncWire.kt` JSON, `SyncConfig.kt` ports + timings,
+      `SyncPlatform.kt` the platform interface, `DeviceSyncStore.kt`). Each platform only supplies
+      sockets, crypto, files and a lock: `JvmDeviceSyncPlatform.kt` (JVM + Android),
+      `WinDeviceSyncPlatform.kt` (native Windows), `IosDeviceSyncPlatform.kt` (over the Swift bridge
+      `NativeDeviceSyncBridge.swift`, CryptoKit + POSIX, unchanged). **A change to the protocol or
+      the refusal codes is made once, in commonMain.**
     - Discovery does not rely on broadcast (a real iPhone needs Apple's multicast entitlement for
       it): announces also go directly to known devices every 2 s, a hidden device sends
       `fj-probe` (answered directly, the asker is not listed), iOS sweeps its /24 every 30 s.

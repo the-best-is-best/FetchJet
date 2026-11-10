@@ -348,6 +348,9 @@ export struct DeviceRowDto {
 export struct DeviceSheetDto {
     open: bool,
     fileName: string,
+    fileSize: string,
+    deviceName: string,
+    deviceEmoji: string,
     searching: bool,
     searchShown: bool,
     search: string,
@@ -373,6 +376,11 @@ export struct DevicePairingDto {
     text: string,
     code: string,
     peer: string,
+    fileName: string,
+    fileSize: string,
+    progress: float,
+    indeterminate: bool,
+    percent: string,
 }
 
 export struct EffectDto {
@@ -448,6 +456,7 @@ export struct TaskRowDto {
     stateIsError: bool,
     size: string,
     progress: float,
+    preparing: bool,
     percent: string,
     barColor: int,
     speed: string,
@@ -705,6 +714,9 @@ export global PairingCode {
     out property <int> connecting: 1;
     out property <int> confirm: 2;
     out property <int> failed: 3;
+    out property <int> offer: 4;
+    out property <int> receiving: 5;
+    out property <int> receive-failed: 6;
 }
 
 export global EffectKind {

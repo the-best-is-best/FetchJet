@@ -3,7 +3,7 @@ import { HBox, T, Hover } from "../widgets/Base.slint";
 import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
-import { Core, AlertDto } from "../generated/dto.slint";
+import { Core, AlertDto, AlertKind } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 
 component BodyText inherits Text {
@@ -12,6 +12,8 @@ component BodyText inherits Text {
     font-size: 14px;
     letter-spacing: Dir.rtl ? 0px : 0.2px;
     horizontal-alignment: Dir.start;
+    vertical-alignment: center;
+    min-height: 20px;
     wrap: word-wrap;
 }
 
@@ -31,6 +33,8 @@ component AlertOverlay inherits Rectangle {
     in-out property <bool> checked: false;
     private property <length> radius: root.data.titleSmall || root.data.round ? 28px : 18px;
     private property <length> button-radius: root.data.titleSmall || root.data.round ? 20px : 10px;
+    private property <length> widest: max(280px, min(560px, root.width - 48px));
+    private property <bool> fill: root.data.kind == AlertKind.remove || root.data.kind == AlertKind.when-done-countdown || root.data.kind == AlertKind.extension-steps;
     background: #00000099;
     init => { keys.focus(); }
     scrim := TouchArea {
@@ -55,7 +59,7 @@ component AlertOverlay inherits Rectangle {
         }
     }
     card := Rectangle {
-        width: clamp(content.preferred-width, 280px, max(280px, min(560px, root.width - 48px)));
+        width: root.fill ? root.widest : clamp(content.preferred-width, 280px, root.widest);
         height: content.preferred-height;
         border-radius: root.radius;
         background: Theme.surface-container-high;
@@ -71,6 +75,8 @@ component AlertOverlay inherits Rectangle {
                 font-weight: 700;
                 letter-spacing: Dir.rtl || !root.data.titleSmall ? 0px : 0.2px;
                 horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                min-height: root.data.titleSmall ? 24px : 32px;
                 wrap: word-wrap;
             }
             Rectangle {
@@ -162,9 +168,10 @@ component AlertOverlay inherits Rectangle {
                 height: 24px;
             }
             HBox {
-                height: 40px;
+                height: 48px;
                 spacing: 8px;
                 alignment: end;
+                cross-axis-alignment: center;
                 if root.data.extraLabel != "": TextButton {
                     text: root.data.extraLabel;
                     clicked => { Act.alertExtra(root.data.kind); }
@@ -203,14 +210,14 @@ export component Toast inherits Rectangle {
         width: min(600px, max(120px, min(parent.width - 24px, label.preferred-width + 32px)));
         height: 48px;
         border-radius: 4px;
-        background: Theme.inverse-surface;
-        opacity: root.shown ? 1 : 0;
-        animate opacity { duration: 150ms; }
+        background: Theme.inverse-surface.with-alpha(root.shown ? 1 : 0);
+        animate background { duration: 150ms; }
         label := Text {
             x: 16px;
             width: parent.width - 32px;
             text: Core.shell.toastText;
-            color: Theme.inverse-on-surface;
+            color: Theme.inverse-on-surface.with-alpha(root.shown ? 1 : 0);
+            animate color { duration: 150ms; }
             font-family: Theme.font;
             font-size: 14px;
             letter-spacing: Dir.rtl ? 0px : 0.2px;

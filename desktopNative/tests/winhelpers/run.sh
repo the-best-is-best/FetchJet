@@ -4,7 +4,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="${FJ_TEST_WORK:-E:/tools/probes/winhelpers-work}"
 EXE="$HERE/build/bin/mingwX64/debugExecutable/winhelpers.exe"
 [ -f "$HERE/build/bin/mingwX64/releaseExecutable/winhelpers.exe" ] && [ "${FJ_TEST_RELEASE:-0}" = "1" ] && EXE="$HERE/build/bin/mingwX64/releaseExecutable/winhelpers.exe"
-MODES="${*:-crypto secrets system files zip process net}"
+MODES="${*:-crypto secrets system files zip process net proxy sync}"
 mkdir -p "$WORK"
 FAILED=0
 PS_DPAPI='Add-Type -AssemblyName System.Security; $b = [Convert]::FromBase64String([Console]::In.ReadLine()); [Convert]::ToBase64String([Security.Cryptography.ProtectedData]::METHOD($b, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser))'
@@ -34,6 +34,16 @@ for mode in $MODES; do
     zip)
       python "$HERE/make_zip.py" "$WORK/zip" || FAILED=1
       "$EXE" "$WORK" zip || FAILED=1
+      ;;
+    torrent)
+      FETCHJET_TORRENT_LOCAL_ONLY=1 "$EXE" "$WORK" torrent ${FJ_TEST_ARGS:-} || FAILED=1
+      ;;
+    sync)
+      SYNC_HOST=$(powershell.exe -NoProfile -NonInteractive -Command "[System.Net.Dns]::GetHostName()" | tr -d '\r\n')
+      FETCHJET_SYNC_NO_BROADCAST=1 "$EXE" "$WORK" sync "host=$SYNC_HOST" ${FJ_TEST_ARGS:-} || FAILED=1
+      ;;
+    syncjvm)
+      FETCHJET_SYNC_NO_BROADCAST=1 "$EXE" "$WORK" syncjvm "java=$(cygpath -w "$(command -v java)")" "cp=$(cygpath -w "$HERE/jvmpeer/build/peer-classpath.txt")" ${FJ_TEST_ARGS:-} || FAILED=1
       ;;
     *)
       shift_args=""

@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.power
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,9 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /** Minutes since local midnight (0..1439), for the schedule ticker. */
 expect fun localMinutesOfDay(): Int
@@ -137,8 +136,8 @@ object SpeedSchedule {
 
     private fun load(): ScheduleFile {
         return try {
-            if (!FileSystem.SYSTEM.exists(file)) return ScheduleFile()
-            val text = FileSystem.SYSTEM.read(file) { readUtf8() }
+            if (!AppFileSystem.exists(file)) return ScheduleFile()
+            val text = AppFileSystem.read(file) { readUtf8() }
             if (text.isBlank()) ScheduleFile() else json.decodeFromString(
                 ScheduleFile.serializer(),
                 text
@@ -151,8 +150,8 @@ object SpeedSchedule {
     private fun save() {
         val onDisk = ScheduleFile(_enabled.value, _windows.value)
         try {
-            file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) {
+            file.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(file) {
                 writeUtf8(json.encodeToString(ScheduleFile.serializer(), onDisk))
             }
         } catch (_: Throwable) {

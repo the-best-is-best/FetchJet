@@ -1,6 +1,35 @@
 # Native port: SOCKS5 forwarder + speed-limit proxy (hand-over, stopped 2026-11-10 01:57)
 
-## State in one line
+## State on 2026-11-10 (second session)
+
+Restored into the tree (`WinLock.kt` from `wip/device-sync`, the proxy files from `wip/proxies`),
+mode `proxy` registered in winhelpers `Main.kt` and `run.sh`. winhelpers builds; `proxy` (all
+groups) **37 passed, 0 failed** against the local test servers; `:sharedLogic:compileKotlinMingwX64
+-Pfetchjet.nativeDesktop=true` up to date with these files (compiled). Not yet: a run inside the
+app (SOCKS5 proxy in Settings > Network, yt-dlp with a speed limit).
+
+Fixes made at the first compile and run:
+
+- `WinLoopbackProxy.kt`: `THREAD_STACK_BYTES = 524_288uL` (an unsigned product is not a const);
+  `upstream` copied to a local before the smart cast.
+- WinHTTP sends requests for `127.0.0.1` directly, even with the `<-loopback>` bypass entry of
+  `WinHttpEngine.kt` (no proxy log line, 3 ms). The tests therefore reach `127.0.0.1` targets
+  through curl (IP-literal check) or a raw socket client `rawProxyFetch` (throttle group).
+  In the app this only matters for downloads from 127.0.0.1 with a proxy set.
+- Stats of https requests are read from the https server (each test server has its own `/stats`).
+- Parallel group: the Python test server itself does not serve 120 throttled ranges at once
+  (120 direct curl calls: `maxActive` 70 to 103, about 22 s instead of 5 s), so the check needs
+  `maxActive >= 60` plus 120 x 206, right bytes and a forwarder peak of 120 tunnels.
+- Open: private bytes stay at about 63 MB after the 120-tunnel rounds and a collection (peak
+  150 MB, most of it the WinHTTP client holding 2 x 30 MB of bodies). The 400-tunnel `leak` group
+  shows no growth (6652 -> 6988 KB, handles 440 -> 447), so it looks like retained allocator
+  memory, not a leak; not proven.
+
+## State in one line (first session)
+
+> History (01:57 state). Out of date: the files are back in the tree, compiled, and `run.sh proxy`
+> passes (see "State on 2026-11-10 (second session)" above). The sections below up to "Design"
+> describe the first stop.
 
 All code and the test file are written, **nothing was ever compiled and no test ran**. Because no
 build was allowed before the stop, the unbuilt code was taken out of the repository again so the

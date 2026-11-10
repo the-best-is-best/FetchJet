@@ -6,10 +6,14 @@ actual fun createDeviceSync(
     settingsDir: String,
     scratchDirFor: (taskId: String) -> String,
     onReceive: (SendPayload, localPartialFiles: List<String>) -> Unit
-): DeviceSync = DeviceSyncImpl(
-    platformName = deviceSyncPlatformName(),
-    scratchDirFor = scratchDirFor,
-    tempDir = "$settingsDir/device-sync-tmp",
+): DeviceSync = DeviceSyncEngine(
+    config = DeviceSyncConfig(
+        platformName = deviceSyncPlatformName(),
+        tempDir = "$settingsDir/device-sync-tmp",
+        sendBroadcast = System.getenv(DEVICE_SYNC_NO_BROADCAST_ENV) != "1",
+    ),
+    platform = jvmDeviceSyncPlatform(),
+    store = SharedPairedDeviceStore(JvmSyncLock()),
     onReceive = onReceive
 )
 

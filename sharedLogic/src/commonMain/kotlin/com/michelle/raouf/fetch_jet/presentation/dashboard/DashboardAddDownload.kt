@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
@@ -7,9 +8,7 @@ import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 internal fun DashboardViewModel.addDownload(
     forceOverwrite: Boolean = false,
@@ -142,7 +141,7 @@ internal fun DashboardViewModel.addDownload(
     // 2. Check if file already exists on disk
     if (!forceOverwrite) {
         val targetPath = "$destDir/$targetName".toPath()
-        if (FileSystem.SYSTEM.exists(targetPath)) {
+        if (AppFileSystem.exists(targetPath)) {
             val suggested = getUniqueFileName(destDir, targetName)
             _uiState.update {
                 it.copy(
@@ -271,10 +270,10 @@ internal fun DashboardViewModel.addSeveralQualities(
             )
             val ext = mediaExt(q, state.audioConvertFormat)
             var fileName = "$baseName ($tag).$ext"
-            if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
+            if (fileName.lowercase() in usedNames || AppFileSystem.exists("$destDir/$fileName".toPath())) {
                 var n = 2
                 while ("$baseName ($tag) ($n).$ext".lowercase() in usedNames ||
-                    FileSystem.SYSTEM.exists("$destDir/$baseName ($tag) ($n).$ext".toPath())
+                    AppFileSystem.exists("$destDir/$baseName ($tag) ($n).$ext".toPath())
                 ) n++
                 fileName = "$baseName ($tag) ($n).$ext"
             }
@@ -371,7 +370,7 @@ internal fun DashboardViewModel.addPlaylist(
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
         if (folder.isNotBlank()) try {
-            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+            AppFileSystem.createDirectories(destDir.toPath())
         } catch (_: Exception) {
         }
         var added = 0
@@ -389,11 +388,11 @@ internal fun DashboardViewModel.addPlaylist(
                 )
             ) name else "$name.$playlistExt"
             // Two videos with the same title, or a file already in the folder: "Title (2).mp4".
-            if (fileName.lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$fileName".toPath())) {
+            if (fileName.lowercase() in usedNames || AppFileSystem.exists("$destDir/$fileName".toPath())) {
                 val base = fileName.substringBeforeLast('.')
                 val ext = fileName.substringAfterLast('.')
                 var n = 2
-                while ("$base ($n).$ext".lowercase() in usedNames || FileSystem.SYSTEM.exists("$destDir/$base ($n).$ext".toPath())) n++
+                while ("$base ($n).$ext".lowercase() in usedNames || AppFileSystem.exists("$destDir/$base ($n).$ext".toPath())) n++
                 fileName = "$base ($n).$ext"
             }
             usedNames.add(fileName.lowercase())
@@ -501,7 +500,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
         if (folder.isNotBlank()) try {
-            FileSystem.SYSTEM.createDirectories(destDir.toPath())
+            AppFileSystem.createDirectories(destDir.toPath())
         } catch (_: Exception) {
         }
         val existing = queueRepository.allTasksFlow.value

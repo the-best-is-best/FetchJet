@@ -2,11 +2,12 @@ package com.michelle.raouf.fetch_jet.feature.device_sync
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import platform.Foundation.NSProcessInfo
 import platform.UIKit.UIDevice
 
 /**
- * iOS device sync (ROADMAP-1.3.0 item 4). The real transport (UDP discovery + TCP, ECDH +
- * AES-256-GCM) lives in [IosDeviceSync]; the raw sockets and crypto come from the Swift bridge
+ * iOS device sync (ROADMAP-1.3.0 item 4). The protocol (UDP discovery + TCP, ECDH +
+ * AES-256-GCM) lives in the common [DeviceSyncEngine]; the raw sockets and crypto come from the Swift bridge
  * ([IosDeviceSyncNative], `NativeDeviceSyncBridge.swift`), set at app startup. Until that bridge
  * is registered this stays the no-op below, so the feature is simply inert rather than crashing.
  */
@@ -39,13 +40,22 @@ actual fun createDeviceSync(
     onReceive: (SendPayload, localPartialFiles: List<String>) -> Unit
 ): DeviceSync {
     val native = IosDeviceSyncNativeRegistry.native ?: return NoopDeviceSync
-    return IosDeviceSync(
-        native = native,
-        platformName = deviceSyncPlatformName(),
-        tempDir = "$settingsDir/device-sync-tmp",
+    return DeviceSyncEngine(
+        config = DeviceSyncConfig(
+            platformName = deviceSyncPlatformName(),
+            tempDir = "$settingsDir/device-sync-tmp",
+            sendBroadcast = !noBroadcastRequested(),
+            timing = DeviceSyncTiming(sweepEveryMs = 30_000L),
+        ),
+        platform = iosDeviceSyncPlatform(native),
+        store = SharedPairedDeviceStore(IosSyncLock()),
         onReceive = onReceive
     )
 }
+
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private fun noBroadcastRequested(): Boolean =
+    NSProcessInfo.processInfo.environment[DEVICE_SYNC_NO_BROADCAST_ENV] == "1"
 
 private fun deviceSyncPlatformName(): String {
     val name = UIDevice.currentDevice.name

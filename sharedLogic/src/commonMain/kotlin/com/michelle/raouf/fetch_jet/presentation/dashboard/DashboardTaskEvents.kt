@@ -1,11 +1,11 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
     when (event) {
@@ -247,8 +247,8 @@ internal fun DashboardViewModel.exportLinks(taskIds: List<String>) {
         val dir = queueRepository.pathResolver.getDownloadsDirectory()
         val path = "$dir/FetchJet links $stamp.txt"
         runCatching {
-            okio.FileSystem.SYSTEM.createDirectories(dir.toPath())
-            okio.FileSystem.SYSTEM.write(path.toPath()) {
+            AppFileSystem.createDirectories(dir.toPath())
+            AppFileSystem.write(path.toPath()) {
                 writeUtf8(
                     links.joinToString(
                         "\n",

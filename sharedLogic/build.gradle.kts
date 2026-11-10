@@ -31,6 +31,7 @@ kotlin {
 
     if (nativeDesktop) {
         mingwX64()
+        linuxX64()
     }
 
     android {
@@ -102,9 +103,14 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         if (nativeDesktop) {
-            getByName("mingwX64Main").dependencies {
-                implementation(libs.ktor.network)
+            val nativeDesktopMain by creating {
+                dependsOn(getByName("nativeMain"))
+                dependencies {
+                    implementation(libs.ktor.network)
+                }
             }
+            getByName("mingwX64Main").dependsOn(nativeDesktopMain)
+            getByName("linuxX64Main").dependsOn(nativeDesktopMain)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.network
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.network.NetworkSettings.ytDlpArgs
 import com.michelle.raouf.fetch_jet.core.security.Secrets
@@ -18,9 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -142,10 +141,10 @@ object NetworkSettings {
 
     private fun load(): NetworkFile {
         val stored = try {
-            if (!FileSystem.SYSTEM.exists(file)) return NetworkFile()
+            if (!AppFileSystem.exists(file)) return NetworkFile()
             json.decodeFromString(
                 NetworkFile.serializer(),
-                FileSystem.SYSTEM.read(file) { readUtf8() })
+                AppFileSystem.read(file) { readUtf8() })
         } catch (_: Throwable) {
             return NetworkFile()
         }
@@ -176,8 +175,8 @@ object NetworkSettings {
             }
         )
         try {
-            file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) {
+            file.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(file) {
                 writeUtf8(json.encodeToString(NetworkFile.serializer(), onDisk))
             }
         } catch (_: Throwable) {

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.canTransferToDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
+import com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
@@ -462,10 +463,73 @@ internal fun deviceSyncReason(reason: String): String = when {
     reason == "busy" -> LocalizationManager.Strings.pairRefusedBusy
     reason == "declined" -> LocalizationManager.Strings.pairDeclined
     reason == "expired" -> LocalizationManager.Strings.pairExpired
+    reason == "no-answer" -> LocalizationManager.Strings.deviceNoAnswer
     reason.startsWith("wait:") ->
         LocalizationManager.Strings.pairRefusedWait.replace("{seconds}", reason.removePrefix("wait:"))
 
     else -> reason
+}
+
+@Composable
+fun DeviceReceiveDialog(receiving: ReceiveState, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = {
+            Text(
+                text = LocalizationManager.Strings.sysDeviceReceivingTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = receiving.fileName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = LocalizationManager.Strings.sysDeviceOfferFrom.replace("{device}", receiving.deviceName),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                when (receiving) {
+                    is ReceiveState.Receiving -> {
+                        if (receiving.fraction < 0f) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        } else {
+                            LinearProgressIndicator(
+                                progress = { receiving.fraction.coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "${(receiving.fraction.coerceIn(0f, 1f) * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    is ReceiveState.Failed -> Text(
+                        text = LocalizationManager.Strings.sysDeviceReceiveFailed + ": " + deviceSyncReason(receiving.reason),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+
+                    is ReceiveState.Done -> {}
+                }
+            }
+        },
+        confirmButton = {
+            OutlinedButton(onClick = onClose) {
+                Text(LocalizationManager.Strings.close)
+            }
+        }
+    )
 }
 
 /** Shown on both devices during first-time pairing: compare the 6-digit code, then confirm. */
@@ -480,7 +544,11 @@ fun DevicePairingDialog(
         onDismissRequest = onCancel,
         title = {
             Text(
-                text = LocalizationManager.Strings.sysDevicePairTitle,
+                text = if (pairing is PairingState.Offer) {
+                    LocalizationManager.Strings.sysDeviceOfferTitle
+                } else {
+                    LocalizationManager.Strings.sysDevicePairTitle
+                },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -524,6 +592,26 @@ fun DevicePairingDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
+
+                    is PairingState.Offer -> {
+                        Text(
+                            text = pairing.fileName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (pairing.size > 0) {
+                            Text(
+                                text = com.michelle.raouf.fetch_jet.utils.formatBytes(pairing.size),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = LocalizationManager.Strings.sysDeviceOfferFrom.replace("{device}", pairing.peerName),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         },
@@ -531,6 +619,11 @@ fun DevicePairingDialog(
             if (pairing is PairingState.Confirm) {
                 Button(onClick = onConfirm) {
                     Text(LocalizationManager.Strings.sysDevicePairConfirm)
+                }
+            }
+            if (pairing is PairingState.Offer) {
+                Button(onClick = onConfirm) {
+                    Text(LocalizationManager.Strings.sysDeviceOfferAccept)
                 }
             }
         },
@@ -546,7 +639,13 @@ fun DevicePairingDialog(
                     Spacer(Modifier.width(4.dp))
                 }
                 OutlinedButton(onClick = onCancel) {
-                    Text(LocalizationManager.Strings.cancel)
+                    Text(
+                        if (pairing is PairingState.Offer) {
+                            LocalizationManager.Strings.sysDeviceOfferReject
+                        } else {
+                            LocalizationManager.Strings.cancel
+                        }
+                    )
                 }
             }
         }

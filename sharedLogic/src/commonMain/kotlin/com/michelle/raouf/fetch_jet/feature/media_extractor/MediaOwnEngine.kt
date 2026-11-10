@@ -1,10 +1,12 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs
 import io.ktor.client.statement.HttpResponse
+import com.michelle.raouf.fetch_jet.core.network.downloadChannel
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import io.ktor.utils.io.ByteReadChannel
@@ -12,9 +14,7 @@ import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.buffer
 import okio.use
 import kotlin.coroutines.coroutineContext
@@ -100,8 +100,8 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         }
         val out = "$cacheDir/stream$i.${stream.ext}"
         files.add(out)
-        if (FileSystem.SYSTEM.exists(out.toPath()) && knownSizes[i] > 0 &&
-            FileSystem.SYSTEM.metadataOrNull(out.toPath())?.size == knownSizes[i]
+        if (AppFileSystem.exists(out.toPath()) && knownSizes[i] > 0 &&
+            AppFileSystem.metadataOrNull(out.toPath())?.size == knownSizes[i]
         ) {
             doneBytes[i] = knownSizes[i]; continue // finished on an earlier run
         }
@@ -196,7 +196,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         isAudioConvertTarget(fileName) && !files[0].substringAfterLast('.').equals(targetExt, true) -> {
             val converted = convertAudioIfNeeded(taskId, files[0].toPath(), fileName, cacheDir)
             converted.toString() == target || (converted.toString() != files[0] && try {
-                FileSystem.SYSTEM.atomicMove(converted, target.toPath()); true
+                AppFileSystem.atomicMove(converted, target.toPath()); true
             } catch (_: Exception) {
                 false
             })
@@ -204,7 +204,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
 
         files[0].substringAfterLast('.').equals(targetExt, true) -> {
             try {
-                FileSystem.SYSTEM.atomicMove(files[0].toPath(), target.toPath()); true
+                AppFileSystem.atomicMove(files[0].toPath(), target.toPath()); true
             } catch (_: Exception) {
                 false
             }
@@ -225,13 +225,13 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
                 )
             ) ||
                     try {
-                        FileSystem.SYSTEM.atomicMove(files[0].toPath(), target.toPath()); true
+                        AppFileSystem.atomicMove(files[0].toPath(), target.toPath()); true
                     } catch (_: Exception) {
                         false
                     }
         }
     }
-    if (!ok || !FileSystem.SYSTEM.exists(target.toPath())) throw Exception("ffmpeg could not put the streams together")
+    if (!ok || !AppFileSystem.exists(target.toPath())) throw Exception("ffmpeg could not put the streams together")
 
     // "Cut afterwards" clip: stream-copy the chosen part out of the full file.
     if (task.clipByCutting && (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank())) {
@@ -241,16 +241,16 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
         task.clipStart?.takeIf { it.isNotBlank() }?.let { args += listOf("-ss", it) }
         task.clipEnd?.takeIf { it.isNotBlank() }?.let { args += listOf("-to", it) }
         args += listOf("-i", target, "-c", "copy", "-movflags", "+faststart", cut)
-        if (runLocalFfmpeg(args) && FileSystem.SYSTEM.exists(cut.toPath())) {
+        if (runLocalFfmpeg(args) && AppFileSystem.exists(cut.toPath())) {
             try {
-                FileSystem.SYSTEM.delete(target.toPath())
+                AppFileSystem.delete(target.toPath())
             } catch (_: Exception) {
             }
-            FileSystem.SYSTEM.atomicMove(cut.toPath(), target.toPath())
+            AppFileSystem.atomicMove(cut.toPath(), target.toPath())
         }
     }
     for (f in files) try {
-        FileSystem.SYSTEM.delete(f.toPath())
+        AppFileSystem.delete(f.toPath())
     } catch (_: Exception) {
     }
     reportPostProcess(taskId, "", POST_PROCESS_CLEAR)
@@ -267,7 +267,7 @@ internal suspend fun MediaStreamDownloader.downloadStreamToPath(
 
 ) {
 
-    val channel: ByteReadChannel = response.bodyAsChannel()
+    val channel: ByteReadChannel = response.downloadChannel()
 
     val totalLength = response.headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: -1L
 
@@ -286,7 +286,7 @@ internal suspend fun MediaStreamDownloader.downloadStreamToPath(
     }
 
 
-    val fileSink = FileSystem.SYSTEM.sink(targetPath).buffer()
+    val fileSink = AppFileSystem.sink(targetPath).buffer()
 
     val buffer = ByteArray(8192)
 
@@ -435,21 +435,21 @@ internal suspend fun MediaStreamDownloader.moveIntoPlace(
     from: okio.Path,
     target: okio.Path
 ): okio.Path {
-    val to = if (FileSystem.SYSTEM.exists(target) &&
-        runCatching { FileSystem.SYSTEM.delete(target) }.isFailure
+    val to = if (AppFileSystem.exists(target) &&
+        runCatching { AppFileSystem.delete(target) }.isFailure
     ) freePathNextTo(target) else target
     try {
-        FileSystem.SYSTEM.atomicMove(from, to)
+        AppFileSystem.atomicMove(from, to)
         return to
     } catch (_: Exception) {
         // different drive: copy below
     }
-    val total = FileSystem.SYSTEM.metadataOrNull(from)?.size ?: 0L
+    val total = AppFileSystem.metadataOrNull(from)?.size ?: 0L
     val partial = "$to.fetchjet-part".toPath()
     reportPostProcess(taskId, "Saving to folder", if (total > 0L) 0f else -1f)
     try {
-        FileSystem.SYSTEM.source(from).buffer().use { src ->
-            FileSystem.SYSTEM.sink(partial).buffer().use { dst ->
+        AppFileSystem.source(from).buffer().use { src ->
+            AppFileSystem.sink(partial).buffer().use { dst ->
                 val buffer = okio.Buffer()
                 var copied = 0L
                 var lastReport = 0L
@@ -470,11 +470,11 @@ internal suspend fun MediaStreamDownloader.moveIntoPlace(
                 }
             }
         }
-        FileSystem.SYSTEM.atomicMove(partial, to)
-        FileSystem.SYSTEM.delete(from)
+        AppFileSystem.atomicMove(partial, to)
+        AppFileSystem.delete(from)
     } catch (e: Exception) {
         try {
-            FileSystem.SYSTEM.delete(partial)
+            AppFileSystem.delete(partial)
         } catch (_: Exception) {
         }
         throw e
@@ -490,7 +490,7 @@ internal fun freePathNextTo(path: okio.Path): okio.Path {
     var n = 1
     while (true) {
         val candidate = dir / "$base ($n)$ext"
-        if (!FileSystem.SYSTEM.exists(candidate)) return candidate
+        if (!AppFileSystem.exists(candidate)) return candidate
         n++
     }
 }

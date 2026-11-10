@@ -942,4 +942,12 @@ object IndonesianProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "Terima unduhan?"
+    override val sysDeviceOfferFrom = "Dari {device}"
+    override val sysDeviceOfferAccept = "Terima"
+    override val sysDeviceOfferReject = "Tolak"
+    override val deviceNoAnswer = "Perangkat lain tidak merespons, coba lagi"
+    override val stepPreparingFile = "Menyiapkan file"
+    override val sysDeviceReceivingTitle = "Menerima unduhan"
+    override val sysDeviceReceiveFailed = "Gagal menerima"
 }

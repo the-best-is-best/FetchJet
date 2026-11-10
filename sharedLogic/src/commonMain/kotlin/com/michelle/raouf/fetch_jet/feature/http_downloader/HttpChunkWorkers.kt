@@ -1,10 +1,12 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.feature.http_downloader.ChunkLayout.Companion.STALL_FAIL_MS
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
+import com.michelle.raouf.fetch_jet.core.network.downloadChannel
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
@@ -19,9 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.buffer
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
@@ -39,14 +39,14 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     val manifestPath = "$destPath.chunks".toPath()
     fun partPath(index: Int) = "${destPath}.part$index".toPath()
     fun partSize(index: Int): Long =
-        if (FileSystem.SYSTEM.exists(partPath(index))) FileSystem.SYSTEM.metadataOrNull(
+        if (AppFileSystem.exists(partPath(index))) AppFileSystem.metadataOrNull(
             partPath(
                 index
             )
         )?.size ?: 0L else 0L
 
     try {
-        destOkioPath.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+        destOkioPath.parent?.let { AppFileSystem.createDirectories(it) }
     } catch (_: Exception) {
     }
 
@@ -55,9 +55,9 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     // Resume the saved piece map if there is one; otherwise start with equal pieces.
     // (Parts without a map come from an older version, which always split equally.)
     val resumed = try {
-        if (FileSystem.SYSTEM.exists(manifestPath))
+        if (AppFileSystem.exists(manifestPath))
             ChunkLayout.fromManifest(
-                FileSystem.SYSTEM.read(manifestPath) { readUtf8() },
+                AppFileSystem.read(manifestPath) { readUtf8() },
                 ::partSize
             )
         else null
@@ -66,7 +66,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
     val initialChunks = resumed ?: run {
         val n =
-            if (FileSystem.SYSTEM.exists(partPath(0))) calculateOptimalChunkCount(totalLength) else connections
+            if (AppFileSystem.exists(partPath(0))) calculateOptimalChunkCount(totalLength) else connections
         val chunkSize = totalLength / n
         (0 until n).map { i ->
             val start = i * chunkSize
@@ -77,7 +77,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
     val layout = ChunkLayout(initialChunks)
     try {
-        FileSystem.SYSTEM.write(manifestPath) { writeUtf8(layout.manifest()) }
+        AppFileSystem.write(manifestPath) { writeUtf8(layout.manifest()) }
     } catch (_: Exception) {
     }
 
@@ -116,7 +116,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
             }
             layout.manifestIfChanged()?.let { m ->
                 try {
-                    FileSystem.SYSTEM.write(manifestPath) { writeUtf8(m) }
+                    AppFileSystem.write(manifestPath) { writeUtf8(m) }
                 } catch (_: Exception) {
                 }
             }
@@ -193,12 +193,12 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     // Assemble the pieces in byte order (a part may hold a few bytes past its piece when
     // the piece was split while it was writing: copy exactly the piece length).
     val finalPieces = layout.ordered()
-    val finalSink = FileSystem.SYSTEM.sink(destOkioPath).buffer()
+    val finalSink = AppFileSystem.sink(destOkioPath).buffer()
     try {
         for (piece in finalPieces) {
             val pp = partPath(piece.index)
-            if (!FileSystem.SYSTEM.exists(pp)) throw Exception("Piece ${piece.index} is missing")
-            val src = FileSystem.SYSTEM.source(pp).buffer()
+            if (!AppFileSystem.exists(pp)) throw Exception("Piece ${piece.index} is missing")
+            val src = AppFileSystem.source(pp).buffer()
             try {
                 var left = piece.length
                 val buf = ByteArray(256 * 1024)
@@ -220,16 +220,16 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
         finalSink.close()
     }
     for (piece in finalPieces) try {
-        FileSystem.SYSTEM.delete(partPath(piece.index))
+        AppFileSystem.delete(partPath(piece.index))
     } catch (_: Exception) {
     }
     try {
-        FileSystem.SYSTEM.delete(manifestPath)
+        AppFileSystem.delete(manifestPath)
     } catch (_: Exception) {
     }
 
     // Never report a short file as finished.
-    val assembledSize = FileSystem.SYSTEM.metadataOrNull(destOkioPath)?.size ?: 0L
+    val assembledSize = AppFileSystem.metadataOrNull(destOkioPath)?.size ?: 0L
     if (totalLength > 0 && assembledSize != totalLength) {
         throw Exception("Assembled file is $assembledSize bytes, expected $totalLength (a piece is missing)")
     }
@@ -270,7 +270,7 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
 ) {
     run {
         val existing =
-            if (FileSystem.SYSTEM.exists(partPath)) FileSystem.SYSTEM.metadataOrNull(partPath)?.size
+            if (AppFileSystem.exists(partPath)) AppFileSystem.metadataOrNull(partPath)?.size
                 ?: 0L else 0L
         // The part file is the truth for how much of the piece is on disk.
         piece.downloaded = min(existing, piece.length)
@@ -298,8 +298,8 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
                 // 416 / 429 / 5xx: a transient problem, worth the retries.
                 throw Exception("Piece ${piece.index}: HTTP ${response.status.value}")
             }
-            val channel: ByteReadChannel = response.bodyAsChannel()
-            val sink = FileSystem.SYSTEM.appendingSink(partPath).buffer()
+            val channel: ByteReadChannel = response.downloadChannel()
+            val sink = AppFileSystem.appendingSink(partPath).buffer()
             val buffer = ByteArray(64 * 1024)
             var windowStart = TimeSource.Monotonic.markNow()
             var windowBytes = 0L
@@ -354,14 +354,14 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
     val targetOkioPath = destPath.toPath()
     try {
         targetOkioPath.parent?.let { parentDir ->
-            FileSystem.SYSTEM.createDirectories(parentDir)
+            AppFileSystem.createDirectories(parentDir)
         }
     } catch (_: Exception) {
     }
 
     var initialExisting = 0L
-    if (FileSystem.SYSTEM.exists(targetOkioPath)) {
-        initialExisting = FileSystem.SYSTEM.metadataOrNull(targetOkioPath)?.size ?: 0L
+    if (AppFileSystem.exists(targetOkioPath)) {
+        initialExisting = AppFileSystem.metadataOrNull(targetOkioPath)?.size ?: 0L
     }
     val initialStartByte =
         if (initialExisting > 0 && totalLength > 0 && initialExisting < totalLength) initialExisting else 0L
@@ -376,8 +376,8 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
 
     fetchWithRetry {
         var existingBytes = 0L
-        if (FileSystem.SYSTEM.exists(targetOkioPath)) {
-            existingBytes = FileSystem.SYSTEM.metadataOrNull(targetOkioPath)?.size ?: 0L
+        if (AppFileSystem.exists(targetOkioPath)) {
+            existingBytes = AppFileSystem.metadataOrNull(targetOkioPath)?.size ?: 0L
         }
         val startByte =
             if (existingBytes > 0 && totalLength > 0 && existingBytes < totalLength) existingBytes else 0L
@@ -395,11 +395,11 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
             // start over from byte 0 instead of appending a second copy.
             val resumed = startByte > 0 && response.status.value == 206
 
-            val channel: ByteReadChannel = response.bodyAsChannel()
+            val channel: ByteReadChannel = response.downloadChannel()
             val fileSink = if (resumed) {
-                FileSystem.SYSTEM.appendingSink(targetOkioPath).buffer()
+                AppFileSystem.appendingSink(targetOkioPath).buffer()
             } else {
-                FileSystem.SYSTEM.sink(targetOkioPath).buffer()
+                AppFileSystem.sink(targetOkioPath).buffer()
             }
 
             val buffer = ByteArray(64 * 1024)

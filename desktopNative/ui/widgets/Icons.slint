@@ -30,10 +30,70 @@ export component EmojiIcon inherits Rectangle {
 }
 
 export component Sym inherits Text {
-    font-family: "Segoe UI Symbol";
+    font-family: Theme.symbol-font;
     color: Theme.on-surface;
     horizontal-alignment: center;
     vertical-alignment: center;
+}
+
+export component Glyph {
+    in property <string> text;
+    in property <color> color: Theme.on-surface;
+    in property <length> font-size: 14px;
+    in property <int> font-weight: 400;
+    in property <string> font-family: Theme.symbol-font;
+    in property <TextHorizontalAlignment> horizontal-alignment: center;
+    in property <TextVerticalAlignment> vertical-alignment: center;
+    private property <int> shape: root.text == "⏸" ? 1 : root.text == "⏳" ? 2 : root.text == "⧉" ? 3 : 0;
+    private property <length> box: root.font-size * 1.08;
+    preferred-width: root.shape == 0 ? label.preferred-width : root.box;
+    preferred-height: label.preferred-height;
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.shape == 0 ? root.text : " ";
+        color: root.color;
+        font-family: root.font-family;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        horizontal-alignment: root.horizontal-alignment;
+        vertical-alignment: root.vertical-alignment;
+    }
+    if root.shape == 1: Path {
+        x: root.horizontal-alignment == TextHorizontalAlignment.left ? 0 : root.horizontal-alignment == TextHorizontalAlignment.right ? parent.width - root.box : (parent.width - root.box) / 2;
+        y: (parent.height - root.font-size) / 2;
+        width: root.box;
+        height: root.font-size;
+        viewbox-width: 108;
+        viewbox-height: 100;
+        commands: "M25 22 L37.5 22 L37.5 89 L25 89 Z M50 22 L62.5 22 L62.5 89 L50 89 Z";
+        fill: root.color;
+        stroke-width: 0px;
+    }
+    if root.shape == 2: Path {
+        x: root.horizontal-alignment == TextHorizontalAlignment.left ? 0 : root.horizontal-alignment == TextHorizontalAlignment.right ? parent.width - root.box : (parent.width - root.box) / 2;
+        y: (parent.height - root.font-size) / 2;
+        width: root.box;
+        height: root.font-size;
+        viewbox-width: 108;
+        viewbox-height: 100;
+        commands: "M26 10 L82 10 M26 92 L82 92 M32 10 C32 38 50 42 50 51 C50 60 32 64 32 92 M76 10 C76 38 58 42 58 51 C58 60 76 64 76 92 M54 70 L72 88 L36 88 Z";
+        fill: transparent;
+        stroke: root.color;
+        stroke-width: max(1px, root.font-size * 0.08);
+    }
+    if root.shape == 3: Path {
+        x: root.horizontal-alignment == TextHorizontalAlignment.left ? 0 : root.horizontal-alignment == TextHorizontalAlignment.right ? parent.width - root.box : (parent.width - root.box) / 2;
+        y: (parent.height - root.font-size) / 2;
+        width: root.box;
+        height: root.font-size;
+        viewbox-width: 108;
+        viewbox-height: 100;
+        commands: "M22 22 L66 22 L66 66 L22 66 Z M42 42 L86 42 L86 86 L42 86 Z";
+        fill: transparent;
+        stroke: root.color;
+        stroke-width: max(1px, root.font-size * 0.07);
+    }
 }
 
 export component PathIcon inherits Path {

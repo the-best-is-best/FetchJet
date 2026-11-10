@@ -137,7 +137,7 @@ export component RadioMark inherits Text {
     in property <bool> selected;
     text: root.selected ? "◉" : "○";
     color: root.selected ? Theme.primary : Theme.on-surface-variant;
-    font-family: "Segoe UI Symbol";
+    font-family: Theme.symbol-font;
     font-size: 14px;
     vertical-alignment: center;
 }

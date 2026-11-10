@@ -942,4 +942,12 @@ object PersianProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "دانلود را دریافت می‌کنید؟"
+    override val sysDeviceOfferFrom = "از {device}"
+    override val sysDeviceOfferAccept = "پذیرفتن"
+    override val sysDeviceOfferReject = "رد کردن"
+    override val deviceNoAnswer = "دستگاه دیگر پاسخ نداد، دوباره تلاش کنید"
+    override val stepPreparingFile = "آماده‌سازی فایل"
+    override val sysDeviceReceivingTitle = "در حال دریافت دانلود"
+    override val sysDeviceReceiveFailed = "دریافت ناموفق بود"
 }

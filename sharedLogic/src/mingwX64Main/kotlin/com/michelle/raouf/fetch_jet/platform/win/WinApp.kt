@@ -49,17 +49,3 @@ object WinApp {
 
     fun looksLikeLoginStart(): Boolean = isStoreBuild && winUptimeMs() < 120_000L
 }
-
-object HostHooks {
-    @Volatile
-    var pickFile: ((title: String, filterName: String, pattern: String) -> String?)? = null
-
-    @Volatile
-    var pickFolder: ((title: String, initialPath: String?) -> String?)? = null
-
-    @Volatile
-    var requestExit: (() -> Unit)? = null
-
-    @Volatile
-    var showWindow: (() -> Unit)? = null
-}

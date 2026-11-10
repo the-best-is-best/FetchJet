@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.network
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
@@ -19,10 +20,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.buffer
 import okio.use
 import kotlin.concurrent.Volatile
@@ -114,10 +113,10 @@ class PieceDownloader(private val client: HttpClient) {
 
         val manifestPath = "$partBase.chunks".toPath()
         fun partPath(i: Int) = "$partBase.part$i".toPath()
-        fun partSize(i: Int) = FileSystem.SYSTEM.metadataOrNull(partPath(i))?.size ?: 0L
+        fun partSize(i: Int) = AppFileSystem.metadataOrNull(partPath(i))?.size ?: 0L
         manifestPath.parent?.let {
             try {
-                FileSystem.SYSTEM.createDirectories(it)
+                AppFileSystem.createDirectories(it)
             } catch (_: Exception) {
             }
         }
@@ -127,8 +126,8 @@ class PieceDownloader(private val client: HttpClient) {
         val n = if (probe.ranges) wanted else 1
 
         val resumed = try {
-            if (FileSystem.SYSTEM.exists(manifestPath))
-                Layout.fromManifest(FileSystem.SYSTEM.read(manifestPath) { readUtf8() }, ::partSize)
+            if (AppFileSystem.exists(manifestPath))
+                Layout.fromManifest(AppFileSystem.read(manifestPath) { readUtf8() }, ::partSize)
             else null
         } catch (_: Exception) {
             null
@@ -144,7 +143,7 @@ class PieceDownloader(private val client: HttpClient) {
         }
         val layout = Layout(initial, splittable = probe.ranges)
         try {
-            FileSystem.SYSTEM.write(manifestPath) { writeUtf8(layout.manifest()) }
+            AppFileSystem.write(manifestPath) { writeUtf8(layout.manifest()) }
         } catch (_: Exception) {
         }
 
@@ -167,7 +166,7 @@ class PieceDownloader(private val client: HttpClient) {
                     onProgress(Progress(got, total, speed, layout.snapshot(), n))
                     layout.manifestIfChanged()?.let { m ->
                         try {
-                            FileSystem.SYSTEM.write(manifestPath) { writeUtf8(m) }
+                            AppFileSystem.write(manifestPath) { writeUtf8(m) }
                         } catch (_: Exception) {
                         }
                     }
@@ -238,15 +237,15 @@ class PieceDownloader(private val client: HttpClient) {
         val out = outputFile.toPath()
         out.parent?.let {
             try {
-                FileSystem.SYSTEM.createDirectories(it)
+                AppFileSystem.createDirectories(it)
             } catch (_: Exception) {
             }
         }
-        FileSystem.SYSTEM.sink(out).buffer().use { sink ->
+        AppFileSystem.sink(out).buffer().use { sink ->
             for (piece in layout.ordered()) {
                 val pp = partPath(piece.index)
-                if (!FileSystem.SYSTEM.exists(pp)) throw Exception("Piece ${piece.index} is missing")
-                FileSystem.SYSTEM.source(pp).buffer().use { src ->
+                if (!AppFileSystem.exists(pp)) throw Exception("Piece ${piece.index} is missing")
+                AppFileSystem.source(pp).buffer().use { src ->
                     var left = piece.length
                     val buf = ByteArray(256 * 1024)
                     while (left > 0) {
@@ -257,17 +256,17 @@ class PieceDownloader(private val client: HttpClient) {
                 }
             }
         }
-        val size = FileSystem.SYSTEM.metadataOrNull(out)?.size ?: 0L
+        val size = AppFileSystem.metadataOrNull(out)?.size ?: 0L
         if (size != total) throw Exception("Assembled $size bytes, expected $total")
         val secs = startedAtMs.elapsedNow().inWholeMilliseconds.coerceAtLeast(1) / 1000.0
         val mbps = ((total / 1048576.0 / secs) * 10).toLong() / 10.0
         com.michelle.raouf.fetch_jet.core.log.AppLog.d { "PieceDownloader: done ${total / 1048576} MB in ${secs.toLong()}s ($mbps MB/s)" }
         for (p in layout.ordered()) try {
-            FileSystem.SYSTEM.delete(partPath(p.index))
+            AppFileSystem.delete(partPath(p.index))
         } catch (_: Exception) {
         }
         try {
-            FileSystem.SYSTEM.delete(manifestPath)
+            AppFileSystem.delete(manifestPath)
         } catch (_: Exception) {
         }
         onProgress(
@@ -322,7 +321,7 @@ class PieceDownloader(private val client: HttpClient) {
         rateLimiter: RateLimiter?,
         layout: Layout
     ) {
-        val existing = FileSystem.SYSTEM.metadataOrNull(partPath)?.size ?: 0L
+        val existing = AppFileSystem.metadataOrNull(partPath)?.size ?: 0L
         piece.downloaded = min(existing, piece.length)
         if (piece.downloaded < existing) trim(partPath, piece.downloaded)
         if (piece.isCompleted) return
@@ -335,8 +334,8 @@ class PieceDownloader(private val client: HttpClient) {
             if (code == 403 || code == 410) throw ExpiredLinkException("HTTP $code")
             if (code == 200 && (layout.splittable || from > 0)) throw Exception("HTTP 200 to a Range request")
             if (code != 206 && code != 200) throw Exception("HTTP $code")
-            val ch: ByteReadChannel = r.bodyAsChannel()
-            FileSystem.SYSTEM.appendingSink(partPath).buffer().use { sink ->
+            val ch: ByteReadChannel = r.downloadChannel()
+            AppFileSystem.appendingSink(partPath).buffer().use { sink ->
                 val buf = ByteArray(64 * 1024)
                 var winStart = TimeSource.Monotonic.markNow();
                 var winBytes = 0L
@@ -378,8 +377,8 @@ class PieceDownloader(private val client: HttpClient) {
     private fun trim(path: Path, keep: Long) {
         try {
             val tmp = "$path.trim".toPath()
-            FileSystem.SYSTEM.source(path).buffer().use { src ->
-                FileSystem.SYSTEM.sink(tmp).buffer().use { out ->
+            AppFileSystem.source(path).buffer().use { src ->
+                AppFileSystem.sink(tmp).buffer().use { out ->
                     var left = keep
                     val buf = ByteArray(256 * 1024)
                     while (left > 0) {
@@ -389,7 +388,7 @@ class PieceDownloader(private val client: HttpClient) {
                     }
                 }
             }
-            FileSystem.SYSTEM.atomicMove(tmp, path)
+            AppFileSystem.atomicMove(tmp, path)
         } catch (_: Exception) {
         }
     }

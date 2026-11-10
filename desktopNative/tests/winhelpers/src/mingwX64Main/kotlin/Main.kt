@@ -16,7 +16,7 @@ object T {
         try {
             block()
         } catch (e: Throwable) {
-            check(name, false, e.toString())
+            check(name, false, e.stackTraceToString().take(1500))
         }
     }
 }
@@ -33,7 +33,7 @@ fun loadMap(path: String): Map<String, String> {
 
 fun main(args: Array<String>) {
     if (args.size < 2) {
-        println("winhelpers <work-dir> crypto|secrets|system|files|process|zip|net [options]")
+        println("winhelpers <work-dir> crypto|secrets|system|files|process|zip|net|proxy [options]")
         exitProcess(2)
     }
     val work = args[0].replace('/', '\\')
@@ -45,8 +45,14 @@ fun main(args: Array<String>) {
         "files" -> filesTests(work)
         "process" -> processTests(work, rest)
         "zip" -> zipTests(work)
+        "paths" -> pathTests(work, rest)
         "net" -> netTests(work, rest)
         "rawhttp" -> rawHttpTests(work, rest)
+        "torrent" -> torrentTests(work, rest)
+        "proxy" -> proxyTests(work, rest)
+        "sync" -> deviceSyncTests(work, rest)
+        "syncjvm" -> deviceSyncJvmTests(work, rest)
+        "syncpeer" -> deviceSyncPeer(work, rest)
         else -> {
             println("unknown mode ${args[1]}")
             exitProcess(2)

@@ -3,7 +3,7 @@ import { HBox, T, Hover } from "../widgets/Base.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { ThinBar } from "../widgets/Progress.slint";
 import { ElideText } from "../widgets/ElideText.slint";
-import { EmojiIcon } from "../widgets/Icons.slint";
+import { EmojiIcon, Glyph } from "../widgets/Icons.slint";
 import { TaskRowDto, RowKind, RowActionCode, BarColorCode, GroupColorCode } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 
@@ -76,10 +76,10 @@ component QuickAction inherits Rectangle {
         ta := TouchArea {
             clicked => { root.clicked(); }
         }
-        Text {
+        Glyph {
             text: root.action == RowActionCode.pause ? "⏸" : root.action == RowActionCode.open ? "↗" : "▶";
             color: Theme.on-surface;
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: 13px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -112,17 +112,17 @@ component SectionHeader inherits Rectangle {
             height: 24px;
             text: root.data.headerCollapsed ? (Dir.rtl ? "◀" : "▶") : "▼";
             color: root.tone;
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: 11px;
             vertical-alignment: center;
             horizontal-alignment: Dir.start;
         }
-        Text {
+        Glyph {
             width: self.preferred-width + 6px;
             height: 24px;
             text: root.data.headerIcon;
             color: Theme.on-background;
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: 14px;
             vertical-alignment: center;
             horizontal-alignment: Dir.start;
@@ -285,6 +285,7 @@ export component TaskRow inherits Rectangle {
                 spacing: 3px;
                 ThinBar {
                     value: root.data.progress;
+                    indeterminate: root.data.preparing;
                     ink: root.bar-ink;
                 }
                 T {
@@ -399,6 +400,7 @@ export component TaskRow inherits Rectangle {
             }
             if !root.data.completed: ThinBar {
                 value: root.data.progress;
+                indeterminate: root.data.preparing;
                 ink: root.bar-ink;
             }
         }

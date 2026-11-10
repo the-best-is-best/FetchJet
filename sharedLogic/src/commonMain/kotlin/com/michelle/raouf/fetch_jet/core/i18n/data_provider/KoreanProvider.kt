@@ -873,4 +873,12 @@ object KoreanProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "다운로드를 받을까요?"
+    override val sysDeviceOfferFrom = "{device}에서"
+    override val sysDeviceOfferAccept = "수락"
+    override val sysDeviceOfferReject = "거부"
+    override val deviceNoAnswer = "다른 기기가 응답하지 않았습니다. 다시 시도하세요"
+    override val stepPreparingFile = "파일 준비 중"
+    override val sysDeviceReceivingTitle = "다운로드 받는 중"
+    override val sysDeviceReceiveFailed = "받기 실패"
 }

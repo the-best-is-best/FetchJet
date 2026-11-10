@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.queue_manager
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
@@ -31,9 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.concurrent.Volatile
 
 class QueueManagerRepository(
@@ -57,9 +56,9 @@ class QueueManagerRepository(
         val newPath = "${pathResolver.getSettingsDirectory()}/tasks_cache.json".toPath()
         val oldPath = "${pathResolver.getDownloadsDirectory()}/kortex_tasks_cache.json".toPath()
         try {
-            if (!FileSystem.SYSTEM.exists(newPath) && FileSystem.SYSTEM.exists(oldPath)) {
-                FileSystem.SYSTEM.copy(oldPath, newPath)
-                FileSystem.SYSTEM.delete(oldPath)
+            if (!AppFileSystem.exists(newPath) && AppFileSystem.exists(oldPath)) {
+                AppFileSystem.copy(oldPath, newPath)
+                AppFileSystem.delete(oldPath)
             }
         } catch (_: Exception) {
         }
@@ -175,8 +174,8 @@ class QueueManagerRepository(
     fun setMaxConcurrentDownloads(count: Int) {
         _maxConcurrentDownloads.value = count.coerceIn(0, 20)
         try {
-            queueSettingsFile.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(queueSettingsFile) {
+            queueSettingsFile.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(queueSettingsFile) {
                 writeUtf8("# FetchJet queue settings\n")
                 writeUtf8("maxConcurrentDownloads=${_maxConcurrentDownloads.value}\n")
             }
@@ -186,8 +185,8 @@ class QueueManagerRepository(
     }
 
     private fun loadMaxConcurrent(): Int = try {
-        if (!FileSystem.SYSTEM.exists(queueSettingsFile)) 3
-        else FileSystem.SYSTEM.read(queueSettingsFile) { readUtf8() }.lineSequence()
+        if (!AppFileSystem.exists(queueSettingsFile)) 3
+        else AppFileSystem.read(queueSettingsFile) { readUtf8() }.lineSequence()
             .map { it.trim() }
             .firstOrNull { it.startsWith("maxConcurrentDownloads=") }
             ?.substringAfter('=')?.trim()?.toIntOrNull()?.coerceIn(0, 20) ?: 3
@@ -515,7 +514,10 @@ class QueueManagerRepository(
         pairedAudioUrl: String? = null,
         expectedChecksum: String? = null,
         subtitleTracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
-        embedSubtitles: Boolean = false
+        embedSubtitles: Boolean = false,
+        initialStepText: String? = null,
+        displayTotalBytes: Long = 0L,
+        displayDownloadedBytes: Long = 0L
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -592,6 +594,8 @@ class QueueManagerRepository(
                 } ?: baseDir
             } else baseDir
 
+        val shownTotal = if (initialTotalBytes > 0L) initialTotalBytes else displayTotalBytes.coerceAtLeast(0L)
+        val shownDownloaded = if (shownTotal > 0L) displayDownloadedBytes.coerceIn(0L, shownTotal) else 0L
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
@@ -599,7 +603,10 @@ class QueueManagerRepository(
             destinationPath = destDir,
             engineType = engineType,
             disableUpload = disableUpload,
-            totalBytes = initialTotalBytes,
+            totalBytes = shownTotal,
+            downloadedBytes = shownDownloaded,
+            progress = if (shownTotal > 0L) shownDownloaded.toFloat() / shownTotal.toFloat() else 0f,
+            currentStepText = initialStepText,
             torrentFiles = torrentFiles,
             webSeedUrls = webSeedUrls,
             maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
@@ -723,8 +730,8 @@ class QueueManagerRepository(
                             for (p in filePathsToCheck) {
                                 try {
                                     val okPath = p.toPath()
-                                    if (FileSystem.SYSTEM.exists(okPath)) {
-                                        FileSystem.SYSTEM.delete(okPath)
+                                    if (AppFileSystem.exists(okPath)) {
+                                        AppFileSystem.delete(okPath)
                                     }
                                 } catch (_: Exception) {
                                 }
@@ -745,8 +752,8 @@ class QueueManagerRepository(
                             for (p in tempPathsToCheck) {
                                 try {
                                     val okPath = p.toPath()
-                                    if (FileSystem.SYSTEM.exists(okPath)) {
-                                        FileSystem.SYSTEM.delete(okPath)
+                                    if (AppFileSystem.exists(okPath)) {
+                                        AppFileSystem.delete(okPath)
                                     }
                                 } catch (_: Exception) {
                                 }
@@ -754,15 +761,15 @@ class QueueManagerRepository(
                             // Also search tempDir for any leftover files starting with baseName
                             try {
                                 val tempOkioPath = tempDir.toPath()
-                                if (FileSystem.SYSTEM.exists(tempOkioPath)) {
-                                    val list = FileSystem.SYSTEM.list(tempOkioPath)
+                                if (AppFileSystem.exists(tempOkioPath)) {
+                                    val list = AppFileSystem.list(tempOkioPath)
                                     for (item in list) {
                                         if (item.name.startsWith(baseName) || item.name.startsWith(
                                                 effectiveFileName
                                             )
                                         ) {
                                             try {
-                                                FileSystem.SYSTEM.delete(item)
+                                                AppFileSystem.delete(item)
                                             } catch (_: Exception) {
                                             }
                                         }
@@ -776,9 +783,9 @@ class QueueManagerRepository(
                     EngineType.BITTORRENT -> {
                         if (task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
                             val dirPath = "${task.destinationPath}/${task.fileName}".toPath()
-                            if (FileSystem.SYSTEM.exists(dirPath)) {
+                            if (AppFileSystem.exists(dirPath)) {
                                 try {
-                                    FileSystem.SYSTEM.deleteRecursively(dirPath)
+                                    AppFileSystem.deleteRecursively(dirPath)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -787,9 +794,9 @@ class QueueManagerRepository(
                             val filePathStr =
                                 "${task.destinationPath}/${if (fileEntry.path.startsWith("${task.fileName}/")) fileEntry.path else "${task.fileName}/${fileEntry.path}"}"
                             val filePathObj = filePathStr.toPath()
-                            if (FileSystem.SYSTEM.exists(filePathObj)) {
+                            if (AppFileSystem.exists(filePathObj)) {
                                 try {
-                                    FileSystem.SYSTEM.delete(filePathObj)
+                                    AppFileSystem.delete(filePathObj)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -867,8 +874,8 @@ class QueueManagerRepository(
 
     private fun loadAndRestoreTasks() {
         try {
-            if (!FileSystem.SYSTEM.exists(persistencePath)) return
-            val text = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+            if (!AppFileSystem.exists(persistencePath)) return
+            val text = AppFileSystem.read(persistencePath) { readUtf8() }
             var restored = 0
             var broken = 0
             val entries = TaskCache.decode(text) { e ->
@@ -894,7 +901,7 @@ class QueueManagerRepository(
         } catch (e: Throwable) {
             e.printStackTrace()
             try {
-                FileSystem.SYSTEM.atomicMove(persistencePath, "$persistencePath.corrupt".toPath())
+                AppFileSystem.atomicMove(persistencePath, "$persistencePath.corrupt".toPath())
             } catch (_: Throwable) {
             }
             restoreFromBackup()
@@ -907,10 +914,10 @@ class QueueManagerRepository(
     /** Second attempt with the previous successfully written cache (if any). */
     private fun restoreFromBackup() {
         try {
-            if (!FileSystem.SYSTEM.exists(backupPath)) return
+            if (!AppFileSystem.exists(backupPath)) return
             println("QueueManager: restoring tasks from backup")
-            FileSystem.SYSTEM.copy(backupPath, persistencePath)
-            val text = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+            AppFileSystem.copy(backupPath, persistencePath)
+            val text = AppFileSystem.read(persistencePath) { readUtf8() }
             for (entry in TaskCache.decode(text)) try {
                 if (allTasksFlow.value.any { it.id == entry.id }) continue
                 val task = entry.toTask(pathResolver.getDownloadsDirectory(), DownloadStatus.PAUSED)
@@ -953,33 +960,33 @@ class QueueManagerRepository(
                     if (tasks.isEmpty()) {
                         // Only delete once we have seen real tasks in this run: the very first
                         // emission can be the empty initial state before the restore lands.
-                        if (hasSeenTasks && FileSystem.SYSTEM.exists(persistencePath)) {
-                            FileSystem.SYSTEM.delete(persistencePath)
-                            FileSystem.SYSTEM.delete(backupPath, mustExist = false)
+                        if (hasSeenTasks && AppFileSystem.exists(persistencePath)) {
+                            AppFileSystem.delete(persistencePath)
+                            AppFileSystem.delete(backupPath, mustExist = false)
                         }
                     } else {
                         hasSeenTasks = true
                         val jsonArray = TaskCache.encode(tasks)
                         // Atomic: a crash mid-write used to leave a half file and lose every task.
                         val tmp = "$persistencePath.tmp".toPath()
-                        FileSystem.SYSTEM.write(tmp) {
+                        AppFileSystem.write(tmp) {
                             writeUtf8(jsonArray)
                         }
                         // The file being replaced was readable (we loaded it): keep it as the backup.
-                        if (FileSystem.SYSTEM.exists(persistencePath)) {
+                        if (AppFileSystem.exists(persistencePath)) {
                             try {
                                 // A file from before encryption holds plain links and cookies:
                                 // the backup gets the new (encrypted) list instead.
-                                val old = FileSystem.SYSTEM.read(persistencePath) { readUtf8() }
+                                val old = AppFileSystem.read(persistencePath) { readUtf8() }
                                 if (old.contains("\"url\":\"http")) {
-                                    FileSystem.SYSTEM.write(backupPath) { writeUtf8(jsonArray) }
+                                    AppFileSystem.write(backupPath) { writeUtf8(jsonArray) }
                                 } else {
-                                    FileSystem.SYSTEM.copy(persistencePath, backupPath)
+                                    AppFileSystem.copy(persistencePath, backupPath)
                                 }
                             } catch (_: Exception) {
                             }
                         }
-                        FileSystem.SYSTEM.atomicMove(tmp, persistencePath)
+                        AppFileSystem.atomicMove(tmp, persistencePath)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

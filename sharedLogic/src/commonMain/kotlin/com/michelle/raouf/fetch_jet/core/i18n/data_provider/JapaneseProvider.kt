@@ -953,4 +953,12 @@ object JapaneseProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "ダウンロードを受け取りますか？"
+    override val sysDeviceOfferFrom = "{device} から"
+    override val sysDeviceOfferAccept = "受け入れる"
+    override val sysDeviceOfferReject = "拒否"
+    override val deviceNoAnswer = "相手のデバイスが応答しませんでした。もう一度お試しください"
+    override val stepPreparingFile = "ファイルを準備中"
+    override val sysDeviceReceivingTitle = "ダウンロードを受信中"
+    override val sysDeviceReceiveFailed = "受信に失敗しました"
 }

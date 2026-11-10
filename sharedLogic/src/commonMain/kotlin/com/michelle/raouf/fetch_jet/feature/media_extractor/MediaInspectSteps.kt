@@ -46,6 +46,8 @@ internal suspend fun MediaStreamDownloader.inspectHlsVariants(
     return null
 }
 
+class MediaToolMissingException(message: String) : Exception(message)
+
 internal suspend fun MediaStreamDownloader.inspectPlatformWithCookieRetry(
     effectiveUrl: String,
     pageHeaders: Map<String, String>
@@ -57,6 +59,8 @@ internal suspend fun MediaStreamDownloader.inspectPlatformWithCookieRetry(
     return run {
         val withHeaders = try {
             inspectPlatformQualities(effectiveUrl, requestHeaders)
+        } catch (e: MediaToolMissingException) {
+            throw e
         } catch (e: Exception) {
             com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: inspect failed with headers ${requestHeaders.keys}: ${e.message}" }
             emptyList()

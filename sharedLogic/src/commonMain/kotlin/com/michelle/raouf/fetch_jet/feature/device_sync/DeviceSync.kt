@@ -1,6 +1,8 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** How much of a download travels to the other device. */
 enum class SendMode {
@@ -23,6 +25,14 @@ sealed interface PairingState {
         PairingState
 
     data class Failed(override val peerName: String, val reason: String) : PairingState
+
+    /** A paired device wants to send [fileName] ([size] bytes, 0 = not known): accept or reject. */
+    data class Offer(
+        override val peerName: String,
+        val peerId: String,
+        val fileName: String,
+        val size: Long
+    ) : PairingState
 }
 
 /** Progress of one send, surfaced to the sender's UI. */
@@ -35,6 +45,30 @@ sealed interface SendState {
     data class Done(override val deviceName: String) : SendState
     data class Failed(override val deviceName: String, val reason: String) : SendState
 }
+
+sealed interface ReceiveState {
+    val deviceName: String
+    val fileName: String
+
+    data class Receiving(
+        override val deviceName: String,
+        override val fileName: String,
+        val fraction: Float
+    ) : ReceiveState
+
+    data class Done(override val deviceName: String, override val fileName: String) : ReceiveState
+    data class Failed(
+        override val deviceName: String,
+        override val fileName: String,
+        val reason: String
+    ) : ReceiveState
+}
+
+private val noReceive: StateFlow<ReceiveState?> = MutableStateFlow<ReceiveState?>(null).asStateFlow()
+
+internal fun offerFileName(payload: SendPayload): String = payload.fileName
+    .ifBlank { payload.url.substringBefore('?').trimEnd('/').substringAfterLast('/') }
+    .ifBlank { payload.url }
 
 /**
  * Everything the sender hands over for one "Send to device" (ROADMAP-1.3.0 item 4). The partial
@@ -69,6 +103,9 @@ interface DeviceSync {
     val paired: StateFlow<List<PairedDevice>>
     val pairing: StateFlow<PairingState?>
     val sending: StateFlow<SendState?>
+    val receiving: StateFlow<ReceiveState?> get() = noReceive
+
+    fun clearReceiving() {}
 
     val selfId: String
     val selfName: String
@@ -83,6 +120,8 @@ interface DeviceSync {
      * port, so nobody can find or reach it; it can still see other devices and send to them.
      */
     fun setVisible(visible: Boolean)
+
+    fun setActive(active: Boolean) {}
 
     fun startPairing(deviceId: String)
 

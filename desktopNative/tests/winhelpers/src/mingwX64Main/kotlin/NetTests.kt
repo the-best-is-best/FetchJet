@@ -1,10 +1,11 @@
 @file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlin.native.runtime.NativeRuntimeApi::class)
 
+import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
+import com.michelle.raouf.fetch_jet.platform.desktop.runProcess
 import com.michelle.raouf.fetch_jet.platform.win.WinHttpNative
 import com.michelle.raouf.fetch_jet.platform.win.WinSha256
 import com.michelle.raouf.fetch_jet.platform.win.toHexString
 import com.michelle.raouf.fetch_jet.platform.win.winMemoryUse
-import com.michelle.raouf.fetch_jet.platform.win.winRunProcess
 import com.michelle.raouf.fetch_jet.platform.win.winSha256
 import com.michelle.raouf.fetch_jet.platform.win.winWriteFile
 import io.ktor.client.HttpClient
@@ -486,13 +487,13 @@ fun netTests(work: String, options: List<String>) = runBlocking {
         }
         val local = "http://127.0.0.1:$listenPort"
         val curl = "C:\\Windows\\System32\\curl.exe"
-        val get = winRunProcess(listOf(curl, "-s", "-m", "10", "-H", "X-FetchJet-Token: abc", "$local/config?x=1"))
+        val get = DesktopOs.runProcess(listOf(curl, "-s", "-m", "10", "-H", "X-FetchJet-Token: abc", "$local/config?x=1"))
         T.check("ktor-network TCP server answers curl GET", get.stdout.contains("\"method\":\"GET\"") && get.stdout.contains("\"path\":\"/config?x=1\"") && get.stdout.contains("\"token\":\"abc\""), get.stdout.take(160))
         val payload = ByteArray(3 * 1024 * 1024) { (it * 31 + 7).toByte() }
         winWriteFile("$work\\post-body.bin", payload)
-        val post = winRunProcess(listOf(curl, "-s", "-m", "20", "-X", "POST", "-H", "Content-Type: application/json", "--data-binary", "@$work\\post-body.bin", "$local/links"))
+        val post = DesktopOs.runProcess(listOf(curl, "-s", "-m", "20", "-X", "POST", "-H", "Content-Type: application/json", "--data-binary", "@$work\\post-body.bin", "$local/links"))
         T.check("POST with a 3 MB body arrives whole", post.stdout.contains("\"bodyBytes\":${payload.size}") && post.stdout.contains(winSha256(payload).toHexString()), post.stdout.take(120))
-        val preflight = winRunProcess(listOf(curl, "-s", "-m", "10", "-i", "-X", "OPTIONS", "-H", "Origin: chrome-extension://abc", "-H", "Access-Control-Request-Headers: x-fetchjet-token", "$local/add"))
+        val preflight = DesktopOs.runProcess(listOf(curl, "-s", "-m", "10", "-i", "-X", "OPTIONS", "-H", "Origin: chrome-extension://abc", "-H", "Access-Control-Request-Headers: x-fetchjet-token", "$local/add"))
         T.check("OPTIONS preflight gets 204 and the CORS headers", preflight.stdout.contains("204") && preflight.stdout.contains("Access-Control-Allow-Origin: chrome-extension://abc"), preflight.stdout.lines().take(2).joinToString())
         T.info("private before the request storms: ${privateKb()} KB")
         val mark = TimeSource.Monotonic.markNow()

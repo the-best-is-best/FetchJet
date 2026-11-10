@@ -1,13 +1,12 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.concurrent.Volatile
 
 /**
@@ -120,7 +119,7 @@ class PostProcessTracker(
     // ---- folder fallbacks (paths printed with a wrong encoding, relative paths...) ----
 
     private fun dirEntries(): List<okio.Path> = try {
-        workDir?.let { FileSystem.SYSTEM.listOrNull(it.toPath()) } ?: emptyList()
+        workDir?.let { AppFileSystem.listOrNull(it.toPath()) } ?: emptyList()
     } catch (_: Throwable) {
         emptyList()
     }
@@ -155,7 +154,7 @@ class PostProcessTracker(
     private fun partsSize(): Long = downloadedParts.sumOf { sizeOf(it) }
 
     private fun sizeOf(path: String): Long = try {
-        FileSystem.SYSTEM.metadataOrNull(path.toPath())?.size ?: 0L
+        AppFileSystem.metadataOrNull(path.toPath())?.size ?: 0L
     } catch (_: Throwable) {
         0L
     }

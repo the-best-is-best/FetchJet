@@ -129,17 +129,39 @@ Steps:
 - [x] Launch and single instance (2026-11-10): link / `fetchjet://` / login-start arguments, a
   second start hands its link to the running app and ends in 0.1 s (checked with the real EXE
   on hidden desktops). Colour emoji in the real app (pictures from a child process, cached).
-- [ ] Integration: engine tests against the local server pass (`desktopNative/tests/corehost`,
-  300 checks in 9 files, plus 8 with the real EXE; no internet). RAM with the debug core: 24 to
-  33 MB private. Left: RAM of the release build under load, a look by the owner on a real
-  desktop (mouse, keyboard, tray, close to tray, clipboard watcher): `desktopNative\run-dev.cmd`.
-- [ ] Engines still missing (state and next steps: `desktopNative/docs/port/STATUS.md`, "Work in
-  progress"): send to device (written, not compiled), SOCKS5 forwarder and the yt-dlp speed-limit
-  proxy, torrents (libtorrent 2.1.2 sources downloaded 2026-11-10 with the owner's OK; the
-  wrapper DLL is a draft, not compiled).
-- [ ] Release build and installers: the release core links (20.3 MB); MSI / MSIX, the version
-  resource check and CI are left.
-- [ ] Then macOS and Linux, with every feature checked against the current app before the switch.
+- [x] Integration (2026-11-11): every suite of `desktopNative/tests/corehost` passes on the
+  release core on Windows (download 29, home 41, add 29, media 31, settings 87, links 17, launch 11,
+  network 11, devices 43, proxy_limit 13, paths 17, torrent 17, bridge 34; no internet); on Linux
+  (WSL) the download, add, media, links, network, proxy_limit, home and torrent suites pass,
+  plus the real EXE on a hidden desktop (`tests/host/test_shell.py` 8/0, run on a scratch copy of
+  the new build).
+- [x] RAM with a speed limit (2026-11-11): 56 MB -> 30 MB inside the release EXE at 1 MB/s (300
+  MB file, 92 s); idle 25 MB. Cause: ktor's copy buffer in front of every download body; the
+  native download loops now read the engine's channel directly (`core/network/DownloadBody.kt`),
+  and the GC keeps a 0.8 reserve. Details and numbers: `desktopNative/docs/port/STATUS.md`, last
+  section. Not measured: RAM with torrents, with several downloads, with yt-dlp media downloads.
+- [ ] Owner's look on a real desktop: mouse, keyboard, tray, close to tray, clipboard watcher
+  (`desktopNative\run-dev.cmd`). Not seen yet on this PC's own desktop.
+- [x] Send to device (2026-11-10 / 11): one engine in commonMain for every OS; receiver approval
+  for every send (60 s, "no-answer"), receive progress and the "Preparing file" step. Tested in
+  earlier runs on both builds over loopback. Open: a real phone with a new Android build; iOS
+  needs a Mac run.
+- [x] SOCKS5 forwarder and the yt-dlp speed-limit proxy (2026-11-10): shared
+  `platform/proxy/LoopbackProxy.kt`; `run.sh proxy` 37/0 and `test_proxy_limit` 13/0 on both OSes.
+  Open: the yt-dlp route through the app's own proxy is the owner's decision.
+- [x] Torrents (2026-11-10 / 11): `fjtorrent.dll` and `libfjtorrent.so` built from libtorrent
+  2.1.2; `test_torrent` 17/0 on both OSes. Not tested on the real internet.
+- [ ] Release build and installers: built and checked on Windows (MSI 20.7 MB and MSIX 26.9 MB
+  unsigned, both checks pass) and Linux (`.deb` 22.6 MB, `tar.gz` 30 MB). Open: the MSI / MSIX
+  install test (the Windows Sandbox feature is not enabled on the PC yet; the owner must enable it),
+  the CI jobs `windows-native` and `linux-native` (never run; `windows-native` needs the Slint SDK
+  URL variable), and the version-resource check.
+- [x] Linux port in WSL (2026-11-10 / 11): same code as Windows through `nativeDesktopMain`;
+  release core cross-built; the Linux run of the download, add, media, links, network, proxy_limit,
+  home and torrent suites passes in WSL (Ubuntu 26.04). The settings, devices, paths, launch and
+  bridge suites were not re-run on Linux in this round. Open: a real
+  Linux desktop (tray and portal dialogs were tested only against fakes).
+- [ ] macOS: not started. iOS device sync: needs a Mac run (`IosDeviceSyncPlatform.kt`).
 
 ## Step 0 (done): JVM tuning on desktop
 

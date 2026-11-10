@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.NetworkClient
@@ -7,6 +8,7 @@ import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.domain.model.withoutStalePreparingStep
 import com.tbib.kmp_localization.LocalizationManager
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRedirect
@@ -24,9 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 class HttpChunkDownloader(
     internal val pathResolver: PathResolver = PathResolver(),
@@ -190,7 +190,7 @@ class HttpChunkDownloader(
             val cachePath = "$taskCacheDir/$targetFileName"
             val finalDestPath = "${initialTask.destinationPath}/$targetFileName"
             try {
-                FileSystem.SYSTEM.createDirectories(taskCacheDir.toPath())
+                AppFileSystem.createDirectories(taskCacheDir.toPath())
             } catch (_: Exception) {
             }
 
@@ -199,7 +199,7 @@ class HttpChunkDownloader(
             // A resume manifest already on disk (pieces another device handed over, even a whole
             // finished file) always goes through the chunked path so those bytes are reused and
             // assembled instead of being re-fetched - including for files under the 2 MB cutoff.
-            val hasResumeManifest = FileSystem.SYSTEM.exists("$cachePath.chunks".toPath())
+            val hasResumeManifest = AppFileSystem.exists("$cachePath.chunks".toPath())
             if (hasResumeManifest || (contentLength > 2 * 1024 * 1024 && acceptRanges)) {
                 try {
                     downloadParallelChunks(
@@ -263,16 +263,16 @@ class HttpChunkDownloader(
     /** Total bytes when every piece in the on-disk manifest is already fully present, else null. */
     private fun locallyCompleteTotal(cachePath: String): Long? {
         val manifestPath = "$cachePath.chunks".toPath()
-        if (!FileSystem.SYSTEM.exists(manifestPath)) return null
+        if (!AppFileSystem.exists(manifestPath)) return null
         fun partSize(index: Int): Long {
             val p = "$cachePath.part$index".toPath()
-            return if (FileSystem.SYSTEM.exists(p)) FileSystem.SYSTEM.metadataOrNull(p)?.size ?: 0L
+            return if (AppFileSystem.exists(p)) AppFileSystem.metadataOrNull(p)?.size ?: 0L
             else 0L
         }
 
         val chunks = runCatching {
             ChunkLayout.fromManifest(
-                FileSystem.SYSTEM.read(manifestPath) { readUtf8() },
+                AppFileSystem.read(manifestPath) { readUtf8() },
                 ::partSize
             )
         }.getOrNull()
@@ -294,7 +294,7 @@ class HttpChunkDownloader(
     internal fun updateTaskState(taskId: String, transform: (DownloadTask) -> DownloadTask) {
         tasksState.update { current ->
             val existing = current[taskId] ?: return@update current
-            current + (taskId to transform(existing))
+            current + (taskId to transform(existing).withoutStalePreparingStep())
         }
     }
 

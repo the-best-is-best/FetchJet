@@ -1,0 +1,41 @@
+cmake_minimum_required(VERSION 3.16)
+project(FJTorrentWin LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT LIBTORRENT_SOURCE_DIR)
+    message(FATAL_ERROR "Set -DLIBTORRENT_SOURCE_DIR=<libtorrent 2.1.2 source folder>")
+endif()
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+add_compile_options(-ffunction-sections -fdata-sections)
+
+add_subdirectory(${LIBTORRENT_SOURCE_DIR} libtorrent EXCLUDE_FROM_ALL)
+target_compile_options(torrent-rasterbar PRIVATE -w $<$<COMPILE_LANGUAGE:CXX>:-includeiterator>)
+
+if(WIN32)
+    add_library(fjtorrent SHARED fjtorrent.cpp fjtorrent.def)
+    target_link_options(fjtorrent PRIVATE -static -Wl,--gc-sections -s)
+    set_target_properties(fjtorrent PROPERTIES PREFIX "")
+else()
+    add_library(fjtorrent SHARED fjtorrent.cpp)
+    set_target_properties(fjtorrent PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(torrent-rasterbar PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_link_options(fjtorrent PRIVATE -static-libstdc++ -static-libgcc -Wl,--gc-sections -Wl,--exclude-libs,ALL -s)
+endif()
+target_include_directories(fjtorrent PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(fjtorrent PRIVATE FJT_BUILD)
+target_link_libraries(fjtorrent PRIVATE torrent-rasterbar)
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/fjtseed.cpp)
+    add_executable(fjtseed tests/fjtseed.cpp)
+    if(WIN32)
+        target_link_libraries(fjtseed PRIVATE torrent-rasterbar ws2_32)
+        target_link_options(fjtseed PRIVATE -static -Wl,--gc-sections -s)
+    else()
+        target_link_libraries(fjtseed PRIVATE torrent-rasterbar)
+        target_link_options(fjtseed PRIVATE -static-libstdc++ -static-libgcc -Wl,--gc-sections -s)
+    endif()
+endif()

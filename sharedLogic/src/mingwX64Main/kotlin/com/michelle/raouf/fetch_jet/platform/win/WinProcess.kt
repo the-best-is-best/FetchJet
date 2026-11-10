@@ -15,8 +15,8 @@ import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.plus
 import kotlinx.cinterop.ptr
+import kotlinx.cinterop.plus
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.set
 import kotlinx.cinterop.sizeOf
@@ -24,14 +24,6 @@ import kotlinx.cinterop.toKStringFromUtf16
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.cinterop.wcstr
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import platform.posix.memset
 import platform.windows.AssignProcessToJobObject
 import platform.windows.CREATE_BREAKAWAY_FROM_JOB
@@ -81,13 +73,6 @@ private const val WAIT_TIMEOUT_CODE = 258u
 private const val STILL_ACTIVE_CODE = 259u
 private const val INFINITE_WAIT = 0xFFFFFFFFu
 private const val OPEN_EXISTING_FILE = 3u
-
-class WinProcessResult(
-    val exitCode: Int,
-    val timedOut: Boolean,
-    val stdout: String,
-    val stderr: String,
-)
 
 fun winQuoteArgument(argument: String): String {
     if (argument.isNotEmpty() && argument.none { it == ' ' || it == '\t' || it == '"' || it == '\n' }) return argument
@@ -367,126 +352,3 @@ class WinProcess private constructor(
         }
     }
 }
-
-class WinLineSplitter(private val onLine: (String) -> Unit) {
-    private var pending = ByteArray(256)
-    private var length = 0
-    private var skipLineFeed = false
-
-    fun feed(bytes: ByteArray, count: Int) {
-        for (i in 0 until count) {
-            val b = bytes[i]
-            if (skipLineFeed) {
-                skipLineFeed = false
-                if (b == '\n'.code.toByte()) continue
-            }
-            if (b == '\n'.code.toByte() || b == '\r'.code.toByte()) {
-                skipLineFeed = b == '\r'.code.toByte()
-                flush()
-            } else {
-                if (length == pending.size) pending = pending.copyOf(pending.size * 2)
-                pending[length++] = b
-            }
-        }
-    }
-
-    fun finish() {
-        if (length > 0) flush()
-    }
-
-    private fun flush() {
-        onLine(pending.decodeToString(0, length))
-        length = 0
-    }
-}
-
-suspend fun winRunProcess(
-    command: List<String>,
-    environment: Map<String, String?> = emptyMap(),
-    workDir: String? = null,
-    stdinBytes: ByteArray? = null,
-    mergeStderr: Boolean = false,
-    timeoutMs: Long = -1,
-    keepOutput: Boolean = true,
-    rawCommandLine: String? = null,
-    onStarted: ((WinProcess) -> Unit)? = null,
-    onStdoutLine: ((String) -> Unit)? = null,
-    onStderrLine: ((String) -> Unit)? = null,
-): WinProcessResult = withContext(Dispatchers.IO) {
-    val process = WinProcess.start(
-        command, environment, workDir, pipeStdin = stdinBytes != null, mergeStderr = mergeStderr,
-        rawCommandLine = rawCommandLine
-    )
-    val finished = AtomicInt(0)
-    val timedOut = AtomicInt(0)
-    try {
-        coroutineScope {
-            val guard = launch {
-                try {
-                    awaitCancellation()
-                } finally {
-                    if (finished.value == 0) process.kill()
-                }
-            }
-            val timer = if (timeoutMs >= 0) launch {
-                delay(timeoutMs)
-                if (finished.value == 0) {
-                    timedOut.value = 1
-                    process.kill()
-                }
-            } else null
-            onStarted?.invoke(process)
-            val stdout = StringBuilder()
-            val stderr = StringBuilder()
-            val errors = if (process.hasStderr) async {
-                pump(process, false, stderr, keepOutput, onStderrLine)
-            } else null
-            val writer = if (stdinBytes != null) launch {
-                process.writeStdin(stdinBytes)
-                process.closeStdin()
-            } else null
-            pump(process, true, stdout, keepOutput, onStdoutLine)
-            errors?.await()
-            writer?.join()
-            process.waitFor(-1)
-            val code = process.exitCode() ?: -1
-            finished.value = 1
-            timer?.cancel()
-            guard.cancel()
-            WinProcessResult(code, timedOut.value != 0, stdout.toString(), stderr.toString())
-        }
-    } finally {
-        process.kill()
-        process.close()
-    }
-}
-
-private fun pump(
-    process: WinProcess,
-    fromStdout: Boolean,
-    keep: StringBuilder,
-    keepOutput: Boolean,
-    onLine: ((String) -> Unit)?,
-) {
-    val buffer = ByteArray(16 * 1024)
-    val splitter = WinLineSplitter { line ->
-        if (keepOutput) keep.append(line).append('\n')
-        onLine?.invoke(line)
-    }
-    while (true) {
-        val read = if (fromStdout) process.readStdout(buffer) else process.readStderr(buffer)
-        if (read < 0) break
-        splitter.feed(buffer, read)
-    }
-    splitter.finish()
-}
-
-fun winStartDetached(command: List<String>, workDir: String? = null, rawCommandLine: String? = null): Boolean =
-    try {
-        WinProcess.start(
-            command, workDir = workDir, captureOutput = false, detached = true, rawCommandLine = rawCommandLine
-        ).close()
-        true
-    } catch (_: WinException) {
-        false
-    }

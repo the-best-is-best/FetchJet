@@ -7,9 +7,9 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, ENUMS, SERVER, install_fake_ytdlp
+from corehost import Core, CheckFailed, ENUMS, ON_LINUX, SERVER, install_fake_ytdlp
 
-PORT = 28459
+PORT = int(os.environ.get("FJ_BRIDGE_PORT", "28459"))
 ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
 EFFECT = {name: index for index, name in enumerate(ENUMS["EffectKind"])}
 ORIGIN = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
@@ -171,6 +171,20 @@ def run():
         core.check("an unknown quality asks the extension to inspect again", answer.status == 409, (answer.status, answer.body))
         answer = request(core, "GET", "/inspect?url=" + urllib.parse.quote(video, safe=""), {"X-FetchJet": "1"})
         core.check("inspect needs the token too", answer.status == 401, answer.status)
+        local = SERVER + "/file/1KB.bin?key=bridge-broken"
+        answer = request(core, "GET", "/inspect?url=" + urllib.parse.quote(local, safe=""), paired, timeout=90)
+        core.check("a page yt-dlp finds nothing on still answers an empty list", answer.status == 200 and answer.json() == [],
+                   (answer.status, answer.body[:200]))
+        fake = os.path.join(core.home, "tools", "yt-dlp-dir", "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe")
+        os.replace(fake, fake + ".off")
+        try:
+            local = SERVER + "/file/1KB.bin?key=bridge-no-ytdlp"
+            answer = request(core, "GET", "/inspect?url=" + urllib.parse.quote(local, safe=""), paired, timeout=90)
+            error = (answer.json() or {}).get("error", "") if answer.status == 500 else ""
+            core.check("without yt-dlp the inspection says so", "yt-dlp is not installed" in error, (answer.status, answer.body[:200]))
+            core.check("the missing yt-dlp is in the normal log", "Inspect: yt-dlp is not installed" in core.log_text(), core.log_text()[-300:])
+        finally:
+            os.replace(fake + ".off", fake)
 
         print("download and show")
         link = SERVER + "/file/3MB.bin?key=bridge-d"
@@ -191,7 +205,9 @@ def run():
         core.wait_for("the browsers", lambda: len(core.rows("settingsRows")) > 0, 15)
         core.pump(0.5)
         edge = [r for r in core.rows("settingsRows") if r.get("title") == "Microsoft Edge"]
-        if edge:
+        if edge and edge[0].get("subtitle") == core.strings().get("browserNotInstalled"):
+            print("  skip  Edge is shown as connected with its version: Edge is not installed on this machine")
+        elif edge:
             core.check("Edge is shown as connected with its version", "3.3.0" in edge[0].get("subtitle", "") and
                        edge[0].get("subtitle", "").startswith("\u2713"), edge[0].get("subtitle"))
         saved = json.load(open(os.path.join(core.home, "bridge.json"), encoding="utf-8"))

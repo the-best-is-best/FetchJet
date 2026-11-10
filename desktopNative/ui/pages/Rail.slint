@@ -27,7 +27,7 @@ component RailItem inherits Rectangle {
         badge := Text {
             text: root.counted ? root.count : root.glyph;
             color: root.selected && root.counted ? Theme.on-primary : root.selected ? Theme.primary : Theme.on-surface-variant;
-            font-family: root.counted ? Theme.font : "Segoe UI Symbol";
+            font-family: root.counted ? Theme.font : Theme.symbol-font;
             font-size: root.counted ? 11px : 15px;
             font-weight: 700;
             letter-spacing: root.counted ? 0.5px : 0px;

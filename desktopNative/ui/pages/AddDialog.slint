@@ -151,7 +151,7 @@ component AddHeader inherits Rectangle {
             Text {
                 text: "✕";
                 color: Theme.on-surface-variant;
-                font-family: "Segoe UI Symbol";
+                font-family: Theme.symbol-font;
                 font-size: 14px;
                 font-weight: 700;
                 horizontal-alignment: center;
@@ -169,7 +169,7 @@ component AddHeader inherits Rectangle {
 component UrlSection inherits VerticalLayout {
     spacing: 0px;
     HBox {
-        height: Core.add.canImportTxt || Core.add.canOpenTorrent ? 40px : 24px;
+        height: Core.add.canImportTxt || Core.add.canOpenTorrent ? 48px : 24px;
         spacing: 0px;
         cross-axis-alignment: center;
         SectionLabel {
@@ -472,9 +472,6 @@ component AddActions inherits VerticalLayout {
             ink: Theme.on-error;
             clicked => { Act.retryInspect(); }
         }
-        if Core.add.showRetry: Rectangle {
-            width: 8px;
-        }
         Rectangle {
             width: start.min-width + (Core.add.loading ? 24px : 0px);
             height: 40px;
@@ -518,8 +515,9 @@ component AddBody inherits VerticalLayout {
         size: 6px;
     }
     if !root.links: HBox {
-        height: 36px;
+        height: 48px;
         spacing: 8px;
+        cross-axis-alignment: center;
         for choice in Core.add.engines: EngineChip {
             data: choice;
         }
@@ -671,7 +669,7 @@ export component AddDialog inherits Rectangle {
         }
     }
     Rectangle {
-        width: clamp(root.width * 0.94, 340px, 660px);
+        width: clamp(0.94 * min(660px, root.width), min(340px, root.width), root.width);
         height: min(body.preferred-height + 2px, min(696px, root.height - 24px));
         border-radius: 20px;
         border-width: 1px;

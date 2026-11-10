@@ -1,5 +1,6 @@
 ﻿package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
@@ -32,9 +33,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 
 /**
  * BitTorrent engine. All networking is done by [TorrentBackend] (libtorrent on desktop and
@@ -113,9 +112,9 @@ class TorrentDownloader(
         // A copy saved by an earlier run of this task (survives app restarts).
         if (taskId != null) {
             cachedTorrentPath(taskId).let { p ->
-                if (FileSystem.SYSTEM.exists(p)) {
+                if (AppFileSystem.exists(p)) {
                     try {
-                        val bytes = FileSystem.SYSTEM.read(p) { readByteArray() }
+                        val bytes = AppFileSystem.read(p) { readByteArray() }
                         return backend.fetchMetadata(null, bytes).also { metadataCache[url] = it }
                     } catch (_: Exception) {
                     }
@@ -136,8 +135,8 @@ class TorrentDownloader(
             else -> {
                 // Local .torrent path (quotes from "Copy as path" and file:// URIs accepted)
                 val p = normalizeLocalTorrentPath(trimmed).toPath()
-                if (!FileSystem.SYSTEM.exists(p)) throw Exception("Torrent file not found: $trimmed")
-                backend.fetchMetadata(null, FileSystem.SYSTEM.read(p) { readByteArray() })
+                if (!AppFileSystem.exists(p)) throw Exception("Torrent file not found: $trimmed")
+                backend.fetchMetadata(null, AppFileSystem.read(p) { readByteArray() })
             }
         }
         metadataCache[url] = meta
@@ -176,8 +175,8 @@ class TorrentDownloader(
     private fun saveTorrentCopy(taskId: String, bytes: ByteArray) {
         try {
             val p = cachedTorrentPath(taskId)
-            p.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(p) { write(bytes) }
+            p.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(p) { write(bytes) }
         } catch (_: Exception) {
         }
     }
@@ -225,7 +224,7 @@ class TorrentDownloader(
         tasksState.update { current -> current - taskId }
         try {
             val p = cachedTorrentPath(taskId)
-            if (FileSystem.SYSTEM.exists(p)) FileSystem.SYSTEM.delete(p)
+            if (AppFileSystem.exists(p)) AppFileSystem.delete(p)
         } catch (_: Exception) {
         }
         return Result.success(Unit)
@@ -467,7 +466,7 @@ class TorrentDownloader(
         for (f in selected) {
             val target = root.resolve(f.path.toPath())
             val onDisk = try {
-                FileSystem.SYSTEM.metadataOrNull(target)?.size ?: 0L
+                AppFileSystem.metadataOrNull(target)?.size ?: 0L
             } catch (_: Exception) {
                 0L
             }
@@ -482,7 +481,7 @@ class TorrentDownloader(
                 continue
             }
             try {
-                target.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+                target.parent?.let { AppFileSystem.createDirectories(it) }
             } catch (_: Exception) {
             }
 
@@ -492,7 +491,7 @@ class TorrentDownloader(
                 val url = webSeedFileUrl(seed, f.path)
                 val host = url.substringAfter("://").substringBefore('/')
                 val start = try {
-                    FileSystem.SYSTEM.metadataOrNull(target)?.size ?: 0L
+                    AppFileSystem.metadataOrNull(target)?.size ?: 0L
                 } catch (_: Exception) {
                     0L
                 }
@@ -509,7 +508,7 @@ class TorrentDownloader(
                 }
                 if (r.isSuccess) {
                     val finalSize = try {
-                        FileSystem.SYSTEM.metadataOrNull(target)?.size ?: 0L
+                        AppFileSystem.metadataOrNull(target)?.size ?: 0L
                     } catch (_: Exception) {
                         0L
                     }

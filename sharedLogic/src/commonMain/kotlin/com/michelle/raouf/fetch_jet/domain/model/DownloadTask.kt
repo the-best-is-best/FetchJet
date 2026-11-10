@@ -102,6 +102,15 @@ data class DownloadTask(
     val checksumVerified: Boolean? = null
 )
 
+const val STEP_PREPARING_FILE = "Preparing file"
+
+fun DownloadTask.isPreparingFile(): Boolean =
+    currentStepText == STEP_PREPARING_FILE &&
+            (status == DownloadStatus.QUEUED || status == DownloadStatus.IDLE || status == DownloadStatus.CONNECTING)
+
+fun DownloadTask.withoutStalePreparingStep(): DownloadTask =
+    if (currentStepText == STEP_PREPARING_FILE && !isPreparingFile()) copy(currentStepText = null) else this
+
 /**
  * Whether Pause keeps what was downloaded (true), throws it away so Resume starts from zero
  * (false), or is not known yet (null: an HTTP link before the first connection).

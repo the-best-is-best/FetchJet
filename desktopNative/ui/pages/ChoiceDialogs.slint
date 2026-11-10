@@ -37,7 +37,7 @@ component ChoiceOverlay inherits Rectangle {
         }
     }
     Rectangle {
-        width: min(520px, root.width * 0.94);
+        width: 0.94 * min(520px, root.width);
         height: content.preferred-height + 2px;
         border-radius: 20px;
         border-width: 1px;
@@ -357,10 +357,10 @@ export component ClipPickerDialog inherits Rectangle {
         }
     }
     Rectangle {
-        width: min(480px, root.width * 0.92);
+        width: 0.92 * min(480px, root.width);
         height: content.preferred-height;
         border-radius: 18px;
-        background: Theme.surface;
+        background: Theme.surface-tonal-6;
         TouchArea {
             clicked => { keys.focus(); }
         }
@@ -546,6 +546,8 @@ export component ClipPickerDialog inherits Rectangle {
             }
             GridLayout {
                 spacing: 10px;
+                padding-top: 4px;
+                padding-bottom: 4px;
                 OutlinedButton {
                     row: 0;
                     col: Dir.rtl ? 1 : 0;

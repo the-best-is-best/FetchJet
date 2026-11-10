@@ -220,7 +220,8 @@ data class DashboardUiState(
     /** Non-null while a secure pairing handshake with a device is in progress. */
     val devicePairing: com.michelle.raouf.fetch_jet.feature.device_sync.PairingState? = null,
     /** Non-null while a send is in progress / just finished. */
-    val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null
+    val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
+    val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null
 )
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -436,6 +437,8 @@ sealed interface DashboardUiEvent {
 
     /** Block the device asking to pair now. */
     data object OnBlockPairingClicked : DashboardUiEvent
+
+    data object OnDismissReceiveClicked : DashboardUiEvent
 
     /** Allow a blocked device to ask again. */
     data class OnUnblockDeviceClicked(val deviceId: String) : DashboardUiEvent

@@ -1,9 +1,8 @@
 package com.michelle.raouf.fetch_jet.core.util
 
-import okio.FileSystem
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import okio.HashingSource
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.blackholeSink
 import okio.buffer
 import okio.use
@@ -39,7 +38,7 @@ fun parseExpectedChecksum(raw: String?): ExpectedChecksum? {
 /** Streams the file and returns its lowercase hex digest for the given algorithm, or null. */
 fun fileChecksumHex(path: String, algorithm: String): String? {
     val p = path.toPath()
-    val fs = FileSystem.SYSTEM
+    val fs = AppFileSystem
     if (!fs.exists(p)) return null
     return try {
         val source = when (algorithm.lowercase()) {

@@ -15,7 +15,11 @@ sys.stderr = sys.stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-DEFAULT_WORK = os.environ.get("FJ_CORE_WORK", "E:/tools/fjhome/corehost")
+ON_LINUX = sys.platform.startswith("linux")
+DEFAULT_WORK = os.environ.get(
+    "FJ_CORE_WORK",
+    os.path.expanduser("~/fetchjet-native/work/corehost") if ON_LINUX else "E:/tools/fjhome/corehost",
+)
 SERVER = os.environ.get("FJ_TEST_SERVER", "http://127.0.0.1:18200")
 
 TASK_FN = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
@@ -34,6 +38,8 @@ FULL = 0x100
 
 def dll_path(release=False):
     kind = "releaseShared" if release else "debugShared"
+    if ON_LINUX:
+        return os.path.join(REPO, "desktopNative", "core", "build", "bin", "linuxX64", kind, "libfjcore.so")
     return os.path.join(REPO, "desktopNative", "core", "build", "bin", "mingwX64", kind, "fjcore.dll")
 
 
@@ -79,7 +85,7 @@ class Core:
         self.checks = 0
         path = dll_path(release)
         if not os.path.isfile(path):
-            raise SystemExit("fjcore.dll not found: " + path)
+            raise SystemExit("core library not found: " + path)
         self.dll = ctypes.CDLL(path)
         self.dll.fj_start.argtypes = [ctypes.c_char_p, POST_FN, NOTIFY_FN, HOST_FN, HOST_FREE_FN]
         self.dll.fj_start.restype = ctypes.c_int
@@ -350,12 +356,13 @@ def server_reset():
 
 def install_fake_ytdlp(core):
     source = os.path.join(REPO, "desktopNative", "tests", "fakes")
-    exe = os.path.join(source, "build", "yt-dlp.exe")
+    program = "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe"
+    exe = os.path.join(source, "build", program)
     if not os.path.isfile(exe):
-        raise SystemExit("build the fake first: desktopNative/tests/fakes/build.cmd")
+        raise SystemExit("build the fake first: desktopNative/tests/fakes/" + ("build.sh" if ON_LINUX else "build.cmd"))
     target = os.path.join(core.home, "tools", "yt-dlp-dir")
     os.makedirs(target, exist_ok=True)
-    shutil.copy2(exe, os.path.join(target, "yt-dlp.exe"))
+    shutil.copy2(exe, os.path.join(target, program))
     for name in os.listdir(source):
         if name.endswith(".json"):
             shutil.copy2(os.path.join(source, name), os.path.join(target, name))

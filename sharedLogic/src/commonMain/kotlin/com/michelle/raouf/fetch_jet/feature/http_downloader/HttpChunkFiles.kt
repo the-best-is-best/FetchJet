@@ -1,25 +1,24 @@
 package com.michelle.raouf.fetch_jet.feature.http_downloader
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.media_extractor.freePathNextTo
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.buffer
 import okio.use
 import kotlin.math.min
 
 internal fun HttpChunkDownloader.deleteTaskScratchDir(taskId: String) {
     val dir = "${pathResolver.getTempDirectory()}/task_$taskId".toPath()
-    if (!FileSystem.SYSTEM.exists(dir)) return
-    FileSystem.SYSTEM.listOrNull(dir)?.forEach { child ->
+    if (!AppFileSystem.exists(dir)) return
+    AppFileSystem.listOrNull(dir)?.forEach { child ->
         try {
-            FileSystem.SYSTEM.delete(child)
+            AppFileSystem.delete(child)
         } catch (_: Exception) {
         }
     }
     try {
-        FileSystem.SYSTEM.delete(dir)
+        AppFileSystem.delete(dir)
     } catch (_: Exception) {
     }
 }
@@ -31,14 +30,14 @@ internal fun HttpChunkDownloader.cleanupTempFiles(task: DownloadTask) {
     val name = task.fileName
     try {
         val dir = "$cacheDir/task_${task.id}".toPath()
-        FileSystem.SYSTEM.list(dir).forEach { p ->
+        AppFileSystem.list(dir).forEach { p ->
             val n = p.name
-            if (n.startsWith("$name.part") || n == "$name.chunks") FileSystem.SYSTEM.delete(p)
+            if (n.startsWith("$name.part") || n == "$name.chunks") AppFileSystem.delete(p)
         }
     } catch (_: Exception) {
         for (i in 0..ChunkLayout.MAX_CONNECTIONS * 4) {
             try {
-                FileSystem.SYSTEM.delete("${cachePath}.part$i".toPath())
+                AppFileSystem.delete("${cachePath}.part$i".toPath())
             } catch (_: Exception) {
             }
         }
@@ -52,26 +51,26 @@ internal fun HttpChunkDownloader.cleanupTempFiles(task: DownloadTask) {
  */
 internal fun copyIntoPlace(from: okio.Path, target: okio.Path): okio.Path {
     try {
-        target.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+        target.parent?.let { AppFileSystem.createDirectories(it) }
     } catch (_: Exception) {
     }
-    val to = if (FileSystem.SYSTEM.exists(target) &&
-        runCatching { FileSystem.SYSTEM.delete(target) }.isFailure
+    val to = if (AppFileSystem.exists(target) &&
+        runCatching { AppFileSystem.delete(target) }.isFailure
     ) freePathNextTo(target) else target
-    FileSystem.SYSTEM.copy(from, to)
+    AppFileSystem.copy(from, to)
     return to
 }
 
 internal fun deleteRecursively(path: okio.Path) {
     try {
-        if (!FileSystem.SYSTEM.exists(path)) return
-        val metadata = FileSystem.SYSTEM.metadataOrNull(path)
+        if (!AppFileSystem.exists(path)) return
+        val metadata = AppFileSystem.metadataOrNull(path)
         if (metadata?.isDirectory == true) {
-            FileSystem.SYSTEM.listOrNull(path)?.forEach { child ->
+            AppFileSystem.listOrNull(path)?.forEach { child ->
                 deleteRecursively(child)
             }
         }
-        FileSystem.SYSTEM.delete(path)
+        AppFileSystem.delete(path)
     } catch (_: Exception) {
     }
 }
@@ -79,8 +78,8 @@ internal fun deleteRecursively(path: okio.Path) {
 internal fun trimFile(path: okio.Path, keep: Long) {
     try {
         val tmp = "$path.trim".toPath()
-        FileSystem.SYSTEM.source(path).buffer().use { src ->
-            FileSystem.SYSTEM.sink(tmp).buffer().use { out ->
+        AppFileSystem.source(path).buffer().use { src ->
+            AppFileSystem.sink(tmp).buffer().use { out ->
                 var left = keep
                 val buf = ByteArray(256 * 1024)
                 while (left > 0) {
@@ -90,7 +89,7 @@ internal fun trimFile(path: okio.Path, keep: Long) {
                 }
             }
         }
-        FileSystem.SYSTEM.atomicMove(tmp, path)
+        AppFileSystem.atomicMove(tmp, path)
     } catch (_: Exception) {
     }
 }

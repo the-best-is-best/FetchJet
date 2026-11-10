@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.core.network
 
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.network.BridgePairing.ASK_COOLDOWN
 import com.michelle.raouf.fetch_jet.core.security.Secrets
@@ -11,9 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -245,10 +244,10 @@ object BridgePairing {
     }
 
     private fun load(): BridgeFile = try {
-        if (!FileSystem.SYSTEM.exists(file)) BridgeFile()
+        if (!AppFileSystem.exists(file)) BridgeFile()
         else json.decodeFromString(
             BridgeFile.serializer(),
-            FileSystem.SYSTEM.read(file) { readUtf8() })
+            AppFileSystem.read(file) { readUtf8() })
     } catch (_: Throwable) {
         BridgeFile()
     }
@@ -265,8 +264,8 @@ object BridgePairing {
                     versions.value
                 )
             )
-            file.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(file) { writeUtf8(text) }
+            file.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(file) { writeUtf8(text) }
         } catch (_: Throwable) {
         }
     }

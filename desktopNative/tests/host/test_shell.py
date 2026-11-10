@@ -8,7 +8,7 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 NATIVE = os.path.abspath(os.path.join(HERE, "..", ".."))
-EXE = os.path.join(NATIVE, "build", "Release", "FetchJet.exe")
+EXE = os.environ.get("FJ_HOST_EXE", os.path.join(NATIVE, "build", "Release", "FetchJet.exe"))
 DESKRUN = os.path.join(NATIVE, "tools", "shot", "build", "Release", "deskrun.exe")
 WORK = os.environ.get("FJ_HOST_WORK", "E:/tools/fjhome/hosttest").replace("/", "\\")
 OUT = os.environ.get("FJ_SHOT_OUT", "E:/tools/probes/ui/shots").replace("/", "\\")

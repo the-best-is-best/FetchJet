@@ -90,6 +90,7 @@ private fun exact(s: AppLocalization, text: String): String? = when (text.trim()
     "resolving streams" -> s.stepResolvingStreams
     "downloading parts" -> s.stepDownloadingParts
     "preparing download" -> s.stepPreparingDownload
+    "preparing file" -> s.stepPreparingFile
     "clipping video" -> s.stepClippingVideo
     "downloading media" -> s.stepDownloadingMedia
     "already downloaded" -> s.stepAlreadyDownloaded

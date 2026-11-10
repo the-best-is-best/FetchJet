@@ -38,6 +38,16 @@ def run(only=None):
         take("device-sheet-searching-dark", width=1100, height=750)
         core.debug("devices", {"devices": devices})
         take("device-sheet-dark", width=1100, height=820)
+        core.action("DeviceSetDeleteAfter", on=True)
+        take("device-confirm-dark", width=1100, height=820, extra=["--click", "765,702", "--wait", "200"])
+        core.action("DeviceSetDeleteAfter", on=False)
+        core.action("ToggleTheme")
+        core.action("SettingPick", id="language", index=2)
+        core.pump(1.0)
+        take("device-confirm-light-ar", width=1100, height=820, extra=["--click", "335,702", "--wait", "200"])
+        core.action("SettingPick", id="language", index=1)
+        core.action("ToggleTheme")
+        core.pump(1.0)
         core.action("DeviceToggleManual")
         core.debug("devices", {"devices": devices, "sending": "sending:0.4"})
         take("device-sheet-sending-dark", width=1100, height=900)
@@ -57,6 +67,41 @@ def run(only=None):
         core.action("ConfirmRemove", deleteFiles=True)
         core.action("CloseDetails")
         core.pump(0.5)
+        if not only or any("receiv" in part or "preparing" in part for part in only):
+            core.debug("devices", {"devices": devices, "receiving": "0.62"})
+            take("device-receiving-dark", width=1100, height=760)
+            core.debug("devices", {"devices": devices, "receiving": "unknown"})
+            take("device-receiving-unknown-dark", width=1100, height=760)
+            core.debug("devices", {"devices": devices, "receiving": "failed:no-answer"})
+            take("device-receive-failed-dark", width=1100, height=760)
+            parts = os.path.join(core.work, "recv-in", "recv-1")
+            os.makedirs(parts, exist_ok=True)
+            with open(os.path.join(parts, "holiday-video.mp4.part0"), "wb") as handle:
+                handle.write(bytes(4096))
+            with open(os.path.join(parts, "holiday-video.mp4.chunks"), "w") as handle:
+                handle.write("0 0 372244479")
+            core.debug("receive", {"url": SERVER + "/file/40MB.bin?key=shots-recv&delay=120000", "fileName": "holiday-video.mp4",
+                                   "total": "372244480", "downloaded": "50331648", "from": "Galaxy A56",
+                                   "parts": os.path.join(parts, "holiday-video.mp4.part0") + "|" + os.path.join(parts, "holiday-video.mp4.chunks")})
+            core.debug("receive", {"url": SERVER + "/file/40MB.bin?key=shots-recv2&delay=120000", "fileName": "song-link.mp3",
+                                   "total": "8388608", "from": "Galaxy A56"})
+            core.debug("devices", {})
+            core.pump(1.0)
+            take("row-preparing-dark", width=1200, height=520)
+            core.action("SettingPick", id="language", index=2)
+            core.pump(1.0)
+            take("row-preparing-dark-ar", width=1200, height=520)
+            core.debug("devices", {"devices": devices, "receiving": "0.62"})
+            take("device-receiving-dark-ar", width=1100, height=760)
+            core.debug("devices", {})
+            core.action("SettingPick", id="language", index=1)
+            core.pump(0.5)
+            for name in ("holiday-video.mp4", "song-link.mp3"):
+                t = core.task(file_name=name)
+                if t:
+                    core.action("Remove", id=t["id"])
+                    core.action("ConfirmRemove", deleteFiles=True)
+            core.pump(0.5)
         core.action("ShowAddDialog", show=True)
         core.action("SetUrl", text="\n".join([
             SERVER + "/file/1MB.bin?key=shots-links-a",

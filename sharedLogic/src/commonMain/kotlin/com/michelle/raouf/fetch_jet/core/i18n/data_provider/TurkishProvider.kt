@@ -937,4 +937,12 @@ object TurkishProvider : AppLocalization {
     override val sysDeviceThisDevice = "This device"
     override val sysDeviceManualConnect = "Connect by IP"
     override val sysDeviceConnect = "Connect"
+    override val sysDeviceOfferTitle = "İndirme alınsın mı?"
+    override val sysDeviceOfferFrom = "Gönderen: {device}"
+    override val sysDeviceOfferAccept = "Kabul et"
+    override val sysDeviceOfferReject = "Reddet"
+    override val deviceNoAnswer = "Diğer cihaz yanıt vermedi, tekrar deneyin"
+    override val stepPreparingFile = "Dosya hazırlanıyor"
+    override val sysDeviceReceivingTitle = "İndirme alınıyor"
+    override val sysDeviceReceiveFailed = "Alma başarısız"
 }

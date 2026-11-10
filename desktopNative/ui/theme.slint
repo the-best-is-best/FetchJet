@@ -1,6 +1,7 @@
 export global Theme {
     in-out property <bool> dark: true;
-    in-out property <string> font: "Segoe UI";
+    in-out property <string> font: "FetchJet Sans";
+    out property <string> symbol-font: "FetchJet Sans";
 
     out property <color> primary: dark ? #00E5FF : #0284C7;
     out property <color> on-primary: dark ? #031625 : #FFFFFF;
@@ -33,6 +34,7 @@ export global Theme {
     out property <color> sidebar: dark ? #0C1323 : #F6F8FB;
     out property <color> field: dark ? #121B2E : #FAFCFD;
     out property <color> field-focused: dark ? #0E2335 : #F0F8FC;
+    out property <color> surface-tonal-6: dark ? #0D2D3F : #E4F2F9;
 
     out property <color> status-completed: #10B981;
     out property <color> status-paused: #F59E0B;

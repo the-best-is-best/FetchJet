@@ -51,6 +51,10 @@ on:
         description: "Submit the extension to the Firefox / Edge stores (off = sign it unlisted and attach the .xpi to the release instead)"
         type: boolean
         default: true
+      native:
+        description: "Native desktop (desktopNative: Windows MSI + MSIX + stage zip, Linux .tar.gz + .deb; workflow artifacts only, never released or signed)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -655,6 +659,248 @@ jobs:
           # Mozilla's own signature inside the .xpi, Chrome / Edge install from their stores).
           pids=(); for f in "${FILES[@]}"; do gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY" & pids+=($!); done
           for p in "${pids[@]}"; do wait "$p"; done
+
+
+  windows-native:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native }}
+    runs-on: windows-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create drive E (the packaging scripts work under E:\tools)
+        run: |
+          if (Test-Path -LiteralPath 'E:\') { Write-Host '::error::E: already exists on this runner'; exit 1 }
+          $vhd = Join-Path $env:RUNNER_TEMP 'fj-e.vhdx'
+          $script = Join-Path $env:RUNNER_TEMP 'fj-e.diskpart'
+          Set-Content -LiteralPath $script -Encoding ascii -Value @(
+            "create vdisk file=`"$vhd`" maximum=16384 type=expandable",
+            "select vdisk file=`"$vhd`"",
+            'attach vdisk',
+            'convert mbr',
+            'create partition primary',
+            'format fs=ntfs quick label=FJ',
+            'assign letter=E'
+          )
+          diskpart /s $script
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath 'E:\')) { Write-Host '::error::diskpart could not create E:'; exit 1 }
+          New-Item -ItemType Directory -Force -Path 'E:\tools\probes\package' | Out-Null
+
+      - name: Slint C++ SDK
+        env:
+          SLINT_SDK_URL: ${{ vars.FETCHJET_SLINT_SDK_URL }}
+        run: |
+          if (-not $env:SLINT_SDK_URL) {
+            Write-Host '::error::Repository variable FETCHJET_SLINT_SDK_URL is not set: it must point to a .zip of the Slint C++ MSVC package (the folder that is E:\tools\slint on the PC)'
+            exit 1
+          }
+          $zip = Join-Path $env:RUNNER_TEMP 'slint.zip'
+          $tmp = Join-Path $env:RUNNER_TEMP 'slint'
+          & "$env:SystemRoot\System32\curl.exe" -4 --retry 3 -fsSL -o $zip $env:SLINT_SDK_URL
+          if ($LASTEXITCODE -ne 0) { Write-Host '::error::Slint SDK download failed'; exit 1 }
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          & "$env:SystemRoot\System32\tar.exe" -xf $zip -C $tmp
+          if ($LASTEXITCODE -ne 0) { Write-Host '::error::Slint SDK unpack failed'; exit 1 }
+          $cfg = Get-ChildItem -LiteralPath $tmp -Recurse -File | Where-Object { $_.Name -in @('SlintConfig.cmake', 'slint-config.cmake') } | Select-Object -First 1
+          if (-not $cfg) { Write-Host '::error::No lib\cmake\Slint\SlintConfig.cmake in the Slint SDK zip'; exit 1 }
+          $root = $cfg.Directory.Parent.Parent.Parent.FullName
+          New-Item -ItemType Directory -Force -Path 'E:\tools' | Out-Null
+          Copy-Item -LiteralPath $root -Destination 'E:\tools\slint' -Recurse
+          foreach ($f in @('lib\slint_cpp.dll', 'licenses\LICENSE.md', 'licenses\THIRDPARTY.md')) {
+            if (-not (Test-Path -LiteralPath (Join-Path 'E:\tools\slint' $f))) { Write-Host "::error::Slint SDK has no $f (CMakeLists.txt / stage.ps1 need it)"; exit 1 }
+          }
+
+      - name: WiX Toolset 3
+        run: |
+          $wixHome = $env:WIX -and (Test-Path -LiteralPath (Join-Path $env:WIX 'bin\candle.exe'))
+          $wixDefault = Test-Path -LiteralPath 'C:\Program Files (x86)\WiX Toolset v3.14\bin\candle.exe'
+          $wixPath = $null -ne (Get-Command candle.exe -ErrorAction SilentlyContinue)
+          if ($wixHome -or $wixDefault -or $wixPath) { Write-Host 'WiX 3 is installed'; exit 0 }
+          $nv = (Invoke-RestMethod -Uri 'https://api.nuget.org/v3-flatcontainer/wix/index.json').versions | Where-Object { $_ -match '^3\.14\.\d+$' } | Select-Object -Last 1
+          if (-not $nv) { Write-Host '::error::WiX 3.14 not found on NuGet'; exit 1 }
+          Write-Host "WiX $nv from NuGet"
+          $nupkg = Join-Path $env:RUNNER_TEMP 'wix.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'wix'
+          & "$env:SystemRoot\System32\curl.exe" -4 --retry 3 -fsSL -o $nupkg "https://api.nuget.org/v3-flatcontainer/wix/$nv/wix.$nv.nupkg"
+          if ($LASTEXITCODE -ne 0) { Write-Host '::error::WiX download failed'; exit 1 }
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          & "$env:SystemRoot\System32\tar.exe" -xf $nupkg -C $dir
+          if ($LASTEXITCODE -ne 0) { Write-Host '::error::WiX unpack failed'; exit 1 }
+          $candle = Get-ChildItem -LiteralPath $dir -Recurse -File -Filter 'candle.exe' | Select-Object -First 1
+          if (-not $candle -or -not (Test-Path -LiteralPath (Join-Path $candle.DirectoryName 'WixUIExtension.dll'))) { Write-Host '::error::candle.exe / WixUIExtension.dll not in the WiX package'; exit 1 }
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $candle.DirectoryName
+
+      - name: Windows SDK tools (makeappx, makepri)
+        id: sdk
+        run: |
+          $bin = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\makeappx.exe' -ErrorAction SilentlyContinue |
+            Sort-Object { [Version]($_.Directory.Parent.Name) } -Descending | Select-Object -First 1 | ForEach-Object { $_.DirectoryName }
+          if (-not $bin -or -not (Test-Path -LiteralPath (Join-Path $bin 'makepri.exe'))) {
+            $nv = (Invoke-RestMethod -Uri 'https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json').versions | Select-Object -Last 1
+            Write-Host "Windows SDK build tools $nv from NuGet"
+            $nupkg = Join-Path $env:RUNNER_TEMP 'sdkbt.zip'
+            $dir = Join-Path $env:RUNNER_TEMP 'sdkbt'
+            & "$env:SystemRoot\System32\curl.exe" -4 --retry 3 -fsSL -o $nupkg "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$nv/microsoft.windows.sdk.buildtools.$nv.nupkg"
+            if ($LASTEXITCODE -ne 0) { Write-Host '::error::Windows SDK build tools download failed'; exit 1 }
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            & "$env:SystemRoot\System32\tar.exe" -xf $nupkg -C $dir
+            if ($LASTEXITCODE -ne 0) { Write-Host '::error::Windows SDK build tools unpack failed'; exit 1 }
+            $bin = Get-ChildItem -Path (Join-Path $dir 'bin\10.*\x64') -Directory | Sort-Object { [Version]($_.Parent.Name) } -Descending | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $bin -or -not (Test-Path -LiteralPath (Join-Path $bin 'makeappx.exe'))) { Write-Host '::error::makeappx.exe not found'; exit 1 }
+          Write-Host "tools: $bin"
+          "bin=$bin" >> $env:GITHUB_OUTPUT
+
+      - name: Release core (fjcore.dll)
+        shell: cmd
+        run: call .\gradlew.bat :desktopNativeCore:linkReleaseSharedMingwX64 -Pfetchjet.nativeDesktop=true
+
+      - name: Release host (FetchJet.exe)
+        run: |
+          cmake -S desktopNative -B desktopNative\build-release -A x64 -DFJ_CORE_KIND=releaseShared -DSLINT_DIR=E:/tools/slint
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          cmake --build desktopNative\build-release --config Release -- /nodeReuse:false
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Stage
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\stage.ps1 -RequireFreshCore
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: MSI
+        shell: cmd
+        run: call desktopNative\packaging\build-msi.cmd
+
+      - name: Check the MSI
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\check-msi.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: MSIX (unsigned)
+        env:
+          SDK_BIN: ${{ steps.sdk.outputs.bin }}
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\msix\build-msix.ps1 -SdkBin $env:SDK_BIN
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Check the MSIX
+        env:
+          SDK_BIN: ${{ steps.sdk.outputs.bin }}
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\msix\check-msix.ps1 -SdkBin $env:SDK_BIN
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Zip the stage folder
+        run: |
+          $v = "$(powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\version.ps1)".Trim()
+          if ($LASTEXITCODE -ne 0 -or -not $v) { exit 1 }
+          Compress-Archive -Path 'E:\tools\probes\package\stage\*' -DestinationPath "E:\tools\probes\package\out\FetchJet-$v-native-stage.zip"
+
+      - name: Upload MSI, MSIX and stage zip (workflow artifact only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetchjet-windows-native
+          path: |
+            E:/tools/probes/package/out/FetchJet-*.msi
+            E:/tools/probes/package/out/FetchJet-*.msix
+            E:/tools/probes/package/out/FetchJet-*-native-stage.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Show the packaging logs (on failure)
+        if: failure()
+        run: |
+          foreach ($f in @(Get-ChildItem -Path 'E:\tools\probes\package\out\*.log' -File -ErrorAction SilentlyContinue)) {
+            Write-Host "::group::$($f.FullName) (last 150 lines)"
+            Get-Content -LiteralPath $f.FullName -Tail 150
+            Write-Host '::endgroup::'
+          }
+
+  linux-native:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      SLINT_LINUX_SDK_URL: ${{ vars.FETCHJET_SLINT_LINUX_SDK_URL || 'https://github.com/slint-ui/slint/releases/download/v1.18.1/Slint-cpp-1.18.1-Linux-x86_64.tar.gz' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build packages (apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake dpkg-dev \
+            libfontconfig1-dev libfreetype-dev libxkbcommon-dev libinput-dev libudev-dev libgbm-dev \
+            libcurl4-openssl-dev libssl-dev
+
+      - name: Slint C++ SDK (Linux)
+        run: |
+          mkdir -p "$RUNNER_TEMP/slint-dl" "$RUNNER_TEMP/slint"
+          curl -4 --retry 3 -fsSL -o "$RUNNER_TEMP/slint-dl/slint.tar.gz" "$SLINT_LINUX_SDK_URL"
+          tar -xzf "$RUNNER_TEMP/slint-dl/slint.tar.gz" -C "$RUNNER_TEMP/slint-dl"
+          cfg="$(find "$RUNNER_TEMP/slint-dl" -name SlintConfig.cmake -print -quit)"
+          [ -n "$cfg" ] || { echo "::error::no SlintConfig.cmake in the Slint SDK"; exit 1; }
+          root="$(cd "$(dirname "$cfg")/../../.." && pwd)"
+          cp -a "$root/." "$RUNNER_TEMP/slint/"
+          [ -f "$RUNNER_TEMP/slint/lib/libslint_cpp.so" ] || { echo "::error::Slint SDK has no lib/libslint_cpp.so"; exit 1; }
+
+      - name: Release core (libfjcore.so)
+        run: ./gradlew :desktopNativeCore:linkReleaseSharedLinuxX64 -Pfetchjet.nativeDesktop=true
+
+      - name: Release host (FetchJet)
+        run: |
+          cmake -S desktopNative -B desktopNative/build-linux -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release \
+            -DSLINT_DIR="$RUNNER_TEMP/slint" -DFJ_CORE_KIND=releaseShared
+          cmake --build desktopNative/build-linux -j"$(nproc)"
+
+      - name: Portable folder and .deb
+        env:
+          FJ_HOST_BUILD: ${{ github.workspace }}/desktopNative/build-linux
+          FJ_SLINT_DIR: ${{ runner.temp }}/slint
+          FJ_PACKAGE_OUT: ${{ runner.temp }}/package
+        run: bash desktopNative/packaging/linux/build-linux.sh
+
+      - name: Upload the .tar.gz and .deb (workflow artifact only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetchjet-linux-native
+          path: |
+            ${{ runner.temp }}/package/FetchJet-*-linux-x64.tar.gz
+            ${{ runner.temp }}/package/fetchjet_*_amd64.deb
+          if-no-files-found: error
+          retention-days: 7
 
 
   release:

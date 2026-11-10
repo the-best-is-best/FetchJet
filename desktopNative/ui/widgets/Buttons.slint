@@ -1,5 +1,6 @@
 import { Theme, Dir } from "../theme.slint";
 import { Hover, HBox } from "Base.slint";
+import { Glyph } from "Icons.slint";
 
 export component FilledButton inherits Rectangle {
     in property <string> text;
@@ -27,11 +28,11 @@ export component FilledButton inherits Rectangle {
         width: self.preferred-width;
         spacing: 0px;
         cross-axis-alignment: center;
-        if root.glyph != "": Text {
+        if root.glyph != "": Glyph {
             text: root.glyph;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.start;
             vertical-alignment: center;
@@ -46,11 +47,11 @@ export component FilledButton inherits Rectangle {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
-        if root.trail != "": Text {
+        if root.trail != "": Glyph {
             text: root.trail;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.end;
             vertical-alignment: center;
@@ -91,11 +92,11 @@ export component OutlinedButton inherits Rectangle {
         width: self.preferred-width;
         spacing: 0px;
         cross-axis-alignment: center;
-        if root.glyph != "": Text {
+        if root.glyph != "": Glyph {
             text: root.glyph;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.start;
             vertical-alignment: center;
@@ -110,11 +111,11 @@ export component OutlinedButton inherits Rectangle {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
-        if root.trail != "": Text {
+        if root.trail != "": Glyph {
             text: root.trail;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.end;
             vertical-alignment: center;
@@ -152,11 +153,11 @@ export component TextButton inherits Rectangle {
         width: self.preferred-width;
         spacing: 0px;
         cross-axis-alignment: center;
-        if root.glyph != "": Text {
+        if root.glyph != "": Glyph {
             text: root.glyph;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.start;
             vertical-alignment: center;
@@ -171,11 +172,11 @@ export component TextButton inherits Rectangle {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
-        if root.trail != "": Text {
+        if root.trail != "": Glyph {
             text: root.trail;
             width: self.preferred-width + 8px;
             color: root.enabled ? root.ink : Theme.on-surface-variant.with-alpha(0.38);
-            font-family: "Segoe UI Symbol";
+            font-family: Theme.symbol-font;
             font-size: root.font-size;
             horizontal-alignment: Dir.end;
             vertical-alignment: center;
@@ -197,7 +198,7 @@ export component IconButton inherits Rectangle {
     in property <length> glyph-size: 18px;
     in property <int> glyph-weight: 400;
     in property <color> ink: Theme.on-background;
-    in property <string> glyph-font: "Segoe UI Symbol";
+    in property <string> glyph-font: Theme.symbol-font;
     out property <bool> has-hover: ta.has-hover;
     callback clicked();
     width: root.size;
@@ -214,7 +215,7 @@ export component IconButton inherits Rectangle {
         hovered: ta.has-hover && root.enabled;
         pressed: ta.pressed && root.enabled;
     }
-    if root.glyph != "": Text {
+    if root.glyph != "": Glyph {
         text: root.glyph;
         color: root.enabled ? root.ink : root.ink.with-alpha(0.38);
         font-family: root.glyph-font;

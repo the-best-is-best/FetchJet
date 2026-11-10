@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.core.update
 
 import com.michelle.raouf.fetch_jet.core.edition.AppEdition
 import com.michelle.raouf.fetch_jet.core.edition.currentAppEdition
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.NetworkClient
@@ -34,9 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import okio.FileSystem
 import okio.Path.Companion.toPath
-import okio.SYSTEM
 import okio.buffer
 import okio.use
 
@@ -200,7 +199,7 @@ object UpdateManager {
     fun installNow() {
         val s = _state.value
         val path = s.installerPath
-        if (path != null && FileSystem.SYSTEM.exists(path.toPath())) {
+        if (path != null && AppFileSystem.exists(path.toPath())) {
             PlatformUpdater.launchInstallerAndExit(path).onFailure { e ->
                 _state.update {
                     it.copy(
@@ -412,7 +411,7 @@ object UpdateManager {
             val target = dir / asset.name
             val part = dir / "${asset.name}.part"
             val ok = runCatching {
-                FileSystem.SYSTEM.createDirectories(dir)
+                AppFileSystem.createDirectories(dir)
                 client.prepareGet(asset.url) {
                     header("User-Agent", "FetchJet/$APP_VERSION")
                 }.execute { response ->
@@ -421,7 +420,7 @@ object UpdateManager {
                     val channel = response.bodyAsChannel()
                     val buffer = ByteArray(64 * 1024)
                     var done = 0L
-                    val hashing = okio.HashingSink.sha256(FileSystem.SYSTEM.sink(part))
+                    val hashing = okio.HashingSink.sha256(AppFileSystem.sink(part))
                     hashing.buffer().use { sink ->
                         while (isActive && !channel.isClosedForRead) {
                             val n = channel.readAvailable(buffer, 0, buffer.size)
@@ -454,8 +453,8 @@ object UpdateManager {
                 if (!verifyUpdateSignature(part.toString(), sig)) {
                     throw Exception("the release file signature is not valid")
                 }
-                if (FileSystem.SYSTEM.exists(target)) FileSystem.SYSTEM.delete(target)
-                FileSystem.SYSTEM.atomicMove(part, target)
+                if (AppFileSystem.exists(target)) AppFileSystem.delete(target)
+                AppFileSystem.atomicMove(part, target)
             }
             ok.onSuccess {
                 _state.update {
@@ -471,7 +470,7 @@ object UpdateManager {
                 if (installWhenDone) installNow()
             }.onFailure { e ->
                 try {
-                    FileSystem.SYSTEM.delete(part)
+                    AppFileSystem.delete(part)
                 } catch (_: Throwable) {
                 }
                 _state.update {
@@ -488,8 +487,8 @@ object UpdateManager {
     // ---- settings file (key=value) -----------------------------------------------------------
 
     private fun load(): Map<String, String> = try {
-        if (!FileSystem.SYSTEM.exists(settingsFile)) emptyMap()
-        else FileSystem.SYSTEM.read(settingsFile) { readUtf8() }.lineSequence()
+        if (!AppFileSystem.exists(settingsFile)) emptyMap()
+        else AppFileSystem.read(settingsFile) { readUtf8() }.lineSequence()
             .map { it.trim() }
             .filter { it.contains('=') && !it.startsWith("#") }
             .associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
@@ -500,8 +499,8 @@ object UpdateManager {
     private fun save() {
         val s = _state.value
         try {
-            settingsFile.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
-            FileSystem.SYSTEM.write(settingsFile) {
+            settingsFile.parent?.let { AppFileSystem.createDirectories(it) }
+            AppFileSystem.write(settingsFile) {
                 writeUtf8("# FetchJet update settings\n")
                 writeUtf8("autoCheck=${s.autoCheck}\n")
                 writeUtf8("autoInstall=${s.autoInstall}\n")

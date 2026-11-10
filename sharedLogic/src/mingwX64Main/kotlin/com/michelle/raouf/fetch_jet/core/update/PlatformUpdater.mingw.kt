@@ -1,12 +1,13 @@
 package com.michelle.raouf.fetch_jet.core.update
 
-import com.michelle.raouf.fetch_jet.core.filesystem.WinPaths
-import com.michelle.raouf.fetch_jet.platform.win.HostHooks
+import com.michelle.raouf.fetch_jet.core.filesystem.DesktopPaths
+import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
 import com.michelle.raouf.fetch_jet.platform.win.WinApp
 import com.michelle.raouf.fetch_jet.platform.win.WinProcess
 import com.michelle.raouf.fetch_jet.platform.win.winExists
 import com.michelle.raouf.fetch_jet.platform.win.winProcessId
-import com.michelle.raouf.fetch_jet.platform.win.winRunProcess
+import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
+import com.michelle.raouf.fetch_jet.platform.desktop.runProcess
 import com.michelle.raouf.fetch_jet.platform.win.winWriteText
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -44,7 +45,7 @@ try {
 
     fun installAndExit(installerPath: String) {
         val installer = installerPath.replace('/', '\\')
-        val folder = WinPaths.parentOf(installer) ?: WinPaths.temp()
+        val folder = DesktopPaths.parentOf(installer) ?: DesktopPaths.temp()
         val install =
             if (installer.endsWith(".msi", ignoreCase = true)) "msiexec /i \"$installer\" /passive /norestart"
             else "\"$installer\""
@@ -87,7 +88,7 @@ try {
             bytes[i * 2 + 1] = (code ushr 8).toByte()
         }
         val result = runBlocking {
-            winRunProcess(
+            DesktopOs.runProcess(
                 listOf(
                     "powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                     "-EncodedCommand", Base64.encode(bytes)
