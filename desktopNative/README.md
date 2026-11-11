@@ -1,6 +1,6 @@
 # FetchJet native desktop: where things go
 
-Developer map for the native desktop app (Windows first, Linux second). Read this before adding
+Developer map for the native desktop app (Windows, Linux and macOS). Read this before adding
 anything. The rules are in `ARCHITECTURE.md`; what works and what is still open is in
 `docs/port/STATUS.md`. If a rule here and the code disagree, fix the document in the same change.
 
@@ -28,7 +28,8 @@ anything. The rules are in `ARCHITECTURE.md`; what works and what is still open 
 | A new torrent feature | `desktopNative/torrent/` (C++ over libtorrent, builds `fjtorrent.dll` / `libfjtorrent.so`), and the Kotlin side `sharedLogic/.../platform/torrent/FjtEngine.kt` |
 | A new proxy / SOCKS behaviour | `sharedLogic/.../platform/proxy/LoopbackProxy.kt` (shared), socket layer per OS (`WinLoopSockets.kt`, `LinuxLoopSockets.kt`) |
 | A new packaged file (font, icon, licence) | `desktopNative/res/` (icon, fonts, emoji), `packaging/licenses/THIRD-PARTY.txt` (every dependency) |
-| A host change (tray, dialogs, focus, single instance) | `desktopNative/host/win/platform_win.cpp` or `host/linux/platform_linux.cpp` (OS part), `host/app.cpp` (shared part) |
+| A host change (tray, dialogs, focus, single instance) | `desktopNative/host/win/platform_win.cpp`, `host/linux/platform_linux.cpp` or `host/mac/platform_mac.mm` (OS part), `host/app.cpp` (shared part) |
+| macOS-only API call (Darwin HTTP, Keychain, LaunchServices, posix_spawn) | `sharedLogic/src/macosArm64Main/.../platform/macos/` and the `*.macos.kt` actuals; Mac packaging in `desktopNative/packaging/mac/` (`make-dmg.sh`, `Info.plist.in`), torrent lib `desktopNative/torrent/build-mac.sh` |
 
 ## 2. Layout
 

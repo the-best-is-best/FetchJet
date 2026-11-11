@@ -892,3 +892,19 @@ release EXE (hidden desktop, `speedrun.py`, 300 MB at 1 MB/s, 92 s, 1024.2 KB/s)
 re-run on the new core: home 41/0, settings 87/0, proxy_limit 13/0, devices 43/0, paths 17/0,
 launch 11/0, torrent 17/0. Still not done: debug core + the owner's window, Linux rebuild,
 bridge and test_shell.
+
+## 2026-11-11: macOS port (Mac session, commit `02289bf`)
+
+- `macosArm64` in sharedLogic and `:desktopNativeCore`; Mac actuals in `sharedLogic/src/macosArm64Main`
+  (DesktopOs/DesktopApp, MacProcess with `posix_spawnp` via dlsym, MacCrypto with
+  `CCCryptorGCMOneshot*`, Keychain wrap key, BSD loop sockets, device sync with Security ECDH,
+  `MacTorrentHost`, updater swapping the .app from the dmg, LaunchAgent start at login,
+  LaunchServices default handler). Host `host/mac/platform_mac.mm` (tray, NSOpenPanel, reopen /
+  open-URL / open-documents Apple events installed at process start, Services item).
+- Shared changes made for it: `DesktopToolAssets` (per-OS media tool downloads; the Mac used to
+  fetch the Linux builds), `BrowserLocator` (per-OS browser search), `SharedSecretKey` (Mac reads
+  the JVM Keychain key), `NativeApp.call("openUrl")`, accessibility roles in `ui/`,
+  `DEVICE_SYNC_READY = true`, `displayChunks()` (paused pieces not shown active).
+- Measured on the Mac: 56-66 MB window open, 34 MB started in the tray, ~100 MB downloading.
+  Tested items: see ROADMAP-1.4.0.md, macOS entry. Not run: Windows / Linux with these changes.
+

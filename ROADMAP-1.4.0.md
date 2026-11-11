@@ -156,12 +156,38 @@ Steps:
   install test (the Windows Sandbox feature is not enabled on the PC yet; the owner must enable it),
   the CI jobs `windows-native` and `linux-native` (never run; `windows-native` needs the Slint SDK
   URL variable), and the version-resource check.
+  2026-11-11: those jobs are folded into `build-desktop-{macos,windows,linux}` behind the new
+  input `desktop_engine` (native default, jvm still available); release names equal the JVM ones
+  (`FetchJet-<v>-arm64.dmg`, `FetchJet-<v>.msi`, `FetchJet-<v>-store.msix`, `.deb`, `.tar.gz`; no
+  `.exe` any more). Windows prep/package in `desktopNative/packaging/ci-windows.ps1`. Never run.
+  Linux native in-app update ported (pkexec dpkg / portable swap), compile only.
 - [x] Linux port in WSL (2026-11-10 / 11): same code as Windows through `nativeDesktopMain`;
   release core cross-built; the Linux run of the download, add, media, links, network, proxy_limit,
   home and torrent suites passes in WSL (Ubuntu 26.04). The settings, devices, paths, launch and
   bridge suites were not re-run on Linux in this round. Open: a real
   Linux desktop (tray and portal dialogs were tested only against fakes).
-- [ ] macOS: not started. iOS device sync: needs a Mac run (`IosDeviceSyncPlatform.kt`).
+- [x] macOS (2026-11-11, Mac session, commit `02289bf`): `macosArm64` target in sharedLogic and
+  `:desktopNativeCore` (actuals in `sharedLogic/src/macosArm64Main`: POSIX from Linux, Darwin HTTP,
+  Keychain, CommonCrypto/Security), Objective-C++ host `desktopNative/host/mac/platform_mac.mm`
+  (NSStatusItem tray, NSOpenPanel, reopen from Dock/Finder, open-URL / open-document Apple
+  events, Services "Download with FetchJet"), `libfjtorrent.dylib` (`torrent/build-mac.sh`, same
+  libtorrent commit as iOS), real `FetchJet.app` + `packaging/mac/make-dmg.sh`. Same identity as
+  the JVM app (bundle id `com.michelle.raouf.fetch_jet`, `FetchJet-<v>-arm64.dmg`, LaunchAgent
+  label, `~/.fetch_jet`, JVM Keychain key read for secrets): the dmg installed over the JVM 1.1.0
+  app on the owner's Mac, real data opened (list, settings, tools, devices, extension) and the
+  JVM 1.1.0 still read the list afterwards. Tested on the Mac: direct download, pause/quit/resume
+  (sha256 match), 3 at once, speed limit, YouTube, torrent (Sintel), Firefox extension (AMO
+  3.3.74.1), Send to device both ways with the iOS simulator (partial file continues), Arabic,
+  tray, magnet/.torrent cold and warm. RAM: 56-66 MB window open, 34 MB started in the tray,
+  ~100 MB while downloading (JVM 1.4.0 238 MB, JVM 1.1.0 340 MB, FDM 206 MB). An empty Slint
+  window is already 42 MB on Retina (framebuffer + its CoreAnimation copy); hiding the window
+  does not free it in Slint. Open: Notarization (ad-hoc like the JVM app).
+- [x] iOS device sync on the Mac simulator (2026-11-11): discovery, pairing code, receive approval,
+  "Preparing file" + receive progress, partial transfer that continues, both directions with the
+  macOS native app. Fixed: `NativeDeviceSyncBridge.fdSet` `Int32(1 << 31)` overflow (SIGTRAP,
+  crash report confirmed; now `poll`), received files overwrote a file with the same name (now
+  `name (n).ext`, received `.partN` renamed), discovery listen stopped after one EADDRINUSE (now
+  retries + SO_REUSEPORT on every platform).
 
 ## Step 0 (done): JVM tuning on desktop
 
@@ -233,7 +259,8 @@ Where to look then: `MainActivity.onCreate` sets light bars before the theme is 
   Owner-tested 2026-11-08 with the iOS app under PlayCover.
 - [ ] Browser extension inside the app: the in-app download of the signed .xpi from the published
   GitHub release (was not testable while 1.3.0 was a draft).
-- [ ] Send to device (1.3.0 item 4) on a **real iPhone**: discovery, pairing, send both ways. If
+- [ ] Send to device (1.3.0 item 4) on a **real iPhone** (the simulator passes both ways, see the
+  macOS item above): discovery, pairing, send both ways. If
   discovery fails there, "Connect by IP" and sends after pairing still work (unicast).
   Closer than the simulator: the IPA under PlayCover on the Mac (works, 2026-11-08), but it is
   not an iPhone's network sandbox.
@@ -244,3 +271,38 @@ Where to look then: `MainActivity.onCreate` sets light bars before the theme is 
   (see `docs/edge-android-test-cases.docx`).
 - [ ] Edge Add-ons from CI: the `EDGE_PRODUCT_ID` secret is missing, so CI cannot submit the Edge
   version (owner adds it).
+
+## Also in 1.4.0: iOS in SwiftUI (2026-11-11, Mac session)
+
+- [x] The iOS app no longer links Compose: SwiftUI pages in `iosApp/iosApp/SwiftUI/` (Core:
+  FJStore / FJTheme / FJRoot; Tasks, Add, Settings, Devices, Dialogs) over `IosAppHost.kt`
+  (`sharedLogic/src/iosMain/.../ios/`); the Xcode phase builds the `SharedLogic` framework only.
+  Contract for new pages: `iosApp/SWIFTUI.md`.
+- [x] Python + yt-dlp start on the first inspect, not at launch (`yt-dlp.version` next to the
+  module; `isAvailable()` = installed, `ensureEngine()` boots); after each run `ydl.close()`,
+  `gc.collect()`, `malloc_zone_pressure_relief`. RAM on the simulator: 51-60 MB idle (Compose
+  95-107), ~74 MB after a torrent, ~130-143 MB after a video (Python stays loaded).
+- [x] Simulator-tested: list, details, pause/resume, YouTube download with merge + audio only,
+  torrent with delete files (`.parts` file now removed), multi-select delete, Settings in Arabic
+  and the three themes, Send to device both ways.
+- [ ] Not seen: iPad layout, a real iPhone.
+
+## Also in 1.4.0: "Make FetchJet your main downloader" (2026-11-11)
+
+- [x] First-run one-tap step + Settings > General rows: default app for `.torrent` / `magnet:`,
+  clipboard watch, start at login (Android: Keep ready), browser extension offer. Code:
+  `sharedLogic/.../core/setup/` (`DefaultTorrentHandler` per OS, `MainDownloaderSetup`).
+  Windows opens the Default apps page (no silent change); Linux `xdg-mime`; macOS LaunchServices;
+  Android share target + "Open with" for media/files/torrents/m3u8 (not web pages). iOS: none.
+- [x] Tested on the macOS native app only; JVM macOS, Windows, Linux, Android compile only.
+- [x] JVM macOS app now handles double-clicked `.torrent` and opened links (`MacOpenEvents.kt`),
+  compile only.
+
+## Next decisions
+
+- [ ] Drop `desktopApp` (JVM) after one native release went out on all three OSes; then
+  `sharedUI` is Android-only: merge it into `androidApp` (or rename `androidUi`) and remove
+  `sharedUI/src/iosMain` (unused since SwiftUI).
+- [ ] Release notes `release-notes/1.4.0/*.md` (15 languages) cover macOS + iPhone; add Windows /
+  Linux lines.
+
