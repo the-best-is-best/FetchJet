@@ -169,6 +169,10 @@ namespace fjhost {
                 result = os::pick_path(true, arg("title"), arg("initialPath"), "", "");
             else if (service == "pickFile")
                 result = os::pick_path(false, arg("title"), "", arg("filterName"), arg("pattern"));
+#ifdef _WIN32
+            else if (service == "storeUpdates")
+                result = os::store_updates();
+#endif
             return os::copy_for_core(result);
         }
 

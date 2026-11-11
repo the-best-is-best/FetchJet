@@ -80,6 +80,7 @@ try {
 
     @OptIn(ExperimentalEncodingApi::class)
     private fun askStore(): String? {
+        HostHooks.storeUpdates?.invoke()?.takeIf { it.isNotBlank() }?.let { return readStoreAnswer(it) }
         val script = STORE_SCRIPT.replace('§', '$')
         val bytes = ByteArray(script.length * 2)
         for (i in script.indices) {
@@ -97,7 +98,11 @@ try {
             )
         }
         if (result.timedOut) error("Microsoft Store did not answer")
-        val lines = result.stdout.lines().map { it.trim() }
+        return readStoreAnswer(result.stdout)
+    }
+
+    private fun readStoreAnswer(text: String): String? {
+        val lines = text.lines().map { it.trim() }
         lines.firstOrNull { it.startsWith("FJERR") }?.let {
             error("Microsoft Store: " + it.removePrefix("FJERR").trim().ifBlank { "unknown error" })
         }

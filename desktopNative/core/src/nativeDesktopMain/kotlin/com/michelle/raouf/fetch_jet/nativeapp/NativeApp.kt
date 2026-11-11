@@ -176,6 +176,7 @@ internal object NativeApp {
                 presenter.effect(EffectKind.NOTIFY, text = text, title = title)
             }
         }
+        if (services != null) HostHooks.storeUpdates = { services.call("storeUpdates") }
         if (services != null && !config.headless) {
             HostHooks.pickFile = { title, filterName, pattern ->
                 services.call("pickFile") {

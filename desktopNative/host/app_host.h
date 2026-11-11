@@ -46,6 +46,7 @@ namespace fjhost {
         std::string pick_path(bool folder, const std::string &title, const std::string &initial,
                               const std::string &filter_name, const std::string &pattern);
         char *copy_for_core(const std::string &text);
+        std::string store_updates();
 
         int child_main(int argc, char **argv, bool &handled);
     }

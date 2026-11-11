@@ -26,4 +26,7 @@ object HostHooks {
 
     @Volatile
     var showWindow: (() -> Unit)? = null
+
+    @Volatile
+    var storeUpdates: (() -> String)? = null
 }
