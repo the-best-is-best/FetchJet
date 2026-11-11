@@ -558,11 +558,38 @@ async function takeOver(item) {
 // Firefox for Android has no downloads API at all: nothing to capture there.
 const HAS_DOWNLOADS = !!(api.downloads && api.downloads.onCreated);
 const DECIDE_EARLY = HAS_DOWNLOADS && !!(api.downloads.onDeterminingFilename && api.downloads.onDeterminingFilename.addListener);
+
+const firstLook = new Map();
+
+function knownAtStart(item) {
+  const settings = settingsCache;
+  if (!settings || !settings.enabled || !settings.captureDownloads || settings.minSizeKB > 0) return false;
+  const targetUrl = item.finalUrl || item.url;
+  if (!targetUrl || !/^https?:/i.test(targetUrl)) return false;
+  return hasWantedExtension(targetUrl, baseName(item.filename), settings);
+}
+
+function takeAtStart(item) {
+  if (!knownAtStart(item)) return null;
+  const decision = shouldTake(item).then(async (take) => {
+    if (take) await takeOver(item);
+    return take;
+  }).catch(() => false);
+  firstLook.set(item.id, decision);
+  setTimeout(() => firstLook.delete(item.id), 60000);
+  return decision;
+}
+
 if (DECIDE_EARLY) {
   api.downloads.onDeterminingFilename.addListener((item, suggest) => {
     let answered = false;
     const keep = () => { if (!answered) { answered = true; try { suggest(); } catch (_) {} } };
     const guard = setTimeout(keep, 4000); // never leave the browser waiting
+    const early = firstLook.get(item.id);
+    if (early) {
+      early.then(() => { clearTimeout(guard); keep(); });
+      return true;
+    }
     shouldTake(item).then((take) => {
       clearTimeout(guard);
       if (take && !answered) { answered = true; return takeOver(item); }
@@ -573,6 +600,7 @@ if (DECIDE_EARLY) {
 }
 
 if (HAS_DOWNLOADS) api.downloads.onCreated.addListener((downloadItem) => {
+  if (takeAtStart(downloadItem)) return;
   if (DECIDE_EARLY) return;
   // Firefox: give it a moment to resolve the final URL / filename / size.
   setTimeout(async () => {
@@ -581,6 +609,8 @@ if (HAS_DOWNLOADS) api.downloads.onCreated.addListener((downloadItem) => {
     if (item && await shouldTake(item)) await takeOver(item);
   }, 400);
 });
+
+getSettings().catch(() => {});
 
 if (api.notifications && api.notifications.onButtonClicked) {
   api.notifications.onButtonClicked.addListener(async (notificationId, buttonIndex) => {
