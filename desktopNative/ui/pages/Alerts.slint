@@ -63,6 +63,8 @@ component AlertOverlay inherits Rectangle {
         height: content.preferred-height;
         border-radius: root.radius;
         background: Theme.surface-container-high;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
         TouchArea { }
         content := VerticalLayout {
             padding: 24px;
