@@ -230,6 +230,9 @@ class DashboardViewModel(
             showCourseReading(request)
             return
         }
+        if (pendingExternalConflict == null) {
+            _uiState.update { it.copy(fileConflictAlert = null, duplicateTaskAlert = null) }
+        }
         pendingExternalUrl = request.url
         pendingExternalHeaders = request.toRequestHeaders()
         pendingExternalFileName = request.fileName.ifBlank { null }
