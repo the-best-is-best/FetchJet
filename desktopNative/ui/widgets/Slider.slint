@@ -30,6 +30,13 @@ export component StepSlider inherits Rectangle {
             root.changed(root.value - 1);
         }
     }
+    accessible-action-set-value(text) => {
+        if root.enabled && text.is-float() {
+            if clamp(Math.round(text.to-float()), 1, root.count) != root.value {
+                root.changed(clamp(Math.round(text.to-float()), 1, root.count));
+            }
+        }
+    }
     Rectangle {
         x: root.pad;
         y: 9px;
