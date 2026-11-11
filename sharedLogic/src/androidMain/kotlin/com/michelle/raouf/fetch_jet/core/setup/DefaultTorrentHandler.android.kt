@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
  * the settings page of the app that holds the default (to clear it), or its own page.
  */
 actual object DefaultTorrentHandler {
-    actual val supported: Boolean get() = PathResolver.appContext != null
+    actual val supported: Boolean = false
     actual val opensSystemPage: Boolean = true
 
     private fun magnetIntent() = Intent(Intent.ACTION_VIEW, Uri.parse("magnet:?xt=urn:btih:0000000000000000000000000000000000000000"))

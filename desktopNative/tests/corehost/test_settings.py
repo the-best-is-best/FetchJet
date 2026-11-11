@@ -9,7 +9,7 @@ from corehost import Core, CheckFailed, ENUMS, install_fake_ytdlp
 KIND = {name: index for index, name in enumerate(ENUMS["SettingKind"])}
 TONE = {name: index for index, name in enumerate(ENUMS["ToneCode"])}
 ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
-GENERAL, DOWNLOADS, BROWSER, NETWORK, MEDIA, UPDATES = range(6)
+GENERAL, DOWNLOADS, BROWSER, DEVICES, NETWORK, MEDIA, UPDATES = range(7)
 
 
 UPDATE_ASSET = "fetchjet_9.9.0_amd64.deb" if sys.platform.startswith("linux") else "FetchJet-9.9.0.msi"
@@ -63,8 +63,8 @@ def run():
         core.action("OpenSettings")
         core.pump(0.6)
         sections = nav(core).get("sections", [])
-        core.check("six pages (no devices, no torrents yet)", [s.get("title") for s in sections] == [
-            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionNetwork"],
+        core.check("seven pages (no torrents yet)", [s.get("title") for s in sections] == [
+            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionDevices"], strings["sectionNetwork"],
             strings["sectionMedia"], strings["sectionUpdates"]], [s.get("title") for s in sections])
         core.check("the first page is shown, the list is still the start", nav(core).get("current", 0) == 0 and
                    not nav(core).get("pageOpen", False) and sections[0].get("selected") and nav(core).get("title") == strings["sectionGeneral"])
