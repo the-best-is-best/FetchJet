@@ -65,6 +65,7 @@ internal class KtorSyncNetwork(
     override suspend fun bindDiscovery(host: String?, port: Int): SyncUdpSocket {
         val socket = aSocket(selector).udp().bind(InetSocketAddress(host ?: DEVICE_SYNC_ANY_HOST, port)) {
             reuseAddress = true
+            reusePort = true
             broadcast = true
         }
         quiet(socket)

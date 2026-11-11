@@ -17,6 +17,11 @@ export component ChoiceChip inherits Rectangle {
     in property <string> label;
     in property <bool> selected;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     width: text.preferred-width + 24px;
     height: 36px;
     border-radius: 16px;
@@ -50,6 +55,9 @@ export component SmallChip inherits Rectangle {
     in property <length> pad: 8px;
     in property <length> font-size: 10px;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
     width: text.preferred-width + 2 * root.pad;
     height: 32px;
     border-radius: 6px;
@@ -110,6 +118,17 @@ export component Switch inherits Rectangle {
     in property <bool> checked;
     in property <bool> enabled: true;
     callback toggled(checked: bool);
+    in property <string> label;
+    accessible-role: switch;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.toggled(!root.checked);
+        }
+    }
     width: 52px;
     height: 32px;
     border-radius: 16px;

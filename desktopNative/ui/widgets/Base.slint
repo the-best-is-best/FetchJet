@@ -35,6 +35,15 @@ export component Clickable inherits Rectangle {
     out property <bool> has-hover: ta.has-hover;
     out property <bool> pressed: ta.pressed;
     callback clicked();
+    in property <string> label;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }

@@ -41,3 +41,6 @@ iosApp/ThirdParty/
 # compiled helper classes / local notes
 *.class
 .claude-*
+
+/desktopNative/build-mac/
+/desktopNative/torrent/build-mac/

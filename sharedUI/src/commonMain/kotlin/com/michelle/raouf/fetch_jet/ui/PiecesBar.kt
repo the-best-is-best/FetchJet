@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
+import com.michelle.raouf.fetch_jet.domain.model.displayChunks
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
@@ -55,7 +56,7 @@ import kotlin.math.max
  */
 @Composable
 fun PiecesBar(task: DownloadTask, speedDisplayUnit: String) {
-    val chunks = task.chunks.sortedBy { it.startByte }
+    val chunks = task.displayChunks()
     // The map's own span: real bytes for a file, virtual equal slots for HLS segments.
     val total = chunks.maxOfOrNull { it.endByte + 1 }?.takeIf { it > 0 } ?: return
     val manySegments = chunks.size > 40

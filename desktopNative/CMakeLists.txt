@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 if (WIN32)
     project(fetchjet_native LANGUAGES CXX RC)
+elseif (APPLE)
+    project(fetchjet_native LANGUAGES CXX OBJCXX)
 else ()
     project(fetchjet_native LANGUAGES CXX)
 endif ()
@@ -11,6 +13,9 @@ set(FJ_CORE_KIND "releaseShared" CACHE STRING "Kotlin/Native build of fjcore.dll
 if (WIN32)
     set(FJ_CORE_FILE "core/build/bin/mingwX64/${FJ_CORE_KIND}/fjcore.dll")
     set(FJ_SLINT_RUNTIME "${SLINT_DIR}/lib/slint_cpp.dll")
+elseif (APPLE)
+    set(FJ_CORE_FILE "core/build/bin/macosArm64/${FJ_CORE_KIND}/libfjcore.dylib")
+    set(FJ_SLINT_RUNTIME "${SLINT_DIR}/lib/libslint_cpp.dylib")
 else ()
     set(FJ_CORE_FILE "core/build/bin/linuxX64/${FJ_CORE_KIND}/libfjcore.so")
     set(FJ_SLINT_RUNTIME "${SLINT_DIR}/lib/libslint_cpp.so")
@@ -44,6 +49,20 @@ configure_file(res/version.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/fj_versio
 if (WIN32)
     add_executable(fetchjet_native WIN32 host/app.cpp host/win/platform_win.cpp res/app.rc res/app.manifest)
     target_link_libraries(fetchjet_native PRIVATE Slint::Slint dwmapi ole32 shell32 uuid d2d1 dwrite windowscodecs delayimp)
+elseif (APPLE)
+    set(FJ_MAC_BUNDLE_ID "com.michelle.raouf.fetch_jet" CACHE STRING "CFBundleIdentifier of the native FetchJet.app")
+    set(FJ_MAC_MIN_OS "12.0" CACHE STRING "LSMinimumSystemVersion (libfjcore.dylib is built for macOS 12.0)")
+    set(FJ_MAC_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../desktopApp/src/main/resources/launcher.icns" CACHE FILEPATH "App icon (.icns)")
+    set(FJ_MAC_SIGN ON CACHE BOOL "Ad-hoc codesign FetchJet.app after every build")
+    get_filename_component(FJ_MAC_ICON_NAME "${FJ_MAC_ICON}" NAME)
+    configure_file(packaging/mac/Info.plist.in "${CMAKE_CURRENT_BINARY_DIR}/generated/Info.plist" @ONLY)
+    set_source_files_properties("${FJ_MAC_ICON}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    add_executable(fetchjet_native MACOSX_BUNDLE host/app.cpp host/mac/platform_mac.mm "${FJ_MAC_ICON}")
+    target_link_libraries(fetchjet_native PRIVATE Slint::Slint ${CMAKE_DL_LIBS}
+            "-framework AppKit" "-framework Foundation" "-framework UniformTypeIdentifiers")
+    target_compile_options(fetchjet_native PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+    set_target_properties(fetchjet_native PROPERTIES BUILD_RPATH "@executable_path" INSTALL_RPATH "@executable_path"
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/generated/Info.plist")
 else ()
     add_executable(fetchjet_native host/app.cpp host/linux/platform_linux.cpp host/linux/tray_linux.cpp)
     target_link_libraries(fetchjet_native PRIVATE Slint::Slint ${CMAKE_DL_LIBS})
@@ -59,11 +78,32 @@ if (MSVC)
             /DELAYLOAD:WindowsCodecs.dll /IGNORE:4199)
     target_compile_options(fetchjet_native PRIVATE /utf-8 /W3)
 endif ()
-add_custom_command(TARGET fetchjet_native POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FJ_SLINT_RUNTIME}" $<TARGET_FILE_DIR:fetchjet_native>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/${FJ_CORE_FILE}" $<TARGET_FILE_DIR:fetchjet_native>
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/fonts" $<TARGET_FILE_DIR:fetchjet_native>/fonts
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/emoji" $<TARGET_FILE_DIR:fetchjet_native>/emoji)
+if (APPLE)
+    set(FJ_MAC_TORRENT "${CMAKE_CURRENT_SOURCE_DIR}/torrent/build-mac/libfjtorrent.dylib" CACHE FILEPATH "libfjtorrent.dylib, copied into the bundle when it exists")
+    set(FJ_MAC_MACOS_DIR "$<TARGET_FILE_DIR:fetchjet_native>")
+    set(FJ_MAC_APP_DIR "$<TARGET_BUNDLE_DIR:fetchjet_native>")
+    set(FJ_MAC_SIGN_COMMAND "")
+    if (FJ_MAC_SIGN)
+        set(FJ_MAC_SIGN_COMMAND COMMAND codesign --force --deep --sign - "${FJ_MAC_APP_DIR}")
+    endif ()
+    add_custom_target(fetchjet_bundle_files ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FJ_SLINT_RUNTIME}" "${FJ_MAC_MACOS_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/${FJ_CORE_FILE}" "${FJ_MAC_MACOS_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/fonts" "${FJ_MAC_MACOS_DIR}/fonts"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/emoji" "${FJ_MAC_MACOS_DIR}/emoji"
+            COMMAND sh -c "if [ -f \"$1\" ]; then cp -p \"$1\" \"$2/\"; else rm -f \"$2/libfjtorrent.dylib\"; fi" sh "${FJ_MAC_TORRENT}" "${FJ_MAC_MACOS_DIR}"
+            ${FJ_MAC_SIGN_COMMAND}
+            DEPENDS "${CMAKE_SOURCE_DIR}/${FJ_CORE_FILE}"
+            COMMENT "Copying libfjcore, Slint, fonts, emoji, libfjtorrent into FetchJet.app"
+            VERBATIM)
+    add_dependencies(fetchjet_bundle_files fetchjet_native)
+else ()
+    add_custom_command(TARGET fetchjet_native POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FJ_SLINT_RUNTIME}" $<TARGET_FILE_DIR:fetchjet_native>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/${FJ_CORE_FILE}" $<TARGET_FILE_DIR:fetchjet_native>
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/fonts" $<TARGET_FILE_DIR:fetchjet_native>/fonts
+            COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res/emoji" $<TARGET_FILE_DIR:fetchjet_native>/emoji)
+endif ()
 if (WIN32 AND EXISTS "${FJ_TORRENT_DLL}")
     add_custom_command(TARGET fetchjet_native POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FJ_TORRENT_DLL}" $<TARGET_FILE_DIR:fetchjet_native>)

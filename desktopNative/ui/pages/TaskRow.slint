@@ -6,6 +6,7 @@ import { ElideText } from "../widgets/ElideText.slint";
 import { EmojiIcon, Glyph } from "../widgets/Icons.slint";
 import { TaskRowDto, RowKind, RowActionCode, BarColorCode, GroupColorCode } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
 
 component KindSquare inherits Rectangle {
     in property <string> tag;
@@ -31,6 +32,9 @@ component PriorityChip inherits Rectangle {
     in property <int> priority;
     in property <string> label;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
     private property <color> tone: root.priority > 0 ? Theme.priority-high : root.priority < 0 ? Theme.priority-low : Theme.on-surface-variant;
     width: max(48px, chip.width);
     height: 48px;
@@ -73,6 +77,9 @@ component QuickAction inherits Rectangle {
         border-radius: root.size / 2;
         border-width: 1px;
         border-color: Theme.outline-variant.with-alpha(0.7);
+        accessible-role: button;
+        accessible-label: root.action == RowActionCode.pause ? Tr.pause : root.action == RowActionCode.open ? Tr.open : Tr.resume;
+        accessible-action-default => { root.clicked(); }
         ta := TouchArea {
             clicked => { root.clicked(); }
         }
@@ -99,6 +106,9 @@ component SectionHeader inherits Rectangle {
         : root.data.headerColor == GroupColorCode.paused ? Theme.status-paused : Theme.tertiary;
     height: 32px;
     border-radius: 8px;
+    accessible-role: button;
+    accessible-label: root.data.headerTitle;
+    accessible-action-default => { Act.toggleGroup(root.data.headerKey); }
     ta := TouchArea {
         clicked => { Act.toggleGroup(root.data.headerKey); }
     }
@@ -201,6 +211,11 @@ export component TaskRow inherits Rectangle {
         background: root.surface-color;
         border-width: 1px;
         border-color: root.data.selected ? Theme.primary.with-alpha(0.45) : Theme.outline-variant.with-alpha(0.35);
+        accessible-role: button;
+        accessible-label: root.data.name + " " + root.data.percent;
+        accessible-checkable: true;
+        accessible-checked: root.data.selected;
+        accessible-action-default => { Act.rowClick(root.data.id, false, false); }
         ta := TouchArea {
             pointer-event(e) => {
                 if e.kind == PointerEventKind.down {
@@ -230,6 +245,7 @@ export component TaskRow inherits Rectangle {
                 alignment: center;
                 CheckBox {
                     checked: root.data.checked;
+                    label: root.data.name;
                     toggled(on) => {
                         root.focus-list();
                         Act.rowCheck(root.data.id, on);
@@ -347,6 +363,7 @@ export component TaskRow inherits Rectangle {
                     CheckBox {
                         x: Dir.rtl ? 12px : 0;
                         checked: root.data.checked;
+                        label: root.data.name;
                         toggled(on) => {
                             root.focus-list();
                             Act.rowCheck(root.data.id, on);

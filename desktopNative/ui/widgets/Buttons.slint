@@ -13,6 +13,14 @@ export component FilledButton inherits Rectangle {
     in property <color> container: Theme.primary;
     in property <color> ink: Theme.on-primary;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
     height: 40px;
     min-width: max(58px, content.preferred-width + 2 * root.pad);
     preferred-width: self.min-width;
@@ -76,6 +84,14 @@ export component OutlinedButton inherits Rectangle {
     in property <color> ink: Theme.on-surface-variant;
     in property <color> line: Theme.outline-variant;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
     height: 40px;
     min-width: max(58px, content.preferred-width + 2 * root.pad);
     preferred-width: self.min-width;
@@ -139,6 +155,14 @@ export component TextButton inherits Rectangle {
     in property <int> font-weight: 500;
     in property <color> ink: Theme.primary;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
     height: 40px;
     min-width: max(58px, content.preferred-width + 2 * root.pad);
     preferred-width: self.min-width;
@@ -201,6 +225,15 @@ export component IconButton inherits Rectangle {
     in property <string> glyph-font: Theme.symbol-font;
     out property <bool> has-hover: ta.has-hover;
     callback clicked();
+    in property <string> label;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
     width: root.size;
     height: root.size;
     ta := TouchArea {

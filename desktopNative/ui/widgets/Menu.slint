@@ -28,6 +28,14 @@ export component OptionsMenu inherits PopupWindow {
             padding-bottom: 8px;
             for option[i] in root.options: Rectangle {
                 height: 48px;
+                accessible-role: button;
+                accessible-label: option.label;
+                accessible-checkable: option.checked;
+                accessible-checked: option.checked;
+                accessible-action-default => {
+                    root.picked(i);
+                    root.close();
+                }
                 min-width: 112px;
                 max-width: 280px;
                 ta := TouchArea {
@@ -148,6 +156,12 @@ export component PickMenu inherits PopupWindow {
                 y: 8px + i * 48px;
                 width: parent.width;
                 height: 48px;
+                accessible-role: button;
+                accessible-label: option;
+                accessible-action-default => {
+                    root.picked(i);
+                    root.close();
+                }
                 tap := TouchArea {
                     clicked => {
                         root.picked(i);

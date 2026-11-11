@@ -695,6 +695,7 @@ fun main(rawArgs: Array<String>) {
     }
     installCrashLog()
     LocalizationManager.start()
+    installMacOpenHandlers()
     // Baked in at build time (-Dfetchjet.verboseLogs) or switched on for one run with the
     // environment variable, e.g. to collect a bug report from a release build.
     com.michelle.raouf.fetch_jet.core.log.AppLog.verbose =

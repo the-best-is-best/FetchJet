@@ -287,6 +287,13 @@ namespace fjhost {
         slint::quit_event_loop();
     }
 
+    void open_external(const std::string &url) {
+        if (!g_core.call || url.empty())
+            return;
+        std::string args = "{\"url\":" + json_string(url) + "}";
+        take(g_core.call("openUrl", args.c_str()));
+    }
+
     void hide_window() {
         if (!os::tray_on()) {
             quit_app();

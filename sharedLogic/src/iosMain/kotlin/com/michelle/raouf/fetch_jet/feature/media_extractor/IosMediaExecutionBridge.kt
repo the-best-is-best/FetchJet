@@ -40,6 +40,9 @@ interface IosMediaExecutionBridge {
 
     fun updateYtDlpModule(progressCallback: IosToolDownloadProgressCallback?): String?
 
+    /** yt-dlp version saved by the last engine start, read without starting Python. */
+    fun cachedYtDlpVersion(): String?
+
     /**
      * Executes yt-dlp arguments with real-time progress callbacks.
      * @param args list of CLI arguments (e.g. ["-j", url] or ["-f", formatId, "-o", template, url])

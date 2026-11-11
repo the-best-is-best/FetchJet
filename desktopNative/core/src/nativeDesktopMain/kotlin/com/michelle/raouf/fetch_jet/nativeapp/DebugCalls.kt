@@ -57,6 +57,26 @@ internal object DebugCalls {
         "receive" -> receive(args)
         "proxyStart" -> proxyStart(args)
         "proxyStop" -> proxyStop()
+        "mainSetup" -> {
+            NativeApp.presenter.mainSetupAsk.value = com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState(
+                torrentSupported = true,
+                torrentDefault = false,
+                startupSupported = true,
+            )
+            "ok"
+        }
+        "mainSetupState" -> kotlinx.coroutines.runBlocking {
+            val st = com.michelle.raouf.fetch_jet.core.setup.MainDownloaderSetup.state()
+            buildJsonObject {
+                put("torrentSupported", st.torrentSupported)
+                put("torrentDefault", st.torrentDefault)
+                put("clipboardOn", st.clipboardOn)
+                put("startupSupported", st.startupSupported)
+                put("startupOn", st.startupOn)
+                put("extensionSeen", st.extensionSeen)
+                put("asked", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.askedMainDownloader.value)
+            }.toString()
+        }
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
             "ok"

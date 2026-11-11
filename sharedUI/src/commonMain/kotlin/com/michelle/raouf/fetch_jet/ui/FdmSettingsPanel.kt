@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -196,6 +197,13 @@ fun FdmSettingsPanel(
     }
 
     var openSection by remember { mutableStateOf<SettingsSection?>(null) }
+    val jump by SettingsJump.section.collectAsState()
+    LaunchedEffect(jump) {
+        jump?.let {
+            if (it in sections) openSection = it
+            SettingsJump.section.value = null
+        }
+    }
 
     @Composable
     fun page(s: SettingsSection) {

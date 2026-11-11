@@ -153,3 +153,9 @@ fun DownloadTask.etaSeconds(): Long? {
     }
     return remaining / speed
 }
+
+fun DownloadTask.displayChunks(): List<DownloadChunk> {
+    val running = status == DownloadStatus.DOWNLOADING || status == DownloadStatus.CONNECTING
+    val sorted = chunks.sortedBy { it.startByte }
+    return if (running) sorted else sorted.map { it.copy(isActive = false, speedBytesPerSec = 0L, note = null) }
+}

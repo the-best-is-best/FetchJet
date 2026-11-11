@@ -19,6 +19,9 @@ component QualityChip inherits Rectangle {
     border-width: 1px;
     border-color: Theme.primary.with-alpha(0.5);
     background: Theme.primary.with-alpha(0.08);
+    accessible-role: button;
+    accessible-label: root.data.lineText;
+    accessible-action-default => { menu.show(); }
     tap := TouchArea {
         clicked => { menu.show(); }
     }
@@ -89,6 +92,7 @@ component LinkRow inherits VerticalLayout {
             height: 40px;
             CheckBox {
                 checked: root.data.selected;
+                label: root.data.title;
                 toggled(on) => { Act.toggleLink(root.data.index, on); }
             }
         }

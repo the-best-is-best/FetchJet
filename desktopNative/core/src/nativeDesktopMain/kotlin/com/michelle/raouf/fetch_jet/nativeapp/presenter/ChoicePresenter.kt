@@ -17,9 +17,9 @@ import kotlinx.coroutines.launch
 internal fun Presenter.startChoices() {
     val source = vm.uiState.map { it.duplicateTaskAlert to it.fileConflictAlert }.distinctUntilChanged()
     scope.launch {
-        combine(source, AppLanguage.current) { pair, _ -> pair }.collect { (duplicate, conflict) ->
+        combine(source, AppLanguage.current, mainSetupAsk) { pair, _, setup -> Triple(pair.first, pair.second, setup) }.collect { (duplicate, conflict, setup) ->
             val strings = LocalizationManager.Strings
-            val list = ArrayList<ChoiceDialogDto>(2)
+            val list = ArrayList<ChoiceDialogDto>(3)
             if (duplicate != null) {
                 val name = duplicate.fileName.ifBlank { duplicate.url }
                 list += ChoiceDialogDto(
@@ -69,6 +69,7 @@ internal fun Presenter.startChoices() {
                     cancelLabel = strings.cancel,
                 )
             }
+            if (setup != null) list += mainDownloaderDialog(setup)
             choices.publish(list)
         }
     }
@@ -81,6 +82,7 @@ internal fun Presenter.choicePrimary(kind: Int) {
             vm.onEvent(DashboardUiEvent.OnSaveAsCopyClicked(it.suggestedNewName))
         }
 
+        ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupAccept()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -89,6 +91,7 @@ internal fun Presenter.choiceSecondary(kind: Int) {
     when (ChoiceDialogKind.entries.getOrNull(kind)) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnRestartDuplicateClicked)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnConfirmOverwriteClicked)
+        ChoiceDialogKind.MAIN_DOWNLOADER -> Unit
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -97,6 +100,7 @@ internal fun Presenter.choiceDismiss(kind: Int) {
     when (ChoiceDialogKind.entries.getOrNull(kind)) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnDismissDuplicateDialog)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnDismissFileConflictDialog)
+        ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupDecline()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }

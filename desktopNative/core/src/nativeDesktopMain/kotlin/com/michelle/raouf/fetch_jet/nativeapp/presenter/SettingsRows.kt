@@ -14,6 +14,8 @@ import com.michelle.raouf.fetch_jet.core.power.SystemPower
 import com.michelle.raouf.fetch_jet.core.power.WhenDone
 import com.michelle.raouf.fetch_jet.core.power.WhenDoneAction
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import com.michelle.raouf.fetch_jet.core.setup.DefaultTorrentHandler
+import com.michelle.raouf.fetch_jet.core.setup.MainDownloaderSetup
 import com.michelle.raouf.fetch_jet.core.startup.StartupLauncher
 import com.michelle.raouf.fetch_jet.core.update.EXTENSION_VERSION
 import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
@@ -313,6 +315,38 @@ private fun generalRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
         )
         rows.divider()
         rows.add(pickerRow("speedUnit", s.speedShownIn, s.speedShownInHint, SPEED_UNITS, SPEED_UNITS.indexOf(v.unitKey) + 1, below = true))
+    }
+    if (MainDownloaderSetup.available) {
+        rows.group(title = s.mainSetupGroup) {
+            rows.add(
+                infoRow(
+                    title = s.defaultAppRowTitle,
+                    subtitle = when (page.defaultApp) {
+                        true -> s.defaultAppIsDefault
+                        false -> if (DefaultTorrentHandler.opensSystemPage) s.defaultAppNotDefault + "\n" + s.defaultAppSystemPageHint
+                        else s.defaultAppNotDefault
+                        null -> null
+                    },
+                    status = if (page.defaultApp == true) s.settingsReady else "",
+                    statusTone = ToneCode.COMPLETED,
+                    buttons = if (page.defaultApp == true) emptyList()
+                    else listOf(button("defaultApp", s.defaultAppMakeDefault, strong = true, round = true, busy = page.defaultAppBusy, enabled = !page.defaultAppBusy)),
+                )
+            )
+            rows.divider()
+            val connected = BridgePairing.seenBrowsers.value.isNotEmpty()
+            rows.add(
+                infoRow(
+                    title = s.mainSetupExtensionRow,
+                    subtitle = if (connected) s.mainSetupExtensionConnected else s.mainSetupExtensionMissing,
+                    id = "openBrowserPage",
+                    clickable = true,
+                    status = if (connected) s.settingsReady else "",
+                    statusTone = ToneCode.COMPLETED,
+                    buttons = if (connected) emptyList() else listOf(button("openBrowserPage", s.open, round = true)),
+                )
+            )
+        }
     }
     if (StartupLauncher.managedBySystemUri != null) {
         rows.group(title = s.startupGroup, footer = s.startupStoreFooter) {
@@ -864,7 +898,7 @@ private fun devicesRows(rows: Rows, v: SettingsSlice) {
 internal fun isFirefoxBrowser(id: String): Boolean = id == "firefox" || id.startsWith("org.mozilla.")
 
 internal fun seenBrowserId(id: String): String? = when {
-    id == "brave" -> null
+    id == "brave" || id == "arc" -> null
     id.startsWith("org.mozilla.") -> "firefox"
     else -> id
 }

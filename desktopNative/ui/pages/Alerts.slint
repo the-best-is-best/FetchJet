@@ -144,6 +144,7 @@ component AlertOverlay inherits Rectangle {
                         height: 48px;
                         CheckBox {
                             checked: root.checked;
+                            label: root.data.checkLabel;
                             toggled(on) => { root.checked = on; }
                         }
                     }

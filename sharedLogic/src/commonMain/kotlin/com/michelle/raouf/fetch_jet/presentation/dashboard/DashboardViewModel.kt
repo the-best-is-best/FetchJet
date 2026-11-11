@@ -662,6 +662,7 @@ class DashboardViewModel(
                         )
 
                     }
+                    refreshSuggestedFileName()
 
                 }
 

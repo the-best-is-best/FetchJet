@@ -30,6 +30,8 @@ import com.michelle.raouf.fetch_jet.nativeapp.runtime.ChangeNotifier
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.CrashLog
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.HostMainDispatcher
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.HostNotifyFn
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.HostPostFn
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.installMainDispatcher
 import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
@@ -220,9 +222,23 @@ internal object NativeApp {
             name == "ping" -> "pong"
             name == "version" -> APP_VERSION
             name == "home" -> DesktopApp.appHome
+            name == "openUrl" -> openExternal(args)
             name.startsWith("debug.") && config.debug -> DebugCalls.call(name.removePrefix("debug."), args)
             else -> ""
         }
+    }
+
+    private fun openExternal(args: String): String {
+        val raw = try {
+            UiJson.parseToJsonElement(args).jsonObject["url"]?.jsonPrimitive?.content.orEmpty()
+        } catch (_: Throwable) {
+            ""
+        }
+        val url = Launch.parseUrlFromArg(raw)
+        if (url.isBlank()) return ""
+        ExternalDownloadBridge.dispatch(url, "")
+        ExternalDownloadBridge.showAndFocus()
+        return "ok"
     }
 
     fun shutdown() {

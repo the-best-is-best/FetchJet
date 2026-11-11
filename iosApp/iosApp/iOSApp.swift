@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedUI
+import SharedLogic
 import UserNotifications
 
 final class LiveActivityBridge: NSObject, IosDownloadNotificationListener {

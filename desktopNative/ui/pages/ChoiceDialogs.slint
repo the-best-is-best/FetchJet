@@ -209,10 +209,10 @@ component ChoiceOverlay inherits Rectangle {
                     clicked => { Act.choicePrimary(root.data.kind); }
                 }
             }
-            Gap {
+            if root.data.secondaryLabel != "": Gap {
                 size: 8px;
             }
-            Rectangle {
+            if root.data.secondaryLabel != "": Rectangle {
                 height: 48px;
                 OutlinedButton {
                     width: parent.width;
@@ -260,6 +260,7 @@ component TimeColumn inherits Rectangle {
         y: 0;
         size: 40px;
         glyph: "▲";
+        label: root.label + " +";
         glyph-size: 16px;
         glyph-weight: 700;
         ink: Theme.primary;
@@ -302,6 +303,7 @@ component TimeColumn inherits Rectangle {
         y: 112px;
         size: 40px;
         glyph: "▼";
+        label: root.label + " −";
         glyph-size: 16px;
         glyph-weight: 700;
         ink: Theme.primary;
@@ -386,6 +388,7 @@ export component ClipPickerDialog inherits Rectangle {
                 IconButton {
                     size: 48px;
                     glyph: "✕";
+                    label: Tr.close;
                     glyph-size: 16px;
                     ink: Theme.on-surface-variant;
                     clicked => { Act.clipPickerClose(); }

@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal const val DEVICE_SYNC_READY = false
+internal const val DEVICE_SYNC_READY = true
 
 internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
@@ -124,6 +124,8 @@ internal data class SettingsPage(
     val startupEnabled: Boolean = false,
     val startHidden: Boolean = true,
     val startupError: String? = null,
+    val defaultApp: Boolean? = null,
+    val defaultAppBusy: Boolean = false,
     val browsers: List<BrowserInfo> = emptyList(),
     val browserBusy: String? = null,
     val storeVersions: Map<String, String> = emptyMap(),
@@ -357,6 +359,7 @@ private fun Presenter.samePage(generation: Int): Boolean = settingsLocal.value.g
 private suspend fun Presenter.loadSettingsPage(section: SettingsSection, generation: Int) {
     when (section) {
         SettingsSection.GENERAL -> {
+            if (samePage(generation)) refreshDefaultApp()
             if (!StartupLauncher.isSupported && StartupLauncher.managedBySystemUri == null) return
             val hidden = withContext(Dispatchers.IO) { StartupPreferences.startHidden }
             val enabled = if (StartupLauncher.managedBySystemUri == null) StartupLauncher.isEnabled() else false

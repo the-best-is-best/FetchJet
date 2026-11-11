@@ -50,6 +50,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
@@ -593,10 +596,21 @@ internal fun FjPhoneHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineSmall,
+        val titleStyle = MaterialTheme.typography.headlineSmall.copy(
             fontWeight = FontWeight.Bold,
+            color = LocalContentColor.current
+        )
+        BasicText(
+            title,
+            style = titleStyle,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = 14.sp,
+                maxFontSize = titleStyle.fontSize,
+                stepSize = 1.sp
+            ),
             modifier = Modifier.weight(1f)
         )
         Column(horizontalAlignment = Alignment.End) {
@@ -604,12 +618,16 @@ internal fun FjPhoneHeader(
                 "↓ " + formatSpeed(totalDlSpeed, speedDisplayUnit),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                softWrap = false
             )
             Text(
                 "↑ " + formatSpeed(totalUlSpeed, speedDisplayUnit),
                 fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false
             )
         }
         SpeedControl(

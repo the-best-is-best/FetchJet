@@ -59,6 +59,7 @@ internal fun GeneralPage(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         LanguageSettingsCard(onLanguageChanged)
+        MainDownloaderSettingsCard()
         SettingsGroup(
             title = LocalizationManager.Strings.clipboardGroup,
             footer = LocalizationManager.Strings.clipboardFooter

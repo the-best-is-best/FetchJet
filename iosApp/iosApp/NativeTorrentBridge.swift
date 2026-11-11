@@ -1,6 +1,6 @@
 #if canImport(FJTorrent)
 import Foundation
-import SharedUI
+import SharedLogic
 import FJTorrent
 
 /// BitTorrent engine for iOS (FULL edition): libtorrent-rasterbar through FetchJet's own

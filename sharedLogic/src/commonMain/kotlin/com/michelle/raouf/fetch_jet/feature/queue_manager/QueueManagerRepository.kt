@@ -488,6 +488,14 @@ class QueueManagerRepository(
     ): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
         com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url, headers)
 
+    private fun freeNameIn(destDir: String, fileName: String): String {
+        val dir = destDir.trimEnd('/', '\\')
+        val others = allTasksFlow.value.filter { it.destinationPath.trimEnd('/', '\\') == dir }
+        return firstFreeFileName(fileName) { name ->
+            AppFileSystem.exists("$dir/$name".toPath()) || others.any { it.fileName.equals(name, ignoreCase = true) }
+        }
+    }
+
     suspend fun enqueueTask(
         url: String,
         customDestinationPath: String? = null,
@@ -517,7 +525,9 @@ class QueueManagerRepository(
         embedSubtitles: Boolean = false,
         initialStepText: String? = null,
         displayTotalBytes: Long = 0L,
-        displayDownloadedBytes: Long = 0L
+        displayDownloadedBytes: Long = 0L,
+        /** Never reuse the name of a file already in the folder or of another task there. */
+        keepExistingFiles: Boolean = false
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -599,7 +609,8 @@ class QueueManagerRepository(
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
-            fileName = customFileName ?: torrentName ?: "",
+            fileName = customFileName?.let { if (keepExistingFiles) freeNameIn(destDir, it) else it }
+                ?: torrentName ?: "",
             destinationPath = destDir,
             engineType = engineType,
             disableUpload = disableUpload,
@@ -699,7 +710,7 @@ class QueueManagerRepository(
             ?: return Result.failure(Exception("Task not found"))
         when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.cancel(taskId)
-            EngineType.BITTORRENT -> torrentEngine.cancel(taskId)
+            EngineType.BITTORRENT -> torrentEngine.cancel(taskId, deleteFiles = deleteFile)
             EngineType.MEDIA_STREAM -> mediaEngine.cancel(taskId)
         }
 
@@ -801,6 +812,14 @@ class QueueManagerRepository(
                                 }
                             }
                         }
+                        val hash = magnetHexInfoHash(task.url)
+                        if (hash != null && task.destinationPath.isNotBlank()) {
+                            val partFile = "${task.destinationPath}/.$hash.parts".toPath()
+                            try {
+                                if (AppFileSystem.exists(partFile)) AppFileSystem.delete(partFile)
+                            } catch (_: Exception) {
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -809,6 +828,28 @@ class QueueManagerRepository(
         }
 
         return Result.success(Unit)
+    }
+
+    private fun magnetHexInfoHash(url: String): String? {
+        if (!url.contains("xt=urn:btih:", ignoreCase = true)) return null
+        val raw = url.substringAfter("xt=urn:btih:").substringBefore('&').trim()
+        if (raw.length == 40 && raw.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return raw.lowercase()
+        if (raw.length != 32) return null
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+        val out = StringBuilder()
+        var buffer = 0L
+        var bits = 0
+        for (c in raw.uppercase()) {
+            val v = alphabet.indexOf(c)
+            if (v < 0) return null
+            buffer = (buffer shl 5) or v.toLong()
+            bits += 5
+            while (bits >= 8) {
+                bits -= 8
+                out.append(((buffer shr bits) and 0xFF).toInt().toString(16).padStart(2, '0'))
+            }
+        }
+        return out.toString().takeIf { it.length == 40 }
     }
 
     private fun formatSpeed(bytesPerSec: Long): String {

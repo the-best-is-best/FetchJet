@@ -106,7 +106,8 @@ fun DashboardViewModel.onDeviceReceive(
         ) else emptyList()
         val result = queueRepository.enqueueTask(
             url = url,
-            customFileName = payload.fileName.takeIf { it.isNotBlank() },
+            customFileName = payload.fileName.takeIf { it.isNotBlank() }
+                ?.let { queueRepository.pathResolver.sanitizeFileName(it) },
             mediaQualities = quality,
             forcedEngineType = engine,
             clipStart = payload.clipStart.takeIf { it.isNotBlank() },
@@ -116,11 +117,12 @@ fun DashboardViewModel.onDeviceReceive(
             scheduledAtMs = scheduledAt,
             initialStepText = STEP_PREPARING_FILE,
             displayTotalBytes = payload.totalBytes,
-            displayDownloadedBytes = if (transfer) payload.downloadedBytes else 0L
+            displayDownloadedBytes = if (transfer) payload.downloadedBytes else 0L,
+            keepExistingFiles = true
         )
         val task = result.getOrNull()
         if (task != null && transfer) {
-            placeReceivedParts(task.id, localPartialFiles)
+            placeReceivedParts(task.id, localPartialFiles, payload.fileName, task.fileName)
         }
         val fromName = payload.fromDeviceName.ifBlank { payload.fromDeviceId }
         val message = LocalizationManager.Strings.sysDeviceReceived.replace("{name}", fromName)
@@ -140,12 +142,17 @@ private fun DashboardViewModel.removeEmptyReceiveFolders() {
 }
 
 /** Move the received `.partN` / `.chunks` files into the new task's scratch dir so it resumes. */
-private fun DashboardViewModel.placeReceivedParts(taskId: String, files: List<String>) {
+private fun DashboardViewModel.placeReceivedParts(
+    taskId: String,
+    files: List<String>,
+    sentName: String,
+    localName: String
+) {
     val destDir = "${queueRepository.pathResolver.getTempDirectory()}/task_$taskId"
     runCatching { AppFileSystem.createDirectories(destDir.toPath()) }
     for (path in files) {
         val src = path.toPath()
-        val name = src.name
+        val name = renamedPart(src.name, sentName, localName)
         val dst = "$destDir/$name".toPath()
         runCatching {
             if (AppFileSystem.exists(dst)) AppFileSystem.delete(dst)
@@ -162,6 +169,11 @@ private fun DashboardViewModel.placeReceivedParts(taskId: String, files: List<St
         runCatching { AppFileSystem.deleteRecursively(recv) }
     }
 }
+
+/** `<sent name>.part0` -> `<local name>.part0` when the receiver saved under a free name. */
+internal fun renamedPart(name: String, sentName: String, localName: String): String =
+    if (sentName.isNotEmpty() && localName.isNotEmpty() && sentName != localName && name.startsWith(sentName))
+        localName + name.removePrefix(sentName) else name
 
 internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
     when (event) {

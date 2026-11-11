@@ -17,7 +17,7 @@ internal val onWindows: Boolean get() = DesktopOs.name == "Windows"
 
 internal fun programName(base: String): String = if (onWindows) "$base.exe" else base
 
-internal fun ytDlpProgramName(): String = if (onWindows) "yt-dlp.exe" else "yt-dlp_linux"
+internal fun ytDlpProgramName(): String = desktopToolAssets.ytDlpProgram
 
 private fun isFile(path: String): Boolean = DesktopOs.fileInfo(path)?.isDirectory == false
 

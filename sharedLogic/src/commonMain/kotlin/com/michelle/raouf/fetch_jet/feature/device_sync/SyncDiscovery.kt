@@ -104,15 +104,20 @@ internal class SyncDiscovery(private val engine: DeviceSyncEngine) {
 
     suspend fun listenLoop() {
         val config = engine.config
+        var bindFailed = false
         while (true) {
             val socket = try {
                 engine.platform.network.bindDiscovery(config.bindHost, config.discoveryPort)
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                engine.log("listen bind failed: ${t.message}")
-                return
+                if (!bindFailed) engine.log("listen bind failed, retrying: ${t.message}")
+                bindFailed = true
+                delay(engine.timing.rebindMs * 5)
+                continue
             }
+            if (bindFailed) engine.log("listen bound udp ${config.discoveryPort}")
+            bindFailed = false
             if (!track(socket)) return
             try {
                 while (true) {

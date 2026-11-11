@@ -1,6 +1,6 @@
 import Foundation
 import CryptoKit
-import SharedUI
+import SharedLogic
 import Darwin
 
 /// Native half of iOS device sync (ROADMAP-1.3.0 item 4): the crypto and the raw LAN sockets.
@@ -297,10 +297,8 @@ public final class NativeDeviceSyncBridge: NSObject, IosDeviceSyncNative {
         }
         if rc != 0 && errno != EINPROGRESS { close(fd); return -1 }
         if rc != 0 {
-            var wset = fd_set()
-            fdZero(&wset); fdSet(fd, &wset)
-            var tv = timeval(tv_sec: Int(timeoutMs / 1000), tv_usec: Int32((timeoutMs % 1000) * 1000))
-            let sel = select(fd + 1, nil, &wset, nil, &tv)
+            var pfd = pollfd(fd: fd, events: Int16(POLLOUT), revents: 0)
+            let sel = poll(&pfd, 1, Int32(clamping: timeoutMs))
             if sel <= 0 { close(fd); return -1 }
             var err: Int32 = 0
             var elen = socklen_t(MemoryLayout<Int32>.size)
@@ -341,8 +339,9 @@ public final class NativeDeviceSyncBridge: NSObject, IosDeviceSyncNative {
 
     public func tcpWrite(connId: Int64, data: Data) -> Bool {
         guard let fd = fdFor(connId) else { return false }
+        if data.isEmpty { return true }
         return data.withUnsafeBytes { raw -> Bool in
-            let base = raw.baseAddress!
+            guard let base = raw.baseAddress else { return false }
             var off = 0
             let total = data.count
             while off < total {
@@ -357,20 +356,5 @@ public final class NativeDeviceSyncBridge: NSObject, IosDeviceSyncNative {
     public func tcpClose(connId: Int64) {
         lock.lock(); let fd = conns[connId]; conns[connId] = nil; lock.unlock()
         if let fd = fd { close(fd) }
-    }
-
-    // fd_set helpers (not exposed as functions in Swift's Darwin).
-    private func fdZero(_ set: inout fd_set) {
-        set.fds_bits = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    }
-
-    private func fdSet(_ fd: Int32, _ set: inout fd_set) {
-        let intOffset = Int(fd) / 32
-        let bitOffset = Int(fd) % 32
-        let mask = Int32(1 << bitOffset)
-        withUnsafeMutablePointer(to: &set.fds_bits) { p in
-            p.withMemoryRebound(to: Int32.self, capacity: 32) { $0[intOffset] |= mask }
-        }
     }
 }

@@ -114,6 +114,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val addTorrentFiles =
         ListChannel(Channels.ADD_TORRENT_FILES.id, Channels.ADD_TORRENT_FILES.name, TorrentFileRowDto.serializer(), notifier)
     val debugSections = MutableStateFlow(false)
+    val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
 
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
@@ -169,6 +170,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         startClipboardWatcher()
         startDevices()
         startAddTorrent()
+        startMainDownloaderSetup()
     }
 
     fun showToast(text: String) {

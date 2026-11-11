@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 enum class MediaStateCode { HIDDEN, COURSE_READING, INSPECTING, ERROR, ENGINE_MISSING, PLAYLIST, NOT_INSPECTED, QUALITIES }
 
-enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT }
+enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT, MAIN_DOWNLOADER }
 
 enum class BadgeToneCode { OTHER, COMPLETED, RUNNING, PAUSED, ERROR }
 

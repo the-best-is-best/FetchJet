@@ -34,6 +34,8 @@ install -m 644 "$HOST_BUILD/libslint_cpp.so" "$STAGE/libslint_cpp.so"
 install -m 644 "$CORE" "$STAGE/libfjcore.so"
 [ -n "$TORRENT" ] && install -m 644 "$TORRENT" "$STAGE/libfjtorrent.so"
 strip --strip-unneeded "$STAGE/FetchJet" 2>/dev/null || true
+mkdir -p "$STAGE/bin"
+ln -s ../FetchJet "$STAGE/bin/FetchJet"
 
 for f in background.js yt-core.js content.js popup.html popup.js options.html options.js icon16.png icon48.png icon128.png manifest.json platform.js; do
     need "$REPO/extension/$f"

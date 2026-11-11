@@ -48,6 +48,7 @@ namespace ChoiceDialogKind {
     inline constexpr int None = 0;
     inline constexpr int Duplicate = 1;
     inline constexpr int FileConflict = 2;
+    inline constexpr int MainDownloader = 3;
 }
 
 namespace BadgeToneCode {
@@ -1617,6 +1618,24 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_stepPreparingFile(next());
     tr.set_sysDeviceReceivingTitle(next());
     tr.set_sysDeviceReceiveFailed(next());
+    tr.set_mainSetupTitle(next());
+    tr.set_mainSetupText(next());
+    tr.set_mainSetupTorrents(next());
+    tr.set_mainSetupClipboard(next());
+    tr.set_mainSetupStartup(next());
+    tr.set_mainSetupKeepReady(next());
+    tr.set_mainSetupExtension(next());
+    tr.set_mainSetupLater(next());
+    tr.set_mainSetupAccept(next());
+    tr.set_mainSetupGroup(next());
+    tr.set_defaultAppRowTitle(next());
+    tr.set_defaultAppIsDefault(next());
+    tr.set_defaultAppNotDefault(next());
+    tr.set_defaultAppMakeDefault(next());
+    tr.set_defaultAppSystemPageHint(next());
+    tr.set_mainSetupExtensionRow(next());
+    tr.set_mainSetupExtensionConnected(next());
+    tr.set_mainSetupExtensionMissing(next());
 }
 
 template <class Send> void bind_actions(const Act &act, Send send) {

@@ -146,6 +146,29 @@ compose.desktop {
                 bundleID = "com.michelle.raouf.fetch_jet"
                 dockName = "FetchJet"
                 appCategory = "public.app-category.utilities"
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>CFBundleURLTypes</key>
+                        <array>
+                            <dict>
+                                <key>CFBundleURLName</key>
+                                <string>Magnet link</string>
+                                <key>CFBundleURLSchemes</key>
+                                <array>
+                                    <string>magnet</string>
+                                </array>
+                            </dict>
+                            <dict>
+                                <key>CFBundleURLName</key>
+                                <string>FetchJet link</string>
+                                <key>CFBundleURLSchemes</key>
+                                <array>
+                                    <string>fetchjet</string>
+                                </array>
+                            </dict>
+                        </array>
+                    """.trimIndent()
+                }
                 if (macIcon.exists()) {
                     iconFile.set(macIcon)
                 }

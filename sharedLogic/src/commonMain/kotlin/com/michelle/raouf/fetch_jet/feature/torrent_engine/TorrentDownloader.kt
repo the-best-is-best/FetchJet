@@ -218,9 +218,11 @@ class TorrentDownloader(
         return start(currentTask)
     }
 
-    override suspend fun cancel(taskId: String): Result<Unit> {
+    override suspend fun cancel(taskId: String): Result<Unit> = cancel(taskId, deleteFiles = false)
+
+    suspend fun cancel(taskId: String, deleteFiles: Boolean): Result<Unit> {
         jobsLock.withLock { activeJobs.remove(taskId)?.cancel() }
-        backend.remove(taskId, deleteFiles = false)
+        backend.remove(taskId, deleteFiles = deleteFiles)
         tasksState.update { current -> current - taskId }
         try {
             val p = cachedTorrentPath(taskId)

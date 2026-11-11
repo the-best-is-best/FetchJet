@@ -14,6 +14,7 @@ namespace fjhost {
     void hide_window();
     void toggle_window();
     void quit_app();
+    void open_external(const std::string &url);
     std::string plain(const slint::SharedString &text);
 
     namespace os {

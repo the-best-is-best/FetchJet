@@ -49,12 +49,8 @@ actual fun getMediaToolsDirectory(): String = getToolsDir()
 private const val CONNECT_TIMEOUT_MS = 15_000L
 private const val READ_TIMEOUT_MS = 60_000L
 private const val MAX_TOOL_BYTES = 400L * 1024 * 1024
-private val YT_DLP_ASSET: String get() = if (onWindows) "yt-dlp_win.zip" else "yt-dlp_linux.zip"
-private val FFMPEG_ASSET: String get() = if (onWindows) "win-64" else "linux-64"
-private val FFMPEG_SHA256: String
-    get() = if (onWindows) "d1124593b7453fc54dd90ca3819dc82c22ffa957937f33dd650082f1a495b10e"
-    else "4348301b0d5e18174925e2022da1823aebbdb07282bbe9adb64b2485e1ef2df7"
-private val DENO_ASSET: String get() = if (onWindows) "deno-x86_64-pc-windows-msvc.zip" else "deno-x86_64-unknown-linux-gnu.zip"
+private val YT_DLP_ASSET: String get() = desktopToolAssets.ytDlpZip
+private val DENO_ASSET: String get() = desktopToolAssets.denoZip
 
 private suspend fun readText(url: String): String {
     val response = AppHttp.client.get(url) {
@@ -202,14 +198,18 @@ private suspend fun installYtDlp(toolsDir: String, onProgress: (ToolDownloadProg
 }
 
 private suspend fun installFfmpeg(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
-    val url = "https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-$FFMPEG_ASSET.zip"
+    val assets = desktopToolAssets
     val zip = DesktopOs.join(toolsDir, "ffmpeg.zip")
     try {
-        val actual = downloadTo(url, zip) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
-        if (actual != FFMPEG_SHA256) {
-            throw IllegalStateException("ffmpeg checksum mismatch (expected $FFMPEG_SHA256, got $actual)")
+        val actual = downloadTo(assets.ffmpegUrl, zip) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
+        if (actual != assets.ffmpegSha256) {
+            throw IllegalStateException("ffmpeg checksum mismatch (expected ${assets.ffmpegSha256}, got $actual)")
         }
-        if (!unzipOne(zip, programName("ffmpeg"), toolsDir)) {
+        if (!assets.ffmpegZipped) {
+            val target = DesktopOs.join(toolsDir, programName("ffmpeg"))
+            check(DesktopOs.move(zip, target, replace = true)) { "could not put ffmpeg in place" }
+            DesktopOs.makeExecutable(target)
+        } else if (!unzipOne(zip, programName("ffmpeg"), toolsDir)) {
             AppLog.e("ffmpeg archive did not contain ${programName("ffmpeg")}; yt-dlp will work without merging (720p limit)")
         }
     } finally {

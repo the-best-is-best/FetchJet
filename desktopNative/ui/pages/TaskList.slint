@@ -135,6 +135,7 @@ component SelectionBar inherits Rectangle {
         IconButton {
             size: 34px;
             glyph: "✕";
+            label: Tr.addClearSelection;
             glyph-size: 14px;
             clicked => { Act.clearChecks(); }
         }
@@ -189,6 +190,7 @@ component ColumnsHeader inherits Rectangle {
         cross-axis-alignment: center;
         CheckBox {
             checked: Core.chrome.allChecked;
+            label: Tr.selectAll;
             indeterminate: Core.chrome.selectionMode && !Core.chrome.allChecked;
             toggled => { Act.checkAll(!Core.chrome.allChecked); }
         }

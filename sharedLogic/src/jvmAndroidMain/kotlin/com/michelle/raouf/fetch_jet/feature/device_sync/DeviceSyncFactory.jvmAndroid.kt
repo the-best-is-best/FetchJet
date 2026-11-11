@@ -26,8 +26,9 @@ private fun deviceSyncPlatformName(): String {
         os.contains("win") -> "Windows"
         else -> "Linux"
     }
-    val host = runCatching {
-        java.net.InetAddress.getLocalHost().hostName.substringBefore('.')
-    }.getOrNull()?.takeIf { it.isNotBlank() && !it.equals("localhost", ignoreCase = true) }
+    val host = runCatching { deviceSyncHostName() }.getOrNull()?.trim()
+        ?.takeIf { it.isNotBlank() && !it.equals("localhost", ignoreCase = true) }
     return if (host != null && !platform.startsWith("Android")) "$host · $label" else label
 }
+
+internal expect fun deviceSyncHostName(): String?

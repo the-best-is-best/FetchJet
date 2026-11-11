@@ -28,7 +28,7 @@ xcodebuild -version 2>&1 | tee -a "$LOG"
 status=0
 if [ "$STEP" = "gradle" ] || [ "$STEP" = "all" ]; then
   echo "=== STEP 1: Kotlin/Native framework (iosSimulatorArm64) ===" | tee -a "$LOG"
-  ./gradlew :sharedUI:linkDebugFrameworkIosSimulatorArm64 --console=plain --no-daemon 2>&1 | tee -a "$LOG"
+  ./gradlew :sharedLogic:linkDebugFrameworkIosSimulatorArm64 --console=plain --no-daemon 2>&1 | tee -a "$LOG"
   status=${PIPESTATUS[0]}
   echo "GRADLE_EXIT=$status" | tee -a "$LOG"
 fi

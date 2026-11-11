@@ -64,6 +64,16 @@ object BehaviorSettings {
         val v = n.coerceIn(0, 32); _connections.value = v; write("connections", v.toString())
     }
 
+    private val _askedMainDownloader =
+        MutableStateFlow(read("askedMainDownloader")?.toBooleanStrictOrNull() ?: false)
+
+    /** The first-run "Make FetchJet your main downloader" question was answered (either way). */
+    val askedMainDownloader: StateFlow<Boolean> = _askedMainDownloader.asStateFlow()
+
+    fun setAskedMainDownloader(on: Boolean) {
+        _askedMainDownloader.value = on; write("askedMainDownloader", on.toString())
+    }
+
     private fun read(key: String): String? = try {
         if (!AppFileSystem.exists(file)) null
         else AppFileSystem.read(file) { readUtf8() }.lineSequence().map { it.trim() }

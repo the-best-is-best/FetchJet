@@ -31,6 +31,11 @@ private object JvmSyncNetwork : SyncNetwork {
         val socket = DatagramSocket(null)
         try {
             socket.reuseAddress = true
+            runCatching {
+                if (java.net.StandardSocketOptions.SO_REUSEPORT in socket.supportedOptions()) {
+                    socket.setOption(java.net.StandardSocketOptions.SO_REUSEPORT, true)
+                }
+            }
             socket.broadcast = true
             socket.bind(address(host, port))
         } catch (t: Throwable) {

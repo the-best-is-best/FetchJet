@@ -10,6 +10,11 @@ component RailItem inherits Rectangle {
     in property <string> glyph;
     in property <bool> selected;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     private property <bool> counted: root.glyph == "";
     width: 68px;
     height: 73px;

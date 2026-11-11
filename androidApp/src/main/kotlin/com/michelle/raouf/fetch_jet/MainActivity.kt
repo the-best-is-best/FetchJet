@@ -142,8 +142,15 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
-    /** A .torrent file or a magnet link opened with FetchJet. */
+    /** A .torrent file, a magnet link or a file link opened with FetchJet, or a shared link. */
     private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            intent.action = null
+            val link = Regex("""(?i)\b(?:https?://|magnet:\?)\S+""").find(text)?.value?.trimEnd('.', ',', ')', ']', '"') ?: return
+            com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(link)
+            return
+        }
         if (intent?.action != Intent.ACTION_VIEW) return
         val uri = intent.data ?: return
         // Consume it: a rotation must not add the same torrent again.

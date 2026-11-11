@@ -1,5 +1,5 @@
 import Foundation
-import SharedUI
+import SharedLogic
 import AVFoundation
 import PythonKit
 import FFmpegSupport
@@ -45,17 +45,23 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
 
     public override init() {
         super.init()
-        // Warm up in the background so the first Inspect does not pay the boot cost.
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            _ = self?.prepareEngine()
+        if !Self.engineInstalled {
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                _ = self?.prepareEngine()
+            }
         }
+    }
+
+    private static var engineInstalled: Bool {
+        FileManager.default.fileExists(atPath: ytDlpModuleFile.path)
+            && FileManager.default.fileExists(atPath: ytDlpVersionFile.path)
     }
 
     // MARK: - IosMediaExecutionBridge
 
     public func isAvailable() -> Bool {
         stateLock.lock(); defer { stateLock.unlock() }
-        return ready
+        return ready || (lastError == nil && Self.engineInstalled)
     }
 
     public func lastErrorText() -> String? {
@@ -84,6 +90,9 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         if preparing {
             return "Preparing in-app media engine (starting Python, loading yt-dlp)..."
+        }
+        if lastError == nil, Self.engineInstalled, let cached = cachedYtDlpVersion() {
+            return "Ready: in-app yt-dlp \(cached) + ffmpeg (starts on first use)"
         }
         if let err = lastError { return "Media engine not ready: \(err)" }
         return "Media engine not started. Click 'Download Tools'."
@@ -167,6 +176,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         engineVersion = version
         lastError = nil
         stateLock.unlock()
+        if let version { try? version.write(to: Self.ytDlpVersionFile, atomically: true, encoding: .utf8) }
         NSLog("[yt-dlp] engine ready: yt-dlp %@ on Python %@, curl_cffi %@", version ?? "?", EmbeddedPython.versionString,
               Self.impersonationVersion ?? "unavailable")
         // YouTube needs a JS runtime for its n/sig challenges; on iOS that is the
@@ -388,12 +398,17 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
                     }
 
                     let ydl = ytdlp.YoutubeDL(ydlOpts)
+                    defer { _ = try? ydl.close.throwing.dynamicallyCall(withArguments: []) }
                     try ydl.download.throwing.dynamicallyCall(withArguments: allUrls)
                 } catch {
                     outcome = Self.describe(error)
                 }
             }
+            EmbeddedPython.withGIL {
+                _ = Python.import("gc").collect()
+            }
         }
+        malloc_zone_pressure_relief(nil, 0)
         return outcome
     }
 
@@ -486,11 +501,22 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
 
     /// "Download Tools" also refreshes yt-dlp to the latest release (takes effect on next launch,
     /// since a loaded module cannot be swapped inside a running interpreter).
+    private static var ytDlpVersionFile: URL {
+        engineDirectory.appendingPathComponent("yt-dlp.version")
+    }
+
+    public func cachedYtDlpVersion() -> String? {
+        guard let text = try? String(contentsOf: Self.ytDlpVersionFile, encoding: .utf8) else { return nil }
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
     public func updateYtDlpModule(progressCallback: (any IosToolDownloadProgressCallback)?) -> String? {
         do {
             try Self.downloadFile(from: Self.ytDlpDownloadURL, to: Self.ytDlpModuleFile) { fraction in
                 progressCallback?.onProgress(fraction: fraction)
             }
+            try? FileManager.default.removeItem(at: Self.ytDlpVersionFile)
             return nil
         } catch {
             return Self.describe(error)
@@ -587,7 +613,8 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
     // MARK: - Helpers
 
     private func ensureEngine() -> Bool {
-        if isAvailable() { return true }
+        stateLock.lock(); let booted = ready; stateLock.unlock()
+        if booted { return true }
         return prepareEngine() == nil
     }
 

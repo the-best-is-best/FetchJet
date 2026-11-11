@@ -799,6 +799,10 @@ fun App(
             // New FetchJet version: automatic check on start + "what's new" dialog
             com.michelle.raouf.fetch_jet.ui.UpdateDialogHost()
 
+            com.michelle.raouf.fetch_jet.ui.MainDownloaderPrompt(
+                onOpenSettings = { viewModel.onEvent(DashboardUiEvent.OnTabSelected(DashboardTab.SETTINGS)) }
+            )
+
             com.michelle.raouf.fetch_jet.ui.WhenDoneDialogHost()
 
             // A link just copied (clipboard watcher): download it?

@@ -439,6 +439,8 @@ internal fun Presenter.settingClick(id: String) {
         id == "updateSee" -> updateShow()
         id == "updateCheck" -> UpdateManager.checkNow()
         id == "releaseNotes" -> openExternal("https://github.com/$UPDATE_REPOSITORY/releases")
+        id == "defaultApp" -> makeDefaultApp()
+        id == "openBrowserPage" -> openSettingsSection(SettingsSection.BROWSER)
         id == "openStartupSettings" -> StartupLauncher.managedBySystemUri?.let { openExternal(it) }
         id.startsWith("browser.") -> browserClicked(id.removePrefix("browser."))
         id.startsWith("revoke.") -> BridgePairing.revokeAllowed(id.removePrefix("revoke."))

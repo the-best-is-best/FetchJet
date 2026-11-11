@@ -24,6 +24,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "SharedLogic"
             isStatic = true
+            binaryOption("pagedAllocator", "false")
         }
     }
 
@@ -32,6 +33,7 @@ kotlin {
     if (nativeDesktop) {
         mingwX64()
         linuxX64()
+        macosArm64()
     }
 
     android {
@@ -111,6 +113,10 @@ kotlin {
             }
             getByName("mingwX64Main").dependsOn(nativeDesktopMain)
             getByName("linuxX64Main").dependsOn(nativeDesktopMain)
+            getByName("macosArm64Main").dependsOn(nativeDesktopMain)
+            getByName("macosArm64Main").dependencies {
+                implementation(libs.ktor.client.darwin)
+            }
         }
     }
 }

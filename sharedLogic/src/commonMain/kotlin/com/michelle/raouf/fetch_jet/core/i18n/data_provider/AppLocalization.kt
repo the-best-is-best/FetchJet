@@ -795,6 +795,24 @@ interface AppLocalization : LocalizationProvider {
     val stepPreparingFile: String
     val sysDeviceReceivingTitle: String
     val sysDeviceReceiveFailed: String
+    val mainSetupTitle: String
+    val mainSetupText: String
+    val mainSetupTorrents: String
+    val mainSetupClipboard: String
+    val mainSetupStartup: String
+    val mainSetupKeepReady: String
+    val mainSetupExtension: String
+    val mainSetupLater: String
+    val mainSetupAccept: String
+    val mainSetupGroup: String
+    val defaultAppRowTitle: String
+    val defaultAppIsDefault: String
+    val defaultAppNotDefault: String
+    val defaultAppMakeDefault: String
+    val defaultAppSystemPageHint: String
+    val mainSetupExtensionRow: String
+    val mainSetupExtensionConnected: String
+    val mainSetupExtensionMissing: String
 }
 
 val LocalizationManager.Strings: AppLocalization

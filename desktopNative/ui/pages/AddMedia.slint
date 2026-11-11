@@ -172,6 +172,7 @@ component EngineMissing inherits Rectangle {
 
 component CheckRow inherits Rectangle {
     in property <bool> selected;
+    in property <string> label;
     callback toggled(selected: bool);
     height: 56px + 2px;
     Rectangle {
@@ -197,6 +198,7 @@ component CheckRow inherits Rectangle {
                 height: 48px;
                 CheckBox {
                     checked: root.selected;
+                    label: root.label;
                     toggled(on) => { root.toggled(on); }
                 }
             }
@@ -261,6 +263,7 @@ component QualitiesCard inherits SectionCard {
                 height: parent.height - 8px;
                 for quality in Core.addQualities: CheckRow {
                     selected: quality.selected;
+                    label: quality.label;
                     toggled(on) => { Act.toggleQuality(quality.index, on); }
                     VerticalLayout {
                         horizontal-stretch: 1;
@@ -291,6 +294,11 @@ component OptionCard inherits Rectangle {
     in property <string> title;
     in property <[string]> lines;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     horizontal-stretch: 1;
     border-radius: 10px;
     border-width: root.selected ? 2px : 1px;
@@ -382,6 +390,7 @@ component SubtitlesCard inherits SectionCard {
                 height: parent.height - 8px;
                 for sub in Core.addSubtitles: CheckRow {
                     selected: sub.selected;
+                    label: sub.name;
                     toggled(on) => { Act.toggleSubtitle(sub.code, on); }
                     T {
                         text: sub.name;
@@ -439,6 +448,9 @@ component TimeCard inherits Rectangle {
     in property <string> friendly;
     in property <bool> has-error;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label + " " + root.time;
+    accessible-action-default => { root.clicked(); }
     height: 96px;
     horizontal-stretch: 1;
     border-radius: 10px;
@@ -525,6 +537,7 @@ component ClipCard inherits SectionCard {
                 }
                 Switch {
                     checked: Core.addMedia.clipEnabled;
+                    label: Core.addMedia.clipTitle;
                     toggled(on) => { Act.setClipEnabled(on); }
                 }
             }
@@ -797,6 +810,7 @@ component PlaylistCard inherits SectionCard {
                             height: 48px;
                             CheckBox {
                                 checked: entry.selected;
+                                label: entry.title;
                                 toggled(on) => { Act.togglePlaylistEntry(entry.index, on); }
                             }
                         }
@@ -872,6 +886,11 @@ component FormatChip inherits Rectangle {
     in property <string> label;
     in property <bool> selected;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     width: max(48px, text.preferred-width + 24px);
     height: 48px;
     ta := TouchArea {

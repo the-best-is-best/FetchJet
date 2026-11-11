@@ -37,6 +37,11 @@ component EngineChip inherits Rectangle {
     border-width: 1.2px;
     border-color: root.data.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
     background: root.data.selected ? Theme.primary : Theme.surface-variant.with-alpha(0.5);
+    accessible-role: button;
+    accessible-label: root.data.label;
+    accessible-checkable: true;
+    accessible-checked: root.data.selected;
+    accessible-action-default => { Act.setEngine(root.data.engine); }
     ta := TouchArea {
         clicked => { Act.setEngine(root.data.engine); }
     }
@@ -77,6 +82,9 @@ component QuickFolderButton inherits Rectangle {
     border-color: Theme.outline-variant.with-alpha(0.6);
     background: Theme.surface-variant.with-alpha(0.5);
     clip: true;
+    accessible-role: button;
+    accessible-label: root.data.label;
+    accessible-action-default => { Act.setQuickFolder(root.data.path); }
     ta := TouchArea {
         clicked => { Act.setQuickFolder(root.data.path); }
     }
@@ -145,6 +153,9 @@ component AddHeader inherits Rectangle {
             height: 32px;
             border-radius: 16px;
             background: Theme.surface-variant;
+            accessible-role: button;
+            accessible-label: Tr.close;
+            accessible-action-default => { Act.showAddDialog(false); }
             close := TouchArea {
                 clicked => { Act.showAddDialog(false); }
             }
@@ -209,6 +220,7 @@ component UrlSection inherits VerticalLayout {
                 Act.setUrl("");
             }
             glyph: "✕";
+            label: Tr.addClearSelection;
         }
         paste := FieldChipButton {
             visible: field.text == "";
@@ -557,6 +569,7 @@ component AddBody inherits VerticalLayout {
             FieldIconButton {
                 x: Dir.rtl ? 0 : 6px;
                 glyph: "↺";
+                label: Tr.reset;
                 clicked => { Act.resetFileName(); }
             }
         }
@@ -580,6 +593,7 @@ component AddBody inherits VerticalLayout {
             FieldIconButton {
                 x: Dir.rtl ? 0 : 6px;
                 glyph: "✕";
+                label: Tr.addClearSelection;
                 clicked => {
                     checksum.set-text("");
                     Act.setChecksum("");
@@ -605,6 +619,7 @@ component AddBody inherits VerticalLayout {
             FieldIconButton {
                 x: Dir.rtl ? 0 : 6px;
                 emoji: "📂";
+                label: Tr.settingsChooseFolder;
                 clicked => { Act.pickDestination(); }
             }
         }
@@ -633,6 +648,7 @@ component AddBody inherits VerticalLayout {
             height: 48px;
             CheckBox {
                 checked: Core.add.leech;
+                label: Tr.disableTorrentUpload;
                 tint: #0284C7;
                 idle: #64748B;
                 toggled(on) => { Act.setLeech(on); }

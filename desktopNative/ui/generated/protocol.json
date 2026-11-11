@@ -228,7 +228,8 @@
   "ChoiceDialogKind": [
    "NONE",
    "DUPLICATE",
-   "FILE_CONFLICT"
+   "FILE_CONFLICT",
+   "MAIN_DOWNLOADER"
   ],
   "BadgeToneCode": [
    "OTHER",
@@ -3590,6 +3591,24 @@
   "deviceNoAnswer",
   "stepPreparingFile",
   "sysDeviceReceivingTitle",
-  "sysDeviceReceiveFailed"
+  "sysDeviceReceiveFailed",
+  "mainSetupTitle",
+  "mainSetupText",
+  "mainSetupTorrents",
+  "mainSetupClipboard",
+  "mainSetupStartup",
+  "mainSetupKeepReady",
+  "mainSetupExtension",
+  "mainSetupLater",
+  "mainSetupAccept",
+  "mainSetupGroup",
+  "defaultAppRowTitle",
+  "defaultAppIsDefault",
+  "defaultAppNotDefault",
+  "defaultAppMakeDefault",
+  "defaultAppSystemPageHint",
+  "mainSetupExtensionRow",
+  "mainSetupExtensionConnected",
+  "mainSetupExtensionMissing"
  ]
 }

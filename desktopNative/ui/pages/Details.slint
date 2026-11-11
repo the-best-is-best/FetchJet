@@ -272,6 +272,7 @@ component FileRow inherits Rectangle {
             height: 48px;
             CheckBox {
                 checked: root.data.selected;
+                label: root.data.path;
                 toggled(on) => { Act.toggleDetailFile(root.data.index, on); }
             }
         }
@@ -298,6 +299,9 @@ component FileRow inherits Rectangle {
             height: 20px;
             border-radius: 4px;
             background: root.tone.with-alpha(0.15);
+            accessible-role: button;
+            accessible-label: root.data.priorityLabel;
+            accessible-action-default => { Act.cycleDetailFilePriority(root.data.index); }
             ta := TouchArea {
                 clicked => { Act.cycleDetailFilePriority(root.data.index); }
             }
@@ -365,6 +369,11 @@ component DetailsBody inherits VerticalLayout {
     }
     if Core.details.hasFiles: Rectangle {
         height: 20px;
+        accessible-role: button;
+        accessible-label: Core.details.filesTitle;
+        accessible-checkable: true;
+        accessible-checked: root.show-files;
+        accessible-action-default => { root.show-files = !root.show-files; }
         files := TouchArea {
             clicked => { root.show-files = !root.show-files; }
         }
@@ -623,6 +632,9 @@ component DetailsBody inherits VerticalLayout {
                 width: copy.preferred-width + 12px;
                 height: 20px;
                 border-radius: 4px;
+                accessible-role: button;
+                accessible-label: Tr.copy + " " + link.label;
+                accessible-action-default => { Act.copyText(link.url); }
                 ta := TouchArea {
                     clicked => { Act.copyText(link.url); }
                 }
@@ -761,6 +773,7 @@ export component DetailsPane inherits Rectangle {
             }
             IconButton {
                 glyph: "✕";
+                label: Tr.close;
                 glyph-size: 15px;
                 ink: Theme.on-surface;
                 clicked => { Act.closeDetails(); }

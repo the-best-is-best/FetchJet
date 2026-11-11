@@ -8,6 +8,17 @@ export component CheckBox inherits Rectangle {
     in property <color> tint: Theme.primary;
     in property <color> idle: Theme.on-surface-variant;
     callback toggled(checked: bool);
+    in property <string> label;
+    accessible-role: checkbox;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.toggled(!root.checked);
+        }
+    }
     private property <bool> filled: root.checked || root.indeterminate;
     width: 24px;
     height: 24px;

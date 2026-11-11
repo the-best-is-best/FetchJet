@@ -31,6 +31,7 @@ component FileRow inherits Rectangle {
         height: 48px;
         CheckBox {
             checked: root.data.selected;
+            label: root.data.path;
             tint: #0284C7;
             idle: #64748B;
             toggled(on) => { root.toggled(on); }
@@ -61,6 +62,9 @@ component FileRow inherits Rectangle {
         border-width: 1px;
         border-color: root.flag.with-alpha(0.4);
         background: root.flag.with-alpha(0.15);
+        accessible-role: button;
+        accessible-label: root.data.priorityLabel;
+        accessible-action-default => { root.cycled(); }
         tap := TouchArea {
             clicked => { root.cycled(); }
         }

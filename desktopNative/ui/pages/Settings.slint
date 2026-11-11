@@ -14,6 +14,14 @@ component SetButton inherits Rectangle {
     in property <SettingButtonDto> data;
     in property <length> spinner: 14px;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.data.label;
+    accessible-enabled: root.data.enabled;
+    accessible-action-default => {
+        if root.data.enabled {
+            root.clicked();
+        }
+    }
     private property <length> pad: root.data.flat ? 12px : 24px;
     private property <color> ink: !root.data.enabled ? Theme.on-surface-variant.with-alpha(0.38)
         : root.data.filled ? Theme.on-primary
@@ -108,6 +116,11 @@ component Segmented inherits Rectangle {
             width: label.preferred-width + (root.units ? 20px : 24px);
             border-radius: 8px;
             background: !seg.selected ? transparent : root.units ? Theme.primary-container : Theme.primary;
+            accessible-role: button;
+            accessible-label: root.options[seg.i];
+            accessible-checkable: true;
+            accessible-checked: seg.selected;
+            accessible-action-default => { root.picked(seg.i); }
             ta := TouchArea {
                 clicked => { root.picked(seg.i); }
             }
@@ -166,6 +179,11 @@ component FilterChips inherits Rectangle {
                 border-width: cell.selected ? 0px : 1px;
                 border-color: Theme.outline-variant;
                 background: cell.selected ? Theme.secondary-container : transparent;
+                accessible-role: button;
+                accessible-label: root.options[cell.i];
+                accessible-checkable: true;
+                accessible-checked: cell.selected;
+                accessible-action-default => { root.picked(cell.i); }
                 ta := TouchArea {
                     clicked => { root.picked(cell.i); }
                 }
@@ -233,6 +251,9 @@ component Field inherits VerticalLayout {
                 height: 36px;
                 border-radius: 8px;
                 background: Theme.primary.with-alpha(0.14);
+                accessible-role: button;
+                accessible-label: root.data.toggle;
+                accessible-action-default => { Act.settingClick(root.data.toggleId); }
                 tap := TouchArea {
                     clicked => { Act.settingClick(root.data.toggleId); }
                 }
@@ -268,6 +289,16 @@ component TitleRow inherits Rectangle {
     ta := TouchArea {
         enabled: root.data.clickable && root.data.enabled;
         clicked => { root.clicked(); }
+    }
+    if root.data.clickable: Rectangle {
+        accessible-role: button;
+        accessible-label: root.data.title;
+        accessible-enabled: root.data.enabled;
+        accessible-action-default => {
+            if root.data.enabled {
+                root.clicked();
+            }
+        }
     }
     Rectangle {
         y: root.round-top ? 0px : -20px;
@@ -344,6 +375,9 @@ component MenuRow inherits TitleRow {
             width: max(58px, word.preferred-width + 8px + arrow.preferred-width + 24px);
             height: 40px;
             border-radius: 20px;
+            accessible-role: button;
+            accessible-label: root.data.side;
+            accessible-action-default => { menu.show(); }
             tap := TouchArea {
                 clicked => { menu.show(); }
             }
@@ -452,6 +486,7 @@ component RowView inherits VerticalLayout {
                     min-height: 48px;
                     Switch {
                         checked: root.data.checked;
+                        label: root.data.title;
                         enabled: root.data.enabled;
                         toggled(on) => { Act.settingToggle(root.data.id, on); }
                     }
@@ -595,6 +630,7 @@ component RowView inherits VerticalLayout {
                     FieldIconButton {
                         y: parent.height - 36px;
                         glyph: "✕";
+                        label: Tr.remove;
                         clicked => { Act.settingClick(root.data.removeId); }
                     }
                 }
@@ -612,6 +648,7 @@ component RowView inherits VerticalLayout {
                     FieldIconButton {
                         y: parent.height - 36px;
                         glyph: "✕";
+                        label: Tr.remove;
                         clicked => { Act.settingClick(root.data.removeId); }
                     }
                 }
@@ -728,6 +765,11 @@ component NavItem inherits Rectangle {
     in property <bool> selected;
     in property <bool> chevron;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.data.title;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     private property <length> text-width: root.width - 66px - (root.chevron ? 20px : 0px);
     height: 60px;
     border-radius: 12px;
@@ -844,6 +886,9 @@ component Page inherits Rectangle {
                     x: Dir.rtl ? parent.width - self.width : 0;
                     width: 12px + arrow.preferred-width + 8px + all.preferred-width;
                     border-radius: 10px;
+                    accessible-role: button;
+                    accessible-label: Tr.back;
+                    accessible-action-default => { Act.setSettingsSection(-1); }
                     back := TouchArea {
                         clicked => { Act.setSettingsSection(-1); }
                     }

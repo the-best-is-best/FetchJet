@@ -10,6 +10,11 @@ component NavItem inherits Rectangle {
     in property <bool> has-count: true;
     in property <bool> selected;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     height: (root.has-count ? 44px : 38px) + 2px;
     Rectangle {
         y: 1px;

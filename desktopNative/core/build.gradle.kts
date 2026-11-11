@@ -30,6 +30,15 @@ kotlin {
         }
     }
 
+    macosArm64 {
+        binaries {
+            sharedLib {
+                baseName = "fjcore"
+                binaryOption("pagedAllocator", "false")
+            }
+        }
+    }
+
     sourceSets {
         val nativeDesktopMain by creating {
             dependsOn(getByName("nativeMain"))
@@ -47,5 +56,6 @@ kotlin {
             dependsOn(nativeDesktopMain)
         }
         getByName("linuxX64Main").dependsOn(nativeDesktopMain)
+        getByName("macosArm64Main").dependsOn(nativeDesktopMain)
     }
 }

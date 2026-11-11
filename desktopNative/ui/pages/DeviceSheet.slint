@@ -58,6 +58,11 @@ component DeviceRow inherits VerticalLayout {
     Rectangle {
         height: 46px;
         background: root.data.selected ? Theme.primary.with-alpha(0.14) : transparent;
+        accessible-role: button;
+        accessible-label: root.data.name;
+        accessible-checkable: true;
+        accessible-checked: root.data.selected;
+        accessible-action-default => { Act.deviceSelect(root.data.id); }
         ta := TouchArea {
             clicked => { Act.deviceSelect(root.data.id); }
         }
@@ -128,6 +133,11 @@ component ModeRow inherits Rectangle {
     in property <string> detail;
     in property <bool> selected;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
     min-height: 48px;
     ta := TouchArea {
         clicked => { root.clicked(); }
@@ -498,6 +508,7 @@ export component DeviceSheet inherits Overlay {
                         height: 48px;
                         CheckBox {
                             checked: Core.deviceSheet.deleteAfter;
+                            label: Tr.sysDeviceDeleteAfter;
                             toggled(on) => { Act.deviceSetDeleteAfter(on); }
                         }
                     }

@@ -25,6 +25,11 @@ export component SpeedControl inherits Rectangle {
             height: 36px;
             border-radius: 10px;
             background: Core.chrome.turtleActive ? Theme.primary.with-alpha(0.22) : transparent;
+            accessible-role: button;
+            accessible-label: Tr.sectionSpeed;
+            accessible-checkable: true;
+            accessible-checked: Core.chrome.turtleActive;
+            accessible-action-default => { Act.toggleTurtle(); }
             turtle := TouchArea {
                 clicked => { Act.toggleTurtle(); }
             }
@@ -43,6 +48,9 @@ export component SpeedControl inherits Rectangle {
             height: 36px;
             border-radius: 10px;
             background: Core.chrome.capped ? Theme.primary.with-alpha(0.18) : Theme.surface-variant.with-alpha(0.4);
+            accessible-role: button;
+            accessible-label: Core.chrome.modeLabel;
+            accessible-action-default => { menu.show(); }
             mode := TouchArea {
                 clicked => { menu.show(); }
             }
@@ -102,6 +110,7 @@ component SearchField inherits TextField {
         width: 36px;
         FieldIconButton {
             glyph: "✕";
+            label: Tr.addClearSelection;
             clicked => {
                 root.set-text("");
                 Act.setSearch("");
@@ -171,6 +180,7 @@ export component TopBar inherits Rectangle {
         SpeedControl { }
         IconButton {
             glyph: Theme.dark ? "☀" : "☾";
+            label: Theme.dark ? Tr.homeLightTheme : Tr.homeDarkTheme;
             glyph-size: 18px;
             ink: Theme.on-background;
             clicked => { Act.toggleTheme(); }

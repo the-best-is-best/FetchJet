@@ -23,6 +23,7 @@ kotlin {
             baseName = "SharedUI"
             isStatic = true
             export(project(":sharedLogic"))
+            binaryOption("pagedAllocator", "false")
         }
     }
 

@@ -11,6 +11,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 internal object DesktopKeyVault {
     private val file: String get() = DesktopOs.join(DesktopPaths.settings(), "secrets.key")
 
+    fun exists(): Boolean = DesktopOs.exists(file)
+
     fun load(): ByteArray? {
         if (!DesktopOs.exists(file)) return null
         val text = DesktopOs.readText(file)?.trim() ?: error("secrets.key cannot be read")
@@ -30,7 +32,19 @@ internal object DesktopKeyVault {
     }
 }
 
+internal expect object SharedSecretKey {
+    fun load(): ByteArray?
+}
+
 internal actual object SecretBox {
+    private val sharedKey: ByteArray? by lazy {
+        try {
+            SharedSecretKey.load()?.takeIf { it.size == 32 }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     private val key: ByteArray by lazy {
         DesktopKeyVault.load() ?: DesktopOs.randomBytes(32).also {
             DesktopKeyVault.store(it)
@@ -38,9 +52,18 @@ internal actual object SecretBox {
         }
     }
 
-    actual fun seal(plain: ByteArray): ByteArray = DesktopOs.aesGcmSeal(key, plain)
+    actual fun seal(plain: ByteArray): ByteArray = DesktopOs.aesGcmSeal(sharedKey ?: key, plain)
 
-    actual fun open(sealed: ByteArray): ByteArray = DesktopOs.aesGcmOpen(key, sealed)
+    actual fun open(sealed: ByteArray): ByteArray {
+        sharedKey?.let { shared ->
+            try {
+                return DesktopOs.aesGcmOpen(shared, sealed)
+            } catch (_: Throwable) {
+                if (!DesktopKeyVault.exists()) throw IllegalStateException("the secret was sealed with another key")
+            }
+        }
+        return DesktopOs.aesGcmOpen(key, sealed)
+    }
 
     actual fun randomBytes(n: Int): ByteArray = DesktopOs.randomBytes(n)
 }

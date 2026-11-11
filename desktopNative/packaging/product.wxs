@@ -77,11 +77,32 @@
       </Component>
     </DirectoryRef>
 
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="DefaultAppsRegistration" Guid="{8E4D6C95-C07E-4A9B-B24F-6E0A1B2C3D45}">
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Torrent" Type="string" Value="BitTorrent file" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Torrent\DefaultIcon" Type="string" Value="&quot;[INSTALLDIR]FetchJet.exe&quot;,0" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Torrent\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]FetchJet.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Magnet" Type="string" Value="URL:Magnet link" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Magnet" Name="URL Protocol" Type="string" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Magnet\DefaultIcon" Type="string" Value="&quot;[INSTALLDIR]FetchJet.exe&quot;,0" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\FetchJet.Magnet\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]FetchJet.exe&quot; &quot;%1&quot;" />
+        <RegistryValue Root="HKCU" Key="Software\Classes\.torrent\OpenWithProgids" Name="FetchJet.Torrent" Type="string" Value="" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet\Capabilities" Name="ApplicationName" Type="string" Value="FetchJet" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet\Capabilities" Name="ApplicationDescription" Type="string" Value="FetchJet download manager" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet\Capabilities" Name="ApplicationIcon" Type="string" Value="&quot;[INSTALLDIR]FetchJet.exe&quot;,0" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet\Capabilities\FileAssociations" Name=".torrent" Type="string" Value="FetchJet.Torrent" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet\Capabilities\URLAssociations" Name="magnet" Type="string" Value="FetchJet.Magnet" />
+        <RegistryValue Root="HKCU" Key="Software\RegisteredApplications" Name="FetchJet" Type="string" Value="Software\Michelle Raouf\FetchJet\Capabilities" />
+        <RegistryValue Root="HKCU" Key="Software\Michelle Raouf\FetchJet" Name="DefaultAppsRegistration" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
     <Feature Id="Main" Title="FetchJet" Level="1" Absent="disallow" AllowAdvertise="no">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="TorrentFileType" />
+      <ComponentRef Id="DefaultAppsRegistration" />
     </Feature>
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />

@@ -6,6 +6,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
+import com.michelle.raouf.fetch_jet.domain.model.displayChunks
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -268,7 +269,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
         }
     }
 
-    val chunks = task.chunks.sortedBy { it.startByte }
+    val chunks = task.displayChunks()
     val total = chunks.maxOfOrNull { it.endByte + 1 }?.takeIf { it > 0 }
     val piecesShown = task.chunks.size > 1 && !completed && total != null
     val pills = ArrayList<ChipDto>(4)

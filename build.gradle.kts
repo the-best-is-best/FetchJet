@@ -17,6 +17,7 @@ if (providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true") {
             extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension> {
                 mingwX64()
                 linuxX64()
+                macosArm64()
                 sourceSets.getByName("mingwX64Main").kotlin.srcDir(
                     rootProject.file("desktopNative/kmpLocalization-mingw")
                 )

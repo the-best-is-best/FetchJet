@@ -22,6 +22,10 @@ export component FieldIconButton inherits Rectangle {
     in property <string> emoji;
     in property <length> glyph-size: 14px;
     callback clicked();
+    in property <string> label;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
     width: 30px;
     height: 30px;
     border-radius: 15px;
@@ -49,6 +53,9 @@ export component FieldChipButton inherits Rectangle {
     in property <string> text;
     in property <string> emoji;
     callback clicked();
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
     width: content.preferred-width;
     height: 34px;
     border-radius: 8px;
