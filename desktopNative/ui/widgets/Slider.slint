@@ -1,0 +1,105 @@
+import { Theme, Dir } from "../theme.slint";
+
+export component StepSlider inherits Rectangle {
+    in property <int> count: 6;
+    in property <int> value: 1;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback changed(value: int);
+    private property <length> pad: 11px;
+    private property <length> span: root.width - 2 * root.pad;
+    private property <float> share: root.count > 1 ? (clamp(root.value, 1, root.count) - 1) / (root.count - 1) : 0;
+    private property <length> knob-x: root.pad + (Dir.rtl ? 1 - root.share : root.share) * root.span;
+    pure function step-at(x: length) -> int {
+        Math.round(clamp((Dir.rtl ? root.width - x : x) - root.pad, 0px, root.span) / max(root.span, 1px) * (root.count - 1)) + 1
+    }
+    height: 44px;
+    accessible-role: slider;
+    accessible-label: root.label;
+    accessible-value: root.value;
+    accessible-value-minimum: 1;
+    accessible-value-maximum: root.count;
+    accessible-value-step: 1;
+    accessible-action-increment => {
+        if root.enabled && root.value < root.count {
+            root.changed(root.value + 1);
+        }
+    }
+    accessible-action-decrement => {
+        if root.enabled && root.value > 1 {
+            root.changed(root.value - 1);
+        }
+    }
+    Rectangle {
+        x: root.pad;
+        y: 9px;
+        width: root.span;
+        height: 6px;
+        border-radius: 3px;
+        background: Theme.outline-variant;
+    }
+    Rectangle {
+        x: Dir.rtl ? root.knob-x : root.pad;
+        y: 9px;
+        width: Dir.rtl ? root.pad + root.span - root.knob-x : root.knob-x - root.pad;
+        height: 6px;
+        border-radius: 3px;
+        background: root.enabled ? Theme.primary : Theme.outline;
+    }
+    for i in root.count: Text {
+        x: root.pad + (Dir.rtl ? 1 - i / max(root.count - 1, 1) : i / max(root.count - 1, 1)) * root.span - 10px;
+        y: 26px;
+        width: 20px;
+        height: 16px;
+        text: i + 1;
+        color: i + 1 == root.value ? Theme.primary : Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: i + 1 == root.value ? 700 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        x: root.knob-x - 11px;
+        y: 1px;
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: root.enabled ? Theme.primary : Theme.outline;
+        border-width: 3px;
+        border-color: Theme.surface;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                if root.step-at(self.mouse-x) != root.value {
+                    root.changed(root.step-at(self.mouse-x));
+                }
+            }
+        }
+        moved => {
+            if self.pressed && root.step-at(self.mouse-x) != root.value {
+                root.changed(root.step-at(self.mouse-x));
+            }
+        }
+    }
+    FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if (e.text == Key.RightArrow && !Dir.rtl) || (e.text == Key.LeftArrow && Dir.rtl) {
+                if root.value < root.count {
+                    root.changed(root.value + 1);
+                }
+                return accept;
+            }
+            if (e.text == Key.LeftArrow && !Dir.rtl) || (e.text == Key.RightArrow && Dir.rtl) {
+                if root.value > 1 {
+                    root.changed(root.value - 1);
+                }
+                return accept;
+            }
+            reject
+        }
+    }
+}

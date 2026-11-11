@@ -251,6 +251,45 @@ export struct AlertDto {
     round: bool,
 }
 
+export struct AudioCopyDto {
+    path: string,
+    name: string,
+    size: string,
+}
+
+export struct AudioCompressDto {
+    open: bool,
+    fileName: string,
+    originalSize: string,
+    newSize: string,
+    simple: bool,
+    levels: [ChoiceDto],
+    bitratesTop: [ChoiceDto],
+    bitratesBottom: [ChoiceDto],
+    ratesTop: [ChoiceDto],
+    ratesBottom: [ChoiceDto],
+    channels: [ChoiceDto],
+    running: bool,
+    progress: float,
+    failed: bool,
+    canStart: bool,
+    copies: [AudioCopyDto],
+    saving: string,
+    ratio: float,
+    level: int,
+    levelCount: int,
+    levelLabel: string,
+    bitrates: [ChoiceDto],
+    bitrateOptions: [string],
+    bitratePick: int,
+    rates: [ChoiceDto],
+    rateOptions: [string],
+    ratePick: int,
+    channelOptions: [string],
+    channelPick: int,
+    progressText: string,
+}
+
 export struct ChipDto {
     text: string,
     tone: int,
@@ -305,6 +344,8 @@ export struct DetailsDto {
     secondaryAction: int,
     secondaryLabel: string,
     canShare: bool,
+    canCompress: bool,
+    compressLabel: string,
     removeLabel: string,
 }
 
@@ -824,4 +865,5 @@ export global Core {
     in property <DevicePairingDto> devicePairing;
     in property <AddTorrentDto> addTorrent;
     in property <[TorrentFileRowDto]> addTorrentFiles;
+    in property <AudioCompressDto> audioCompress;
 }

@@ -113,13 +113,17 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val addTorrent = StructChannel(Channels.ADD_TORRENT.id, Channels.ADD_TORRENT.name, AddTorrentDto.serializer(), notifier)
     val addTorrentFiles =
         ListChannel(Channels.ADD_TORRENT_FILES.id, Channels.ADD_TORRENT_FILES.name, TorrentFileRowDto.serializer(), notifier)
+    val audioCompress = StructChannel(
+        Channels.AUDIO_COMPRESS.id, Channels.AUDIO_COMPRESS.name,
+        com.michelle.raouf.fetch_jet.nativeapp.dto.AudioCompressDto.serializer(), notifier
+    )
     val debugSections = MutableStateFlow(false)
     val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
 
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
         addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, updateDialog, addLinks, deviceSheet,
-        deviceRows, devicePairing, addTorrent, addTorrentFiles,
+        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress,
     )
 
     @kotlin.concurrent.Volatile
@@ -170,6 +174,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         startClipboardWatcher()
         startDevices()
         startAddTorrent()
+        startAudioCompress()
         startMainDownloaderSetup()
     }
 

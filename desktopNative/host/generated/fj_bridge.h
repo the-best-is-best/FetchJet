@@ -243,7 +243,8 @@ namespace Channel {
     inline constexpr int DevicePairing = 24;
     inline constexpr int AddTorrent = 25;
     inline constexpr int AddTorrentFiles = 26;
-    inline constexpr int Count = 27;
+    inline constexpr int AudioCompress = 27;
+    inline constexpr int Count = 28;
 }
 
 inline EngineChoiceDto parse_EngineChoiceDto(const fj::Json &j) {
@@ -531,6 +532,49 @@ inline AlertDto parse_AlertDto(const fj::Json &j) {
     return d;
 }
 
+inline AudioCopyDto parse_AudioCopyDto(const fj::Json &j) {
+    AudioCopyDto d{};
+    d.path = fj::text(j, "path");
+    d.name = fj::text(j, "name");
+    d.size = fj::text(j, "size");
+    return d;
+}
+
+inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
+    AudioCompressDto d{};
+    d.open = fj::flag(j, "open");
+    d.fileName = fj::text(j, "fileName");
+    d.originalSize = fj::text(j, "originalSize");
+    d.newSize = fj::text(j, "newSize");
+    d.simple = fj::flag(j, "simple");
+    d.levels = fj::struct_model<ChoiceDto>(j, "levels", parse_ChoiceDto);
+    d.bitratesTop = fj::struct_model<ChoiceDto>(j, "bitratesTop", parse_ChoiceDto);
+    d.bitratesBottom = fj::struct_model<ChoiceDto>(j, "bitratesBottom", parse_ChoiceDto);
+    d.ratesTop = fj::struct_model<ChoiceDto>(j, "ratesTop", parse_ChoiceDto);
+    d.ratesBottom = fj::struct_model<ChoiceDto>(j, "ratesBottom", parse_ChoiceDto);
+    d.channels = fj::struct_model<ChoiceDto>(j, "channels", parse_ChoiceDto);
+    d.running = fj::flag(j, "running");
+    d.progress = fj::real(j, "progress");
+    d.failed = fj::flag(j, "failed");
+    d.canStart = fj::flag(j, "canStart");
+    d.copies = fj::struct_model<AudioCopyDto>(j, "copies", parse_AudioCopyDto);
+    d.saving = fj::text(j, "saving");
+    d.ratio = fj::real(j, "ratio");
+    d.level = fj::integer(j, "level");
+    d.levelCount = fj::integer(j, "levelCount");
+    d.levelLabel = fj::text(j, "levelLabel");
+    d.bitrates = fj::struct_model<ChoiceDto>(j, "bitrates", parse_ChoiceDto);
+    d.bitrateOptions = fj::text_model(j, "bitrateOptions");
+    d.bitratePick = fj::integer(j, "bitratePick");
+    d.rates = fj::struct_model<ChoiceDto>(j, "rates", parse_ChoiceDto);
+    d.rateOptions = fj::text_model(j, "rateOptions");
+    d.ratePick = fj::integer(j, "ratePick");
+    d.channelOptions = fj::text_model(j, "channelOptions");
+    d.channelPick = fj::integer(j, "channelPick");
+    d.progressText = fj::text(j, "progressText");
+    return d;
+}
+
 inline ChipDto parse_ChipDto(const fj::Json &j) {
     ChipDto d{};
     d.text = fj::text(j, "text");
@@ -590,6 +634,8 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.secondaryAction = fj::integer(j, "secondaryAction");
     d.secondaryLabel = fj::text(j, "secondaryLabel");
     d.canShare = fj::flag(j, "canShare");
+    d.canCompress = fj::flag(j, "canCompress");
+    d.compressLabel = fj::text(j, "compressLabel");
     d.removeLabel = fj::text(j, "removeLabel");
     return d;
 }
@@ -971,6 +1017,7 @@ inline bool apply_channel(const Core &core, Models &models, int channel, const f
         case 24: core.set_devicePairing(parse_DevicePairingDto(j)); return true;
         case 25: core.set_addTorrent(parse_AddTorrentDto(j)); return true;
         case 26: fj::apply_rows<TorrentFileRowDto>(*models.addTorrentFiles, j, parse_TorrentFileRowDto); return true;
+        case 27: core.set_audioCompress(parse_AudioCompressDto(j)); return true;
         default: return false;
     }
 }
@@ -1566,6 +1613,28 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_stepAgeRestrictedPlaceCookies(next());
     tr.set_stepPreparingMediaEngine(next());
     tr.set_stepMediaEngineNotStarted(next());
+    tr.set_audioCompressTitle(next());
+    tr.set_audioCompressOriginalSize(next());
+    tr.set_audioCompressNewSize(next());
+    tr.set_audioCompressReading(next());
+    tr.set_audioCompressMode(next());
+    tr.set_audioCompressSimple(next());
+    tr.set_audioCompressAdvanced(next());
+    tr.set_audioCompressLevel(next());
+    tr.set_audioCompressLevelHint(next());
+    tr.set_audioCompressBitrate(next());
+    tr.set_audioCompressSampleRate(next());
+    tr.set_audioCompressChannels(next());
+    tr.set_audioCompressAuto(next());
+    tr.set_audioCompressMono(next());
+    tr.set_audioCompressStereo(next());
+    tr.set_audioCompressStart(next());
+    tr.set_audioCompressRunning(next());
+    tr.set_audioCompressFailed(next());
+    tr.set_audioCompressCopies(next());
+    tr.set_audioCompressDelete(next());
+    tr.set_audioCompressHigherQuality(next());
+    tr.set_audioCompressSmallerFile(next());
     tr.set_sysDeviceSendTitle(next());
     tr.set_sysDeviceNoDevices(next());
     tr.set_sysDeviceSearching(next());
@@ -1676,6 +1745,15 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_detailsAction([send](int code, bool primary) { fj::ActionWriter w("DetailsAction"); w.add("code", code); w.add("primary", primary); send(w.finish()); });
     act.on_detailsRemove([send]() { fj::ActionWriter w("DetailsRemove"); send(w.finish()); });
     act.on_detailsShare([send]() { fj::ActionWriter w("DetailsShare"); send(w.finish()); });
+    act.on_detailsCompress([send]() { fj::ActionWriter w("DetailsCompress"); send(w.finish()); });
+    act.on_audioCompressSetMode([send](bool simple) { fj::ActionWriter w("AudioCompressSetMode"); w.add("simple", simple); send(w.finish()); });
+    act.on_audioCompressSetLevel([send](int level) { fj::ActionWriter w("AudioCompressSetLevel"); w.add("level", level); send(w.finish()); });
+    act.on_audioCompressSetBitrate([send](int value) { fj::ActionWriter w("AudioCompressSetBitrate"); w.add("value", value); send(w.finish()); });
+    act.on_audioCompressSetSampleRate([send](int value) { fj::ActionWriter w("AudioCompressSetSampleRate"); w.add("value", value); send(w.finish()); });
+    act.on_audioCompressSetChannels([send](int value) { fj::ActionWriter w("AudioCompressSetChannels"); w.add("value", value); send(w.finish()); });
+    act.on_audioCompressStart([send]() { fj::ActionWriter w("AudioCompressStart"); send(w.finish()); });
+    act.on_audioCompressDelete([send](slint::SharedString path) { fj::ActionWriter w("AudioCompressDelete"); w.add("path", path); send(w.finish()); });
+    act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
     act.on_toggleDetailFile([send](int index, bool selected) { fj::ActionWriter w("ToggleDetailFile"); w.add("index", index); w.add("selected", selected); send(w.finish()); });
     act.on_cycleDetailFilePriority([send](int index) { fj::ActionWriter w("CycleDetailFilePriority"); w.add("index", index); send(w.finish()); });
     act.on_copyText([send](slint::SharedString text) { fj::ActionWriter w("CopyText"); w.add("text", text); send(w.finish()); });

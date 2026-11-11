@@ -12,6 +12,7 @@ import { AddDialog } from "pages/AddDialog.slint";
 import { ChoiceDialogs, ClipPickerDialog } from "pages/ChoiceDialogs.slint";
 import { SettingsPanel } from "pages/Settings.slint";
 import { UpdateDialog } from "pages/UpdateDialog.slint";
+import { AudioCompressDialog } from "pages/AudioCompress.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
 import { PairingCode } from "generated/dto.slint";
 import { Core } from "generated/dto.slint";
@@ -129,6 +130,7 @@ export component AppWindow inherits Window {
     if Core.clipPicker.open: ClipPickerDialog { }
     if Core.deviceSheet.open: DeviceSheet { }
     if Core.devicePairing.state != PairingCode.none: PairingDialog { }
+    if Core.audioCompress.open: AudioCompressDialog { }
     if Core.updateDialog.open: UpdateDialog { }
     Alerts { }
     ChoiceDialogs { }

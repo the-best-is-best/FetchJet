@@ -1,0 +1,416 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { StepSlider } from "../widgets/Slider.slint";
+import { PickMenu } from "../widgets/Menu.slint";
+import { Core, AudioCopyDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component Caption inherits T {
+    line: 20px;
+    tracking: 0.1px;
+    font-weight: 600;
+    color: Theme.on-surface-variant;
+}
+
+component Half inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked();
+    horizontal-stretch: 1;
+    height: 36px;
+    border-radius: 8px;
+    border-width: root.selected ? 1px : 0px;
+    border-color: Theme.primary;
+    background: root.selected ? Theme.primary.with-alpha(0.16) : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Text {
+        text: root.label;
+        color: root.selected ? Theme.primary : Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 14px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 8px;
+        hovered: ta.has-hover && !root.selected;
+        pressed: ta.pressed;
+    }
+}
+
+component PickField inherits Rectangle {
+    in property <string> label;
+    in property <[string]> options;
+    in property <int> pick;
+    in property <bool> enabled: true;
+    callback picked(index: int);
+    horizontal-stretch: 1;
+    height: 54px;
+    border-radius: 11px;
+    border-width: 1px;
+    border-color: Theme.outline;
+    background: Theme.field;
+    accessible-role: combobox;
+    accessible-label: root.label;
+    accessible-value: root.pick > 0 ? root.options[root.pick - 1] : "";
+    accessible-action-default => {
+        if root.enabled {
+            menu.show();
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { menu.show(); }
+    }
+    Text {
+        x: 12px;
+        y: 7px;
+        width: parent.width - 24px;
+        height: 16px;
+        text: root.label;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 11px;
+        horizontal-alignment: Dir.start;
+        overflow: elide;
+    }
+    Text {
+        x: Dir.rtl ? 30px : 12px;
+        y: 25px;
+        width: parent.width - 42px;
+        height: 22px;
+        text: root.pick > 0 ? root.options[root.pick - 1] : "";
+        color: Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 14px;
+        font-weight: 600;
+        horizontal-alignment: Dir.start;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Text {
+        x: Dir.rtl ? 12px : parent.width - 12px - self.width;
+        y: 25px;
+        width: 14px;
+        height: 22px;
+        text: "▾";
+        color: Theme.on-surface-variant;
+        font-family: Theme.symbol-font;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 11px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    menu := PickMenu {
+        x: 0;
+        options: root.options;
+        pick: root.pick;
+        anchor-top: root.absolute-position.y;
+        anchor-height: root.height;
+        picked(i) => { root.picked(i); }
+    }
+}
+
+component CopyRow inherits Rectangle {
+    in property <AudioCopyDto> data;
+    in property <bool> enabled: true;
+    height: 56px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Theme.outline-variant;
+    VerticalLayout {
+        x: Dir.rtl ? 104px : 12px;
+        width: parent.width - 116px;
+        height: parent.height;
+        alignment: center;
+        T {
+            text: root.data.name;
+            line: 20px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        T {
+            text: root.data.size;
+            line: 16px;
+            font-size: 12px;
+            color: Theme.on-surface-variant;
+        }
+    }
+    OutlinedButton {
+        x: Dir.rtl ? 10px : parent.width - self.width - 10px;
+        y: (parent.height - self.height) / 2;
+        width: self.min-width;
+        height: 34px;
+        pad: 14px;
+        border-radius: 9px;
+        text: Tr.audioCompressDelete;
+        ink: Theme.error;
+        line: Theme.error.with-alpha(0.45);
+        enabled: root.enabled;
+        clicked => { Act.audioCompressDelete(root.data.path); }
+    }
+}
+
+export component AudioCompressDialog inherits Rectangle {
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.audioCompressDismiss(); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.audioCompressDismiss();
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: max(280px, min(520px, root.width - 48px));
+        height: min(content.preferred-height, root.height - 48px);
+        border-radius: 18px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
+        clip: true;
+        TouchArea { }
+        Flickable {
+            viewport-width: self.width;
+            viewport-height: content.preferred-height;
+            content := VerticalLayout {
+                padding: 24px;
+                spacing: 10px;
+                T {
+                    text: Tr.audioCompressTitle;
+                    line: 30px;
+                    tracking: 0px;
+                    font-size: 22px;
+                    font-weight: 700;
+                }
+                T {
+                    text: Core.audioCompress.fileName;
+                    line: 20px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
+                Rectangle {
+                    height: 86px;
+                    border-radius: 14px;
+                    border-width: 1px;
+                    border-color: Theme.outline-variant;
+                    background: Theme.field;
+                    HBox {
+                        x: 16px;
+                        y: 12px;
+                        width: parent.width - 32px;
+                        height: 40px;
+                        spacing: 10px;
+                        cross-axis-alignment: center;
+                        T {
+                            text: Core.audioCompress.originalSize;
+                            line: 40px;
+                            font-size: 16px;
+                            color: Theme.on-surface-variant;
+                        }
+                        T {
+                            text: Dir.rtl ? "←" : "→";
+                            line: 40px;
+                            color: Theme.on-surface-variant;
+                        }
+                        T {
+                            horizontal-stretch: 1;
+                            text: Core.audioCompress.newSize;
+                            line: 40px;
+                            tracking: 0px;
+                            font-size: 26px;
+                            font-weight: 700;
+                            color: Theme.primary;
+                            overflow: elide;
+                        }
+                        if Core.audioCompress.saving != "": Rectangle {
+                            width: pill.preferred-width + 22px;
+                            height: 26px;
+                            border-radius: 13px;
+                            background: Theme.status-completed.with-alpha(0.18);
+                            pill := Text {
+                                text: Core.audioCompress.saving;
+                                color: Theme.bar-completed;
+                                font-family: Theme.font;
+                                font-size: 13px;
+                                font-weight: 700;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                    Rectangle {
+                        x: 16px;
+                        y: 62px;
+                        width: parent.width - 32px;
+                        height: 8px;
+                        border-radius: 4px;
+                        background: Theme.outline-variant;
+                        Rectangle {
+                            x: Dir.rtl ? parent.width - self.width : 0;
+                            width: Core.audioCompress.ratio > 0 ? max(8px, parent.width * Core.audioCompress.ratio) : 0px;
+                            height: 8px;
+                            border-radius: 4px;
+                            background: Theme.primary;
+                        }
+                    }
+                }
+                Rectangle {
+                    height: 44px;
+                    border-radius: 11px;
+                    border-width: 1px;
+                    border-color: Theme.outline-variant;
+                    background: Theme.field;
+                    HorizontalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+                        Half {
+                            label: Tr.audioCompressSimple;
+                            selected: Core.audioCompress.simple;
+                            clicked => { Act.audioCompressSetMode(true); }
+                        }
+                        Half {
+                            label: Tr.audioCompressAdvanced;
+                            selected: !Core.audioCompress.simple;
+                            clicked => { Act.audioCompressSetMode(false); }
+                        }
+                    }
+                }
+                if Core.audioCompress.simple: Rectangle {
+                    height: 22px;
+                    Caption {
+                        x: Dir.rtl ? parent.width - self.width : 0;
+                        width: parent.width * 0.6;
+                        text: Tr.audioCompressLevel;
+                    }
+                    T {
+                        x: Dir.rtl ? 0 : parent.width * 0.6;
+                        width: parent.width * 0.4;
+                        text: Core.audioCompress.levelLabel;
+                        line: 20px;
+                        font-weight: 600;
+                        horizontal-alignment: Dir.end;
+                    }
+                }
+                if Core.audioCompress.simple: StepSlider {
+                    count: Core.audioCompress.levelCount;
+                    value: Core.audioCompress.level;
+                    label: Tr.audioCompressLevel;
+                    enabled: !Core.audioCompress.running;
+                    changed(value) => { Act.audioCompressSetLevel(value); }
+                }
+                if Core.audioCompress.simple: Rectangle {
+                    height: 18px;
+                    T {
+                        x: Dir.rtl ? parent.width - self.width : 0;
+                        width: parent.width * 0.5;
+                        text: Tr.audioCompressHigherQuality;
+                        line: 18px;
+                        font-size: 12px;
+                        color: Theme.on-surface-variant;
+                    }
+                    T {
+                        x: Dir.rtl ? 0 : parent.width * 0.5;
+                        width: parent.width * 0.5;
+                        text: Tr.audioCompressSmallerFile;
+                        line: 18px;
+                        font-size: 12px;
+                        color: Theme.on-surface-variant;
+                        horizontal-alignment: Dir.end;
+                    }
+                }
+                if !Core.audioCompress.simple: HorizontalLayout {
+                    spacing: 8px;
+                    PickField {
+                        label: Tr.audioCompressBitrate;
+                        options: Core.audioCompress.bitrateOptions;
+                        pick: Core.audioCompress.bitratePick;
+                        enabled: !Core.audioCompress.running;
+                        picked(i) => { Act.audioCompressSetBitrate(Core.audioCompress.bitrates[i].value); }
+                    }
+                    PickField {
+                        label: Tr.audioCompressSampleRate;
+                        options: Core.audioCompress.rateOptions;
+                        pick: Core.audioCompress.ratePick;
+                        enabled: !Core.audioCompress.running;
+                        picked(i) => { Act.audioCompressSetSampleRate(Core.audioCompress.rates[i].value); }
+                    }
+                    PickField {
+                        label: Tr.audioCompressChannels;
+                        options: Core.audioCompress.channelOptions;
+                        pick: Core.audioCompress.channelPick;
+                        enabled: !Core.audioCompress.running;
+                        picked(i) => { Act.audioCompressSetChannels(Core.audioCompress.channels[i].value); }
+                    }
+                }
+                if Core.audioCompress.running: T {
+                    text: Tr.audioCompressRunning + " " + Core.audioCompress.progressText;
+                    line: 18px;
+                    font-size: 13px;
+                    color: Theme.on-surface-variant;
+                }
+                if Core.audioCompress.running: LinearProgress {
+                    value: Core.audioCompress.progress;
+                }
+                if Core.audioCompress.failed: T {
+                    text: Tr.audioCompressFailed;
+                    line: 18px;
+                    color: Theme.error;
+                }
+                if Core.audioCompress.copies.length > 0: Caption {
+                    text: Tr.audioCompressCopies;
+                }
+                for copy in Core.audioCompress.copies: CopyRow {
+                    data: copy;
+                    enabled: !Core.audioCompress.running;
+                }
+                Rectangle {
+                    height: 4px;
+                }
+                HBox {
+                    height: 44px;
+                    spacing: 8px;
+                    alignment: end;
+                    cross-axis-alignment: center;
+                    OutlinedButton {
+                        text: Tr.cancel;
+                        border-radius: 10px;
+                        ink: Theme.on-surface;
+                        line: Theme.outline;
+                        enabled: !Core.audioCompress.running;
+                        clicked => { Act.audioCompressDismiss(); }
+                    }
+                    FilledButton {
+                        text: Tr.audioCompressStart;
+                        enabled: Core.audioCompress.canStart;
+                        border-radius: 10px;
+                        clicked => { Act.audioCompressStart(); }
+                    }
+                }
+            }
+        }
+    }
+}

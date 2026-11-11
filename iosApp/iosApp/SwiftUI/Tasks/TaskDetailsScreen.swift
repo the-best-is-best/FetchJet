@@ -411,6 +411,9 @@ private struct TaskDetailsContent: View {
                     if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
                 }
             }
+            if AudioCompress.shared.canCompress(task: task) {
+                AudioCompressButton(task: task)
+            }
             if task.canSendToDevice() {
                 TaskDetailButton(text: s.sysDeviceSendTitle, primary: false) {
                     store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))

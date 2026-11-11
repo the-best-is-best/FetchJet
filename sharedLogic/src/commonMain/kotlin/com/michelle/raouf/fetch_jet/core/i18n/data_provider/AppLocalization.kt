@@ -742,6 +742,29 @@ interface AppLocalization : LocalizationProvider {
     fun stepTorrentEngineFailed(error: String): String
     fun stepReadyWith(details: String): String
 
+    val audioCompressTitle: String
+    val audioCompressOriginalSize: String
+    val audioCompressNewSize: String
+    val audioCompressReading: String
+    val audioCompressMode: String
+    val audioCompressSimple: String
+    val audioCompressAdvanced: String
+    val audioCompressLevel: String
+    val audioCompressLevelHint: String
+    val audioCompressBitrate: String
+    val audioCompressSampleRate: String
+    val audioCompressChannels: String
+    val audioCompressAuto: String
+    val audioCompressMono: String
+    val audioCompressStereo: String
+    val audioCompressStart: String
+    val audioCompressRunning: String
+    val audioCompressFailed: String
+    val audioCompressCopies: String
+    val audioCompressDelete: String
+    val audioCompressHigherQuality: String
+    val audioCompressSmallerFile: String
+
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String
     val sysDeviceNoDevices: String

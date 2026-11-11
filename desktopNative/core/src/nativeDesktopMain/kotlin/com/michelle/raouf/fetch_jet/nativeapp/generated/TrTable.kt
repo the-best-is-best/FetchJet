@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 650
+internal const val TR_COUNT = 672
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -586,6 +586,28 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.stepAgeRestrictedPlaceCookies,
     s.stepPreparingMediaEngine,
     s.stepMediaEngineNotStarted,
+    s.audioCompressTitle,
+    s.audioCompressOriginalSize,
+    s.audioCompressNewSize,
+    s.audioCompressReading,
+    s.audioCompressMode,
+    s.audioCompressSimple,
+    s.audioCompressAdvanced,
+    s.audioCompressLevel,
+    s.audioCompressLevelHint,
+    s.audioCompressBitrate,
+    s.audioCompressSampleRate,
+    s.audioCompressChannels,
+    s.audioCompressAuto,
+    s.audioCompressMono,
+    s.audioCompressStereo,
+    s.audioCompressStart,
+    s.audioCompressRunning,
+    s.audioCompressFailed,
+    s.audioCompressCopies,
+    s.audioCompressDelete,
+    s.audioCompressHigherQuality,
+    s.audioCompressSmallerFile,
     s.sysDeviceSendTitle,
     s.sysDeviceNoDevices,
     s.sysDeviceSearching,

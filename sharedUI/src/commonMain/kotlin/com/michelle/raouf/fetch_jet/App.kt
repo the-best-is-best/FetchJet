@@ -430,6 +430,7 @@ fun App(
                                     TaskDetailsPane(
                                         task = selectedTask,
                                         viewModel = viewModel,
+                                        compressedCopies = state.audioCopyCounts[selectedTask.id] ?: 0,
                                         speedDisplayUnit = state.speedDisplayUnit,
                                         fullScreen = false,
                                         onClose = { selectedTaskId = null }
@@ -529,6 +530,7 @@ fun App(
                                         TaskDetailsPane(
                                             task = selectedTask,
                                             viewModel = viewModel,
+                                            compressedCopies = state.audioCopyCounts[selectedTask.id] ?: 0,
                                             speedDisplayUnit = state.speedDisplayUnit,
                                             fullScreen = phone,
                                             onClose = { selectedTaskId = null },
@@ -831,6 +833,9 @@ fun App(
             }
 
             // "Send to device" sheet + first-time pairing (ROADMAP-1.3.0 item 4).
+            state.audioCompress?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.AudioCompressDialog(page) { viewModel.onEvent(it) }
+            }
             if (state.deviceShareTaskId != null) {
                 com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
             }

@@ -188,6 +188,13 @@
    "name": "addTorrentFiles",
    "kind": "LIST",
    "dto": "TorrentFileRowDto"
+  },
+  {
+   "const": "AUDIO_COMPRESS",
+   "id": 27,
+   "name": "audioCompress",
+   "kind": "STRUCT",
+   "dto": "AudioCompressDto"
   }
  ],
  "enums": {
@@ -1219,6 +1226,142 @@
     "Boolean"
    ]
   ],
+  "AudioCopyDto": [
+   [
+    "path",
+    "String"
+   ],
+   [
+    "name",
+    "String"
+   ],
+   [
+    "size",
+    "String"
+   ]
+  ],
+  "AudioCompressDto": [
+   [
+    "open",
+    "Boolean"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "originalSize",
+    "String"
+   ],
+   [
+    "newSize",
+    "String"
+   ],
+   [
+    "simple",
+    "Boolean"
+   ],
+   [
+    "levels",
+    "List<ChoiceDto>"
+   ],
+   [
+    "bitratesTop",
+    "List<ChoiceDto>"
+   ],
+   [
+    "bitratesBottom",
+    "List<ChoiceDto>"
+   ],
+   [
+    "ratesTop",
+    "List<ChoiceDto>"
+   ],
+   [
+    "ratesBottom",
+    "List<ChoiceDto>"
+   ],
+   [
+    "channels",
+    "List<ChoiceDto>"
+   ],
+   [
+    "running",
+    "Boolean"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "failed",
+    "Boolean"
+   ],
+   [
+    "canStart",
+    "Boolean"
+   ],
+   [
+    "copies",
+    "List<AudioCopyDto>"
+   ],
+   [
+    "saving",
+    "String"
+   ],
+   [
+    "ratio",
+    "Float"
+   ],
+   [
+    "level",
+    "Int"
+   ],
+   [
+    "levelCount",
+    "Int"
+   ],
+   [
+    "levelLabel",
+    "String"
+   ],
+   [
+    "bitrates",
+    "List<ChoiceDto>"
+   ],
+   [
+    "bitrateOptions",
+    "List<String>"
+   ],
+   [
+    "bitratePick",
+    "Int"
+   ],
+   [
+    "rates",
+    "List<ChoiceDto>"
+   ],
+   [
+    "rateOptions",
+    "List<String>"
+   ],
+   [
+    "ratePick",
+    "Int"
+   ],
+   [
+    "channelOptions",
+    "List<String>"
+   ],
+   [
+    "channelPick",
+    "Int"
+   ],
+   [
+    "progressText",
+    "String"
+   ]
+  ],
   "ChipDto": [
    [
     "text",
@@ -1411,6 +1554,14 @@
    [
     "canShare",
     "Boolean"
+   ],
+   [
+    "canCompress",
+    "Boolean"
+   ],
+   [
+    "compressLabel",
+    "String"
    ],
    [
     "removeLabel",
@@ -2517,6 +2668,45 @@
   ],
   "DetailsRemove": [],
   "DetailsShare": [],
+  "DetailsCompress": [],
+  "AudioCompressSetMode": [
+   [
+    "simple",
+    "Boolean"
+   ]
+  ],
+  "AudioCompressSetLevel": [
+   [
+    "level",
+    "Int"
+   ]
+  ],
+  "AudioCompressSetBitrate": [
+   [
+    "value",
+    "Int"
+   ]
+  ],
+  "AudioCompressSetSampleRate": [
+   [
+    "value",
+    "Int"
+   ]
+  ],
+  "AudioCompressSetChannels": [
+   [
+    "value",
+    "Int"
+   ]
+  ],
+  "AudioCompressStart": [],
+  "AudioCompressDelete": [
+   [
+    "path",
+    "String"
+   ]
+  ],
+  "AudioCompressDismiss": [],
   "ToggleDetailFile": [
    [
     "index",
@@ -3540,6 +3730,28 @@
   "stepAgeRestrictedPlaceCookies",
   "stepPreparingMediaEngine",
   "stepMediaEngineNotStarted",
+  "audioCompressTitle",
+  "audioCompressOriginalSize",
+  "audioCompressNewSize",
+  "audioCompressReading",
+  "audioCompressMode",
+  "audioCompressSimple",
+  "audioCompressAdvanced",
+  "audioCompressLevel",
+  "audioCompressLevelHint",
+  "audioCompressBitrate",
+  "audioCompressSampleRate",
+  "audioCompressChannels",
+  "audioCompressAuto",
+  "audioCompressMono",
+  "audioCompressStereo",
+  "audioCompressStart",
+  "audioCompressRunning",
+  "audioCompressFailed",
+  "audioCompressCopies",
+  "audioCompressDelete",
+  "audioCompressHigherQuality",
+  "audioCompressSmallerFile",
   "sysDeviceSendTitle",
   "sysDeviceNoDevices",
   "sysDeviceSearching",

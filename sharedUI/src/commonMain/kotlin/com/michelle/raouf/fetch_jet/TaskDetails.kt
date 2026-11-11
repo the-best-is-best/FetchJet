@@ -77,7 +77,9 @@ internal fun DownloadTaskItem(
     onCancel: () -> Unit,
     onFileSelectionToggled: (Int, Boolean) -> Unit,
     onFilePriorityChanged: (Int, Int) -> Unit,
-    onShare: (() -> Unit)? = null
+    onShare: (() -> Unit)? = null,
+    onCompress: (() -> Unit)? = null,
+    compressedCopies: Int = 0
 ) {
     val rawDisplayName =
         task.fileName.ifBlank { task.url.substringBefore('?').substringAfterLast('/') }
@@ -652,6 +654,21 @@ internal fun DownloadTaskItem(
                     }
                 }
             }
+            if (onCompress != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onCompress,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Text(
+                        LocalizationManager.Strings.audioCompressTitle +
+                                if (compressedCopies > 0) " ($compressedCopies)" else "",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             if (onShare != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
@@ -825,7 +842,8 @@ internal fun TaskDetailsPane(
     fullScreen: Boolean,
     onClose: () -> Unit,
     /** Take all the height offered (side pane, expanded sheet) instead of wrapping the content. */
-    fillHeight: Boolean = true
+    fillHeight: Boolean = true,
+    compressedCopies: Int = 0
 ) {
     val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
@@ -880,7 +898,11 @@ internal fun TaskDetailsPane(
                 },
                 onShare = if (task.canSendToDevice()) {
                     { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
-                } else null
+                } else null,
+                onCompress = if (com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
+                } else null,
+                compressedCopies = compressedCopies
             )
         }
     }

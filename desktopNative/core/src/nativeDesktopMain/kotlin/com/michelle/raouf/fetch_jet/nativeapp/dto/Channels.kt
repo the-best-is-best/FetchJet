@@ -38,6 +38,8 @@ object Channels {
     val ADD_TORRENT = ChannelSpec(25, "addTorrent", ChannelKind.STRUCT, "AddTorrentDto")
     val ADD_TORRENT_FILES = ChannelSpec(26, "addTorrentFiles", ChannelKind.LIST, "TorrentFileRowDto")
 
-    const val COUNT = 27
+    val AUDIO_COMPRESS = ChannelSpec(27, "audioCompress", ChannelKind.STRUCT, "AudioCompressDto")
+
+    const val COUNT = 28
     const val FULL_FLAG = 0x100
 }

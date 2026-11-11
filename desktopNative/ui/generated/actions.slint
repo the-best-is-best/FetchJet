@@ -38,6 +38,15 @@ export global Act {
     callback detailsAction(code: int, primary: bool);
     callback detailsRemove();
     callback detailsShare();
+    callback detailsCompress();
+    callback audioCompressSetMode(simple: bool);
+    callback audioCompressSetLevel(level: int);
+    callback audioCompressSetBitrate(value: int);
+    callback audioCompressSetSampleRate(value: int);
+    callback audioCompressSetChannels(value: int);
+    callback audioCompressStart();
+    callback audioCompressDelete(path: string);
+    callback audioCompressDismiss();
     callback toggleDetailFile(index: int, selected: bool);
     callback cycleDetailFilePriority(index: int);
     callback copyText(text: string);

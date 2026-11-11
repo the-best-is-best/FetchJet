@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
@@ -94,7 +95,9 @@ internal fun Presenter.startDetails() {
         if (state.selectedTab == DashboardTab.SETTINGS) null
         else ui.selectedTaskId?.let { id -> state.allTasks.firstOrNull { it.id == id } }
     }.distinctUntilChanged().throttleLatest(HOME_PERIOD_MS)
-    val unit = combine(vm.uiState, AppLanguage.current) { state, language -> state.speedDisplayUnit to language }
+    val unit = combine(vm.uiState, AppLanguage.current) { state, language ->
+        Triple(state.speedDisplayUnit, language, state.audioCopyCounts)
+    }
         .distinctUntilChanged()
     scope.launch {
         combine(selected, unit, tick) { task, (speedUnit, language), now -> DetailsInput(task, speedUnit, language, now) }
@@ -395,6 +398,9 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
             secondaryAction = secondary.ordinal,
             secondaryLabel = secondaryLabel,
             canShare = task.canSendToDevice(),
+            canCompress = AudioCompress.canCompress(task),
+            compressLabel = strings.audioCompressTitle +
+                    (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: ""),
             removeLabel = if (completed) strings.detailsRemoveFromList else strings.detailsCancelDownload,
         )
     )

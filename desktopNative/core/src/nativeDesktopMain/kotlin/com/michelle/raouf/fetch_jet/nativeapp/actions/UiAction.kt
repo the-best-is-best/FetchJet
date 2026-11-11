@@ -155,6 +155,42 @@ sealed interface UiAction {
     data object DetailsShare : UiAction
 
     @Serializable
+    @SerialName("DetailsCompress")
+    data object DetailsCompress : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetMode")
+    data class AudioCompressSetMode(val simple: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetLevel")
+    data class AudioCompressSetLevel(val level: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetBitrate")
+    data class AudioCompressSetBitrate(val value: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetSampleRate")
+    data class AudioCompressSetSampleRate(val value: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetChannels")
+    data class AudioCompressSetChannels(val value: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressStart")
+    data object AudioCompressStart : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressDelete")
+    data class AudioCompressDelete(val path: String = "") : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressDismiss")
+    data object AudioCompressDismiss : UiAction
+
+    @Serializable
     @SerialName("ToggleDetailFile")
     data class ToggleDetailFile(val index: Int = 0, val selected: Boolean = false) : UiAction
 

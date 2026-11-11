@@ -134,6 +134,7 @@ class DashboardViewModel(
         // disk. Doing that here, inside composition, froze the first frame of the app.
         refreshToolStatus()
         autoUpdateTools()
+        observeAudioCopies()
 
         if (savedSettings.globalDownloadSpeedLimitBytes > 0L) {
 
@@ -626,6 +627,12 @@ class DashboardViewModel(
             DashboardUiEvent.OnDismissReceiveClicked,
             is DashboardUiEvent.OnUnblockDeviceClicked,
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
+
+            is DashboardUiEvent.OnAudioCompressClicked,
+            is DashboardUiEvent.OnAudioCompressSettingsChanged,
+            DashboardUiEvent.OnAudioCompressStartClicked,
+            is DashboardUiEvent.OnAudioCompressDeleteCopy,
+            DashboardUiEvent.OnDismissAudioCompress -> handleAudioCompressEvent(event)
         }
 
     }

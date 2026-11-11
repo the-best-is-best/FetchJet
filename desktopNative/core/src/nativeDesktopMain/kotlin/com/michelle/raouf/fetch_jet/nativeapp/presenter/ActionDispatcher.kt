@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressMode
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.core.power.WhenDone
 import com.michelle.raouf.fetch_jet.core.power.WhenDoneAction
@@ -115,6 +116,17 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.SetLanguage -> vm.onEvent(DashboardUiEvent.OnLanguageChanged(action.choice))
         is UiAction.DetailsAction -> detailsAction(action.code, action.primary)
         UiAction.DetailsRemove -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnCancelClicked(it)) }
+        UiAction.DetailsCompress -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(it)) }
+        is UiAction.AudioCompressSetMode -> audioCompressChange {
+            it.copy(mode = if (action.simple) AudioCompressMode.SIMPLE else AudioCompressMode.ADVANCED)
+        }
+        is UiAction.AudioCompressSetLevel -> audioCompressChange { it.copy(level = action.level) }
+        is UiAction.AudioCompressSetBitrate -> audioCompressChange { it.copy(bitrateKbps = action.value) }
+        is UiAction.AudioCompressSetSampleRate -> audioCompressChange { it.copy(sampleRate = action.value) }
+        is UiAction.AudioCompressSetChannels -> audioCompressChange { it.copy(channels = action.value) }
+        UiAction.AudioCompressStart -> vm.onEvent(DashboardUiEvent.OnAudioCompressStartClicked)
+        is UiAction.AudioCompressDelete -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteCopy(action.path))
+        UiAction.AudioCompressDismiss -> vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)
         UiAction.DetailsShare -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnShareTaskClicked(it)) }
         is UiAction.ToggleDetailFile -> local.value.selectedTaskId?.let {
             vm.onEvent(DashboardUiEvent.OnTaskTorrentFileSelectionToggled(it, action.index, action.selected))

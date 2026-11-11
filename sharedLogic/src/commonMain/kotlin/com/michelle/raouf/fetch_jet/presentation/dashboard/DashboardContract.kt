@@ -221,7 +221,24 @@ data class DashboardUiState(
     val devicePairing: com.michelle.raouf.fetch_jet.feature.device_sync.PairingState? = null,
     /** Non-null while a send is in progress / just finished. */
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
-    val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null
+    val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
+    val audioCompress: AudioCompressUi? = null,
+    val audioCopyCounts: Map<String, Int> = emptyMap()
+)
+
+data class AudioCompressUi(
+    val taskId: String,
+    val fileName: String,
+    val originalBytes: Long,
+    val durationMs: Long = 0L,
+    val reading: Boolean = true,
+    val settings: com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressSettings =
+        com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressSettings(),
+    val estimatedBytes: Long = 0L,
+    val running: Boolean = false,
+    val progress: Float = 0f,
+    val failed: Boolean = false,
+    val copies: List<com.michelle.raouf.fetch_jet.feature.audio_compress.CompressedCopy> = emptyList()
 )
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -411,6 +428,18 @@ sealed interface DashboardUiEvent {
     ) :
 
         DashboardUiEvent
+
+    data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnAudioCompressSettingsChanged(
+        val settings: com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressSettings
+    ) : DashboardUiEvent
+
+    data object OnAudioCompressStartClicked : DashboardUiEvent
+
+    data class OnAudioCompressDeleteCopy(val path: String) : DashboardUiEvent
+
+    data object OnDismissAudioCompress : DashboardUiEvent
 
     /** Open the "Send to device" sheet for a task. */
     data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent
