@@ -123,6 +123,8 @@ object JapaneseProvider : AppLocalization {
     override val extBlockedLabel = "ブロック"
     override val extRevoke = "取り消す"
     override val extUnblock = "ブロック解除"
+    override val extPairedLabel = "ペアリング済み"
+    override val extUnpair = "すべて解除"
     override val homeBrowserFallbackTitle = "代わりにブラウザでダウンロードしますか？"
     override val homeBrowserFallbackText =
         "FetchJet でこのファイルをキャンセルしました。ブラウザはリンクを渡した時点で" +

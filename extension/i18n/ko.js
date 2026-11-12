@@ -36,6 +36,7 @@ fjAddLanguage("ko", {
   "notifyNoLinksPage": "이 페이지에서 다운로드할 수 있는 링크를 찾지 못했습니다.",
   "notifyNoMedia": "이 페이지에서 아직 미디어가 감지되지 않았습니다. 먼저 동영상을 재생하세요.",
   "errRefused": "FetchJet이 요청을 거부했습니다: 확장 프로그램을 다시 로드하세요(앱보다 이전 버전입니다)",
+  "errNeedsPairing": "FetchJet을 열고 허용을 눌러 이 브라우저를 연결한 다음 다시 시도하세요",
   "errHttp": "FetchJet 응답: HTTP {status}",
   "errNoFormats": "다운로드할 수 있는 형식이 없습니다",
   "errNoExtractor": "FetchJet이 실행 중이 아닙니다(또는 미디어 추출기가 없습니다)",

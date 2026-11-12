@@ -124,6 +124,8 @@ object ArabicProvider : AppLocalization {
     override val extBlockedLabel = "محظور"
     override val extRevoke = "إلغاء السماح"
     override val extUnblock = "رفع الحظر"
+    override val extPairedLabel = "مرتبط"
+    override val extUnpair = "إلغاء ربط الكل"
     override val homeBrowserFallbackTitle = "هل تريد التنزيل في المتصفح بدلًا من ذلك؟"
     override val homeBrowserFallbackText =
         "لقد ألغيت هذا الملف في FetchJet. أوقف المتصفح تنزيله عندما سلّم الرابط، " +

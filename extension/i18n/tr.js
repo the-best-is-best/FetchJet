@@ -36,6 +36,7 @@ fjAddLanguage("tr", {
   "notifyNoLinksPage": "Bu sayfada indirilebilir bağlantı bulunamadı.",
   "notifyNoMedia": "Bu sayfada henüz medya algılanmadı. Önce videoyu oynatın.",
   "errRefused": "FetchJet isteği reddetti: uzantıyı yeniden yükleyin (uygulamadan eski)",
+  "errNeedsPairing": "FetchJet'i açın ve bu tarayıcıyı bağlamak için İzin ver'e dokunun, sonra tekrar deneyin",
   "errHttp": "FetchJet HTTP {status} yanıtı verdi",
   "errNoFormats": "İndirilebilir biçim bulunamadı",
   "errNoExtractor": "FetchJet çalışmıyor (veya medya çıkarıcısı yok)",

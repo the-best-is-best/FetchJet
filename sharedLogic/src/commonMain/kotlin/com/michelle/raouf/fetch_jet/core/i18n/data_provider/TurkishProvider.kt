@@ -122,6 +122,8 @@ object TurkishProvider : AppLocalization {
     override val extBlockedLabel = "Engellendi"
     override val extRevoke = "İzni kaldır"
     override val extUnblock = "Engeli kaldır"
+    override val extPairedLabel = "Eşlendi"
+    override val extUnpair = "Tüm eşlemeleri kaldır"
     override val homeBrowserFallbackTitle = "Bunun yerine tarayıcıda indirilsin mi?"
     override val homeBrowserFallbackText =
         "Bu dosyayı FetchJet'te iptal ettiniz. Tarayıcı, bağlantıyı devrederken kendi " +

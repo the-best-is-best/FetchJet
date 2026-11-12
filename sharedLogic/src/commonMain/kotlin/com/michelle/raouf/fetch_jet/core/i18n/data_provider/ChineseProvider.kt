@@ -118,6 +118,8 @@ object ChineseProvider : AppLocalization {
     override val extBlockedLabel = "已阻止"
     override val extRevoke = "撤销"
     override val extUnblock = "解除阻止"
+    override val extPairedLabel = "已配对"
+    override val extUnpair = "全部取消配对"
     override val homeBrowserFallbackTitle = "改用浏览器下载？"
     override val homeBrowserFallbackText =
         "你在 FetchJet 中取消了此文件。浏览器在转交链接时已停止自己的下载，" +

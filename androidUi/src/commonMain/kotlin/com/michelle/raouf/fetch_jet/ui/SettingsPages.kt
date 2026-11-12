@@ -728,12 +728,25 @@ private fun BrowserConnectionsGroup() {
     val pairing = com.michelle.raouf.fetch_jet.core.network.BridgePairing
     val allowed by pairing.legacyAllowed.collectAsState()
     val blocked by pairing.blocked.collectAsState()
-    if (allowed.isEmpty() && blocked.isEmpty()) return
+    val paired by pairing.seenBrowsers.collectAsState()
+    if (allowed.isEmpty() && blocked.isEmpty() && paired.isEmpty()) return
     SettingsGroup(
         title = LocalizationManager.Strings.extConnectionsGroup,
         footer = LocalizationManager.Strings.extConnectionsFooter
     ) {
         var first = true
+        if (paired.isNotEmpty()) {
+            first = false
+            SettingRow(
+                paired.keys.sorted().joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } },
+                LocalizationManager.Strings.extPairedLabel
+            ) {
+                OutlinedButton(
+                    onClick = { pairing.unpairAll() },
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text(LocalizationManager.Strings.extUnpair) }
+            }
+        }
         allowed.sorted().forEach { origin ->
             if (!first) SettingDivider()
             first = false

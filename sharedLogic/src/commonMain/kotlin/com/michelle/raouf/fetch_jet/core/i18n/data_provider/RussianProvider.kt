@@ -124,6 +124,8 @@ object RussianProvider : AppLocalization {
     override val extBlockedLabel = "Заблокировано"
     override val extRevoke = "Отозвать"
     override val extUnblock = "Разблокировать"
+    override val extPairedLabel = "Сопряжено"
+    override val extUnpair = "Отвязать все"
     override val homeBrowserFallbackTitle = "Скачать в браузере?"
     override val homeBrowserFallbackText =
         "Вы отменили этот файл в FetchJet. Браузер остановил свою загрузку, когда " +

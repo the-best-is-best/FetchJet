@@ -36,6 +36,7 @@ fjAddLanguage("zh", {
   "notifyNoLinksPage": "此页面上未找到可下载的链接。",
   "notifyNoMedia": "此页面上尚未检测到媒体。请先播放视频。",
   "errRefused": "FetchJet 拒绝了请求：请重新加载扩展程序（其版本比应用旧）",
+  "errNeedsPairing": "请打开 FetchJet 并点击“允许”以连接此浏览器，然后重试",
   "errHttp": "FetchJet 返回 HTTP {status}",
   "errNoFormats": "未找到可下载的格式",
   "errNoExtractor": "FetchJet 未运行（或没有媒体提取器）",

@@ -123,6 +123,8 @@ object IndonesianProvider : AppLocalization {
     override val extBlockedLabel = "Diblokir"
     override val extRevoke = "Cabut"
     override val extUnblock = "Buka blokir"
+    override val extPairedLabel = "Terpasang"
+    override val extUnpair = "Putuskan semua"
     override val homeBrowserFallbackTitle = "Unduh di browser saja?"
     override val homeBrowserFallbackText =
         "Anda membatalkan file ini di FetchJet. Browser menghentikan unduhannya sendiri saat " +

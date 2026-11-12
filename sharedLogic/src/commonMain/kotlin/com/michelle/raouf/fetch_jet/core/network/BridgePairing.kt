@@ -79,7 +79,22 @@ object BridgePairing {
         }
 
     /** The secret; made on first use and kept encrypted in bridge.json. */
-    val token: String by lazy {
+    val token: String get() = replacedToken.value ?: initialToken
+
+    private val replacedToken = MutableStateFlow<String?>(null)
+
+    /** Settings: every paired browser must pair again (a new secret replaces the old one). */
+    fun unpairAll() {
+        initialToken // loads the file
+        val fresh = Secrets.randomHex()
+        replacedToken.value = fresh
+        seen.value = emptyMap()
+        versions.value = emptyMap()
+        save(fresh)
+        println("FetchJet bridge: every paired browser was unpaired")
+    }
+
+    private val initialToken: String by lazy {
         val stored = load()
         legacyOrigins.value = stored.legacyOrigins.toSet()
         blockedOrigins.value = stored.blockedOrigins.toSet()

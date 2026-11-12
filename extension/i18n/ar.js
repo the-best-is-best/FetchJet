@@ -36,6 +36,7 @@ fjAddLanguage("ar", {
   "notifyNoLinksPage": "لم يتم العثور على روابط قابلة للتنزيل في هذه الصفحة.",
   "notifyNoMedia": "لم يتم رصد وسائط في هذه الصفحة بعد. شغّل الفيديو أولاً.",
   "errRefused": "رفض FetchJet الطلب: أعِد تحميل الإضافة (فهي أقدم من التطبيق)",
+  "errNeedsPairing": "افتح FetchJet واضغط سماح لربط هذا المتصفح، ثم حاول مرة أخرى",
   "errHttp": "ردّ FetchJet بالرمز HTTP {status}",
   "errNoFormats": "لم يتم العثور على صيغ قابلة للتنزيل",
   "errNoExtractor": "FetchJet غير مُشغَّل (أو لا يحتوي على مستخرج وسائط)",

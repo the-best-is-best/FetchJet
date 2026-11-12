@@ -36,6 +36,7 @@ fjAddLanguage("ja", {
   "notifyNoLinksPage": "このページにダウンロード可能なリンクが見つかりません。",
   "notifyNoMedia": "このページではまだメディアが検出されていません。先に動画を再生してください。",
   "errRefused": "FetchJet がリクエストを拒否しました: 拡張機能を再読み込みしてください（アプリより古いバージョンです）",
+  "errNeedsPairing": "FetchJet を開き、「許可」をタップしてこのブラウザーを接続してから、もう一度お試しください",
   "errHttp": "FetchJet の応答: HTTP {status}",
   "errNoFormats": "ダウンロード可能な形式が見つかりません",
   "errNoExtractor": "FetchJet が起動していません（またはメディア抽出機能がありません）",

@@ -36,6 +36,7 @@ fjAddLanguage("en", {
   "notifyNoLinksPage": "No downloadable links found on this page.",
   "notifyNoMedia": "No media detected on this page yet. Start playing the video first.",
   "errRefused": "FetchJet refused the request: reload the extension (it is older than the app)",
+  "errNeedsPairing": "Open FetchJet and tap Allow to connect this browser, then try again",
   "errHttp": "FetchJet answered HTTP {status}",
   "errNoFormats": "No downloadable formats found",
   "errNoExtractor": "FetchJet is not running (or has no media extractor)",

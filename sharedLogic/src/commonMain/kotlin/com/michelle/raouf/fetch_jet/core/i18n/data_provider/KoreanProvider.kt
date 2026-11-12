@@ -118,6 +118,8 @@ object KoreanProvider : AppLocalization {
     override val extBlockedLabel = "차단됨"
     override val extRevoke = "해제"
     override val extUnblock = "차단 해제"
+    override val extPairedLabel = "페어링됨"
+    override val extUnpair = "모두 해제"
     override val homeBrowserFallbackTitle = "대신 브라우저에서 다운로드할까요?"
     override val homeBrowserFallbackText = "FetchJet에서 이 파일을 취소했습니다. 브라우저는 링크를 넘길 때 자체 다운로드를 " +
             "중단했으므로, 다시 보내야만 계속됩니다."

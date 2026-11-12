@@ -443,6 +443,7 @@ internal fun Presenter.settingClick(id: String) {
         id == "openBrowserPage" -> openSettingsSection(SettingsSection.BROWSER)
         id == "openStartupSettings" -> StartupLauncher.managedBySystemUri?.let { openExternal(it) }
         id.startsWith("browser.") -> browserClicked(id.removePrefix("browser."))
+        id == "unpairBrowsers" -> BridgePairing.unpairAll()
         id.startsWith("revoke.") -> BridgePairing.revokeAllowed(id.removePrefix("revoke."))
         id.startsWith("allowAgain.") -> BridgePairing.unblock(id.removePrefix("allowAgain."))
         id.startsWith("unpair.") -> vm.onEvent(DashboardUiEvent.OnUnpairDeviceClicked(id.removePrefix("unpair.")))

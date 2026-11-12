@@ -275,7 +275,8 @@ async function appFetch(path, init = {}, timeoutMs = 0) {
   if (res.status !== 401) return res;
   appToken = "";
   try { await api.storage.local.remove("appToken"); } catch (_) {}
-  return (await pairWithApp()) ? await send() : res;
+  pairWithApp();
+  return res;
 }
 
 /** The app downloads a captured video-only stream together with its audio and merges them. */
@@ -349,15 +350,20 @@ async function postJson(path, body, timeoutMs = 2500) {
 }
 
 /** Sends one link; compatible with older app builds that only know GET /download. */
+let lastDeliverPairing = false;
+
 async function deliverOne(request) {
+  lastDeliverPairing = false;
   try {
     // With a chosen quality the app may have to re-run yt-dlp when its cache expired.
     const res = await postJson("/add", request, request.formatId ? 90000 : 2500);
     if (res.status === 409) return false; // quality gone: the caller re-inspects
     if (res.ok) return true;
+    if (res.status === 401) { lastDeliverPairing = true; return false; }
     if (res.status === 404) {
       const legacy = `/download?url=${encodeURIComponent(request.url)}&cookie=${encodeURIComponent(request.cookie || "")}`;
       const r2 = await appFetch(legacy, { method: "GET" });
+      if (r2.status === 401) lastDeliverPairing = true;
       return r2.ok;
     }
     return false;
@@ -365,9 +371,11 @@ async function deliverOne(request) {
 }
 
 async function deliverBatch(requests) {
+  lastDeliverPairing = false;
   try {
     const res = await postJson("/links", requests, 5000);
     if (res.ok) return true;
+    if (res.status === 401) { lastDeliverPairing = true; return false; }
     if (res.status === 404) { // old app: one by one
       for (const r of requests) await deliverOne(r);
       return true;
@@ -445,6 +453,10 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   }
 
   if (await deliverOne(request)) return { ok: true };
+  if (lastDeliverPairing) {
+    await notify(fjT("errNeedsPairing"));
+    return { ok: false, reason: "pairing required" };
+  }
 
   const launched = await launchApp(url);
   if (!launched) {
@@ -456,7 +468,7 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
     // The launcher may already have passed the URL on the command line; /add is idempotent
     // enough (duplicate check in the app) that re-sending with cookies is the safer choice.
     const ok = await deliverOne(request);
-    return { ok };
+    return ok ? { ok } : { ok, reason: lastDeliverPairing ? "pairing required" : "" };
   }
   return { ok: false, reason: "app did not start" };
 }
@@ -481,6 +493,10 @@ async function sendBatchToFetchJet(items, referer = "", group = "") {
     }
   }
   const ok = await deliverBatch(requests);
+  if (!ok && lastDeliverPairing) {
+    await notify(fjT("errNeedsPairing"));
+    return { ok: false, reason: "pairing required", count: 0 };
+  }
   if (ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
   return { ok, count: requests.length };
 }
@@ -818,6 +834,7 @@ async function inspectWithApp(pageUrl) {
     const headers = { "X-FetchJet-Referer": pageUrl };
     try { const c = await cookieHeaderFor(pageUrl); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
     const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
+    if (res.status === 401) return { resolveError: fjT("errNeedsPairing") };
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
     const text = await res.text();
     let data = null;

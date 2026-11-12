@@ -36,6 +36,7 @@ fjAddLanguage("fr", {
   "notifyNoLinksPage": "Aucun lien téléchargeable trouvé sur cette page.",
   "notifyNoMedia": "Aucun média détecté sur cette page pour l'instant. Lancez d'abord la lecture de la vidéo.",
   "errRefused": "FetchJet a refusé la requête : rechargez l'extension (elle est plus ancienne que l'application)",
+  "errNeedsPairing": "Ouvrez FetchJet et appuyez sur Autoriser pour connecter ce navigateur, puis réessayez",
   "errHttp": "FetchJet a répondu HTTP {status}",
   "errNoFormats": "Aucun format téléchargeable trouvé",
   "errNoExtractor": "FetchJet n'est pas lancé (ou n'a pas d'extracteur de médias)",

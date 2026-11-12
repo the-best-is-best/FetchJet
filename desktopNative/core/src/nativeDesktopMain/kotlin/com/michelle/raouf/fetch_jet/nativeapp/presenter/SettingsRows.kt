@@ -998,9 +998,20 @@ private fun browserRows(rows: Rows, page: SettingsPage) {
     }
     val allowed = BridgePairing.legacyAllowed.value
     val blocked = BridgePairing.blocked.value
-    if (allowed.isEmpty() && blocked.isEmpty()) return
+    val paired = BridgePairing.seenBrowsers.value
+    if (allowed.isEmpty() && blocked.isEmpty() && paired.isEmpty()) return
     rows.group(title = s.extConnectionsGroup, footer = s.extConnectionsFooter) {
         var first = true
+        if (paired.isNotEmpty()) {
+            first = false
+            rows.add(
+                infoRow(
+                    title = paired.keys.sorted().joinToString(", ") { it.replaceFirstChar { c -> c.uppercase() } },
+                    subtitle = s.extPairedLabel,
+                    buttons = listOf(button("unpairBrowsers", s.extUnpair))
+                )
+            )
+        }
         allowed.sorted().forEach { origin ->
             if (!first) rows.divider()
             first = false

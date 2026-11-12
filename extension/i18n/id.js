@@ -36,6 +36,7 @@ fjAddLanguage("id", {
   "notifyNoLinksPage": "Tidak ada link yang dapat diunduh di halaman ini.",
   "notifyNoMedia": "Belum ada media terdeteksi di halaman ini. Putar videonya terlebih dahulu.",
   "errRefused": "FetchJet menolak permintaan: muat ulang ekstensi (versinya lebih lama dari aplikasi)",
+  "errNeedsPairing": "Buka FetchJet dan ketuk Izinkan untuk menghubungkan peramban ini, lalu coba lagi",
   "errHttp": "FetchJet menjawab HTTP {status}",
   "errNoFormats": "Tidak ada format yang dapat diunduh",
   "errNoExtractor": "FetchJet tidak berjalan (atau tidak punya pengekstrak media)",

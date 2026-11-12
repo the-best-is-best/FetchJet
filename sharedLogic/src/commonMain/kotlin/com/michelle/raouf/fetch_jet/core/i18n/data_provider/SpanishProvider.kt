@@ -127,6 +127,8 @@ object SpanishProvider : AppLocalization {
     override val extBlockedLabel = "Bloqueada"
     override val extRevoke = "Revocar"
     override val extUnblock = "Desbloquear"
+    override val extPairedLabel = "Vinculado"
+    override val extUnpair = "Desvincular todos"
     override val homeBrowserFallbackTitle = "¿Descargar en el navegador?"
     override val homeBrowserFallbackText =
         "Cancelaste este archivo en FetchJet. El navegador detuvo su propia descarga al " +

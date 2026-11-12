@@ -122,6 +122,8 @@ object PersianProvider : AppLocalization {
     override val extBlockedLabel = "مسدود"
     override val extRevoke = "لغو اجازه"
     override val extUnblock = "رفع مسدودیت"
+    override val extPairedLabel = "جفت‌شده"
+    override val extUnpair = "لغو جفت‌سازی همه"
     override val homeBrowserFallbackTitle = "به‌جای آن در مرورگر دانلود شود؟"
     override val homeBrowserFallbackText =
         "این فایل را در FetchJet لغو کردید. مرورگر هنگام سپردن لینک، دانلود خودش را " +

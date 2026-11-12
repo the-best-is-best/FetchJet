@@ -122,6 +122,8 @@ object HindiProvider : AppLocalization {
     override val extBlockedLabel = "अवरुद्ध"
     override val extRevoke = "रद्द करें"
     override val extUnblock = "अनब्लॉक करें"
+    override val extPairedLabel = "जोड़ा गया"
+    override val extUnpair = "सभी का जोड़ा हटाएँ"
     override val homeBrowserFallbackTitle = "इसके बजाय ब्राउज़र में डाउनलोड करें?"
     override val homeBrowserFallbackText =
         "आपने यह फ़ाइल FetchJet में रद्द कर दी। लिंक सौंपते समय ब्राउज़र ने अपना डाउनलोड " +

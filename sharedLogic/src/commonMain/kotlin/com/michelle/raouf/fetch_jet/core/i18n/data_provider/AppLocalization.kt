@@ -109,6 +109,8 @@ interface AppLocalization : LocalizationProvider {
     val extBlockedLabel: String
     val extRevoke: String
     val extUnblock: String
+    val extPairedLabel: String
+    val extUnpair: String
     val homeBrowserFallbackText: String
     val homeDownloadInBrowser: String
     val homeNoDiscard: String
