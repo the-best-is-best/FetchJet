@@ -982,20 +982,3 @@ jobs:
             gh release upload "$TAG" "release-notes-$lang.md" --repo "$GITHUB_REPOSITORY" --clobber
           done
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
-
-      # Publish SHA256 checksums so a user who downloads a file by hand can verify it
-      # (e.g. paste the hash into FetchJet's own checksum field, or run `sha256sum -c`).
-      # Authenticity of in-app updates is already covered by the per-file .sig signatures.
-      - name: Publish SHA256 checksums
-        run: |
-          rm -rf sums && mkdir sums
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir sums --clobber
-          (
-            cd sums
-            rm -f SHA256SUMS.txt
-            # Hash the distributable files only — not signatures or notes metadata.
-            find . -maxdepth 1 -type f ! -name '*.sig' ! -name 'SHA256SUMS.txt' ! -name 'release-notes*.md' -printf '%P\n' \
-              | sort | xargs -r sha256sum > SHA256SUMS.txt
-            cat SHA256SUMS.txt
-          )
-          gh release upload "$TAG" sums/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
