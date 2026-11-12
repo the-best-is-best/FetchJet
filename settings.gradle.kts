@@ -33,9 +33,8 @@ plugins {
 }
 
 include(":androidApp")
-include(":desktopApp")
 include(":sharedLogic")
-include(":sharedUI")
+include(":androidUi")
 
 
 include(":kmpLocalization")

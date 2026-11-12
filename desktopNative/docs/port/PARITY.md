@@ -19,8 +19,8 @@ Status words:
 - `missing`: no native code for it.
 - `n/a`: the JVM app does not offer it on Windows either (not counted).
 
-Paths. JVM: `desktopApp/.../main.kt` (the JVM module is `desktopApp`; there is no
-`desktopDefault`), `sharedUI/...` = `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`,
+Paths. JVM: `desktopApp/.../main.kt` (the JVM module is `desktopApp (removed)`; there is no
+`desktopDefault`), `androidUi/...` = `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`,
 `sharedLogic/...` = `sharedLogic/src/<set>/kotlin/com/michelle/raouf/fetch_jet/`. Native:
 `core/...` = `desktopNative/core/src/mingwX64Main/kotlin/com/michelle/raouf/fetch_jet/nativeapp/`,
 `ui/...` = `desktopNative/ui/`, `host/main.cpp` = `desktopNative/host/main.cpp`, `win/...` =
@@ -78,7 +78,7 @@ Top 10 gaps a user would notice first (updated 2026-11-10, night):
 
 | Feature | JVM app | Native status | Evidence | Note |
 |---|---|---|---|---|
-| Sidebar with state / type filters and counts | `sharedUI/HomeNavigation.kt`, `App.kt` | done and checked | `test_home` (41): "six state filters", "sidebar counts"; pictures `home-dark`, `home-light` | `ui/pages/Sidebar.slint`, `core/presenter/HomePresenter.kt` |
+| Sidebar with state / type filters and counts | `androidUi/HomeNavigation.kt`, `App.kt` | done and checked | `test_home` (41): "six state filters", "sidebar counts"; pictures `home-dark`, `home-light` | `ui/pages/Sidebar.slint`, `core/presenter/HomePresenter.kt` |
 | Rail on a medium-width window | `HomeNavigation.kt` | done and checked | picture `home-dark-medium` | `ui/pages/Rail.slint` |
 | Phone layout (bottom nav, below 680 dp) | `HomeNavigation.kt`, `App.kt` | missing | none | Deliberate: native window minimum 680 x 480 (STATUS "Decisions") |
 | Search | `HomeNavigation.kt` top bar | done and checked | `test_home`: "search ignores case", "no match text" | |

@@ -1,6 +1,6 @@
 # 03 - Presentation surface: what a UI consumes from `sharedLogic`
 
-Scope: everything the Compose UI (`sharedUI`) and the desktop entry point (`desktopApp/main.kt`)
+Scope: everything the Compose UI (`androidUi`) and the desktop entry point (`desktopApp/main.kt`)
 read from or call in `sharedLogic`, so that a renderer-only Slint UI can be driven through a
 bridge (state snapshots out, events in). Read-only analysis of branch `desktop-native`,
 2026-11-09. Nothing was built or run for this document.
@@ -11,7 +11,7 @@ Path shorthands used below:
 |-----------|------------------------------------------------------------------------------------------|
 | `DASH/`   | `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/presentation/dashboard/` |
 | `SL/`     | `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`                        |
-| `UI/`     | `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`                           |
+| `UI/`     | `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`                           |
 | `main.kt` | `desktopApp/src/main/kotlin/com/michelle/raouf/fetch_jet/main.kt`                        |
 
 Files of `DASH/` (3503 lines): `DashboardContract.kt` (453), `DashboardViewModel.kt` (971),
@@ -45,7 +45,7 @@ every change (`MutableStateFlow.update { it.copy(...) }`).
 
 ### 1.1 Properties
 
-"UI" = whether `sharedUI` reads it. "Set by" = the main writers.
+"UI" = whether `androidUi` reads it. "Set by" = the main writers.
 
 #### Add-download dialog
 
@@ -214,7 +214,7 @@ use, so the numbers are not consecutive inside a table.)
 
 #### `DownloadTask` (`SL/domain/model/DownloadTask.kt:36-103`)
 
-"UI" = read by `sharedUI` (R = list row `UI/ui/TaskRows.kt`, D = details `UI/TaskDetails.kt`,
+"UI" = read by `androidUi` (R = list row `UI/ui/TaskRows.kt`, D = details `UI/TaskDetails.kt`,
 L = list logic `UI/TaskList.kt`, P = `UI/ui/PiecesBar.kt`, X = other dialogs).
 
 | Field                         | Type                     | Default       | Meaning                                                                                      | UI                |
@@ -682,7 +682,7 @@ Verified facts:
 - `DashboardViewModel.scope` adds `Dispatchers.IO` explicitly (import `kotlinx.coroutines.IO`,
   line 14, which is the Native spelling), so nothing in the view model depends on Main.
 - `grep "Dispatchers.Main"` over `sharedLogic/src/commonMain`, `jvmMain`, `jvmAndroidMain`,
-  `sharedUI/src` and `desktopApp/src`: **0 hits**.
+  `androidUi/src` and `desktopApp/src`: **0 hits**.
 
 Therefore, in the view model itself **nothing breaks** on mingwX64. `DashboardViewModel()`
 constructs, its collectors run on the IO pool, `uiState` updates as on the JVM.
@@ -735,10 +735,10 @@ Not required: a real `Dispatchers.Main` implementation. Nothing calls it. Instal
 
 ---
 
-## 4. Other `sharedLogic` symbols used directly by `sharedUI` and `main.kt`
+## 4. Other `sharedLogic` symbols used directly by `androidUi` and `main.kt`
 
 Found with `grep "com.michelle.raouf.fetch_jet.(core|domain|feature|presentation)"` over
-`sharedUI/src` and `desktopApp/src` (imports and fully qualified uses). Domain models and the
+`androidUi/src` and `desktopApp/src` (imports and fully qualified uses). Domain models and the
 contract types are in sections 1 and 2.
 
 ### 4.1 Observable singletons (the UI collects their flows)

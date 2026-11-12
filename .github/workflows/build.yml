@@ -52,9 +52,9 @@ on:
         type: boolean
         default: true
       desktop_engine:
-        description: "Desktop app for Windows / macOS / Linux: native (desktopNative, Kotlin/Native + Slint) or jvm (desktopApp, Compose). Verify runs with native upload the packages as workflow artifacts."
+        description: "Desktop app for Windows / macOS / Linux: native (desktopNative, Kotlin/Native + Slint)."
         type: choice
-        options: [ native, jvm ]
+        options: [ native ]
         default: native
 
 permissions:
@@ -105,8 +105,8 @@ jobs:
         run: |
           # Tag pushes have no inputs: they build the native desktop app.
           case "${IN_ENGINE:-native}" in
-            native|jvm) echo "desktop_engine=${IN_ENGINE:-native}" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::desktop_engine must be native or jvm, not '$IN_ENGINE'"; exit 1 ;;
+            native) echo "desktop_engine=native" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::desktop_engine must be native, not '$IN_ENGINE'"; exit 1 ;;
           esac
           # "iOS, Linux" -> "ios,linux"; anything that is not a known platform is dropped.
           BETA=""
@@ -284,35 +284,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # jpackage needs dpkg-deb, fakeroot and objcopy for the .deb. GitHub's image has them;
-      # on a self-hosted machine install them once (sudo needs a password there).
-      - name: Check Linux packaging tools
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        run: |
-          MISSING=""
-          for t in fakeroot dpkg-deb objcopy; do command -v $t >/dev/null || MISSING="$MISSING $t"; done
-          if [ -n "$MISSING" ]; then
-            if sudo -n true 2>/dev/null; then
-              sudo apt-get update -y && sudo apt-get install -y fakeroot dpkg-dev binutils
-            else
-              echo "::error::Missing:$MISSING. On the runner machine run once: sudo apt-get install -y fakeroot dpkg-dev binutils"
-              exit 1
-            fi
-          fi
-
-      - name: Build Linux Deb & AppImage
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        run: ./gradlew :desktopApp:packageDeb :desktopApp:packageAppImage
-
-      - name: Pack the app-image directory
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        run: |
-          # Compose writes the jpackage app-image to binaries/main/app/<Name>
-          cd desktopApp/build/compose/binaries/main/app
-          tar czf ../FetchJet-linux-x64.tar.gz .
-
-      # Native app (desktopNative): Kotlin/Native core + Slint host + libtorrent.
-      # A self-hosted machine needs the packages once (sudo needs a password there).
       - name: Check native build packages
         if: needs.plan.outputs.desktop_engine == 'native'
         run: |
@@ -413,11 +384,7 @@ jobs:
           ENGINE: ${{ needs.plan.outputs.desktop_engine }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          if [ "$ENGINE" = native ]; then
-            FILES=( "$RUNNER_TEMP"/package/fetchjet_*_amd64.deb "$RUNNER_TEMP"/package/FetchJet-*-linux-x64.tar.gz )
-          else
-            FILES=( desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/FetchJet-linux-x64.tar.gz )
-          fi
+          FILES=( "$RUNNER_TEMP"/package/fetchjet_*_amd64.deb "$RUNNER_TEMP"/package/FetchJet-*-linux-x64.tar.gz )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Linux files were produced"; exit 1; }
           # Every file gets <file>.sig: the in-app updater installs only signed files.
           bash scripts/sign-release-file.sh "${FILES[@]}"
@@ -447,66 +414,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Windows EXE & MSI
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        # cmd, not PowerShell: a self-hosted Windows PC usually blocks .ps1 scripts.
-        # .\ is required: a locked-down PC may set NoDefaultCurrentDirectoryInExePath,
-        # so cmd won't find gradlew.bat in the workspace without the explicit path.
-        shell: cmd
-        run: call .\gradlew.bat :desktopApp:packageExe :desktopApp:packageMsi :desktopApp:createDistributable
-
-      # Microsoft Store package: the same app image packed as an (unsigned) .msix. Upload it in
-      # Partner Center -> FetchJet (MSIX) -> Packages; the Store signs and hosts it.
-      - name: Build Microsoft Store package (MSIX)
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        shell: bash
-        env:
-          VERSION: ${{ needs.plan.outputs.version }}
-          # Git Bash would turn the /o /d /p switches of makeappx into paths: keep them as typed.
-          MSYS_NO_PATHCONV: "1"
-          MSYS2_ARG_CONV_EXCL: "*"
-        run: |
-          set -e
-          V="$VERSION"
-          [ -n "$V" ] || V=$(tr -d '\r' < sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/update/AppVersion.kt | sed -n 's/^const val APP_VERSION = "\(.*\)"/\1/p')
-          V="${V%%-*}"
-          while [ "$(echo "$V" | tr -cd . | wc -c)" -lt 2 ]; do V="$V.0"; done
-          MSIX_VERSION="$V.0"   # the Store wants the 4th number to be 0
-
-          # makeappx / makepri: from an installed Windows SDK, else the SDK build-tools NuGet.
-          TOOLS=$(ls -d "/c/Program Files (x86)/Windows Kits/10/bin/"10.*/x64 2>/dev/null | sort -V | tail -1 || true)
-          if [ -z "$TOOLS" ] || [ ! -f "$TOOLS/makeappx.exe" ]; then
-            NV=$(curl -4 --retry 3 -fsSL https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/index.json | grep -o '"[0-9.]*"' | tr -d '"' | tail -1)
-            echo "Windows SDK build tools $NV from NuGet"
-            mkdir -p "$RUNNER_TEMP/sdkbt"
-            curl -4 --retry 3 -fsSL -o "$RUNNER_TEMP/sdkbt.zip" "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/$NV/microsoft.windows.sdk.buildtools.$NV.nupkg"
-            /c/Windows/System32/tar.exe -xf "$(cygpath -w "$RUNNER_TEMP/sdkbt.zip")" -C "$(cygpath -w "$RUNNER_TEMP/sdkbt")"
-            TOOLS=$(ls -d "$RUNNER_TEMP"/sdkbt/bin/10.*/x64 | sort -V | tail -1)
-          fi
-          echo "tools: $TOOLS"
-
-          STAGE="$RUNNER_TEMP/msix"
-          rm -rf "$STAGE"; mkdir -p "$STAGE"
-          cp -r desktopApp/build/compose/binaries/main/app/FetchJet/. "$STAGE/"
-          cp -r desktopApp/msix/Assets "$STAGE/"
-          # An IDE "Reformat code" may wrap <FileType>.torrent</FileType> over two lines, which
-          # the manifest schema rejects: trim the whitespace around every text value first.
-          perl -0pe 's/>\s*([^<>\s][^<>]*?)\s*</>$1</g; s/__VERSION__/'"$MSIX_VERSION"'/g' \
-            desktopApp/msix/AppxManifest.xml > "$STAGE/AppxManifest.xml"
-
-          # resources.pri lets Windows pick the sharp icon sizes (taskbar, Start); optional.
-          ( cd "$RUNNER_TEMP" && "$TOOLS/makepri.exe" createconfig /cf priconfig.xml /dq en-US /o >/dev/null \
-            && "$TOOLS/makepri.exe" new /pr "$(cygpath -w "$STAGE")" /cf priconfig.xml /mn "$(cygpath -w "$STAGE/AppxManifest.xml")" /of "$(cygpath -w "$STAGE/resources.pri")" /o ) \
-            || echo "::warning::makepri failed; the package works with the plain icons"
-
-          mkdir -p desktopApp/build/msix
-          OUT="desktopApp/build/msix/FetchJet-$V-store.msix"
-          "$TOOLS/makeappx.exe" pack /o /d "$(cygpath -w "$STAGE")" /p "$(cygpath -w "$OUT")"
-          ls -la "$OUT"
-
-      # Native app (desktopNative). The packaging scripts work under E:\tools: on the self-hosted
-      # PC that drive and its tools (Slint, libtorrent, MSYS2 clang64, WiX) already exist; on a
-      # GitHub runner the script creates E: and fetches them. Output: E:\tools\probes\package\ci\out.
       - name: Native build tools (drive E, Slint, CMake, WiX, Windows SDK, MSYS2 clang64, libtorrent)
         if: needs.plan.outputs.desktop_engine == 'native'
         shell: cmd
@@ -561,12 +468,8 @@ jobs:
           ENGINE: ${{ needs.plan.outputs.desktop_engine }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          if [ "$ENGINE" = native ]; then
             # No .exe: the updater (JVM and native) takes the first .msi; the stage zip stays a workflow artifact.
-            FILES=( /e/tools/probes/package/ci/out/FetchJet-*.msi /e/tools/probes/package/ci/out/FetchJet-*-store.msix )
-          else
-            FILES=( desktopApp/build/compose/binaries/main/exe/*.exe desktopApp/build/compose/binaries/main/msi/*.msi desktopApp/build/msix/*.msix )
-          fi
+          FILES=( /e/tools/probes/package/ci/out/FetchJet-*.msi /e/tools/probes/package/ci/out/FetchJet-*-store.msix )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
           # Every file gets <file>.sig: the in-app updater installs only signed files.
           bash scripts/sign-release-file.sh "${FILES[@]}"
@@ -596,28 +499,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Apple Silicon only. The app bundles a Java runtime of the build machine's CPU, so the
-      # check below makes sure an Intel runner can never publish an Intel DMG by mistake.
-      - name: Build macOS DMG (Apple Silicon)
-        if: needs.plan.outputs.desktop_engine == 'jvm'
-        run: |
-          set -e
-          OUT=desktopApp/build/compose/binaries/main/dmg
-          rm -rf "$OUT"
-          ./gradlew :desktopApp:packageDmg
-          mkdir -p desktopApp/build/dmg-out
-          for f in "$OUT"/*.dmg; do
-            mnt=$(mktemp -d)
-            hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$f" >/dev/null
-            arch=$(lipo -archs "$mnt"/*.app/Contents/MacOS/* 2>/dev/null | head -1)
-            hdiutil detach "$mnt" >/dev/null
-            [ "$arch" = "arm64" ] || { echo "::error::$f is '$arch', not arm64 (the macOS build must run on Apple Silicon)"; exit 1; }
-            mv "$f" "desktopApp/build/dmg-out/$(basename "${f%.dmg}")-arm64.dmg"
-          done
-          ls -la desktopApp/build/dmg-out
-
-      # Native app (desktopNative): same bundle id, dmg name and ~/.fetch_jet data as the JVM app,
-      # so installing it over the JVM app (or the JVM in-app update) replaces it.
       - name: Native build tools (cmake, boost for libtorrent)
         if: needs.plan.outputs.desktop_engine == 'native'
         run: |
@@ -699,11 +580,7 @@ jobs:
           ENGINE: ${{ needs.plan.outputs.desktop_engine }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
-          if [ "$ENGINE" = native ]; then
-            FILES=( desktopNative/build-mac/package/FetchJet-*-arm64.dmg )
-          else
-            FILES=( desktopApp/build/dmg-out/*-arm64.dmg )
-          fi
+          FILES=( desktopNative/build-mac/package/FetchJet-*-arm64.dmg )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No macOS files were produced"; exit 1; }
           # Every file gets <file>.sig: the in-app updater installs only signed files.
           bash scripts/sign-release-file.sh "${FILES[@]}"

@@ -51,7 +51,7 @@ desktopNative/
       runtime/           dispatcher, change notifier, crash log, MemoryTuning (GC settings)
       channels/ dto/     snapshot channels and their DTOs (dto/Channels.kt is the protocol list)
       actions/           UiAction (everything the UI can ask for)
-      presenter/         state logic ported from sharedUI
+      presenter/         state logic ported from androidUi
       bridge/            127.0.0.1:28450 server for the browser extension
       host/              calls into the C++ host (dialogs)
       generated/         generated string table

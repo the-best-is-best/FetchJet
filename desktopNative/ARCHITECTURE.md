@@ -41,7 +41,7 @@ desktopNative/
             channels/        StructChannel, ListChannel (row diff), QueueChannel
             dto/             snapshot DTOs + Channels.kt: the source of truth of the UI protocol
             actions/         UiAction: everything the UI can ask for (section 7)
-            presenter/       UI state logic ported from sharedUI (section 9)
+            presenter/       UI state logic ported from androidUi (section 9)
             bridge/          the 127.0.0.1:28450 server for the browser extension
             host/            HostServices: calls into the C++ host (file and folder dialogs)
             generated/       generated Kotlin (string table)
@@ -224,7 +224,7 @@ The UI is a renderer. Everything it shows arrives as snapshots of DTOs that the 
    Persian) and `Theme.font` (`Microsoft YaHei UI` for Chinese, `Segoe UI` otherwise: the default
    fallback drops simplified Chinese characters, report 13). Slint has no layout mirroring:
    layouts follow section 12.4. Numbers, sizes and speeds inside RTL text are wrapped by the
-   presenter in U+2066 ... U+2069, as `ltr()` does in sharedUI.
+   presenter in U+2066 ... U+2069, as `ltr()` does in androidUi.
 3. Echo rule for editable text: the widget owns the text while the user types and sends an action
    on each edit (`TextInput.edited` fires for user edits only). The presenter does not echo it
    back. When the core itself replaces the text (paste clean-up, a suggested file name, a reset),
@@ -232,16 +232,16 @@ The UI is a renderer. Everything it shows arrives as snapshots of DTOs that the 
 
 ## 9. Presenter (Kotlin, `presenter/`)
 
-Ports the state logic that sharedUI keeps in Compose (`remember` state, filtering, grouping,
+Ports the state logic that androidUi keeps in Compose (`remember` state, filtering, grouping,
 selection, formatting) so the Slint side has no logic:
 
 - owns `DashboardViewModel` and the UI-local state (side filter, search, checked rows, collapsed
   groups, open details, settings page, dialog-local values);
 - combines the view-model state with the other flows the UI reads (queue, speed schedule, when
   done, language, pairing, updates, device sync, notifications) into the channel DTOs;
-- reproduces the pure helpers of sharedUI (`taskStateLine`, `taskKindTag`, `rowActionFor`,
+- reproduces the pure helpers of androidUi (`taskStateLine`, `taskKindTag`, `rowActionFor`,
   `SideFilter`, `taskStateGroups`, `Formatters.kt`) with the same rules. They stay duplicated on
-  purpose until the Compose desktop app is retired; sharedUI is not edited;
+  purpose until the Compose desktop app is retired; androidUi is not edited;
 - knows the position of every list row (group headers are part of the rows), so "scroll to this
   task" is a number for the UI (report 14).
 
@@ -314,8 +314,8 @@ selection, formatting) so the Slint side has no logic:
    a menu, text being typed). No filtering, sorting, formatting or business rules. Slint has no
    `contains` / `substring` anyway.
 2. Colors, type sizes, radii and spacing come from `ui/theme.slint` (`Theme`), which mirrors
-   `sharedUI/theme` (both schemes). No literal colors in pages except the fixed status colors
-   that sharedUI also hard-codes.
+   `androidUi/theme` (both schemes). No literal colors in pages except the fixed status colors
+   that androidUi also hard-codes.
 3. Pages use the widgets in `ui/widgets/`. **No std-widgets** (one `LineEdit` is 470 KB of
    generated code, report 14): buttons, text field, checkbox, switch, menu, dialog frame, scroll
    area, list, chips, progress, emoji icon are the app's own, built on `Rectangle`, `Text`,

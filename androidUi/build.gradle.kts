@@ -13,7 +13,6 @@ compose.resources {
 
 kotlin {
     jvmToolchain(21)
-    jvm()
 
     listOf(
         iosArm64(),

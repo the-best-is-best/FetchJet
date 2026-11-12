@@ -58,7 +58,7 @@ Steps:
   declarations; jvmMain + jvmAndroidMain = 5.7k lines to write again for Windows (HTTP through
   WinHttp, secrets with DPAPI, files, processes for yt-dlp / ffmpeg, bridge server, tray,
   update installer); iosMain (4.6k lines) is the model and macOS can reuse most of it. Torrents:
-  FJTorrent (libtorrent C++) built for Windows. UI: `sharedUI` (13.8k lines of Compose) is
+  FJTorrent (libtorrent C++) built for Windows. UI: `androidUi` (13.8k lines of Compose) is
   written again in Slint for desktop; mobile keeps Compose.
 - Estimate road B, Windows: ~25-35 MB for the whole app (core 12-15 + UI ~10), against 13 MB
   Ezoo, 217 MB road A, ~250 MB today. Work: several weeks (core actuals, C API between the
@@ -326,9 +326,9 @@ Where to look then: `MainActivity.onCreate` sets light bars before the theme is 
 
 ## Next decisions
 
-- [ ] Drop `desktopApp` (JVM) after one native release went out on all three OSes; then
-  `sharedUI` is Android-only: merge it into `androidApp` (or rename `androidUi`) and remove
-  `sharedUI/src/iosMain` (unused since SwiftUI).
+- [ ] Drop `desktopApp (removed)` (JVM) after one native release went out on all three OSes; then
+  `androidUi` is Android-only: merge it into `androidApp` (or rename `androidUi`) and remove
+  `androidUi/src/iosMain` (unused since SwiftUI).
 - [x] Release notes `release-notes/1.4.0/*.md` (15 languages): macOS, Windows / Linux, iPhone,
   iPad, compress audio, Send to device, torrents, extension button (2026-11-12). The Windows /
   Linux line has no memory number on purpose.

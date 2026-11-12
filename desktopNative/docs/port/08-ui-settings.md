@@ -5,7 +5,7 @@ rebuilt in Slint for the native Windows app. The Slint side only renders state c
 presenter and sends events back.
 
 All paths are relative to `E:/tbib/FetchJet`. `UI` =
-`sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`, `LOGIC` =
+`androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`, `LOGIC` =
 `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`.
 
 Sizes are Compose dp (= Slint logical px). "sp" equals dp at the default font scale.
@@ -74,7 +74,7 @@ specified here because a page cannot be ported without them):
 
 `desktopApp/src/main/kotlin/com/michelle/raouf/fetch_jet/main.kt:769`:
 `rememberWindowState(width = 1100.dp, height = 750.dp)`. No minimum window size is set anywhere
-(`minimumSize` does not occur in `desktopApp` or `sharedUI`), so the window can be shrunk freely and
+(`minimumSize` does not occur in `desktopApp (removed)` or `androidUi`), so the window can be shrunk freely and
 every breakpoint below is reachable on desktop.
 
 ### 1.3 Which settings layout at which window width

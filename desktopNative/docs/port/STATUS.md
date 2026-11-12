@@ -62,7 +62,7 @@ app on port 28450 (and exit when it is running) and fetch the media tools at onc
 ## How a screen is made
 
 1. DTO in `desktopNative/core/.../nativeapp/dto/` (+ a channel in `Channels.kt`), actions in
-   `actions/UiAction.kt`, state logic in `presenter/` (copied rule by rule from `sharedUI`).
+   `actions/UiAction.kt`, state logic in `presenter/` (copied rule by rule from `androidUi`).
 2. `python desktopNative/tools/gen/gen.py` writes `ui/generated/*.slint`,
    `host/generated/fj_bridge.h`, `core/.../generated/TrTable.kt`, `ui/generated/protocol.json`.
 3. Page in `desktopNative/ui/pages/`, widgets in `ui/widgets/`.
@@ -171,7 +171,7 @@ Feature-by-feature status against the JVM app: `desktopNative/docs/port/PARITY.m
 
 ## Look check against the Compose UI (2026-11-10)
 
-Compared by reading the Compose code (`sharedUI` theme, `HomeNavigation.kt`, `TaskList.kt`,
+Compared by reading the Compose code (`androidUi` theme, `HomeNavigation.kt`, `TaskList.kt`,
 `ui/TaskRows.kt`, `TaskDetails.kt`, `ui/PiecesBar.kt`, `App.kt`, the Add dialog files,
 `ui/FdmSettingsPanel.kt`, `ui/SettingsKit.kt`, `ui/UpdateUi.kt`, `ui/RemoveConfirmationDialog.kt`,
 `ui/TimeRangePickerDialog.kt`, `ui/FetchJetTextField.kt`) next to the `.slint` files, and by drawing

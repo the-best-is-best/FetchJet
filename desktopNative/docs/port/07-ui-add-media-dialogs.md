@@ -1,7 +1,7 @@
 # 07 - UI porting spec: Add dialog media part and the small dialogs
 
 Scope: nine Compose files under
-`sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/ui/`:
+`androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/ui/`:
 
 | File                          | Lines | Composables / functions                                                                                                           |
 |-------------------------------|-------|-----------------------------------------------------------------------------------------------------------------------------------|
@@ -1120,7 +1120,7 @@ Quirks of the current behaviour:
 **What the JVM desktop app shows today:** this in-app Compose dialog, in both places. It is a
 layer inside the main window, themed and translated by the app. `PathResolver.chooseDirectory()`
 (Swing `JFileChooser`, `PathResolver.jvm.kt:98-121`) exists but **has no caller** anywhere in
-`sharedUI`, `desktopApp` or `androidApp`; it is dead code.
+`androidUi`, `desktopApp (removed)` or `androidApp`; it is dead code.
 
 **`IFileOpenDialog` with `FOS_PICKFOLDERS`** (plus `FOS_FORCEFILESYSTEM`, owner = the main HWND,
 `SetFolder` to the initial path when it exists, else the Downloads folder) covers the function
@@ -1576,7 +1576,7 @@ Nothing in this area has filters, sorting or collapsed groups.
 
 ### 6.2 Pure helpers the presenter must reproduce
 
-`sharedUI/.../utils/Formatters.kt` is in the Compose module, so the native presenter cannot call
+`androidUi/.../utils/Formatters.kt` is in the Compose module, so the native presenter cannot call
 it as it is; the functions are plain Kotlin and can be moved or copied.
 
 | Helper                                                                               | Source                                                         | Exact rule                                                                                                                                                                                                     |

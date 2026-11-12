@@ -3,7 +3,7 @@
 Scope: the Compose files below, to be re-implemented in Slint (markup renders state computed by a
 Kotlin presenter; no business logic in `.slint`).
 
-| File (under `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`) | Lines | Content                                                                                                   |
+| File (under `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`) | Lines | Content                                                                                                   |
 |-----------------------------------------------------------------------------|-------|-----------------------------------------------------------------------------------------------------------|
 | `TaskList.kt`                                                               | 664   | list area, banners, toolbar, selection bar, section headers, status bar, state grouping                   |
 | `ui/TaskRows.kt`                                                            | 542   | one row (wide + compact), kind square, thin bar, quick action, priority chip, column header, `SideFilter` |
@@ -1510,8 +1510,8 @@ Order: U1 -> U2 -> U3 -> U4, then U8 -> U6 -> U7 -> U5; U9 with the settings pag
 
 ## 12. (c) State and helpers that move into the Kotlin presenter
 
-`sharedUI` is Compose-only and will not be compiled for mingwX64, so everything below that lives in
-`sharedUI` today has to exist in the presenter. Helpers already in `sharedLogic` are called as they
+`androidUi` is Compose-only and will not be compiled for mingwX64, so everything below that lives in
+`androidUi` today has to exist in the presenter. Helpers already in `sharedLogic` are called as they
 are: `DownloadTask.canResume()`, `canSendToDevice()`, `etaSeconds()`
 (`domain/model/DownloadTask.kt:109-146`), `localizeStep` (`core/i18n/start/StepText.kt`),
 `formatLocalSchedule`, `currentEpochMs`, `localUtcOffsetMs` (`core/util/LocalClock.kt`),

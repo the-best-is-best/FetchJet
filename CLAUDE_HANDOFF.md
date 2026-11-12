@@ -1,7 +1,7 @@
 # FetchJet — handoff notes for the next Claude session (2026-10-28)
 
 Kotlin Multiplatform download manager (Android, iOS, JVM desktop). Compose Multiplatform UI in
-`sharedUI`, all logic in `sharedLogic`. Developer: Michelle Raouf. Distribution: desktop + Android
+`androidUi`, all logic in `sharedLogic`. Developer: Michelle Raouf. Distribution: desktop + Android
 builds, iOS sideloaded with a developer certificate (NOT App Store) → everything is enabled in the
 iOS **full** edition.
 
