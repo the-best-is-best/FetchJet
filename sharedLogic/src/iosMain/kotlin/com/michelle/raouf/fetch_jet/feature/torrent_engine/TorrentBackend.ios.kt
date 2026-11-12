@@ -145,9 +145,44 @@ private class IosTorrentBackend : TorrentBackend {
             hasMetadata = p.hasMetadata,
             fileProgress = p.fileProgress,
             stateText = p.stateText,
-            error = p.error
+            error = p.error,
+            uploadedBytes = p.uploadedBytes
         )
     }
+
+    override val supportsDetails: Boolean get() = bridge != null
+
+    override fun details(taskId: String): TorrentDetails? {
+        val d = bridge?.details(taskId) ?: return null
+        return TorrentDetails(
+            trackers = d.trackers.map { TorrentTrackerInfo(it.url, it.state, it.message) },
+            peers = d.peers.map {
+                TorrentPeerInfo(
+                    address = it.address,
+                    client = it.client,
+                    downloadRate = it.downloadRate,
+                    uploadRate = it.uploadRate,
+                    progress = it.progress,
+                    isSeed = it.isSeed
+                )
+            },
+            uploadedBytes = d.uploadedBytes,
+            downloadedBytes = d.downloadedBytes,
+            pieceCount = d.pieceCount,
+            piecesDone = d.piecesDone,
+            pieceSize = d.pieceSize,
+            magnetLink = d.magnetLink,
+            firstLastPiecesFirst = d.firstLastPiecesFirst
+        )
+    }
+
+    override fun addTracker(taskId: String, url: String): Boolean =
+        bridge?.addTracker(taskId, url.trim()) == true
+
+    override fun recheck(taskId: String): Boolean = bridge?.recheck(taskId) == true
+
+    override fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean =
+        bridge?.setFirstLastPiecesFirst(taskId, on) == true
 
     override fun shutdown() {
         bridge?.shutdown()

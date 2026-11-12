@@ -33,7 +33,35 @@ class IosTorrentProgress(
     val hasMetadata: Boolean,
     val fileProgress: List<Long>,
     val stateText: String,
-    val error: String?
+    val error: String?,
+    val uploadedBytes: Long
+)
+
+class IosTorrentTracker(
+    val url: String,
+    val state: String,
+    val message: String
+)
+
+class IosTorrentPeer(
+    val address: String,
+    val client: String,
+    val downloadRate: Long,
+    val uploadRate: Long,
+    val progress: Float,
+    val isSeed: Boolean
+)
+
+class IosTorrentDetails(
+    val trackers: List<IosTorrentTracker>,
+    val peers: List<IosTorrentPeer>,
+    val uploadedBytes: Long,
+    val downloadedBytes: Long,
+    val pieceCount: Int,
+    val piecesDone: Int,
+    val pieceSize: Long,
+    val magnetLink: String,
+    val firstLastPiecesFirst: Boolean
 )
 
 /**
@@ -88,6 +116,10 @@ interface IosTorrentBridge {
 
     fun setLimits(taskId: String, downloadLimitBytesPerSec: Long, uploadLimitBytesPerSec: Long)
     fun progress(taskId: String): IosTorrentProgress?
+    fun details(taskId: String): IosTorrentDetails?
+    fun addTracker(taskId: String, url: String): Boolean
+    fun recheck(taskId: String): Boolean
+    fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean
     fun lastError(): String?
     fun shutdown()
 }

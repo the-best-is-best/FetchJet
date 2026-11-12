@@ -168,10 +168,12 @@ fun App(
     }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val effectClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is DashboardUiEffect.ShowToast -> snackbarHostState.showSnackbar(effect.text)
+                is DashboardUiEffect.CopyText -> effectClipboard.setText(androidx.compose.ui.text.AnnotatedString(effect.text))
             }
         }
     }
@@ -588,6 +590,8 @@ fun App(
                     onFileNameChanged = { viewModel.onEvent(DashboardUiEvent.OnFileNameChanged(it)) },
                     checksumInput = state.checksumInput,
                     onChecksumChanged = { viewModel.onEvent(DashboardUiEvent.OnChecksumChanged(it)) },
+                    testLink = state.testLink,
+                    onTestLink = { viewModel.onEvent(DashboardUiEvent.OnTestLinkClicked) },
                     onDestinationPathChanged = {
                         viewModel.onEvent(
                             DashboardUiEvent.OnDestinationPathChanged(

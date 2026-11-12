@@ -10,7 +10,7 @@ object LogRedact {
     private val header = Regex(
         """(?i)\b(set-cookie|cookie|proxy-authorization|authorization)(["']?\s*[:=]\s*)[^\r\n]*"""
     )
-    private val userInfo = Regex("""(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@'"]+:[^/\s@'"]+@""")
+    private val userInfo = Regex("""(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@'"]*:[^/\s'"]+@""")
     private val query = Regex("""(https?://[^\s?#"'<>]+)\?([^\s#"'<>]+)""")
 
     fun redact(line: String): String {

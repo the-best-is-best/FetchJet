@@ -61,6 +61,7 @@ struct torrent_entry {
     lt::torrent_handle handle;
     bool disable_upload = false;
     int upload_limit = 0;
+    bool first_last = false;
     std::chrono::steady_clock::time_point nudge_until{};
     std::chrono::steady_clock::time_point last_nudge{};
     std::chrono::steady_clock::time_point last_refill{};
@@ -456,9 +457,40 @@ void wake(torrent_entry& entry) {
     entry.handle.resume();
 }
 
+void apply_first_last(lt::torrent_handle const& h, std::vector<lt::download_priority_t> const& file_priorities, bool on) {
+    std::shared_ptr<lt::torrent_info const> const ti = h.torrent_file();
+    if (!ti) return;
+    lt::file_storage const& fs = ti->layout();
+    std::int64_t const piece_length = fs.piece_length();
+    if (piece_length <= 0) return;
+    std::map<int, std::uint8_t> base;
+    for (int i = 0; i < fs.num_files(); ++i) {
+        lt::file_index_t const idx(i);
+        std::int64_t const size = fs.file_size(idx);
+        if (fs.pad_file_at(idx) || size <= 0) continue;
+        std::uint8_t priority = static_cast<std::uint8_t>(lt::default_priority);
+        if (static_cast<std::size_t>(i) < file_priorities.size()) priority = static_cast<std::uint8_t>(file_priorities[static_cast<std::size_t>(i)]);
+        std::int64_t const offset = fs.file_offset(idx);
+        int const ends[2] = {static_cast<int>(offset / piece_length), static_cast<int>((offset + size - 1) / piece_length)};
+        for (int piece : ends) {
+            auto const found = base.find(piece);
+            if (found == base.end()) base[piece] = priority;
+            else if (found->second < priority) found->second = priority;
+        }
+    }
+    std::vector<std::pair<lt::piece_index_t, lt::download_priority_t>> pieces;
+    pieces.reserve(base.size());
+    for (auto const& item : base) {
+        if (item.second == 0) continue;
+        pieces.emplace_back(lt::piece_index_t(item.first), on ? lt::top_priority : lt::download_priority_t(item.second));
+    }
+    if (!pieces.empty()) h.prioritize_pieces(pieces);
+}
+
 void prioritize(torrent_entry* entry, lt::torrent_handle const& h, std::vector<lt::download_priority_t> const& priorities) {
     bool const was_finished = h.status(lt::status_flags_t{}).is_finished;
     h.prioritize_files(priorities);
+    if (entry != nullptr && entry->first_last) apply_first_last(h, priorities, true);
     if (was_finished && !(h.flags() & lt::torrent_flags::paused)) {
         reconnect_soon(h);
         if (entry != nullptr) nudge_for_a_while(*entry);
@@ -506,6 +538,12 @@ void drain(core& c) {
             }
         } else if (auto const* written = lt::alert_cast<lt::cache_flushed_alert>(a)) {
             c.flushed.insert(written->handle);
+        } else if (auto const* changed = lt::alert_cast<lt::file_prio_alert>(a)) {
+            for (auto const& item : c.tasks) {
+                if (!item.second.first_last || !changed->handle.is_valid() || !(item.second.handle == changed->handle)) continue;
+                apply_first_last(changed->handle, changed->handle.get_file_priorities(), true);
+                break;
+            }
         } else if (auto const* failed = lt::alert_cast<lt::save_resume_data_failed_alert>(a)) {
             if (c.resume_pending.count(failed->handle) != 0) {
                 c.resume_results[failed->handle] = resume_result{};
@@ -555,6 +593,60 @@ std::string tracker_note(lt::announce_entry const& tracker) {
     if (best->fails > 0) return "fails=" + std::to_string(static_cast<int>(best->fails));
     if (best->updating) return "updating";
     return best->start_sent ? "ok" : "idle";
+}
+
+std::string one_line(std::string text) {
+    for (char& ch : text) {
+        if (ch == '\t' || ch == '\n' || ch == '\r') ch = ' ';
+    }
+    return text;
+}
+
+std::string tracker_line(lt::announce_entry const& tracker) {
+    bool any_enabled = false;
+    bool working = false;
+    bool updating = false;
+    bool failed = false;
+    std::string note;
+    std::string failure;
+    for (auto const& endpoint : tracker.endpoints) {
+        if (!endpoint.enabled) continue;
+        any_enabled = true;
+        for (lt::announce_infohash const& state : endpoint.info_hashes) {
+            if (state.fails == 0 && state.start_sent) {
+                working = true;
+                if (note.empty()) note = state.message;
+            } else if (state.fails > 0) {
+                failed = true;
+                if (failure.empty()) failure = !state.message.empty() ? state.message : (state.last_error ? state.last_error.message() : std::string());
+            }
+            if (state.updating) updating = true;
+        }
+    }
+    char const* state = "waiting";
+    std::string message;
+    if (!tracker.endpoints.empty() && !any_enabled) {
+        state = "disabled";
+    } else if (working) {
+        state = "working";
+        message = note;
+    } else if (updating) {
+        state = "updating";
+    } else if (failed) {
+        state = "error";
+        message = failure;
+    }
+    return one_line(tracker.url) + "\t" + state + "\t" + one_line(message) + "\n";
+}
+
+bool tracker_scheme_ok(std::string const& url) {
+    std::string const text = lower(url);
+    char const* const schemes[] = {"http://", "https://", "udp://", "ws://", "wss://"};
+    for (char const* scheme : schemes) {
+        std::size_t const n = std::strlen(scheme);
+        if (text.size() > n && text.compare(0, n, scheme) == 0) return true;
+    }
+    return false;
 }
 
 }
@@ -1259,7 +1351,7 @@ FJT_API int32_t FJT_CALL fjt_torrent_status(
         status[FJT_ST_LIST_PEERS] = st.list_peers;
         status[FJT_ST_LIST_SEEDS] = st.list_seeds;
         status[FJT_ST_UPLOAD_LIMIT] = entry->upload_limit;
-        status[FJT_ST_TOTAL_UPLOAD] = st.total_payload_upload;
+        status[FJT_ST_TOTAL_UPLOAD] = std::max<std::int64_t>(st.all_time_upload, st.total_payload_upload);
         if (st.errc) put_text(st.errc.message(), err, err_cap);
         return files;
     } catch (std::exception const& e) {
@@ -1331,6 +1423,164 @@ FJT_API int32_t FJT_CALL fjt_torrent_debug_text(fjt_session* session, const char
             line += host_of(tracker.url) + "=" + tracker_note(tracker);
         }
         return put_text(line, out, cap);
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_trackers(fjt_session* session, const char* task_id, char* out, int32_t cap) {
+    clear_text(out, cap);
+    if (session == nullptr || task_id == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        std::string text;
+        for (lt::announce_entry const& tracker : entry->handle.trackers()) text += tracker_line(tracker);
+        return put_text(text, out, cap);
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_peers(fjt_session* session, const char* task_id, char* out, int32_t cap) {
+    clear_text(out, cap);
+    if (session == nullptr || task_id == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        std::vector<lt::peer_info> peers;
+        entry->handle.get_peer_info(peers);
+        std::string text;
+        int listed = 0;
+        for (lt::peer_info const& peer : peers) {
+            if (peer.connection_type == lt::peer_info::web_seed || peer.connection_type == lt::peer_info::http_seed) continue;
+            if (listed >= 200) break;
+            ++listed;
+            lt::tcp::endpoint const address = peer.remote_endpoint();
+            std::string const ip = address.address().to_string();
+            text += address.address().is_v6() ? "[" + ip + "]" : ip;
+            text += ":" + std::to_string(address.port());
+            text += "\t" + one_line(peer.client);
+            text += "\t" + std::to_string(peer.payload_down_speed);
+            text += "\t" + std::to_string(peer.payload_up_speed);
+            text += "\t" + std::to_string(peer.progress_ppm / 1000);
+            text += (peer.flags & lt::peer_info::seed) ? "\t1\n" : "\t0\n";
+        }
+        return put_text(text, out, cap);
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_add_tracker(fjt_session* session, const char* task_id, const char* url) {
+    if (session == nullptr || task_id == nullptr || url == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        std::string const address = trimmed(url);
+        if (!tracker_scheme_ok(address) || address.find_first_of(" \t\n") != std::string::npos) return FJT_E_ARG;
+        if (c.local_only && !is_local_url(address)) return FJT_E_ARG;
+        bool present = false;
+        for (auto const& tracker : entry->handle.trackers()) {
+            if (lower(tracker.url) == lower(address)) present = true;
+        }
+        if (!present) entry->handle.add_tracker(lt::announce_entry(address));
+        entry->handle.force_reannounce();
+        return FJT_OK;
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_recheck(fjt_session* session, const char* task_id) {
+    if (session == nullptr || task_id == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        c.flushed.erase(entry->handle);
+        c.flush_asked.erase(entry->handle);
+        entry->handle.force_recheck();
+        return FJT_OK;
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_magnet(fjt_session* session, const char* task_id, char* out, int32_t cap) {
+    clear_text(out, cap);
+    if (session == nullptr || task_id == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        lt::torrent_handle const& h = entry->handle;
+        lt::add_torrent_params atp;
+        atp.info_hashes = h.info_hashes();
+        atp.name = h.status(lt::torrent_handle::query_name).name;
+        for (lt::announce_entry const& tracker : h.trackers()) {
+            atp.trackers.push_back(tracker.url);
+            atp.tracker_tiers.push_back(tracker.tier);
+        }
+        return put_text(lt::make_magnet_uri(atp), out, cap);
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_set_first_last(fjt_session* session, const char* task_id, int32_t on) {
+    if (session == nullptr || task_id == nullptr) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        bool const wanted = on != 0;
+        lt::torrent_handle const h = entry->handle;
+        for (auto& item : c.tasks) {
+            if (item.second.handle == h) item.second.first_last = wanted;
+        }
+        apply_first_last(h, h.get_file_priorities(), wanted);
+        return FJT_OK;
+    } catch (...) {
+        return FJT_E_FAILED;
+    }
+}
+
+FJT_API int32_t FJT_CALL fjt_torrent_pieces(fjt_session* session, const char* task_id, int64_t* out, int32_t count) {
+    if (session == nullptr || task_id == nullptr || out == nullptr || count <= 0) return FJT_E_ARG;
+    try {
+        core& c = *session->state;
+        lock_t lock(c.mutex);
+        if (!c.session) return FJT_E_SESSION;
+        torrent_entry* entry = find_task(c, task_id);
+        if (entry == nullptr) return FJT_E_NOT_FOUND;
+        lt::torrent_handle const& h = entry->handle;
+        std::int64_t values[FJT_PC_COUNT] = {};
+        std::shared_ptr<lt::torrent_info const> const ti = h.torrent_file();
+        if (ti) {
+            values[FJT_PC_TOTAL] = ti->num_pieces();
+            values[FJT_PC_LENGTH] = ti->piece_length();
+            values[FJT_PC_HAVE] = std::max(h.status(lt::status_flags_t{}).num_pieces, 0);
+        }
+        values[FJT_PC_FIRST_LAST] = entry->first_last ? 1 : 0;
+        std::int32_t const written = std::min<std::int32_t>(count, FJT_PC_COUNT);
+        for (std::int32_t i = 0; i < written; ++i) out[i] = values[i];
+        return written;
     } catch (...) {
         return FJT_E_FAILED;
     }

@@ -48,6 +48,29 @@ typedef NS_ENUM(uint8_t, FJFilePriority) {
 @property(nonatomic, readonly) int32_t peers;
 @property(nonatomic, readonly) int32_t seeds;
 @property(nonatomic, readonly, copy) NSArray<NSNumber *> *fileProgress;
+@property(nonatomic, readonly) int64_t totalUploaded;
+@property(nonatomic, readonly) int64_t totalDownloaded;
+@end
+
+@interface FJTorrentTracker : NSObject
+@property(nonatomic, readonly, copy) NSString *url;
+@property(nonatomic, readonly, copy) NSString *state;
+@property(nonatomic, readonly, copy) NSString *message;
+@end
+
+@interface FJTorrentPeer : NSObject
+@property(nonatomic, readonly, copy) NSString *address;
+@property(nonatomic, readonly, copy) NSString *client;
+@property(nonatomic, readonly) int64_t downloadRate;
+@property(nonatomic, readonly) int64_t uploadRate;
+@property(nonatomic, readonly) float progress;
+@property(nonatomic, readonly) BOOL isSeed;
+@end
+
+@interface FJTorrentPieces : NSObject
+@property(nonatomic, readonly) int32_t count;
+@property(nonatomic, readonly) int32_t have;
+@property(nonatomic, readonly) int64_t pieceLength;
 @end
 
 NS_SWIFT_NAME(TorrentSession)
@@ -88,6 +111,22 @@ NS_SWIFT_NAME(TorrentSession)
 - (void)setFilePriorities:(NSArray<NSNumber *> *)priorities for:(NSString *)key NS_SWIFT_NAME(setFilePriorities(_:for:));
 
 - (void)setDownloadLimit:(int64_t)download uploadLimit:(int64_t)upload for:(NSString *)key NS_SWIFT_NAME(setLimits(download:upload:for:));
+
+- (NSArray<FJTorrentTracker *> *)trackersFor:(NSString *)key NS_SWIFT_NAME(trackers(_:));
+
+- (NSArray<FJTorrentPeer *> *)peersFor:(NSString *)key NS_SWIFT_NAME(peers(_:));
+
+- (BOOL)addTracker:(NSString *)url for:(NSString *)key NS_SWIFT_NAME(addTracker(_:for:));
+
+- (BOOL)forceRecheck:(NSString *)key NS_SWIFT_NAME(forceRecheck(_:));
+
+- (nullable NSString *)magnetLinkFor:(NSString *)key NS_SWIFT_NAME(magnetLink(_:));
+
+- (BOOL)setFirstLastPiecesFirst:(BOOL)on for:(NSString *)key NS_SWIFT_NAME(setFirstLastPiecesFirst(_:for:));
+
+- (nullable FJTorrentPieces *)piecesFor:(NSString *)key NS_SWIFT_NAME(pieces(_:));
+
+- (int64_t)uploadedBytesFor:(NSString *)key NS_SWIFT_NAME(uploadedBytes(_:));
 
 - (void)shutdown;
 

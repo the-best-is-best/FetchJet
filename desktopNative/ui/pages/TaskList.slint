@@ -286,19 +286,109 @@ export component TaskList inherits Rectangle {
     public function scroll-to-top() {
         list.scroll-to-y(0px);
     }
+    in property <bool> keys-enabled: true;
+    callback focus-search();
+    callback show-shortcuts();
+    private property <bool> wide: root.width >= 720px;
+    private property <length> open-height: (root.wide ? 68px : 90px) + 6px;
+    private property <length> done-height: (root.wide ? 68px : 75px) + 6px;
+    private property <int> page-rows: max(1, Math.floor(list.visible-height / root.open-height));
+    private property <int> focus-rev: Core.chrome.focusRev;
+    private property <bool> reveal-pending;
+    private property <int> reveal-ask;
+    changed focus-rev => {
+        if Core.chrome.focusRow > 0 {
+            root.reveal-pending = true;
+            if Core.chrome.focusRow <= 2 {
+                list.scroll-to-y(0px);
+            } else {
+                list.ensure-visible(Core.chrome.focusHeads * 38px + Core.chrome.focusDone * root.done-height
+                    + (Core.chrome.focusRow - 1 - Core.chrome.focusHeads - Core.chrome.focusDone) * root.open-height,
+                    root.open-height - 6px);
+            }
+            root.reveal-ask += 1;
+        }
+    }
     forward-focus: keys;
     keys := FocusScope {
+        KeyBinding {
+            keys: @keys(Control + R);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.resume, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + P);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.pause, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + O);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-file, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + E);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-folder, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + N);
+            enabled: root.keys-enabled;
+            activated => { Act.showAddDialog(true); }
+        }
+        KeyBinding {
+            keys: @keys(Control + F);
+            enabled: root.keys-enabled;
+            activated => { root.focus-search(); }
+        }
         key-pressed(e) => {
+            if !root.keys-enabled {
+                return reject;
+            }
             if e.modifiers.control && (e.text == "a" || e.text == "A") {
-                Act.listKey(ListKeyCode.select-all);
+                Act.listKey(ListKeyCode.select-all, false, 0);
                 return accept;
             }
             if e.text == Key.Escape && Core.chrome.selectionMode {
-                Act.listKey(ListKeyCode.escape);
+                Act.listKey(ListKeyCode.escape, false, 0);
                 return accept;
             }
             if e.text == Key.Delete {
-                Act.listKey(ListKeyCode.delete);
+                Act.listKey(ListKeyCode.delete, false, 0);
+                return accept;
+            }
+            if e.text == Key.F1 {
+                root.show-shortcuts();
+                return accept;
+            }
+            if e.text == Key.UpArrow {
+                Act.listKey(ListKeyCode.up, e.modifiers.shift, 0);
+                return accept;
+            }
+            if e.text == Key.DownArrow {
+                Act.listKey(ListKeyCode.down, e.modifiers.shift, 0);
+                return accept;
+            }
+            if e.text == Key.Home {
+                Act.listKey(ListKeyCode.home, e.modifiers.shift, 0);
+                return accept;
+            }
+            if e.text == Key.End {
+                Act.listKey(ListKeyCode.end, e.modifiers.shift, 0);
+                return accept;
+            }
+            if e.text == Key.PageUp {
+                Act.listKey(ListKeyCode.page-up, e.modifiers.shift, root.page-rows);
+                return accept;
+            }
+            if e.text == Key.PageDown {
+                Act.listKey(ListKeyCode.page-down, e.modifiers.shift, root.page-rows);
+                return accept;
+            }
+            if e.text == Key.Return {
+                if !e.repeat {
+                    Act.listKey(e.modifiers.alt ? ListKeyCode.details : ListKeyCode.open, false, 0);
+                }
                 return accept;
             }
             reject
@@ -317,10 +407,19 @@ export component TaskList inherits Rectangle {
                     y: 4px;
                     height: parent.height - 4px;
                     visible: !Core.chrome.listEmpty;
+                    scrolled => { root.reveal-pending = false; }
                     for item in Core.tasks: TaskRow {
                         data: item;
                         selection-mode: Core.chrome.selectionMode;
+                        focused: item.id == Core.chrome.focusId;
+                        reveal-ask: root.reveal-ask;
                         focus-list => { keys.focus(); }
+                        reveal(y, h) => {
+                            if root.reveal-pending {
+                                root.reveal-pending = false;
+                                list.ensure-visible(y, h);
+                            }
+                        }
                     }
                 }
             }

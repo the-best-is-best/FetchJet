@@ -21,7 +21,7 @@ internal fun Presenter.startChoices() {
             val strings = LocalizationManager.Strings
             val list = ArrayList<ChoiceDialogDto>(3)
             if (duplicate != null) {
-                val name = duplicate.fileName.ifBlank { duplicate.url }
+                val name = duplicate.fileName.ifBlank { com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(duplicate.url) }
                 list += ChoiceDialogDto(
                     kind = ChoiceDialogKind.DUPLICATE.ordinal,
                     icon = "🔄",

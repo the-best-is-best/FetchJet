@@ -33,8 +33,23 @@ function fitToBrowser() {
   if (p.cookiesNote) $("cookiesNote").textContent = fjT(p.cookiesNote);
 }
 
+let hiddenSites = [];
+function renderHidden() {
+  $("hiddenEmpty").style.display = hiddenSites.length ? "none" : "";
+  $("hiddenSites").replaceChildren(...hiddenSites.map((host) => {
+    const row = document.createElement("div"); row.className = "row";
+    const name = document.createElement("label"); name.dir = "ltr"; name.textContent = host;
+    const remove = document.createElement("button"); remove.className = "ghost"; remove.textContent = fjT("optRemove");
+    remove.addEventListener("click", () => send({ action: "saveSettings", settings: { hiddenSites: hiddenSites.filter(h => h !== host) } }));
+    row.append(name, remove);
+    return row;
+  }));
+}
+
 async function load() {
   const s = await send({ action: "getSettings" });
+  hiddenSites = s.hiddenSites || [];
+  renderHidden();
   for (const k of BOOLS) $(k).checked = !!s[k];
   $("holdKey").value = s.holdKey || "alt";
   $("minSizeKB").value = s.minSizeKB || 0;
@@ -80,7 +95,10 @@ function renderStatus() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  fjOnLanguage(() => { fitToBrowser(); renderStatus(); });
+  fjOnLanguage(() => { fitToBrowser(); renderStatus(); renderHidden(); });
+  api.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.settings && changes.settings.newValue) { hiddenSites = changes.settings.newValue.hiddenSites || []; renderHidden(); }
+  });
   fitToBrowser();
   load();
   $("save").addEventListener("click", save);

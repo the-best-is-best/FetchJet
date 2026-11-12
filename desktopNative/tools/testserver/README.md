@@ -3,6 +3,11 @@
 Everything here listens on 127.0.0.1 only and uses the Python standard library.
 
 - `server.py`: HTTP (or HTTPS) file server with every awkward behaviour a download engine meets.
+- `ftp.py`: FTP / FTPS server (login `fj` / `secret`, `--anonymous`, explicit TLS and TLS from the first byte,
+  `--no-rest`, `--maxconn`, `--throttle`, `--cut`). `/file/..` style names are not needed: any path ending
+  with a size name (`dir/8MB.bin`) is a file with the same bytes as the HTTP server's. `servers.sh` starts
+  it on `2121` (plain + anonymous), `2122` (explicit TLS) / `2990` (implicit TLS), `2123` (no REST) and
+  `2124` (2 connections at most). `python ftp.py --selftest` checks it with Python's `ftplib`.
 - `proxy.py`: HTTP proxy (plain + CONNECT) and SOCKS5 proxy, with or without a login.
 - `servers.sh start | stop | status`: starts the usual set and keeps their process ids:
   HTTP `18200`, HTTPS `18443` (self-signed certificate made with `openssl` on first start),
@@ -55,10 +60,15 @@ Query options of `/file/...` (combine freely):
 | `nolength=1` | no `Content-Length`, the body ends when the connection closes |
 | `noetag=1` | no `ETag` / `Last-Modified` |
 | `v=2` | another version: different `ETag` and `Last-Modified` |
+| `flipat=N` | from the Nth request of this key on, the file is version 2 (it changed while downloading) |
+| `wrongpart=N` | the Nth request of this key sends the bytes of the wrong offset (a corrupt part) |
+| `slowreq=N:KB` | only the Nth request of this key is limited to KB/s (a slow last connection) |
+| `robot=1` | answer 200 with an HTML "are you a robot" page instead of the file |
 | `auth=user:pass` | require HTTP Basic login (401 with `WWW-Authenticate` otherwise) |
 | `name=<text>` | add `Content-Disposition: attachment; filename*=UTF-8''<text>` |
 | `type=<mime>` | `Content-Type` (default `application/octet-stream`) |
 | `cookie=<text>` | add `Set-Cookie` |
+| `digest=good` / `digest=bad` | add `Digest: sha-256=<base64>` with the file's real SHA-256, or with a wrong one |
 | `key=<text>` | counters are kept per key (default: the path); use one key per test |
 
 ### Other paths

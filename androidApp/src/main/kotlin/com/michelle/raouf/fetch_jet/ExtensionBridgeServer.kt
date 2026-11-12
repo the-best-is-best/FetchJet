@@ -200,7 +200,8 @@ object ExtensionBridgeServer {
                 (u.startsWith("http://", true) || u.startsWith(
                     "https://",
                     true
-                ) || u.startsWith("magnet:", true))
+                ) || u.startsWith("magnet:", true) ||
+                        com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(u))
     }
 
     private fun json(s: String): String = buildString {

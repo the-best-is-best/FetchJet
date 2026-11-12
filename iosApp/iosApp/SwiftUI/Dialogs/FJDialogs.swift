@@ -165,10 +165,11 @@ struct FJClipboardOfferDialog: View {
 
     var body: some View {
         let s = store.strings
+        let shownUrl = store.host.displayUrl(url: url)
         let name: String = {
             if url.lowercased().hasPrefix("magnet:") { return s.homeMagnetLink }
-            let last = url.components(separatedBy: "?").first?.components(separatedBy: "/").last ?? ""
-            return last.isEmpty ? url : (last.removingPercentEncoding ?? last)
+            let last = shownUrl.components(separatedBy: "?").first?.components(separatedBy: "/").last ?? ""
+            return last.isEmpty ? shownUrl : (last.removingPercentEncoding ?? last)
         }()
         FJDialogFrame(title: s.homeClipboardOfferTitle) {
             VStack(alignment: .leading, spacing: 6) {
@@ -176,7 +177,7 @@ struct FJClipboardOfferDialog: View {
                     .font(FJTheme.font.body.weight(.semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(2)
-                Text(url).fjMuted().lineLimit(2).truncationMode(.middle)
+                Text(shownUrl).fjMuted().lineLimit(2).truncationMode(.middle)
                 Text(s.homeClipboardOfferHint).fjMuted().padding(.top, 2)
             }
         } buttons: {
@@ -231,7 +232,7 @@ struct FJDuplicateDialog: View {
         FJDialogFrame(title: s.duplicateDialogTitle, icon: "🔄", subtitle: s.duplicateDialogSubtitle, stackButtons: true) {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(task.fileName.isEmpty ? task.url : store.host.decodeUnicodeText(input: task.fileName))
+                    Text(task.fileName.isEmpty ? store.host.displayUrl(url: task.url) : store.host.decodeUnicodeText(input: task.fileName))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(2)

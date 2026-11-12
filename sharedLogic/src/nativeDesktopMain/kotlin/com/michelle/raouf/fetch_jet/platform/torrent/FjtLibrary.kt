@@ -31,6 +31,7 @@ const val FJT_E_SESSION = -4
 const val FJT_ABI = 1
 const val FJT_ST_COUNT = 16
 const val FJT_SI_COUNT = 8
+const val FJT_PC_COUNT = 4
 const val FJT_SI_LISTEN_PORT = 0
 const val FJT_SI_DHT_RUNNING = 1
 const val FJT_SI_TORRENTS = 3
@@ -123,6 +124,33 @@ class FjtStatus(
         }
 }
 
+class FjtTracker(val url: String, val state: String, val message: String)
+
+class FjtPeer(
+    val address: String,
+    val client: String,
+    val downloadRate: Long,
+    val uploadRate: Long,
+    val progressPermille: Int,
+    val isSeed: Boolean,
+)
+
+class FjtPieces(val total: Int, val have: Int, val pieceLength: Long, val firstLast: Boolean)
+
+class FjtDetails(
+    val trackers: List<FjtTracker>,
+    val peers: List<FjtPeer>,
+    val uploadedBytes: Long,
+    val downloadedBytes: Long,
+    val pieceCount: Int,
+    val piecesDone: Int,
+    val pieceLength: Long,
+    val magnet: String,
+    val firstLast: Boolean,
+)
+
+private typealias FjtTextFn = CPointer<CFunction<(COpaquePointer?, CPointer<ByteVar>?, CPointer<ByteVar>?, Int) -> Int>>
+
 private inline fun <T> ByteArray?.pinnedOrNull(block: (CPointer<ByteVar>?) -> T): T {
     if (this == null || isEmpty()) return block(null)
     return usePinned { block(it.addressOf(0)) }
@@ -133,6 +161,9 @@ private fun CPointer<ByteVar>.text(): String = toKString()
 class FjtApi internal constructor(val path: String, private val module: FjtModule, private val libraryName: String) {
     private fun address(name: String): CPointer<CFunction<() -> Unit>> =
         module.symbol(name)?.reinterpret<CFunction<() -> Unit>>() ?: throw FjtException("$libraryName has no export $name")
+
+    private fun optional(name: String): CPointer<CFunction<() -> Unit>>? =
+        module.symbol(name)?.reinterpret<CFunction<() -> Unit>>()
 
     private val abiVersion = address("fjt_abi_version").reinterpret<CFunction<() -> Int>>()
     private val versionTextFn = address("fjt_version_text").reinterpret<CFunction<(CPointer<ByteVar>?, Int) -> Int>>()
@@ -168,6 +199,16 @@ class FjtApi internal constructor(val path: String, private val module: FjtModul
     private val bufDataFn = address("fjt_buf_data").reinterpret<CFunction<(COpaquePointer?) -> CPointer<ByteVar>?>>()
     private val bufSizeFn = address("fjt_buf_size").reinterpret<CFunction<(COpaquePointer?) -> Long>>()
     private val bufFreeFn = address("fjt_buf_free").reinterpret<CFunction<(COpaquePointer?) -> Unit>>()
+    private val torrentTrackersFn: FjtTextFn? = optional("fjt_torrent_trackers")?.reinterpret()
+    private val torrentPeersFn: FjtTextFn? = optional("fjt_torrent_peers")?.reinterpret()
+    private val torrentAddTrackerFn = optional("fjt_torrent_add_tracker")?.reinterpret<CFunction<(COpaquePointer?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> Int>>()
+    private val torrentRecheckFn = optional("fjt_torrent_recheck")?.reinterpret<CFunction<(COpaquePointer?, CPointer<ByteVar>?) -> Int>>()
+    private val torrentMagnetFn: FjtTextFn? = optional("fjt_torrent_magnet")?.reinterpret()
+    private val torrentFirstLastFn = optional("fjt_torrent_set_first_last")?.reinterpret<CFunction<(COpaquePointer?, CPointer<ByteVar>?, Int) -> Int>>()
+    private val torrentPiecesFn = optional("fjt_torrent_pieces")?.reinterpret<CFunction<(COpaquePointer?, CPointer<ByteVar>?, CPointer<LongVar>?, Int) -> Int>>()
+
+    val hasDetails: Boolean = torrentTrackersFn != null && torrentPeersFn != null && torrentAddTrackerFn != null &&
+            torrentRecheckFn != null && torrentMagnetFn != null && torrentFirstLastFn != null && torrentPiecesFn != null
 
     val abi: Int = abiVersion()
 
@@ -335,6 +376,81 @@ class FjtApi internal constructor(val path: String, private val module: FjtModul
         val out = allocArray<ByteVar>(cap)
         out[0] = 0
         if (torrentDebugFn(session, taskId.cstr.ptr, out, cap) < 0) null else out.text()
+    }
+
+    private fun textOf(fn: FjtTextFn?, session: COpaquePointer, taskId: String): String? {
+        if (fn == null) return null
+        var cap = 16_384
+        var text: String? = null
+        repeat(3) {
+            val size = cap
+            var needed = -1
+            text = memScoped {
+                val out = allocArray<ByteVar>(size)
+                out[0] = 0
+                needed = fn(session, taskId.cstr.ptr, out, size)
+                if (needed < 0) null else out.text()
+            }
+            if (needed < 0) return null
+            if (needed < size) return text
+            cap = needed + 1
+        }
+        return text
+    }
+
+    fun trackers(session: COpaquePointer, taskId: String): List<FjtTracker>? {
+        val text = textOf(torrentTrackersFn, session, taskId) ?: return null
+        return text.split('\n').filter { it.isNotEmpty() }.map { line ->
+            val parts = line.split('\t')
+            FjtTracker(parts[0], parts.getOrElse(1) { "waiting" }, parts.getOrElse(2) { "" })
+        }
+    }
+
+    fun peers(session: COpaquePointer, taskId: String): List<FjtPeer>? {
+        val text = textOf(torrentPeersFn, session, taskId) ?: return null
+        return text.split('\n').filter { it.isNotEmpty() }.mapNotNull { line ->
+            val parts = line.split('\t')
+            if (parts.size < 6) {
+                null
+            } else {
+                FjtPeer(
+                    address = parts[0],
+                    client = parts[1],
+                    downloadRate = parts[2].toLongOrNull() ?: 0L,
+                    uploadRate = parts[3].toLongOrNull() ?: 0L,
+                    progressPermille = parts[4].toIntOrNull() ?: 0,
+                    isSeed = parts[5] == "1",
+                )
+            }
+        }
+    }
+
+    fun addTracker(session: COpaquePointer, taskId: String, url: String): Int? {
+        val fn = torrentAddTrackerFn ?: return null
+        return memScoped { fn(session, taskId.cstr.ptr, url.cstr.ptr) }
+    }
+
+    fun recheck(session: COpaquePointer, taskId: String): Int? {
+        val fn = torrentRecheckFn ?: return null
+        return memScoped { fn(session, taskId.cstr.ptr) }
+    }
+
+    fun magnet(session: COpaquePointer, taskId: String): String? = textOf(torrentMagnetFn, session, taskId)
+
+    fun setFirstLast(session: COpaquePointer, taskId: String, on: Boolean): Int? {
+        val fn = torrentFirstLastFn ?: return null
+        return memScoped { fn(session, taskId.cstr.ptr, if (on) 1 else 0) }
+    }
+
+    fun pieces(session: COpaquePointer, taskId: String): FjtPieces? {
+        val fn = torrentPiecesFn ?: return null
+        val out = LongArray(FJT_PC_COUNT)
+        val written = memScoped {
+            val id = taskId.cstr.ptr
+            out.usePinned { fn(session, id, it.addressOf(0), FJT_PC_COUNT) }
+        }
+        if (written < FJT_PC_COUNT) return null
+        return FjtPieces(total = out[0].toInt(), have = out[1].toInt(), pieceLength = out[2], firstLast = out[3] != 0L)
     }
 
     fun saveResume(session: COpaquePointer, taskId: String, timeoutMs: Int): ByteArray? {

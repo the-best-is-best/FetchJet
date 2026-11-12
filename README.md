@@ -41,6 +41,7 @@
 | 📋 **Many links at once**          | Paste a whole list or import a `.txt`; every link – files, videos and torrents – becomes its own download, each with its own quality or file picker.                         |
 | 🚦 **Speed limit**                 | Cap the total download speed from the header, with your own presets and a one-tap slow "turtle" mode; the limit is shared live between all running downloads.                |
 | 🌐 **Proxy & site login**          | Route everything through an HTTP or SOCKS5 proxy (with username / password), and send Basic-auth logins to sites that need them – Settings → Network.                        |
+| 📡 **FTP & FTPS**                  | `ftp://`, `ftps://` and `ftpes://` links download like any direct link: in several parts, with resume when the server allows it. FTP links do not go through the proxy.      |
 | 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
 | 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
 
@@ -144,6 +145,8 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
   Speed**, or tap the turtle for an instant slow mode.
 - **Settings → Network** routes downloads through an HTTP or SOCKS5 proxy and stores per-site
   logins.
+- **FTP logins** go in the link (`ftp://user:password@host/file`) or under **Settings → Network**
+  (site logins); without one, FetchJet signs in as anonymous.
 - **When downloads finish** (desktop, above the list or in the tray) can sleep, shut down or quit
   the
   computer once the queue is empty.

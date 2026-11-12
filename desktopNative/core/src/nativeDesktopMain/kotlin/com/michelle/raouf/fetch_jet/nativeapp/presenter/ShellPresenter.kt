@@ -7,6 +7,7 @@ import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManage
 import com.michelle.raouf.fetch_jet.core.power.SystemPower
 import com.michelle.raouf.fetch_jet.core.power.WhenDone
 import com.michelle.raouf.fetch_jet.core.power.WhenDoneAction
+import com.michelle.raouf.fetch_jet.core.update.APP_VERSION
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ShellDto
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.delay
@@ -62,7 +63,7 @@ internal fun Presenter.startShell() {
         ) { dark, toastState, whenDone, active ->
             val strings = LocalizationManager.Strings
             ShellDto(
-                windowTitle = "FetchJet - " + strings.desktopWindowTagline,
+                windowTitle = "FetchJet $APP_VERSION - " + strings.desktopWindowTagline,
                 dark = dark,
                 trayTooltip = trayTooltip(active),
                 trayShowLabel = strings.desktopTrayShowApp,

@@ -1,5 +1,10 @@
 ## Nouveautés de la 1.4.1
 
-- **Fenêtre de mise à jour :** les notes de version suivent désormais la langue de l'app quand elle change, au lieu de rester dans la langue de la vérification.
-- **Publication :** le job de publication ne télécharge plus chaque fichier pour calculer les sommes de contrôle, les versions sont donc prêtes plus vite.
-- **Windows :** une étape de compilation de la publication qui échouait sur le runner Windows est corrigée.
+- **Téléchargements FTP et FTPS (nouveau) :** les liens qui commencent par ftp://, ftps:// ou ftpes:// se téléchargent maintenant comme n'importe quel lien direct, en plusieurs parties et avec reprise quand le serveur le permet. Mettez l'identifiant dans le lien, enregistrez-le dans Réglages > Réseau > Identifiants de sites, ou laissez-le vide pour les serveurs anonymes. Bon à savoir : les liens FTP ne passent pas par le proxy ; sur les applications de bureau, FTP sur TLS utilise une seule connexion ; FTP sur TLS n'est pas encore disponible sur iPhone et iPad.
+- **Un fichier qui change sur le serveur :** si le fichier est remplacé sur le serveur pendant son téléchargement, FetchJet le remarque. Le téléchargement s'arrête avec un message clair au lieu d'enregistrer un fichier mélangé et abîmé, et « Reprendre » télécharge la nouvelle version.
+- **Plus d'attente à la fin :** la fin d'un téléchargement n'attend plus une seule connexion lente. Une connexion qui se traîne à la fin est remplacée.
+- **Audio en OGG :** choisir OGG pour un audio YouTube (Opus) ne le réencode plus. Il est enregistré tout de suite, avec la qualité et la taille d'origine.
+- **Compresser l'audio :** propose maintenant les mêmes formats que la conversion (M4A, MP3, Opus, OGG, FLAC, WAV), garde OGG quand le fichier est en OGG, et la taille estimée est plus proche de la taille réelle.
+- **Extension de navigateur :** quand le navigateur n'est pas encore connecté à l'application, l'extension le dit tout de suite (« Ouvrez FetchJet et touchez Autoriser ») au lieu de charger sans fin. Après avoir touché « Autoriser », les qualités apparaissent d'elles-mêmes, sans recharger. Recharger une page vidéo relance la tentative après une erreur.
+- **Réglages > Extension de navigateur :** « Tout dissocier » déconnecte tous les navigateurs associés ; chacun redemandera « Autoriser » la prochaine fois.
+- **Fenêtre de mise à jour :** les notes de version suivent la langue de l'application quand vous la changez.

@@ -73,6 +73,8 @@ fun AddDownloadModalDialog(
     onFileNameChanged: (String) -> Unit = {},
     checksumInput: String = "",
     onChecksumChanged: (String) -> Unit = {},
+    testLink: com.michelle.raouf.fetch_jet.presentation.dashboard.TestLinkUi? = null,
+    onTestLink: () -> Unit = {},
     onDisableTorrentUploadToggled: (Boolean) -> Unit,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
@@ -330,7 +332,12 @@ fun AddDownloadModalDialog(
                 UrlInputSection(
                     inputUrl = inputUrl,
                     urlField = urlFieldState,
-                    onUrlChanged = onUrlChanged
+                    onUrlChanged = onUrlChanged,
+                    testLinkShown = !showsLinkList && detectedEngine == EngineType.HTTP_DIRECT &&
+                            com.michelle.raouf.fetch_jet.feature.http_downloader.canProbeLink(inputUrl),
+                    testLink = testLink,
+                    suggestedFileName = suggestedFileName,
+                    onTestLink = onTestLink
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))

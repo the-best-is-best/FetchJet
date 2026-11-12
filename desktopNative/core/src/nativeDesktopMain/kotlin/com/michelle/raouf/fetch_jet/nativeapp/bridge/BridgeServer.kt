@@ -14,6 +14,7 @@ import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls
 import com.michelle.raouf.fetch_jet.feature.media_extractor.parseExternalPlaylist
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
+import com.michelle.raouf.fetch_jet.nativeapp.Launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,7 +44,8 @@ internal fun jsonEscape(text: String): String = buildString {
 internal fun isAllowedUrl(url: String): Boolean {
     val u = url.trim()
     return !(u.length > 8192 || u.any { it < ' ' }) &&
-        (u.startsWith("http://", true) || u.startsWith("https://", true) || u.startsWith("magnet:", true))
+        (u.startsWith("http://", true) || u.startsWith("https://", true) || u.startsWith("magnet:", true) ||
+            com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(u))
 }
 
 internal class BridgeServer(
@@ -351,6 +353,12 @@ internal class BridgeServer(
         if (request.header("X-FetchJet").isNullOrBlank()) return reply(request, 403, "missing X-FetchJet header")
         refusal(request)?.let { return it }
         val values = request.queryValues()
+        if (values["cli"] == "1") {
+            if (request.header("Origin") != null) return reply(request, 403, "forbidden")
+            val command = Launch.commandFromQuery(values) ?: return reply(request, 400, "unsupported url")
+            scope.launch { Launch.run(command) }
+            return reply(request, 200, "OK")
+        }
         val url = values["url"].orEmpty()
         if (url.isBlank() || !isAllowedUrl(url)) return reply(request, 400, "unsupported url")
         ExternalDownloadBridge.dispatch(url, values["cookie"].orEmpty())

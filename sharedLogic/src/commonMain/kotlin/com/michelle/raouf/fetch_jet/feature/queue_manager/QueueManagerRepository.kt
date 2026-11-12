@@ -101,7 +101,14 @@ class QueueManagerRepository(
         val allTasks = getAllCurrentTasks()
         val task = allTasks.firstOrNull { it.id == taskId }
         val taskLimit = task?.maxDownloadSpeedBytesPerSec ?: 0L
-        val globalLimit = _globalDownloadSpeedLimit.value
+        val configuredLimit = _globalDownloadSpeedLimit.value
+        val onlyInUse = configuredLimit > 0L &&
+                com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.speedLimitOnlyInUse.value
+        val globalLimit = com.michelle.raouf.fetch_jet.core.power.effectiveLimit(
+            configuredLimit,
+            onlyInUse,
+            if (onlyInUse) com.michelle.raouf.fetch_jet.core.power.UserIdle.idleMs() else null
+        )
 
         if (globalLimit <= 0L && taskLimit <= 0L) return 0L
 
@@ -402,7 +409,9 @@ class QueueManagerRepository(
                         completedNotifiedTaskIds.remove(task.id)
                         val percent = (task.progress * 100).toInt()
                         val speedStr = formatSpeed(task.downloadSpeedBytesPerSec)
-                        val name = task.fileName.ifBlank { task.url.substringAfterLast("/") }
+                        val name = task.fileName.ifBlank {
+                            com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url).substringAfterLast("/")
+                        }
                         notificationManager.showOrUpdateNotification(
                             taskId = task.id,
                             fileName = name,
@@ -418,7 +427,9 @@ class QueueManagerRepository(
                         ) {
                             completedNotifiedTaskIds.add(task.id)
                             activeRunningTaskIds.remove(task.id)
-                            val name = task.fileName.ifBlank { task.url.substringAfterLast("/") }
+                            val name = task.fileName.ifBlank {
+                            com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url).substringAfterLast("/")
+                        }
                             notificationManager.showOrUpdateNotification(
                                 taskId = task.id,
                                 fileName = name,
@@ -573,6 +584,7 @@ class QueueManagerRepository(
         }
 
         val engineType = forcedEngineType
+            ?.takeUnless { com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(targetUrl) }
             ?: if (mediaQualities.isNotEmpty()) EngineType.MEDIA_STREAM else detectLinkTypeUseCase(
                 targetUrl
             )

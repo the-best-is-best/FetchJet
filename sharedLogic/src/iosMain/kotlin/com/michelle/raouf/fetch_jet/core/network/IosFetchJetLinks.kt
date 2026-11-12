@@ -69,7 +69,8 @@ object IosFetchJetLinks {
 
     private fun isAllowedUrl(url: String): Boolean =
         url.length <= 8192 && url.none { it < ' ' } &&
-                (url.startsWith("http://", true) || url.startsWith("https://", true) || url.startsWith("magnet:", true))
+                (url.startsWith("http://", true) || url.startsWith("https://", true) || url.startsWith("magnet:", true) ||
+                        com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url))
 
     private fun decode(value: String): String? =
         NSString.create(string = value).stringByRemovingPercentEncoding

@@ -88,7 +88,7 @@ sealed interface UiAction {
 
     @Serializable
     @SerialName("ListKey")
-    data class ListKey(val key: Int = 0) : UiAction
+    data class ListKey(val key: Int = 0, val shift: Boolean = false, val rows: Int = 0) : UiAction
 
     @Serializable
     @SerialName("CloseDetails")
@@ -205,6 +205,22 @@ sealed interface UiAction {
     @Serializable
     @SerialName("CycleDetailFilePriority")
     data class CycleDetailFilePriority(val index: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("TorrentAddTracker")
+    data class TorrentAddTracker(val url: String = "") : UiAction
+
+    @Serializable
+    @SerialName("TorrentRecheck")
+    data object TorrentRecheck : UiAction
+
+    @Serializable
+    @SerialName("TorrentSetFirstLast")
+    data class TorrentSetFirstLast(val on: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("TorrentCopyMagnet")
+    data object TorrentCopyMagnet : UiAction
 
     @Serializable
     @SerialName("CopyText")
@@ -405,6 +421,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("SetChecksum")
     data class SetChecksum(val value: String = "") : UiAction
+
+    @Serializable
+    @SerialName("TestLink")
+    data object TestLink : UiAction
 
     @Serializable
     @SerialName("PickDestination")

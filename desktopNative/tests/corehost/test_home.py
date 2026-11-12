@@ -29,7 +29,7 @@ def run():
                    len(strings) == len(PROTOCOL["tr"]) and strings.get("homeAddDownload") == "Add download",
                    (len(strings), strings.get("homeAddDownload")))
         shell = core.snapshot("shell")
-        core.check("window title", shell.get("windowTitle", "").startswith("FetchJet - "), shell)
+        core.check("window title", shell.get("windowTitle", "").startswith("FetchJet ") and " - " in shell.get("windowTitle", ""), shell)
         chrome = core.snapshot("chrome")
         core.check("empty list state", chrome.get("listEmpty") and chrome.get("emptyTitle") == strings["homeNoTasksInView"], chrome)
         core.check("six state filters, files in type filters", len(chrome.get("navState", [])) == 6 and

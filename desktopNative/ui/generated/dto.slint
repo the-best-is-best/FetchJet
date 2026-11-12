@@ -47,6 +47,10 @@ export struct AddDto {
     checksumShown: bool,
     checksum: string,
     checksumRev: int,
+    testLinkShown: bool,
+    testLinkBusy: bool,
+    testLinkOk: bool,
+    testLinkText: string,
     destination: string,
     destinationRev: int,
     quickFolders: [QuickFolderDto],
@@ -478,6 +482,11 @@ export struct ChromeDto {
     whenDoneBannerShown: bool,
     whenDoneBannerText: string,
     detailsOpen: bool,
+    focusId: string,
+    focusRev: int,
+    focusRow: int,
+    focusHeads: int,
+    focusDone: int,
 }
 
 export struct StatusDto {
@@ -614,6 +623,43 @@ export struct ShellDto {
     whenDoneIndex: int,
     toastText: string,
     toastShown: bool,
+}
+
+export struct TorrentTrackerDto {
+    name: string,
+    state: int,
+    stateLabel: string,
+    tone: int,
+    message: string,
+}
+
+export struct TorrentPeerDto {
+    address: string,
+    client: string,
+    down: string,
+    up: string,
+    percent: string,
+    seed: bool,
+}
+
+export struct TorrentDetailsDto {
+    shown: bool,
+    id: string,
+    supported: bool,
+    loading: bool,
+    ratio: string,
+    uploaded: string,
+    pieces: string,
+    pieceSize: string,
+    piecesFraction: float,
+    trackersTitle: string,
+    trackers: [TorrentTrackerDto],
+    trackerRev: int,
+    trackerError: string,
+    peersTitle: string,
+    peers: [TorrentPeerDto],
+    firstLast: bool,
+    magnet: string,
 }
 
 export struct UpdateDialogDto {
@@ -827,6 +873,18 @@ export global ListKeyCode {
     out property <int> select-all: 0;
     out property <int> escape: 1;
     out property <int> delete: 2;
+    out property <int> up: 3;
+    out property <int> down: 4;
+    out property <int> home: 5;
+    out property <int> end: 6;
+    out property <int> page-up: 7;
+    out property <int> page-down: 8;
+    out property <int> open: 9;
+    out property <int> details: 10;
+    out property <int> resume: 11;
+    out property <int> pause: 12;
+    out property <int> open-file: 13;
+    out property <int> open-folder: 14;
 }
 
 export global SettingKind {
@@ -842,6 +900,14 @@ export global SettingKind {
     out property <int> buttons: 9;
     out property <int> progress: 10;
     out property <int> limit-box: 11;
+}
+
+export global TrackerStateCode {
+    out property <int> working: 0;
+    out property <int> updating: 1;
+    out property <int> waiting: 2;
+    out property <int> error: 3;
+    out property <int> disabled: 4;
 }
 
 export global Core {
@@ -871,4 +937,5 @@ export global Core {
     in property <AddTorrentDto> addTorrent;
     in property <[TorrentFileRowDto]> addTorrentFiles;
     in property <AudioCompressDto> audioCompress;
+    in property <TorrentDetailsDto> torrentDetails;
 }

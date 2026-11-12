@@ -229,6 +229,55 @@ component UrlSection inherits VerticalLayout {
             clicked => { Act.pasteUrl(); }
         }
     }
+    if Core.add.testLinkShown: Gap {
+        size: 6px;
+    }
+    if Core.add.testLinkShown: GridLayout {
+        spacing: 8px;
+        Rectangle {
+            row: 0;
+            col: Dir.rtl ? 2 : 0;
+            width: test.min-width;
+            min-height: 36px;
+            test := OutlinedButton {
+                y: (parent.height - self.height) / 2;
+                width: self.min-width;
+                height: 36px;
+                text: Tr.testLinkButton;
+                pad: 14px;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 10px;
+                ink: Theme.on-surface;
+                enabled: !Core.add.testLinkBusy;
+                clicked => { Act.testLink(); }
+            }
+        }
+        Rectangle {
+            row: 0;
+            col: 1;
+            width: Core.add.testLinkBusy ? 18px : 0px;
+            if Core.add.testLinkBusy: Spinner {
+                x: 1px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        Text {
+            row: 0;
+            col: Dir.rtl ? 0 : 2;
+            text: Core.add.testLinkText;
+            color: Core.add.testLinkOk ? Theme.primary : Theme.error;
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: Dir.start;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            min-height: 36px;
+            wrap: word-wrap;
+        }
+    }
 }
 
 component ScheduleSection inherits VerticalLayout {

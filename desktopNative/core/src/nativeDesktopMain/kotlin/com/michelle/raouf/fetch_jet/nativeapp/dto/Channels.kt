@@ -40,6 +40,8 @@ object Channels {
 
     val AUDIO_COMPRESS = ChannelSpec(27, "audioCompress", ChannelKind.STRUCT, "AudioCompressDto")
 
-    const val COUNT = 28
+    val TORRENT_DETAILS = ChannelSpec(28, "torrentDetails", ChannelKind.STRUCT, "TorrentDetailsDto")
+
+    const val COUNT = 29
     const val FULL_FLAG = 0x100
 }

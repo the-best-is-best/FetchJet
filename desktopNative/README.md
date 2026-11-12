@@ -113,3 +113,23 @@ clipboard) goes into `refuse_in_tests` in `corehost.py`.
 - `docs/port/PARITY.md`: feature-by-feature comparison with the Compose app.
 - `docs/port/ACCEPTANCE.md`: manual test steps for the owner.
 - `docs/port/LINUX.md`: Linux build and test in WSL.
+
+## 6. Command line
+
+`FetchJet [flags] [link ...]`. Flags are not case-sensitive; only these exact words are flags, so a
+path such as `/home/x/file.torrent` is a file. A flag with a value takes the next argument. When a
+copy is already open the command is handed to it through the bridge (`/download?cli=1...`, token
+required, refused when the request has an `Origin`) and this copy exits. Code: `nativeapp/Launch.kt`,
+checks: `tests/corehost/test_launch.py`.
+
+| Flag | Long form | What it does |
+|---|---|---|
+| `/d URL` | `--download URL` | The link to add (http, https, magnet, `fetchjet://`, a `.torrent` file). Repeatable; a bare link is the same |
+| `/p PATH` | `--path PATH` | Folder to save into |
+| `/f NAME` | `--file NAME` | File name to save as (only with one link) |
+| `/a` | `--add` | Add to the list paused, no Add dialog |
+| `/n` | `--silent` | No Add dialog and no window: add and start at once. With the app closed it starts in the tray |
+| `/s` | `--start-queue` | Start everything that waits (the same as "Resume all"), after the links of the same command were added |
+
+Without `/n` and `/a`, the Add dialog opens with the link, `/p` and `/f` filled in (several links
+open its link list). A video page always goes to the Add dialog: it needs a quality.

@@ -70,6 +70,7 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
+ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 youtubedl-library = { module = "io.github.junkfood02.youtubedl-android:library", version.ref = "library" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 libtorrent4j-core = { module = "org.libtorrent4j:libtorrent4j", version.ref = "libtorrent4j" }

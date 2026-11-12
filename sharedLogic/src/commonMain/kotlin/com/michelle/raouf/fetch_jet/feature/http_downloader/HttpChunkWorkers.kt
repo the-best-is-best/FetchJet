@@ -32,9 +32,13 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     url: String,
     cachePath: String,
     finalDestPath: String,
-    totalLength: Long
+    totalLength: Long,
+    identity: FileIdentity? = null,
+    fetchPiece: (suspend (ChunkLayout.Piece, okio.Path, com.michelle.raouf.fetch_jet.core.network.RateLimiter, ChunkLayout) -> Unit)? = null,
+    serverChecksum: ServerChecksum? = null
 ) {
     val destPath = cachePath
+    val ifRange = IfRangeState(identity?.ifRange.orEmpty())
     val destOkioPath = destPath.toPath()
     val manifestPath = "$destPath.chunks".toPath()
     fun partPath(index: Int) = "${destPath}.part$index".toPath()
@@ -75,7 +79,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
             DownloadChunk(i, start, end, have, have >= end - start + 1)
         }
     }
-    val layout = ChunkLayout(initialChunks)
+    val layout = ChunkLayout(initialChunks, HostLimits.hostOf(url))
     try {
         AppFileSystem.write(manifestPath) { writeUtf8(layout.manifest()) }
     } catch (_: Exception) {
@@ -142,18 +146,35 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
                         delay(300); continue
                     }
                     try {
-                        downloadPiece(
-                            taskId,
-                            url,
-                            piece,
-                            partPath(piece.index),
-                            taskRateLimiter,
-                            layout
-                        )
+                        if (fetchPiece != null) {
+                            fetchPiece(piece, partPath(piece.index), taskRateLimiter, layout)
+                        } else {
+                            downloadPiece(
+                                taskId,
+                                url,
+                                piece,
+                                partPath(piece.index),
+                                taskRateLimiter,
+                                layout,
+                                ifRange
+                            )
+                        }
                         layout.release(piece)
                         backoff = 1_000L
                     } catch (e: CancellationException) {
                         layout.release(piece); throw e
+                    } catch (e: FullResponseToConditionalRange) {
+                        layout.release(piece)
+                        val now = probeIdentity(taskId, url)
+                            ?: throw RangeNotHonouredException("Piece ${piece.index}: server answered 200 to a Range request (no ranges)")
+                        if (identity != null && !identity.sameAs(now)) {
+                            throw FileChangedException("The file changed on the server while it was downloading")
+                        }
+                        ifRange.value = ""
+                    } catch (e: FileChangedException) {
+                        layout.release(piece); throw e
+                    } catch (e: SlowConnectionException) {
+                        layout.restart(piece)
                     } catch (e: RangeNotHonouredException) {
                         layout.release(piece); throw e
                     } catch (e: ServerBusyException) {
@@ -193,46 +214,34 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     // Assemble the pieces in byte order (a part may hold a few bytes past its piece when
     // the piece was split while it was writing: copy exactly the piece length).
     val finalPieces = layout.ordered()
-    val finalSink = AppFileSystem.sink(destOkioPath).buffer()
-    try {
-        for (piece in finalPieces) {
-            val pp = partPath(piece.index)
-            if (!AppFileSystem.exists(pp)) throw Exception("Piece ${piece.index} is missing")
-            val src = AppFileSystem.source(pp).buffer()
-            try {
-                var left = piece.length
-                val buf = ByteArray(256 * 1024)
-                while (left > 0) {
-                    // Honour cancel()/pause() mid-merge: a big file (e.g. a handed-over 100%
-                    // file) must not block Delete while we copy it piece by piece.
-                    currentCoroutineContext().ensureActive()
-                    val n = src.read(buf, 0, min(buf.size.toLong(), left).toInt())
-                    if (n <= 0) break
-                    finalSink.write(buf, 0, n)
-                    left -= n
-                }
-            } finally {
-                src.close()
-            }
+    assemblePieces(finalPieces, ::partPath, destOkioPath)
+    fun deleteParts() {
+        for (piece in finalPieces) try {
+            AppFileSystem.delete(partPath(piece.index))
+        } catch (_: Exception) {
         }
-        finalSink.flush()
-    } finally {
-        finalSink.close()
-    }
-    for (piece in finalPieces) try {
-        AppFileSystem.delete(partPath(piece.index))
-    } catch (_: Exception) {
-    }
-    try {
-        AppFileSystem.delete(manifestPath)
-    } catch (_: Exception) {
+        try {
+            AppFileSystem.delete(manifestPath)
+        } catch (_: Exception) {
+        }
     }
 
     // Never report a short file as finished.
     val assembledSize = AppFileSystem.metadataOrNull(destOkioPath)?.size ?: 0L
     if (totalLength > 0 && assembledSize != totalLength) {
+        deleteParts()
         throw Exception("Assembled file is $assembledSize bytes, expected $totalLength (a piece is missing)")
     }
+
+    val integrity = checkAssembledFile(taskId, destOkioPath, destOkioPath.name, serverChecksum) { damaged ->
+        val fetched = refetchDamagedRanges(damaged, finalPieces, ::partPath) { piece ->
+            if (fetchPiece != null) fetchPiece(piece, partPath(piece.index), taskRateLimiter, layout)
+            else downloadPiece(taskId, url, piece, partPath(piece.index), taskRateLimiter, layout, ifRange)
+        }
+        if (fetched) assemblePieces(finalPieces, ::partPath, destOkioPath)
+        fetched
+    }
+    deleteParts()
 
     // Copy assembled file from cache to final destination
     val savedPath = copyIntoPlace(destOkioPath, finalDestPath.toPath())
@@ -254,7 +263,9 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
             totalBytes = totalLength,
             progress = 1.0f,
             downloadSpeedBytesPerSec = 0L,
-            chunks = doneChunks
+            chunks = doneChunks,
+            checksumVerified = integrity.verified ?: it.checksumVerified,
+            currentStepText = integrity.note ?: it.currentStepText
         )
     }
 }
@@ -266,7 +277,8 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
     piece: ChunkLayout.Piece,
     partPath: okio.Path,
     rateLimiter: com.michelle.raouf.fetch_jet.core.network.RateLimiter,
-    layout: ChunkLayout
+    layout: ChunkLayout,
+    ifRange: IfRangeState = IfRangeState("")
 ) {
     run {
         val existing =
@@ -285,9 +297,11 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
         client.prepareGet(url) {
             applyDownloadHeaders(url, taskHeaders(taskId, url))
             header(HttpHeaders.Range, "bytes=$from-$to")
+            if (ifRange.value.isNotEmpty()) header(HttpHeaders.IfRange, ifRange.value)
         }.execute { response ->
             // A server that ignores Range answers 200 with the WHOLE file; appending
             // that to a part would corrupt it. Ranged requests must get 206.
+            if (response.status.value == 200 && ifRange.value.isNotEmpty()) throw FullResponseToConditionalRange()
             if (response.status.value == 200) {
                 throw RangeNotHonouredException("Piece ${piece.index}: server answered 200 to a Range request (no ranges)")
             }
@@ -298,38 +312,73 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
                 // 416 / 429 / 5xx: a transient problem, worth the retries.
                 throw Exception("Piece ${piece.index}: HTTP ${response.status.value}")
             }
-            val channel: ByteReadChannel = response.downloadChannel()
-            val sink = AppFileSystem.appendingSink(partPath).buffer()
-            val buffer = ByteArray(64 * 1024)
-            var windowStart = TimeSource.Monotonic.markNow()
-            var windowBytes = 0L
-            try {
-                while (!channel.isClosedForRead) {
-                    val read = channel.readAvailable(buffer, 0, buffer.size)
-                    if (read <= 0) break
-                    // The end may have moved closer (another worker took the tail of this piece).
-                    val allowed = piece.length - piece.downloaded
-                    if (allowed <= 0) break
-                    val n = min(read.toLong(), allowed).toInt()
-                    sink.write(buffer, 0, n)
-                    piece.downloaded += n
-                    piece.lastError = null
-                    layout.lastProgressMs = layout.nowMs()
-                    windowBytes += n
-                    val elapsed = windowStart.elapsedNow().inWholeMilliseconds
-                    if (elapsed >= 1000) {
-                        piece.speedBytesPerSec = windowBytes * 1000 / elapsed
-                        windowStart = TimeSource.Monotonic.markNow(); windowBytes = 0
-                    }
-                    rateLimiter.acquire(n)
-                    if (piece.isCompleted) break
-                }
-                sink.flush()
-            } finally {
-                sink.close()
-            }
+            pumpPiece(response.downloadChannel(), piece, partPath, rateLimiter, layout)
         }
     }
+}
+
+/** Copies a connection's bytes into the piece's part file, up to the piece's (possibly shrinking) end. */
+internal suspend fun pumpPiece(
+    channel: ByteReadChannel,
+    piece: ChunkLayout.Piece,
+    partPath: okio.Path,
+    rateLimiter: com.michelle.raouf.fetch_jet.core.network.RateLimiter,
+    layout: ChunkLayout
+) {
+    val sink = AppFileSystem.appendingSink(partPath).buffer()
+    val buffer = ByteArray(64 * 1024)
+    var windowStart = TimeSource.Monotonic.markNow()
+    var windowBytes = 0L
+    val runStart = TimeSource.Monotonic.markNow()
+    val runFrom = piece.downloaded
+    try {
+        while (!channel.isClosedForRead) {
+            val read = channel.readAvailable(buffer, 0, buffer.size)
+            if (read <= 0) break
+            // The end may have moved closer (another worker took the tail of this piece).
+            val allowed = piece.length - piece.downloaded
+            if (allowed <= 0) break
+            val n = min(read.toLong(), allowed).toInt()
+            sink.write(buffer, 0, n)
+            piece.downloaded += n
+            piece.lastError = null
+            layout.lastProgressMs = layout.nowMs()
+            windowBytes += n
+            val elapsed = windowStart.elapsedNow().inWholeMilliseconds
+            if (elapsed >= 1000) {
+                piece.speedBytesPerSec = windowBytes * 1000 / elapsed
+                layout.noteSpeed(piece.speedBytesPerSec)
+                windowStart = TimeSource.Monotonic.markNow(); windowBytes = 0
+                if (layout.isStraggler(piece)) throw SlowConnectionException()
+            }
+            rateLimiter.acquire(n)
+            if (piece.isCompleted) break
+        }
+        sink.flush()
+        val runMs = runStart.elapsedNow().inWholeMilliseconds
+        if (runMs >= 200 && piece.downloaded - runFrom >= 64 * 1024) layout.noteSpeed((piece.downloaded - runFrom) * 1000 / runMs)
+    } finally {
+        sink.close()
+    }
+}
+
+/** After a 200 to a conditional range request: what the server says about its file now (null when it does not do ranges at all). */
+internal suspend fun HttpChunkDownloader.probeIdentity(taskId: String, url: String): FileIdentity? = try {
+    client.prepareGet(url) {
+        applyDownloadHeaders(url, taskHeaders(taskId, url))
+        header(HttpHeaders.Range, "bytes=0-0")
+    }.execute { response ->
+        if (response.status.value != 206) null
+        else FileIdentity(
+            etag = response.headers[HttpHeaders.ETag]?.trim().orEmpty(),
+            lastModified = response.headers[HttpHeaders.LastModified]?.trim().orEmpty(),
+            size = response.headers[HttpHeaders.ContentRange]?.substringAfterLast('/')?.trim()?.toLongOrNull() ?: -1L
+        )
+    }
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    null
 }
 
 /** Connections for this task: its own setting, else the app setting, else by file size. */
@@ -348,7 +397,9 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
     url: String,
     cachePath: String,
     finalDestPath: String,
-    totalLength: Long
+    totalLength: Long,
+    identity: FileIdentity? = null,
+    serverChecksum: ServerChecksum? = null
 ) {
     val destPath = "$cachePath.part"
     val targetOkioPath = destPath.toPath()
@@ -386,6 +437,7 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
             applyDownloadHeaders(url, taskHeaders(taskId, url))
             if (startByte > 0) {
                 header(HttpHeaders.Range, "bytes=$startByte-")
+                identity?.ifRange?.takeIf { it.isNotEmpty() }?.let { header(HttpHeaders.IfRange, it) }
             }
         }.execute { response ->
             if (!response.status.isSuccess() && response.status.value != 206) {
@@ -458,6 +510,8 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
                 throw Exception("Connection closed early: got $downloaded of $totalLength bytes")
             }
 
+            val integrity = checkAssembledFile(taskId, targetOkioPath, finalDestPath.toPath().name, serverChecksum)
+
             // Copy completed file from cache to final destination
             val savedPath = copyIntoPlace(targetOkioPath, finalDestPath.toPath())
             targetOkioPath.parent?.let { deleteRecursively(it) }
@@ -469,7 +523,9 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
                     downloadedBytes = if (totalLength > 0) totalLength else downloaded,
                     totalBytes = if (totalLength > 0) totalLength else downloaded,
                     progress = 1.0f,
-                    downloadSpeedBytesPerSec = 0L
+                    downloadSpeedBytesPerSec = 0L,
+                    checksumVerified = integrity.verified ?: it.checksumVerified,
+                    currentStepText = integrity.note ?: it.currentStepText
                 )
             }
         }

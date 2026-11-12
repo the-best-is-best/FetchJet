@@ -227,7 +227,9 @@ internal fun DashboardViewModel.addDownload(
             _uiEffect.emit(
                 DashboardUiEffect.ShowToast(
                     LocalizationManager.Strings.sysStartedDownload(
-                        task.fileName.ifBlank { task.url })
+                        task.fileName.ifBlank {
+                            com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url)
+                        })
                 )
             )
             _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
@@ -459,7 +461,7 @@ internal fun DashboardViewModel.addPlaylist(
 }
 
 internal fun extractLinks(text: String): List<String> =
-    Regex("""(?:https?://|magnet:\?)[^\s<>"'`]+""", RegexOption.IGNORE_CASE)
+    Regex("""(?:https?://|ftp(?:e?s)?://|magnet:\?)[^\s<>"'`]+""", RegexOption.IGNORE_CASE)
         .findAll(text)
         .map { it.value.trimEnd('.', ',', ';', ':', ')', ']', '}', '!', '?') }
         .filter { it.length > 10 }

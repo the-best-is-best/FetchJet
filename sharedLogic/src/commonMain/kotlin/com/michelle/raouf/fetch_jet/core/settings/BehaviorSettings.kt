@@ -54,6 +54,15 @@ object BehaviorSettings {
         _visibleToDevices.value = on; write("visibleToDevices", on.toString())
     }
 
+    private val _wakeForSchedule =
+        MutableStateFlow(read("wakeForSchedule")?.toBooleanStrictOrNull() ?: false)
+
+    val wakeForSchedule: StateFlow<Boolean> = _wakeForSchedule.asStateFlow()
+
+    fun setWakeForSchedule(on: Boolean) {
+        _wakeForSchedule.value = on; write("wakeForSchedule", on.toString())
+    }
+
     private val _connections =
         MutableStateFlow(read("connections")?.toIntOrNull()?.coerceIn(0, 32) ?: 0)
 
@@ -72,6 +81,47 @@ object BehaviorSettings {
 
     fun setAskedMainDownloader(on: Boolean) {
         _askedMainDownloader.value = on; write("askedMainDownloader", on.toString())
+    }
+
+    private val _speedLimitOnlyInUse =
+        MutableStateFlow(read("speedLimitOnlyInUse")?.toBooleanStrictOrNull() ?: false)
+
+    val speedLimitOnlyInUse: StateFlow<Boolean> = _speedLimitOnlyInUse.asStateFlow()
+
+    fun setSpeedLimitOnlyInUse(on: Boolean) {
+        _speedLimitOnlyInUse.value = on; write("speedLimitOnlyInUse", on.toString())
+    }
+
+    private val _torrentStopRatio =
+        MutableStateFlow(
+            read("torrentStopRatio")?.toFloatOrNull()?.takeIf { !it.isNaN() }?.coerceIn(0f, 100f) ?: 0f
+        )
+
+    val torrentStopRatio: StateFlow<Float> = _torrentStopRatio.asStateFlow()
+
+    fun setTorrentStopRatio(value: Float) {
+        val v = if (value.isNaN()) 0f else value.coerceIn(0f, 100f)
+        _torrentStopRatio.value = v; write("torrentStopRatio", v.toString())
+    }
+
+    private val _categoryFolders = MutableStateFlow(
+        FileCategory.allFolders.mapNotNull { category ->
+            read("folder.$category")?.takeIf { it.isNotBlank() }
+                ?.let { category to com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath(it) }
+        }.toMap()
+    )
+
+    val categoryFolders: StateFlow<Map<String, String>> = _categoryFolders.asStateFlow()
+
+    fun categoryFolder(category: String): String? = _categoryFolders.value[category]
+
+    fun setCategoryFolder(category: String, path: String) {
+        if (category !in FileCategory.allFolders) return
+        val folder = path.trim()
+        if ((_categoryFolders.value[category] ?: "") == folder) return
+        _categoryFolders.value =
+            if (folder.isEmpty()) _categoryFolders.value - category else _categoryFolders.value + (category to folder)
+        write("folder.$category", folder)
     }
 
     private fun read(key: String): String? = try {
@@ -180,6 +230,9 @@ object FileCategory {
             else -> null
         }
     }
+
+    fun categoryFor(fileName: String, isMedia: Boolean = false, isTorrent: Boolean = false): String =
+        folderFor(fileName, isMedia, isTorrent) ?: "Other"
 }
 
 /** True when [text] is one http(s) link to a file worth offering to download, or a magnet link. */
@@ -268,7 +321,9 @@ object ClipboardLinks {
                 ignoreCase = true
             )
         ) return t
-        if (!(t.startsWith("http://", true) || t.startsWith("https://", true))) return null
+        if (!(t.startsWith("http://", true) || t.startsWith("https://", true) ||
+                    com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(t))
+        ) return null
         val path = t.substringAfter("://").substringBefore('?').substringBefore('#')
         if (!path.contains('/')) return null
         val name = path.substringAfterLast('/')

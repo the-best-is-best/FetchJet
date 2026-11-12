@@ -316,7 +316,7 @@ private fun linkTitle(url: String): String {
 
 private fun linkHost(url: String): String =
     if (url.startsWith("magnet:", ignoreCase = true)) "BitTorrent"
-    else url.substringAfter("://").substringBefore('/').substringBefore('?').removePrefix("www.")
+    else url.substringAfter("://").substringBefore('/').substringBefore('?').substringAfterLast('@').removePrefix("www.")
 
 private fun percentDecode(text: String): String {
     if ('%' !in text) return text

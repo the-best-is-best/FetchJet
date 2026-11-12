@@ -28,9 +28,11 @@ internal suspend fun HttpChunkDownloader.resolveFinalUrlAndMetadata(
             }
 
             val contentType = response.headers[HttpHeaders.ContentType]?.lowercase() ?: ""
+            var pageText = ""
             if (contentType.contains("text/html") && redirectCount < maxRedirects) {
                 try {
                     val html = response.bodyAsText()
+                    pageText = html.take(4000)
                     val redirectUrl = extractRedirectUrlFromHtml(html)
                     if (!redirectUrl.isNullOrBlank()) {
                         redirectTarget = resolveUrl(currentUrl, redirectUrl)
@@ -47,7 +49,13 @@ internal suspend fun HttpChunkDownloader.resolveFinalUrlAndMetadata(
                 contentType = contentType,
                 contentLength = response.contentLength() ?: -1L,
                 acceptRanges = response.headers[HttpHeaders.AcceptRanges]?.lowercase() == "bytes",
-                contentDisposition = response.headers[HttpHeaders.ContentDisposition]
+                contentDisposition = response.headers[HttpHeaders.ContentDisposition],
+                etag = response.headers[HttpHeaders.ETag]?.trim().orEmpty(),
+                lastModified = response.headers[HttpHeaders.LastModified]?.trim().orEmpty(),
+                pageText = pageText,
+                serverChecksum = if (status != 200 || (response.contentLength() ?: -1L) <= 0L ||
+                    !response.headers[HttpHeaders.ContentEncoding].isNullOrBlank()
+                ) null else serverChecksumFrom { name -> response.headers.getAll(name)?.joinToString(",") }
             )
         }
 

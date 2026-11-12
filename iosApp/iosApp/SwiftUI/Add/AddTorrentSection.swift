@@ -289,6 +289,7 @@ enum AddLinkText {
         if url.lowercased().hasPrefix("magnet:") { return "BitTorrent" }
         let after = url.components(separatedBy: "://").dropFirst().first ?? url
         var h = after.components(separatedBy: "/")[0].components(separatedBy: "?")[0]
+        h = h.components(separatedBy: "@").last ?? h
         if h.hasPrefix("www.") { h.removeFirst(4) }
         return h
     }

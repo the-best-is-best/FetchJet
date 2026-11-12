@@ -71,7 +71,8 @@ private fun ProxyCard(isIos: Boolean) {
 
     SettingsGroup(
         title = LocalizationManager.Strings.netProxyGroup,
-        footer = if (isIos) LocalizationManager.Strings.netProxyHintIos else LocalizationManager.Strings.netProxyHint
+        footer = (if (isIos) LocalizationManager.Strings.netProxyHintIos else LocalizationManager.Strings.netProxyHint) +
+            (if (kind == ProxyKind.HTTP) " " + LocalizationManager.Strings.torrentProxyHint else "")
     ) {
         Box(
             modifier = Modifier

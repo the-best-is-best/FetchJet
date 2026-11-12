@@ -21,7 +21,7 @@ export global Act {
     callback removeChecked();
     callback exportChecked();
     callback toggleGroup(key: string);
-    callback listKey(key: int);
+    callback listKey(key: int, shift: bool, rows: int);
     callback closeDetails();
     callback cancelWhenDone();
     callback setWhenDone(index: int);
@@ -51,6 +51,10 @@ export global Act {
     callback audioCompressDismiss();
     callback toggleDetailFile(index: int, selected: bool);
     callback cycleDetailFilePriority(index: int);
+    callback torrentAddTracker(url: string);
+    callback torrentRecheck();
+    callback torrentSetFirstLast(on: bool);
+    callback torrentCopyMagnet();
     callback copyText(text: string);
     callback alertConfirm(kind: int, checked: bool);
     callback alertDismiss(kind: int, fromScrim: bool);
@@ -101,6 +105,7 @@ export global Act {
     callback setConnections(count: int);
     callback resetFileName();
     callback setChecksum(value: string);
+    callback testLink();
     callback pickDestination();
     callback setQuickFolder(path: string);
     callback setLeech(on: bool);

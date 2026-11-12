@@ -449,6 +449,18 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
         rows.divider()
         rows.add(presetRow("preset.low", s.speedPresetLow, v.lowBytes, v.lowUnit, page))
     }
+    if (com.michelle.raouf.fetch_jet.core.power.UserIdle.idleMs() != null) {
+        rows.group(footer = s.speedLimitWhileInUseFooter) {
+            rows.add(
+                switchRow(
+                    "speedLimitOnlyInUse",
+                    s.speedLimitWhileInUseTitle,
+                    null,
+                    BehaviorSettings.speedLimitOnlyInUse.value,
+                )
+            )
+        }
+    }
     val scheduleOn = SpeedSchedule.enabled.value
     val windows = SpeedSchedule.windows.value
     rows.group(footer = s.speedScheduleFooter) {
@@ -511,6 +523,17 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 below = true,
             )
         )
+        if (com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.isSupported) {
+            rows.divider()
+            rows.add(
+                switchRow(
+                    "wakeForSchedule",
+                    s.wakeForScheduleTitle,
+                    s.wakeForScheduleHint,
+                    BehaviorSettings.wakeForSchedule.value,
+                )
+            )
+        }
     }
 }
 
@@ -526,7 +549,7 @@ private fun Presenter.networkRows(rows: Rows, page: SettingsPage) {
     val wanted = draft.settings()
     val invalid = draft.kind != ProxyKind.NONE && !wanted.isOn
     val changed = wanted != saved
-    rows.group(title = s.netProxyGroup, footer = s.netProxyHint) {
+    rows.group(title = s.netProxyGroup, footer = if (draft.kind == ProxyKind.HTTP) s.netProxyHint + " " + s.torrentProxyHint else s.netProxyHint) {
         rows.add(pickerRow("proxyKind", "", "", ProxyKind.entries.map { proxyKindLabel(it) }, draft.kind.ordinal + 1, below = true))
         if (draft.kind != ProxyKind.NONE) {
             val showError = invalid && (draft.host.isNotBlank() || draft.port.isNotBlank())
@@ -781,6 +804,8 @@ internal fun limitTextOf(page: SettingsPage, speed: Long): String = page.limitTe
 internal fun limitIsCustom(page: SettingsPage, speed: Long): Boolean =
     page.limitCustomAt == speed || (speed > 0L && speed !in UPLOAD_PRESETS)
 
+internal val STOP_RATIOS = listOf(0f, 0.5f, 1f, 1.5f, 2f, 3f, 5f)
+
 private fun Presenter.torrentRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
     val s = LocalizationManager.Strings
     val speed = v.uploadLimit
@@ -844,6 +869,17 @@ private fun Presenter.torrentRows(rows: Rows, v: SettingsSlice, page: SettingsPa
     }
     rows.group(title = s.torrentSharingGroup) {
         rows.add(switchRow("leech", s.downloadOnlyNoUpload, s.downloadOnlyNoUploadHint, v.disableTorrentUpload))
+    }
+    rows.group(title = s.torrentStopRatioTitle, footer = s.torrentStopRatioHint) {
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.CHIPS.ordinal,
+                id = "stopRatio",
+                title = s.torrentStopRatioTitle,
+                options = STOP_RATIOS.map { if (it == 0f) "0" else it.toString().removeSuffix(".0") },
+                pick = STOP_RATIOS.indexOf(com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.torrentStopRatio.value) + 1,
+            )
+        )
     }
     rows.group(title = s.torrentEngineGroup) {
         rows.add(

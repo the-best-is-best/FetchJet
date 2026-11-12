@@ -78,8 +78,16 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
         }
 
         "schedule" -> SpeedSchedule.setEnabled(on)
+        "speedLimitOnlyInUse" -> {
+            BehaviorSettings.setSpeedLimitOnlyInUse(on)
+            settingsPoke()
+        }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
         "visibleToDevices" -> BehaviorSettings.setVisibleToDevices(on)
+        "wakeForSchedule" -> {
+            BehaviorSettings.setWakeForSchedule(on)
+            settingsPoke()
+        }
         "leech" -> vm.onEvent(DashboardUiEvent.OnDisableTorrentUploadToggled(on))
         "autoCheck" -> UpdateManager.setAutoCheck(on)
         "autoInstall" -> UpdateManager.setAutoInstall(on)
@@ -193,6 +201,11 @@ internal fun Presenter.settingPick(id: String, index: Int) {
 
         id == "speedUnit" -> SPEED_UNITS.getOrNull(index)?.let { vm.onEvent(DashboardUiEvent.OnSpeedDisplayUnitChanged(it)) }
         id == "whenDone" -> WhenDoneAction.entries.getOrNull(index)?.let { WhenDone.choose(it) }
+        id == "stopRatio" -> STOP_RATIOS.getOrNull(index)?.let {
+            vm.onEvent(DashboardUiEvent.OnTorrentStopRatioChanged(it))
+            settingsPoke()
+        }
+
         id == "connections" ->
             CONNECTION_COUNTS.getOrNull(index)?.let { vm.onEvent(DashboardUiEvent.OnDefaultConnectionsChanged(it)) }
 

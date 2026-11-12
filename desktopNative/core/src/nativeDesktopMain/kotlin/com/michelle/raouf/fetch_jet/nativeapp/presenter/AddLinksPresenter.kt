@@ -40,7 +40,7 @@ private fun percentDecode(text: String): String {
 
 private fun linkHost(url: String): String =
     if (url.startsWith("magnet:", ignoreCase = true)) "BitTorrent"
-    else url.substringAfter("://").substringBefore('/').substringBefore('?').removePrefix("www.")
+    else url.substringAfter("://").substringBefore('/').substringBefore('?').substringAfterLast('@').removePrefix("www.")
 
 private fun linkTitle(url: String): String {
     val strings = LocalizationManager.Strings

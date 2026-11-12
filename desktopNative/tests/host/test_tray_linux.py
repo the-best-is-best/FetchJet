@@ -237,6 +237,7 @@ def main():
         services.call(service, item[1], item[0], "Activate", GLib.Variant("(ii)", (0, 0)))
         check("Activate hides the window (the tray keeps the app)", wait_for(lambda: window_visible() is False, 5), window_visible())
         check("the app is still running while hidden", process.poll() is None)
+        time.sleep(0.6)
         services.call(service, item[1], item[0], "Activate", GLib.Variant("(ii)", (0, 0)))
         check("Activate again shows it", wait_for(lambda: window_visible() is True, 5), window_visible())
         services.call(service, "/MenuBar", dbusmenu, "Event", GLib.Variant("(isvu)", (1, "clicked", GLib.Variant("i", 0), 0)))

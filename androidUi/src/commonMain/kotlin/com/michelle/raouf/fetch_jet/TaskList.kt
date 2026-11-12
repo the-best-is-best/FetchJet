@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,16 +36,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
@@ -54,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -67,9 +73,11 @@ import com.michelle.raouf.fetch_jet.ui.RowAction
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.TaskRow
 import com.michelle.raouf.fetch_jet.ui.TaskRowsHeader
+import com.michelle.raouf.fetch_jet.ui.rowActionFor
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
 import com.tbib.kmp_localization.LocalizationManager
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
@@ -145,7 +153,17 @@ internal fun TaskListArea(
     val selectionMode = checkedIds.isNotEmpty()
     var anchorId by remember { mutableStateOf<String?>(null) }
     val listFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val desktop = remember { getPlatform().isJvm }
+    val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    var searchHasFocus by remember { mutableStateOf(false) }
+    var cursorId by remember { mutableStateOf<String?>(null) }
+    var showShortcuts by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val pathResolver = remember { PathResolver() }
+    LaunchedEffect(Unit) { runCatching { listFocus.requestFocus() } }
+    if (showShortcuts) {
+        com.michelle.raouf.fetch_jet.ui.ShortcutsDialog(onDismiss = { showShortcuts = false })
+    }
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = selectionMode,
@@ -156,20 +174,185 @@ internal fun TaskListArea(
     val shownOrder = if (grouped) {
         taskStateGroups(tasks).filter { collapsedGroups[it.key] != true }.flatMap { it.tasks }
     } else tasks
+    val fullPathOf: (DownloadTask) -> String = { t ->
+        val dest = t.destinationPath.trimEnd('/', '\\')
+        val sep = if (dest.contains('\\')) "\\" else "/"
+        decodeUnicodeText(
+            if (t.fileName.isNotBlank()) "$dest$sep${t.fileName}" else t.destinationPath
+        ).trim()
+    }
+    val lazyIndexOf: (String) -> Int = { id ->
+        if (!grouped) {
+            tasks.indexOfFirst { it.id == id }
+        } else {
+            var index = 0
+            var found = -1
+            for (group in taskStateGroups(tasks)) {
+                index++
+                if (collapsedGroups[group.key] == true) continue
+                val at = group.tasks.indexOfFirst { it.id == id }
+                if (at >= 0) {
+                    found = index + at
+                    break
+                }
+                index += group.tasks.size
+            }
+            found
+        }
+    }
+    val moveCursor: (Int, Boolean) -> Unit = { target, extend ->
+        val ids = shownOrder.map { it.id }
+        if (target in ids.indices) {
+            val id = ids[target]
+            if (extend) {
+                val from = ids.indexOf(anchorId ?: cursorId ?: selectedTaskId)
+                    .takeIf { it >= 0 } ?: target
+                anchorId = ids[from]
+                checkedIds = ids.subList(minOf(from, target), maxOf(from, target) + 1).toHashSet()
+            } else {
+                anchorId = id
+            }
+            cursorId = id
+            if (selectedTaskId != null) onSelect(id)
+            val index = lazyIndexOf(id)
+            if (index >= 0) {
+                scope.launch {
+                    val info = listState.layoutInfo
+                    val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+                    val end = info.viewportEndOffset - info.afterContentPadding
+                    if (item == null) {
+                        listState.animateScrollToItem(index)
+                    } else if (item.offset < 0) {
+                        listState.animateScrollBy(item.offset.toFloat())
+                    } else if (item.offset + item.size > end) {
+                        listState.animateScrollBy((item.offset + item.size - end).toFloat())
+                    }
+                }
+            }
+        }
+    }
+    val typing = searchHasFocus && externalSearch == null && allTasks.isNotEmpty()
     Column(
-        modifier = if (!desktop) Modifier.fillMaxSize() else Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
             .focusRequester(listFocus)
             .focusable()
             .onKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                if (e.type != KeyEventType.KeyDown || typing) return@onKeyEvent false
+                val mod = e.isCtrlPressed || e.isMetaPressed
+                val ids = shownOrder.map { it.id }
+                val at = ids.indexOf(cursorId ?: selectedTaskId ?: anchorId)
+                val currentId = cursorId ?: selectedTaskId
+                val current = shownOrder.firstOrNull { it.id == currentId }
+                val targets = if (selectionMode) shownOrder.filter { it.id in checkedIds }
+                else listOfNotNull(current)
                 when {
-                    e.key == Key.A && (e.isCtrlPressed || e.isMetaPressed) -> {
+                    e.key == Key.F1 -> {
+                        showShortcuts = true
+                        true
+                    }
+
+                    e.key == Key.DirectionDown && !mod && !e.isAltPressed -> {
+                        if (ids.isNotEmpty()) {
+                            moveCursor(
+                                if (at < 0) 0 else minOf(at + 1, ids.lastIndex),
+                                e.isShiftPressed
+                            )
+                        }
+                        true
+                    }
+
+                    e.key == Key.DirectionUp && !mod && !e.isAltPressed -> {
+                        if (ids.isNotEmpty()) {
+                            moveCursor(
+                                if (at < 0) ids.lastIndex else maxOf(at - 1, 0),
+                                e.isShiftPressed
+                            )
+                        }
+                        true
+                    }
+
+                    e.key == Key.MoveHome && !mod && !e.isAltPressed -> {
+                        if (ids.isNotEmpty()) moveCursor(0, e.isShiftPressed)
+                        true
+                    }
+
+                    e.key == Key.MoveEnd && !mod && !e.isAltPressed -> {
+                        if (ids.isNotEmpty()) moveCursor(ids.lastIndex, e.isShiftPressed)
+                        true
+                    }
+
+                    (e.key == Key.Enter || e.key == Key.NumPadEnter) && !mod -> {
+                        if (current == null) {
+                            false
+                        } else {
+                            if (!e.isAltPressed && current.status == DownloadStatus.COMPLETED) {
+                                openDownloadedFile(fullPathOf(current), current.id)
+                            } else {
+                                onSelect(current.id)
+                            }
+                            true
+                        }
+                    }
+
+                    e.key == Key.R && mod -> {
+                        targets.forEach { t ->
+                            val action = rowActionFor(t)
+                            if (action == RowAction.RESUME || action == RowAction.START_NOW) {
+                                viewModel.onEvent(DashboardUiEvent.OnResumeClicked(t.id))
+                            }
+                        }
+                        true
+                    }
+
+                    e.key == Key.P && mod -> {
+                        val running = targets.filter { rowActionFor(it) == RowAction.PAUSE }
+                        if (running.size == 1 && running[0].canResume() == false) {
+                            onSelect(running[0].id)
+                        } else {
+                            running.forEach { t ->
+                                if (t.canResume() != false) {
+                                    viewModel.onEvent(DashboardUiEvent.OnPauseClicked(t.id))
+                                }
+                            }
+                        }
+                        true
+                    }
+
+                    e.key == Key.O && mod -> {
+                        if (current != null && current.status == DownloadStatus.COMPLETED) {
+                            openDownloadedFile(fullPathOf(current), current.id)
+                        }
+                        true
+                    }
+
+                    e.key == Key.E && mod -> {
+                        if (current != null && pathResolver.isOpenFolderSupported()) {
+                            pathResolver.openFileLocation(fullPathOf(current))
+                        }
+                        true
+                    }
+
+                    e.key == Key.N && mod -> {
+                        viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+                        true
+                    }
+
+                    e.key == Key.F && mod -> {
+                        runCatching {
+                            if (externalSearch == null) searchFocus.requestFocus()
+                            else com.michelle.raouf.fetch_jet.ui.ListShortcuts.topBarSearch.requestFocus()
+                        }
+                        true
+                    }
+
+                    e.key == Key.A && mod -> {
                         checkedIds = shownOrder.mapTo(HashSet()) { it.id }
                         true
                     }
 
-                    e.key == Key.Escape && selectionMode -> {
+                    e.key == Key.Escape && (selectionMode || cursorId != null) -> {
                         checkedIds = emptySet()
+                        cursorId = null
                         true
                     }
 
@@ -179,8 +362,8 @@ internal fun TaskListArea(
                                 DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())
                             )
 
-                            selectedTaskId != null -> viewModel.onEvent(
-                                DashboardUiEvent.OnRemoveClicked(selectedTaskId)
+                            current != null -> viewModel.onEvent(
+                                DashboardUiEvent.OnRemoveClicked(current.id)
                             )
                         }
                         true
@@ -209,6 +392,8 @@ internal fun TaskListArea(
                 } else null,
                 height = 44.dp,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    .focusRequester(searchFocus)
+                    .onFocusChanged { searchHasFocus = it.hasFocus }
             )
         }
         if (selectionMode) {
@@ -265,7 +450,6 @@ internal fun TaskListArea(
             }
         )
         // A download just added (dialog or extension) sits at the top: bring it into view.
-        val listState = rememberLazyListState()
         LaunchedEffect(uiState.scrollToTopSignal) {
             if (uiState.scrollToTopSignal > 0) listState.animateScrollToItem(0)
         }
@@ -280,28 +464,29 @@ internal fun TaskListArea(
             val taskItem: @Composable (DownloadTask) -> Unit = { task ->
                 TaskRow(
                     task = task,
-                    selected = task.id == selectedTaskId,
+                    selected = task.id == selectedTaskId || task.id == cursorId,
                     speedDisplayUnit = speedDisplayUnit,
                     onClick = {
                         anchorId = task.id
-                        if (desktop) listFocus.requestFocus()
+                        cursorId = null
+                        runCatching { listFocus.requestFocus() }
                         onSelect(task.id)
                     },
                     checked = task.id in checkedIds,
                     selectionMode = selectionMode,
                     onCheckedChange = { on ->
                         anchorId = task.id
-                        if (desktop) listFocus.requestFocus()
+                        runCatching { listFocus.requestFocus() }
                         checkedIds = if (on) checkedIds + task.id else checkedIds - task.id
                     },
-                    onCtrlClick = if (!desktop) null else ({
+                    onCtrlClick = ({
                         anchorId = task.id
-                        listFocus.requestFocus()
+                        runCatching { listFocus.requestFocus() }
                         checkedIds =
                             if (task.id in checkedIds) checkedIds - task.id else checkedIds + task.id
                     }),
-                    onShiftClick = if (!desktop) null else ({
-                        listFocus.requestFocus()
+                    onShiftClick = ({
+                        runCatching { listFocus.requestFocus() }
                         val ids = shownOrder.map { it.id }
                         val from = ids.indexOf(anchorId ?: selectedTaskId).takeIf { it >= 0 } ?: 0
                         val to = ids.indexOf(task.id)

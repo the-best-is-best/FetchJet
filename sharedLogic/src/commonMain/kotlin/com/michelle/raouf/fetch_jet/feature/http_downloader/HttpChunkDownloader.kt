@@ -116,10 +116,19 @@ class HttpChunkDownloader(
         val initialTask = tasksState.value[taskId] ?: return
 
         updateTaskState(taskId) {
-            it.copy(status = DownloadStatus.CONNECTING, errorMessage = null)
+            it.copy(
+                status = DownloadStatus.CONNECTING,
+                errorMessage = null,
+                checksumVerified = null,
+                currentStepText = if (it.currentStepText == NOTE_ARCHIVE_DAMAGED) null else it.currentStepText
+            )
         }
 
         try {
+            if (isFtpUrl(initialTask.url)) {
+                downloadFtp(taskId)
+                return
+            }
             // Pieces already fully on disk (a finished file another device handed over): assemble
             // and finish with no network at all, so it still works if the original link has died.
             // The size comes from the pieces themselves, not from a probe of the link.
@@ -143,7 +152,9 @@ class HttpChunkDownloader(
                 }
             }
 
-            val metadata = fetchWithRetry {
+            val metadata = retryForbiddenOverIpv4(fetchWithRetry {
+                resolveFinalUrlAndMetadata(initialTask.url, initialTask.requestHeaders)
+            }) {
                 resolveFinalUrlAndMetadata(initialTask.url, initialTask.requestHeaders)
             }
 
@@ -193,6 +204,19 @@ class HttpChunkDownloader(
                 AppFileSystem.createDirectories(taskCacheDir.toPath())
             } catch (_: Exception) {
             }
+            val identity = metadata.identity
+            val identityPath = "$cachePath.identity".toPath()
+            if (identity.ifRange.isNotEmpty()) {
+                val saved = runCatching {
+                    if (AppFileSystem.exists(identityPath)) FileIdentity.decode(AppFileSystem.read(identityPath) { readUtf8() }) else null
+                }.getOrNull()
+                if (saved != null && !saved.sameAs(identity)) {
+                    // The file on the server is not the one these parts came from: start clean.
+                    try { deleteTaskScratchDir(taskId) } catch (_: Exception) {}
+                    try { AppFileSystem.createDirectories(taskCacheDir.toPath()) } catch (_: Exception) {}
+                }
+                try { AppFileSystem.write(identityPath) { writeUtf8(identity.encode()) } } catch (_: Exception) {}
+            }
 
             // Enable parallel multi-connection chunked download if server supports byte ranges and file size > 2MB
             // Download to cache first, then copy to destination upon completion.
@@ -207,7 +231,9 @@ class HttpChunkDownloader(
                         metadata.finalUrl,
                         cachePath,
                         finalDestPath,
-                        contentLength
+                        contentLength,
+                        identity,
+                        serverChecksum = metadata.serverChecksum
                     )
                 } catch (e: CancellationException) {
                     throw e
@@ -231,7 +257,9 @@ class HttpChunkDownloader(
                         metadata.finalUrl,
                         cachePath,
                         finalDestPath,
-                        contentLength
+                        contentLength,
+                        identity,
+                        metadata.serverChecksum
                     )
                 }
                 // Any other failure (network blip after the retries, 429, disk) keeps the parts
@@ -243,12 +271,39 @@ class HttpChunkDownloader(
                     metadata.finalUrl,
                     cachePath,
                     finalDestPath,
-                    contentLength
+                    contentLength,
+                    identity,
+                    metadata.serverChecksum
                 )
             }
         } catch (e: CancellationException) {
             // pause()/cancel() already set the status; do not overwrite it with ERROR
             throw e
+        } catch (e: FileChangedException) {
+            try { deleteTaskScratchDir(taskId) } catch (_: Exception) {}
+            updateTaskState(taskId) {
+                it.copy(
+                    status = DownloadStatus.ERROR,
+                    errorMessage = "The file changed on the server while it was downloading. Press Resume to download the new version from the start.",
+                    downloadSpeedBytesPerSec = 0L,
+                    downloadedBytes = 0L,
+                    progress = 0f,
+                    chunks = emptyList()
+                )
+            }
+        } catch (e: ChecksumMismatchException) {
+            try { deleteTaskScratchDir(taskId) } catch (_: Exception) {}
+            updateTaskState(taskId) {
+                it.copy(
+                    status = DownloadStatus.ERROR,
+                    errorMessage = e.message,
+                    checksumVerified = false,
+                    downloadSpeedBytesPerSec = 0L,
+                    downloadedBytes = 0L,
+                    progress = 0f,
+                    chunks = emptyList()
+                )
+            }
         } catch (e: Exception) {
             updateTaskState(taskId) {
                 it.copy(

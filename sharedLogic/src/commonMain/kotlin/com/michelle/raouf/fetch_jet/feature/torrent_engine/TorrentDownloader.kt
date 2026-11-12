@@ -34,6 +34,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okio.Path.Companion.toPath
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import kotlin.math.roundToInt
 
 /**
  * BitTorrent engine. All networking is done by [TorrentBackend] (libtorrent on desktop and
@@ -52,6 +54,13 @@ class TorrentDownloader(
     val isSupported: Boolean get() = backend.isSupported
     fun engineStatus(): String = backend.engineStatus()
     suspend fun installEngine(): Result<Unit> = backend.installEngine()
+
+    val supportsDetails: Boolean get() = backend.supportsDetails
+    fun details(taskId: String): TorrentDetails? = backend.details(taskId)
+    fun addTracker(taskId: String, url: String): Boolean = backend.addTracker(taskId, url)
+    fun recheck(taskId: String): Boolean = backend.recheck(taskId)
+    fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean =
+        backend.setFirstLastPiecesFirst(taskId, on)
 
     private val tasksState = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
     private val activeJobs = mutableMapOf<String, Job>()
@@ -82,6 +91,7 @@ class TorrentDownloader(
                 return Result.failure(Exception("BitTorrent downloads are not available on this platform"))
             }
             val meta = resolveMetadata(url)
+            refuseEscapingTorrent(meta)
             Result.success(
                 ParsedTorrentInfo(
                     name = meta.name,
@@ -98,6 +108,12 @@ class TorrentDownloader(
             // Error and used to kill the coroutine silently, leaving the spinner forever.
             Result.failure(Exception(describe(e)))
         }
+    }
+
+    private fun refuseEscapingTorrent(meta: TorrentMetadata) {
+        val escapes = meta.files.worstPathRisk() == TorrentPathRisk.ESCAPES_ROOT ||
+                torrentDeclaresEscapingPaths(meta.torrentBytes)
+        if (escapes) throw Exception(TORRENT_ESCAPES_FOLDER_ERROR)
     }
 
     private fun describe(e: Throwable): String {
@@ -244,6 +260,7 @@ class TorrentDownloader(
 
         try {
             val meta = resolveMetadata(initialTask.url, taskId)
+            refuseEscapingTorrent(meta)
             saveTorrentCopy(taskId, meta.torrentBytes)
 
             // Keep the user's selection/priorities if they already chose files, otherwise all.
@@ -280,7 +297,11 @@ class TorrentDownloader(
             // FDM / Ezoo get their full speed from, so fetch them that way first and keep
             // libtorrent as the fallback when the HTTP source fails.
             val webSeeds = webSeedUrls(meta, initialTask)
-            if (webSeeds.isNotEmpty()) {
+            val unsafeNames = files.filter { it.isSelected }.unsafelyNamed()
+            if (unsafeNames.isNotEmpty()) {
+                println("TorrentDownloader: ${unsafeNames.size} file(s) with unsafe names, left to the torrent engine (no HTTP pass)")
+            }
+            if (webSeeds.isNotEmpty() && unsafeNames.isEmpty()) {
                 val done =
                     downloadViaWebSeeds(taskId, meta, files, webSeeds, current.destinationPath)
                 if (done) return
@@ -308,6 +329,7 @@ class TorrentDownloader(
 
             var lastDown = -1L
             var lastUp = -1L
+            var seedingShown = false
             while (true) {
                 val p = backend.progress(taskId)
                 if (p == null) {
@@ -334,23 +356,35 @@ class TorrentDownloader(
                     if (wanted > 0) (p.downloadedBytes.toFloat() / wanted).coerceIn(0f, 1f) else 0f
 
                 if (p.isFinished) {
-                    updateTaskState(taskId) {
-                        it.copy(
-                            status = DownloadStatus.COMPLETED,
-                            downloadedBytes = wanted,
-                            totalBytes = wanted,
-                            progress = 1f,
-                            downloadSpeedBytesPerSec = 0L,
-                            uploadSpeedBytesPerSec = if (t.disableUpload) 0L else p.uploadRate,
-                            torrentFiles = updatedFiles,
-                            currentStepText = if (t.disableUpload) "Completed" else "Seeding"
-                        )
+                    val stopSharing = t.disableUpload || shouldStopSharing(
+                        p.uploadedBytes, wanted, BehaviorSettings.torrentStopRatio.value, true
+                    )
+                    if (stopSharing || !seedingShown) {
+                        updateTaskState(taskId) {
+                            it.copy(
+                                status = DownloadStatus.COMPLETED,
+                                downloadedBytes = wanted,
+                                totalBytes = wanted,
+                                progress = 1f,
+                                downloadSpeedBytesPerSec = 0L,
+                                uploadSpeedBytesPerSec = if (stopSharing) 0L else p.uploadRate,
+                                torrentFiles = updatedFiles,
+                                currentStepText = if (stopSharing) "Completed" else "Seeding"
+                            )
+                        }
                     }
                     // A download manager does not seed forever: stop when the user disabled
-                    // uploading, otherwise leave it seeding while the app runs.
-                    if (t.disableUpload) backend.pause(taskId)
-                    return
+                    // uploading or the share ratio is reached, otherwise leave it seeding while
+                    // the app runs.
+                    if (stopSharing) {
+                        backend.pause(taskId)
+                        return
+                    }
+                    seedingShown = true
+                    delay(SEED_POLL_MS)
+                    continue
                 }
+                seedingShown = false
 
                 updateTaskState(taskId) {
                     it.copy(
@@ -603,6 +637,13 @@ class TorrentDownloader(
 
     private companion object {
         const val POLL_MS = 700L
+        const val SEED_POLL_MS = 2000L
         const val MAX_TORRENT_FILE_BYTES = 20 * 1024 * 1024
     }
+}
+
+internal fun shouldStopSharing(uploaded: Long, wanted: Long, ratio: Float, finished: Boolean): Boolean {
+    if (!finished || ratio.isNaN() || ratio <= 0f || wanted <= 0L || uploaded <= 0L) return false
+    val hundredths = (ratio.coerceAtMost(100f) * 100f).roundToInt().coerceAtLeast(1)
+    return uploaded.toDouble() * 100.0 >= wanted.toDouble() * hundredths
 }

@@ -6,6 +6,7 @@ import io.ktor.client.engine.okhttp.OkHttpConfig
 
 internal actual fun applyProxyLogin(config: HttpClientEngineConfig, proxy: ProxySettings) {
     JvmProxyLogin.install()
+    if (config is OkHttpConfig) config.useIpv4Preference()
     if (!proxy.isOn || !proxy.hasLogin) return
     when (config) {
         is OkHttpConfig -> if (proxy.kind == ProxyKind.HTTP) config.config {

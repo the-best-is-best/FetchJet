@@ -14,6 +14,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
     private struct Entry {
         var key: String
         var fileCount: Int
+        var firstLast = false
     }
 
     private let lock = NSRecursiveLock()
@@ -132,6 +133,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         }
         if let entry = entries[taskId], session.status(entry.key) != nil {
             session.setFilePriorities(priorities, for: entry.key)
+            reapplyFirstLast(taskId: taskId)
             session.setLimits(download: downloadLimitBytesPerSec, upload: upload, for: entry.key)
             session.resume(entry.key)
             return true
@@ -195,6 +197,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         session?.setFilePriorities(Self.priorities(fileCount: entry.fileCount, selected: selected,
                                                    priorityIndexes: priorityIndexes, priorityValues: priorityValues),
                                    for: entry.key)
+        reapplyFirstLast(taskId: taskId)
     }
 
     public func setLimits(taskId: String, downloadLimitBytesPerSec: Int64, uploadLimitBytesPerSec: Int64) {
@@ -241,8 +244,88 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
                 KotlinLong(value: $0.int64Value)
             },
             stateText: s.isPaused ? "Paused" : (s.errorMessage != nil ? "Error" : stateText),
-            error: s.errorMessage
+            error: s.errorMessage,
+            uploadedBytes: s.totalUploaded
         )
+    }
+
+    public func details(taskId: String) -> IosTorrentDetails? {
+        lock.lock(); defer {
+            lock.unlock()
+        }
+        guard let entry = entries[taskId], let session, let s = session.status(entry.key) else {
+            return nil
+        }
+        let pieces = session.pieces(entry.key)
+        return IosTorrentDetails(
+            trackers: session.trackers(entry.key).map {
+                IosTorrentTracker(url: $0.url, state: $0.state, message: $0.message)
+            },
+            peers: session.peers(entry.key).map {
+                IosTorrentPeer(address: $0.address, client: $0.client, downloadRate: $0.downloadRate,
+                               uploadRate: $0.uploadRate, progress: $0.progress, isSeed: $0.isSeed)
+            },
+            uploadedBytes: s.totalUploaded,
+            downloadedBytes: s.totalDownloaded,
+            pieceCount: pieces?.count ?? 0,
+            piecesDone: pieces?.have ?? 0,
+            pieceSize: pieces?.pieceLength ?? 0,
+            magnetLink: session.magnetLink(entry.key) ?? "",
+            firstLastPiecesFirst: entry.firstLast
+        )
+    }
+
+    public func addTracker(taskId: String, url: String) -> Bool {
+        lock.lock(); defer {
+            lock.unlock()
+        }
+        guard let entry = entries[taskId], let session else {
+            return false
+        }
+        return session.addTracker(url, for: entry.key)
+    }
+
+    public func recheck(taskId: String) -> Bool {
+        lock.lock(); defer {
+            lock.unlock()
+        }
+        guard let entry = entries[taskId], let session else {
+            return false
+        }
+        return session.forceRecheck(entry.key)
+    }
+
+    public func setFirstLastPiecesFirst(taskId: String, on: Bool) -> Bool {
+        lock.lock(); defer {
+            lock.unlock()
+        }
+        guard var entry = entries[taskId], let session else {
+            return false
+        }
+        guard session.setFirstLastPiecesFirst(on, for: entry.key) else {
+            return false
+        }
+        entry.firstLast = on
+        entries[taskId] = entry
+        return true
+    }
+
+    private func reapplyFirstLast(taskId: String) {
+        guard entries[taskId]?.firstLast == true else {
+            return
+        }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else {
+                return
+            }
+            self.lock.lock(); defer {
+                self.lock.unlock()
+            }
+            guard let entry = self.entries[taskId], entry.firstLast else {
+                return
+            }
+            _ = self.session?.setFirstLastPiecesFirst(true, for: entry.key)
+        }
     }
 
     public func shutdown() {

@@ -11,7 +11,7 @@ def run():
     core = Core("unpair", config={"bridge": True, "bridgePort": PORT})
     try:
         core.pump(1.5)
-        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.3.0", "X-FetchJet-Pairing": "1"}
+        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.3.88", "X-FetchJet-Pairing": "1"}
         seen = {}
 
         def allow():

@@ -2,11 +2,13 @@ import { Theme, Dir } from "../theme.slint";
 import { HBox, T, Hover } from "../widgets/Base.slint";
 import { FilledButton, OutlinedButton, IconButton } from "../widgets/Buttons.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
-import { LinearProgress } from "../widgets/Progress.slint";
+import { LinearProgress, ThinBar } from "../widgets/Progress.slint";
 import { ScrollArea, ListView } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { ElideText } from "../widgets/ElideText.slint";
-import { Core, ChipDto, ConnectionDto, FileRowDto, PieceDto, PieceStateCode, DetailActionCode } from "../generated/dto.slint";
+import { Switch } from "../widgets/Kit.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { Core, ChipDto, ConnectionDto, FileRowDto, PieceDto, PieceStateCode, DetailActionCode, TorrentTrackerDto, TorrentPeerDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
 
@@ -335,6 +337,338 @@ component FileRow inherits Rectangle {
     }
 }
 
+component TrackerRow inherits Rectangle {
+    in property <TorrentTrackerDto> data;
+    private property <color> tone: Theme.tone(root.data.tone);
+    height: root.data.message != "" ? 50px : 32px;
+    HBox {
+        y: 0;
+        height: 32px;
+        padding-start: 8px;
+        padding-end: 8px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.tone;
+        }
+        ElideText {
+            text: root.data.name;
+            behind: Theme.surface;
+            font-size: 12px;
+            line: 16px;
+            tracking: 0.4px;
+        }
+        T {
+            text: root.data.stateLabel;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: root.tone;
+        }
+    }
+    if root.data.message != "": Text {
+        x: Dir.rtl ? 8px : 24px;
+        y: 30px;
+        width: parent.width - 32px;
+        height: 16px;
+        text: root.data.message;
+        color: Theme.error;
+        font-family: Theme.font;
+        font-size: 11px;
+        horizontal-alignment: Dir.start;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+component PeerRow inherits Rectangle {
+    in property <TorrentPeerDto> data;
+    height: 44px;
+    HBox {
+        y: 4px;
+        height: 18px;
+        padding-start: 8px;
+        padding-end: 8px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        ElideText {
+            text: root.data.address;
+            behind: Theme.surface;
+            font-size: 12px;
+            font-weight: 600;
+            line: 16px;
+            tracking: 0.4px;
+        }
+        T {
+            text: root.data.percent;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: root.data.seed ? Theme.status-completed : Theme.on-surface.with-alpha(0.85);
+        }
+    }
+    HBox {
+        y: 22px;
+        height: 18px;
+        padding-start: 8px;
+        padding-end: 8px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        ElideText {
+            text: root.data.client;
+            behind: Theme.surface;
+            ink: Theme.on-surface-variant;
+            font-size: 11px;
+            line: 16px;
+            tracking: 0.4px;
+        }
+        T {
+            text: root.data.down;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            color: Theme.primary;
+        }
+        T {
+            text: root.data.up;
+            line: 16px;
+            font-size: 11px;
+            font-weight: 500;
+            color: Theme.on-surface-variant;
+        }
+    }
+}
+
+component TorrentSectionLabel inherits T {
+    line: 16px;
+    font-size: 11px;
+    font-weight: 500;
+    color: Theme.on-surface-variant;
+}
+
+component TorrentReady inherits VerticalLayout {
+    spacing: 0px;
+    GridLayout {
+        spacing: 12px;
+        DetailStat {
+            row: 0;
+            col: Dir.rtl ? 1 : 0;
+            label: Tr.torrentDetailsRatio;
+            value: Core.torrentDetails.ratio;
+        }
+        DetailStat {
+            row: 0;
+            col: Dir.rtl ? 0 : 1;
+            label: Tr.torrentDetailsUploaded;
+            value: Core.torrentDetails.uploaded;
+        }
+    }
+    Rectangle {
+        height: 10px;
+    }
+    GridLayout {
+        spacing: 12px;
+        DetailStat {
+            row: 0;
+            col: Dir.rtl ? 1 : 0;
+            label: Tr.homePiecesLabel;
+            value: Core.torrentDetails.pieces;
+        }
+        DetailStat {
+            row: 0;
+            col: Dir.rtl ? 0 : 1;
+            label: Tr.torrentDetailsPieceSize;
+            value: Core.torrentDetails.pieceSize;
+        }
+    }
+    Rectangle {
+        height: 6px;
+    }
+    ThinBar {
+        height: 4px;
+        value: Core.torrentDetails.piecesFraction;
+    }
+    Rectangle {
+        height: 12px;
+    }
+    TorrentSectionLabel {
+        text: Core.torrentDetails.trackersTitle;
+    }
+    Rectangle {
+        height: 4px;
+    }
+    if Core.torrentDetails.trackers.length > 0: Rectangle {
+        height: clamp(Core.torrentDetails.trackers.length * 36px + 8px, 58px, 124px);
+        border-radius: 6px;
+        background: Theme.surface-variant.with-alpha(0.4);
+        ListView {
+            x: 4px;
+            y: 4px;
+            width: parent.width - 8px;
+            height: parent.height - 8px;
+            for tracker in Core.torrentDetails.trackers: TrackerRow {
+                data: tracker;
+            }
+        }
+    }
+    if Core.torrentDetails.trackers.length == 0: T {
+        text: Tr.torrentDetailsNoTrackers;
+        line: 20px;
+        font-size: 12px;
+        color: Theme.on-surface.with-alpha(0.75);
+    }
+    Rectangle {
+        height: 8px;
+    }
+    HBox {
+        height: 48px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        field := TextField {
+            placeholder: Tr.torrentDetailsTrackerHint;
+            value: "";
+            rev: Core.torrentDetails.trackerRev;
+            font-size: 13px;
+            has-error: Core.torrentDetails.trackerError != "";
+            accepted(text) => { Act.torrentAddTracker(text); }
+        }
+        OutlinedButton {
+            text: Tr.torrentDetailsAddTracker;
+            pad: 12px;
+            font-size: 13px;
+            enabled: field.text != "";
+            clicked => { Act.torrentAddTracker(field.text); }
+        }
+    }
+    if Core.torrentDetails.trackerError != "": Rectangle {
+        height: 4px;
+    }
+    if Core.torrentDetails.trackerError != "": Text {
+        text: Core.torrentDetails.trackerError;
+        color: Theme.error;
+        font-family: Theme.font;
+        font-size: 12px;
+        letter-spacing: Dir.rtl ? 0px : 0.4px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+    }
+    Rectangle {
+        height: 12px;
+    }
+    TorrentSectionLabel {
+        text: Core.torrentDetails.peersTitle;
+    }
+    Rectangle {
+        height: 4px;
+    }
+    if Core.torrentDetails.peers.length > 0: Rectangle {
+        height: clamp(Core.torrentDetails.peers.length * 44px + 8px, 58px, 184px);
+        border-radius: 6px;
+        background: Theme.surface-variant.with-alpha(0.4);
+        ListView {
+            x: 4px;
+            y: 4px;
+            width: parent.width - 8px;
+            height: parent.height - 8px;
+            for peer in Core.torrentDetails.peers: PeerRow {
+                data: peer;
+            }
+        }
+    }
+    if Core.torrentDetails.peers.length == 0: T {
+        text: Tr.torrentDetailsNoPeers;
+        line: 20px;
+        font-size: 12px;
+        color: Theme.on-surface.with-alpha(0.75);
+    }
+    Rectangle {
+        height: 6px;
+    }
+    HBox {
+        height: 48px;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        T {
+            text: Tr.torrentDetailsFirstLast;
+            line: 20px;
+            font-size: 13px;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        Switch {
+            checked: Core.torrentDetails.firstLast;
+            label: Tr.torrentDetailsFirstLast;
+            toggled(on) => { Act.torrentSetFirstLast(on); }
+        }
+    }
+    Rectangle {
+        height: 6px;
+    }
+    HBox {
+        height: 42px;
+        spacing: 8px;
+        OutlinedButton {
+            text: Tr.torrentDetailsRecheck;
+            height: 42px;
+            border-radius: 10px;
+            pad: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            ink: Theme.on-surface;
+            line: Theme.outline-variant.with-alpha(0.6);
+            horizontal-stretch: 1;
+            clicked => { Act.torrentRecheck(); }
+        }
+        OutlinedButton {
+            text: Tr.torrentDetailsCopyMagnet;
+            height: 42px;
+            border-radius: 10px;
+            pad: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            ink: Theme.on-surface;
+            line: Theme.outline-variant.with-alpha(0.6);
+            horizontal-stretch: 1;
+            enabled: Core.torrentDetails.magnet != "";
+            clicked => { Act.torrentCopyMagnet(); }
+        }
+    }
+}
+
+component TorrentSection inherits VerticalLayout {
+    spacing: 0px;
+    T {
+        text: Tr.torrentDetailsTitle;
+        line: 20px;
+        tracking: 0.4px;
+        font-size: 12px;
+        font-weight: 700;
+        color: Theme.engine-torrent;
+    }
+    Rectangle {
+        height: 6px;
+    }
+    if Core.torrentDetails.loading: T {
+        text: Tr.torrentDetailsLoading;
+        line: 20px;
+        font-size: 12px;
+        color: Theme.on-surface-variant;
+    }
+    if !Core.torrentDetails.loading && !Core.torrentDetails.supported: Text {
+        text: Tr.torrentDetailsUnsupported;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        letter-spacing: Dir.rtl ? 0px : 0.4px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+    }
+    if !Core.torrentDetails.loading && Core.torrentDetails.supported: TorrentReady { }
+}
+
 component DetailsBody inherits VerticalLayout {
     in-out property <bool> show-files: false;
     padding-left: 20px;
@@ -587,6 +921,10 @@ component DetailsBody inherits VerticalLayout {
         horizontal-alignment: Dir.start;
         wrap: word-wrap;
     }
+    if Core.torrentDetails.shown: Rectangle {
+        height: 14px;
+    }
+    if Core.torrentDetails.shown: TorrentSection { }
     Rectangle {
         height: 14px;
     }

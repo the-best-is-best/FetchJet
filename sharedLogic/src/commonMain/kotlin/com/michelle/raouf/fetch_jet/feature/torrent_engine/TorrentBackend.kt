@@ -26,7 +26,34 @@ data class TorrentProgress(
     val hasMetadata: Boolean,
     val fileProgress: List<Long>,
     val stateText: String,
-    val error: String?
+    val error: String?,
+    val uploadedBytes: Long = 0L
+)
+
+/** One tracker of a running torrent. [state]: "working", "updating", "waiting", "error" or "disabled" (English codes, translated only where shown). */
+data class TorrentTrackerInfo(val url: String, val state: String, val message: String = "")
+
+/** One connected peer of a running torrent. */
+data class TorrentPeerInfo(
+    val address: String,
+    val client: String,
+    val downloadRate: Long,
+    val uploadRate: Long,
+    val progress: Float,
+    val isSeed: Boolean
+)
+
+/** What a torrent's details window shows; read on demand, not with every progress tick. */
+data class TorrentDetails(
+    val trackers: List<TorrentTrackerInfo> = emptyList(),
+    val peers: List<TorrentPeerInfo> = emptyList(),
+    val uploadedBytes: Long = 0L,
+    val downloadedBytes: Long = 0L,
+    val pieceCount: Int = 0,
+    val piecesDone: Int = 0,
+    val pieceSize: Long = 0L,
+    val magnetLink: String = "",
+    val firstLastPiecesFirst: Boolean = false
 )
 
 /**
@@ -73,6 +100,21 @@ interface TorrentBackend {
     fun setLimits(taskId: String, downloadBytesPerSec: Long, uploadBytesPerSec: Long)
     fun progress(taskId: String): TorrentProgress?
     fun shutdown()
+
+    /** True when [details], [addTracker], [recheck] and [setFirstLastPiecesFirst] really work on this platform. */
+    val supportsDetails: Boolean get() = false
+
+    /** Trackers, peers, pieces and the magnet link of a torrent in the session; null when it is not there. */
+    fun details(taskId: String): TorrentDetails? = null
+
+    /** Adds a tracker to a running torrent and announces to it. False when refused or unsupported. */
+    fun addTracker(taskId: String, url: String): Boolean = false
+
+    /** Checks the files on disk against the torrent again (force recheck). */
+    fun recheck(taskId: String): Boolean = false
+
+    /** Downloads the first and the last pieces of every wanted file before the rest (for previews). */
+    fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean = false
 }
 
 expect fun createTorrentBackend(): TorrentBackend

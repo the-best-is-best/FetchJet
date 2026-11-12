@@ -36,6 +36,7 @@ expect object DesktopOs {
     fun localMinutesOfDay(): Int
     fun localUtcOffsetMs(): Long
     fun localTimeStamp(): String
+    fun userIdleMs(): Long?
 
     fun clipboardText(): String?
     fun setClipboardText(text: String): Boolean

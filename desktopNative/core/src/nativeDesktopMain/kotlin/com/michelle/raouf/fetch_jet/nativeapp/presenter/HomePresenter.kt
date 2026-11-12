@@ -233,22 +233,32 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
 
     val rows = ArrayList<TaskRowDto>(shown.size + 4)
     val order = ArrayList<String>(shown.size)
+    var heads = 0
+    var done = 0
+    var focusRow = 0
+    var focusHeads = 0
+    var focusDone = 0
+    fun addTask(task: DownloadTask) {
+        if (task.id == ui.focusId) {
+            focusRow = rows.size + 1
+            focusHeads = heads
+            focusDone = done
+        }
+        if (task.status == DownloadStatus.COMPLETED) done++
+        rows.add(cache.row(task, task.id in ui.checkedIds, task.id == ui.selectedTaskId, slice.unit, extra.language))
+        order.add(task.id)
+    }
     cache.begin()
     if (ui.sideFilter.groupsByState) {
         for (group in taskStateGroups(shown)) {
             val collapsed = group.key in ui.collapsedGroups
             rows.add(headerRow(group, collapsed))
+            heads++
             if (collapsed) continue
-            for (task in group.tasks) {
-                rows.add(cache.row(task, task.id in ui.checkedIds, task.id == ui.selectedTaskId, slice.unit, extra.language))
-                order.add(task.id)
-            }
+            for (task in group.tasks) addTask(task)
         }
     } else {
-        for (task in shown) {
-            rows.add(cache.row(task, task.id in ui.checkedIds, task.id == ui.selectedTaskId, slice.unit, extra.language))
-            order.add(task.id)
-        }
+        for (task in shown) addTask(task)
     }
     cache.end()
     shownOrder = order
@@ -318,6 +328,11 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             whenDoneBannerShown = extra.whenDone != WhenDoneAction.NOTHING,
             whenDoneBannerText = if (extra.whenDone != WhenDoneAction.NOTHING) strings.whenDoneBanner(whenDoneLabel(extra.whenDone)) else "",
             detailsOpen = detailsOpen,
+            focusId = if (focusRow > 0) ui.focusId.orEmpty() else "",
+            focusRev = ui.focusRev,
+            focusRow = focusRow,
+            focusHeads = focusHeads,
+            focusDone = focusDone,
         )
     )
 

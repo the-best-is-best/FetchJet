@@ -268,6 +268,7 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         entries[taskId]?.let { existing ->
             if (existing.handle.isValid) {
                 existing.handle.prioritizeFiles(prio)
+                if (firstLastFirst[taskId] == true) applyFirstLastPieces(existing, true)
                 existing.handle.resume()
                 return@withContext
             }
@@ -350,6 +351,7 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
     }
 
     override fun remove(taskId: String, deleteFiles: Boolean) {
+        firstLastFirst.remove(taskId)
         val e = entries.remove(taskId) ?: return
         if (!e.handle.isValid) return
         try {
@@ -365,6 +367,7 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
         val e = entries[taskId] ?: return
         if (!e.handle.isValid) return
         e.handle.prioritizeFiles(buildPriorities(e.info, selected, priorities))
+        if (firstLastFirst[taskId] == true) applyFirstLastPieces(e, true)
     }
 
     override fun setLimits(taskId: String, downloadBytesPerSec: Long, uploadBytesPerSec: Long) {
@@ -415,8 +418,185 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
                 TorrentStatus.State.SEEDING -> "Seeding"
                 else -> "Connecting"
             },
-            error = errorText
+            error = errorText,
+            uploadedBytes = try {
+                st.allTimeUpload()
+            } catch (_: Throwable) {
+                0L
+            }
         )
+    }
+
+    private val firstLastFirst = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    override val supportsDetails: Boolean get() = isSupported
+
+    override fun details(taskId: String): TorrentDetails? {
+        val e = entries[taskId] ?: return null
+        return try {
+            if (!e.handle.isValid) return null
+            val st: TorrentStatus? = try {
+                e.handle.status()
+            } catch (_: Throwable) {
+                null
+            }
+            val trackers = try {
+                e.handle.trackers().map { trackerInfo(it) }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+            val peers = try {
+                val seedBit = org.libtorrent4j.swig.peer_info.seed.to_int()
+                e.handle.peerInfo().asSequence()
+                    .filter {
+                        it.connectionType() != org.libtorrent4j.PeerInfo.ConnectionType.WEB_SEED &&
+                                it.connectionType() != org.libtorrent4j.PeerInfo.ConnectionType.HTTP_SEED
+                    }
+                    .take(MAX_DETAIL_PEERS)
+                    .map { p ->
+                        TorrentPeerInfo(
+                            address = (p.ip() ?: "").removePrefix("tcp://"),
+                            client = p.client() ?: "",
+                            downloadRate = p.downSpeed().toLong(),
+                            uploadRate = p.upSpeed().toLong(),
+                            progress = p.progress().coerceIn(0f, 1f),
+                            isSeed = (p.flags() and seedBit) != 0
+                        )
+                    }
+                    .toList()
+            } catch (_: Throwable) {
+                emptyList()
+            }
+            val magnet = try {
+                e.handle.makeMagnetUri() ?: ""
+            } catch (_: Throwable) {
+                ""
+            }
+            val pieceCount = try {
+                e.info.numPieces()
+            } catch (_: Throwable) {
+                0
+            }
+            val pieceSize = try {
+                e.info.pieceLength().toLong()
+            } catch (_: Throwable) {
+                0L
+            }
+            TorrentDetails(
+                trackers = trackers,
+                peers = peers,
+                uploadedBytes = st?.allTimeUpload() ?: 0L,
+                downloadedBytes = st?.allTimeDownload() ?: 0L,
+                pieceCount = pieceCount,
+                piecesDone = st?.numPieces() ?: 0,
+                pieceSize = pieceSize,
+                magnetLink = magnet,
+                firstLastPiecesFirst = firstLastFirst[taskId] == true
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun trackerInfo(t: AnnounceEntry): TorrentTrackerInfo {
+        val url = t.url() ?: ""
+        return try {
+            val eps = t.endpoints()
+            val hashes = eps.filter { it.enabled() }.flatMap { listOf(it.infohashV1(), it.infohashV2()) }
+            val failed = hashes.firstOrNull { it.fails().toInt() > 0 }
+            when {
+                eps.isNotEmpty() && eps.none { it.enabled() } -> TorrentTrackerInfo(url, "disabled")
+                hashes.any { it.fails().toInt() == 0 && it.swig().getStart_sent() } ->
+                    TorrentTrackerInfo(url, "working")
+
+                hashes.any { it.updating() } -> TorrentTrackerInfo(url, "updating")
+                failed != null -> {
+                    val text = failed.message()?.takeIf { it.isNotBlank() } ?: try {
+                        val ec = failed.swig().getLast_error()
+                        if (ec != null && ec.value() != 0) ec.message() ?: "" else ""
+                    } catch (_: Throwable) {
+                        ""
+                    }
+                    TorrentTrackerInfo(url, "error", text)
+                }
+
+                else -> TorrentTrackerInfo(url, "waiting")
+            }
+        } catch (_: Throwable) {
+            TorrentTrackerInfo(url, "waiting")
+        }
+    }
+
+    override fun addTracker(taskId: String, url: String): Boolean {
+        val clean = url.trim()
+        val lower = clean.lowercase()
+        if (TRACKER_SCHEMES.none { lower.startsWith(it) && lower.length > it.length }) return false
+        if (clean.any { it.isWhitespace() }) return false
+        val e = entries[taskId] ?: return false
+        return try {
+            if (!e.handle.isValid) return false
+            e.handle.addTracker(AnnounceEntry(clean))
+            e.handle.forceReannounce()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    override fun recheck(taskId: String): Boolean {
+        val e = entries[taskId] ?: return false
+        return try {
+            if (!e.handle.isValid) return false
+            e.handle.forceRecheck()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    override fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean {
+        val e = entries[taskId] ?: return false
+        return try {
+            if (!e.handle.isValid) return false
+            if (!applyFirstLastPieces(e, on)) return false
+            if (on) firstLastFirst[taskId] = true else firstLastFirst.remove(taskId)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun applyFirstLastPieces(e: Entry, on: Boolean): Boolean {
+        return try {
+            val fs = e.info.files()
+            val pieceLength = e.info.pieceLength().toLong()
+            val pieceCount = e.info.numPieces()
+            if (pieceLength <= 0L || pieceCount <= 0) return false
+            val filePrio = e.handle.filePriorities()
+            val wanted = HashMap<Int, Priority>()
+            for (i in 0 until fs.numFiles()) {
+                if (i >= filePrio.size) break
+                val prio = filePrio[i]
+                if (prio == Priority.IGNORE) continue
+                if (fs.padFileAt(i)) continue
+                val size = fs.fileSize(i)
+                if (size <= 0L) continue
+                val offset = fs.fileOffset(i)
+                val first = (offset / pieceLength).toInt()
+                val last = ((offset + size - 1) / pieceLength).toInt()
+                for (piece in intArrayOf(first, last)) {
+                    if (piece < 0 || piece >= pieceCount) continue
+                    val old = wanted[piece]
+                    if (old == null || prio.swig() > old.swig()) wanted[piece] = prio
+                }
+            }
+            for ((piece, prio) in wanted) {
+                e.handle.piecePriority(piece, if (on) Priority.TOP_PRIORITY else prio)
+            }
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     // One line every ~15 s per torrent in app.log: enough to see why a download is slow
@@ -492,6 +672,8 @@ internal class Libtorrent4jBackend(private val tempDir: File, private val toolsD
 
     private companion object {
         const val MAGNET_TIMEOUT_SECONDS = 60
+        const val MAX_DETAIL_PEERS = 200
+        val TRACKER_SCHEMES = listOf("http://", "https://", "udp://", "wss://", "ws://")
         val PUBLIC_TRACKERS = listOf(
             "udp://tracker.opentrackr.org:1337/announce",
             "udp://open.stealth.si:80/announce",

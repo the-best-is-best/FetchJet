@@ -381,15 +381,23 @@ namespace fjhost::os {
 
     void apply_title_bar(bool) {}
 
-    void bring_to_front(bool) {}
+    void bring_to_front(bool) {
+        if (has_ui() && ui().window().is_minimized())
+            ui().window().set_minimized(false);
+    }
 
     void window_hidden() {}
 
     bool window_minimized() {
-        return false;
+        return has_ui() && ui().window().is_minimized();
     }
 
     bool toggle_too_soon() {
+        static std::chrono::steady_clock::time_point last{};
+        auto now = std::chrono::steady_clock::now();
+        if (now - last < std::chrono::milliseconds(400))
+            return true;
+        last = now;
         return false;
     }
 

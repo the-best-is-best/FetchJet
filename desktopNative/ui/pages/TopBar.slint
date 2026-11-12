@@ -99,6 +99,8 @@ export component SpeedControl inherits Rectangle {
 }
 
 component SearchField inherits TextField {
+    in property <int> focus-ask;
+    changed focus-ask => { root.focus-field(); }
     height: 44px;
     placeholder: Tr.homeSearchDownloadsPlaceholder;
     leading: "⌕";
@@ -121,6 +123,11 @@ component SearchField inherits TextField {
 
 export component TopBar inherits Rectangle {
     in property <bool> compact;
+    callback search-escaped();
+    public function focus-search() {
+        root.search-ask += 1;
+    }
+    private property <int> search-ask;
     private property <bool> show-search: !Core.chrome.settingsOpen;
     height: root.compact && root.show-search ? 48px + 10px + 44px + 10px : 48px + 10px;
     HBox {
@@ -130,6 +137,8 @@ export component TopBar inherits Rectangle {
         cross-axis-alignment: center;
         if !root.compact && root.show-search: SearchField {
             horizontal-stretch: 1;
+            focus-ask: root.search-ask;
+            escaped => { root.search-escaped(); }
         }
         if root.compact || !root.show-search: T {
             text: Core.chrome.title;
@@ -198,5 +207,7 @@ export component TopBar inherits Rectangle {
         x: 0;
         y: 58px;
         width: parent.width;
+        focus-ask: root.search-ask;
+        escaped => { root.search-escaped(); }
     }
 }

@@ -133,6 +133,7 @@ data class DashboardUiState(
     val fileNameOverride: String = "",
     /** Optional checksum the user typed to verify the finished file (sha256 / md5 hex). */
     val checksumInput: String = "",
+    val testLink: TestLinkUi? = null,
 
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     val inspectedSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
@@ -223,7 +224,23 @@ data class DashboardUiState(
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
+    val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
+)
+
+/** The torrent tab of a task's details: refreshed every 2 s while it is open. */
+data class TorrentDetailsUi(
+    val taskId: String,
+    val supported: Boolean = true,
+    val loading: Boolean = true,
+    val details: com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDetails =
+        com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDetails(),
+    /** uploaded / downloaded, 0 when nothing was downloaded yet. */
+    val ratio: Float = 0f,
+    /** The share ratio at which uploading stops (0 = never), from BehaviorSettings.torrentStopRatio. */
+    val stopRatio: Float = 0f,
+    /** English code of the last tracker-add failure ("invalid", "refused") or empty. */
+    val trackerError: String = ""
 )
 
 data class AudioCompressUi(
@@ -267,6 +284,7 @@ sealed interface DashboardUiEvent {
     data class OnDestinationPathChanged(val path: String) : DashboardUiEvent
     data class OnFileNameChanged(val name: String) : DashboardUiEvent
     data class OnChecksumChanged(val value: String) : DashboardUiEvent
+    data object OnTestLinkClicked : DashboardUiEvent
 
     data class OnDisableTorrentUploadToggled(val disable: Boolean) : DashboardUiEvent
 
@@ -442,6 +460,13 @@ sealed interface DashboardUiEvent {
         DashboardUiEvent
 
     data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
+    data class OnTorrentDetailsOpened(val taskId: String) : DashboardUiEvent
+    data object OnTorrentDetailsClosed : DashboardUiEvent
+    data class OnTorrentAddTracker(val taskId: String, val url: String) : DashboardUiEvent
+    data class OnTorrentRecheck(val taskId: String) : DashboardUiEvent
+    data class OnTorrentFirstLastChanged(val taskId: String, val on: Boolean) : DashboardUiEvent
+    data class OnTorrentCopyMagnet(val taskId: String) : DashboardUiEvent
+    data class OnTorrentStopRatioChanged(val ratio: Float) : DashboardUiEvent
 
     data class OnAudioCompressSettingsChanged(
         val settings: com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressSettings
@@ -493,5 +518,7 @@ sealed interface DashboardUiEvent {
 sealed interface DashboardUiEffect {
 
     data class ShowToast(val text: String) : DashboardUiEffect
+
+    data class CopyText(val text: String) : DashboardUiEffect
 
 }

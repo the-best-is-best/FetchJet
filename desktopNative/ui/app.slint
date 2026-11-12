@@ -14,6 +14,7 @@ import { SettingsPanel } from "pages/Settings.slint";
 import { UpdateDialog } from "pages/UpdateDialog.slint";
 import { AudioCompressDialog } from "pages/AudioCompress.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
+import { ShortcutsDialog } from "pages/Shortcuts.slint";
 import { PairingCode } from "generated/dto.slint";
 import { Core } from "generated/dto.slint";
 import { Tr } from "generated/tr.slint";
@@ -63,6 +64,15 @@ export component AppWindow inherits Window {
     private property <bool> details-side: root.side-panel && Core.chrome.detailsOpen;
     private property <length> nav: root.medium ? 84px : 232px;
     private property <length> panel: root.details-side ? 340px : 0px;
+    private property <bool> overlay-open: Core.chrome.settingsOpen || Core.add.visible || Core.clipPicker.open || Core.deviceSheet.open
+        || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.updateDialog.open
+        || Core.alerts.length > 0 || Core.choices.length > 0;
+    changed overlay-open => {
+        if !root.overlay-open {
+            list.focus();
+        }
+    }
+    forward-focus: list;
     public function scroll-to-top() {
         list.scroll-to-top();
     }
@@ -91,12 +101,16 @@ export component AppWindow inherits Window {
         height: parent.height - 20px;
         VerticalLayout {
             spacing: 0px;
-            TopBar {
+            bar := TopBar {
                 compact: root.medium;
+                search-escaped => { list.focus(); }
             }
             list := TaskList {
                 vertical-stretch: 1;
                 visible: !Core.chrome.settingsOpen;
+                keys-enabled: !root.overlay-open && (root.side-panel || !Core.chrome.detailsOpen);
+                focus-search => { bar.focus-search(); }
+                show-shortcuts => { shortcuts.show(); }
             }
             StatusBar {
                 visible: !Core.chrome.settingsOpen;
@@ -134,4 +148,7 @@ export component AppWindow inherits Window {
     if Core.updateDialog.open: UpdateDialog { }
     Alerts { }
     ChoiceDialogs { }
+    shortcuts := ShortcutsDialog {
+        host-width: root.width;
+    }
 }

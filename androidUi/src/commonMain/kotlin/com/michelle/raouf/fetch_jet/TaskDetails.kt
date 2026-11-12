@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,10 +80,13 @@ internal fun DownloadTaskItem(
     onFilePriorityChanged: (Int, Int) -> Unit,
     onShare: (() -> Unit)? = null,
     onCompress: (() -> Unit)? = null,
-    compressedCopies: Int = 0
+    compressedCopies: Int = 0,
+    torrentSection: (@Composable () -> Unit)? = null
 ) {
     val rawDisplayName =
-        task.fileName.ifBlank { task.url.substringBefore('?').substringAfterLast('/') }
+        task.fileName.ifBlank {
+            com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url).substringBefore('?').substringAfterLast('/')
+        }
     val displayName = decodeUnicodeText(rawDisplayName).trim()
     val rawFullPath = if (task.fileName.isNotBlank()) {
         val dest = task.destinationPath.trimEnd('/', '\\')
@@ -503,6 +507,11 @@ internal fun DownloadTaskItem(
                 )
             }
 
+            if (torrentSection != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                torrentSection()
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = LocalizationManager.Strings.detailsSavedTo,
@@ -554,7 +563,7 @@ internal fun DownloadTaskItem(
                     }
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(
-                            text = link,
+                            text = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(link),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                             maxLines = 4,
@@ -845,6 +854,7 @@ internal fun TaskDetailsPane(
     fillHeight: Boolean = true,
     compressedCopies: Int = 0
 ) {
+    val torrentDetails = viewModel.uiState.collectAsState().value.torrentDetails
     val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
         Row(
@@ -902,7 +912,17 @@ internal fun TaskDetailsPane(
                 onCompress = if (fullScreen && com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
                 } else null,
-                compressedCopies = compressedCopies
+                compressedCopies = compressedCopies,
+                torrentSection = if (task.engineType == EngineType.BITTORRENT) {
+                    {
+                        com.michelle.raouf.fetch_jet.ui.TorrentDetailsSection(
+                            taskId = task.id,
+                            ui = torrentDetails,
+                            speedDisplayUnit = speedDisplayUnit,
+                            onEvent = viewModel::onEvent
+                        )
+                    }
+                } else null
             )
         }
     }

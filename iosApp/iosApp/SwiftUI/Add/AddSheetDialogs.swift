@@ -94,7 +94,7 @@ struct AddDuplicateCard: View {
         AddDialogFrame {
             AddDialogTitle(icon: "📋", title: strings.duplicateDialogTitle, subtitle: strings.duplicateDialogSubtitle, tint: FJTheme.color.statusPaused)
             VStack(alignment: .leading, spacing: 8) {
-                Text(task.fileName.isEmpty ? task.url : task.fileName)
+                Text(task.fileName.isEmpty ? store.host.displayUrl(url: task.url) : task.fileName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(2)

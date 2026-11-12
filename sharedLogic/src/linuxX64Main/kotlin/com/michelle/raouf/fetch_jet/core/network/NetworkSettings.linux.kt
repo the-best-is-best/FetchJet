@@ -5,6 +5,7 @@ import io.ktor.client.engine.HttpClientEngineConfig
 
 internal actual fun applyProxyLogin(config: HttpClientEngineConfig, proxy: ProxySettings) {
     val engine = config as? LinuxCurlConfig ?: return
+    Ipv4Preference.supported = true
     if (proxy.isOn && proxy.hasLogin) {
         engine.proxyUser = proxy.user
         engine.proxyPassword = proxy.password

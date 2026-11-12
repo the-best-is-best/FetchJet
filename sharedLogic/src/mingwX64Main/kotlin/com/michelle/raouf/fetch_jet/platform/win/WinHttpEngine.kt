@@ -90,6 +90,7 @@ class WinHttpConfig : HttpClientEngineConfig() {
     var proxyUser: String = ""
     var proxyPassword: String = ""
     var readBufferBytes: Int = 128 * 1024
+    var resolveAs: ((String) -> String?)? = null
 }
 
 object WinHttpNative : HttpClientEngineFactory<WinHttpConfig> {
@@ -192,6 +193,11 @@ private class WinHttpCall(private val session: COpaquePointer, private val data:
         val handle = WinHttpOpenRequest(connect, data.method.value, url.fullPath, "HTTP/1.1", null, null, flags)
             ?: throw WinHttpException(GetLastError(), "Could not open the request")
         request = handle
+        if (config.proxy == null && WinHttpIpv4.isName(url.host)) {
+            val address = config.resolveAs?.invoke(url.host)
+                ?: if (WinHttpIpv4.prefers(url.host)) WinHttpIpv4.addressOf(url.host) else null
+            if (address != null) WinHttpIpv4.resolveAs(handle, address)
+        }
         memScoped {
             val context = alloc<ULongVar>()
             context.value = self.asCPointer().toLong().toULong()

@@ -8,7 +8,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnEngineSelected -> {
             _uiState.update {
                 it.copy(
-                    detectedEngine = event.engine,
+                    detectedEngine = if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it.inputUrl)) EngineType.HTTP_DIRECT else event.engine,
                     inspectedMediaQualities = emptyList(),
                     inspectedMediaTitle = null,
                     inspectedPlaylist = null,
@@ -51,6 +51,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(checksumInput = event.value) }
         }
 
+        DashboardUiEvent.OnTestLinkClicked -> testLink()
+
         is DashboardUiEvent.OnUrlChanged -> {
             val links = extractLinks(event.url)
             val inputUrl = links.singleOrNull()
@@ -83,6 +85,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                 it.copy(
 
                     inputUrl = inputUrl,
+                    testLink = if (it.inputUrl == inputUrl) it.testLink else null,
 
                     detectedEngine = if (linkList.isNotEmpty()) EngineType.HTTP_DIRECT else engine,
                     linkList = linkList,
@@ -112,18 +115,13 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     suggestedFileName = ""
                 )
             }
+            if (_uiState.value.testLink == null) testLinkJob?.cancel()
             refreshSuggestedFileName()
             if (linkList.any { it.engine == EngineType.BITTORRENT }) inspectListedTorrents()
             if (linkList.any { it.engine == EngineType.MEDIA_STREAM }) inspectListedVideos()
         }
 
-        is DashboardUiEvent.OnDestinationPathChanged -> {
-
-            _uiState.update { it.copy(destinationPath = event.path) }
-
-            persistCurrentSettings()
-
-        }
+        is DashboardUiEvent.OnDestinationPathChanged -> setDestinationFolder(event.path)
 
         is DashboardUiEvent.OnDisableTorrentUploadToggled -> {
 
@@ -136,6 +134,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnToggleAddDialog -> {
 
             if (!event.show) _uiState.update { it.copy(linkListFolder = "") }
+            if (!event.show) clearTestLink()
             if (!event.show && pendingExternalUrl != null) {
                 val urlToFallback = pendingExternalUrl!!
                 pendingExternalUrl = null
@@ -205,7 +204,10 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         }
 
-        DashboardUiEvent.OnAddDownloadClicked -> addDownload()
+        DashboardUiEvent.OnAddDownloadClicked -> {
+            rememberAddFolder()
+            addDownload()
+        }
         DashboardUiEvent.OnInspectTorrentClicked -> inspectTorrent()
         DashboardUiEvent.OnInspectMediaClicked -> inspectMedia()
         is DashboardUiEvent.OnMediaQualitySelectionToggled -> {

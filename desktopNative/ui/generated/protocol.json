@@ -195,6 +195,13 @@
    "name": "audioCompress",
    "kind": "STRUCT",
    "dto": "AudioCompressDto"
+  },
+  {
+   "const": "TORRENT_DETAILS",
+   "id": 28,
+   "name": "torrentDetails",
+   "kind": "STRUCT",
+   "dto": "TorrentDetailsDto"
   }
  ],
  "enums": {
@@ -374,7 +381,19 @@
   "ListKeyCode": [
    "SELECT_ALL",
    "ESCAPE",
-   "DELETE"
+   "DELETE",
+   "UP",
+   "DOWN",
+   "HOME",
+   "END",
+   "PAGE_UP",
+   "PAGE_DOWN",
+   "OPEN",
+   "DETAILS",
+   "RESUME",
+   "PAUSE",
+   "OPEN_FILE",
+   "OPEN_FOLDER"
   ],
   "SettingKind": [
    "NONE",
@@ -389,6 +408,13 @@
    "BUTTONS",
    "PROGRESS",
    "LIMIT_BOX"
+  ],
+  "TrackerStateCode": [
+   "WORKING",
+   "UPDATING",
+   "WAITING",
+   "ERROR",
+   "DISABLED"
   ]
  },
  "structs": {
@@ -546,6 +572,22 @@
    [
     "checksumRev",
     "Int"
+   ],
+   [
+    "testLinkShown",
+    "Boolean"
+   ],
+   [
+    "testLinkBusy",
+    "Boolean"
+   ],
+   [
+    "testLinkOk",
+    "Boolean"
+   ],
+   [
+    "testLinkText",
+    "String"
    ],
    [
     "destination",
@@ -1990,6 +2032,26 @@
    [
     "detailsOpen",
     "Boolean"
+   ],
+   [
+    "focusId",
+    "String"
+   ],
+   [
+    "focusRev",
+    "Int"
+   ],
+   [
+    "focusRow",
+    "Int"
+   ],
+   [
+    "focusHeads",
+    "Int"
+   ],
+   [
+    "focusDone",
+    "Int"
    ]
   ],
   "StatusDto": [
@@ -2456,6 +2518,124 @@
     "Boolean"
    ]
   ],
+  "TorrentTrackerDto": [
+   [
+    "name",
+    "String"
+   ],
+   [
+    "state",
+    "Int"
+   ],
+   [
+    "stateLabel",
+    "String"
+   ],
+   [
+    "tone",
+    "Int"
+   ],
+   [
+    "message",
+    "String"
+   ]
+  ],
+  "TorrentPeerDto": [
+   [
+    "address",
+    "String"
+   ],
+   [
+    "client",
+    "String"
+   ],
+   [
+    "down",
+    "String"
+   ],
+   [
+    "up",
+    "String"
+   ],
+   [
+    "percent",
+    "String"
+   ],
+   [
+    "seed",
+    "Boolean"
+   ]
+  ],
+  "TorrentDetailsDto": [
+   [
+    "shown",
+    "Boolean"
+   ],
+   [
+    "id",
+    "String"
+   ],
+   [
+    "supported",
+    "Boolean"
+   ],
+   [
+    "loading",
+    "Boolean"
+   ],
+   [
+    "ratio",
+    "String"
+   ],
+   [
+    "uploaded",
+    "String"
+   ],
+   [
+    "pieces",
+    "String"
+   ],
+   [
+    "pieceSize",
+    "String"
+   ],
+   [
+    "piecesFraction",
+    "Float"
+   ],
+   [
+    "trackersTitle",
+    "String"
+   ],
+   [
+    "trackers",
+    "List<TorrentTrackerDto>"
+   ],
+   [
+    "trackerRev",
+    "Int"
+   ],
+   [
+    "trackerError",
+    "String"
+   ],
+   [
+    "peersTitle",
+    "String"
+   ],
+   [
+    "peers",
+    "List<TorrentPeerDto>"
+   ],
+   [
+    "firstLast",
+    "Boolean"
+   ],
+   [
+    "magnet",
+    "String"
+   ]
+  ],
   "UpdateDialogDto": [
    [
     "open",
@@ -2616,6 +2796,14 @@
    [
     "key",
     "Int"
+   ],
+   [
+    "shift",
+    "Boolean"
+   ],
+   [
+    "rows",
+    "Int"
    ]
   ],
   "CloseDetails": [],
@@ -2755,6 +2943,20 @@
     "Int"
    ]
   ],
+  "TorrentAddTracker": [
+   [
+    "url",
+    "String"
+   ]
+  ],
+  "TorrentRecheck": [],
+  "TorrentSetFirstLast": [
+   [
+    "on",
+    "Boolean"
+   ]
+  ],
+  "TorrentCopyMagnet": [],
   "CopyText": [
    [
     "text",
@@ -3023,6 +3225,7 @@
     "String"
    ]
   ],
+  "TestLink": [],
   "PickDestination": [],
   "SetQuickFolder": [
    [
@@ -3270,6 +3473,85 @@
   "extBlockedLabel",
   "extRevoke",
   "extUnblock",
+  "extPairedLabel",
+  "extUnpair",
+  "torrentDetailsTitle",
+  "torrentDetailsLoading",
+  "torrentDetailsUnsupported",
+  "torrentDetailsRatio",
+  "torrentDetailsUploaded",
+  "torrentDetailsPieces",
+  "torrentDetailsPieceSize",
+  "torrentDetailsTrackers",
+  "torrentDetailsNoTrackers",
+  "torrentDetailsTrackerHint",
+  "torrentDetailsAddTracker",
+  "torrentDetailsTrackerInvalid",
+  "torrentDetailsTrackerRefused",
+  "torrentDetailsPeers",
+  "torrentDetailsNoPeers",
+  "torrentDetailsFirstLast",
+  "torrentDetailsRecheck",
+  "torrentDetailsCopyMagnet",
+  "torrentDetailsStateWorking",
+  "torrentDetailsStateUpdating",
+  "torrentDetailsStateWaiting",
+  "torrentDetailsStateError",
+  "torrentDetailsStateDisabled",
+  "torrentStopRatioTitle",
+  "torrentStopRatioHint",
+  "speedLimitWhileInUseTitle",
+  "speedLimitWhileInUseFooter",
+  "wakeForScheduleTitle",
+  "wakeForScheduleHint",
+  "shortcutsTitle",
+  "shortcutMove",
+  "shortcutExtend",
+  "shortcutFirstLast",
+  "shortcutPage",
+  "shortcutOpen",
+  "shortcutDetails",
+  "shortcutResume",
+  "shortcutPause",
+  "shortcutOpenFile",
+  "shortcutOpenFolder",
+  "shortcutAdd",
+  "shortcutSearch",
+  "shortcutSelectAll",
+  "shortcutDelete",
+  "shortcutClickSelect",
+  "shortcutClearSelection",
+  "shortcutCancelSelection",
+  "shortcutHelp",
+  "testLinkButton",
+  "testLinkOk",
+  "testLinkResumable",
+  "testLinkNotResumable",
+  "testLinkSizeUnknown",
+  "testLinkServerName",
+  "testLinkRefused",
+  "testLinkNotFound",
+  "testLinkLoginNeeded",
+  "testLinkServerBusy",
+  "testLinkServerError",
+  "testLinkHttpError",
+  "testLinkWebPage",
+  "testLinkRobot",
+  "testLinkTimeout",
+  "testLinkNoConnection",
+  "testLinkSecureFailed",
+  "testLinkRedirects",
+  "testLinkInvalid",
+  "testLinkFolder",
+  "testLinkFtpLogin",
+  "testLinkFtpProxy",
+  "testLinkFtpNoTool",
+  "testLinkFtpError",
+  "stepCheckingFile",
+  "stepCheckingArchive",
+  "stepRefetchingDamaged",
+  "stepArchiveMayBeDamaged",
+  "torrentProxyHint",
   "homeBrowserFallbackText",
   "homeDownloadInBrowser",
   "homeNoDiscard",

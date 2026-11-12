@@ -15,7 +15,7 @@ const val APP_VERSION = "1.4.1"
  * extension at this version or newer works as is; an older one is shown as "needs an update".
  * The desktop build fails when manifest.json says something else.
  */
-const val EXTENSION_VERSION = "3.3.0"
+const val EXTENSION_VERSION = "3.3.88"
 
 /** True when extension version [found] is older than [wanted] ("3.2.63" < "3.3.0"). */
 fun isOlderExtension(found: String, wanted: String = EXTENSION_VERSION): Boolean {

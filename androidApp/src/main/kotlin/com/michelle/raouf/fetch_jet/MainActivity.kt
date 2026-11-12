@@ -147,7 +147,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == Intent.ACTION_SEND) {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
             intent.action = null
-            val link = Regex("""(?i)\b(?:https?://|magnet:\?)\S+""").find(text)?.value?.trimEnd('.', ',', ')', ']', '"') ?: return
+            val link = Regex("""(?i)\b(?:https?://|ftp(?:e?s)?://|magnet:\?)\S+""").find(text)?.value?.trimEnd('.', ',', ')', ']', '"') ?: return
             com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(link)
             return
         }
@@ -163,7 +163,8 @@ class MainActivity : ComponentActivity() {
                 it.startsWith("http://", true) || it.startsWith(
                     "https://",
                     true
-                ) || it.startsWith("magnet:", true)
+                ) || it.startsWith("magnet:", true) ||
+                        com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it)
             }
             "content", "file" ->
                 com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.copyTorrentToCache(

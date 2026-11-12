@@ -42,6 +42,7 @@ internal object CurlOpt {
     const val HTTP_VERSION = 84
     const val BUFFERSIZE = 98
     const val NOSIGNAL = 99
+    const val IPRESOLVE = 113
     const val POSTFIELDSIZE_LARGE = 30120
     const val CONNECTTIMEOUT_MS = 156
     const val PROXYUSERNAME = 10175

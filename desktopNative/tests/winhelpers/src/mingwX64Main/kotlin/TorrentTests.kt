@@ -144,6 +144,7 @@ fun torrentTests(work: String, options: List<String>) = runBlocking {
         T.check("fjtorrent.dll loads with ABI 1 and all 34 exports", api != null && api.abi == 1, loaded.exceptionOrNull()?.message ?: "path=${api?.path}")
         if (api == null) return@runBlocking
         T.check("libtorrent version is 2.1.2.0", api.version == "2.1.2.0", api.version)
+        T.check("the 7 optional details exports are there", api.hasDetails && engine.hasDetails)
         memory["DLL loaded"] = winMemoryUse()?.privateBytes
         T.check("a session is not started by loading", !engine.isSessionRunning)
 
@@ -216,6 +217,33 @@ fun torrentTests(work: String, options: List<String>) = runBlocking {
         T.info("debug: $debug")
         T.check("the non-local tracker 127.0.0.2 was dropped by the local-only filter", debug.contains("trackers:") && !debug.contains("127.0.0.2") && debug.contains("localOnly=true"))
 
+        val trackerUrl = "http://127.0.0.1:${ready["tracker"]}/announce"
+        val trackerWorks = waitUntil(15_000) { engine.trackers("t1")?.any { it.url == trackerUrl && it.state == "working" } == true }
+        T.check("trackers: the seeder's tracker is listed as working", trackerWorks, engine.trackers("t1")?.joinToString { "${it.url}=${it.state}:${it.message}" } ?: "null")
+        val peerList = engine.peers("t1")
+        T.check("peers: the local seeder is listed as a seed on 127.0.0.1", peerList != null && peerList.any { it.address.startsWith("127.0.0.1:") && it.isSeed }, peerList?.joinToString { "${it.address} ${it.client} ${it.downloadRate} ${it.progressPermille} ${it.isSeed}" } ?: "null")
+        val secondUrl = "http://127.0.0.1:${ready["tracker"]}/announce2"
+        val refusedScheme = engine.addTracker("t1", "ftp://127.0.0.1/announce")
+        val refusedRemote = engine.addTracker("t1", "http://10.1.2.3:6969/announce")
+        T.check("add tracker: a bad scheme and (local-only) a non-local url are refused", !refusedScheme && !refusedRemote, "scheme=$refusedScheme remote=$refusedRemote")
+        val addedTracker = engine.addTracker("t1", secondUrl)
+        val secondWorks = waitUntil(20_000) { engine.trackers("t1")?.any { it.url == secondUrl && it.state == "working" } == true }
+        val trackerUrls = engine.trackers("t1")?.map { it.url } ?: emptyList()
+        T.check("add tracker: a second local tracker is added and announced to", addedTracker && secondWorks && trackerUrls.count { it == secondUrl } == 1 && trackerUrls.none { it.contains("10.1.2.3") }, engine.trackers("t1")?.joinToString { "${it.url}=${it.state}:${it.message}" } ?: "null")
+        engine.addTracker("t1", secondUrl)
+        T.check("add tracker: the same url twice stays one entry", engine.trackers("t1")?.count { it.url == secondUrl } == 1)
+        val link = engine.magnet("t1") ?: ""
+        T.check("magnet link starts with magnet:?xt=urn:btih: and has the info hash", link.startsWith("magnet:?xt=urn:btih:${meta.infoHash}", ignoreCase = true), link.take(200))
+        val pieceLength = 262_144L
+        val expectedPieces = ((meta.totalSize + pieceLength - 1) / pieceLength).toInt()
+        val pc = engine.pieces("t1")
+        T.check("pieces: count and piece length match the torrent, some are done, first/last is off", pc != null && pc.total == expectedPieces && pc.pieceLength == pieceLength && pc.have in 1 until pc.total && !pc.firstLast, "total=${pc?.total} expected=$expectedPieces have=${pc?.have} length=${pc?.pieceLength} firstLast=${pc?.firstLast}")
+        val firstLastOn = engine.setFirstLastPiecesFirst("t1", true)
+        T.check("first/last pieces first: set and reported", firstLastOn && engine.pieces("t1")?.firstLast == true)
+        val shown = engine.details("t1")
+        T.check("details: trackers, peers, pieces, magnet and the flag in one read", shown != null && shown.trackers.size >= 2 && shown.pieceCount == expectedPieces && shown.pieceLength == pieceLength && shown.magnet == link && shown.firstLast && shown.downloadedBytes > 0L, "trackers=${shown?.trackers?.size} peers=${shown?.peers?.size} pieces=${shown?.piecesDone}/${shown?.pieceCount} up=${shown?.uploadedBytes}")
+        T.check("details of an unknown task are null", engine.details("nope") == null && engine.trackers("nope") == null && !engine.recheck("nope"))
+
         engine.pause("t1")
         delay(1_500)
         val p1 = engine.status("t1")
@@ -264,6 +292,20 @@ fun torrentTests(work: String, options: List<String>) = runBlocking {
         }
         seed.lines.drop(seedLinesBefore).take(20).forEach { T.info("seeder after selection: $it") }
         T.check("adding a file by selection downloads it", cDone && sameFiles(meta, "$root\\seed", dl1) { it.endsWith("c.txt") }.first, "after ${winUptimeMs() - selStart} ms")
+
+        T.check("first/last pieces first is still reported after a selection change", engine.pieces("t1")?.firstLast == true)
+        val firstLastOff = engine.setFirstLastPiecesFirst("t1", false)
+        val pcAll = engine.pieces("t1")
+        T.check("first/last pieces first: turned off; all pieces are done", firstLastOff && pcAll != null && !pcAll.firstLast && pcAll.have == pcAll.total, "have=${pcAll?.have} total=${pcAll?.total} firstLast=${pcAll?.firstLast}")
+        val recheckStart = winUptimeMs()
+        val rechecking = engine.recheck("t1")
+        val leftFinished = waitUntil(5_000, stepMs = 20) { engine.status("t1")?.isFinished != true }
+        val recheckDone = waitUntil(60_000) {
+            val p = engine.pieces("t1")
+            engine.status("t1")?.isFinished == true && p != null && p.have == p.total
+        }
+        T.check("recheck: the files are checked again and the torrent ends finished", rechecking && recheckDone, "left finished=$leftFinished, done after ${winUptimeMs() - recheckStart} ms, state=${engine.status("t1")?.stateText}")
+        T.check("recheck keeps the files (SHA-256 still equal)", sameFiles(meta, "$root\\seed", dl1).first)
 
         engine.add("t2", torrentBytes, dl1, allPriorities(meta), disableUpload = true, downloadLimit = 0, uploadLimit = 0)
         val st2 = engine.status("t2")

@@ -23,6 +23,8 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
+import platform.CoreGraphics.CGEventSourceSecondsSinceLastEventType
+import platform.CoreGraphics.kCGEventSourceStateCombinedSessionState
 import platform.posix.pthread_threadid_np
 import platform.posix.uint64_tVar
 import okio.FileSystem
@@ -74,6 +76,11 @@ actual object DesktopOs {
         val now = macLocalTime()
         fun two(value: Int) = value.toString().padStart(2, '0')
         return "${now.year}-${two(now.month)}-${two(now.day)} ${two(now.hour)}:${two(now.minute)}:${two(now.second)}"
+    }
+
+    actual fun userIdleMs(): Long? {
+        val seconds = CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateCombinedSessionState, UInt.MAX_VALUE)
+        return if (seconds.isNaN() || seconds < 0.0) null else (seconds * 1000.0).toLong()
     }
 
     actual fun clipboardText(): String? = MacDesktopTools.clipboardText()

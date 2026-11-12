@@ -66,6 +66,12 @@ private struct TaskDetailsContent: View {
                 TaskPiecesBar(task: task).padding(.top, 12)
             }
 
+            if task.engineType == .bittorrent {
+                TaskTorrentDetailsSection(taskId: task.id)
+                    .id(task.id)
+                    .padding(.top, 12)
+            }
+
             if task.status == .error, let err = task.errorMessage, !err.isEmpty {
                 Label(store.host.localizeStep(text: err), systemImage: "exclamationmark.triangle")
                     .font(.system(size: 12, weight: .medium))
@@ -357,7 +363,7 @@ private struct TaskDetailsContent: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Text(link)
+                Text(store.host.displayUrl(url: link))
                     .font(.system(size: 12))
                     .foregroundStyle(FJTheme.color.onSurface.opacity(0.75))
                     .lineLimit(4)

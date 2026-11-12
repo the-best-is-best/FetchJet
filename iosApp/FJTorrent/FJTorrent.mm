@@ -11,12 +11,18 @@
 #include <libtorrent/load_torrent.hpp>
 #include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/announce_entry.hpp>
+#include <libtorrent/peer_info.hpp>
+#include <libtorrent/download_priority.hpp>
 #include <libtorrent/version.hpp>
 
+#include <cctype>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 static NSString *const FJTorrentErrorDomain = @"FJTorrent";
 
@@ -48,6 +54,53 @@ static std::string FJKey(lt::info_hash_t const &ih) {
 
 static lt::span<char const> FJSpan(NSData *data) {
     return {static_cast<char const *>(data.bytes), static_cast<std::ptrdiff_t>(data.length)};
+}
+
+static std::pair<std::string, std::string> FJTrackerState(lt::announce_entry const &t) {
+    bool anyEnabled = false, working = false, updating = false, failed = false;
+    std::string okMessage, errorMessage;
+    for (auto const &ep: t.endpoints) {
+        if (!ep.enabled) continue;
+        anyEnabled = true;
+        for (auto const &ih: ep.info_hashes) {
+            if (ih.updating) updating = true;
+            if (ih.fails > 0) {
+                failed = true;
+                if (errorMessage.empty()) {
+                    if (!ih.message.empty()) errorMessage = ih.message;
+                    else if (ih.last_error) errorMessage = ih.last_error.message();
+                }
+            } else if (ih.start_sent) {
+                working = true;
+                if (okMessage.empty()) okMessage = ih.message;
+            }
+        }
+    }
+    if (!t.endpoints.empty() && !anyEnabled) return {"disabled", ""};
+    if (working) return {"working", okMessage};
+    if (updating) return {"updating", ""};
+    if (failed) return {"error", errorMessage};
+    return {"waiting", ""};
+}
+
+static bool FJTrackerUrlAllowed(std::string const &url) {
+    static char const *const schemes[] = {"http://", "https://", "udp://", "ws://", "wss://"};
+    for (char c: url) {
+        auto v = static_cast<unsigned char>(c);
+        if (v <= 0x20 || v == 0x7f) return false;
+    }
+    for (char const *scheme: schemes) {
+        std::string const prefix(scheme);
+        if (url.size() <= prefix.size()) continue;
+        bool same = true;
+        for (std::size_t i = 0; i < prefix.size() && same; ++i) {
+            same = std::tolower(static_cast<unsigned char>(url[i])) == prefix[i];
+        }
+        if (!same) continue;
+        char const first = url[prefix.size()];
+        return first != '/' && first != ':' && first != '?' && first != '#';
+    }
+    return false;
 }
 
 @interface FJTorrentFile ()
@@ -110,9 +163,41 @@ static lt::span<char const> FJSpan(NSData *data) {
 @property(nonatomic, readwrite) int32_t peers;
 @property(nonatomic, readwrite) int32_t seeds;
 @property(nonatomic, readwrite, copy) NSArray<NSNumber *> *fileProgress;
+@property(nonatomic, readwrite) int64_t totalUploaded;
+@property(nonatomic, readwrite) int64_t totalDownloaded;
 @end
 
 @implementation FJTorrentStatus
+@end
+
+@interface FJTorrentTracker ()
+@property(nonatomic, readwrite, copy) NSString *url;
+@property(nonatomic, readwrite, copy) NSString *state;
+@property(nonatomic, readwrite, copy) NSString *message;
+@end
+
+@implementation FJTorrentTracker
+@end
+
+@interface FJTorrentPeer ()
+@property(nonatomic, readwrite, copy) NSString *address;
+@property(nonatomic, readwrite, copy) NSString *client;
+@property(nonatomic, readwrite) int64_t downloadRate;
+@property(nonatomic, readwrite) int64_t uploadRate;
+@property(nonatomic, readwrite) float progress;
+@property(nonatomic, readwrite) BOOL isSeed;
+@end
+
+@implementation FJTorrentPeer
+@end
+
+@interface FJTorrentPieces ()
+@property(nonatomic, readwrite) int32_t count;
+@property(nonatomic, readwrite) int32_t have;
+@property(nonatomic, readwrite) int64_t pieceLength;
+@end
+
+@implementation FJTorrentPieces
 @end
 
 @implementation FJTorrentSession {
@@ -321,6 +406,8 @@ priorities
         s.uploadRate = st.upload_payload_rate;
         s.peers = st.num_peers;
         s.seeds = st.num_seeds;
+        s.totalUploaded = st.all_time_upload;
+        s.totalDownloaded = st.all_time_download;
         if (st.has_metadata) {
             std::vector <std::int64_t> const progress = h.file_progress();
             NSMutableArray < NSNumber * > *list = [NSMutableArray arrayWithCapacity:progress.size()];
@@ -400,6 +487,181 @@ priorities
         h.set_download_limit(clamp(download));
         h.set_upload_limit(clamp(upload));
     } catch (...) {}
+}
+
+- (NSArray<FJTorrentTracker *> *)trackersFor:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return @[];
+    try {
+        NSMutableArray<FJTorrentTracker *> *list = [NSMutableArray array];
+        for (lt::announce_entry const &t: h.trackers()) {
+            std::pair<std::string, std::string> const state = FJTrackerState(t);
+            FJTorrentTracker *tracker = [FJTorrentTracker new];
+            tracker.url = FJString(t.url);
+            tracker.state = FJString(state.first);
+            tracker.message = FJString(state.second);
+            [list addObject:tracker];
+        }
+        return list;
+    } catch (...) {
+        return @[];
+    }
+}
+
+- (NSArray<FJTorrentPeer *> *)peersFor:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return @[];
+    try {
+        std::vector<lt::peer_info> peers;
+        h.get_peer_info(peers);
+        NSMutableArray<FJTorrentPeer *> *list = [NSMutableArray array];
+        for (lt::peer_info const &p: peers) {
+            if (list.count >= 200) break;
+            if (p.connection_type == lt::peer_info::web_seed || p.connection_type == lt::peer_info::http_seed) continue;
+            if ((p.flags & lt::peer_info::connecting) || (p.flags & lt::peer_info::handshake)) continue;
+            std::string address;
+            try {
+                auto const ep = p.remote_endpoint();
+                address = ep.address().to_string();
+                if (ep.address().is_v6()) address = "[" + address + "]";
+                address += ":" + std::to_string(ep.port());
+            } catch (...) {}
+            FJTorrentPeer *peer = [FJTorrentPeer new];
+            peer.address = FJString(address);
+            peer.client = FJString(p.client);
+            peer.downloadRate = p.payload_down_speed;
+            peer.uploadRate = p.payload_up_speed;
+            peer.progress = p.progress;
+            peer.isSeed = (p.flags & lt::peer_info::seed) ? YES : NO;
+            [list addObject:peer];
+        }
+        return list;
+    } catch (...) {
+        return @[];
+    }
+}
+
+- (BOOL)addTracker:(NSString *)url for:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return NO;
+    try {
+        NSString *trimmed = [url stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        char const *raw = trimmed.UTF8String;
+        std::string const u = raw ? raw : "";
+        if (!FJTrackerUrlAllowed(u)) return NO;
+        h.add_tracker(lt::announce_entry(u));
+        bool found = false;
+        for (lt::announce_entry const &t: h.trackers()) {
+            if (t.url == u) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return NO;
+        h.force_reannounce(0, u, lt::torrent_handle::ignore_min_interval);
+        return YES;
+    } catch (...) {
+        return NO;
+    }
+}
+
+- (BOOL)forceRecheck:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return NO;
+    try {
+        h.force_recheck();
+        return YES;
+    } catch (...) {
+        return NO;
+    }
+}
+
+- (nullable NSString *)magnetLinkFor:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return nil;
+    try {
+        lt::add_torrent_params atp;
+        atp.info_hashes = h.info_hashes();
+        std::shared_ptr<lt::torrent_info const> ti = h.torrent_file();
+        if (ti) atp.name = ti->name();
+        for (lt::announce_entry const &t: h.trackers()) atp.trackers.push_back(t.url);
+        for (std::string const &seed: h.url_seeds()) atp.url_seeds.push_back(seed);
+        std::string const magnet = lt::make_magnet_uri(atp);
+        if (magnet.size() <= 8) return nil;
+        return FJString(magnet);
+    } catch (...) {
+        return nil;
+    }
+}
+
+- (BOOL)setFirstLastPiecesFirst:(BOOL)on for:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return NO;
+    try {
+        std::shared_ptr<lt::torrent_info const> ti = h.torrent_file();
+        if (!ti || ti->num_pieces() <= 0) return NO;
+        lt::file_storage const &fs = ti->layout();
+        std::vector<lt::download_priority_t> const prios = h.get_file_priorities();
+        auto filePriority = [&](int i) -> lt::download_priority_t {
+            lt::file_index_t idx(i);
+            if (fs.pad_file_at(idx) || fs.file_size(idx) <= 0) return lt::dont_download;
+            if (i < static_cast<int>(prios.size())) return prios[static_cast<std::size_t>(i)];
+            return lt::default_priority;
+        };
+        std::set<lt::piece_index_t> edges;
+        for (int i = 0; i < fs.num_files(); ++i) {
+            if (filePriority(i) == lt::dont_download) continue;
+            lt::file_index_t idx(i);
+            edges.insert(fs.piece_index_at_file(idx));
+            edges.insert(fs.last_piece_index_at_file(idx));
+        }
+        std::vector<std::pair<lt::piece_index_t, lt::download_priority_t>> list;
+        list.reserve(edges.size());
+        for (lt::piece_index_t const piece: edges) {
+            lt::download_priority_t prio = lt::top_priority;
+            if (!on) {
+                prio = lt::dont_download;
+                int const first = static_cast<int>(fs.file_index_at_piece(piece));
+                int const last = static_cast<int>(fs.last_file_index_at_piece(piece));
+                for (int f = first; f <= last && f < fs.num_files(); ++f) {
+                    lt::download_priority_t const p = filePriority(f);
+                    if (p > prio) prio = p;
+                }
+            }
+            list.emplace_back(piece, prio);
+        }
+        if (!list.empty()) h.prioritize_pieces(list);
+        return YES;
+    } catch (...) {
+        return NO;
+    }
+}
+
+- (nullable FJTorrentPieces *)piecesFor:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return nil;
+    try {
+        std::shared_ptr<lt::torrent_info const> ti = h.torrent_file();
+        if (!ti) return nil;
+        lt::torrent_status const st = h.status(lt::status_flags_t{});
+        FJTorrentPieces *pieces = [FJTorrentPieces new];
+        pieces.count = ti->num_pieces();
+        pieces.have = st.num_pieces;
+        pieces.pieceLength = ti->piece_length();
+        return pieces;
+    } catch (...) {
+        return nil;
+    }
+}
+
+- (int64_t)uploadedBytesFor:(NSString *)key {
+    lt::torrent_handle h = [self handleFor:key];
+    if (!h.is_valid()) return 0;
+    try {
+        return h.status(lt::status_flags_t{}).all_time_upload;
+    } catch (...) {
+        return 0;
+    }
 }
 
 - (void)shutdown {

@@ -2,6 +2,7 @@
 
 package com.michelle.raouf.fetch_jet.platform.linux
 
+import com.michelle.raouf.fetch_jet.core.network.Ipv4Preference
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineBase
 import io.ktor.client.engine.HttpClientEngineConfig
@@ -75,6 +76,7 @@ class LinuxCurlFailure(val code: Int, stage: String, detail: String) : IOExcepti
 
 private const val DEFAULT_TIMEOUT_MS = 60_000L
 private const val HTTP_1_1 = 2L
+private const val IPRESOLVE_V4 = 1L
 private const val ERROR_BUFFER_BYTES = 256
 
 private val transfers = Dispatchers.IO.limitedParallelism(256)
@@ -247,6 +249,8 @@ private class CurlTransfer(
                 LinuxCurl.set(curl, CurlOpt.PROXYUSERNAME, config.proxyUser)
                 LinuxCurl.set(curl, CurlOpt.PROXYPASSWORD, config.proxyPassword)
             }
+        } else if (Ipv4Preference.prefers(data.url.host)) {
+            LinuxCurl.set(curl, CurlOpt.IPRESOLVE, IPRESOLVE_V4)
         }
 
         when (data.method) {

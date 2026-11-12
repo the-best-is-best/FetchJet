@@ -101,7 +101,11 @@ internal fun AddDialogHeader(onDismiss: () -> Unit) {
 internal fun UrlInputSection(
     inputUrl: String,
     urlField: MutableState<TextFieldValue>,
-    onUrlChanged: (String) -> Unit
+    onUrlChanged: (String) -> Unit,
+    testLinkShown: Boolean = false,
+    testLink: com.michelle.raouf.fetch_jet.presentation.dashboard.TestLinkUi? = null,
+    suggestedFileName: String = "",
+    onTestLink: () -> Unit = {}
 ) {
     var urlTextFieldValue by urlField
     val coroutineScope = rememberCoroutineScope()
@@ -197,6 +201,52 @@ internal fun UrlInputSection(
         maxLines = 3,
         modifier = Modifier.fillMaxWidth()
     )
+    if (testLinkShown) {
+        val testing = testLink?.testing == true
+        val resultText = com.michelle.raouf.fetch_jet.presentation.dashboard.testLinkText(
+            testLink,
+            suggestedFileName
+        ) { com.michelle.raouf.fetch_jet.utils.formatBytes(it) }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onTestLink,
+                enabled = !testing,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                if (testing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    LocalizationManager.Strings.testLinkButton,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            if (resultText.isNotEmpty() && !testing) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = resultText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (testLink?.ok == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
 }
 
 @Composable

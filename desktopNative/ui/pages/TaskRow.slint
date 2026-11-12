@@ -219,10 +219,23 @@ component SectionHeader inherits Rectangle {
 export component TaskRow inherits Rectangle {
     in property <TaskRowDto> data;
     in property <bool> selection-mode;
+    in property <bool> focused;
+    in property <int> reveal-ask;
     callback focus-list();
+    callback reveal(y: length, h: length);
     private property <bool> wide: root.width >= 720px;
     private property <bool> is-header: root.data.kind == RowKind.header;
-    private property <color> surface-color: root.data.selected ? Theme.primary.mix(Theme.background, 0.09) : Theme.surface;
+    private property <color> surface-color: root.data.selected || root.focused ? Theme.primary.mix(Theme.background, 0.09) : Theme.surface;
+    changed reveal-ask => {
+        if root.focused {
+            root.reveal(root.y, root.height - 6px);
+        }
+    }
+    changed y => {
+        if root.focused {
+            root.reveal(root.y, root.height - 6px);
+        }
+    }
     private property <color> bar-ink: root.data.barColor == BarColorCode.error ? Theme.error
         : root.data.barColor == BarColorCode.completed ? Theme.bar-completed
         : root.data.barColor == BarColorCode.paused ? Theme.bar-paused : Theme.primary;
@@ -242,7 +255,7 @@ export component TaskRow inherits Rectangle {
         border-radius: 12px;
         background: root.surface-color;
         border-width: 1px;
-        border-color: root.data.selected ? Theme.primary.with-alpha(0.45) : Theme.outline-variant.with-alpha(0.35);
+        border-color: root.focused ? Theme.primary.with-alpha(0.9) : root.data.selected ? Theme.primary.with-alpha(0.45) : Theme.outline-variant.with-alpha(0.35);
         accessible-role: button;
         accessible-label: root.data.name + " " + root.data.percent;
         accessible-checkable: true;

@@ -367,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
         forced = self.q("status")
         if forced:
             return self.simple(int(forced), "forced status\n")
+        if self.q("robot"):
+            return self.simple(200, "<html><body><h1>Are you a robot?</h1><p>Please verify you are human.</p></body></html>", content_type="text/html; charset=utf-8")
         fail = self.q("fail")
         if fail:
             count, _, code = fail.partition(":")
@@ -383,6 +385,12 @@ class Handler(BaseHTTPRequestHandler):
 
         base = self.qi("base")
         version = self.q("v", "1")
+        flip_at = self.qi("flipat")
+        if flip_at and self.number >= flip_at:
+            version = "2"
+        wrong_part = self.qi("wrongpart")
+        if wrong_part and self.number == wrong_part:
+            base += LINE
         etag = '"fj-%d-%s"' % (size, version)
         last_modified = LAST_MODIFIED if version == "1" else "Tue, 03 Nov 2026 10:00:00 GMT"
         name = self.q("name")
@@ -393,6 +401,12 @@ class Handler(BaseHTTPRequestHandler):
             headers.append(("Content-Disposition", "attachment; filename*=UTF-8''" + quote(name)))
         if self.q("cookie"):
             headers.append(("Set-Cookie", self.q("cookie")))
+        digest = self.q("digest")
+        if digest:
+            raw = bytes.fromhex(self.state.content.sha256(self.qi("base"), size))
+            if digest == "bad":
+                raw = bytes(b ^ 0xFF for b in raw)
+            headers.append(("Digest", "sha-256=" + base64.b64encode(raw).decode("ascii")))
         if self.headers.get("If-None-Match") == etag:
             return self.head(304, headers, 0)
 
@@ -436,6 +450,11 @@ class Handler(BaseHTTPRequestHandler):
         if cut is None and cut_once is not None and self.number == 1:
             cut = cut_once
         throttle = self.qi("throttle", self.state.default_throttle) * 1024
+        slow_req = self.q("slowreq")
+        if slow_req:
+            which, _, kb = slow_req.partition(":")
+            if self.number == int(which):
+                throttle = int(kb or 30) * 1024
         self.send_body(base + start, length, throttle, cut, chunked)
 
     def send_body(self, offset, length, rate, cut, chunked):
@@ -592,6 +611,11 @@ def selftest():
     check("If-Range mismatch gives the full file", r.status == 200 and len(part) == 1048576)
     r, part, _ = request("GET", "/file/1MB.bin", {"Range": "bytes=10-19", "If-Range": '"fj-1048576-1"'})
     check("If-Range match gives 206", r.status == 206 and part == body[10:20])
+    r, part, _ = request("GET", "/file/1MB.bin?digest=good")
+    good_digest = "sha-256=" + base64.b64encode(hashlib.sha256(body).digest()).decode()
+    r2, _, _ = request("GET", "/file/1MB.bin?digest=bad", {"Range": "bytes=0-9"})
+    check("digest=good sends the SHA-256 as Digest, digest=bad another one",
+          r.getheader("Digest") == good_digest and r2.getheader("Digest") not in (None, good_digest))
     for mode in ("abs", "rel", "root", "proto"):
         r, part, _ = request("GET", "/redirect/%s/file/2KB.bin" % mode)
         location = r.getheader("Location", "")

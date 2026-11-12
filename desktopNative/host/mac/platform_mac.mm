@@ -28,10 +28,12 @@ extern char **environ;
 
 namespace fjhost::os {
     void tray_clicked(int id);
+    void tray_pressed(bool menu);
 }
 
 @interface FJTrayTarget : NSObject
 - (void)itemClicked:(id)sender;
+- (void)statusClicked:(id)sender;
 - (void)reopen:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply;
 - (void)openURL:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply;
 - (void)openDocuments:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply;
@@ -59,6 +61,7 @@ namespace fjhost::os {
         };
 
         NSStatusItem *g_status = nil;
+        NSMenu *g_status_menu = nil;
         FJTrayTarget *g_target = nil;
         FJTrayTarget *g_events = nil;
 
@@ -187,7 +190,7 @@ namespace fjhost::os {
             }
             [menu addItem:[NSMenuItem separatorItem]];
             [menu addItem:menu_item(g_menu.close.empty() ? "Close" : g_menu.close, MENU_CLOSE)];
-            [g_status setMenu:menu];
+            g_status_menu = menu;
             [[g_status button] setToolTip:ns(g_menu.tooltip)];
             g_menu_built = true;
         }
@@ -236,6 +239,30 @@ namespace fjhost::os {
                 send_action("{\"type\":\"SetWhenDone\",\"index\":" + std::to_string(index) + "}");
             });
         }
+    }
+
+    void tray_pressed(bool menu) {
+        if (menu) {
+            if (!g_status || !g_status_menu)
+                return;
+            [g_status setMenu:g_status_menu];
+            [[g_status button] performClick:nil];
+            [g_status setMenu:nil];
+            return;
+        }
+        bool behind = ![NSApp isActive];
+        if (behind) {
+            behind = false;
+            for (NSWindow *window in [NSApp windows])
+                if ([window isVisible] && ![window isMiniaturized] && [window canBecomeMainWindow])
+                    behind = true;
+        }
+        slint::invoke_from_event_loop([behind] {
+            if (!behind)
+                toggle_window();
+            else if (!toggle_too_soon())
+                show_window(true);
+        });
     }
 
     int child_main(int, char **, bool &handled) {
@@ -348,6 +375,11 @@ namespace fjhost::os {
     }
 
     bool toggle_too_soon() {
+        static CFAbsoluteTime last = 0;
+        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        if (now - last < [NSEvent doubleClickInterval])
+            return true;
+        last = now;
         return false;
     }
 
@@ -362,6 +394,9 @@ namespace fjhost::os {
             NSStatusBarButton *button = [g_status button];
             [button setImage:tray_image()];
             [button setToolTip:ns(g_menu.tooltip)];
+            [button setTarget:g_target];
+            [button setAction:@selector(statusClicked:)];
+            [button sendActionOn:NSEventMaskLeftMouseUp | NSEventMaskRightMouseUp];
             build_menu();
         });
     }
@@ -399,6 +434,7 @@ namespace fjhost::os {
             if (g_status)
                 [[NSStatusBar systemStatusBar] removeStatusItem:g_status];
             g_status = nil;
+            g_status_menu = nil;
             g_target = nil;
             g_menu_built = false;
         });
@@ -467,6 +503,12 @@ namespace fjhost::os {
 - (void)itemClicked:(id)sender {
     fjhost::os::tray_clicked(int([(NSMenuItem *) sender tag]));
 }
+- (void)statusClicked:(id)sender {
+    NSEvent *event = [NSApp currentEvent];
+    bool menu = event && ([event type] == NSEventTypeRightMouseUp ||
+                          ([event modifierFlags] & (NSEventModifierFlagOption | NSEventModifierFlagControl)) != 0);
+    fjhost::os::tray_pressed(menu);
+}
 - (void)reopen:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply {
     slint::invoke_from_event_loop([] { fjhost::show_window(true); });
 }
@@ -497,14 +539,15 @@ namespace fjhost::os {
         NSString *scheme = url.scheme.lowercaseString ?: @"";
         if (url.isFileURL && [url.path.lowercaseString hasSuffix:@".torrent"])
             [links addObject:url.path];
-        else if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"magnet"])
+        else if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"magnet"] ||
+                 [scheme isEqualToString:@"ftp"] || [scheme isEqualToString:@"ftps"] || [scheme isEqualToString:@"ftpes"])
             [links addObject:url.absoluteString];
     }
     if (links.count == 0) {
         NSString *text = [pboard stringForType:NSPasteboardTypeString];
         if (text) {
             NSRegularExpression *pattern = [NSRegularExpression
-                regularExpressionWithPattern:@"(?:https?://|magnet:\\?)[^\\s<>\"']+"
+                regularExpressionWithPattern:@"(?:https?://|ftp(?:e?s)?://|magnet:\\?)[^\\s<>\"']+"
                                      options:NSRegularExpressionCaseInsensitive
                                        error:nil];
             for (NSTextCheckingResult *match in [pattern matchesInString:text options:0 range:NSMakeRange(0, text.length)]) {

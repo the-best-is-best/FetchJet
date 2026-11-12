@@ -48,8 +48,9 @@ internal fun RestartOnPauseDialog(isClip: Boolean, onConfirm: () -> Unit, onDism
 
 @Composable
 internal fun ClipboardOfferDialog(url: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val shownUrl = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(url)
     val name = if (url.startsWith("magnet:", true)) LocalizationManager.Strings.homeMagnetLink
-    else url.substringBefore('?').substringAfterLast('/').ifBlank { url }
+    else shownUrl.substringBefore('?').substringAfterLast('/').ifBlank { shownUrl }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(18.dp),
@@ -70,7 +71,7 @@ internal fun ClipboardOfferDialog(url: String, onConfirm: () -> Unit, onDismiss:
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    url,
+                    shownUrl,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,

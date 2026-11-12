@@ -9,6 +9,7 @@ class DetectLinkTypeUseCase {
         val trimmed = com.michelle.raouf.fetch_jet.feature.torrent_engine
             .normalizeLocalTorrentPath(url).lowercase()
         return when {
+            com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(trimmed) -> EngineType.HTTP_DIRECT
             trimmed.startsWith("magnet:") || trimmed.contains("xt=urn:btih:") || trimmed.endsWith(".torrent") -> EngineType.BITTORRENT
             isMediaSource(trimmed) -> EngineType.MEDIA_STREAM
             else -> EngineType.HTTP_DIRECT

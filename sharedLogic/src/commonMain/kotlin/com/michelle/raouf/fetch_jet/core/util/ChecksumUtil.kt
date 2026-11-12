@@ -1,10 +1,11 @@
 package com.michelle.raouf.fetch_jet.core.util
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
+import okio.Buffer
 import okio.HashingSource
+import okio.Path
 import okio.Path.Companion.toPath
-import okio.blackholeSink
-import okio.buffer
+import okio.Source
 import okio.use
 
 /** A checksum the user typed, split into an algorithm and the expected hex digest. */
@@ -24,9 +25,11 @@ fun parseExpectedChecksum(raw: String?): ExpectedChecksum? {
     else text).trim().lowercase()
     if (!hexPart.all { it in "0123456789abcdef" } || hexPart.isEmpty()) return null
     val algo = when {
+        algoPart in setOf("sha512", "sha-512") -> "sha512"
         algoPart in setOf("sha256", "sha-256") -> "sha256"
         algoPart in setOf("md5") -> "md5"
         algoPart in setOf("sha1", "sha-1") -> "sha1"
+        hexPart.length == 128 -> "sha512"
         hexPart.length == 64 -> "sha256"
         hexPart.length == 32 -> "md5"
         hexPart.length == 40 -> "sha1"
@@ -35,22 +38,41 @@ fun parseExpectedChecksum(raw: String?): ExpectedChecksum? {
     return ExpectedChecksum(algo, hexPart)
 }
 
+private fun hashingSource(algorithm: String, source: Source): HashingSource? =
+    when (algorithm.lowercase()) {
+        "sha512" -> HashingSource.sha512(source)
+        "sha256" -> HashingSource.sha256(source)
+        "md5" -> HashingSource.md5(source)
+        "sha1" -> HashingSource.sha1(source)
+        else -> null
+    }
+
+fun isKnownChecksumAlgorithm(algorithm: String): Boolean =
+    algorithm.lowercase() in setOf("sha512", "sha256", "sha1", "md5")
+
+fun hashFileHex(path: Path, algorithm: String, onBytes: (Long) -> Unit = {}): String? {
+    if (!isKnownChecksumAlgorithm(algorithm)) return null
+    val hashing = hashingSource(algorithm, AppFileSystem.source(path)) ?: return null
+    return hashing.use { source ->
+        val scratch = Buffer()
+        var done = 0L
+        while (true) {
+            val read = source.read(scratch, 256L * 1024)
+            if (read == -1L) break
+            scratch.clear()
+            done += read
+            onBytes(done)
+        }
+        source.hash.hex()
+    }
+}
+
 /** Streams the file and returns its lowercase hex digest for the given algorithm, or null. */
 fun fileChecksumHex(path: String, algorithm: String): String? {
     val p = path.toPath()
-    val fs = AppFileSystem
-    if (!fs.exists(p)) return null
+    if (!AppFileSystem.exists(p)) return null
     return try {
-        val source = when (algorithm.lowercase()) {
-            "sha256" -> HashingSource.sha256(fs.source(p))
-            "md5" -> HashingSource.md5(fs.source(p))
-            "sha1" -> HashingSource.sha1(fs.source(p))
-            else -> return null
-        }
-        source.use { hashing ->
-            hashing.buffer().use { it.readAll(blackholeSink()) }
-            hashing.hash.hex()
-        }
+        hashFileHex(p, algorithm)
     } catch (_: Exception) {
         null
     }

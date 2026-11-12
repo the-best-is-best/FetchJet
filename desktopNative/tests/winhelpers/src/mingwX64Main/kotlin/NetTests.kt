@@ -2,6 +2,7 @@
 
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.platform.desktop.runProcess
+import com.michelle.raouf.fetch_jet.platform.win.WinHttpIpv4
 import com.michelle.raouf.fetch_jet.platform.win.WinHttpNative
 import com.michelle.raouf.fetch_jet.platform.win.WinSha256
 import com.michelle.raouf.fetch_jet.platform.win.toHexString
@@ -60,6 +61,7 @@ private fun client(
     verifyTls: Boolean = true,
     proxyConfig: ProxyConfig? = null,
     proxyLogin: Pair<String, String>? = null,
+    resolveHost: ((String) -> String?)? = null,
 ): HttpClient {
     val common: HttpClientConfig<*>.() -> Unit = {
         followRedirects = follow
@@ -78,6 +80,7 @@ private fun client(
                 proxy = proxyConfig
                 proxyUser = proxyLogin?.first.orEmpty()
                 proxyPassword = proxyLogin?.second.orEmpty()
+                resolveAs = resolveHost
             }
         }
     } else {
@@ -436,6 +439,59 @@ fun netTests(work: String, options: List<String>) = runBlocking {
             attempt("open HTTP proxy, loopback target (bypass list <-loopback>)", "http://127.0.0.1:$port/file/5KB.bin", "http://127.0.0.1:18082", null, false)
             attempt("open SOCKS5 proxy, https target", secureTarget, null, 11082, false)
             attempt("login SOCKS5 proxy, http target, engine login", plainTarget, null, 11081, false, "fj" to "secret")
+        }
+    }
+
+    if (wanted("ipv4")) T.guarded("ipv4") {
+        if (!nativeEngine) {
+            T.info("ipv4 tests skipped (FetchJet's engine only)")
+        } else {
+            val name = "files.fjtest.example"
+            val target = "http://$name:$port"
+            T.info("WinHTTP takes the resolution option on this Windows: ${WinHttpIpv4.available}")
+            T.check(
+                "A record lookup: localhost is 127.0.0.1, an address is left alone",
+                WinHttpIpv4.addressOf("localhost") == "127.0.0.1" && WinHttpIpv4.addressOf("127.0.0.1") == null &&
+                    WinHttpIpv4.addressOf("::1") == null,
+                "localhost=${WinHttpIpv4.addressOf("localhost")}"
+            )
+            val (unresolved, unresolvedMs) = failure { http.get("$target/file/1KB.bin") }
+            T.check(
+                "without the option $name does not resolve", unresolved is Exception && unresolved !is CancellationException,
+                "${describe(unresolved)} after $unresolvedMs ms"
+            )
+            val pinned = client(resolveHost = { if (it == name) "127.0.0.1" else null })
+            try {
+                val response = pinned.get("$target/file/1KB.bin")
+                T.check(
+                    "resolved as 127.0.0.1 the same link downloads", response.status.value == 200 && response.readRawBytes().size == 1024,
+                    "status=${response.status.value}"
+                )
+                val echo = pinned.get("$target/echo").bodyAsText()
+                T.check(
+                    "the server still sees the Host header $name:$port", echo.contains("\"Host\": \"$name:$port\""),
+                    echo.substringAfter("\"headers\":").substringBefore("}").replace("\n", " ").replace(Regex(" +"), " ").take(200)
+                )
+                val other = pinned.get("$base/file/1KB.bin")
+                T.check("a host outside the rule is not touched", other.status.value == 200 && other.readRawBytes().size == 1024)
+            } finally {
+                pinned.close()
+            }
+            val tls = options.firstOrNull { it.startsWith("https=") }?.substringAfter('=')?.toIntOrNull()
+            if (tls != null) {
+                val (untrusted, untrustedMs) = failure {
+                    val strict = client(resolveHost = { if (it == name) "127.0.0.1" else null })
+                    try {
+                        strict.get("https://$name:$tls/file/1KB.bin").readRawBytes()
+                    } finally {
+                        strict.close()
+                    }
+                }
+                T.check(
+                    "https with the option still checks the certificate (the test server's is refused)",
+                    untrusted is Exception && untrusted !is CancellationException, "${describe(untrusted)} after $untrustedMs ms"
+                )
+            }
         }
     }
 

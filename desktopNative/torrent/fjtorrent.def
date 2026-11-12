@@ -31,6 +31,13 @@ EXPORTS
     fjt_torrent_status
     fjt_torrent_debug_text
     fjt_torrent_save_resume
+    fjt_torrent_trackers
+    fjt_torrent_peers
+    fjt_torrent_add_tracker
+    fjt_torrent_recheck
+    fjt_torrent_magnet
+    fjt_torrent_set_first_last
+    fjt_torrent_pieces
     fjt_buf_data
     fjt_buf_size
     fjt_buf_free

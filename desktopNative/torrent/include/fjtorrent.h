@@ -86,6 +86,12 @@ extern "C" {
 #define FJT_SI_RESERVED_7 7
 #define FJT_SI_COUNT 8
 
+#define FJT_PC_TOTAL 0
+#define FJT_PC_HAVE 1
+#define FJT_PC_LENGTH 2
+#define FJT_PC_FIRST_LAST 3
+#define FJT_PC_COUNT 4
+
 typedef struct fjt_session fjt_session;
 typedef struct fjt_meta fjt_meta;
 typedef struct fjt_magnet fjt_magnet;
@@ -149,6 +155,13 @@ FJT_API int32_t FJT_CALL fjt_torrent_status(
     int32_t err_cap);
 FJT_API int32_t FJT_CALL fjt_torrent_debug_text(fjt_session* session, const char* task_id, char* out, int32_t cap);
 FJT_API fjt_buf* FJT_CALL fjt_torrent_save_resume(fjt_session* session, const char* task_id, int32_t timeout_ms);
+FJT_API int32_t FJT_CALL fjt_torrent_trackers(fjt_session* session, const char* task_id, char* out, int32_t cap);
+FJT_API int32_t FJT_CALL fjt_torrent_peers(fjt_session* session, const char* task_id, char* out, int32_t cap);
+FJT_API int32_t FJT_CALL fjt_torrent_add_tracker(fjt_session* session, const char* task_id, const char* url);
+FJT_API int32_t FJT_CALL fjt_torrent_recheck(fjt_session* session, const char* task_id);
+FJT_API int32_t FJT_CALL fjt_torrent_magnet(fjt_session* session, const char* task_id, char* out, int32_t cap);
+FJT_API int32_t FJT_CALL fjt_torrent_set_first_last(fjt_session* session, const char* task_id, int32_t on);
+FJT_API int32_t FJT_CALL fjt_torrent_pieces(fjt_session* session, const char* task_id, int64_t* out, int32_t count);
 
 FJT_API const uint8_t* FJT_CALL fjt_buf_data(const fjt_buf* buf);
 FJT_API int64_t FJT_CALL fjt_buf_size(const fjt_buf* buf);

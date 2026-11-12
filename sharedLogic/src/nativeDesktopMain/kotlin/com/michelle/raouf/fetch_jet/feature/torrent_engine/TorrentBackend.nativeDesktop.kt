@@ -94,7 +94,8 @@ private class NativeTorrentBackend(private val library: FjtLibrary) : TorrentBac
                     val meta = engine.fetchMagnet(magnetUri, scratch)
                         ?: throw IllegalStateException(
                             "Could not fetch torrent metadata for this magnet link (no peers answered within " +
-                                    "${FjtEngine.MAGNET_TIMEOUT_MS / 1000} s). Check the link or your network."
+                                    "${FjtEngine.MAGNET_TIMEOUT_MS / 1000} s). Check the link or your network." +
+                                    if (NetworkSettings.proxy.value.isOn) " A proxy is on: a torrent that has only UDP trackers or DHT cannot find peers through an HTTP proxy, or through a SOCKS5 proxy without UDP support." else ""
                         )
                     toMetadata(meta)
                 }
@@ -162,8 +163,41 @@ private class NativeTorrentBackend(private val library: FjtLibrary) : TorrentBac
             fileProgress = st.fileProgress.toList(),
             stateText = st.stateText,
             error = st.error,
+            uploadedBytes = st.totalUpload,
         )
     }
+
+    override val supportsDetails: Boolean get() = engine.hasDetails
+
+    override fun details(taskId: String): TorrentDetails? {
+        val d = engine.details(taskId) ?: return null
+        return TorrentDetails(
+            trackers = d.trackers.map { TorrentTrackerInfo(it.url, it.state, it.message) },
+            peers = d.peers.map {
+                TorrentPeerInfo(
+                    address = it.address,
+                    client = it.client,
+                    downloadRate = it.downloadRate,
+                    uploadRate = it.uploadRate,
+                    progress = (it.progressPermille / 1000f).coerceIn(0f, 1f),
+                    isSeed = it.isSeed,
+                )
+            },
+            uploadedBytes = d.uploadedBytes,
+            downloadedBytes = d.downloadedBytes,
+            pieceCount = d.pieceCount,
+            piecesDone = d.piecesDone,
+            pieceSize = d.pieceLength,
+            magnetLink = d.magnet,
+            firstLastPiecesFirst = d.firstLast,
+        )
+    }
+
+    override fun addTracker(taskId: String, url: String): Boolean = engine.addTracker(taskId, url)
+
+    override fun recheck(taskId: String): Boolean = engine.recheck(taskId)
+
+    override fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean = engine.setFirstLastPiecesFirst(taskId, on)
 
     override fun shutdown() = engine.shutdown()
 }

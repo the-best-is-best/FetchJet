@@ -153,7 +153,7 @@ function isValidDownloadUrl(url) {
   if (url.includes("fetchjet_fallback=1") || url.includes("kortex_fallback=1")) return false;
   if (url.includes(`localhost:${FETCHJET_PORT}`) || url.includes(`127.0.0.1:${FETCHJET_PORT}`)) return false;
   const lower = url.toLowerCase();
-  if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("magnet:"))) return false;
+  if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("magnet:") || /^ftps?:\/\//.test(lower))) return false;
   if (isArchiveOrgDirectoryOrDetails(url)) return false;
   return true;
 }
@@ -332,21 +332,50 @@ function rememberAppLanguage(code) {
   try { Promise.resolve(api.storage.local.set({ appLanguage: code })).catch(() => {}); } catch (_) {}
 }
 
-async function cookieHeaderFor(url) {
+/**
+ * The cookie store of who asked (`from`: a tab, a tab id, several tab ids or a browser download).
+ * A private window and a Firefox container have their own store. undefined = the browser's
+ * normal store; null = a private one that cannot be read here: no cookies at all, never the
+ * normal window's.
+ */
+async function cookieStoreOf(from) {
+  if (from == null || !api.cookies) return undefined;
+  if (Array.isArray(from)) {
+    const stores = [];
+    for (const one of from) stores.push(await cookieStoreOf(one));
+    return stores.every(s => s === stores[0]) ? stores[0] : null;
+  }
+  if (typeof from === "number") { try { from = await api.tabs.get(from); } catch (_) { return undefined; } }
+  if (!from) return undefined;
+  if (from.cookieStoreId) return from.cookieStoreId;
+  if (!from.incognito) return undefined;
+  if (IS_FIREFOX) return "firefox-private";
+  try {
+    const tabIds = from.windowId != null ? [from.id]
+      : (await api.tabs.query({})).filter(t => t.incognito).map(t => t.id);
+    const stores = await api.cookies.getAllCookieStores();
+    const store = (stores || []).find(s => (s.tabIds || []).some(id => tabIds.includes(id)));
+    return store ? store.id : null;
+  } catch (_) { return null; }
+}
+
+async function cookieHeaderFor(url, from = null) {
   const settings = await getSettings();
   if (!settings.sendCookies || !api.cookies) return "";
   try {
-    const cookies = await api.cookies.getAll({ url });
+    const storeId = await cookieStoreOf(from);
+    if (storeId === null) return "";
+    const cookies = await api.cookies.getAll(storeId ? { url, storeId } : { url });
     if (!cookies || cookies.length === 0) return "";
     return cookies.map(c => `${c.name}=${c.value}`).join("; ");
   } catch (_) { return ""; }
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
-async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, group = "" }) {
+async function buildRequest({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, group = "", from = null }) {
   const body = {
     url,
-    cookie: await cookieHeaderFor(url),
+    cookie: await cookieHeaderFor(url, from),
     referer: referer || "",
     userAgent: navigator.userAgent,
     fileName: fileName || ""
@@ -464,22 +493,22 @@ async function notify(message, extra = {}) {
  * Main entry: hand a link to FetchJet, launching it when needed.
  * `source` is a short tag for logging ("download", "link", "menu", "popup", "media").
  */
-async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null }, source = "") {
+async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, from = null, quiet = false }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
-  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist });
+  const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist, from });
   if (ON_IOS) {
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
 
   if (await deliverOne(request)) return { ok: true };
   if (lastDeliverPairing) {
-    await notify(fjT("errNeedsPairing"));
+    if (!quiet) await notify(fjT("errNeedsPairing"));
     return { ok: false, reason: "pairing required" };
   }
 
   const launched = await launchApp(url);
   if (!launched) {
-    await notify(fjT("notifyNotRunning"));
+    if (!quiet) await notify(fjT("notifyNotRunning"));
     return { ok: false, reason: "app not running" };
   }
   await notify(fjT("notifyLaunching"));
@@ -492,7 +521,7 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   return { ok: false, reason: "app did not start" };
 }
 
-async function sendBatchToFetchJet(items, referer = "", group = "") {
+async function sendBatchToFetchJet(items, referer = "", group = "", from = null) {
   const unique = new Map();
   for (const it of items) {
     const url = typeof it === "string" ? it : it.url;
@@ -502,7 +531,7 @@ async function sendBatchToFetchJet(items, referer = "", group = "") {
   }
   if (unique.size === 0) return { ok: false, reason: "no links", count: 0 };
   const requests = [];
-  for (const it of unique.values()) requests.push(await buildRequest({ ...it, group }));
+  for (const it of unique.values()) requests.push(await buildRequest({ ...it, group, from }));
   if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
   if (!(await pingApp())) {
@@ -540,6 +569,7 @@ async function shouldTake(item) {
   const targetUrl = item.finalUrl || item.url;
   if (!isValidDownloadUrl(targetUrl) || !/^https?:/i.test(targetUrl)) return false; // blob:, data: stay
   if (!isNewDownload(item)) return false;
+  if (await wasPosted(targetUrl)) return false;                  // a form's answer: only the browser can ask for it again
   if (await takeBypass(targetUrl, item.url)) return false;      // "Download in browser instead"
   if (await consumeHold()) return false;                         // user held the bypass key
   if (isExcludedHost(targetUrl, settings) || isExcludedHost(item.referrer || "", settings)) return false;
@@ -564,18 +594,39 @@ async function hasSiteAccess(url) {
   try { return await api.permissions.contains({ origins: [origin + "/*"] }); } catch (_) { return true; }
 }
 
+const HAND_OVER_MS = 20000;
+
+async function downloadNow(id) {
+  try { return (await api.downloads.search({ id }))[0] || null; } catch (_) { return null; }
+}
+
+/**
+ * The browser keeps its download, paused, until the app really has the link: only then it is
+ * cancelled and removed here. When the app did not take it the browser's own download goes on.
+ * Answers true when the app took it.
+ */
 async function takeOver(item) {
+  if (!HAS_DOWNLOADS) return false;
   const targetUrl = item.finalUrl || item.url;
-  if (!HAS_DOWNLOADS) return;
-  try { await api.downloads.cancel(item.id); } catch (_) {}
-  try { await api.downloads.erase({ id: item.id }); } catch (_) {}
+  const before = await downloadNow(item.id);
+  if (!before || before.state !== "in_progress") return false; // finished, failed or removed meanwhile
+  let held = false;
+  try { await api.downloads.pause(item.id); held = true; } catch (_) {}
   const fileName = baseName(item.filename);
-  const result = await sendToFetchJet({ url: targetUrl, referer: item.referrer || "", fileName }, "download");
+  const result = await Promise.race([
+    sendToFetchJet({ url: targetUrl, referer: item.referrer || "", fileName, from: item, quiet: true }, "download")
+      .catch(() => ({ ok: false, reason: "" })),
+    new Promise(r => setTimeout(() => r({ ok: false, reason: "no answer" }), HAND_OVER_MS))
+  ]);
   if (!result.ok) {
-    // The app could not be reached: give the download back to the browser, once.
-    await addBypass(targetUrl);
-    try { await api.downloads.download({ url: targetUrl }); } catch (_) {}
-    return;
+    await giveBack(item, held);
+    await notify(fjT("notifyKeptInBrowser", { reason: fjReason(result.reason || "refused") }));
+    return false;
+  }
+  const after = await downloadNow(item.id);
+  if (after && after.state !== "complete") {
+    try { await api.downloads.cancel(item.id); } catch (_) {}
+    try { await api.downloads.erase({ id: item.id }); } catch (_) {}
   }
   const nid = await notify(fjT("notifyCaptured"), {
     buttons: [{ title: fjT("btnDownloadInBrowser") }]
@@ -585,6 +636,23 @@ async function takeOver(item) {
     map[nid] = targetUrl;
     await sessionSet(NOTIFY_KEY, map);
   }
+  return true;
+}
+
+/** The app did not take it: the browser's download continues, or starts again when it cannot. */
+async function giveBack(item, held) {
+  const targetUrl = item.finalUrl || item.url;
+  const now = await downloadNow(item.id);
+  if (!now || now.state === "complete") return;
+  if (now.state === "in_progress" && !now.paused) return;
+  if (now.paused || now.canResume) {
+    try { await api.downloads.resume(item.id); return; } catch (_) {}
+  }
+  // Firefox reports its own pause as USER_CANCELED when the server gave nothing to resume from.
+  if (/USER_CANCELED/i.test(now.error || "") && !(IS_FIREFOX && held)) return;
+  if (item.incognito && !IS_FIREFOX) return; // Chromium would start it again in a normal window
+  await addBypass(targetUrl);
+  try { await api.downloads.download(item.incognito ? { url: targetUrl, incognito: true } : { url: targetUrl }); } catch (_) {}
 }
 
 // Chromium (Chrome, Edge, Brave, Opera, Vivaldi): decide before the browser asks where to
@@ -606,29 +674,62 @@ function knownAtStart(item) {
 
 function takeAtStart(item) {
   if (!knownAtStart(item)) return null;
-  const decision = shouldTake(item).then(async (take) => {
-    if (take) await takeOver(item);
+  const look = { taken: Promise.resolve(false) };
+  look.decision = shouldTake(item).then((take) => {
+    if (take) look.taken = takeOver(item).catch(() => false);
     return take;
   }).catch(() => false);
-  firstLook.set(item.id, decision);
+  firstLook.set(item.id, look);
   setTimeout(() => firstLook.delete(item.id), 60000);
-  return decision;
+  return look;
+}
+
+// A download answered to a form's POST cannot be asked again by the app with a plain GET, and
+// sending the form again could repeat a purchase or an action: it stays in the browser.
+const POST_KEY = "fetchjet_post_urls";
+const POST_MEMORY_MS = 120000;
+const postedUrls = new Map();
+const withoutHash = (url) => String(url || "").split("#")[0];
+
+async function wasPosted(url) {
+  const key = withoutHash(url);
+  const fresh = (t) => !!t && Date.now() - t < POST_MEMORY_MS;
+  if (postedUrls.has(key)) return fresh(postedUrls.get(key));
+  return fresh((await sessionGet(POST_KEY))[key]);
+}
+
+function notePost(url, posted) {
+  const key = withoutHash(url);
+  if (!posted && !postedUrls.has(key)) return;
+  postedUrls.set(key, posted ? Date.now() : 0);
+  serial(async () => {
+    const map = await sessionGet(POST_KEY);
+    const now = Date.now();
+    for (const [u, t] of Object.entries(map)) if (now - t > POST_MEMORY_MS) delete map[u];
+    for (const [u, t] of postedUrls) if (now - t > POST_MEMORY_MS) postedUrls.delete(u);
+    if (posted) map[key] = now; else delete map[key];
+    await sessionSet(POST_KEY, map);
+  }).catch(() => {});
+}
+
+if (HAS_DOWNLOADS && api.webRequest && api.webRequest.onBeforeRequest) {
+  api.webRequest.onBeforeRequest.addListener((d) => {
+    const method = String(d.method || "GET").toUpperCase();
+    notePost(d.url, method !== "GET" && method !== "HEAD");
+  }, { urls: ["http://*/*", "https://*/*"], types: ["main_frame", "sub_frame"] });
 }
 
 if (DECIDE_EARLY) {
   api.downloads.onDeterminingFilename.addListener((item, suggest) => {
     let answered = false;
     const keep = () => { if (!answered) { answered = true; try { suggest(); } catch (_) {} } };
-    const guard = setTimeout(keep, 4000); // never leave the browser waiting
+    const guard = setTimeout(keep, 4000); // never leave the browser waiting for the decision
     const early = firstLook.get(item.id);
-    if (early) {
-      early.then(() => { clearTimeout(guard); keep(); });
-      return true;
-    }
-    shouldTake(item).then((take) => {
+    (early ? early.decision : shouldTake(item)).then((take) => {
       clearTimeout(guard);
-      if (take && !answered) { answered = true; return takeOver(item); }
-      keep();
+      if (!take || (answered && !early)) return keep();
+      // No "Save as" window while the app is asked; when it did not take the file the browser goes on.
+      return (early ? early.taken : takeOver(item)).then(keep, keep);
     }).catch(() => { clearTimeout(guard); keep(); });
     return true; // answered asynchronously
   });
@@ -844,14 +945,14 @@ async function addYoutubeStream(tabId, stream, sk) {
 }
 
 /** GET /inspect on the app: yt-dlp qualities of a page as popup items. */
-async function inspectWithApp(pageUrl) {
+async function inspectWithApp(pageUrl, from = null) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 90000);
   try {
     // The page's cookies and referer travel with the request: sites that need a login (Udemy,
     // Vimeo private videos...) then answer yt-dlp exactly like they answer the browser.
     const headers = { "X-FetchJet-Referer": pageUrl };
-    try { const c = await cookieHeaderFor(pageUrl); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    try { const c = await cookieHeaderFor(pageUrl, from || tabsResolving(pageUrl)); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
     const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
     if (res.status === 401) return { resolveError: fjT("errNeedsPairing"), needsPairing: true };
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
@@ -902,6 +1003,13 @@ async function appCanInspect() {
 }
 
 const resolving = new Map(); // tabId -> page / videoId being resolved
+
+function tabsResolving(pageUrl) {
+  const videoId = ytVideoId(pageUrl);
+  const tabs = [];
+  for (const [tabId, what] of resolving) if (what === pageUrl || (videoId && what === videoId)) tabs.push(tabId);
+  return tabs;
+}
 
 async function resolveYoutube(tabId, pageUrl, force = false) {
   const videoId = ytVideoId(pageUrl);
@@ -1109,8 +1217,8 @@ async function readUdemyCourseInPage(slug, part) {
 }
 
 /** Tells the app how far the course reading is (it shows "12 / 80"), or why it failed. */
-async function courseProgressToApp(courseUrl, referer, extra) {
-  try { await postJson("/add", { ...(await buildRequest({ url: courseUrl, referer })), ...extra }, 2500); } catch (_) {}
+async function courseProgressToApp(courseUrl, referer, extra, from = null) {
+  try { await postJson("/add", { ...(await buildRequest({ url: courseUrl, referer, from })), ...extra }, 2500); } catch (_) {}
 }
 
 /**
@@ -1173,7 +1281,7 @@ async function downloadItem(item, tab) {
   const clean = typeof ytCleanTitle === "function" ? ytCleanTitle(title) : title;
   if (item.kind === "playlist") {
     // The app's Add dialog lists the videos; the user picks them and the quality there.
-    return sendToFetchJet({ url: item.url, referer: pageUrl }, "playlist");
+    return sendToFetchJet({ url: item.url, referer: pageUrl, from: tab }, "playlist");
   }
   if (item.kind === "course") {
     const course = tab && tab.id != null ? await udemyCourseForTab(tab.id) : null;
@@ -1185,11 +1293,11 @@ async function downloadItem(item, tab) {
       } catch (e) { return { error: (e && e.message) || "" }; }
     };
     const fail = async (reason) => {
-      await courseProgressToApp(course.url, pageUrl, { readingFailed: reason });
+      await courseProgressToApp(course.url, pageUrl, { readingFailed: reason }, tab);
       await notify(reason);
       return { ok: false, reason };
     };
-    await courseProgressToApp(course.url, pageUrl, { reading: { done: 0, total: 0 } });
+    await courseProgressToApp(course.url, pageUrl, { reading: { done: 0, total: 0 } }, tab);
     const head = await inPage(null);
     if (!head || head.error || !head.lectures || !head.lectures.length) {
       return fail(fjT("courseFailed", { reason: head && head.error ? `(${head.error})` : "" }));
@@ -1198,7 +1306,7 @@ async function downloadItem(item, tab) {
     const entries = [];
     let drm = 0;
     for (let i = 0; i < total; i += 12) {
-      await courseProgressToApp(course.url, pageUrl, { reading: { done: i, total } });
+      await courseProgressToApp(course.url, pageUrl, { reading: { done: i, total } }, tab);
       const part = await inPage({ id: head.id, lectures: head.lectures.slice(i, i + 12) });
       if (!Array.isArray(part)) return fail(fjT("courseFailed", { reason: part && part.error ? `(${part.error})` : "" }));
       part.forEach((r, k) => {
@@ -1208,12 +1316,12 @@ async function downloadItem(item, tab) {
     }
     if (!entries.length) return fail(drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: "" }));
     if (drm) await notify(fjT("courseDrm", { n: drm }));
-    return sendToFetchJet({ url: course.url, referer: pageUrl, playlist: { title: head.title || clean, entries } }, "course");
+    return sendToFetchJet({ url: course.url, referer: pageUrl, playlist: { title: head.title || clean, entries }, from: tab }, "course");
   }
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.
     if (ON_IOS) {
-      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl }), tab && tab.id);
+      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl, from: tab }), tab && tab.id);
       return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     }
     try {
@@ -1229,18 +1337,18 @@ async function downloadItem(item, tab) {
     const qm = /(\d{3,4}p|4K|8K)/i.exec(q);
     const qTag = qm ? qm[1] : (/audio/i.test(q) ? "Audio" : q.split(/[\s(·]/)[0].trim());
     const fileName = `${clean}${qTag ? " [" + qTag + "]" : ""}.${item.ext || "mp4"}`;
-    let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl, openClip: !!item.openClip }, "quality");
+    let r = await sendToFetchJet({ url: item.url, formatId: item.formatId, fileName, referer: pageUrl, openClip: !!item.openClip, from: tab }, "quality");
     if (!r.ok && tab) {
       // The app's cache expired: inspect again and retry once with the same label.
-      const change = await inspectWithApp(item.url);
+      const change = await inspectWithApp(item.url, tab);
       const again = change.resolved && change.resolved.options.find(o => o.label === item.label);
-      if (again) r = await sendToFetchJet({ url: again.url, formatId: again.formatId, fileName, referer: pageUrl }, "quality");
+      if (again) r = await sendToFetchJet({ url: again.url, formatId: again.formatId, fileName, referer: pageUrl, from: tab }, "quality");
     }
     return r;
   }
   if (item.kind === "captured") {
     const fileName = `${clean}${item.quality ? " [" + item.quality + "]" : ""}${item.videoOnly ? " (video only)" : ""}.${item.ext || "mp4"}`;
-    return sendToFetchJet({ url: item.url, audioUrl: item.audioUrl || "", referer: "https://www.youtube.com/", fileName, direct: true }, "captured");
+    return sendToFetchJet({ url: item.url, audioUrl: item.audioUrl || "", referer: "https://www.youtube.com/", fileName, direct: true, from: tab }, "captured");
   }
   // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
   // (the lecture / video title), not after the playlist's hash.
@@ -1249,7 +1357,7 @@ async function downloadItem(item, tab) {
     // The app lists the playlist's renditions and the user picks one there: no quality in the name.
     fileName = `${clean}.mp4`;
   }
-  return sendToFetchJet({ url: item.url, referer: item.referer || pageUrl, fileName, direct: true }, "media");
+  return sendToFetchJet({ url: item.url, referer: item.referer || pageUrl, fileName, direct: true, from: tab }, "media");
 }
 
 /** YouTube tab: make sure the qualities are (being) fetched, whatever brought us here. */
@@ -1360,12 +1468,12 @@ if (api.contextMenus) {
     const pageUrl = (tab && tab.url) || info.pageUrl || "";
     switch (info.menuItemId) {
       case MENU.link:
-        return sendToFetchJet({ url: info.linkUrl, referer: pageUrl }, "menu");
+        return sendToFetchJet({ url: info.linkUrl, referer: pageUrl, from: tab }, "menu");
       case MENU.media:
       case MENU.image:
-        return sendToFetchJet({ url: info.srcUrl, referer: pageUrl }, "menu");
+        return sendToFetchJet({ url: info.srcUrl, referer: pageUrl, from: tab }, "menu");
       case MENU.page:
-        return sendToFetchJet({ url: pageUrl }, "menu");
+        return sendToFetchJet({ url: pageUrl, from: tab }, "menu");
       case MENU.course:
         return downloadItem({ kind: "course" }, tab);
       case MENU.playlist: {
@@ -1386,7 +1494,7 @@ if (api.commands && api.commands.onCommand) {
   api.commands.onCommand.addListener(async (command, tab) => {
     if (!tab) { try { [tab] = await api.tabs.query({ active: true, currentWindow: true }); } catch (_) {} }
     if (!tab) return;
-    if (command === "send-page") await sendToFetchJet({ url: tab.url }, "command");
+    if (command === "send-page") await sendToFetchJet({ url: tab.url, from: tab }, "command");
     else if (command === "send-all-links") await collectAndSendLinks(tab, { selectionOnly: false });
     else if (command === "toggle-capture") {
       const s = await getSettings();
@@ -1415,7 +1523,7 @@ async function collectAndSendLinks(tab, { selectionOnly = false, frameId } = {})
     await notify(selectionOnly ? fjT("notifyNoLinksSelection") : fjT("notifyNoLinksPage"));
     return { ok: false, count: 0 };
   }
-  return sendBatchToFetchJet(links, tab.url || "", await tabGroupName(tab));
+  return sendBatchToFetchJet(links, tab.url || "", await tabGroupName(tab), tab);
 }
 
 /**
@@ -1449,7 +1557,7 @@ async function sendDetectedMedia(tabId) {
   const all = await sessionGet(MEDIA_KEY);
   const items = Object.values(all[tabId] || {});
   if (items.length === 0) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
-  return sendBatchToFetchJet(items.map(i => ({ url: i.url, referer: i.pageUrl, fileName: i.name })), "", await tabGroupName(tabId));
+  return sendBatchToFetchJet(items.map(i => ({ url: i.url, referer: i.pageUrl, fileName: i.name })), "", await tabGroupName(tabId), tabId);
 }
 
 /**
@@ -1469,7 +1577,7 @@ async function resolveVideo(msg, tab) {
   const page = msg.page || (msg.src && !msg.frame ? "" : (tab && tab.url));
   if (page && /^https?:/i.test(page)) {
     if (!(await appCanInspect())) return items.length ? { items } : { error: fjT("errNotRunning"), notRunning: true };
-    const r = await inspectWithApp(ytVideoId(page) ? `https://www.youtube.com/watch?v=${ytVideoId(page)}` : page);
+    const r = await inspectWithApp(ytVideoId(page) ? `https://www.youtube.com/watch?v=${ytVideoId(page)}` : page, tab);
     if (r.resolved && r.resolved.options.length) items.unshift(...r.resolved.options);
     else if (!items.length) return { error: r.resolveError || fjT("errCantGet") };
   }
@@ -1488,16 +1596,26 @@ async function resolveTab(tabId, force = true) {
 // 4. Messages from popup / options / content scripts
 // ---------------------------------------------------------------------------
 
+/** The tab a message speaks for: the page that sent it, or the tab the popup is open on. */
+async function askingTab(request, sender) {
+  if (sender && sender.tab) return sender.tab;
+  try {
+    if (request && request.tabId != null) return await api.tabs.get(request.tabId);
+    const [tab] = await api.tabs.query({ active: true, lastFocusedWindow: true });
+    return tab || null;
+  } catch (_) { return null; }
+}
+
 api.runtime.onMessage.addListener((request, sender, sendResponse) => {
   (async () => {
     switch (request && request.action) {
       case "sendToFetchJet":
       case "sendToKortex": {
         const referer = request.referer || (sender.tab && sender.tab.url) || "";
-        return sendToFetchJet({ url: request.url, referer, fileName: request.fileName || "" }, "message");
+        return sendToFetchJet({ url: request.url, referer, fileName: request.fileName || "", from: await askingTab(request, sender) }, "message");
       }
       case "sendBatch":
-        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "", sender.tab ? await tabGroupName(sender.tab) : "");
+        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "", sender.tab ? await tabGroupName(sender.tab) : "", await askingTab(request, sender));
       case "sendDetectedMedia":
         return sendDetectedMedia(request.tabId);
       case "collectAndSendLinks": {

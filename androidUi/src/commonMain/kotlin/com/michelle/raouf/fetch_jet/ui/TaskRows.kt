@@ -306,7 +306,7 @@ fun TaskRow(
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val windowWidth = with(androidx.compose.ui.platform.LocalDensity.current) { windowInfo.containerSize.width.toDp() }
     val name = decodeUnicodeText(task.fileName.ifBlank {
-        task.url.substringBefore('?').substringAfterLast('/')
+        com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url).substringBefore('?').substringAfterLast('/')
     }).trim()
     val tag = taskKindTag(task)
     val action = rowActionFor(task)

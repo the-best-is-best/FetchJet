@@ -159,12 +159,14 @@ private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?): Li
     val clipboardUrl = a.clipboardUrl
     if (clipboardUrl != null) {
         val name = if (clipboardUrl.startsWith("magnet:", ignoreCase = true)) strings.homeMagnetLink
-        else clipboardUrl.substringBefore('?').substringAfterLast('/').ifBlank { clipboardUrl }
+        else com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(clipboardUrl).let { shown ->
+            shown.substringBefore('?').substringAfterLast('/').ifBlank { shown }
+        }
         list += AlertDto(
             kind = AlertKind.CLIPBOARD_OFFER.ordinal,
             title = strings.homeClipboardOfferTitle,
             strong = name,
-            detail = clipboardUrl,
+            detail = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(clipboardUrl),
             hint = strings.homeClipboardOfferHint,
             confirmLabel = strings.homeDownload,
             dismissLabel = strings.homeNotNow,

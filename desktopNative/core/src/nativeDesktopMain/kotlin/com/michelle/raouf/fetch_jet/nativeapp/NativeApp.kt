@@ -171,6 +171,8 @@ internal object NativeApp {
         }
         HostHooks.requestExit = { presenter.effect(EffectKind.EXIT) }
         WhenDone.onExitApp = { presenter.effect(EffectKind.EXIT) }
+        com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.dryRun = config.headless
+        com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.start(presenter.scope)
         presenter.scope.launch {
             SystemNotice.notices.collect { (title, text) ->
                 presenter.effect(EffectKind.NOTIFY, text = text, title = title)
@@ -247,6 +249,7 @@ internal object NativeApp {
         bridge?.stop()
         bridge = null
         notifier.stop()
+        com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.stop()
         presenter.stop()
         runCatching { createTorrentBackend().shutdown() }
         main.close()

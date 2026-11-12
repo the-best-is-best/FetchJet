@@ -198,6 +198,18 @@ namespace ListKeyCode {
     inline constexpr int SelectAll = 0;
     inline constexpr int Escape = 1;
     inline constexpr int Delete = 2;
+    inline constexpr int Up = 3;
+    inline constexpr int Down = 4;
+    inline constexpr int Home = 5;
+    inline constexpr int End = 6;
+    inline constexpr int PageUp = 7;
+    inline constexpr int PageDown = 8;
+    inline constexpr int Open = 9;
+    inline constexpr int Details = 10;
+    inline constexpr int Resume = 11;
+    inline constexpr int Pause = 12;
+    inline constexpr int OpenFile = 13;
+    inline constexpr int OpenFolder = 14;
 }
 
 namespace SettingKind {
@@ -213,6 +225,14 @@ namespace SettingKind {
     inline constexpr int Buttons = 9;
     inline constexpr int Progress = 10;
     inline constexpr int LimitBox = 11;
+}
+
+namespace TrackerStateCode {
+    inline constexpr int Working = 0;
+    inline constexpr int Updating = 1;
+    inline constexpr int Waiting = 2;
+    inline constexpr int Error = 3;
+    inline constexpr int Disabled = 4;
 }
 
 namespace Channel {
@@ -244,7 +264,8 @@ namespace Channel {
     inline constexpr int AddTorrent = 25;
     inline constexpr int AddTorrentFiles = 26;
     inline constexpr int AudioCompress = 27;
-    inline constexpr int Count = 28;
+    inline constexpr int TorrentDetails = 28;
+    inline constexpr int Count = 29;
 }
 
 inline EngineChoiceDto parse_EngineChoiceDto(const fj::Json &j) {
@@ -301,6 +322,10 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.checksumShown = fj::flag(j, "checksumShown");
     d.checksum = fj::text(j, "checksum");
     d.checksumRev = fj::integer(j, "checksumRev");
+    d.testLinkShown = fj::flag(j, "testLinkShown");
+    d.testLinkBusy = fj::flag(j, "testLinkBusy");
+    d.testLinkOk = fj::flag(j, "testLinkOk");
+    d.testLinkText = fj::text(j, "testLinkText");
     d.destination = fj::text(j, "destination");
     d.destinationRev = fj::integer(j, "destinationRev");
     d.quickFolders = fj::struct_model<QuickFolderDto>(j, "quickFolders", parse_QuickFolderDto);
@@ -788,6 +813,11 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.whenDoneBannerShown = fj::flag(j, "whenDoneBannerShown");
     d.whenDoneBannerText = fj::text(j, "whenDoneBannerText");
     d.detailsOpen = fj::flag(j, "detailsOpen");
+    d.focusId = fj::text(j, "focusId");
+    d.focusRev = fj::integer(j, "focusRev");
+    d.focusRow = fj::integer(j, "focusRow");
+    d.focusHeads = fj::integer(j, "focusHeads");
+    d.focusDone = fj::integer(j, "focusDone");
     return d;
 }
 
@@ -943,6 +973,49 @@ inline ShellDto parse_ShellDto(const fj::Json &j) {
     return d;
 }
 
+inline TorrentTrackerDto parse_TorrentTrackerDto(const fj::Json &j) {
+    TorrentTrackerDto d{};
+    d.name = fj::text(j, "name");
+    d.state = fj::integer(j, "state");
+    d.stateLabel = fj::text(j, "stateLabel");
+    d.tone = fj::integer(j, "tone");
+    d.message = fj::text(j, "message");
+    return d;
+}
+
+inline TorrentPeerDto parse_TorrentPeerDto(const fj::Json &j) {
+    TorrentPeerDto d{};
+    d.address = fj::text(j, "address");
+    d.client = fj::text(j, "client");
+    d.down = fj::text(j, "down");
+    d.up = fj::text(j, "up");
+    d.percent = fj::text(j, "percent");
+    d.seed = fj::flag(j, "seed");
+    return d;
+}
+
+inline TorrentDetailsDto parse_TorrentDetailsDto(const fj::Json &j) {
+    TorrentDetailsDto d{};
+    d.shown = fj::flag(j, "shown");
+    d.id = fj::text(j, "id");
+    d.supported = fj::flag(j, "supported");
+    d.loading = fj::flag(j, "loading");
+    d.ratio = fj::text(j, "ratio");
+    d.uploaded = fj::text(j, "uploaded");
+    d.pieces = fj::text(j, "pieces");
+    d.pieceSize = fj::text(j, "pieceSize");
+    d.piecesFraction = fj::real(j, "piecesFraction");
+    d.trackersTitle = fj::text(j, "trackersTitle");
+    d.trackers = fj::struct_model<TorrentTrackerDto>(j, "trackers", parse_TorrentTrackerDto);
+    d.trackerRev = fj::integer(j, "trackerRev");
+    d.trackerError = fj::text(j, "trackerError");
+    d.peersTitle = fj::text(j, "peersTitle");
+    d.peers = fj::struct_model<TorrentPeerDto>(j, "peers", parse_TorrentPeerDto);
+    d.firstLast = fj::flag(j, "firstLast");
+    d.magnet = fj::text(j, "magnet");
+    return d;
+}
+
 inline UpdateDialogDto parse_UpdateDialogDto(const fj::Json &j) {
     UpdateDialogDto d{};
     d.open = fj::flag(j, "open");
@@ -1023,6 +1096,7 @@ inline bool apply_channel(const Core &core, Models &models, int channel, const f
         case 25: core.set_addTorrent(parse_AddTorrentDto(j)); return true;
         case 26: fj::apply_rows<TorrentFileRowDto>(*models.addTorrentFiles, j, parse_TorrentFileRowDto); return true;
         case 27: core.set_audioCompress(parse_AudioCompressDto(j)); return true;
+        case 28: core.set_torrentDetails(parse_TorrentDetailsDto(j)); return true;
         default: return false;
     }
 }
@@ -1126,6 +1200,85 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_extBlockedLabel(next());
     tr.set_extRevoke(next());
     tr.set_extUnblock(next());
+    tr.set_extPairedLabel(next());
+    tr.set_extUnpair(next());
+    tr.set_torrentDetailsTitle(next());
+    tr.set_torrentDetailsLoading(next());
+    tr.set_torrentDetailsUnsupported(next());
+    tr.set_torrentDetailsRatio(next());
+    tr.set_torrentDetailsUploaded(next());
+    tr.set_torrentDetailsPieces(next());
+    tr.set_torrentDetailsPieceSize(next());
+    tr.set_torrentDetailsTrackers(next());
+    tr.set_torrentDetailsNoTrackers(next());
+    tr.set_torrentDetailsTrackerHint(next());
+    tr.set_torrentDetailsAddTracker(next());
+    tr.set_torrentDetailsTrackerInvalid(next());
+    tr.set_torrentDetailsTrackerRefused(next());
+    tr.set_torrentDetailsPeers(next());
+    tr.set_torrentDetailsNoPeers(next());
+    tr.set_torrentDetailsFirstLast(next());
+    tr.set_torrentDetailsRecheck(next());
+    tr.set_torrentDetailsCopyMagnet(next());
+    tr.set_torrentDetailsStateWorking(next());
+    tr.set_torrentDetailsStateUpdating(next());
+    tr.set_torrentDetailsStateWaiting(next());
+    tr.set_torrentDetailsStateError(next());
+    tr.set_torrentDetailsStateDisabled(next());
+    tr.set_torrentStopRatioTitle(next());
+    tr.set_torrentStopRatioHint(next());
+    tr.set_speedLimitWhileInUseTitle(next());
+    tr.set_speedLimitWhileInUseFooter(next());
+    tr.set_wakeForScheduleTitle(next());
+    tr.set_wakeForScheduleHint(next());
+    tr.set_shortcutsTitle(next());
+    tr.set_shortcutMove(next());
+    tr.set_shortcutExtend(next());
+    tr.set_shortcutFirstLast(next());
+    tr.set_shortcutPage(next());
+    tr.set_shortcutOpen(next());
+    tr.set_shortcutDetails(next());
+    tr.set_shortcutResume(next());
+    tr.set_shortcutPause(next());
+    tr.set_shortcutOpenFile(next());
+    tr.set_shortcutOpenFolder(next());
+    tr.set_shortcutAdd(next());
+    tr.set_shortcutSearch(next());
+    tr.set_shortcutSelectAll(next());
+    tr.set_shortcutDelete(next());
+    tr.set_shortcutClickSelect(next());
+    tr.set_shortcutClearSelection(next());
+    tr.set_shortcutCancelSelection(next());
+    tr.set_shortcutHelp(next());
+    tr.set_testLinkButton(next());
+    tr.set_testLinkOk(next());
+    tr.set_testLinkResumable(next());
+    tr.set_testLinkNotResumable(next());
+    tr.set_testLinkSizeUnknown(next());
+    tr.set_testLinkServerName(next());
+    tr.set_testLinkRefused(next());
+    tr.set_testLinkNotFound(next());
+    tr.set_testLinkLoginNeeded(next());
+    tr.set_testLinkServerBusy(next());
+    tr.set_testLinkServerError(next());
+    tr.set_testLinkHttpError(next());
+    tr.set_testLinkWebPage(next());
+    tr.set_testLinkRobot(next());
+    tr.set_testLinkTimeout(next());
+    tr.set_testLinkNoConnection(next());
+    tr.set_testLinkSecureFailed(next());
+    tr.set_testLinkRedirects(next());
+    tr.set_testLinkInvalid(next());
+    tr.set_testLinkFolder(next());
+    tr.set_testLinkFtpLogin(next());
+    tr.set_testLinkFtpProxy(next());
+    tr.set_testLinkFtpNoTool(next());
+    tr.set_testLinkFtpError(next());
+    tr.set_stepCheckingFile(next());
+    tr.set_stepCheckingArchive(next());
+    tr.set_stepRefetchingDamaged(next());
+    tr.set_stepArchiveMayBeDamaged(next());
+    tr.set_torrentProxyHint(next());
     tr.set_homeBrowserFallbackText(next());
     tr.set_homeDownloadInBrowser(next());
     tr.set_homeNoDiscard(next());
@@ -1735,7 +1888,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_removeChecked([send]() { fj::ActionWriter w("RemoveChecked"); send(w.finish()); });
     act.on_exportChecked([send]() { fj::ActionWriter w("ExportChecked"); send(w.finish()); });
     act.on_toggleGroup([send](slint::SharedString key) { fj::ActionWriter w("ToggleGroup"); w.add("key", key); send(w.finish()); });
-    act.on_listKey([send](int key) { fj::ActionWriter w("ListKey"); w.add("key", key); send(w.finish()); });
+    act.on_listKey([send](int key, bool shift, int rows) { fj::ActionWriter w("ListKey"); w.add("key", key); w.add("shift", shift); w.add("rows", rows); send(w.finish()); });
     act.on_closeDetails([send]() { fj::ActionWriter w("CloseDetails"); send(w.finish()); });
     act.on_cancelWhenDone([send]() { fj::ActionWriter w("CancelWhenDone"); send(w.finish()); });
     act.on_setWhenDone([send](int index) { fj::ActionWriter w("SetWhenDone"); w.add("index", index); send(w.finish()); });
@@ -1765,6 +1918,10 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
     act.on_toggleDetailFile([send](int index, bool selected) { fj::ActionWriter w("ToggleDetailFile"); w.add("index", index); w.add("selected", selected); send(w.finish()); });
     act.on_cycleDetailFilePriority([send](int index) { fj::ActionWriter w("CycleDetailFilePriority"); w.add("index", index); send(w.finish()); });
+    act.on_torrentAddTracker([send](slint::SharedString url) { fj::ActionWriter w("TorrentAddTracker"); w.add("url", url); send(w.finish()); });
+    act.on_torrentRecheck([send]() { fj::ActionWriter w("TorrentRecheck"); send(w.finish()); });
+    act.on_torrentSetFirstLast([send](bool on) { fj::ActionWriter w("TorrentSetFirstLast"); w.add("on", on); send(w.finish()); });
+    act.on_torrentCopyMagnet([send]() { fj::ActionWriter w("TorrentCopyMagnet"); send(w.finish()); });
     act.on_copyText([send](slint::SharedString text) { fj::ActionWriter w("CopyText"); w.add("text", text); send(w.finish()); });
     act.on_alertConfirm([send](int kind, bool checked) { fj::ActionWriter w("AlertConfirm"); w.add("kind", kind); w.add("checked", checked); send(w.finish()); });
     act.on_alertDismiss([send](int kind, bool fromScrim) { fj::ActionWriter w("AlertDismiss"); w.add("kind", kind); w.add("fromScrim", fromScrim); send(w.finish()); });
@@ -1815,6 +1972,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_setConnections([send](int count) { fj::ActionWriter w("SetConnections"); w.add("count", count); send(w.finish()); });
     act.on_resetFileName([send]() { fj::ActionWriter w("ResetFileName"); send(w.finish()); });
     act.on_setChecksum([send](slint::SharedString value) { fj::ActionWriter w("SetChecksum"); w.add("value", value); send(w.finish()); });
+    act.on_testLink([send]() { fj::ActionWriter w("TestLink"); send(w.finish()); });
     act.on_pickDestination([send]() { fj::ActionWriter w("PickDestination"); send(w.finish()); });
     act.on_setQuickFolder([send](slint::SharedString path) { fj::ActionWriter w("SetQuickFolder"); w.add("path", path); send(w.finish()); });
     act.on_setLeech([send](bool on) { fj::ActionWriter w("SetLeech"); w.add("on", on); send(w.finish()); });

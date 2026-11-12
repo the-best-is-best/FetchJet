@@ -82,6 +82,10 @@ private fun exact(s: AppLocalization, text: String): String? = when (text.trim()
     "connecting to peers" -> s.stepConnectingToPeers
     "checking files" -> s.stepCheckingFiles
     "checking resume data" -> s.stepCheckingResumeData
+    "checking the file" -> s.stepCheckingFile
+    "checking the archive" -> s.stepCheckingArchive
+    "fetching the damaged part again" -> s.stepRefetchingDamaged
+    "the archive may be damaged" -> s.stepArchiveMayBeDamaged
     "downloading" -> s.stepDownloading
     "finished" -> s.stepFinished
     "connecting" -> s.stepConnecting

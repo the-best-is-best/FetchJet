@@ -1,0 +1,104 @@
+import { Theme, Dir } from "../theme.slint";
+import { T } from "../widgets/Base.slint";
+import { Screen } from "../widgets/Menu.slint";
+import { Tr } from "../generated/tr.slint";
+
+struct ShortcutLine {
+    keys: string,
+    text: string,
+}
+
+export component ShortcutsDialog inherits PopupWindow {
+    in property <length> host-width;
+    private property <[ShortcutLine]> lines: [
+        { keys: "↑ / ↓", text: Tr.shortcutMove },
+        { keys: "Shift + ↑ / ↓", text: Tr.shortcutExtend },
+        { keys: "Home / End", text: Tr.shortcutFirstLast },
+        { keys: "PageUp / PageDown", text: Tr.shortcutPage },
+        { keys: "Enter", text: Tr.shortcutOpen },
+        { keys: "Alt + Enter", text: Tr.shortcutDetails },
+        { keys: "Ctrl + R", text: Tr.resume },
+        { keys: "Ctrl + P", text: Tr.pause },
+        { keys: "Ctrl + O", text: Tr.detailsOpenFile },
+        { keys: "Ctrl + E", text: Tr.detailsOpenFolder },
+        { keys: "Ctrl + N", text: Tr.homeAddDownload },
+        { keys: "Ctrl + F", text: Tr.homeSearchDownloadsPlaceholder },
+        { keys: "Ctrl + A", text: Tr.selectAll },
+        { keys: "Ctrl / Shift + click", text: Tr.shortcutClickSelect },
+        { keys: "Delete", text: Tr.delete },
+        { keys: "Esc", text: Tr.shortcutClearSelection },
+        { keys: "F1", text: Tr.shortcutsTitle }
+    ];
+    private property <length> line-height: 28px;
+    private property <length> keys-width: 170px;
+    private property <length> tall: min(root.lines.length * root.line-height + 64px + 20px, max(200px, Screen.height - 48px));
+    x: (root.host-width - self.width) / 2;
+    y: (Screen.height - root.tall) / 2;
+    width: max(280px, min(560px, root.host-width - 32px));
+    height: root.tall;
+    close-policy: PopupClosePolicy.close-on-click-outside;
+    forward-focus: keys;
+    Rectangle {
+        background: Theme.surface-container-high;
+        border-radius: 18px;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape || e.text == Key.F1 || e.text == Key.Return {
+                root.close();
+                return accept;
+            }
+            reject
+        }
+        T {
+            x: 24px;
+            y: 20px;
+            width: parent.width - 48px;
+            text: Tr.shortcutsTitle;
+            line: 28px;
+            tracking: 0px;
+            font-size: 18px;
+            font-weight: 700;
+            overflow: elide;
+        }
+        Flickable {
+            x: 24px;
+            y: 64px;
+            width: parent.width - 48px;
+            height: parent.height - 64px - 20px;
+            content-width: self.width;
+            content-height: root.lines.length * root.line-height;
+            for entry[i] in root.lines: Rectangle {
+                x: 0;
+                y: i * root.line-height;
+                width: parent.width;
+                height: root.line-height;
+                Text {
+                    x: Dir.rtl ? parent.width - root.keys-width : 0;
+                    width: root.keys-width;
+                    text: entry.keys;
+                    color: Theme.primary;
+                    font-family: Theme.font;
+                    font-size: 12px;
+                    font-weight: 700;
+                    horizontal-alignment: Dir.start;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                T {
+                    x: Dir.rtl ? 0 : root.keys-width + 12px;
+                    y: (parent.height - self.height) / 2;
+                    width: parent.width - root.keys-width - 12px;
+                    text: entry.text;
+                    line: 20px;
+                    tracking: 0.2px;
+                    font-size: 13px;
+                    color: Theme.on-surface;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+}

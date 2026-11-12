@@ -69,6 +69,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.network)
+            implementation(libs.ktor.network.tls)
             implementation(libs.okio)
             api(project(":kmpLocalization"))
         }
@@ -107,9 +109,6 @@ kotlin {
         if (nativeDesktop) {
             val nativeDesktopMain by creating {
                 dependsOn(getByName("nativeMain"))
-                dependencies {
-                    implementation(libs.ktor.network)
-                }
             }
             getByName("mingwX64Main").dependsOn(nativeDesktopMain)
             getByName("linuxX64Main").dependsOn(nativeDesktopMain)

@@ -5,6 +5,7 @@ package com.michelle.raouf.fetch_jet.platform.desktop
 import com.michelle.raouf.fetch_jet.platform.linux.LinuxCrypto
 import com.michelle.raouf.fetch_jet.platform.linux.LinuxCurlHttp
 import com.michelle.raouf.fetch_jet.platform.linux.LinuxDesktopTools
+import com.michelle.raouf.fetch_jet.platform.linux.LinuxUserIdle
 import com.michelle.raouf.fetch_jet.platform.linux.linuxCwd
 import com.michelle.raouf.fetch_jet.platform.linux.linuxExecutablePath
 import com.michelle.raouf.fetch_jet.platform.linux.linuxGetEnv
@@ -71,6 +72,8 @@ actual object DesktopOs {
         fun two(value: Int) = value.toString().padStart(2, '0')
         return "${now.year}-${two(now.month)}-${two(now.day)} ${two(now.hour)}:${two(now.minute)}:${two(now.second)}"
     }
+
+    actual fun userIdleMs(): Long? = LinuxUserIdle.idleMs()
 
     actual fun clipboardText(): String? = LinuxDesktopTools.clipboardText()
 
@@ -259,7 +262,10 @@ actual object DesktopOs {
 
     @OptIn(InternalAPI::class)
     actual fun registerHttpEngine() {
-        if (registered.compareAndSet(0, 1) && engines.none { it === LinuxCurlHttp }) engines.append(LinuxCurlHttp)
+        if (registered.compareAndSet(0, 1)) {
+            if (engines.none { it === LinuxCurlHttp }) engines.append(LinuxCurlHttp)
+            LinuxUserIdle.warmUp()
+        }
     }
 
     actual fun deleteRecursively(path: String): Boolean = try {

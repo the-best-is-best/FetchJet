@@ -20,7 +20,8 @@ fun normalizeLocalTorrentPath(raw: String): String {
 fun isLocalTorrentPath(s: String): Boolean {
     val p = normalizeLocalTorrentPath(s).lowercase()
     return p.endsWith(".torrent") && !p.startsWith("http://") && !p.startsWith("https://") &&
-            !p.startsWith("magnet:")
+            !p.startsWith("magnet:") &&
+            !com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(p)
 }
 
 private fun percentDecodePath(s: String): String {

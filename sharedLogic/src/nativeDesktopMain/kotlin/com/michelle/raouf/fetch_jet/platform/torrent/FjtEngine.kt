@@ -256,6 +256,39 @@ class FjtEngine(val library: FjtLibrary, private val idleCloseMs: Long = default
 
     fun debugText(taskId: String): String? = call { api, s -> api.debugText(s, taskId) }
 
+    val hasDetails: Boolean get() = library.api?.hasDetails == true
+
+    fun trackers(taskId: String): List<FjtTracker>? = call { api, s -> api.trackers(s, taskId) }
+
+    fun peers(taskId: String): List<FjtPeer>? = call { api, s -> api.peers(s, taskId) }
+
+    fun magnet(taskId: String): String? = call { api, s -> api.magnet(s, taskId) }
+
+    fun pieces(taskId: String): FjtPieces? = call { api, s -> api.pieces(s, taskId) }
+
+    fun addTracker(taskId: String, url: String): Boolean = call { api, s -> api.addTracker(s, taskId, url.trim()) } == FJT_OK
+
+    fun recheck(taskId: String): Boolean = call { api, s -> api.recheck(s, taskId) } == FJT_OK
+
+    fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean = call { api, s -> api.setFirstLast(s, taskId, on) } == FJT_OK
+
+    fun details(taskId: String): FjtDetails? {
+        if (!hasDetails) return null
+        val status = status(taskId) ?: return null
+        val pieces = pieces(taskId)
+        return FjtDetails(
+            trackers = trackers(taskId).orEmpty(),
+            peers = peers(taskId).orEmpty(),
+            uploadedBytes = status.totalUpload,
+            downloadedBytes = status.totalWantedDone,
+            pieceCount = pieces?.total ?: 0,
+            piecesDone = pieces?.have ?: 0,
+            pieceLength = pieces?.pieceLength ?: 0L,
+            magnet = magnet(taskId).orEmpty(),
+            firstLast = pieces?.firstLast == true,
+        )
+    }
+
     fun saveResume(taskId: String, timeoutMs: Int = 5_000): ByteArray? = call { api, s -> api.saveResume(s, taskId, timeoutMs) }
 
     fun sessionInfo(): LongArray? = call { api, s -> api.sessionInfo(s) }

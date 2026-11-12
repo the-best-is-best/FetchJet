@@ -121,7 +121,9 @@ fun DuplicateDownloadDialog(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
-                            text = task.fileName.ifBlank { task.url },
+                            text = task.fileName.ifBlank {
+                                com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url)
+                            },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,

@@ -160,6 +160,21 @@ function renderSwitches() {
     : fjT("popupHoldHint", { key: key[0].toUpperCase() + key.slice(1) });
 }
 
+function tabSite() {
+  try { return currentTab && isWebPage(currentTab.url) ? new URL(currentTab.url).hostname : ""; } catch (_) { return ""; }
+}
+
+function renderSite() {
+  const site = tabSite();
+  $("siteOffRow").style.display = site && settings && (settings.hiddenSites || []).includes(site) ? "" : "none";
+}
+
+async function turnSiteOn() {
+  const site = tabSite();
+  settings = await send({ action: "saveSettings", settings: { hiddenSites: (settings.hiddenSites || []).filter(h => h !== site) } });
+  renderSite();
+}
+
 async function toggle(key) {
   settings = await send({ action: "saveSettings", settings: { [key]: !settings[key] } });
   renderSwitches();
@@ -201,6 +216,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("allLinksBtn").disabled = true;
   }
   renderTexts();
+  renderSite();
   loadMedia();
 
   $("status").addEventListener("click", () => online ? checkStatus() : launch());
@@ -236,6 +252,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("urlInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sendInputBtn").click(); });
   $("enabledSwitch").addEventListener("click", () => toggle("enabled"));
   $("mediaSwitch").addEventListener("click", () => toggle("captureMedia"));
+  $("siteOnBtn").addEventListener("click", turnSiteOn);
+  api.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.settings && changes.settings.newValue) { settings = { ...settings, ...changes.settings.newValue }; renderSwitches(); renderSite(); }
+  });
   $("optionsLink").addEventListener("click", () => api.runtime.openOptionsPage());
   $("grantBtn").addEventListener("click", async () => {
     try {

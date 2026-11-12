@@ -10,7 +10,8 @@ enum TaskUi {
     static func displayName(_ task: DownloadTask, _ host: IosAppHost) -> String {
         var raw = task.fileName
         if raw.trimmingCharacters(in: .whitespaces).isEmpty {
-            let noQuery = task.url.components(separatedBy: "?").first ?? task.url
+            let shownUrl = host.displayUrl(url: task.url)
+            let noQuery = shownUrl.components(separatedBy: "?").first ?? shownUrl
             raw = noQuery.components(separatedBy: "/").last ?? noQuery
         }
         return host.decodeUnicodeText(input: raw).trimmingCharacters(in: .whitespacesAndNewlines)

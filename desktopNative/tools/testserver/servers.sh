@@ -23,6 +23,10 @@ case "${1:-status}" in
     (python "$HERE/server.py" --port 18443 --cert "$RUN/tls-cert.pem" --key "$RUN/tls-key.pem" --log "$RUN/https.log" --pidfile "$RUN/https.pid" > /dev/null 2>&1 &)
     (python "$HERE/proxy.py" --http-port 18081 --socks-port 11081 --user fj --password secret --map files.fjtest.example=127.0.0.1 --log "$RUN/proxy-login.log" --pidfile "$RUN/proxy-login.pid" > /dev/null 2>&1 &)
     (python "$HERE/proxy.py" --http-port 18082 --socks-port 11082 --map files.fjtest.example=127.0.0.1 --log "$RUN/proxy-open.log" --pidfile "$RUN/proxy-open.pid" > /dev/null 2>&1 &)
+    (python "$HERE/ftp.py" --port 2121 --anonymous --log "$RUN/ftp.log" --pidfile "$RUN/ftp.pid" > /dev/null 2>&1 &)
+    (python "$HERE/ftp.py" --port 2122 --implicit-port 2990 --cert "$RUN/tls-cert.pem" --key "$RUN/tls-key.pem" --log "$RUN/ftps.log" --pidfile "$RUN/ftps.pid" > /dev/null 2>&1 &)
+    (python "$HERE/ftp.py" --port 2123 --no-rest --no-epsv --log "$RUN/ftp-norest.log" --pidfile "$RUN/ftp-norest.pid" > /dev/null 2>&1 &)
+    (python "$HERE/ftp.py" --port 2124 --maxconn 2 --log "$RUN/ftp-maxconn.log" --pidfile "$RUN/ftp-maxconn.pid" > /dev/null 2>&1 &)
     sleep 2
     bash "$HERE/servers.sh" status
     ;;

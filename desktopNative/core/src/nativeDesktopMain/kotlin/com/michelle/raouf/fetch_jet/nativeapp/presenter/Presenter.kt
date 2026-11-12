@@ -57,6 +57,8 @@ internal data class LocalUi(
     val selectedTaskId: String? = null,
     val checkedIds: Set<String> = emptySet(),
     val anchorId: String? = null,
+    val focusId: String? = null,
+    val focusRev: Int = 0,
     val collapsedGroups: Set<String> = emptySet(),
     val systemDark: Boolean = false,
     val missingFileTaskId: String? = null,
@@ -117,13 +119,18 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         Channels.AUDIO_COMPRESS.id, Channels.AUDIO_COMPRESS.name,
         com.michelle.raouf.fetch_jet.nativeapp.dto.AudioCompressDto.serializer(), notifier
     )
+    val torrentDetails = StructChannel(
+        Channels.TORRENT_DETAILS.id, Channels.TORRENT_DETAILS.name,
+        com.michelle.raouf.fetch_jet.nativeapp.dto.TorrentDetailsDto.serializer(), notifier
+    )
+    val torrentLocal = MutableStateFlow(TorrentLocal())
     val debugSections = MutableStateFlow(false)
     val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
 
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
         addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, updateDialog, addLinks, deviceSheet,
-        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress,
+        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails,
     )
 
     @kotlin.concurrent.Volatile
@@ -137,6 +144,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
             vm.uiEffect.collect { effect ->
                 when (effect) {
                     is DashboardUiEffect.ShowToast -> showToast(effect.text)
+                    is DashboardUiEffect.CopyText -> com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs.setClipboardText(effect.text)
                 }
             }
         }
@@ -175,6 +183,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         startDevices()
         startAddTorrent()
         startAudioCompress()
+        startTorrentDetails()
         startMainDownloaderSetup()
     }
 

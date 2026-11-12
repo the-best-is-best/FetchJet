@@ -63,6 +63,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.RowCheck -> local.update {
             it.copy(
                 anchorId = action.id,
+                focusId = null,
                 checkedIds = if (action.checked) it.checkedIds + action.id else it.checkedIds - action.id,
             )
         }
@@ -93,7 +94,7 @@ internal fun Presenter.dispatch(action: UiAction) {
             )
         }
 
-        is UiAction.ListKey -> listKey(action.key)
+        is UiAction.ListKey -> listKey(action.key, action.shift, action.rows)
         UiAction.CloseDetails -> local.update { it.copy(selectedTaskId = null) }
         UiAction.CancelWhenDone -> WhenDone.cancel()
         is UiAction.SetWhenDone -> WhenDoneAction.entries.getOrNull(action.index)?.let { WhenDone.choose(it) }
@@ -148,6 +149,10 @@ internal fun Presenter.dispatch(action: UiAction) {
             vm.onEvent(DashboardUiEvent.OnTaskTorrentFilePriorityChanged(task.id, action.index, next))
         }
 
+        is UiAction.TorrentAddTracker -> torrentAddTracker(action.url)
+        UiAction.TorrentRecheck -> torrentRecheck()
+        is UiAction.TorrentSetFirstLast -> torrentSetFirstLast(action.on)
+        UiAction.TorrentCopyMagnet -> torrentCopyMagnet()
         is UiAction.CopyText -> scope.launch(Dispatchers.IO) { DesktopOs.setClipboardText(action.text) }
         is UiAction.AlertConfirm -> alertConfirm(action.kind, action.checked)
         is UiAction.AlertDismiss -> alertDismiss(action.kind, action.fromScrim)
@@ -221,6 +226,7 @@ internal fun Presenter.dispatch(action: UiAction) {
 
         is UiAction.SetLeech -> vm.onEvent(DashboardUiEvent.OnDisableTorrentUploadToggled(action.on))
         UiAction.RetryInspect -> addRetryInspect()
+        UiAction.TestLink -> vm.onEvent(DashboardUiEvent.OnTestLinkClicked)
         UiAction.InspectMedia -> vm.onEvent(DashboardUiEvent.OnInspectMediaClicked)
         UiAction.DownloadTools -> vm.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked)
         is UiAction.ToggleQuality -> vm.onEvent(DashboardUiEvent.OnMediaQualitySelectionToggled(action.index, action.selected))
@@ -274,7 +280,7 @@ private fun Presenter.rowClick(id: String, control: Boolean, shift: Boolean) {
     val ui = local.value
     when {
         control -> local.update {
-            it.copy(anchorId = id, checkedIds = if (id in it.checkedIds) it.checkedIds - id else it.checkedIds + id)
+            it.copy(anchorId = id, focusId = null, checkedIds = if (id in it.checkedIds) it.checkedIds - id else it.checkedIds + id)
         }
 
         shift -> {
@@ -283,15 +289,15 @@ private fun Presenter.rowClick(id: String, control: Boolean, shift: Boolean) {
             val to = ids.indexOf(id)
             if (to >= 0) {
                 val range = ids.subList(minOf(from, to), maxOf(from, to) + 1)
-                local.update { it.copy(checkedIds = it.checkedIds + range) }
+                local.update { it.copy(focusId = null, checkedIds = it.checkedIds + range) }
             }
         }
 
         ui.checkedIds.isNotEmpty() -> local.update {
-            it.copy(anchorId = id, checkedIds = if (id in it.checkedIds) it.checkedIds - id else it.checkedIds + id)
+            it.copy(anchorId = id, focusId = null, checkedIds = if (id in it.checkedIds) it.checkedIds - id else it.checkedIds + id)
         }
 
-        else -> local.update { it.copy(anchorId = id, selectedTaskId = id) }
+        else -> local.update { it.copy(anchorId = id, focusId = null, selectedTaskId = id) }
     }
 }
 
@@ -324,8 +330,21 @@ private fun Presenter.removeChecked() {
     if (ids.isNotEmpty()) vm.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(ids))
 }
 
-private fun Presenter.listKey(key: Int) {
+private fun Presenter.listKey(key: Int, shift: Boolean, rows: Int) {
+    val page = rows.coerceAtLeast(1)
     when (ListKeyCode.entries.getOrNull(key)) {
+        ListKeyCode.UP -> moveFocus(shift) { current, last -> if (current < 0) last else current - 1 }
+        ListKeyCode.DOWN -> moveFocus(shift) { current, _ -> if (current < 0) 0 else current + 1 }
+        ListKeyCode.HOME -> moveFocus(shift) { _, _ -> 0 }
+        ListKeyCode.END -> moveFocus(shift) { _, last -> last }
+        ListKeyCode.PAGE_UP -> moveFocus(shift) { current, last -> if (current < 0) last else current - page }
+        ListKeyCode.PAGE_DOWN -> moveFocus(shift) { current, _ -> if (current < 0) 0 else current + page }
+        ListKeyCode.OPEN -> keyOpen()
+        ListKeyCode.DETAILS -> keyTarget()?.let { task -> local.update { it.copy(selectedTaskId = task.id) } }
+        ListKeyCode.RESUME -> keyResume()
+        ListKeyCode.PAUSE -> keyPause()
+        ListKeyCode.OPEN_FILE -> keyOpenFile()
+        ListKeyCode.OPEN_FOLDER -> keyOpenFolder()
         ListKeyCode.SELECT_ALL -> {
             val ids = shownOrder.toSet()
             local.update { it.copy(checkedIds = ids) }
@@ -335,7 +354,7 @@ private fun Presenter.listKey(key: Int) {
         ListKeyCode.DELETE -> {
             val ui = local.value
             if (ui.checkedIds.isNotEmpty()) removeChecked()
-            else ui.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnRemoveClicked(it)) }
+            else keyTarget()?.let { vm.onEvent(DashboardUiEvent.OnRemoveClicked(it.id)) }
         }
 
         null -> Unit

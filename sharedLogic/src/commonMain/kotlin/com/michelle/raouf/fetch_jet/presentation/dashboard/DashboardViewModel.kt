@@ -56,6 +56,12 @@ class DashboardViewModel(
 
     val uiEffect: SharedFlow<DashboardUiEffect> = _uiEffect.asSharedFlow()
 
+    @kotlin.concurrent.Volatile
+    internal var defaultDestinationPath: String = queueRepository.pathResolver.getDownloadsDirectory()
+
+    @kotlin.concurrent.Volatile
+    internal var addFolderPickedFor = ""
+
     internal var pendingExternalUrl: String? = null
     internal var pendingExternalHeaders: Map<String, String> = emptyMap()
     internal var pendingExternalFileName: String? = null
@@ -88,6 +94,7 @@ class DashboardViewModel(
     internal val detectLinkTypeUseCase =
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
+    internal var testLinkJob: Job? = null
 
     /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
     internal var pendingDeviceSend: com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest? =
@@ -109,6 +116,7 @@ class DashboardViewModel(
 
         val savedSettings = settingsRepository.loadSettings()
         com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
+        defaultDestinationPath = savedSettings.destinationPath
 
         _uiState.update {
             it.copy(
@@ -135,6 +143,7 @@ class DashboardViewModel(
         refreshToolStatus()
         autoUpdateTools()
         observeAudioCopies()
+        observeAddFolder()
 
         if (savedSettings.globalDownloadSpeedLimitBytes > 0L) {
 
@@ -180,7 +189,7 @@ class DashboardViewModel(
 
             com.michelle.raouf.fetch_jet.core.settings.AppSettings(
 
-                destinationPath = s.destinationPath,
+                destinationPath = defaultDestinationPath,
 
                 disableTorrentUpload = s.disableTorrentUpload,
 
@@ -409,7 +418,9 @@ class DashboardViewModel(
                 _uiEffect.emit(
                     DashboardUiEffect.ShowToast(
                         LocalizationManager.Strings.sysStartedDownload(
-                            task.fileName.ifBlank { task.url })
+                            task.fileName.ifBlank {
+                                com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url)
+                            })
                     )
                 )
                 _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
@@ -446,10 +457,10 @@ class DashboardViewModel(
             // Like a playlist: several files from one page go into a folder named after the page,
             // so they do not mix with everything else in the downloads folder.
             val files = if (review) 0 else requests.count {
-                it.url.startsWith(
+                (it.url.startsWith(
                     "http",
                     true
-                ) && engineForDirectFile(it.url) != EngineType.MEDIA_STREAM
+                ) || com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it.url)) && engineForDirectFile(it.url) != EngineType.MEDIA_STREAM
             }
             val group = requests.firstNotNullOfOrNull { it.group.ifBlank { null } }
                 ?: requests.firstNotNullOfOrNull { r ->
@@ -471,7 +482,8 @@ class DashboardViewModel(
                 if (!(req.url.startsWith("http://", true) || req.url.startsWith(
                         "https://",
                         true
-                    ) || req.url.startsWith("magnet:", true))
+                    ) || req.url.startsWith("magnet:", true) ||
+                            com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(req.url))
                 ) {
                     skipped++; continue
                 }
@@ -605,7 +617,7 @@ class DashboardViewModel(
     fun onEvent(event: DashboardUiEvent) {
 
         when (event) {
-            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnAudioConvertFormatSelected, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnSubtitleToggled, is DashboardUiEvent.OnToggleEmbedSubtitles, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
+            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, DashboardUiEvent.OnTestLinkClicked, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnAudioConvertFormatSelected, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnSubtitleToggled, is DashboardUiEvent.OnToggleEmbedSubtitles, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
                 event
             )
 
@@ -633,6 +645,14 @@ class DashboardViewModel(
             DashboardUiEvent.OnAudioCompressStartClicked,
             is DashboardUiEvent.OnAudioCompressDeleteCopy,
             DashboardUiEvent.OnDismissAudioCompress -> handleAudioCompressEvent(event)
+
+            is DashboardUiEvent.OnTorrentDetailsOpened,
+            DashboardUiEvent.OnTorrentDetailsClosed,
+            is DashboardUiEvent.OnTorrentAddTracker,
+            is DashboardUiEvent.OnTorrentRecheck,
+            is DashboardUiEvent.OnTorrentFirstLastChanged,
+            is DashboardUiEvent.OnTorrentCopyMagnet,
+            is DashboardUiEvent.OnTorrentStopRatioChanged -> handleTorrentDetailsEvent(event)
         }
 
     }
@@ -640,6 +660,7 @@ class DashboardViewModel(
     internal fun inspectTorrent() {
 
         val url = _uiState.value.inputUrl
+        if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return
 
         if (url.isBlank()) {
 
@@ -700,6 +721,7 @@ class DashboardViewModel(
     internal fun inspectMedia() {
 
         val url = _uiState.value.inputUrl
+        if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return
 
         if (url.isBlank()) {
 
@@ -911,6 +933,8 @@ class DashboardViewModel(
             )
             return queueRepository.pathResolver.sanitizeFileName("$mediaTitle.$selectedExt")
         }
+        val ftpName = com.michelle.raouf.fetch_jet.feature.http_downloader.ftpFileName(url)
+        if (ftpName.isNotBlank()) return queueRepository.pathResolver.sanitizeFileName(ftpName)
         val cleanUrl = url.substringBefore('?')
         val nameFromUrl = cleanUrl.substringAfterLast('/')
         // A pasted playlist link: its name is a hash ("aa004d...m3u8"), and the video is saved

@@ -92,6 +92,7 @@ class IosAppHost {
     fun formatSpeed(bytesPerSec: Long, unit: String): String =
         com.michelle.raouf.fetch_jet.ios.formatSpeed(bytesPerSec, unit)
     fun decodeUnicodeText(input: String): String = com.michelle.raouf.fetch_jet.ios.decodeUnicodeText(input)
+    fun displayUrl(url: String): String = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(url)
     fun formatSecondsToHhMm(totalSeconds: Long): String =
         com.michelle.raouf.fetch_jet.ios.formatSecondsToHhMm(totalSeconds)
     fun parseHhMmToSeconds(hhMm: String): Long = com.michelle.raouf.fetch_jet.ios.parseHhMmToSeconds(hhMm)

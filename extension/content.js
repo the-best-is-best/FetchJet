@@ -14,10 +14,11 @@
     holdKey: "alt"
   };
 
+  let settingsReady = false;
   function refreshSettings() {
     try {
-      api.runtime.sendMessage({ action: "getSettings" }).then((s) => { if (s) settings = s; }).catch(() => {});
-    } catch (_) {}
+      api.runtime.sendMessage({ action: "getSettings" }).then((s) => { if (s) settings = s; settingsReady = true; }).catch(() => { settingsReady = true; });
+    } catch (_) { settingsReady = true; }
   }
   refreshSettings();
   try {
@@ -167,7 +168,7 @@
     const push = (url, name) => {
       try {
         const abs = new URL(url, window.location.href).href;
-        if (!out.has(abs) && (isDownloadable(abs) || /^magnet:/i.test(abs))) out.set(abs, { url: abs, fileName: name || "" });
+        if (!out.has(abs) && (isDownloadable(abs) || /^magnet:|^ftps?:\/\/.*[^\/]$/i.test(abs))) out.set(abs, { url: abs, fileName: name || "" });
       } catch (_) {}
     };
 
@@ -222,6 +223,73 @@
   let items = [];            // what the background found for this tab (main video)
   const bubbles = new Map(); // video -> bubble
   let lastPage = "";
+
+  // The site the user is on: a frame takes the tab's site, so "Hide on this site" and the
+  // remembered button position follow the page, not the embedded player.
+  function ancestorHost(top) {
+    if (TOP) return location.hostname;
+    try { const a = location.ancestorOrigins; if (a && a.length) return new URL(a[top ? a.length - 1 : 0]).hostname; } catch (_) {}
+    try { if (document.referrer) return new URL(document.referrer).hostname; } catch (_) {}
+    return top ? location.hostname : "";
+  }
+  const SITE = ancestorHost(true);
+  // Google Drive covers its player frame with its own layer: the Drive page draws the button.
+  const DRIVE_PLAYER = !TOP && ancestorHost(false) === "drive.google.com";
+  const siteHidden = () => !!SITE && (settings.hiddenSites || []).includes(SITE);
+  const buttonOff = () => !settingsReady || !settings.enabled || settings.pagePanel === false || siteHidden() || DRIVE_PLAYER;
+  function hideSite() {
+    if (!SITE) return;
+    const hiddenSites = [...new Set([...(settings.hiddenSites || []), SITE])];
+    settings = { ...settings, hiddenSites };
+    removeAll();
+    try { api.runtime.sendMessage({ action: "saveSettings", settings: { hiddenSites } }).catch(() => {}); } catch (_) {}
+  }
+
+  // Where the user dragged the button, per site: [x, y] as parts of the video's width / height.
+  let spot = null;
+  const readSpot = (all) => { const p = all && all[SITE]; spot = Array.isArray(p) && p.length === 2 ? p : null; };
+  try { api.storage.local.get("buttonSpots").then((r) => { readSpot(r && r.buttonSpots); bubbles.forEach(b => placeOne(b)); }).catch(() => {}); } catch (_) {}
+  function saveSpot() {
+    if (!SITE || !spot) return;
+    const mine = spot;
+    try {
+      api.storage.local.get("buttonSpots").then((r) => api.storage.local.set({ buttonSpots: { ...((r && r.buttonSpots) || {}), [SITE]: mine } })).catch(() => {});
+    } catch (_) {}
+  }
+
+  // A Google Drive file page: the file itself can be handed to the app as a plain download.
+  function driveId() {
+    try {
+      const u = new URL(location.href);
+      if (!/^(drive|docs)\.google\.com$/i.test(u.hostname)) return "";
+      const m = /\/file\/d\/([\w-]{10,})/.exec(u.pathname);
+      if (m) return m[1];
+      const id = /(^|\/)(uc|open)$/.test(u.pathname) ? (u.searchParams.get("id") || "") : "";
+      return /^[\w-]{10,}$/.test(id) ? id : "";
+    } catch (_) { return ""; }
+  }
+  let fileHero = null;
+  function driveHero() {
+    if (!driveId()) return (fileHero = null);
+    const shown = (e) => {
+      if (!e.isConnected) return false;
+      const r = e.getBoundingClientRect();
+      return r.width >= 200 && r.height >= 100 && r.bottom > 60 && r.top < innerHeight - 60 &&
+        (!e.checkVisibility || e.checkVisibility({ visibilityProperty: true, checkVisibilityCSS: true }));
+    };
+    if (fileHero && shown(fileHero)) return fileHero;
+    let best = null, area = 0;
+    for (const sel of ["video, iframe", "img, canvas, embed, object"]) {
+      for (const e of document.querySelectorAll(sel)) {
+        if (!shown(e)) continue;
+        const r = e.getBoundingClientRect();
+        if (r.width * r.height > area) { best = e; area = r.width * r.height; }
+      }
+      if (best) break;
+    }
+    return (fileHero = best);
+  }
+  const isFileAnchor = (v) => v === fileHero && !/^(VIDEO|IFRAME)$/.test(v.tagName);
 
   function fmtSize(n) {
     if (!n) return "";
@@ -285,8 +353,7 @@
     const list = [...document.querySelectorAll("video")];
     if (deepRound++ % 4 === 0) { const found = []; try { collectShadow(document, found, 0); } catch (_) {} shadowVideos = found; }
     for (const v of shadowVideos) if (v.isConnected && !list.includes(v)) list.push(v);
-    const hero = audioHero();
-    if (hero && !list.includes(hero)) list.push(hero);
+    for (const hero of [audioHero(), driveHero()]) if (hero && !list.includes(hero)) list.push(hero);
     return list;
   }
   // The video the user is watching: a playing one first, else the biggest on screen.
@@ -341,7 +408,7 @@
     if (!settings.enabled) return;
     const v = biggestVideo();
     if (!v) return;
-    if (v.paused && !(v.duration > 3) && !v.currentSrc) return;
+    if (isFileAnchor(v) || (v.paused && !(v.duration > 3) && !v.currentSrc)) return;
     const page = v.tagName !== "VIDEO" ? audioPageUrl() : TOP ? linkFor(v) : (isVideoPage(location.href) ? location.href : "");
     const key = (TOP ? "" : "frame:") + page;
     if (key === lastPage) return;
@@ -377,6 +444,7 @@
     .item:hover { background: #1e293b; }
     .item.off { cursor: default; opacity: .65; }
     .item.off:hover { background: transparent; }
+    .foot { justify-content: center; color: #94a3b8; font-size: 11px; padding: 6px 12px; }
     .num { color: #94a3b8; min-width: 18px; text-align: right; }
     .cut { margin-left: auto; align-self: center; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: transparent; color: #cbd5e1; cursor: pointer; font-size: 14px; line-height: 26px; text-align: center; }
     .cut:hover { background: #334155; color: #fff; }
@@ -413,8 +481,10 @@
     return svg;
   }
 
-  const isAudioAnchor = (v) => v.tagName !== "VIDEO";
-  const byKind = (v, video, audio) => fjT(isAudioAnchor(v) ? audio : video);
+  const isAudioAnchor = (v) => v.tagName !== "VIDEO" && v !== fileHero;
+  const byKind = (v, key) => fjT(key + (isFileAnchor(v) ? "File" : isAudioAnchor(v) ? "Audio" : "Video"));
+
+  let drag = null;
 
   function makeBubble(video) {
     const host = document.createElement("fetchjet-button");
@@ -425,33 +495,17 @@
     root.append(
       el("style", { text: STYLE }),
       el("div", { class: "wrap" },
-        el("div", { class: "btn", id: "main", title: byKind(video, "btnTitleVideo", "btnTitleAudio") },
-          el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownloadVideo", "btnDownloadAudio") })),
+        el("div", { class: "btn", id: "main", title: byKind(video, "btnTitle") },
+          el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownload") })),
           el("span", { class: "count", id: "count" }),
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
-    const b = { host, root, video, open: false, own: null, loading: false, dx: null, dy: null, dismissed: false };
-    let down = null;
+    const b = { host, root, video, open: false, own: null, loading: false, dismissed: false, lifts: 0 };
     root.getElementById("grab").addEventListener("mousedown", (e) => {
       if (e.button !== 0) return;
       const hr = host.getBoundingClientRect();
-      down = { x: e.clientX, y: e.clientY, ox: e.clientX - hr.left, oy: e.clientY - hr.top, moved: false };
+      drag = { b, x: e.clientX, y: e.clientY, ox: e.clientX - hr.left, oy: e.clientY - hr.top, moved: false };
       e.preventDefault();
-    });
-    addEventListener("mousemove", (e) => {
-      if (!down) return;
-      if (!down.moved && Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) < 5) return;
-      down.moved = true;
-      root.getElementById("main").classList.add("drag");
-      const r = video.getBoundingClientRect();
-      b.dx = e.clientX - down.ox - r.left; b.dy = e.clientY - down.oy - r.top;
-      placeOne(b);
-    });
-    addEventListener("mouseup", () => {
-      if (!down) return;
-      const wasDrag = down.moved; down = null;
-      root.getElementById("main").classList.remove("drag");
-      if (!wasDrag) clicked(b);
     });
     root.getElementById("close").addEventListener("click", () => { b.dismissed = true; host.remove(); });
     layer().appendChild(host);
@@ -465,9 +519,10 @@
   // Another video on the page (or nothing found yet): look it up now.
   function lookUp(b) {
     b.loading = true; b.open = true;
-    renderOne(b, byKind(b.video, "lookingVideo", "lookingAudio"));
-    const page = b.video.tagName !== "VIDEO" ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
-    const msg = { action: "resolveVideo", page, src: directSrc(b.video), frame: !TOP };
+    renderOne(b, byKind(b.video, "looking"));
+    const anchor = b.video.tagName !== "VIDEO";
+    const page = anchor ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
+    const msg = { action: "resolveVideo", page, src: anchor ? "" : directSrc(b.video), frame: !TOP };
     api.runtime.sendMessage(msg).then((res) => {
       b.loading = false;
       if (!res) return notRunning(b, () => lookUp(b));
@@ -478,7 +533,7 @@
   }
 
   function clicked(b) {
-    if (!itemsOf(b).length && !b.loading) return lookUp(b);
+    if (!itemsOf(b).length && !b.loading && !isFileAnchor(b.video)) return lookUp(b);
     b.open = !b.open;
     renderOne(b);
   }
@@ -496,12 +551,29 @@
   const heightOf = (q) => { const m = /^(\d{3,4})p/.exec(q || ""); return m ? Number(m[1]) : 0; };
   const tagOf = (h) => (!h ? "" : h >= 4320 ? "8K" : h >= 2160 ? "4K" : h >= 1440 ? "2K" : h >= 1080 ? "Full HD" : h >= 720 ? "HD" : "SD");
 
+  function fileRow(b) {
+    const id = driveId();
+    if (!id) return null;
+    const row = el("div", { class: "item" }, el("span", { class: "num", text: "↓" }),
+      el("div", { class: "body" }, el("div", { class: "t all", text: fjT("originalFile") }), el("div", { class: "s", text: fjT("originalFileSub") })));
+    row.addEventListener("click", () => {
+      const name = sanitizeTitle(document.title.replace(/\s+[-–]\s+Google\s+\S+\s*$/, ""));
+      sendOne(b, { action: "sendToFetchJet", url: `https://drive.google.com/uc?export=download&id=${id}`, referer: location.href, fileName: /\.[a-z0-9]{1,8}$/i.test(name) ? name : "" });
+    });
+    return row;
+  }
+  function footRow() {
+    const row = el("div", { class: "item foot", text: fjT("hideOnSite") });
+    row.addEventListener("click", hideSite);
+    return row;
+  }
+
   function renderOne(b, note, isError, action) {
     const list = itemsOf(b);
     const usable = list.filter(i => !i.disabled);
     const busy = b.loading || (!usable.length && list.some(i => i.disabled && /Getting/.test(i.label)));
-    b.root.getElementById("label").textContent = usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownloadVideo", "btnDownloadAudio");
-    b.root.getElementById("main").title = byKind(b.video, "btnTitleVideo", "btnTitleAudio");
+    b.root.getElementById("label").textContent = usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownload");
+    b.root.getElementById("main").title = byKind(b.video, "btnTitle");
     b.root.getElementById("close").title = fjT("hideButton");
     b.root.querySelector(".wrap").dir = fjIsRtl() ? "rtl" : "ltr";
     const count = b.root.getElementById("count");
@@ -513,14 +585,20 @@
     const box = b.root.getElementById("list");
     box.hidden = !b.open;
     box.replaceChildren();
+    const file = fileRow(b);
+    const tail = () => { if (file) box.appendChild(file); box.appendChild(footRow()); };
     if (note) {
       const d = el("div", { class: "msg" + (isError ? " err" : ""), text: note });
       if (action) { const a = el("div", { class: "act", text: action.text }); a.addEventListener("click", action.run); d.append(el("br"), a); }
-      box.appendChild(d); return;
+      box.appendChild(d); tail(); return;
     }
-    if (!list.length) { box.appendChild(el("div", { class: "msg", text: byKind(b.video, "lookingVideo", "lookingAudio") })); return; }
+    if (!list.length) {
+      if (!isFileAnchor(b.video)) box.appendChild(el("div", { class: "msg", text: byKind(b.video, "looking") }));
+      tail(); return;
+    }
     const title = (list.find(m => m.title) || {}).title || cleanTitle();
     box.appendChild(el("div", { class: "head", title, text: title }));
+    if (file) box.appendChild(file);
     const files = usable.filter(m => m.kind === "media" && !m.stream);
     if (files.length >= 2) {
       const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: fjT("downloadAllFiles", { n: files.length }) })));
@@ -546,12 +624,14 @@
       }
       box.appendChild(row);
     }
+    box.appendChild(footRow());
   }
 
-  function download(b, m) {
-    api.runtime.sendMessage({ action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } }).then((res) => {
+  const download = (b, m) => sendOne(b, { action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } });
+  function sendOne(b, msg) {
+    api.runtime.sendMessage(msg).then((res) => {
       if (!res || !res.ok) {
-        if (res && /not running|did not start/i.test(res.reason || "")) return notRunning(b, () => download(b, m));
+        if (res && /not running|did not start/i.test(res.reason || "")) return notRunning(b, () => sendOne(b, msg));
         return flashOne(b, fjT("couldNotSendReason", { reason: fjReason(res && res.reason) }), true);
       }
       flashOne(b, fjT("sentToApp"));
@@ -563,26 +643,29 @@
   }
 
   function placeOne(b) {
+    if (b.dismissed) return;
     const fs = document.fullscreenElement || document.webkitFullscreenElement;
     const r = b.video.getBoundingClientRect();
     const onScreen = r.bottom > 0 && r.top < innerHeight && r.width >= 200 && r.height >= 100 && b.video.isConnected &&
       !(fs && fs.tagName === "VIDEO") && (!fs || fs.contains(b.video) || fs.shadowRoot);
     b.host.style.display = onScreen ? "block" : "none";
     if (!onScreen) return;
-    if (b.host.parentNode !== layer()) layer().appendChild(b.host);
+    const top = layer(), next = b.host.nextElementSibling;
+    if (b.host.parentNode !== top) top.appendChild(b.host);
+    else if (next && next.localName !== "fetchjet-button" && b.lifts < 6) { b.lifts++; top.appendChild(b.host); }
     const w = b.open ? 340 : 34; // keep the anchor stable while the label expands on hover
     const h = 34;
-    let y = b.dy == null ? r.top + 10 : r.top + b.dy;
+    let y = spot ? r.top + spot[1] * r.height : r.top + 10;
     y = Math.max(r.top, Math.min(y, r.bottom - h));
     b.host.style.top = `${Math.max(4, Math.min(y, innerHeight - h - 4))}px`;
-    if (b.dx == null) {
+    if (!spot) {
       // Anchored to the video's top-right corner: the label grows to the left on hover,
       // so it never spills outside the video.
       b.host.style.left = "auto";
       b.host.style.right = `${Math.max(4, innerWidth - r.right + 10)}px`;
       b.host.style.flexDirection = "row-reverse";
     } else {
-      let x = r.left + b.dx;
+      let x = r.left + spot[0] * r.width;
       x = Math.max(r.left, Math.min(x, r.right - 34));
       b.host.style.right = "auto";
       b.host.style.left = `${Math.max(4, Math.min(x, innerWidth - w))}px`;
@@ -590,9 +673,10 @@
   }
 
   function place() {
-    if (!settings.enabled || settings.pagePanel === false) return;
-    const vids = allVideos().filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100; });
-    for (const [v, b] of bubbles) if (!v.isConnected) { b.host.remove(); bubbles.delete(v); }
+    if (buttonOff()) return;
+    const all = allVideos();
+    const vids = all.filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100; });
+    for (const [v, b] of bubbles) if (!v.isConnected || (v.tagName !== "VIDEO" && !all.includes(v))) { b.host.remove(); bubbles.delete(v); }
     const oneVideoSite = /(^|\.)youtube\.com$/i.test(location.hostname);
     for (const v of vids.slice(0, 12)) {
       if (oneVideoSite && !isMain(v)) {
@@ -603,7 +687,7 @@
       let b = bubbles.get(v);
       if (!b) {
         // main video: once the background found something or it plays; others: as soon as they are real players
-        const show = v.tagName !== "VIDEO" || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
+        const show = v.tagName !== "VIDEO" || v === fileHero || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
         if (!show) continue;
         b = makeBubble(v);
       }
@@ -617,7 +701,7 @@
     if (!TOP) return; // frames look up their own videos
     items = newItems || [];
     if (!items.length) { removeAll(); return; }
-    if (!settings.enabled || settings.pagePanel === false) return;
+    if (buttonOff()) return;
     place();
     for (const b of bubbles.values()) if (!b.own && !b.loading) renderOne(b);
   }
@@ -627,6 +711,40 @@
     const path = e.composedPath ? e.composedPath() : [];
     for (const b of bubbles.values()) if (b.open && !path.includes(b.host)) { b.open = false; renderOne(b); }
   }, true);
+  addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    if (!drag.moved && Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 5) return;
+    drag.moved = true;
+    drag.b.root.getElementById("main").classList.add("drag");
+    const r = drag.b.video.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    spot = [(e.clientX - drag.ox - r.left) / r.width, (e.clientY - drag.oy - r.top) / r.height].map(n => Math.round(Math.max(0, Math.min(1, n)) * 1000) / 1000);
+    bubbles.forEach(b => placeOne(b));
+  }, true);
+  addEventListener("mouseup", () => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    d.b.root.getElementById("main").classList.remove("drag");
+    if (d.moved) saveSpot(); else clicked(d.b);
+  }, true);
+  // Presses on the button or its menu stay inside it: players that listen for every press in
+  // their area (Google Drive) would take them. Our own handlers get a copy that never leaves
+  // the shadow tree.
+  for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "touchstart", "touchend"]) {
+    addEventListener(type, (e) => {
+      if (!e.isTrusted) return;
+      const path = e.composedPath ? e.composedPath() : [];
+      let b = null;
+      for (const one of bubbles.values()) if (path.includes(one.host)) { b = one; break; }
+      if (!b) return;
+      e.stopImmediatePropagation();
+      if (type !== "mousedown" && type !== "click") return;
+      let inner = b.root.elementFromPoint ? b.root.elementFromPoint(e.clientX, e.clientY) : null;
+      if (!inner || !b.root.contains(inner)) inner = b.root.getElementById("main");
+      const copy = new MouseEvent(type, { bubbles: true, cancelable: true, composed: false, clientX: e.clientX, clientY: e.clientY, button: e.button });
+      if (!inner.dispatchEvent(copy)) e.preventDefault();
+    }, true);
+  }
   addEventListener("keydown", (e) => { if (e.key === "Escape") for (const b of bubbles.values()) if (b.open) { b.open = false; renderOne(b); } });
   for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => setTimeout(() => bubbles.forEach(b => placeOne(b)), 50));
   addEventListener("scroll", place, { passive: true, capture: true });
@@ -637,10 +755,11 @@
   addEventListener("popstate", () => setTimeout(watchVideos, 500));
   try {
     api.storage.onChanged.addListener((changes, area) => {
-      if (area === "local" && changes.settings && changes.settings.newValue) {
-        const s = changes.settings.newValue;
-        if (s.enabled === false || s.pagePanel === false) removeAll();
+      if (area !== "local") return;
+      if (changes.settings && changes.settings.newValue) {
+        if (buttonOff()) removeAll(); else place();
       }
+      if (changes.buttonSpots && !drag) { readSpot(changes.buttonSpots.newValue); bubbles.forEach(b => placeOne(b)); }
     });
   } catch (_) {}
   if (TOP) {
@@ -656,11 +775,11 @@
       return false;
     }
     if (request && request.action === "openPanel") {
-      const v = biggestVideo();
+      const v = buttonOff() ? null : biggestVideo();
       if (!v) return false;
       let b = bubbles.get(v) || makeBubble(v);
       b.dismissed = false; layer().appendChild(b.host); b.open = true;
-      if (!itemsOf(b).length) lookUp(b); else renderOne(b);
+      if (!itemsOf(b).length && !isFileAnchor(v)) lookUp(b); else renderOne(b);
       placeOne(b);
       return false;
     }

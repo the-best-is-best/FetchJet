@@ -49,7 +49,9 @@ internal fun etaText(seconds: Long): String = when {
 }
 
 internal fun taskDisplayName(task: DownloadTask): String =
-    decodeUnicodeText(task.fileName.ifBlank { task.url.substringBefore('?').substringAfterLast('/') }).trim()
+    decodeUnicodeText(task.fileName.ifBlank {
+        com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url).substringBefore('?').substringAfterLast('/')
+    }).trim()
 
 internal fun taskStateLine(task: DownloadTask, speedUnit: String): String {
     val strings = LocalizationManager.Strings

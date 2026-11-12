@@ -7,6 +7,8 @@ if (typeof globalThis.fjT !== "function") (() => {
     "app not running": "reasonNotRunning",
     "app did not start": "reasonDidNotStart",
     "no links": "reasonNoLinks",
+    "refused": "reasonRefused",
+    "no answer": "reasonNoAnswer",
     "pairing required": "errNeedsPairing"
   };
   const extApi = typeof browser !== "undefined" ? browser : (typeof chrome !== "undefined" ? chrome : null);

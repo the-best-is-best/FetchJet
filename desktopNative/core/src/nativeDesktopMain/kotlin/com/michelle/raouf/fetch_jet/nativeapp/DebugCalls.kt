@@ -51,6 +51,7 @@ internal object DebugCalls {
         }
         "stats" -> stats()
         "addDirect" -> addDirect(args)
+        "testLink" -> testLink()
         "extensionSteps" -> extensionSteps(args)
         "update" -> update(args)
         "devices" -> devices(args)
@@ -77,6 +78,19 @@ internal object DebugCalls {
                 put("asked", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.askedMainDownloader.value)
             }.toString()
         }
+        "idle" -> {
+            com.michelle.raouf.fetch_jet.core.power.UserIdle.debugIdleMs = text(args, "ms").toLongOrNull()
+            buildJsonObject {
+                put("osIdleMs", DesktopOs.userIdleMs() ?: -1L)
+                put("idleMs", com.michelle.raouf.fetch_jet.core.power.UserIdle.idleMs() ?: -1L)
+                put("onlyInUse", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.speedLimitOnlyInUse.value)
+            }.toString()
+        }
+        "wake" -> buildJsonObject {
+            put("supported", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.isSupported)
+            put("on", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.wakeForSchedule.value)
+            put("armedAtMs", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.armedAtMs.value)
+        }.toString()
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
             "ok"
@@ -290,6 +304,29 @@ internal object DebugCalls {
         put("hostPosts", NativeApp.main.hostPosts)
         put("tasksRun", NativeApp.main.tasksRun)
     }.toString()
+
+    private fun testLink(): String {
+        val test = NativeApp.presenter.vm.uiState.value.testLink ?: return "{}"
+        return buildJsonObject {
+            put("url", test.url)
+            put("testing", test.testing)
+            when (val result = test.result) {
+                is com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult.Ok -> {
+                    put("code", "ok")
+                    put("size", result.sizeBytes)
+                    put("resumable", result.resumable)
+                    put("fileName", result.fileName)
+                }
+
+                is com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult.Failed -> {
+                    put("code", result.code)
+                    put("status", result.status)
+                }
+
+                null -> Unit
+            }
+        }.toString()
+    }
 
     private fun addDirect(args: String): String {
         val url = text(args, "url")

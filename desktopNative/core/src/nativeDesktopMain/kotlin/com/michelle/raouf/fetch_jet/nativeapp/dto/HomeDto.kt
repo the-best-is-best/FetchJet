@@ -14,7 +14,9 @@ enum class TagColorCode { VIDEO, AUDIO, MAGNET, ARCHIVE, DISK, PROGRAM, OTHER }
 
 enum class GroupColorCode { PRIMARY, MUTED, PAUSED, TERTIARY }
 
-enum class ListKeyCode { SELECT_ALL, ESCAPE, DELETE }
+enum class ListKeyCode {
+    SELECT_ALL, ESCAPE, DELETE, UP, DOWN, HOME, END, PAGE_UP, PAGE_DOWN, OPEN, DETAILS, RESUME, PAUSE, OPEN_FILE, OPEN_FOLDER
+}
 
 @Serializable
 data class NavEntryDto(
@@ -62,6 +64,11 @@ data class ChromeDto(
     val whenDoneBannerShown: Boolean = false,
     val whenDoneBannerText: String = "",
     val detailsOpen: Boolean = false,
+    val focusId: String = "",
+    val focusRev: Int = 0,
+    val focusRow: Int = 0,
+    val focusHeads: Int = 0,
+    val focusDone: Int = 0,
 )
 
 @Serializable

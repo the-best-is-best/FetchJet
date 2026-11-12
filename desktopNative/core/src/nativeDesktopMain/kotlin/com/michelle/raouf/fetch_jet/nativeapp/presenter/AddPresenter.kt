@@ -20,6 +20,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.QuickFolderDto
 import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
+import com.michelle.raouf.fetch_jet.presentation.dashboard.canTestLink
 import com.tbib.kmp_localization.LocalizationManager
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.Dispatchers
@@ -106,6 +107,8 @@ private data class AddSlice(
     val fileNameOverride: String,
     val sortIntoFolders: Boolean,
     val checksumInput: String,
+    val canTestLink: Boolean,
+    val testLink: com.michelle.raouf.fetch_jet.presentation.dashboard.TestLinkUi?,
     val linkSelected: Int,
     val linkCount: Int,
     val linkBusy: Boolean,
@@ -140,6 +143,8 @@ private fun DashboardUiState.addSlice() = AddSlice(
     fileNameOverride = fileNameOverride,
     sortIntoFolders = sortIntoFolders,
     checksumInput = checksumInput,
+    canTestLink = canTestLink(),
+    testLink = testLink,
     linkSelected = linkList.count { it.isSelected },
     linkCount = linkList.size,
     linkBusy = linkList.any { it.isSelected && it.isBeingInspected },
@@ -171,11 +176,24 @@ private fun AddSlice.typeFolder(): String? =
         isTorrent = detectedEngine == EngineType.BITTORRENT,
     ) else null
 
+private fun AddSlice.folderCategory(): String =
+    if (!visible || inputUrl.isBlank() || showsLinkList) "" else FileCategory.categoryFor(
+        fileNameOverride.ifEmpty { suggestedFileName },
+        isMedia = detectedEngine == EngineType.MEDIA_STREAM,
+        isTorrent = detectedEngine == EngineType.BITTORRENT,
+    )
+
 internal fun Presenter.startAdd() {
     val slices = vm.uiState.map { it.addSlice() }.distinctUntilChanged()
     scope.launch {
-        combine(slices, addLocal, AppLanguage.current, addFields.url.forced) { slice, ui, _, _ -> buildAdd(slice, ui) }
-            .collect { add.publish(it) }
+        combine(slices, addLocal, AppLanguage.current, addFields.url.forced, addFields.destination.forced) { slice, ui, _, _, _ ->
+            buildAdd(slice, ui)
+        }.collect { add.publish(it) }
+    }
+    scope.launch {
+        slices.map { Triple(it.visible, it.typeFolder(), it.folderCategory()) }.distinctUntilChanged().collect {
+            addFields.destination.force()
+        }
     }
     scope.launch {
         slices.map { Triple(it.visible, it.inputUrl, it.detectedEngine) }.distinctUntilChanged().collect { (visible, url, engine) ->
@@ -303,6 +321,10 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         checksumShown = !s.showsLinkList && !s.hasPlaylist && s.detectedEngine == EngineType.HTTP_DIRECT,
         checksum = s.checksumInput,
         checksumRev = addFields.checksum.rev(s.checksumInput),
+        testLinkShown = s.canTestLink,
+        testLinkBusy = s.testLink?.testing == true,
+        testLinkOk = s.testLink?.ok == true,
+        testLinkText = com.michelle.raouf.fetch_jet.presentation.dashboard.testLinkText(s.testLink, s.suggestedFileName) { formatBytes(it) },
         destination = s.destinationPath,
         destinationRev = addFields.destination.rev(s.destinationPath),
         quickFolders = listOf(

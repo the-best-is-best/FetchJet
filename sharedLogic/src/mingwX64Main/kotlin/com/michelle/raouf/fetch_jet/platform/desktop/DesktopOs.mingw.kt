@@ -53,8 +53,12 @@ import io.ktor.client.engine.HttpClientEngineFactory
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
+import kotlinx.cinterop.sizeOf
 import platform.windows.GetCurrentProcess
+import platform.windows.GetLastInputInfo
 import platform.windows.GetLocalTime
+import platform.windows.GetTickCount
+import platform.windows.LASTINPUTINFO
 import platform.windows.SYSTEMTIME
 import platform.windows.TerminateProcess
 
@@ -81,6 +85,12 @@ actual object DesktopOs {
         GetLocalTime(now.ptr)
         fun two(value: UShort) = value.toString().padStart(2, '0')
         "${now.wYear}-${two(now.wMonth)}-${two(now.wDay)} ${two(now.wHour)}:${two(now.wMinute)}:${two(now.wSecond)}"
+    }
+
+    actual fun userIdleMs(): Long? = memScoped {
+        val info = alloc<LASTINPUTINFO>()
+        info.cbSize = sizeOf<LASTINPUTINFO>().toUInt()
+        if (GetLastInputInfo(info.ptr) == 0) null else (GetTickCount() - info.dwTime).toLong()
     }
 
     actual fun clipboardText(): String? = winClipboardText()

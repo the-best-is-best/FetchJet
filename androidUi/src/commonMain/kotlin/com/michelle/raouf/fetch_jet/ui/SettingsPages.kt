@@ -635,6 +635,25 @@ internal fun TorrentPage(
                 onChange = onDisableTorrentUploadToggled
             )
         }
+        SettingsGroup(
+            title = LocalizationManager.Strings.torrentStopRatioTitle,
+            footer = LocalizationManager.Strings.torrentStopRatioHint
+        ) {
+            val stopRatio by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.torrentStopRatio.collectAsState()
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(0f, 0.5f, 1f, 1.5f, 2f, 3f, 5f).forEach { r ->
+                    FilterChip(
+                        selected = stopRatio == r,
+                        onClick = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setTorrentStopRatio(r) },
+                        label = { Text(if (r == 0f) "0" else r.toString().removeSuffix(".0")) }
+                    )
+                }
+            }
+        }
         if (showEngine) {
             SettingsGroup(title = LocalizationManager.Strings.torrentEngineGroup) {
                 SettingRow(

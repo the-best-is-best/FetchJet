@@ -515,6 +515,7 @@ class MediaStreamDownloader(
         requestHeaders: Map<String, String> = emptyMap()
     ): List<MediaQualityEntry> {
         lastSubtitles = emptyList()
+        if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return emptyList()
         // A playlist link (.m3u8): FetchJet's own HLS engine reads the renditions itself. The
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }
