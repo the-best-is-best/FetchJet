@@ -1,7 +1,7 @@
 # FetchJet iOS SwiftUI contract (foundation, 2026-11-11)
 
 The iOS app no longer links Compose:
-Swift does `import SharedLogic` (the `:sharedLogic` static framework). `:androidUi` is untouched and
+Swift does `import SharedLogic` (the `:sharedLogic` static framework). `:sharedUI` is untouched and
 is NOT in the iOS app; nothing in it is reachable from Swift (read it only as the reference for
 behaviour / layout of each page).
 
@@ -62,7 +62,7 @@ settings, language, theme, auto tool update; clipboard watcher like Compose). Us
 - `torrentEnabled`, `mediaEnabled` (AppFeatures; hide torrent / media UI when false)
 - `localizeStep(text:)` for engine step / status texts (`task.currentStepText`, `postProcessLabel`,
   `state.ytDlpStatus`, torrent states) - same as Compose
-- Formatters (copies of androidUi utils/Formatters.kt): `formatBytes(bytes:)`,
+- Formatters (copies of sharedUI utils/Formatters.kt): `formatBytes(bytes:)`,
   `formatSizeDisplay(bytes:)`, `formatSpeed(bytesPerSec:unit:)` (unit = `state.speedDisplayUnit`),
   `ltr(text:)`, `decodeUnicodeText(input:)`, `formatSecondsToHhMm(totalSeconds:)`,
   `parseHhMmToSeconds(hhMm:)`, `formatSecondsToDisplayFriendly(totalSeconds:)`.

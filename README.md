@@ -175,7 +175,7 @@ FetchJet is a **Kotlin Multiplatform** / **Compose Multiplatform** project.
 | Module         | What it is                                                                                  |
 |----------------|---------------------------------------------------------------------------------------------|
 | `sharedLogic/` | Engines (HTTP chunks, yt-dlp media, libtorrent), queue, scheduling, updates – all platforms |
-| `androidUi/`    | The Compose UI shared by desktop, Android and iOS                                           |
+| `sharedUI/`    | The Compose UI shared by desktop, Android and iOS                                           |
 | `desktopApp/`  | JVM app (Windows / macOS / Linux installers via jpackage)                                   |
 | `androidApp/`  | Android app                                                                                 |
 | `iosApp/`      | Xcode project (SwiftUI shell, Live Activity, native bridges)                                |
