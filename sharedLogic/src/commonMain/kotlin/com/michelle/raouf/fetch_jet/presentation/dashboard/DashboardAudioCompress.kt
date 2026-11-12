@@ -61,7 +61,7 @@ private fun AudioCompressUi.withEstimate(): AudioCompressUi {
     )
     return copy(
         settings = fitted,
-        estimatedBytes = AudioCompress.estimateBytes(durationMs, AudioCompress.encodeFor(fitted))
+        estimatedBytes = AudioCompress.estimateBytes(durationMs, AudioCompress.encodeFor(fitted), format)
     )
 }
 

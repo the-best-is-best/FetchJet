@@ -61,6 +61,7 @@ internal fun audioCodecOf(path: Path): String? = try {
 internal fun canCopyAudio(sourceExt: String, targetExt: String, sourceCodec: String?): Boolean = when (targetExt) {
     "mp3", "opus", "flac" -> (sourceExt == "mka" || sourceExt == "webm" || sourceExt == "ogg") &&
             (sourceCodec == null || sourceCodec == targetExt)
+    "ogg" -> (sourceExt == "mka" || sourceExt == "webm") && (sourceCodec == "opus" || sourceCodec == "vorbis")
     "m4a" -> sourceExt in listOf("m4a", "mp4", "aac")
     else -> false
 }

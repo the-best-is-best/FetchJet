@@ -34,12 +34,16 @@ object AudioCompress {
     const val DEFAULT_LEVEL = 3
     const val OUTPUT_EXTENSION = "m4a"
 
-    val FORMATS: List<String> = listOf("m4a", "mp3", "opus")
+    val FORMATS: List<String> = listOf("m4a", "mp3", "opus", "ogg", "flac", "wav")
+
+    private val LOSSY: Set<String> = setOf("m4a", "mp3", "opus", "ogg")
+
+    private val LOSSLESS: Set<String> = setOf("flac", "wav")
 
     private val encodable = mutableMapOf(OUTPUT_EXTENSION to true)
 
     fun defaultFormat(sourceName: String): String =
-        sourceName.substringAfterLast('.', "").lowercase().takeIf { it in FORMATS } ?: OUTPUT_EXTENSION
+        sourceName.substringAfterLast('.', "").lowercase().takeIf { it in LOSSY } ?: OUTPUT_EXTENSION
 
     fun formatFor(settings: AudioCompressSettings, sourceName: String, available: List<String>): String =
         settings.format.takeIf { it in available }
@@ -49,11 +53,15 @@ object AudioCompress {
     private fun codecArgs(format: String, encode: AudioEncode): List<String> = buildList {
         val codec = when (format) {
             "mp3" -> "libmp3lame"
-            "opus" -> "libopus"
+            "opus", "ogg" -> "libopus"
+            "flac" -> "flac"
+            "wav" -> "pcm_s16le"
             else -> "aac"
         }
-        addAll(listOf("-vn", "-map", "0:a:0", "-c:a", codec, "-b:a", "${encode.bitrateKbps}k"))
-        if (encode.sampleRate > 0 && format != "opus") addAll(listOf("-ar", encode.sampleRate.toString()))
+        addAll(listOf("-vn", "-map", "0:a:0", "-c:a", codec))
+        if (format !in LOSSLESS) addAll(listOf("-b:a", "${encode.bitrateKbps}k"))
+        if (format == "opus" || format == "ogg") addAll(listOf("-vbr", "constrained"))
+        if (encode.sampleRate > 0 && format != "opus" && format != "ogg") addAll(listOf("-ar", encode.sampleRate.toString()))
         if (encode.channels > 0) addAll(listOf("-ac", encode.channels.toString()))
         if (format == OUTPUT_EXTENSION) addAll(listOf("-movflags", "+faststart"))
     }
@@ -123,8 +131,14 @@ object AudioCompress {
         return chosen.copy(sampleRate = fitting)
     }
 
-    fun estimateBytes(durationMs: Long, encode: AudioEncode): Long {
+    fun estimateBytes(durationMs: Long, encode: AudioEncode, format: String = OUTPUT_EXTENSION): Long {
         if (durationMs <= 0L) return 0L
+        if (format in LOSSLESS) {
+            val rate = if (encode.sampleRate > 0) encode.sampleRate else 44100
+            val channels = if (encode.channels > 0) encode.channels else 2
+            val pcm = durationMs * rate * channels * 2L / 1000L + 44L
+            return if (format == "wav") pcm else pcm * 55L / 100L
+        }
         val audio = durationMs * encode.bitrateKbps / 8L
         return audio + audio / 50L + 4096L
     }

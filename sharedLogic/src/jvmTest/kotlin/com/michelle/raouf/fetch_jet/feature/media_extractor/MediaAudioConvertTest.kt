@@ -39,6 +39,15 @@ class MediaAudioConvertTest {
     }
 
     @Test
+    fun opusAndVorbisAreCopiedIntoOgg() {
+        assertTrue(canCopyAudio("webm", "ogg", "opus"))
+        assertTrue(canCopyAudio("mka", "ogg", "vorbis"))
+        assertFalse(canCopyAudio("webm", "ogg", null))
+        assertFalse(canCopyAudio("mka", "ogg", "aac"))
+        assertFalse(canCopyAudio("m4a", "ogg", "opus"))
+    }
+
+    @Test
     fun realFilesWhenGiven() {
         val folder = System.getenv("FETCHJET_AUDIO_SAMPLES") ?: return
         assertEquals("aac", audioCodecOf("$folder/aac.mka".toPath()))
