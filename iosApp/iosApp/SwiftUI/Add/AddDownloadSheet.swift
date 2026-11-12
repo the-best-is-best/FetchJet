@@ -36,6 +36,7 @@ struct AddDownloadSheet: View {
         .scrollDismissesKeyboard(.interactively)
         .background(FJTheme.color.surface.ignoresSafeArea())
         .presentationDragIndicator(.visible)
+        .presentationSizing(.form.fitted(horizontal: false, vertical: true))
         .tint(FJTheme.color.primary)
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
         .sheet(isPresented: $showFolderPicker) {

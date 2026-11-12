@@ -186,7 +186,7 @@ struct FJSplitShell: View {
 
     var body: some View {
         NavigationSplitView {
-            List(store.tabItems) { item in
+            List(store.tabItems.filter { $0.tab != .settings }) { item in
                 Button { store.selectTab(item.tab) } label: {
                     HStack {
                         Label(item.label, systemImage: item.icon)
@@ -198,6 +198,23 @@ struct FJSplitShell: View {
                     }
                 }
                 .listRowBackground(store.state.selectedTab == item.tab ? FJTheme.color.primaryContainer : Color.clear)
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let item = store.tabItems.first(where: { $0.tab == .settings }) {
+                    let selected = store.state.selectedTab == item.tab
+                    Button { store.selectTab(item.tab) } label: {
+                        Label(item.label, systemImage: selected ? item.selectedIcon : item.icon)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .background(selected ? FJTheme.color.primaryContainer : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 10))
+                            .contentShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(FJTheme.color.onSurface)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
             }
             .navigationTitle("FetchJet")
         } detail: {
