@@ -238,8 +238,20 @@ data class AudioCompressUi(
     val running: Boolean = false,
     val progress: Float = 0f,
     val failed: Boolean = false,
-    val copies: List<com.michelle.raouf.fetch_jet.feature.audio_compress.CompressedCopy> = emptyList()
-)
+    val copies: List<com.michelle.raouf.fetch_jet.feature.audio_compress.CompressedCopy> = emptyList(),
+    val formats: List<String> = listOf(com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.OUTPUT_EXTENSION)
+) {
+    val format: String
+        get() = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.formatFor(settings, fileName, formats)
+    val firstLevel: Int
+        get() = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.firstShrinkingLevel(originalBytes, durationMs)
+    val bitrateChoices: List<Int>
+        get() = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+            .shrinkingBitrates(originalBytes, durationMs, settings)
+    val nothingToGain: Boolean
+        get() = !reading && durationMs > 0L &&
+                firstLevel > com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.LEVELS.size
+}
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
 enum class SpeedPreset { LOW, MEDIUM, FAST, HIGH }

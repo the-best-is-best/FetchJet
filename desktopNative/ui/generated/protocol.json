@@ -1322,6 +1322,22 @@
     "Int"
    ],
    [
+    "levelOffset",
+    "Int"
+   ],
+   [
+    "nothing",
+    "Boolean"
+   ],
+   [
+    "formatOptions",
+    "List<String>"
+   ],
+   [
+    "formatPick",
+    "Int"
+   ],
+   [
     "levelLabel",
     "String"
    ],
@@ -2008,6 +2024,10 @@
     "Int"
    ],
    [
+    "canCompress",
+    "Boolean"
+   ],
+   [
     "id",
     "String"
    ],
@@ -2565,6 +2585,12 @@
     "String"
    ]
   ],
+  "RowCompress": [
+   [
+    "id",
+    "String"
+   ]
+  ],
   "CyclePriority": [
    [
     "id",
@@ -2700,6 +2726,12 @@
    ]
   ],
   "AudioCompressStart": [],
+  "AudioCompressSetFormat": [
+   [
+    "index",
+    "Int"
+   ]
+  ],
   "AudioCompressDelete": [
    [
     "path",
@@ -3742,6 +3774,7 @@
   "audioCompressBitrate",
   "audioCompressSampleRate",
   "audioCompressChannels",
+  "audioCompressFormat",
   "audioCompressAuto",
   "audioCompressMono",
   "audioCompressStereo",
@@ -3752,6 +3785,7 @@
   "audioCompressDelete",
   "audioCompressHigherQuality",
   "audioCompressSmallerFile",
+  "audioCompressNothing",
   "sysDeviceSendTitle",
   "sysDeviceNoDevices",
   "sysDeviceSearching",

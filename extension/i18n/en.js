@@ -13,7 +13,7 @@ fjAddLanguage("en", {
   "appDidNotStart": "FetchJet did not start. Open it from the Start menu and try again.",
   "downloadOptions": "Download · {n} options",
   "downloadAllFiles": "Download all ({n} files)",
-  "clipTitle": "Download a part of it (clip) in FetchJet",
+  "clipTitle": "Open in FetchJet and choose the options before downloading",
   "couldNotSendReason": "Could not send: {reason}",
   "couldNotSendParen": "Could not send ({reason})",
   "sentToApp": "Sent to FetchJet ✔",

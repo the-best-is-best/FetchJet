@@ -920,6 +920,7 @@ object JapaneseProvider : AppLocalization {
     override val audioCompressBitrate = "ビットレート"
     override val audioCompressSampleRate = "サンプルレート"
     override val audioCompressChannels = "チャンネル"
+    override val audioCompressFormat = "形式"
     override val audioCompressAuto = "自動"
     override val audioCompressMono = "モノラル"
     override val audioCompressStereo = "ステレオ"
@@ -930,6 +931,7 @@ object JapaneseProvider : AppLocalization {
     override val audioCompressDelete = "削除"
     override val audioCompressHigherQuality = "高音質"
     override val audioCompressSmallerFile = "小さいファイル"
+    override val audioCompressNothing = "このファイルはすでに小さいため、圧縮しても小さくなりません"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

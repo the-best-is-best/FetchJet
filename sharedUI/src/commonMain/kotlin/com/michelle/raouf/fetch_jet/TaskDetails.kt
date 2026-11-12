@@ -899,7 +899,7 @@ internal fun TaskDetailsPane(
                 onShare = if (task.canSendToDevice()) {
                     { viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id)) }
                 } else null,
-                onCompress = if (com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
+                onCompress = if (fullScreen && com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
                 } else null,
                 compressedCopies = compressedCopies

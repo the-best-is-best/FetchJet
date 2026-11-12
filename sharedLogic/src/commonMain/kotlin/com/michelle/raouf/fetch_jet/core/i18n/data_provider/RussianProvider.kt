@@ -939,6 +939,7 @@ object RussianProvider : AppLocalization {
     override val audioCompressBitrate = "Битрейт"
     override val audioCompressSampleRate = "Частота дискретизации"
     override val audioCompressChannels = "Каналы"
+    override val audioCompressFormat = "Формат"
     override val audioCompressAuto = "Авто"
     override val audioCompressMono = "Моно"
     override val audioCompressStereo = "Стерео"
@@ -949,6 +950,7 @@ object RussianProvider : AppLocalization {
     override val audioCompressDelete = "Удалить"
     override val audioCompressHigherQuality = "Выше качество"
     override val audioCompressSmallerFile = "Меньше файл"
+    override val audioCompressNothing = "Файл уже небольшой. Сжатие не сделает его меньше"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

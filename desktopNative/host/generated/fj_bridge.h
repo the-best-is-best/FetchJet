@@ -562,6 +562,10 @@ inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
     d.ratio = fj::real(j, "ratio");
     d.level = fj::integer(j, "level");
     d.levelCount = fj::integer(j, "levelCount");
+    d.levelOffset = fj::integer(j, "levelOffset");
+    d.nothing = fj::flag(j, "nothing");
+    d.formatOptions = fj::text_model(j, "formatOptions");
+    d.formatPick = fj::integer(j, "formatPick");
     d.levelLabel = fj::text(j, "levelLabel");
     d.bitrates = fj::struct_model<ChoiceDto>(j, "bitrates", parse_ChoiceDto);
     d.bitrateOptions = fj::text_model(j, "bitrateOptions");
@@ -801,6 +805,7 @@ inline StatusDto parse_StatusDto(const fj::Json &j) {
 inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     TaskRowDto d{};
     d.kind = fj::integer(j, "kind");
+    d.canCompress = fj::flag(j, "canCompress");
     d.id = fj::text(j, "id");
     d.name = fj::text(j, "name");
     d.nameRtl = fj::flag(j, "nameRtl");
@@ -1625,6 +1630,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_audioCompressBitrate(next());
     tr.set_audioCompressSampleRate(next());
     tr.set_audioCompressChannels(next());
+    tr.set_audioCompressFormat(next());
     tr.set_audioCompressAuto(next());
     tr.set_audioCompressMono(next());
     tr.set_audioCompressStereo(next());
@@ -1635,6 +1641,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_audioCompressDelete(next());
     tr.set_audioCompressHigherQuality(next());
     tr.set_audioCompressSmallerFile(next());
+    tr.set_audioCompressNothing(next());
     tr.set_sysDeviceSendTitle(next());
     tr.set_sysDeviceNoDevices(next());
     tr.set_sysDeviceSearching(next());
@@ -1721,6 +1728,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_rowClick([send](slint::SharedString id, bool control, bool shift) { fj::ActionWriter w("RowClick"); w.add("id", id); w.add("control", control); w.add("shift", shift); send(w.finish()); });
     act.on_rowCheck([send](slint::SharedString id, bool checked) { fj::ActionWriter w("RowCheck"); w.add("id", id); w.add("checked", checked); send(w.finish()); });
     act.on_rowQuickAction([send](slint::SharedString id) { fj::ActionWriter w("RowQuickAction"); w.add("id", id); send(w.finish()); });
+    act.on_rowCompress([send](slint::SharedString id) { fj::ActionWriter w("RowCompress"); w.add("id", id); send(w.finish()); });
     act.on_cyclePriority([send](slint::SharedString id) { fj::ActionWriter w("CyclePriority"); w.add("id", id); send(w.finish()); });
     act.on_checkAll([send](bool checked) { fj::ActionWriter w("CheckAll"); w.add("checked", checked); send(w.finish()); });
     act.on_clearChecks([send]() { fj::ActionWriter w("ClearChecks"); send(w.finish()); });
@@ -1752,6 +1760,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_audioCompressSetSampleRate([send](int value) { fj::ActionWriter w("AudioCompressSetSampleRate"); w.add("value", value); send(w.finish()); });
     act.on_audioCompressSetChannels([send](int value) { fj::ActionWriter w("AudioCompressSetChannels"); w.add("value", value); send(w.finish()); });
     act.on_audioCompressStart([send]() { fj::ActionWriter w("AudioCompressStart"); send(w.finish()); });
+    act.on_audioCompressSetFormat([send](int index) { fj::ActionWriter w("AudioCompressSetFormat"); w.add("index", index); send(w.finish()); });
     act.on_audioCompressDelete([send](slint::SharedString path) { fj::ActionWriter w("AudioCompressDelete"); w.add("path", path); send(w.finish()); });
     act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
     act.on_toggleDetailFile([send](int index, bool selected) { fj::ActionWriter w("ToggleDetailFile"); w.add("index", index); w.add("selected", selected); send(w.finish()); });

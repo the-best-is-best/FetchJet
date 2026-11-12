@@ -909,6 +909,7 @@ object PersianProvider : AppLocalization {
     override val audioCompressBitrate = "نرخ بیت"
     override val audioCompressSampleRate = "نرخ نمونه‌برداری"
     override val audioCompressChannels = "کانال‌ها"
+    override val audioCompressFormat = "قالب"
     override val audioCompressAuto = "خودکار"
     override val audioCompressMono = "مونو"
     override val audioCompressStereo = "استریو"
@@ -919,6 +920,7 @@ object PersianProvider : AppLocalization {
     override val audioCompressDelete = "حذف"
     override val audioCompressHigherQuality = "کیفیت بالاتر"
     override val audioCompressSmallerFile = "فایل کوچک‌تر"
+    override val audioCompressNothing = "این فایل از قبل کوچک است. فشرده‌سازی آن را کوچک‌تر نمی‌کند"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

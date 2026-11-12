@@ -68,6 +68,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         }
 
         is UiAction.RowQuickAction -> rowQuickAction(action.id)
+        is UiAction.RowCompress -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(action.id))
         is UiAction.CyclePriority -> {
             val task = task(action.id) ?: return
             vm.onEvent(DashboardUiEvent.OnTaskPriorityChanged(task.id, nextPriority(task.priority)))
@@ -124,6 +125,10 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.AudioCompressSetBitrate -> audioCompressChange { it.copy(bitrateKbps = action.value) }
         is UiAction.AudioCompressSetSampleRate -> audioCompressChange { it.copy(sampleRate = action.value) }
         is UiAction.AudioCompressSetChannels -> audioCompressChange { it.copy(channels = action.value) }
+        is UiAction.AudioCompressSetFormat -> audioCompressChange { settings ->
+            val formats = vm.uiState.value.audioCompress?.formats.orEmpty()
+            settings.copy(format = formats.getOrNull(action.index) ?: settings.format)
+        }
         UiAction.AudioCompressStart -> vm.onEvent(DashboardUiEvent.OnAudioCompressStartClicked)
         is UiAction.AudioCompressDelete -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteCopy(action.path))
         UiAction.AudioCompressDismiss -> vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)

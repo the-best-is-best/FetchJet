@@ -13,7 +13,7 @@ fjAddLanguage("id", {
   "appDidNotStart": "FetchJet tidak berjalan. Buka dari menu Start, lalu coba lagi.",
   "downloadOptions": "Unduh · {n} opsi",
   "downloadAllFiles": "Unduh semua ({n} file)",
-  "clipTitle": "Unduh sebagian (klip) di FetchJet",
+  "clipTitle": "Buka di FetchJet dan pilih opsi sebelum mengunduh",
   "couldNotSendReason": "Tidak dapat mengirim: {reason}",
   "couldNotSendParen": "Tidak dapat mengirim ({reason})",
   "sentToApp": "Terkirim ke FetchJet ✔",

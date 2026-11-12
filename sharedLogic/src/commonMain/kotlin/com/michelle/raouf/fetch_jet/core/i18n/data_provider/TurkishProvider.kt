@@ -904,6 +904,7 @@ object TurkishProvider : AppLocalization {
     override val audioCompressBitrate = "Bit hızı"
     override val audioCompressSampleRate = "Örnekleme hızı"
     override val audioCompressChannels = "Kanallar"
+    override val audioCompressFormat = "Biçim"
     override val audioCompressAuto = "Otomatik"
     override val audioCompressMono = "Mono"
     override val audioCompressStereo = "Stereo"
@@ -914,6 +915,7 @@ object TurkishProvider : AppLocalization {
     override val audioCompressDelete = "Sil"
     override val audioCompressHigherQuality = "Daha yüksek kalite"
     override val audioCompressSmallerFile = "Daha küçük dosya"
+    override val audioCompressNothing = "Bu dosya zaten küçük. Sıkıştırmak onu daha da küçültmez"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

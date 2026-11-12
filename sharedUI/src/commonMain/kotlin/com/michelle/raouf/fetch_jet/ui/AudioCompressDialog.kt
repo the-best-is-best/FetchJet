@@ -98,9 +98,12 @@ fun AudioCompressDialog(page: AudioCompressUi, onEvent: (DashboardUiEvent) -> Un
                         )
                     }
                     SizeCard(page)
-                    ModeSwitch(settings.mode, !page.running) { change(settings.copy(mode = it)) }
-                    if (settings.mode == AudioCompressMode.SIMPLE) {
-                        val level = settings.level.coerceIn(1, AudioCompress.LEVELS.size)
+                    if (!page.nothingToGain) ModeSwitch(settings.mode, !page.running) { change(settings.copy(mode = it)) }
+                    if (page.nothingToGain) {
+                        Text(s.audioCompressNothing, color = muted, fontSize = 13.sp)
+                    } else if (settings.mode == AudioCompressMode.SIMPLE) {
+                        val first = minOf(page.firstLevel, AudioCompress.LEVELS.size)
+                        val level = settings.level.coerceIn(first, AudioCompress.LEVELS.size)
                         Column {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -119,11 +122,11 @@ fun AudioCompressDialog(page: AudioCompressUi, onEvent: (DashboardUiEvent) -> Un
                                     maxLines = 1
                                 )
                             }
-                            Slider(
+                            if (first < AudioCompress.LEVELS.size) Slider(
                                 value = level.toFloat(),
                                 onValueChange = { change(settings.copy(level = it.roundToInt())) },
-                                valueRange = 1f..AudioCompress.LEVELS.size.toFloat(),
-                                steps = AudioCompress.LEVELS.size - 2,
+                                valueRange = first.toFloat()..AudioCompress.LEVELS.size.toFloat(),
+                                steps = (AudioCompress.LEVELS.size - first - 1).coerceAtLeast(0),
                                 enabled = !page.running,
                                 colors = SliderDefaults.colors(
                                     thumbColor = colors.primary,
@@ -151,14 +154,22 @@ fun AudioCompressDialog(page: AudioCompressUi, onEvent: (DashboardUiEvent) -> Un
                             }
                         }
                     } else {
+                        val rates = page.bitrateChoices.ifEmpty { AudioCompress.BITRATES }
+                        if (page.formats.size > 1) PickField(
+                            s.audioCompressFormat,
+                            page.format,
+                            page.formats,
+                            !page.running,
+                            Modifier.fillMaxWidth()
+                        ) { change(settings.copy(format = page.formats[it])) }
                         val bitrate: @Composable (Modifier) -> Unit = { m ->
                             PickField(
                                 s.audioCompressBitrate,
                                 "${settings.bitrateKbps}k",
-                                AudioCompress.BITRATES.map { "${it}k" },
+                                rates.map { "${it}k" },
                                 !page.running,
                                 m
-                            ) { change(settings.copy(bitrateKbps = AudioCompress.BITRATES[it])) }
+                            ) { change(settings.copy(bitrateKbps = rates[it])) }
                         }
                         val sampleRate: @Composable (Modifier) -> Unit = { m ->
                             PickField(
@@ -260,7 +271,7 @@ fun AudioCompressDialog(page: AudioCompressUi, onEvent: (DashboardUiEvent) -> Un
                         ) { Text(s.cancel, color = colors.onSurface) }
                         Button(
                             onClick = { onEvent(DashboardUiEvent.OnAudioCompressStartClicked) },
-                            enabled = !page.running && !page.reading,
+                            enabled = !page.running && !page.reading && !page.nothingToGain,
                             shape = RoundedCornerShape(11.dp),
                             contentPadding = PaddingValues(horizontal = 22.dp),
                             modifier = if (wide) Modifier.height(42.dp)

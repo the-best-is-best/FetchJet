@@ -13,7 +13,7 @@ fjAddLanguage("ja", {
   "appDidNotStart": "FetchJet が起動しませんでした。スタートメニューから開いて、もう一度お試しください。",
   "downloadOptions": "ダウンロード · {n} 件のオプション",
   "downloadAllFiles": "すべてダウンロード（{n} 個のファイル）",
-  "clipTitle": "FetchJet で一部（クリップ）をダウンロード",
+  "clipTitle": "FetchJet で開き、ダウンロード前にオプションを選択",
   "couldNotSendReason": "送信できませんでした: {reason}",
   "couldNotSendParen": "送信できませんでした（{reason}）",
   "sentToApp": "FetchJet に送信しました ✔",

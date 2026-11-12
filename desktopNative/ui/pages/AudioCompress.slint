@@ -278,7 +278,7 @@ export component AudioCompressDialog inherits Rectangle {
                         }
                     }
                 }
-                Rectangle {
+                if !Core.audioCompress.nothing: Rectangle {
                     height: 44px;
                     border-radius: 11px;
                     border-width: 1px;
@@ -299,7 +299,7 @@ export component AudioCompressDialog inherits Rectangle {
                         }
                     }
                 }
-                if Core.audioCompress.simple: Rectangle {
+                if Core.audioCompress.simple && !Core.audioCompress.nothing: Rectangle {
                     height: 22px;
                     Caption {
                         x: Dir.rtl ? parent.width - self.width : 0;
@@ -315,14 +315,15 @@ export component AudioCompressDialog inherits Rectangle {
                         horizontal-alignment: Dir.end;
                     }
                 }
-                if Core.audioCompress.simple: StepSlider {
+                if Core.audioCompress.simple && !Core.audioCompress.nothing: StepSlider {
                     count: Core.audioCompress.levelCount;
                     value: Core.audioCompress.level;
                     label: Tr.audioCompressLevel;
+                    offset: Core.audioCompress.levelOffset;
                     enabled: !Core.audioCompress.running;
-                    changed(value) => { Act.audioCompressSetLevel(value); }
+                    changed(value) => { Act.audioCompressSetLevel(value + Core.audioCompress.levelOffset); }
                 }
-                if Core.audioCompress.simple: Rectangle {
+                if Core.audioCompress.simple && !Core.audioCompress.nothing: Rectangle {
                     height: 18px;
                     T {
                         x: Dir.rtl ? parent.width - self.width : 0;
@@ -342,8 +343,15 @@ export component AudioCompressDialog inherits Rectangle {
                         horizontal-alignment: Dir.end;
                     }
                 }
-                if !Core.audioCompress.simple: HorizontalLayout {
+                if !Core.audioCompress.simple && !Core.audioCompress.nothing: HorizontalLayout {
                     spacing: 8px;
+                    if Core.audioCompress.formatOptions.length > 1: PickField {
+                        label: Tr.audioCompressFormat;
+                        options: Core.audioCompress.formatOptions;
+                        pick: Core.audioCompress.formatPick;
+                        enabled: !Core.audioCompress.running;
+                        picked(i) => { Act.audioCompressSetFormat(i); }
+                    }
                     PickField {
                         label: Tr.audioCompressBitrate;
                         options: Core.audioCompress.bitrateOptions;
@@ -374,6 +382,12 @@ export component AudioCompressDialog inherits Rectangle {
                 }
                 if Core.audioCompress.running: LinearProgress {
                     value: Core.audioCompress.progress;
+                }
+                if Core.audioCompress.nothing: T {
+                    text: Tr.audioCompressNothing;
+                    line: 40px;
+                    wrap: word-wrap;
+                    color: Theme.on-surface-variant;
                 }
                 if Core.audioCompress.failed: T {
                     text: Tr.audioCompressFailed;

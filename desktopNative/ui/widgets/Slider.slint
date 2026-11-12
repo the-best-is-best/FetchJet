@@ -3,6 +3,7 @@ import { Theme, Dir } from "../theme.slint";
 export component StepSlider inherits Rectangle {
     in property <int> count: 6;
     in property <int> value: 1;
+    in property <int> offset: 0;
     in property <bool> enabled: true;
     in property <string> label;
     callback changed(value: int);
@@ -58,7 +59,7 @@ export component StepSlider inherits Rectangle {
         y: 26px;
         width: 20px;
         height: 16px;
-        text: i + 1;
+        text: i + 1 + root.offset;
         color: i + 1 == root.value ? Theme.primary : Theme.on-surface-variant;
         font-family: Theme.font;
         font-size: 12px;

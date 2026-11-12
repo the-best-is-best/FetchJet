@@ -22,7 +22,8 @@ data class AudioCompressSettings(
     val level: Int = AudioCompress.DEFAULT_LEVEL,
     val bitrateKbps: Int = 64,
     val sampleRate: Int = 0,
-    val channels: Int = 0
+    val channels: Int = 0,
+    val format: String = ""
 )
 
 data class AudioEncode(val bitrateKbps: Int, val sampleRate: Int, val channels: Int)
@@ -32,6 +33,45 @@ data class CompressedCopy(val path: String, val name: String, val bytes: Long)
 object AudioCompress {
     const val DEFAULT_LEVEL = 3
     const val OUTPUT_EXTENSION = "m4a"
+
+    val FORMATS: List<String> = listOf("m4a", "mp3", "opus")
+
+    private val encodable = mutableMapOf(OUTPUT_EXTENSION to true)
+
+    fun defaultFormat(sourceName: String): String =
+        sourceName.substringAfterLast('.', "").lowercase().takeIf { it in FORMATS } ?: OUTPUT_EXTENSION
+
+    fun formatFor(settings: AudioCompressSettings, sourceName: String, available: List<String>): String =
+        settings.format.takeIf { it in available }
+            ?: defaultFormat(sourceName).takeIf { it in available }
+            ?: OUTPUT_EXTENSION
+
+    private fun codecArgs(format: String, encode: AudioEncode): List<String> = buildList {
+        val codec = when (format) {
+            "mp3" -> "libmp3lame"
+            "opus" -> "libopus"
+            else -> "aac"
+        }
+        addAll(listOf("-vn", "-map", "0:a:0", "-c:a", codec, "-b:a", "${encode.bitrateKbps}k"))
+        if (encode.sampleRate > 0 && format != "opus") addAll(listOf("-ar", encode.sampleRate.toString()))
+        if (encode.channels > 0) addAll(listOf("-ac", encode.channels.toString()))
+        if (format == OUTPUT_EXTENSION) addAll(listOf("-movflags", "+faststart"))
+    }
+
+    suspend fun availableFormats(input: String): List<String> = FORMATS.filter { format ->
+        encodable[format] ?: run {
+            val sample = "${PathResolver().getTempDirectory().trimEnd('/', '\\')}/fetchjet-audio-${nowEpochMs()}.$format"
+            val ok = runCatching {
+                runLocalFfmpeg(
+                    listOf("-y", "-nostdin", "-v", "error", "-t", "0.5", "-i", input) +
+                            codecArgs(format, AudioEncode(64, 0, 0)) + sample
+                )
+            }.getOrDefault(false) && (AppFileSystem.metadataOrNull(sample.toPath())?.size ?: 0L) > 0L
+            runCatching { AppFileSystem.delete(sample.toPath()) }
+            encodable[format] = ok
+            ok
+        }
+    }
 
     val LEVELS: List<AudioEncode> = listOf(
         AudioEncode(160, 0, 0),
@@ -89,8 +129,24 @@ object AudioCompress {
         return audio + audio / 50L + 4096L
     }
 
-    fun outputName(sourceName: String, encode: AudioEncode): String =
-        sourceName.substringBeforeLast('.') + " (${encode.bitrateKbps}k)." + OUTPUT_EXTENSION
+    fun shrinkingBitrates(originalBytes: Long, durationMs: Long, settings: AudioCompressSettings): List<Int> {
+        if (originalBytes <= 0L || durationMs <= 0L) return BITRATES
+        return BITRATES.filter {
+            val encode = encodeFor(settings.copy(mode = AudioCompressMode.ADVANCED, bitrateKbps = it))
+            estimateBytes(durationMs, encode) < originalBytes
+        }
+    }
+
+    fun firstShrinkingLevel(originalBytes: Long, durationMs: Long): Int {
+        if (originalBytes <= 0L || durationMs <= 0L) return 1
+        val index = LEVELS.indexOfFirst {
+            estimateBytes(durationMs, encodeFor(AudioCompressSettings(level = LEVELS.indexOf(it) + 1))) < originalBytes
+        }
+        return if (index < 0) LEVELS.size + 1 else index + 1
+    }
+
+    fun outputName(sourceName: String, encode: AudioEncode, format: String = OUTPUT_EXTENSION): String =
+        sourceName.substringBeforeLast('.') + " (${encode.bitrateKbps}k)." + format
 
     fun freePath(folder: String, name: String): String {
         val base = name.substringBeforeLast('.')
@@ -130,16 +186,15 @@ object AudioCompress {
         output: String,
         encode: AudioEncode,
         durationMs: Long,
+        format: String = OUTPUT_EXTENSION,
         onProgress: (Float) -> Unit
     ): Boolean = coroutineScope {
         val progress = progressFile()
-        val partial = output.substringBeforeLast('.') + ".part.$OUTPUT_EXTENSION"
+        val partial = output.substringBeforeLast('.') + ".part.$format"
         val args = buildList {
             addAll(listOf("-y", "-nostdin", "-v", "error", "-progress", progress.toString(), "-i", input))
-            addAll(listOf("-vn", "-map", "0:a:0", "-c:a", "aac", "-b:a", "${encode.bitrateKbps}k"))
-            if (encode.sampleRate > 0) addAll(listOf("-ar", encode.sampleRate.toString()))
-            if (encode.channels > 0) addAll(listOf("-ac", encode.channels.toString()))
-            addAll(listOf("-movflags", "+faststart", partial))
+            addAll(codecArgs(format, encode))
+            add(partial)
         }
         val watcher: Job = launch {
             while (isActive) {

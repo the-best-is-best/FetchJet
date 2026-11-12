@@ -754,6 +754,7 @@ interface AppLocalization : LocalizationProvider {
     val audioCompressBitrate: String
     val audioCompressSampleRate: String
     val audioCompressChannels: String
+    val audioCompressFormat: String
     val audioCompressAuto: String
     val audioCompressMono: String
     val audioCompressStereo: String
@@ -764,6 +765,7 @@ interface AppLocalization : LocalizationProvider {
     val audioCompressDelete: String
     val audioCompressHigherQuality: String
     val audioCompressSmallerFile: String
+    val audioCompressNothing: String
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String

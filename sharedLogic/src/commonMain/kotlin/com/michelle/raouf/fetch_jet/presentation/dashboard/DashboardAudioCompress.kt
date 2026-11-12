@@ -24,7 +24,7 @@ internal fun DashboardViewModel.handleAudioCompressEvent(event: DashboardUiEvent
 
         is DashboardUiEvent.OnAudioCompressSettingsChanged -> {
             if (_uiState.value.audioCompress?.running == true) return
-            lastAudioSettings = event.settings
+            lastAudioSettings = event.settings.copy(format = "")
             _uiState.update { state ->
                 val page = state.audioCompress ?: return@update state
                 if (page.running) return@update state
@@ -52,8 +52,18 @@ internal fun DashboardViewModel.handleAudioCompressEvent(event: DashboardUiEvent
     }
 }
 
-private fun AudioCompressUi.withEstimate(): AudioCompressUi =
-    copy(estimatedBytes = AudioCompress.estimateBytes(durationMs, AudioCompress.encodeFor(settings)))
+private fun AudioCompressUi.withEstimate(): AudioCompressUi {
+    val last = AudioCompress.LEVELS.size
+    val rates = bitrateChoices
+    val fitted = settings.copy(
+        level = settings.level.coerceIn(minOf(firstLevel, last), last),
+        bitrateKbps = if (rates.isEmpty() || settings.bitrateKbps in rates) settings.bitrateKbps else rates.last()
+    )
+    return copy(
+        settings = fitted,
+        estimatedBytes = AudioCompress.estimateBytes(durationMs, AudioCompress.encodeFor(fitted))
+    )
+}
 
 private fun DashboardViewModel.audioTask(taskId: String): DownloadTask? =
     queueRepository.allTasksFlow.value.firstOrNull { it.id == taskId }?.takeIf { AudioCompress.canCompress(it) }
@@ -78,26 +88,27 @@ private fun DashboardViewModel.openAudioCompress(taskId: String) {
     if (bytes == null) return
     scope.launch {
         val duration = AudioCompress.durationMs(source)
+        val formats = AudioCompress.availableFormats(source)
         _uiState.update { state ->
             val page = state.audioCompress?.takeIf { it.taskId == taskId } ?: return@update state
-            state.copy(audioCompress = page.copy(durationMs = duration, reading = false).withEstimate())
+            state.copy(audioCompress = page.copy(durationMs = duration, formats = formats, reading = false).withEstimate())
         }
     }
 }
 
 private fun DashboardViewModel.startAudioCompress() {
     val page = _uiState.value.audioCompress ?: return
-    if (page.running || page.reading || page.originalBytes <= 0L) return
+    if (page.running || page.reading || page.originalBytes <= 0L || page.nothingToGain) return
     val task = audioTask(page.taskId) ?: return
     val source = AudioCompress.sourcePath(task)
     val encode = AudioCompress.encodeFor(page.settings)
     val output = AudioCompress.freePath(
-        task.destinationPath.trimEnd('/', '\\'), AudioCompress.outputName(task.fileName, encode)
+        task.destinationPath.trimEnd('/', '\\'), AudioCompress.outputName(task.fileName, encode, page.format)
     )
     _uiState.update { it.copy(audioCompress = page.copy(running = true, progress = 0f, failed = false)) }
     scope.launch {
         val ok = runCatching {
-            AudioCompress.compress(source, output, encode, page.durationMs) { done ->
+            AudioCompress.compress(source, output, encode, page.durationMs, page.format) { done ->
                 _uiState.update { state ->
                     val current = state.audioCompress?.takeIf { it.taskId == page.taskId && it.running }
                         ?: return@update state

@@ -13,7 +13,7 @@ fjAddLanguage("ko", {
   "appDidNotStart": "FetchJet이 실행되지 않았습니다. 시작 메뉴에서 연 후 다시 시도하세요.",
   "downloadOptions": "다운로드 · 옵션 {n}개",
   "downloadAllFiles": "모두 다운로드(파일 {n}개)",
-  "clipTitle": "FetchJet에서 일부(클립)만 다운로드",
+  "clipTitle": "FetchJet에서 열고 다운로드 전에 옵션 선택",
   "couldNotSendReason": "보낼 수 없음: {reason}",
   "couldNotSendParen": "보낼 수 없음({reason})",
   "sentToApp": "FetchJet으로 보냄 ✔",

@@ -278,6 +278,10 @@ export struct AudioCompressDto {
     ratio: float,
     level: int,
     levelCount: int,
+    levelOffset: int,
+    nothing: bool,
+    formatOptions: [string],
+    formatPick: int,
     levelLabel: string,
     bitrates: [ChoiceDto],
     bitrateOptions: [string],
@@ -487,6 +491,7 @@ export struct StatusDto {
 
 export struct TaskRowDto {
     kind: int,
+    canCompress: bool,
     id: string,
     name: string,
     nameRtl: bool,

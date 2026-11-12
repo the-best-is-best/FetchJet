@@ -13,7 +13,7 @@ fjAddLanguage("hi", {
   "appDidNotStart": "FetchJet शुरू नहीं हुआ। इसे Start मेनू से खोलें और फिर से कोशिश करें।",
   "downloadOptions": "डाउनलोड · {n} विकल्प",
   "downloadAllFiles": "सभी डाउनलोड करें ({n} फ़ाइलें)",
-  "clipTitle": "इसका एक हिस्सा (क्लिप) FetchJet में डाउनलोड करें",
+  "clipTitle": "FetchJet में खोलें और डाउनलोड से पहले विकल्प चुनें",
   "couldNotSendReason": "भेजा नहीं जा सका: {reason}",
   "couldNotSendParen": "भेजा नहीं जा सका ({reason})",
   "sentToApp": "FetchJet को भेजा गया ✔",

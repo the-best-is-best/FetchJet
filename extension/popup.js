@@ -107,7 +107,7 @@ function mediaRow(it, hero) {
     row.appendChild(btn);
     if (it.kind === "ytdlp") {
       const cut = document.createElement("button");
-      cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "✂"; cut.title = fjT("clipTitle");
+      cut.className = "small"; cut.style.flex = "0 0 auto"; cut.textContent = "↗"; cut.title = fjT("clipTitle");
       cut.addEventListener("click", () => downloadFromPopup(cut, it, { openClip: true }, "popupOpened"));
       row.appendChild(cut);
     }

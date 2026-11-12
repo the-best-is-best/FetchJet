@@ -20,7 +20,7 @@ private fun buildAudioCompress(page: AudioCompressUi?): AudioCompressDto {
     if (page == null) return AudioCompressDto()
     val s = LocalizationManager.Strings
     val settings = page.settings
-    val bitrates = AudioCompress.BITRATES.map { ChoiceDto(it, "${it}k", it == settings.bitrateKbps) }
+    val bitrates = page.bitrateChoices.ifEmpty { AudioCompress.BITRATES }.map { ChoiceDto(it, "${it}k", it == settings.bitrateKbps) }
     val rates = AudioCompress.SAMPLE_RATES.map {
         ChoiceDto(it, if (it == 0) s.audioCompressAuto else "${it}Hz", it == settings.sampleRate)
     }
@@ -38,12 +38,18 @@ private fun buildAudioCompress(page: AudioCompressUi?): AudioCompressDto {
     val known = !page.reading && page.estimatedBytes > 0L && page.originalBytes > 0L
     val share = if (known) (page.estimatedBytes.toFloat() / page.originalBytes.toFloat()).coerceIn(0f, 1f) else 0f
     val levelIndex = (settings.level - 1).coerceIn(0, AudioCompress.LEVELS.lastIndex)
+    val nothing = page.nothingToGain
+    val offset = if (nothing) 0 else (page.firstLevel - 1).coerceIn(0, AudioCompress.LEVELS.lastIndex)
     return AudioCompressDto(
         open = true,
-        saving = if (known && share < 1f) ltr("−" + (100 - (share * 100f).toInt()).coerceIn(0, 99) + "%") else "",
+        saving = if (known && share < 1f && !nothing) ltr("−" + (100 - (share * 100f).toInt()).coerceIn(0, 99) + "%") else "",
         ratio = share,
-        level = levelIndex + 1,
-        levelCount = AudioCompress.LEVELS.size,
+        level = levelIndex + 1 - offset,
+        levelCount = AudioCompress.LEVELS.size - offset,
+        levelOffset = offset,
+        nothing = nothing,
+        formatOptions = page.formats,
+        formatPick = page.formats.indexOf(page.format) + 1,
         levelLabel = ltr((levelIndex + 1).toString() + " · " + AudioCompress.LEVELS[levelIndex].bitrateKbps + " kbps"),
         bitrates = bitrates,
         bitrateOptions = bitrates.map { it.label },
@@ -73,7 +79,7 @@ private fun buildAudioCompress(page: AudioCompressUi?): AudioCompressDto {
         running = page.running,
         progress = page.progress,
         failed = page.failed,
-        canStart = !page.running && !page.reading,
+        canStart = !page.running && !page.reading && !nothing,
         copies = page.copies.map { AudioCopyDto(it.path, it.name, formatBytes(it.bytes)) },
     )
 }

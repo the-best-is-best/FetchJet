@@ -13,7 +13,7 @@ fjAddLanguage("tr", {
   "appDidNotStart": "FetchJet başlamadı. Başlat menüsünden açın ve tekrar deneyin.",
   "downloadOptions": "İndir · {n} seçenek",
   "downloadAllFiles": "Tümünü indir ({n} dosya)",
-  "clipTitle": "Bir bölümünü (klip) FetchJet'te indir",
+  "clipTitle": "FetchJet'te aç ve indirmeden önce seçenekleri belirle",
   "couldNotSendReason": "Gönderilemedi: {reason}",
   "couldNotSendParen": "Gönderilemedi ({reason})",
   "sentToApp": "FetchJet'e gönderildi ✔",

@@ -539,8 +539,8 @@
         el("div", { class: "body" }, t, el("div", { class: "s", dir: "ltr", text: subText.length > 110 ? subText.slice(0, 110) + "…" : subText })));
       if (!m.disabled) row.addEventListener("click", () => download(b, m));
       if (!m.disabled && m.kind === "ytdlp") {
-        // Scissors: open FetchJet on this quality with the clip range on (download a part only).
-        const cut = el("button", { class: "cut", text: "✂", title: fjT("clipTitle") });
+        // Open FetchJet on this quality with the Add dialog, instead of downloading at once.
+        const cut = el("button", { class: "cut", text: "↗", title: fjT("clipTitle") });
         cut.addEventListener("click", (e) => { e.stopPropagation(); download(b, { ...m, openClip: true }); });
         row.appendChild(cut);
       }

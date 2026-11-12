@@ -721,17 +721,6 @@ component DetailsBody inherits VerticalLayout {
             clicked => { Act.detailsAction(Core.details.secondaryAction, false); }
         }
     }
-    if Core.details.canCompress: Rectangle {
-        height: 8px;
-    }
-    if Core.details.canCompress: OutlinedButton {
-        text: Core.details.compressLabel;
-        height: 42px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        clicked => { Act.detailsCompress(); }
-    }
     if Core.details.canShare: Rectangle {
         height: 8px;
     }

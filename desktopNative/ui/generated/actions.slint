@@ -14,6 +14,7 @@ export global Act {
     callback rowClick(id: string, control: bool, shift: bool);
     callback rowCheck(id: string, checked: bool);
     callback rowQuickAction(id: string);
+    callback rowCompress(id: string);
     callback cyclePriority(id: string);
     callback checkAll(checked: bool);
     callback clearChecks();
@@ -45,6 +46,7 @@ export global Act {
     callback audioCompressSetSampleRate(value: int);
     callback audioCompressSetChannels(value: int);
     callback audioCompressStart();
+    callback audioCompressSetFormat(index: int);
     callback audioCompressDelete(path: string);
     callback audioCompressDismiss();
     callback toggleDetailFile(index: int, selected: bool);

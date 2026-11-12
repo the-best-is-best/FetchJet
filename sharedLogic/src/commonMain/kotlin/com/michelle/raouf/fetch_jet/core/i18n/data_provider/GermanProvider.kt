@@ -961,6 +961,7 @@ object GermanProvider : AppLocalization {
     override val audioCompressBitrate = "Bitrate"
     override val audioCompressSampleRate = "Abtastrate"
     override val audioCompressChannels = "Kanäle"
+    override val audioCompressFormat = "Format"
     override val audioCompressAuto = "Automatisch"
     override val audioCompressMono = "Mono"
     override val audioCompressStereo = "Stereo"
@@ -971,6 +972,7 @@ object GermanProvider : AppLocalization {
     override val audioCompressDelete = "Löschen"
     override val audioCompressHigherQuality = "Höhere Qualität"
     override val audioCompressSmallerFile = "Kleinere Datei"
+    override val audioCompressNothing = "Diese Datei ist bereits klein. Komprimieren würde sie nicht verkleinern"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

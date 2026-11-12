@@ -124,6 +124,7 @@ internal fun buildTaskRow(task: DownloadTask, checked: Boolean, selected: Boolea
     val completed = task.status == DownloadStatus.COMPLETED
     return TaskRowDto(
         kind = RowKind.TASK.ordinal,
+        canCompress = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task),
         id = task.id,
         name = name,
         nameRtl = startsRightToLeft(name),

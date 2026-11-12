@@ -52,13 +52,14 @@ struct AudioCompressSheet: View {
     }
 
     private func change(mode: AudioCompressMode? = nil, level: Int32? = nil, bitrate: Int32? = nil,
-                        sampleRate: Int32? = nil, channels: Int32? = nil) {
+                        sampleRate: Int32? = nil, channels: Int32? = nil, format: String? = nil) {
         let next = AudioCompressSettings(
             mode: mode ?? settings.mode,
             level: level ?? settings.level,
             bitrateKbps: bitrate ?? settings.bitrateKbps,
             sampleRate: sampleRate ?? settings.sampleRate,
-            channels: channels ?? settings.channels)
+            channels: channels ?? settings.channels,
+            format: format ?? settings.format)
         store.send(DashboardUiEventOnAudioCompressSettingsChanged(settings: next))
     }
 
@@ -80,18 +81,24 @@ struct AudioCompressSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(s)
                 sizeCard(s)
-                Picker(s.audioCompressMode, selection: Binding(
-                    get: { simple },
-                    set: { change(mode: $0 ? .simple : .advanced) })) {
-                    Text(s.audioCompressSimple).tag(true)
-                    Text(s.audioCompressAdvanced).tag(false)
-                }
-                .pickerStyle(.segmented)
-                .disabled(page.running)
-                if simple {
-                    simpleSection(s)
+                if page.nothingToGain {
+                    Text(s.audioCompressNothing)
+                        .font(FJTheme.font.callout)
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 } else {
-                    advancedSection(s)
+                    Picker(s.audioCompressMode, selection: Binding(
+                        get: { simple },
+                        set: { change(mode: $0 ? .simple : .advanced) })) {
+                        Text(s.audioCompressSimple).tag(true)
+                        Text(s.audioCompressAdvanced).tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(page.running)
+                    if simple {
+                        simpleSection(s)
+                    } else {
+                        advancedSection(s)
+                    }
                 }
                 if page.running {
                     runningSection(s)
@@ -202,6 +209,7 @@ struct AudioCompressSheet: View {
 
     private func simpleSection(_ s: AppLocalization) -> some View {
         let levels = Int(AudioCompress.shared.LEVELS.count)
+        let first = min(Int(page.firstLevel), levels)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(s.audioCompressLevel)
@@ -213,14 +221,16 @@ struct AudioCompressSheet: View {
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
             }
-            Slider(value: Binding(
-                get: { Double(settings.level) },
-                set: { change(level: Int32($0.rounded())) }),
-                   in: 1...Double(max(levels, 2)), step: 1)
-                .tint(FJTheme.color.primary)
-                .disabled(page.running)
-                .accessibilityLabel(s.audioCompressLevel)
-                .accessibilityValue(levelText)
+            if first < levels {
+                Slider(value: Binding(
+                    get: { Double(settings.level) },
+                    set: { change(level: Int32($0.rounded())) }),
+                       in: Double(first)...Double(levels), step: 1)
+                    .tint(FJTheme.color.primary)
+                    .disabled(page.running)
+                    .accessibilityLabel(s.audioCompressLevel)
+                    .accessibilityValue(levelText)
+            }
             HStack(spacing: 8) {
                 Text(s.audioCompressHigherQuality)
                 Spacer(minLength: 4)
@@ -232,9 +242,19 @@ struct AudioCompressSheet: View {
     }
 
     private func advancedSection(_ s: AppLocalization) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if page.formats.count > 1 {
+                pickField(s.audioCompressFormat, page.format, page.formats.indices.map { Int32($0) },
+                          label: { page.formats[Int($0)] }) { change(format: page.formats[Int($0)]) }
+            }
+            advancedFields(s)
+        }
+    }
+
+    private func advancedFields(_ s: AppLocalization) -> some View {
         HStack(alignment: .top, spacing: 8) {
             pickField(s.audioCompressBitrate, "\(settings.bitrateKbps)k",
-                      AudioCompress.shared.BITRATES.map { $0.int32Value },
+                      (page.bitrateChoices.isEmpty ? AudioCompress.shared.BITRATES : page.bitrateChoices).map { $0.int32Value },
                       label: { "\($0)k" }) { change(bitrate: $0) }
             pickField(s.audioCompressSampleRate, rateText(settings.sampleRate, s),
                       AudioCompress.shared.SAMPLE_RATES.map { $0.int32Value },
@@ -339,7 +359,7 @@ struct AudioCompressSheet: View {
     }
 
     private func startButton(_ s: AppLocalization) -> some View {
-        let enabled = !(page.running || page.reading)
+        let enabled = !(page.running || page.reading || page.nothingToGain)
         return Button {
             store.send(DashboardUiEventOnAudioCompressStartClicked.shared)
         } label: {

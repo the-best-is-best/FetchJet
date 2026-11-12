@@ -59,6 +59,10 @@ sealed interface UiAction {
     data class RowQuickAction(val id: String = "") : UiAction
 
     @Serializable
+    @SerialName("RowCompress")
+    data class RowCompress(val id: String = "") : UiAction
+
+    @Serializable
     @SerialName("CyclePriority")
     data class CyclePriority(val id: String = "") : UiAction
 
@@ -181,6 +185,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("AudioCompressStart")
     data object AudioCompressStart : UiAction
+
+    @Serializable
+    @SerialName("AudioCompressSetFormat")
+    data class AudioCompressSetFormat(val index: Int = 0) : UiAction
 
     @Serializable
     @SerialName("AudioCompressDelete")

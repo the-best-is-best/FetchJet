@@ -909,6 +909,7 @@ object IndonesianProvider : AppLocalization {
     override val audioCompressBitrate = "Laju bit"
     override val audioCompressSampleRate = "Laju sampel"
     override val audioCompressChannels = "Kanal"
+    override val audioCompressFormat = "Format"
     override val audioCompressAuto = "Otomatis"
     override val audioCompressMono = "Mono"
     override val audioCompressStereo = "Stereo"
@@ -919,6 +920,7 @@ object IndonesianProvider : AppLocalization {
     override val audioCompressDelete = "Hapus"
     override val audioCompressHigherQuality = "Kualitas lebih tinggi"
     override val audioCompressSmallerFile = "File lebih kecil"
+    override val audioCompressNothing = "File ini sudah kecil. Kompresi tidak akan membuatnya lebih kecil"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

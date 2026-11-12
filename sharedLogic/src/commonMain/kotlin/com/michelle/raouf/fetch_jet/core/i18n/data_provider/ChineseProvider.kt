@@ -851,6 +851,7 @@ object ChineseProvider : AppLocalization {
     override val audioCompressBitrate = "比特率"
     override val audioCompressSampleRate = "采样率"
     override val audioCompressChannels = "声道"
+    override val audioCompressFormat = "格式"
     override val audioCompressAuto = "自动"
     override val audioCompressMono = "单声道"
     override val audioCompressStereo = "立体声"
@@ -861,6 +862,7 @@ object ChineseProvider : AppLocalization {
     override val audioCompressDelete = "删除"
     override val audioCompressHigherQuality = "音质更高"
     override val audioCompressSmallerFile = "文件更小"
+    override val audioCompressNothing = "此文件已经很小，压缩不会使它更小"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

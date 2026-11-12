@@ -903,6 +903,7 @@ object HindiProvider : AppLocalization {
     override val audioCompressBitrate = "बिट रेट"
     override val audioCompressSampleRate = "सैंपल रेट"
     override val audioCompressChannels = "चैनल"
+    override val audioCompressFormat = "फ़ॉर्मेट"
     override val audioCompressAuto = "ऑटो"
     override val audioCompressMono = "मोनो"
     override val audioCompressStereo = "स्टीरियो"
@@ -913,6 +914,7 @@ object HindiProvider : AppLocalization {
     override val audioCompressDelete = "हटाएँ"
     override val audioCompressHigherQuality = "बेहतर गुणवत्ता"
     override val audioCompressSmallerFile = "छोटी फ़ाइल"
+    override val audioCompressNothing = "यह फ़ाइल पहले से छोटी है। संपीड़न से यह और छोटी नहीं होगी"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

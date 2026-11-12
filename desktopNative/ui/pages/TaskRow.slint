@@ -67,6 +67,38 @@ component PriorityChip inherits Rectangle {
     }
 }
 
+component CompressAction inherits Rectangle {
+    in property <length> size: 34px;
+    callback clicked();
+    width: root.size;
+    height: root.size;
+    border-radius: root.size / 2;
+    border-width: 1px;
+    border-color: Theme.primary.with-alpha(0.55);
+    background: Theme.primary.with-alpha(0.10);
+    accessible-role: button;
+    accessible-label: Tr.audioCompressTitle;
+    accessible-action-default => { root.clicked(); }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Path {
+        width: root.size * 0.5;
+        height: root.size * 0.5;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M4 12 H20 M12 2 V8 M8.5 5 L12 8.5 L15.5 5 M12 22 V16 M8.5 19 L12 15.5 L15.5 19";
+        stroke: Theme.primary;
+        stroke-width: 2px;
+        fill: transparent;
+    }
+    Hover {
+        border-radius: root.size / 2;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
 component QuickAction inherits Rectangle {
     in property <int> action;
     in property <length> size: 34px;
@@ -333,7 +365,7 @@ export component TaskRow inherits Rectangle {
             Rectangle {
                 row: 0;
                 col: Dir.rtl ? 0 : 7;
-                width: root.data.completed ? 34px : chip.width + 12px + 34px;
+                width: root.data.completed ? (root.data.canCompress ? 76px : 34px) : chip.width + 12px + 34px;
                 height: 50px;
                 chip := PriorityChip {
                     x: Dir.rtl ? 34px + 12px : 0;
@@ -341,6 +373,11 @@ export component TaskRow inherits Rectangle {
                     priority: root.data.priority;
                     label: root.data.priorityLabel;
                     clicked => { Act.cyclePriority(root.data.id); }
+                }
+                if root.data.canCompress: CompressAction {
+                    x: Dir.rtl ? 42px : parent.width - 76px;
+                    y: (parent.height - self.height) / 2;
+                    clicked => { Act.rowCompress(root.data.id); }
                 }
                 QuickAction {
                     x: Dir.rtl ? 0 : parent.width - 34px;
@@ -407,6 +444,13 @@ export component TaskRow inherits Rectangle {
                     clicked => { Act.cyclePriority(root.data.id); }
                 }
                 Rectangle {
+                    width: 8px;
+                }
+                if !root.selection-mode && root.data.canCompress: CompressAction {
+                    size: 44px;
+                    clicked => { Act.rowCompress(root.data.id); }
+                }
+                if !root.selection-mode && root.data.canCompress: Rectangle {
                     width: 8px;
                 }
                 if !root.selection-mode: QuickAction {

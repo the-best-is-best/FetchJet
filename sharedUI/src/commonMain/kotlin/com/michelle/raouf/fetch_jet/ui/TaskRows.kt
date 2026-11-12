@@ -1,6 +1,9 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -216,6 +219,40 @@ private fun ThinBar(fraction: Float, color: Color, height: Int = 5, indeterminat
 }
 
 @Composable
+private fun CompressActionButton(onClick: () -> Unit) {
+    val tint = MaterialTheme.colorScheme.primary
+    val label = LocalizationManager.Strings.audioCompressTitle
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .size(34.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(tint.copy(alpha = 0.10f))
+            .border(1.dp, tint.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.size(17.dp)) {
+            val u = size.width / 24f
+            val stroke = 2f * u
+            fun line(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(
+                tint, androidx.compose.ui.geometry.Offset(x1 * u, y1 * u),
+                androidx.compose.ui.geometry.Offset(x2 * u, y2 * u), stroke,
+                androidx.compose.ui.graphics.StrokeCap.Round
+            )
+            line(4f, 12f, 20f, 12f)
+            line(12f, 2f, 12f, 8f)
+            line(8.5f, 5f, 12f, 8.5f)
+            line(15.5f, 5f, 12f, 8.5f)
+            line(12f, 22f, 12f, 16f)
+            line(8.5f, 19f, 12f, 15.5f)
+            line(15.5f, 19f, 12f, 15.5f)
+        }
+    }
+}
+
+@Composable
 private fun QuickActionButton(action: RowAction, sizeDp: Int, onClick: () -> Unit) {
     if (action == RowAction.NONE) {
         Spacer(modifier = Modifier.width(sizeDp.dp)); return
@@ -263,7 +300,8 @@ fun TaskRow(
     onLongClick: () -> Unit = {},
     onCtrlClick: (() -> Unit)? = null,
     onShiftClick: (() -> Unit)? = null,
-    onPriorityChanged: (Int) -> Unit = {}
+    onPriorityChanged: (Int) -> Unit = {},
+    onCompress: (() -> Unit)? = null
 ) {
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val name = decodeUnicodeText(task.fileName.ifBlank {
@@ -365,6 +403,7 @@ fun TaskRow(
                     if (task.status != DownloadStatus.COMPLETED) {
                         PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
                     }
+                    if (onCompress != null) CompressActionButton(onCompress)
                     QuickActionButton(action, 34) { onQuickAction(action) }
                 }
             } else {

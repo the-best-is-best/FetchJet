@@ -77,6 +77,7 @@ data class StatusDto(
 @Serializable
 data class TaskRowDto(
     val kind: Int = 0,
+    val canCompress: Boolean = false,
     val id: String = "",
     val name: String = "",
     val nameRtl: Boolean = false,

@@ -840,6 +840,7 @@ object KoreanProvider : AppLocalization {
     override val audioCompressBitrate = "비트 전송률"
     override val audioCompressSampleRate = "샘플 속도"
     override val audioCompressChannels = "채널"
+    override val audioCompressFormat = "형식"
     override val audioCompressAuto = "자동"
     override val audioCompressMono = "모노"
     override val audioCompressStereo = "스테레오"
@@ -850,6 +851,7 @@ object KoreanProvider : AppLocalization {
     override val audioCompressDelete = "삭제"
     override val audioCompressHigherQuality = "더 높은 음질"
     override val audioCompressSmallerFile = "더 작은 파일"
+    override val audioCompressNothing = "이 파일은 이미 작습니다. 압축해도 더 작아지지 않습니다"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

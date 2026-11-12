@@ -13,7 +13,7 @@ fjAddLanguage("ar", {
   "appDidNotStart": "لم يبدأ FetchJet. افتحه من قائمة ابدأ وحاول مرة أخرى.",
   "downloadOptions": "تنزيل · {n} خيارات",
   "downloadAllFiles": "تنزيل الكل ({n} ملفات)",
-  "clipTitle": "تنزيل جزء منه (مقطع) في FetchJet",
+  "clipTitle": "افتح في FetchJet واختر الإعدادات قبل التنزيل",
   "couldNotSendReason": "تعذّر الإرسال: {reason}",
   "couldNotSendParen": "تعذّر الإرسال ({reason})",
   "sentToApp": "تم الإرسال إلى FetchJet ✔",

@@ -13,7 +13,7 @@ fjAddLanguage("ru", {
   "appDidNotStart": "FetchJet не запустился. Откройте его из меню «Пуск» и попробуйте снова.",
   "downloadOptions": "Скачать · вариантов: {n}",
   "downloadAllFiles": "Скачать все (файлов: {n})",
-  "clipTitle": "Скачать часть (фрагмент) в FetchJet",
+  "clipTitle": "Открыть в FetchJet и выбрать параметры перед загрузкой",
   "couldNotSendReason": "Не удалось отправить: {reason}",
   "couldNotSendParen": "Не удалось отправить ({reason})",
   "sentToApp": "Отправлено в FetchJet ✔",

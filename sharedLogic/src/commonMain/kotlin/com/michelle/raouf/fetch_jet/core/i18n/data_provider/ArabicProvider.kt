@@ -922,6 +922,7 @@ object ArabicProvider : AppLocalization {
     override val audioCompressBitrate = "معدل البت"
     override val audioCompressSampleRate = "معدل العينة"
     override val audioCompressChannels = "القنوات"
+    override val audioCompressFormat = "الصيغة"
     override val audioCompressAuto = "تلقائي"
     override val audioCompressMono = "أحادي"
     override val audioCompressStereo = "ستيريو"
@@ -932,6 +933,7 @@ object ArabicProvider : AppLocalization {
     override val audioCompressDelete = "حذف"
     override val audioCompressHigherQuality = "جودة أعلى"
     override val audioCompressSmallerFile = "ملف أصغر"
+    override val audioCompressNothing = "الملف صغير بالفعل، والضغط لن يجعله أصغر"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "ابعت لجهاز"
