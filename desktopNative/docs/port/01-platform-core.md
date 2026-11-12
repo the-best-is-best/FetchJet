@@ -19,7 +19,7 @@ Path prefixes used below:
 | `JA/`     | `sharedLogic/src/jvmAndroidMain/kotlin/com/michelle/raouf/fetch_jet/`                    |
 | `I/`      | `sharedLogic/src/iosMain/kotlin/com/michelle/raouf/fetch_jet/`                           |
 | `M/`      | `sharedLogic/src/mingwX64Main/kotlin/com/michelle/raouf/fetch_jet/` (does not exist yet) |
-| `UI/`     | `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`                           |
+| `UI/`     | `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`                           |
 | `main.kt` | `desktopApp/src/main/kotlin/com/michelle/raouf/fetch_jet/main.kt`                        |
 
 Contents: 1 cross-cutting facts, 2 on-disk compatibility, 3 the 24 expects one by one,
@@ -65,7 +65,7 @@ reference code, 8 risks, 9 open questions.
 
 ### 1.2 Many of these expects are called only by the Compose UI
 
-`androidUi` and `desktopApp (removed)` are not compiled for `mingwX64`. On the native app their job is done
+`sharedUI` and `desktopApp` are not compiled for `mingwX64`. On the native app their job is done
 by the Slint UI through the C API of `fjcore.dll`. The actuals must still exist (the module does
 not compile without them), and the C API layer must export what the Compose UI used to call:
 

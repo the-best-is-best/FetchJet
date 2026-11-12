@@ -275,7 +275,7 @@ Results (fourth session, native scope; the owner asked to stop after native):
 - `run.sh syncjvm` (peer rebuilt; it compiles the changed JVM file) 37 passed, 0 failed
   (native <-> jvm accept, reject, 3 s timeout via `-Dfetchjet.sync.offerWaitMs`).
 - `corehost/test_devices.py` (debug `fjcore.dll` rebuilt) 28 checks, 0 failed.
-- Written but not built: `androidUi` `DevicePairingDialog` offer branch, `DashboardDeviceSync`
+- Written but not built: `sharedUI` `DevicePairingDialog` offer branch, `DashboardDeviceSync`
   guard, `:sharedLogic:compileKotlinJvm`, `:androidApp:assembleDebug`. iOS engine
   (`DeviceSyncImpl.ios.kt`) not changed yet: an old-style receiver there (no prompt).
 - Real EXE not rebuilt or run; no second real device.

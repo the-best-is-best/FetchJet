@@ -49,7 +49,7 @@ and Skia renderers, accessibility (`private/slint_generated_public.h`).
 - Brackets mirror, Arabic-Indic digits render.
 - Sizes and speeds inside Arabic text flip their parts unless isolated: `MB 128.00` instead of
   `128.00 MB`. Wrapping the value in **U+2066 ... U+2069** (LRI / PDI: what `ltr()` does in
-  androidUi) fixes it. Do not use U+202A / U+202C (LRE / PDF): a stray bar glyph is drawn.
+  sharedUI) fixes it. Do not use U+202A / U+202C (LRE / PDF): a stray bar glyph is drawn.
 - `horizontal-alignment` never follows the text: the default and `start` are always left, `end`
   is always right, also for Arabic text. Alignment must come from the `Dir` global (section 4).
 - `wrap: word-wrap` works for Arabic; the lines are aligned by `horizontal-alignment`.

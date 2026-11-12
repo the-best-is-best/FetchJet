@@ -40,7 +40,7 @@ Shared logic (commonMain), written and the ffmpeg commands checked by hand on Wi
 
 UI:
 
-- Android / JVM Compose: `androidUi/.../ui/AudioCompressDialog.kt`, button in `TaskDetails.kt`,
+- Android / JVM Compose: `sharedUI/.../ui/AudioCompressDialog.kt`, button in `TaskDetails.kt`,
   hook in `App.kt`. `:androidApp:assembleDebug` **builds**. Not run on the phone.
 - Native desktop: `desktopNative/core/.../dto/AudioCompressDto.kt`,
   `presenter/AudioCompressPresenter.kt`, channel 27 `audioCompress`, actions `DetailsCompress`

@@ -10,7 +10,7 @@ Short names used below:
 | `main.kt`   | `desktopApp/src/main/kotlin/com/michelle/raouf/fetch_jet/main.kt` (933 lines) |
 | `LOGIC`     | `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`              |
 | `JVM`       | `sharedLogic/src/jvmMain/kotlin/com/michelle/raouf/fetch_jet`                 |
-| `UI`        | `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`                 |
+| `UI`        | `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet`                 |
 | `build.yml` | `.github/workflows/build.yml`                                                 |
 
 Things found while reading that the owner should know (details in the sections):
@@ -423,14 +423,14 @@ unchanged. The server code itself (`main.kt:138-688`) is plain Kotlin apart from
 | Position     | platform default                                                                                                                       | `rememberWindowState` defaults          |
 | Minimum size | none set                                                                                                                               | -                                       |
 | Saved state  | none: size, position and maximised state are **not** saved between runs                                                                | -                                       |
-| Icon         | `Res.drawable.ic_fetchjet_logo` (`androidUi/src/commonMain/composeResources/drawable/ic_fetchjet_logo.xml`), same painter for the tray  | `main.kt:770`, `869`                    |
+| Icon         | `Res.drawable.ic_fetchjet_logo` (`sharedUI/src/commonMain/composeResources/drawable/ic_fetchjet_logo.xml`), same painter for the tray  | `main.kt:770`, `869`                    |
 | Decoration   | standard OS frame, resizable                                                                                                           | defaults                                |
 | Close button | tray supported -> hide the window (process stays); no tray -> exit                                                                     | `main.kt:861-866`                       |
 | Start hidden | `isWindowVisible = !startInTray`                                                                                                       | `main.kt:759`                           |
 | Content      | `App()` with a clipboard wrapper that swallows clipboard exceptions                                                                    | `main.kt:908-931`                       |
 
 `App(onDarkModeChanged = null, onForcedDarkChanged = null)` (`UI/App.kt:80-85`); the desktop host
-passes nothing, so the title bar does not follow the theme. Nothing is drawn outside `androidUi`
+passes nothing, so the title bar does not follow the theme. Nothing is drawn outside `sharedUI`
 except the tray and its menu.
 
 The prototype (`desktopNative/ui/app.slint:411-413`) uses `preferred-width: 1200px` and a fixed
@@ -497,7 +497,7 @@ AppUserModelID. Whether Slint's `SystemTrayIcon` exposes a notification call was
 - Keyboard shortcuts exist only in the task list (`UI/TaskList.kt:163-180`): Ctrl/Cmd+A select
   all, Esc clear selection, Delete (or Cmd+Backspace) delete selected; plus Ctrl+click and
   Shift+click on rows. No global hot keys, no menu bar, no accelerators in `main.kt`.
-- File or link drag-and-drop: **not implemented** anywhere (no drop target in `androidUi` or
+- File or link drag-and-drop: **not implemented** anywhere (no drop target in `sharedUI` or
   `main.kt`).
 - Clipboard watcher (`UI/App.kt:92-128`): when the setting is on, reads the clipboard text every
   800 ms (`getClipboardText()`, `JVM/Platform.jvm.kt:13-23`, AWT system clipboard, string flavour
@@ -1088,7 +1088,7 @@ Same steps as CI (4.4) with the native stage folder in place of the jpackage app
 
 ```
 perl -0pe 's/>\s*([^<>\s][^<>]*?)\s*</>$1</g; s/__VERSION__/<ver>.0/g' desktopApp/msix/AppxManifest.xml > <stage>\AppxManifest.xml
-copy desktopApp (removed)\msix\Assets -> <stage>\Assets
+copy desktopApp\msix\Assets -> <stage>\Assets
 makepri.exe createconfig /cf priconfig.xml /dq en-US /o
 makepri.exe new /pr <stage> /cf priconfig.xml /mn <stage>\AppxManifest.xml /of <stage>\resources.pri /o
 makeappx.exe pack /o /d <stage> /p FetchJet-<ver>-store.msix

@@ -1063,7 +1063,7 @@ Interface `DeviceSync` (`DeviceSync.kt:67-105`): flows `discovered`, `paired`, `
 `pathResolver.getSettingsDirectory()`, scratch = `<temp>/task_<id>`, `onReceive` ->
 `onDeviceReceive` in `DashboardDeviceSync.kt:67`), and the collectors / event handlers in
 `DashboardDeviceSync.kt`. The UI translates the refusal words in `deviceSyncReason`
-(`androidUi/.../DeviceSendDialog.kt`), so they are part of the contract: `pending`,
+(`sharedUI/.../DeviceSendDialog.kt`), so they are part of the contract: `pending`,
 `not paired`, `declined`, `expired`, `blocked`, `busy`, `wait:<seconds>`, plus the sender-side
 texts `device offline or not paired` and
 `the other device unpaired this one; send again to pair`.
