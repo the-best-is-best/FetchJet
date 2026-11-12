@@ -35,7 +35,7 @@ function Download([string]$url, [string]$to) {
     if ($LASTEXITCODE -ne 0) { Fail "download failed: $url" }
 }
 
-function Ps([string]$script, [string[]]$arguments) {
+function RunScript([string]$script, [string[]]$arguments) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $packaging $script) @arguments
     if ($LASTEXITCODE -ne 0) { Fail "$script failed" }
 }
@@ -194,7 +194,7 @@ function Package {
     if (Test-Path -LiteralPath $ciBase) { Remove-Item -LiteralPath $ciBase -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-    Ps 'stage.ps1' @('-Stage', $stage, '-RequireFreshCore')
+    RunScript 'stage.ps1' @('-Stage', $stage, '-RequireFreshCore')
     if (-not (Test-Path -LiteralPath (Join-Path $stage 'fjtorrent.dll'))) { Fail 'fjtorrent.dll is not in the stage folder: torrents would be hidden' }
 
     $env:FJ_STAGE = $stage
@@ -210,12 +210,12 @@ function Package {
     if ($LASTEXITCODE -ne 0 -or -not $version) { Fail 'could not read APP_VERSION' }
     $msi = Join-Path $out "FetchJet-$version.msi"
     if (-not (Test-Path -LiteralPath $msi)) { Fail "no $msi" }
-    Ps 'check-msi.ps1' @('-Msi', $msi, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msi'))
+    RunScript 'check-msi.ps1' @('-Msi', $msi, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msi'))
 
-    Ps 'msix\build-msix.ps1' @('-Stage', $stage, '-Out', $out, '-SdkBin', $env:FJ_SDK_BIN)
+    RunScript 'msix\build-msix.ps1' @('-Stage', $stage, '-Out', $out, '-SdkBin', $env:FJ_SDK_BIN)
     $msix = Join-Path $out "FetchJet-$version-store.msix"
     if (-not (Test-Path -LiteralPath $msix)) { Fail "no $msix" }
-    Ps 'msix\check-msix.ps1' @('-Msix', $msix, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msix'), '-SdkBin', $env:FJ_SDK_BIN)
+    RunScript 'msix\check-msix.ps1' @('-Msix', $msix, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msix'), '-SdkBin', $env:FJ_SDK_BIN)
 
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath (Join-Path $out "FetchJet-$version-native-stage.zip")
     Get-ChildItem -LiteralPath $out -File | Where-Object { $_.Extension -in @('.msi', '.msix', '.zip') } |
