@@ -365,10 +365,10 @@ export component TaskRow inherits Rectangle {
             Rectangle {
                 row: 0;
                 col: Dir.rtl ? 0 : 7;
-                width: root.data.completed ? (root.data.canCompress ? 76px : 34px) : chip.width + 12px + 34px;
+                width: 120px;
                 height: 50px;
                 chip := PriorityChip {
-                    x: Dir.rtl ? 34px + 12px : 0;
+                    x: Dir.rtl ? 34px + 12px : parent.width - 34px - 12px - self.width;
                     visible: !root.data.completed;
                     priority: root.data.priority;
                     label: root.data.priorityLabel;
