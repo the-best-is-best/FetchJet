@@ -2,7 +2,7 @@
 
 Source of truth: the Compose code on branch `desktop-native` as read on 2026-11-09. All paths are
 relative to
-`E:/tbib/FetchJet`. `UI/` below means `androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`
+`E:/tbib/FetchJet`. `UI/` below means `sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`
 and
 `LOGIC/` means `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`.
 
@@ -74,7 +74,7 @@ Overlap with the sibling specs that existed in `desktopNative/docs/port/` when t
 
 - Desktop window: `rememberWindowState(width = 1100.dp, height = 750.dp)` (`main.kt:769`). **No
   minimum window size
-  is set anywhere** (`grep minimumSize` over `desktopApp/` and `androidUi/` finds nothing). The
+  is set anywhere** (`grep minimumSize` over `desktopApp/` and `sharedUI/` finds nothing). The
   window can be shrunk
   to any size, so the Compose app does reach its tablet / phone layouts on a desktop.
 - Root layout breakpoints (`UI/App.kt:194-200`): `< 680dp` = compact (phone layout, bottom

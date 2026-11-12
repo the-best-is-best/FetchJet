@@ -1,7 +1,7 @@
 # 06 - UI porting spec: Add download dialog (frame, sections, link list, torrent) and the app's text field
 
 Scope: these five Compose files, all under
-`androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/ui/`:
+`sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/ui/`:
 
 | File                        | Lines | Content                                                                                                                                          |
 |-----------------------------|-------|--------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -34,7 +34,7 @@ Units: 1 dp = 1 Slint logical `px`; 1 sp = 1 px (desktop font scale is 1).
 
 - Desktop window: `rememberWindowState(width = 1100.dp, height = 750.dp)`
   (`desktopApp/src/main/kotlin/com/michelle/raouf/fetch_jet/main.kt:769`). **No minimum window
-  size is set anywhere** (no `minimumSize` in `desktopApp (removed)` or `androidUi`). The Slint prototype
+  size is set anywhere** (no `minimumSize` in `desktopApp` or `sharedUI`). The Slint prototype
   already uses `min-width: 900px; min-height: 500px` (`desktopNative/ui/app.slint:415`), which is
   stricter than the Compose app.
 - The dialog is shown from `App.kt:553-773`:

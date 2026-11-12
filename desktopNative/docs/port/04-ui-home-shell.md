@@ -6,7 +6,7 @@ scrollbar and the clipboard guard. Target: a Slint 1.18.1 `.slint` UI that rende
 by a Kotlin presenter. No business logic in the UI.
 
 All paths are relative to `E:/tbib/FetchJet`. `UI/` means
-`androidUi/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`, `LOGIC/` means
+`sharedUI/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`, `LOGIC/` means
 `sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/`.
 
 | File                                                              | Lines | Content                                                                                                                                                      |
@@ -53,7 +53,7 @@ Persian). Compose mirrors the whole tree automatically (`App.kt` L181-185).
 | Position                | platform default (not saved).                                                                                                                                                                                                                 |
 | Minimum size            | **none**. The desktop app sets no minimum; the user can shrink it until the phone layout appears (section 2).                                                                                                                                 |
 | Resizable / decorations | defaults: resizable, normal OS title bar. No menu bar.                                                                                                                                                                                        |
-| Icon                    | `Res.drawable.ic_fetchjet_logo` (vector, `androidUi/src/commonMain/composeResources/drawable/ic_fetchjet_logo.xml`; the prototype already has `desktopNative/ui/logo.svg`, `logo.png`, `res/fetchjet.ico`).                                    |
+| Icon                    | `Res.drawable.ic_fetchjet_logo` (vector, `sharedUI/src/commonMain/composeResources/drawable/ic_fetchjet_logo.xml`; the prototype already has `desktopNative/ui/logo.svg`, `logo.png`, `res/fetchjet.ico`).                                    |
 | Close button            | `onCloseRequest`: if a system tray exists the window is hidden (`isWindowVisible = false`), the process keeps running; without a tray the app exits.                                                                                          |
 | Start hidden            | `startInTray = startedAtLogin && StartupPreferences.startHidden && SystemTray.isSupported()` (L750-756). `startedAtLogin` = argument `--autostart=true` (`AUTOSTART_ARG`) or, with no arguments, `WindowsStorePackage.looksLikeLoginStart()`. |
 | Renderer                | on Windows `skiko.renderApi=SOFTWARE` unless set by property / `SKIKO_RENDER_API` (L691-695).                                                                                                                                                 |
@@ -346,7 +346,7 @@ ones.
 
 ## 4. Formatters (`UI/utils/Formatters.kt`)
 
-These live in `androidUi`, which is not compiled for the native target, so the presenter needs its
+These live in `sharedUI`, which is not compiled for the native target, so the presenter needs its
 own copy. Numbers are printed with Kotlin's `Double.toString()` (`1.0`, `12.5`); the port must
 produce the same text (test with the examples).
 
@@ -486,7 +486,7 @@ gives `2.5 MB/s`, 1500000 gives `1.4 MB/s`, 20971520 gives `20 MB/s`.
 `@Composable fun App(onDarkModeChanged: ((Boolean) -> Unit)? = null, onForcedDarkChanged: ((Boolean?) -> Unit)? = null)` (L81-887)
 
 Purpose: the whole application UI. Used by `desktopApp/.../main.kt` L930 (no arguments),
-`androidApp/.../MainActivity.kt` and `androidUi/src/iosMain/.../MainViewController.kt`.
+`androidApp/.../MainActivity.kt` and `sharedUI/src/iosMain/.../MainViewController.kt`.
 
 Owns `viewModel = DashboardViewModel()`, `state = viewModel.uiState` (`DashboardUiState`,
 `LOGIC/presentation/dashboard/DashboardContract.kt` L82) and one `PathResolver`.
