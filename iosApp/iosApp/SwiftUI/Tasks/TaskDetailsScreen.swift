@@ -411,7 +411,7 @@ private struct TaskDetailsContent: View {
                     if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
                 }
             }
-            if AudioCompress.shared.canCompress(task: task) {
+            if !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task) {
                 AudioCompressButton(task: task)
             }
             if task.canSendToDevice() {

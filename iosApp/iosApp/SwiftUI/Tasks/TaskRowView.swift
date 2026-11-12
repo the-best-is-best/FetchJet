@@ -263,6 +263,10 @@ struct TaskRowView: View {
                     }
                     .padding(.leading, 8)
                 }
+                if !selectionMode && AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task) {
+                    AudioCompressRowButton(task: task)
+                        .padding(.leading, 8)
+                }
                 if !selectionMode {
                     TaskQuickActionButton(action: TaskUi.rowAction(task), size: 44) {
                         onQuickAction(TaskUi.rowAction(task))

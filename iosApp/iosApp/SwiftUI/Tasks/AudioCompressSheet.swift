@@ -21,6 +21,38 @@ struct AudioCompressButton: View {
     }
 }
 
+enum AudioCompressPlace {
+    static var onRow: Bool { UIDevice.current.userInterfaceIdiom != .phone }
+}
+
+struct AudioCompressRowButton: View {
+    @EnvironmentObject var store: FJStore
+    let task: DownloadTask
+
+    var body: some View {
+        Button {
+            store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
+        } label: {
+            Image(systemName: "arrow.down.right.and.arrow.up.left")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(FJTheme.color.primary)
+                .frame(width: 44, height: 44)
+                .background(FJTheme.color.primary.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(FJTheme.color.primary.opacity(0.55), lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(store.strings.audioCompressTitle)
+        .sheet(isPresented: Binding(
+            get: { store.state.audioCompress?.taskId == task.id },
+            set: { if !$0 { store.send(DashboardUiEventOnDismissAudioCompress.shared) } })) {
+            if let page = store.state.audioCompress {
+                AudioCompressSheet(page: page).environmentObject(store)
+            }
+        }
+    }
+}
+
 struct AudioCompressSheet: View {
     @EnvironmentObject var store: FJStore
     let page: AudioCompressUi

@@ -17,9 +17,9 @@ export component StepSlider inherits Rectangle {
     height: 44px;
     accessible-role: slider;
     accessible-label: root.label;
-    accessible-value: root.value;
-    accessible-value-minimum: 1;
-    accessible-value-maximum: root.count;
+    accessible-value: root.value + root.offset;
+    accessible-value-minimum: 1 + root.offset;
+    accessible-value-maximum: root.count + root.offset;
     accessible-value-step: 1;
     accessible-action-increment => {
         if root.enabled && root.value < root.count {
@@ -33,8 +33,8 @@ export component StepSlider inherits Rectangle {
     }
     accessible-action-set-value(text) => {
         if root.enabled && text.is-float() {
-            if clamp(Math.round(text.to-float()), 1, root.count) != root.value {
-                root.changed(clamp(Math.round(text.to-float()), 1, root.count));
+            if clamp(Math.round(text.to-float()) - root.offset, 1, root.count) != root.value {
+                root.changed(clamp(Math.round(text.to-float()) - root.offset, 1, root.count));
             }
         }
     }
