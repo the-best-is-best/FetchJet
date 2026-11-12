@@ -140,6 +140,11 @@ def run():
         chrome = key(core, "DETAILS")
         core.check("Alt+Enter opens the details of a finished download", chrome.get("detailsOpen") and
                    [r["id"] for r in task_rows(core) if r.get("selected")] == [alpha["id"]])
+        move_to(core, alpha["id"])
+        chrome = key(core, "DETAILS")
+        core.check("Alt+Enter again closes the details of the same row", not chrome.get("detailsOpen", False), chrome)
+        chrome = key(core, "DETAILS")
+        core.check("and a third time opens them", chrome.get("detailsOpen", False), chrome)
         core.action("CloseDetails")
         core.pump(0.2)
         core.check("the row reaches beta again", move_to(core, beta["id"]))

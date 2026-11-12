@@ -225,6 +225,24 @@ export component TextField inherits Rectangle {
                 accepted => { root.accepted(self.text); }
                 edited => { root.edited(self.text); }
                 key-pressed(event) => {
+                    if event.modifiers.control && !event.modifiers.alt {
+                        if event.text == "ر" || event.text == "м" {
+                            self.paste();
+                            return accept;
+                        }
+                        if event.text == "ؤ" || event.text == "ز" || event.text == "с" {
+                            self.copy();
+                            return accept;
+                        }
+                        if event.text == "ء" || event.text == "ط" || event.text == "ч" {
+                            self.cut();
+                            return accept;
+                        }
+                        if event.text == "ش" || event.text == "ф" {
+                            self.select-all();
+                            return accept;
+                        }
+                    }
                     if event.text == Key.Escape {
                         self.clear-focus();
                         root.escaped();
@@ -341,6 +359,24 @@ export component TextArea inherits Rectangle {
                     }
                     edited => { root.edited(self.text); }
                     key-pressed(event) => {
+                        if event.modifiers.control && !event.modifiers.alt {
+                            if event.text == "ر" || event.text == "м" {
+                                self.paste();
+                                return accept;
+                            }
+                            if event.text == "ؤ" || event.text == "ز" || event.text == "с" {
+                                self.copy();
+                                return accept;
+                            }
+                            if event.text == "ء" || event.text == "ط" || event.text == "ч" {
+                                self.cut();
+                                return accept;
+                            }
+                            if event.text == "ش" || event.text == "ф" {
+                                self.select-all();
+                                return accept;
+                            }
+                        }
                         if event.text == Key.Return {
                             return accept;
                         }

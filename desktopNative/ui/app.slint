@@ -24,9 +24,22 @@ export { Theme, Dir, Tr, Act, Emoji }
 
 component DetailsSheet inherits Rectangle {
     in-out property <bool> expanded: false;
+    callback closed();
     background: #00000099;
+    forward-focus: sheet-keys;
+    sheet-keys := FocusScope {
+        init => { self.focus(); }
+        key-pressed(e) => {
+            if e.text == Key.Escape || (e.modifiers.alt && e.text == Key.Return) {
+                Act.closeDetails();
+                root.closed();
+                return accept;
+            }
+            reject
+        }
+    }
     TouchArea {
-        clicked => { Act.closeDetails(); }
+        clicked => { Act.closeDetails(); root.closed(); }
     }
     Rectangle {
         y: parent.height - self.height;
@@ -135,7 +148,9 @@ export component AppWindow inherits Window {
             background: Theme.outline-variant.with-alpha(0.4);
         }
     }
-    if !root.side-panel && Core.chrome.detailsOpen: DetailsSheet { }
+    if !root.side-panel && Core.chrome.detailsOpen: DetailsSheet {
+        closed => { list.focus(); }
+    }
     Toast {
         y: parent.height - (!root.side-panel && Core.chrome.detailsOpen ? 24px : 88px) - self.height;
         visible: Core.shell.toastText != "";

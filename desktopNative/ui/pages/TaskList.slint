@@ -317,7 +317,27 @@ export component TaskList inherits Rectangle {
             activated => { Act.listKey(ListKeyCode.resume, false, 0); }
         }
         KeyBinding {
+            keys: @keys(Control + "ق");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.resume, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "к");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.resume, false, 0); }
+        }
+        KeyBinding {
             keys: @keys(Control + P);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.pause, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "ح");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.pause, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "з");
             enabled: root.keys-enabled;
             activated => { Act.listKey(ListKeyCode.pause, false, 0); }
         }
@@ -327,7 +347,27 @@ export component TaskList inherits Rectangle {
             activated => { Act.listKey(ListKeyCode.open-file, false, 0); }
         }
         KeyBinding {
+            keys: @keys(Control + "خ");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-file, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "щ");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-file, false, 0); }
+        }
+        KeyBinding {
             keys: @keys(Control + E);
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-folder, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "ث");
+            enabled: root.keys-enabled;
+            activated => { Act.listKey(ListKeyCode.open-folder, false, 0); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "у");
             enabled: root.keys-enabled;
             activated => { Act.listKey(ListKeyCode.open-folder, false, 0); }
         }
@@ -337,7 +377,32 @@ export component TaskList inherits Rectangle {
             activated => { Act.showAddDialog(true); }
         }
         KeyBinding {
+            keys: @keys(Control + "ى");
+            enabled: root.keys-enabled;
+            activated => { Act.showAddDialog(true); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "т");
+            enabled: root.keys-enabled;
+            activated => { Act.showAddDialog(true); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "د");
+            enabled: root.keys-enabled;
+            activated => { Act.showAddDialog(true); }
+        }
+        KeyBinding {
             keys: @keys(Control + F);
+            enabled: root.keys-enabled;
+            activated => { root.focus-search(); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "ب");
+            enabled: root.keys-enabled;
+            activated => { root.focus-search(); }
+        }
+        KeyBinding {
+            keys: @keys(Control + "а");
             enabled: root.keys-enabled;
             activated => { root.focus-search(); }
         }
@@ -345,7 +410,7 @@ export component TaskList inherits Rectangle {
             if !root.keys-enabled {
                 return reject;
             }
-            if e.modifiers.control && (e.text == "a" || e.text == "A") {
+            if e.modifiers.control && (e.text == "a" || e.text == "A" || e.text == "ش" || e.text == "ф") {
                 Act.listKey(ListKeyCode.select-all, false, 0);
                 return accept;
             }

@@ -340,7 +340,9 @@ private fun Presenter.listKey(key: Int, shift: Boolean, rows: Int) {
         ListKeyCode.PAGE_UP -> moveFocus(shift) { current, last -> if (current < 0) last else current - page }
         ListKeyCode.PAGE_DOWN -> moveFocus(shift) { current, _ -> if (current < 0) 0 else current + page }
         ListKeyCode.OPEN -> keyOpen()
-        ListKeyCode.DETAILS -> keyTarget()?.let { task -> local.update { it.copy(selectedTaskId = task.id) } }
+        ListKeyCode.DETAILS -> keyTarget()?.let { task ->
+            local.update { it.copy(selectedTaskId = if (it.selectedTaskId == task.id) null else task.id) }
+        }
         ListKeyCode.RESUME -> keyResume()
         ListKeyCode.PAUSE -> keyPause()
         ListKeyCode.OPEN_FILE -> keyOpenFile()
