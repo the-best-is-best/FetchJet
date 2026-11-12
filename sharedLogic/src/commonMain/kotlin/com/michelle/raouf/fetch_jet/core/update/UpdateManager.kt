@@ -23,7 +23,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
+import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
@@ -156,6 +158,9 @@ object UpdateManager {
     fun onAppStart() {
         if (started) return
         started = true
+        scope.launch {
+            AppLanguage.current.drop(1).collect { refreshNotesForLanguage() }
+        }
         val s = _state.value
         if (!s.supported || !s.autoCheck) return
         checkJob = scope.launch {
@@ -163,6 +168,12 @@ object UpdateManager {
             val due = nowEpochMs() - _state.value.lastCheckedMs >= AUTO_CHECK_INTERVAL_MS
             if (due) runCheck(manual = false)
         }
+    }
+
+    private suspend fun refreshNotesForLanguage() {
+        val release = _state.value.available ?: return
+        val fresh = runCatching { withNotesInAppLanguage(release) }.getOrNull() ?: return
+        _state.update { it.copy(available = fresh) }
     }
 
     /** "Check now" in Settings: always asks GitHub and always reports the result. */
