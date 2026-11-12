@@ -43,7 +43,7 @@
 | 🌐 **Proxy & site login**          | Route everything through an HTTP or SOCKS5 proxy (with username / password), and send Basic-auth logins to sites that need them – Settings → Network.                        |
 | 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
 | 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
-| 📲 **Send to device**              | Pair two FetchJet installs on the same network and send a finished or in-progress download to the other device. Hidden by default; turn on "Visible to other devices" in Settings → Devices. |
+| 📲 **Send to device**              | Pair two FetchJet installs on the same network and send a download to the other device. Hidden by default; turn on "Visible to other devices" in Settings → Devices.       |
 | 🎧 **Compress audio**              | Shrink a finished audio file: pick a level, see the new size first, keep its format or convert to M4A, MP3 or Opus. The original is kept.                                   |
 | 🗃️ **Sort into folders**           | Files land in folders by type (video, audio, archives…) or by the folder you choose for each download.                                                                       |
 | ⌨️ **Keyboard & multi-select**     | Ctrl/Cmd+click and Shift+click to select rows, Ctrl/Cmd+A, Delete, Esc. On phones, long-press to select. Delete several downloads at once, with or without their files.      |
@@ -181,7 +181,7 @@ FetchJet is a **Kotlin Multiplatform** / **Compose Multiplatform** project.
 | Module         | What it is                                                                                  |
 |----------------|---------------------------------------------------------------------------------------------|
 | `sharedLogic/` | Engines (HTTP chunks, yt-dlp media, libtorrent), queue, scheduling, updates – all platforms |
-| `androidUi/`   | The Compose UI of the Android app                                                           |
+| `sharedUI/`    | The Compose UI shared by desktop, Android and iOS                                           |
 | `desktopNative/` | Native desktop app for Windows, Linux and macOS (C++ host + Slint UI + Kotlin/Native core) |
 | `androidApp/`  | Android app                                                                                 |
 | `iosApp/`      | Xcode project (SwiftUI shell, Live Activity, native bridges)                                |
@@ -204,7 +204,7 @@ desktopNative/packaging/mac/make-dmg.sh
 # iOS
 open iosApp/iosApp.xcodeproj         # build & run from Xcode
 
-# Browser extension (Windows: extension\build.ps1)
+# Browser extension
 ./extension/build.sh                 # -> build/extension/*.zip and *.xpi
 ```
 

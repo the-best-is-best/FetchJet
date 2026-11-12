@@ -1,6 +1,7 @@
 ## Novidades da 1.4.0
 
 - **macOS: um app novo e bem mais leve.** O FetchJet para Mac foi reconstruído sem Java. Ele usa cerca de 60 MB de memória com a janela aberta e cerca de 35 MB na barra de menus, em vez de cerca de 240 MB. Ele se instala por cima da versão antiga: a lista de downloads, os ajustes, os logins salvos, as ferramentas de mídia, a extensão do navegador e os dispositivos pareados são mantidos.
+- **Windows e Linux: o mesmo app novo e mais leve.** O FetchJet para Windows e Linux também foi reconstruído sem Java e usa muito menos memória. Ele é instalado por cima da versão antiga e mantém a lista de downloads e as configurações.
 - **iPhone: mais leve e mais rápido para abrir.** O app usa cerca de metade da memória que usava. O mecanismo de vídeo agora inicia na primeira vez que você lê as qualidades de um vídeo, então essa primeira leitura leva um ou dois segundos a mais.
 - **iPad:** o app do iPhone agora roda no iPad como um app de iPad em tela cheia.
 - **Comprimir áudio (novo):** um arquivo de áudio concluído ganha um botão de compressão: na linha dele em computadores e tablets, nos detalhes dele em celulares. Escolha um nível e veja o novo tamanho antes de começar. Mantenha o formato do arquivo ou escolha M4A, MP3 ou Opus. O arquivo original é mantido.

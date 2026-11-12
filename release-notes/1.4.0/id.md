@@ -1,6 +1,7 @@
 ## Yang baru di 1.4.0
 
 - **macOS: aplikasi baru yang jauh lebih ringan.** FetchJet untuk Mac dibangun ulang tanpa Java. Aplikasi ini memakai sekitar 60 MB memori saat jendela terbuka dan sekitar 35 MB di bilah menu, dibanding sekitar 240 MB sebelumnya. Aplikasi dipasang di atas versi lama: daftar unduhan, pengaturan, login tersimpan, alat media, ekstensi browser, dan perangkat yang dipasangkan tetap ada.
+- **Windows dan Linux: aplikasi baru yang sama, lebih ringan.** FetchJet untuk Windows dan Linux juga dibangun ulang tanpa Java dan memakai memori jauh lebih sedikit. Dipasang di atas versi lama, dan daftar unduhan serta pengaturan tetap ada.
 - **iPhone: lebih ringan dan lebih cepat dibuka.** Aplikasi memakai sekitar setengah memori dari sebelumnya. Mesin video kini mulai saat pertama kali Anda membaca kualitas video, jadi pembacaan pertama itu butuh satu atau dua detik lebih lama.
 - **iPad:** aplikasi iPhone kini berjalan di iPad sebagai aplikasi iPad layar penuh.
 - **Kompres audio (baru):** file audio yang sudah selesai mendapat tombol kompres: di barisnya pada komputer dan tablet, di detailnya pada ponsel. Pilih tingkat dan lihat ukuran barunya sebelum mulai. Pertahankan format file itu atau pilih M4A, MP3, atau Opus. File asli tetap disimpan.
