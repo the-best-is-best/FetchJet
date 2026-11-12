@@ -281,6 +281,15 @@ Bridges:
       OSes with the JVM file names; never run yet. Windows / Linux native and the Android changes
       of this day are compiled, not run.
     - Send to device is visible in the native app (`DEVICE_SYNC_READY = true`).
+- **2026-11-12 (branch `desktop-native`): Compress audio** on every platform, details and test
+  results in ROADMAP-1.4.0.md "Compress audio". Logic once in
+  `sharedLogic/.../feature/audio_compress/AudioCompress.kt`; the button is on the row on wide
+  screens (desktop, tablet, iPad) and in the details on phones; it is not offered in the Add
+  dialog (sizes are unknown before the download). The iOS app target is iPhone + iPad. Dialog
+  surfaces use the app's navy (`theme.slint` surface-container colours, Compose `Theme.kt`).
+  A dev (not installed) native Windows build keeps its data in
+  `%LOCALAPPDATA%\FetchJetDev\.fetch_jet`; run it on the real data with
+  `FetchJet.exe --home %USERPROFILE%\.fetch_jet`.
 
 - **Check `git status` and `git log` before assuming anything.** The owner always commits himself;
   never ask or offer to commit.

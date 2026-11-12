@@ -298,11 +298,38 @@ Where to look then: `MainActivity.onCreate` sets light bars before the theme is 
 - [x] JVM macOS app now handles double-clicked `.torrent` and opened links (`MacOpenEvents.kt`),
   compile only.
 
+## Also in 1.4.0: Compress audio (2026-11-11 / 12)
+
+- [x] A finished audio file can be compressed to a smaller copy (the original is kept, the copy is
+  `name (64k).ext`). Logic once in `sharedLogic/.../feature/audio_compress/AudioCompress.kt`
+  (levels, bit rates, estimate = duration x bit rate, ffmpeg run); pages: Slint
+  `pages/AudioCompress.slint`, Compose `ui/AudioCompressDialog.kt`, SwiftUI
+  `Tasks/AudioCompressSheet.swift`.
+- [x] Only choices that make the file smaller are offered (`shrinkingBitrates`,
+  `firstShrinkingLevel`); a file that cannot get smaller shows a text instead of the controls.
+- [x] Output format: the file's own format by default, or m4a / mp3 / opus
+  (`availableFormats` asks the device's ffmpeg once per format).
+- [x] Where the button is: on the row on wide screens (desktop, laptop, tablet, iPad), in the
+  details on phones. Compose: the row shows it when the window is 680 dp or wider (the same limit
+  that makes the details a side panel).
+- [x] Not offered before the download (Add dialog): the size is unknown there (owner's decision).
+- [x] Tested: Windows native `test_compress.py` 40 checks + `test_compress_format.py` 8 checks;
+  Linux native (WSL) the same two, all passed; Android emulator: mp3 2.7 MB -> `song (64k).mp3`
+  938 KB, formats m4a / mp3 / opus listed, tablet row button.
+- [ ] iOS / iPad and the macOS native app with the format choice and the row button: Mac session.
+- [x] iOS app target is iPhone + iPad (`TARGETED_DEVICE_FAMILY = "1,2"`); the downloads page says
+  "iPhone · iPad". Mac Catalyst is off (owner's decision).
+- [x] Browser extension: the scissors button on a video is now "open in FetchJet" (same action,
+  new icon and text in 15 languages).
+- [x] Dialogs (remove, update, send to device, compress) use the app's navy surface on desktop
+  and Android instead of Material's grey.
+
 ## Next decisions
 
 - [ ] Drop `desktopApp` (JVM) after one native release went out on all three OSes; then
   `sharedUI` is Android-only: merge it into `androidApp` (or rename `androidUi`) and remove
   `sharedUI/src/iosMain` (unused since SwiftUI).
-- [ ] Release notes `release-notes/1.4.0/*.md` (15 languages) cover macOS + iPhone; add Windows /
-  Linux lines.
+- [x] Release notes `release-notes/1.4.0/*.md` (15 languages): macOS, Windows / Linux, iPhone,
+  iPad, compress audio, Send to device, torrents, extension button (2026-11-12). The Windows /
+  Linux line has no memory number on purpose.
 

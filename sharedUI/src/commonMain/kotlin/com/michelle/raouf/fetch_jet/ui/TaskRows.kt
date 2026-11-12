@@ -219,13 +219,13 @@ private fun ThinBar(fraction: Float, color: Color, height: Int = 5, indeterminat
 }
 
 @Composable
-private fun CompressActionButton(onClick: () -> Unit) {
+private fun CompressActionButton(sizeDp: Int, onClick: () -> Unit) {
     val tint = MaterialTheme.colorScheme.primary
     val label = LocalizationManager.Strings.audioCompressTitle
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .padding(end = 8.dp)
-            .size(34.dp)
+            .size(sizeDp.dp)
             .clip(androidx.compose.foundation.shape.CircleShape)
             .background(tint.copy(alpha = 0.10f))
             .border(1.dp, tint.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape)
@@ -233,7 +233,7 @@ private fun CompressActionButton(onClick: () -> Unit) {
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.size(17.dp)) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.size((sizeDp / 2).dp)) {
             val u = size.width / 24f
             val stroke = 2f * u
             fun line(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(
@@ -304,6 +304,7 @@ fun TaskRow(
     onCompress: (() -> Unit)? = null
 ) {
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val windowWidth = with(androidx.compose.ui.platform.LocalDensity.current) { windowInfo.containerSize.width.toDp() }
     val name = decodeUnicodeText(task.fileName.ifBlank {
         task.url.substringBefore('?').substringAfterLast('/')
     }).trim()
@@ -403,7 +404,7 @@ fun TaskRow(
                     if (task.status != DownloadStatus.COMPLETED) {
                         PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
                     }
-                    if (onCompress != null) CompressActionButton(onCompress)
+                    if (onCompress != null) CompressActionButton(34, onCompress)
                     QuickActionButton(action, 34) { onQuickAction(action) }
                 }
             } else {
@@ -441,6 +442,7 @@ fun TaskRow(
                             PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
+                        if (!selectionMode && onCompress != null && windowWidth >= 680.dp) CompressActionButton(44, onCompress)
                         if (!selectionMode) QuickActionButton(action, 44) { onQuickAction(action) }
                     }
                     if (task.status != DownloadStatus.COMPLETED) {
