@@ -64,8 +64,8 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
 import com.tbib.kmp_localization.LocalizationManager
-import fetchjet.sharedui.generated.resources.Res
-import fetchjet.sharedui.generated.resources.ic_fetchjet_logo
+import fetchjet.androidui.generated.resources.Res
+import fetchjet.androidui.generated.resources.ic_fetchjet_logo
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
