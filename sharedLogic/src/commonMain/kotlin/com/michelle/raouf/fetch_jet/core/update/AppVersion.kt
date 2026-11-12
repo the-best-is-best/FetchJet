@@ -8,7 +8,7 @@ package com.michelle.raouf.fetch_jet.core.update
  * update check, the installers and the GitHub release always agree.
  * (iOS: keep MARKETING_VERSION in iosApp/Configuration/Config.xcconfig the same.)
  */
-const val APP_VERSION = "1.4.0"
+const val APP_VERSION = "1.4.1"
 
 /**
  * The browser extension version this app ships and works with (extension/manifest.json). An

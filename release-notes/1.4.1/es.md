@@ -1,4 +1,4 @@
-## Novedades de la 1.5.0
+## Novedades de la 1.4.1
 
 - **Ventana de actualización:** las notas de la versión ahora siguen el idioma de la app cuando cambia, en vez de quedarse en el idioma de la comprobación.
 - **Publicación:** el proceso de publicación ya no descarga cada archivo para calcular las sumas de verificación, así que las versiones terminan antes.
