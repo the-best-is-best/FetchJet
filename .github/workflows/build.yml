@@ -51,11 +51,6 @@ on:
         description: "Submit the extension to the Firefox / Edge stores (off = sign it unlisted and attach the .xpi to the release instead)"
         type: boolean
         default: true
-      desktop_engine:
-        description: "Desktop app for Windows / macOS / Linux: native (desktopNative, Kotlin/Native + Slint)."
-        type: choice
-        options: [ native ]
-        default: native
 
 permissions:
   contents: write

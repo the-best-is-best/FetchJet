@@ -1252,6 +1252,11 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
     // Plain reload: same URL, new page - forget what the old page played.
     const yt = await tabState(YT_KEY, tabId);
     if (!yt || !ytVideoId(url)) await clearTab(tabId);
+    else if (yt.resolveError || (yt.resolving && !resolving.has(tabId))) {
+      await setTabState(YT_KEY, tabId, { ...yt, resolveError: null, resolved: null, resolving: false });
+    }
+    const res = await tabState(RES_KEY, tabId);
+    if (res && (res.resolveError || (res.resolving && !resolving.has(tabId)))) await setTabState(RES_KEY, tabId, null);
   }
   if (info.url || info.status === "loading" || info.status === "complete") ensureYoutubeResolved(tabId, url);
 });
