@@ -250,11 +250,30 @@ function pairWithApp() {
       if (!body || !body.token) return false;
       appToken = body.token;
       try { await api.storage.local.set({ appToken }); } catch (_) {}
+      retryAfterPairing().catch(() => {});
       return true;
     } catch (_) { return false; }
     finally { clearTimeout(t); pairing = null; }
   })();
   return pairing;
+}
+
+/** The user just allowed this browser: every tab that was waiting for it looks its qualities up again. */
+async function retryAfterPairing() {
+  const youtube = await sessionGet(YT_KEY);
+  for (const id of Object.keys(youtube)) {
+    const state = youtube[id];
+    if (!state || !state.needsPairing || !state.videoId) continue;
+    await setTabState(YT_KEY, Number(id), { ...state, needsPairing: false, resolveError: null, resolved: null, resolving: false });
+    resolveYoutube(Number(id), `https://www.youtube.com/watch?v=${state.videoId}`, true).catch(() => {});
+  }
+  const pages = await sessionGet(RES_KEY);
+  for (const id of Object.keys(pages)) {
+    const state = pages[id];
+    if (!state || !state.needsPairing || !state.page) continue;
+    await setTabState(RES_KEY, Number(id), { ...state, needsPairing: false, resolveError: null, resolved: null, resolving: false });
+    resolvePage(Number(id), state.page, true).catch(() => {});
+  }
 }
 
 /** fetch() to the app with the token; on 401 pairs once and tries again. */
@@ -834,7 +853,7 @@ async function inspectWithApp(pageUrl) {
     const headers = { "X-FetchJet-Referer": pageUrl };
     try { const c = await cookieHeaderFor(pageUrl); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
     const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
-    if (res.status === 401) return { resolveError: fjT("errNeedsPairing") };
+    if (res.status === 401) return { resolveError: fjT("errNeedsPairing"), needsPairing: true };
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
     const text = await res.text();
     let data = null;
