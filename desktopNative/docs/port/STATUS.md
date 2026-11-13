@@ -908,3 +908,15 @@ bridge and test_shell.
 - Measured on the Mac: 56-66 MB window open, 34 MB started in the tray, ~100 MB downloading.
   Tested items: see ROADMAP-1.4.0.md, macOS entry. Not run: Windows / Linux with these changes.
 
+## 1.4.1 (branch `release-v1.4.1`, 2026-11-13)
+
+- New in the native app: FTP / FTPS (`feature/http_downloader/Ftp*.kt`, FTPS through the system `curl`),
+  file integrity (checksum, ZIP CRC, file changed on the server), host connection limits, IPv4 retry,
+  torrent details and stop-at-ratio (`TorrentDetailsPresenter.kt`, `fjtorrent` exports), command line
+  (`Launch.kt`), keyboard (`ListKeys.kt`, `Shortcuts.slint`), Test the link, idle speed limit, wake for
+  schedule (Windows). Details and test counts: `ROADMAP-1.4.1.md`.
+- Tested on Windows native with real keys and mouse (a window screenshot taken from the screen pixels),
+  Arabic / Persian / Russian layouts included. Not run: macOS and Linux (`HANDOFF-MAC-1.4.1.md`).
+- Found by driving the real window: list keys were off while the details sheet was open, closing the
+  sheet lost the focus, Ctrl+V did not paste with a non-Latin layout, Esc in the Add dialog's field did
+  not close it. All fixed; `test_keys.py` covers the first.
