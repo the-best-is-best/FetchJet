@@ -289,6 +289,12 @@ Bridges:
       exports present), `make-dmg.sh` OK (`FetchJet-1.4.1-arm64.dmg`, 28 MB, checksum valid), the
       app starts. Bridge port (4c): started, killed and started again 0.3 s later on a throw-away
       `--home`: both runs logged `bridge: listening on 127.0.0.1:28450`.
+    - macOS native: `NSURLSession` allows 6 connections per host by default, so two downloads from the same
+      server shared 6 connections and the second waited for the first (found through `test_home`: the
+      "running" download finished before the check). `applyProxyLogin` (`NetworkSettings.macos.kt`) now sets
+      `setHTTPMaximumConnectionsPerHost(32)` on every client, as the iOS stream client already did. `test_home`
+      41/41 after it. The F1 shortcut list showed "Ctrl + N" on the Mac while Cmd+N is the key: `Shortcuts.slint`
+      now shows the Cmd symbol on macOS (`Platform.os`), compiled, not seen on screen (the screen was locked).
     - Fixed in shared code, tested on the Mac native app only (iOS builds, Android NOT compiled: this worktree
       has no Android SDK, build it on Windows):
         - Engine switch in the Add dialog while an inspect hangs: `OnEngineSelected` now cancels the media /
@@ -304,9 +310,8 @@ Bridges:
           still let the engine name the file from the server. The owner's choice; it blocks a link the
           server would have named (`download.php?id=5`) until a name is typed.
     - `desktopNative/tests/corehost` now runs on the Mac (`ON_MAC` in `corehost.py`, `yt-dlp_macos`,
-      `libfjcore.dylib`, a Mac `fake_ytdlp.cpp`). 18 of 19 files passed on the last full run (`test_home` fails 8
-      checks on the final build: its throttled 40 MB download finishes before the check, the app opens ~8
-      connections; it passed on the first build of the day, cause not found). Counts: bridge 33 (1 skip: Edge not
+      `libfjcore.dylib`, a Mac `fake_ytdlp.cpp`). 17 of 19 files pass on the final build; `test_slowtail` and the
+      pause check of `test_ftp` fail only against an unthrottled server (below). Counts: bridge 33 (1 skip: Edge not
       installed), unpair 8, launch 33, download 29, robust 15, slowtail 4, integrity 32, hostlimit 8,
       ftp 34, testlink 51, keys 41, settings 87, home 41, add 29, network 11 (1 skip), torrent 17,
       torrent_details 28, torrent_proxy 51, idle_limit 12. Needs: `FJ_TEST_RELEASE=1`,
@@ -319,11 +324,17 @@ Bridges:
       it passes with the throttle (5.9 s), not proven in the engine code. `test_network` skips the
       HTTPS-through-proxy checks on the Mac (the test edit, reason not investigated). Free the
       proxy ports before a run (a stale proxy on 18081 made `test_torrent_proxy` fail).
-    - macOS not run: tray click, real keys in the window (arrows, Alt+Enter, Esc / focus, Cmd
-      shortcuts), non-Latin keyboard layouts, light theme badges, window title, "Test the link" in
-      the window, speed limit only while idle (the real 3 minutes), `CGEventSource` idle value
-      (compiled only), the wake-timer row hidden. No macOS Safari target exists in the Xcode
-      project (only iOS), so the Safari item is iOS only.
+    - macOS window, driven with real keys and clicks on a throw-away `--home` (the staged `FetchJet.app`):
+      title `FetchJet 1.4.1 - ...`; "Test the link" (http: OK 1.0 MB resumable, ftp: OK 2.0 MB resumable);
+      Cmd+N, Cmd+A, F1, Esc (clears the selection, closes the Add dialog from the link box), arrows, End,
+      Alt+Enter toggling the details sheet and Cmd+N working right after; tray: one click hides / shows the
+      window, a double click toggles once, right click opens Show App / When downloads finish / Close App;
+      command line `/d <url> /p <folder> /n` handed the download to the running app and the file landed;
+      light theme readable (only the BIN badge was on screen). Not run: non-Latin keyboard layouts (needs
+      changing the system keyboards), the real 3 minute idle limit, `/a` and `/s` on the binary (covered by
+      `test_launch`), ZIP / VID / AUD badges in the light theme, `CGEventSource` idle value (compiled only),
+      the hidden wake-timer row. No macOS Safari target exists in the Xcode project (only iOS), so the Safari
+      item is iOS only. The first run on a fresh `--home` downloaded the media tools (~240 MB) by itself.
     - `desktopNative/CMakeLists.txt` pointed the app icon to `desktopApp/.../launcher.icns`, which
       does not exist on this branch; it now uses `desktopNative/res/launcher.icns` (new file, add it
       to git).

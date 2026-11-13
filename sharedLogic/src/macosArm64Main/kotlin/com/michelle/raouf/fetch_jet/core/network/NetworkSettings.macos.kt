@@ -12,9 +12,9 @@ import platform.Foundation.credentialWithUser
 internal actual fun applyProxyLogin(config: HttpClientEngineConfig, proxy: ProxySettings) {
     if (config !is DarwinClientEngineConfig) return
     config.proxy = null
-    if (!proxy.isOn) return
     config.configureSession {
-        connectionProxyDictionary = if (proxy.kind == ProxyKind.SOCKS5) buildMap<Any?, Any?> {
+        setHTTPMaximumConnectionsPerHost(32)
+        if (proxy.isOn) connectionProxyDictionary = if (proxy.kind == ProxyKind.SOCKS5) buildMap<Any?, Any?> {
             put("SOCKSEnable", 1)
             put("SOCKSProxy", proxy.host)
             put("SOCKSPort", proxy.port)
@@ -31,6 +31,7 @@ internal actual fun applyProxyLogin(config: HttpClientEngineConfig, proxy: Proxy
             "HTTPSPort" to proxy.port
         )
     }
+    if (!proxy.isOn) return
     if (proxy.hasLogin && proxy.kind == ProxyKind.HTTP) config.handleChallenge { _, _, challenge, completionHandler ->
         val space = challenge.protectionSpace
         if (space.isProxy() && space.authenticationMethod == NSURLAuthenticationMethodHTTPBasic &&

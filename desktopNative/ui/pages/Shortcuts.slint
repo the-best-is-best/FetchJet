@@ -10,6 +10,7 @@ struct ShortcutLine {
 
 export component ShortcutsDialog inherits PopupWindow {
     in property <length> host-width;
+    private property <string> cmd-key: Platform.os == OperatingSystemType.macos ? "⌘" : "Ctrl";
     private property <[ShortcutLine]> lines: [
         { keys: "↑ / ↓", text: Tr.shortcutMove },
         { keys: "Shift + ↑ / ↓", text: Tr.shortcutExtend },
@@ -17,14 +18,14 @@ export component ShortcutsDialog inherits PopupWindow {
         { keys: "PageUp / PageDown", text: Tr.shortcutPage },
         { keys: "Enter", text: Tr.shortcutOpen },
         { keys: "Alt + Enter", text: Tr.shortcutDetails },
-        { keys: "Ctrl + R", text: Tr.resume },
-        { keys: "Ctrl + P", text: Tr.pause },
-        { keys: "Ctrl + O", text: Tr.detailsOpenFile },
-        { keys: "Ctrl + E", text: Tr.detailsOpenFolder },
-        { keys: "Ctrl + N", text: Tr.homeAddDownload },
-        { keys: "Ctrl + F", text: Tr.homeSearchDownloadsPlaceholder },
-        { keys: "Ctrl + A", text: Tr.selectAll },
-        { keys: "Ctrl / Shift + click", text: Tr.shortcutClickSelect },
+        { keys: root.cmd-key + " + R", text: Tr.resume },
+        { keys: root.cmd-key + " + P", text: Tr.pause },
+        { keys: root.cmd-key + " + O", text: Tr.detailsOpenFile },
+        { keys: root.cmd-key + " + E", text: Tr.detailsOpenFolder },
+        { keys: root.cmd-key + " + N", text: Tr.homeAddDownload },
+        { keys: root.cmd-key + " + F", text: Tr.homeSearchDownloadsPlaceholder },
+        { keys: root.cmd-key + " + A", text: Tr.selectAll },
+        { keys: root.cmd-key + " / Shift + click", text: Tr.shortcutClickSelect },
         { keys: "Delete", text: Tr.delete },
         { keys: "Esc", text: Tr.shortcutClearSelection },
         { keys: "F1", text: Tr.shortcutsTitle }

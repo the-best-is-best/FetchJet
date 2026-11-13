@@ -58,11 +58,13 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
   so a quick restart of the app could not bind 28450 (`HttpListener.kt`). Fixed for Linux and macOS; Windows
   keeps it off on purpose (there it would let another program share the port). Back to back `test_bridge`,
   `test_unpair`, `test_launch` now pass on Linux; Windows unchanged (34 / 8 / 33).
-- [x] macOS: `corehost` tests run on the Mac, 18 of 19 files pass (`test_home` fails 8 checks on a fast Mac, see CLAUDE.md); the bridge port is taken again at once after a close, checked on the real app too; app and DMG build.
+- [x] macOS: `corehost` tests run on the Mac, 17 of 19 files pass (`test_slowtail` and the FTP pause check need a throttled server on a fast Mac, see CLAUDE.md); the bridge port is taken again at once after a close, checked on the real app too; app and DMG build.
+- [x] macOS: 32 connections per host (the default 6 made two downloads from one server share 6; `test_home` 41/41 after it) and the Cmd symbol in the F1 list (compiled, not seen).
 - [x] Add dialog: switching engine while an inspect hangs now cancels it and resets the state; no random `download_<n>` file name (empty and required for a Direct link with no name). Mac native tested, iOS built, Android not compiled here.
-- [ ] Tray click opens / hides the window on Linux and macOS and idle time on macOS (`CGEventSource`): compiled on the Mac,
-  never run (no tray or real window check, no real 3 minute idle); Linux idle time is tested only through the fake value.
-- [ ] macOS window: real keys, Esc / focus, non-Latin layouts, light theme badges, window title, "Test the link" in the window.
+- [x] Tray click opens / hides the window on macOS (single click, double click, right-click menu): run on the Mac. Linux: not run.
+- [ ] Idle time on macOS (`CGEventSource`): compiled, never run (no real 3 minute idle); Linux idle time is tested only through the fake value.
+- [x] macOS window: real keys, Esc / focus, window title, "Test the link" (http and ftp), command line `/d /p /n`: run on the Mac.
+- [ ] macOS: non-Latin keyboard layouts and the ZIP / VID / AUD badges in the light theme: not run.
 
 ## Browser extension 3.4.0
 
