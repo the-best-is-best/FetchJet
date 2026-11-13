@@ -281,6 +281,9 @@ fun AddDownloadModalDialog(
 
     val isUrlValid = inputUrl.isNotBlank()
     val showsLinkList = linkList.isNotEmpty()
+    val needsFileName = com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName(
+        detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || inspectedPlaylist != null
+    )
     val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isBeingInspected }
     val isInspectionComplete =
         if (showsLinkList) linkList.any { it.isSelected } && !listInspecting && linkList.none { it.isSelected && it.needsRetry } else when (detectedEngine) {
@@ -288,7 +291,7 @@ fun AddDownloadModalDialog(
         EngineType.MEDIA_STREAM -> inspectMediaError == null && (
                 inspectedPlaylist?.entries?.any { it.isSelected } == true ||
                         (inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected }))
-        EngineType.HTTP_DIRECT -> true
+        EngineType.HTTP_DIRECT -> !needsFileName
     }
     val isInspecting = isInspectingTorrent || isInspectingMedia || listInspecting
     val hasActiveError = errorMessage != null || inspectError != null || inspectMediaError != null
@@ -463,6 +466,7 @@ fun AddDownloadModalDialog(
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,
                     isInspectingTorrent = isInspectingTorrent,
+                    needsFileName = needsFileName,
                     onFileNameChanged = onFileNameChanged
                 )
 

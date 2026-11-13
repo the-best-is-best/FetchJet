@@ -12,7 +12,7 @@ ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
 GENERAL, DOWNLOADS, BROWSER, DEVICES, NETWORK, MEDIA, UPDATES = range(7)
 
 
-UPDATE_ASSET = "fetchjet_9.9.0_amd64.deb" if sys.platform.startswith("linux") else "FetchJet-9.9.0.msi"
+UPDATE_ASSET = "fetchjet_9.9.0_amd64.deb" if sys.platform.startswith("linux") else "FetchJet-9.9.0-arm64.dmg" if sys.platform == "darwin" else "FetchJet-9.9.0.msi"
 
 
 def nav(core):

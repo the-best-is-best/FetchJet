@@ -20,6 +20,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.QuickFolderDto
 import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
+import com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.canTestLink
 import com.tbib.kmp_localization.LocalizationManager
 import kotlin.concurrent.Volatile
@@ -162,8 +163,11 @@ private val AddSlice.isInspectionComplete: Boolean
     get() = if (showsLinkList) linkSelected > 0 && !linkBusy && !linkNeedsRetry else when (detectedEngine) {
         EngineType.BITTORRENT -> torrentFilesReady && torrentFileSelected && inspectError == null
         EngineType.MEDIA_STREAM -> inspectMediaError == null && (playlistCount > 0 || (qualitiesReady && qualitySelected))
-        EngineType.HTTP_DIRECT -> true
+        EngineType.HTTP_DIRECT -> !needsFileName
     }
+
+private val AddSlice.needsFileName: Boolean
+    get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || hasPlaylist)
 
 private val AddSlice.isInspecting: Boolean get() = isInspectingTorrent || isInspectingMedia || (showsLinkList && linkBusy)
 
@@ -252,7 +256,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             add(EngineChoiceDto(EngineType.BITTORRENT.ordinal, "🧲", strings.engineTorrent, s.detectedEngine == EngineType.BITTORRENT))
         }
     }
-    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank())
+    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
     val fileName = if (inspecting && s.fileNameOverride.isEmpty()) strings.findingName else s.fileNameOverride.ifEmpty { s.suggestedFileName }
     val downloads = pathResolver.getDownloadsDirectory()
     val documents = pathResolver.getDocumentsDirectory()

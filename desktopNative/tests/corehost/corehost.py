@@ -15,7 +15,9 @@ sys.stderr = sys.stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-ON_LINUX = sys.platform.startswith("linux")
+ON_MAC = sys.platform == "darwin"
+ON_LINUX = sys.platform.startswith("linux") or ON_MAC
+YTDLP_PROGRAM = "yt-dlp_macos" if ON_MAC else "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe"
 DEFAULT_WORK = os.environ.get(
     "FJ_CORE_WORK",
     os.path.expanduser("~/fetchjet-native/work/corehost") if ON_LINUX else "E:/tools/fjhome/corehost",
@@ -38,6 +40,8 @@ FULL = 0x100
 
 def dll_path(release=False):
     kind = "releaseShared" if release else "debugShared"
+    if ON_MAC:
+        return os.path.join(REPO, "desktopNative", "core", "build", "bin", "macosArm64", kind, "libfjcore.dylib")
     if ON_LINUX:
         return os.path.join(REPO, "desktopNative", "core", "build", "bin", "linuxX64", kind, "libfjcore.so")
     return os.path.join(REPO, "desktopNative", "core", "build", "bin", "mingwX64", kind, "fjcore.dll")
@@ -356,8 +360,8 @@ def server_reset():
 
 def install_fake_ytdlp(core):
     source = os.path.join(REPO, "desktopNative", "tests", "fakes")
-    program = "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe"
-    exe = os.path.join(source, "build", program)
+    program = YTDLP_PROGRAM
+    exe = os.path.join(source, "build", "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe")
     if not os.path.isfile(exe):
         raise SystemExit("build the fake first: desktopNative/tests/fakes/" + ("build.sh" if ON_LINUX else "build.cmd"))
     target = os.path.join(core.home, "tools", "yt-dlp-dir")

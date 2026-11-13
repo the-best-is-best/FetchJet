@@ -226,7 +226,10 @@ data class DashboardUiState(
     val audioCompress: AudioCompressUi? = null,
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
-)
+) {
+    val needsFileName: Boolean
+        get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
+}
 
 /** The torrent tab of a task's details: refreshed every 2 s while it is open. */
 data class TorrentDetailsUi(

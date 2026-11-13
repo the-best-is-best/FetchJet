@@ -22,7 +22,8 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
   tested by `winhelpers net`). Not on macOS (no per-request control).
 - [x] Test the link in the Add dialog (`test_testlink.py` 51 checks; real window; Android A56).
 - [x] A folder remembered per kind of file (Add dialog).
-- [ ] FTP on iOS / iPad and the macOS native app: Mac session.
+- [x] FTP on iOS / iPad (plain FTP in parts and resume, `ftps://` refused at once with a clear message, password `***`) and the macOS core (`test_ftp` 34 checks on the Mac, FTPS with `FETCHJET_FTPS_INSECURE=1`), 2026-11-13.
+- [x] Folder per kind of file: a remembered folder no longer gets the type folder added again (`QueueManagerRepository.kt`), iPhone-tested.
 
 ## Torrents
 
@@ -34,7 +35,8 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] Torrents behind an HTTP proxy: not a bug. An HTTP proxy cannot carry UDP and the app's public
   trackers are `udp://`; a hint in Settings > Network and in the magnet timeout error says so
   (`test_torrent_proxy.py` 51 checks).
-- [ ] iOS: `FJTorrent.xcframework` must be rebuilt (new methods), SwiftUI details section never built.
+- [x] iOS / iPad: `FJTorrent.xcframework` rebuilt, details section built and run on the iPhone 17 and iPad Pro simulators (card, trackers, add tracker, first / last pieces, copy magnet, language). Peers rows and a completed torrent not seen (no peer from the local seeder).
+- [x] iOS: "Stop sharing at ratio" chips added to Settings > BitTorrent (were missing); iPhone-tested, not re-run on the iPad.
 
 ## Desktop
 
@@ -56,8 +58,11 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
   so a quick restart of the app could not bind 28450 (`HttpListener.kt`). Fixed for Linux and macOS; Windows
   keeps it off on purpose (there it would let another program share the port). Back to back `test_bridge`,
   `test_unpair`, `test_launch` now pass on Linux; Windows unchanged (34 / 8 / 33).
-- [ ] Tray click opens / hides the window on Linux and macOS and idle time on macOS (`CGEventSource`): written,
-  never run (WSL has no tray or desktop session); Linux idle time is tested only through the fake value.
+- [x] macOS: `corehost` tests run on the Mac, 18 of 19 files pass (`test_home` fails 8 checks on a fast Mac, see CLAUDE.md); the bridge port is taken again at once after a close, checked on the real app too; app and DMG build.
+- [x] Add dialog: switching engine while an inspect hangs now cancels it and resets the state; no random `download_<n>` file name (empty and required for a Direct link with no name). Mac native tested, iOS built, Android not compiled here.
+- [ ] Tray click opens / hides the window on Linux and macOS and idle time on macOS (`CGEventSource`): compiled on the Mac,
+  never run (no tray or real window check, no real 3 minute idle); Linux idle time is tested only through the fake value.
+- [ ] macOS window: real keys, Esc / focus, non-Latin layouts, light theme badges, window title, "Test the link" in the window.
 
 ## Browser extension 3.4.0
 
@@ -73,7 +78,8 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] Pairing messages, retry after Allow, "Unpair all", Telegram Web note in 15 languages.
 - [x] Tested with `extension/test/content.sim.js` (14 checks), `real.html` and `e2e.html` (pairing, zip and
   download links reach the app, a real PDF stays in the browser).
-- [ ] Firefox and Safari builds with the new behaviour; Edge / Chrome with the store build.
+- [x] Safari on iOS (iPad simulator): 3.4.0 embedded, one video button, a zip click reaches the app, a plain PDF stays in Safari. Tab + Enter not run (code read). No macOS Safari target exists in the Xcode project.
+- [ ] Firefox builds with the new behaviour; Edge / Chrome with the store build.
 - [x] Decided not to do: the in-page "Part" panel (owner), native messaging, re-sending a form the
   browser posted (could repeat a purchase), the page-controls avoidance (it made the button jump on
   YouTube).
@@ -82,5 +88,5 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
 - [x] `release-notes/1.4.1/*.md` in 15 languages (translations not reviewed by a native speaker).
 - [x] `EXTENSION_VERSION` and the three manifests = 3.4.0.
-- [ ] Mac / iOS / iPad builds and tests: `HANDOFF-MAC-1.4.1.md` (Linux was run in WSL, see above).
+- [x] Mac / iOS / iPad builds and the tests that can run without a person at the window (2026-11-13). Left: the macOS window items above.
 - [ ] The owner runs the release from GitHub Actions.

@@ -120,7 +120,7 @@ struct AddFileNameSection: View {
     @EnvironmentObject var store: FJStore
     var body: some View {
         let s = store.state
-        if !s.suggestedFileName.isEmpty || !s.fileNameOverride.isEmpty {
+        if !s.suggestedFileName.isEmpty || !s.fileNameOverride.isEmpty || s.needsFileName {
             let inspecting = s.isInspectingMedia || s.isInspectingTorrent
             let shown = inspecting && s.fileNameOverride.isEmpty
                 ? store.strings.findingName

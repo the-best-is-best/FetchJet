@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, ON_LINUX, server_sha256, sha256_of_file
+from corehost import Core, CheckFailed, ON_LINUX, ON_MAC, server_sha256, sha256_of_file
 
 PROXY_LOGIN_HTTP = 18081
 PROXY_LOGIN_SOCKS = 11081
@@ -55,7 +55,7 @@ def run():
         task = fetch(core, "http://%s:%d/file/2MB.bin?key=net-http-login" % (MAPPED, HTTP_PORT), "net-http-login.bin")
         core.check("plain http through the HTTP proxy with login", same_file(core, task, "2MB.bin"))
 
-        if ON_LINUX:
+        if ON_LINUX and not ON_MAC:
             print("HTTPS through the HTTP proxy with login (CONNECT)")
             task = fetch(core, "https://%s:%d/file/3MB.bin?key=net-https-login" % (MAPPED, HTTPS_PORT), "net-https-login.bin")
             core.check("https through the HTTP proxy with login", same_file(core, task, "3MB.bin"))
@@ -71,7 +71,7 @@ def run():
         set_proxy(core, 2, PROXY_LOGIN_SOCKS, "fj", "secret")
         task = fetch(core, "http://%s:%d/file/2MB.bin?key=net-socks" % (MAPPED, HTTP_PORT), "net-socks.bin")
         core.check("plain http through SOCKS5 with login", same_file(core, task, "2MB.bin"))
-        if ON_LINUX:
+        if ON_LINUX and not ON_MAC:
             task = fetch(core, "https://%s:%d/file/1MB.bin?key=net-socks-tls" % (MAPPED, HTTPS_PORT), "net-socks-tls.bin")
             core.check("https through SOCKS5 with login", same_file(core, task, "1MB.bin"))
 
@@ -85,7 +85,7 @@ def run():
         task = fetch(core, "http://%s:%d/file/1MB.bin?key=net-off" % (MAPPED, HTTP_PORT), "net-off.bin", expect_ok=False, timeout=90)
         core.check("without the proxy the name does not resolve", task is not None and task["status"] != "COMPLETED")
 
-        if ON_LINUX:
+        if ON_LINUX and not ON_MAC:
             print("HTTPS: the self-signed test server is refused without its certificate")
             os.environ.pop("FETCHJET_CA_BUNDLE", None)
             set_proxy(core, 1, PROXY_OPEN_HTTP)

@@ -2,6 +2,10 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <climits>
+#endif
 #endif
 
 #include <cstdio>
@@ -39,8 +43,14 @@ static void pause_ms(int ms) { Sleep(DWORD(ms)); }
 #else
 static std::string in_folder(const std::string &name) {
     char path[4096];
+#ifdef __APPLE__
+    uint32_t size = sizeof path;
+    char real[PATH_MAX];
+    std::string text = (_NSGetExecutablePath(path, &size) == 0 && realpath(path, real)) ? std::string(real) : std::string();
+#else
     ssize_t length = readlink("/proc/self/exe", path, sizeof path - 1);
     std::string text(path, length > 0 ? size_t(length) : 0);
+#endif
     return text.substr(0, text.find_last_of('/') + 1) + name;
 }
 

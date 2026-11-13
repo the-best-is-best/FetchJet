@@ -6,9 +6,18 @@ import kotlinx.coroutines.flow.update
 internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
     when (event) {
         is DashboardUiEvent.OnEngineSelected -> {
+            val before = _uiState.value
+            val chosen = if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(before.inputUrl)) EngineType.HTTP_DIRECT else event.engine
+            val changed = chosen != before.detectedEngine
+            if (changed) {
+                inspectMediaJob?.cancel()
+                inspectTorrentJob?.cancel()
+            }
             _uiState.update {
                 it.copy(
-                    detectedEngine = if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it.inputUrl)) EngineType.HTTP_DIRECT else event.engine,
+                    detectedEngine = chosen,
+                    isInspectingMedia = if (changed) false else it.isInspectingMedia,
+                    isInspectingTorrent = if (changed) false else it.isInspectingTorrent,
                     inspectedMediaQualities = emptyList(),
                     inspectedMediaTitle = null,
                     inspectedPlaylist = null,

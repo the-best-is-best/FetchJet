@@ -609,6 +609,8 @@ class QueueManagerRepository(
                     isTorrent = engineType == EngineType.BITTORRENT
                 )?.let { sub ->
                     val trimmed = baseDir.trimEnd('/', '\\')
+                    val remembered = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.categoryFolder(sub)
+                    if (remembered != null && remembered.trimEnd('/', '\\') == trimmed) return@let baseDir
                     // Already points at a type folder (the Add dialog shows the real target) → use as is.
                     val known = com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders
                     if (known.any { trimmed.endsWith("/$it") || trimmed.endsWith("\\$it") }) baseDir

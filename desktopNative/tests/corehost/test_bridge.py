@@ -7,7 +7,7 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, ENUMS, ON_LINUX, SERVER, install_fake_ytdlp
+from corehost import Core, CheckFailed, ENUMS, ON_LINUX, SERVER, YTDLP_PROGRAM, install_fake_ytdlp
 
 PORT = int(os.environ.get("FJ_BRIDGE_PORT", "28459"))
 ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
@@ -175,7 +175,7 @@ def run():
         answer = request(core, "GET", "/inspect?url=" + urllib.parse.quote(local, safe=""), paired, timeout=90)
         core.check("a page yt-dlp finds nothing on still answers an empty list", answer.status == 200 and answer.json() == [],
                    (answer.status, answer.body[:200]))
-        fake = os.path.join(core.home, "tools", "yt-dlp-dir", "yt-dlp_linux" if ON_LINUX else "yt-dlp.exe")
+        fake = os.path.join(core.home, "tools", "yt-dlp-dir", YTDLP_PROGRAM)
         os.replace(fake, fake + ".off")
         try:
             local = SERVER + "/file/1KB.bin?key=bridge-no-ytdlp"

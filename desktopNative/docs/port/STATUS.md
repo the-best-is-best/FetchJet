@@ -916,7 +916,7 @@ bridge and test_shell.
   (`Launch.kt`), keyboard (`ListKeys.kt`, `Shortcuts.slint`), Test the link, idle speed limit, wake for
   schedule (Windows). Details and test counts: `ROADMAP-1.4.1.md`.
 - Tested on Windows native with real keys and mouse (a window screenshot taken from the screen pixels),
-  Arabic / Persian / Russian layouts included. Not run: macOS and Linux (`HANDOFF-MAC-1.4.1.md`).
+  Arabic / Persian / Russian layouts included. Linux ran in WSL and the macOS core tests on the Mac (2026-11-13, see CLAUDE.md); the macOS window itself is not run.
 - Found by driving the real window: list keys were off while the details sheet was open, closing the
   sheet lost the focus, Ctrl+V did not paste with a non-Latin layout, Esc in the Add dialog's field did
   not close it. All fixed; `test_keys.py` covers the first.

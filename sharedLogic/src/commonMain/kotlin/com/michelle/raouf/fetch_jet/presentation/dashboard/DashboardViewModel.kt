@@ -10,11 +10,13 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.tbib.kmp_localization.LocalizationManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -95,6 +97,8 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
     internal var testLinkJob: Job? = null
+    internal var inspectMediaJob: Job? = null
+    internal var inspectTorrentJob: Job? = null
 
     /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
     internal var pendingDeviceSend: com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest? =
@@ -670,11 +674,14 @@ class DashboardViewModel(
 
         }
 
-        scope.launch {
+        inspectTorrentJob?.cancel()
+        inspectTorrentJob = scope.launch {
 
             _uiState.update { it.copy(isInspectingTorrent = true, inspectError = null) }
 
-            queueRepository.torrentEngine.fetchAndParseTorrent(url)
+            val parsedResult = queueRepository.torrentEngine.fetchAndParseTorrent(url)
+            ensureActive()
+            parsedResult
 
                 .onSuccess { parsed ->
 
@@ -731,7 +738,8 @@ class DashboardViewModel(
 
         }
 
-        scope.launch {
+        inspectMediaJob?.cancel()
+        inspectMediaJob = scope.launch {
             _uiState.update { it.copy(isInspectingMedia = true, inspectMediaError = null) }
             // A playlist / channel link: list its videos (unless the user chose "only this video").
             if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
@@ -747,6 +755,8 @@ class DashboardViewModel(
                             headersForLink(url)
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     null
                 }
@@ -840,6 +850,8 @@ class DashboardViewModel(
                     }
                     refreshSuggestedFileName()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -957,11 +969,7 @@ class DashboardViewModel(
         if (nameFromUrl.isNotBlank() && nameFromUrl.contains('.') && !isWebScript) return queueRepository.pathResolver.sanitizeFileName(
             nameFromUrl
         )
-        return if (currentState.detectedEngine == EngineType.MEDIA_STREAM) {
-            "media_video_${kotlin.random.Random.nextInt(100000, 999999)}.mp4"
-        } else {
-            "download_${kotlin.random.Random.nextInt(100000, 999999)}"
-        }
+        return ""
     }
 
     /** The name itself when it is free, else "name (n).ext". */

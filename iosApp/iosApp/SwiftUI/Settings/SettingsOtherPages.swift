@@ -87,7 +87,37 @@ struct SettingsTorrentPage: View {
                     isOn: st.disableTorrentUpload
                 ) { store.send(DashboardUiEventOnDisableTorrentUploadToggled(disable: $0)) }
             }
+            SettingsStopRatioBox()
         }
+    }
+}
+
+struct SettingsStopRatioBox: View {
+    @EnvironmentObject var store: FJStore
+    @State private var ratio: Float = 0
+
+    private let choices: [Float] = [0, 0.5, 1, 1.5, 2, 3, 5]
+
+    var body: some View {
+        let s = store.strings
+        SettingsGroupBox(title: s.torrentStopRatioTitle, footer: s.torrentStopRatioHint) {
+            SettingsFlow(spacing: 6) {
+                ForEach(choices, id: \.self) { value in
+                    SettingsChip(label: label(value), selected: ratio == value) {
+                        ratio = value
+                        store.send(DashboardUiEventOnTorrentStopRatioChanged(ratio: value))
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .onAppear {
+            ratio = (BehaviorSettings.shared.torrentStopRatio.value as? KotlinFloat)?.floatValue ?? 0
+        }
+    }
+
+    private func label(_ value: Float) -> String {
+        value == 0 ? "0" : (value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value))
     }
 }
 

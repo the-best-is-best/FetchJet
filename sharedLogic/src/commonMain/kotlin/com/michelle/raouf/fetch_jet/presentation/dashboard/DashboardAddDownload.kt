@@ -139,7 +139,7 @@ internal fun DashboardViewModel.addDownload(
     val targetName = resolveTargetFileName(currentState, url, customFileName)
 
     // 2. Check if file already exists on disk
-    if (!forceOverwrite) {
+    if (!forceOverwrite && targetName.isNotBlank()) {
         val targetPath = "$destDir/$targetName".toPath()
         if (AppFileSystem.exists(targetPath)) {
             val suggested = getUniqueFileName(destDir, targetName)
@@ -165,7 +165,7 @@ internal fun DashboardViewModel.addDownload(
             // left null, the HTTP engine names the file from Content-Disposition / final URL.
             customFileName = customFileName
                 ?: targetName.takeUnless {
-                    currentState.detectedEngine == EngineType.HTTP_DIRECT && it.startsWith(
+                    it.isBlank() || currentState.detectedEngine == EngineType.HTTP_DIRECT && it.startsWith(
                         "download_"
                     ) && !it.contains('.')
                 },

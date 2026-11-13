@@ -294,10 +294,11 @@ internal fun FileNameSection(
     fileNameOverride: String,
     isInspectingMedia: Boolean,
     isInspectingTorrent: Boolean,
+    needsFileName: Boolean = false,
     onFileNameChanged: (String) -> Unit
 ) {
     // File name: what FetchJet will call the file, editable.
-    if (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank()) {
+    if (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank() || needsFileName) {
         Text(
             text = LocalizationManager.Strings.addFileNameLabel,
             fontSize = 12.sp,

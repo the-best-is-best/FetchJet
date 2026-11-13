@@ -104,7 +104,7 @@ struct AddValidity {
                 (s.inspectedPlaylist?.entries.contains { $0.isSelected } ?? false)
                 || s.inspectedMediaQualities.contains { $0.isSelected })
         } else {
-            isInspectionComplete = true
+            isInspectionComplete = !s.needsFileName
         }
         isInspecting = s.isInspectingTorrent || s.isInspectingMedia || listInspecting
         activeError = s.errorMessage ?? s.inspectError ?? s.inspectMediaError
