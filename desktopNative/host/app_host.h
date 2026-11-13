@@ -28,6 +28,7 @@ namespace fjhost {
         void release_instance(void *instance);
 
         void apply_title_bar(bool dark);
+        void fit_to_work_area();
         void bring_to_front(bool focus);
         void window_hidden();
         bool window_minimized();

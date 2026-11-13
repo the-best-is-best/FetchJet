@@ -364,26 +364,9 @@ internal fun DestinationSection(
 ) {
     var pathTextFieldValue by pathField
     var showDirectoryPicker by showDirectoryPickerState
-    // Save Destination Section
-    val typeFolder =
-        if (sortIntoFolders) com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
-            fileNameOverride.ifEmpty { suggestedFileName },
-            isMedia = detectedEngine == EngineType.MEDIA_STREAM,
-            isTorrent = detectedEngine == EngineType.BITTORRENT
-        ) else null
-    // Sorted-by-type: the field shows the real target folder (e.g. ...\Downloads\Video) and stays editable.
-    LaunchedEffect(typeFolder) {
-        // The field shows the real target: <base>\<Type>. Any type folder already
-        // on the path (ours, from before) is replaced, never stacked.
-        val base =
-            com.michelle.raouf.fetch_jet.core.settings.FileCategory.stripTypeFolders(
-                destinationPath, listOf(defaultDownloads, defaultDocs, defaultDesktop)
-            )
-        val sep = if (base.contains('\\')) "\\" else "/"
-        val full = if (typeFolder != null) base + sep + typeFolder else base
-        if (full != destinationPath) {
-            pathTextFieldValue = TextFieldValue(full, TextRange(full.length))
-            onDestinationPathChanged(full)
+    LaunchedEffect(destinationPath) {
+        if (pathTextFieldValue.text != destinationPath) {
+            pathTextFieldValue = TextFieldValue(destinationPath, TextRange(destinationPath.length))
         }
     }
     Text(

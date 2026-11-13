@@ -89,8 +89,10 @@ export component AppWindow inherits Window {
     public function scroll-to-top() {
         list.scroll-to-top();
     }
+    private property <int> resize-stamp: 0;
     init => { Screen.height = root.height; }
-    changed height => { Screen.height = root.height; }
+    changed height => { Screen.height = root.height; root.resize-stamp += 1; }
+    changed width => { root.resize-stamp += 1; }
     preferred-width: 1100px;
     preferred-height: 750px;
     min-width: 680px;
@@ -99,6 +101,11 @@ export component AppWindow inherits Window {
     title: Core.shell.windowTitle;
     icon: @image-url("logo.png");
 
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.background.with-alpha(1.0 - Math.mod(root.resize-stamp, 16) * 0.002);
+    }
     if root.medium: Rail {
         x: Dir.rtl ? parent.width - self.width : 0;
         height: parent.height;

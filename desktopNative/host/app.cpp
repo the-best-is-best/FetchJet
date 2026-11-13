@@ -281,6 +281,8 @@ namespace fjhost {
 
     void show_window(bool focus) {
         ui().show();
+        os::fit_to_work_area();
+        slint::Timer::single_shot(std::chrono::milliseconds(400), [] { os::fit_to_work_area(); });
         g_shown = true;
         os::apply_title_bar(ui().global<Core>().get_shell().dark);
         os::bring_to_front(focus && g_can_focus);

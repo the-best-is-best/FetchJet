@@ -344,6 +344,8 @@ namespace fjhost::os {
 
     void apply_title_bar(bool) {}
 
+    void fit_to_work_area() {}
+
     void bring_to_front(bool focus) {
         if (!focus)
             return;

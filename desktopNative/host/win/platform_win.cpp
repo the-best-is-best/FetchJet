@@ -1,5 +1,6 @@
 #define NOMINMAX
 
+#include <algorithm>
 #include <windows.h>
 #include <dwmapi.h>
 #include <shellapi.h>
@@ -302,6 +303,26 @@ namespace fjhost::os {
             return;
         BOOL value = dark ? TRUE : FALSE;
         DwmSetWindowAttribute(window, 20, &value, sizeof value);
+    }
+
+    void fit_to_work_area() {
+        HWND window = window_handle();
+        if (!window || IsZoomed(window) || IsIconic(window))
+            return;
+        MONITORINFO info{};
+        info.cbSize = sizeof info;
+        if (!GetMonitorInfoW(MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &info))
+            return;
+        RECT rect{};
+        if (!GetWindowRect(window, &rect))
+            return;
+        const RECT &area = info.rcWork;
+        int width = std::min<int>(rect.right - rect.left, area.right - area.left);
+        int height = std::min<int>(rect.bottom - rect.top, area.bottom - area.top);
+        int x = std::max<int>(area.left, std::min<int>(rect.left, area.right - width));
+        int y = std::max<int>(area.top, std::min<int>(rect.top, area.bottom - height));
+        if (x != rect.left || y != rect.top || width != rect.right - rect.left || height != rect.bottom - rect.top)
+            SetWindowPos(window, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     void bring_to_front(bool focus) {
