@@ -193,3 +193,32 @@ kills that shell too: put it in a script file.
 - libtorrent: `~/.fetch_jet/tools/<version>-libtorrent4j.*` is written again at every start.
 - Android backups: `network.json` and `logs/` are excluded (`backup_rules.xml`,
   `data_extraction_rules.xml`).
+
+## 10. 1.4.1 checks (extension, FTP, Android)
+
+Extension, without a browser (the click logic against stubs):
+
+```
+node extension/test/content.sim.js            # 14 checks
+```
+
+Extension in a real Chromium (a separate Chrome with a temporary profile, driven over the DevTools
+protocol; the extension is loaded with `Extensions.loadUnpacked`, Chrome needs
+`--enable-unsafe-extension-debugging`): serve `extension/` on 127.0.0.1:18460 and open
+`/test/real.html` (stacked, separate, pinned and covered videos) or `/test/e2e.html` (links for the
+app: a zip, a link marked `download`, a PDF served as `application/pdf`, a `data-url`). The first
+click asks "Allow this browser extension?" in the app; run the app on a throw-away folder
+(`FetchJet.exe --home <folder>`), a fresh home downloads the media tools (~240 MB) by itself.
+
+FTP to a phone: the test FTP server picks its data ports at random, so start one with a range and
+forward them:
+
+```
+python desktopNative/tools/testserver/ftp.py --port 2321 --passive-range 30000-30059
+adb reverse tcp:2321 tcp:2321                 # and each port 30000-30059
+# link: ftp://fj:secret@127.0.0.1:2321/pub/dir/9MB.bin
+```
+
+A phone cannot reach the PC's loopback ports for a local torrent seeder (the firewall stops the LAN
+route); use a real torrent with a speed limit instead (Sintel, only the small subtitle files).
+Test links that carry `ws=` are downloaded over the web seed and have empty torrent details.

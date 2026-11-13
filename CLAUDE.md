@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-08. Read this first, then `README.md`, `TESTING.md` (how to re-run the
+Last updated: 2026-11-13 (1.4.1 work on branch `release-v1.4.1`, see Release plan). Read this first, then `README.md`, `TESTING.md` (how to re-run the
 manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 

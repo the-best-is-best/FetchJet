@@ -326,6 +326,9 @@ Where to look then: `MainActivity.onCreate` sets light bars before the theme is 
 
 ## Next decisions
 
+The 1.4.1 work (FTP, integrity, torrent details, command line, keyboard, extension 3.4.0) continues in
+`ROADMAP-1.4.1.md`.
+
 - [ ] Drop `desktopApp` (JVM) after one native release went out on all three OSes; then
   `sharedUI` is Android-only: merge it into `androidApp` (or rename `androidUi`) and remove
   `sharedUI/src/iosMain` (unused since SwiftUI).
