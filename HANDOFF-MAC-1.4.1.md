@@ -1,6 +1,6 @@
 # 1.4.1: what the Mac still has to build and test
 
-Written 2026-11-12 on the Windows PC. Everything below was written on Windows and never compiled for
+Written 2026-11-12 on the Windows PC, updated 2026-11-13 (last commit of the branch at that time: see `git log`). Everything below was written on Windows and never compiled for
 macOS, iOS or iPadOS. Branch `release-v1.4.1`. Read `CLAUDE.md` first (owner rules).
 
 ## 0. Get the code
@@ -90,13 +90,30 @@ Tests on the Mac app:
 5. Command line: `FetchJet.app/Contents/MacOS/FetchJet /d <url> /p <folder> /n`, `/a`, `/s`.
 6. Window title shows "FetchJet 1.4.1 - ...".
 7. Tray: one click opens / hides the window; double click does not toggle twice.
+8. Esc in the Add dialog's link field closes the dialog; Alt+Enter and Esc close the details sheet and
+   Cmd+N works right after (the focus goes back to the list).
+9. A non-Latin keyboard (add Arabic or Russian in System Settings): Cmd+N, Cmd+V in a text field,
+   Cmd+A / C / X. Slint matches the key's text, so the letters of each layout are listed in
+   `ui/pages/TaskList.slint` and `ui/widgets/TextField.slint`; check that Cmd (not Ctrl) is the
+   modifier these bindings use on macOS.
+10. Light theme: the file-type badges (ZIP, MSIX, VID, AUD) are readable.
 
 ## 4. Safari extension (iOS and macOS)
 
-`extension/` changed a lot (pairing messages, "hide on this site", per-site button position,
-Google Drive "Original file", private windows, POST downloads left in the browser, browser keeps
-the download until the app has it). None of it ran in a real browser. The Safari target copies the
-same files at build time; after an incremental build re-embed the appex (see `CLAUDE.md`).
+Extension 3.4.0 (the three manifests and `EXTENSION_VERSION` match). Changed since 3.3: pairing messages,
+"hide on this site", per-site button position that snaps to an edge, Google Drive "Original file",
+private windows, POST downloads left in the browser, the browser keeps a download until the app has it,
+a file link is taken after the page's own click code, a plain PDF link opens in the browser, "Download all
+links" also finds `data-*` links, one video button per group of stacked videos (none on a pinned video
+covered by page content), the button works with Tab / Enter, a Telegram Web note in 15 languages, the
+launch tab (`fetchjet://`) stays until the app answers (desktop only; iOS sends through `fetchjet://add`).
+
+Run in a real Chromium (a separate Chrome with the extension loaded, the real Vimeo page at seven scroll
+positions, the app paired and receiving links) and seen in Edge. NOT run in Safari or Firefox. On the
+Mac: load the Safari target, open a page with a video, check one button appears, Tab + Enter opens it,
+a zip link click reaches the app and a plain PDF link stays in Safari. The Safari target copies the same
+files at build time; after an incremental build re-embed the appex (see `CLAUDE.md`). The extension tests
+and how to run them: `TESTING.md` section 10.
 
 ## 4b. Done on Windows and the A56 (no need to repeat)
 
