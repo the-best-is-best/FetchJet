@@ -734,6 +734,16 @@ Bridges:
 
 ## Release plan
 
+- **1.4.1 (2026-11-13, branch `release-v1.4.1`, not released):** FTP / FTPS, file integrity (checksum,
+  ZIP CRC, file changed on the server), torrent details, command line, keyboard, idle speed limit,
+  extension 3.4.0 (version tied in `AppVersion.kt` + the 3 manifests), release notes in 15 languages
+  (`release-notes/1.4.1/`). Tested on the Windows native app with real keys and mouse, the extension on a
+  local test page (`extension/test/`) and by simulation (`node extension/test/content.sim.js`), Android on the
+  A56 (Test the link, torrent details with a real Sintel torrent, add tracker, first / last pieces,
+  BitTorrent settings). A torrent magnet that carries `ws=` is downloaded over the web seed, without the
+  torrent engine, so its details are empty: not a bug. NOT tested: macOS, iOS, iPad, Linux (see
+  `HANDOFF-MAC-1.4.1.md`), and the extension in a real Edge / Chrome / Firefox after the last changes.
+  Keyboard shortcuts also work with Arabic / Persian / Russian layouts (`TaskList.slint`, `TextField.slint`).
 - **1.4.0:** branch `release-v1.4.0` (cut from `master` = 1.3.1 on 2026-11-08), work list
   `ROADMAP-1.4.0.md`: the RAM release (owner's decision 2026-11-08): desktop memory close to
   Ezoo (13 MB, Rust + Slint); spikes first (GraalVM native-image vs Kotlin/Native core + Slint

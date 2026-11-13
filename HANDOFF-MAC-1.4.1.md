@@ -98,6 +98,13 @@ Google Drive "Original file", private windows, POST downloads left in the browse
 the download until the app has it). None of it ran in a real browser. The Safari target copies the
 same files at build time; after an incremental build re-embed the appex (see `CLAUDE.md`).
 
+## 4b. Done on Windows and the A56 (no need to repeat)
+
+Real keys and mouse on the native Windows window: F1, Alt+Enter, Ctrl+N / R / P / A / F, Delete, Home / End,
+Esc, light theme, Arabic / Persian / Russian layouts, Test the link, the checksum field, a torrent with
+details, add tracker, first / last pieces, copy magnet. Android A56: Test the link, BitTorrent settings,
+a real torrent with 8 trackers, add tracker, first / last toggle. The extension version is now 3.4.0.
+
 ## 5. Update the docs after the Mac run
 
 Put the results in `CLAUDE.md` (Current state) and delete this file.

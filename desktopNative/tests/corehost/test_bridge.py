@@ -63,7 +63,7 @@ def run():
     core = Core("bridge", before_start=install_fake_ytdlp, config={"bridge": True, "bridgePort": PORT})
     try:
         core.pump(1.5)
-        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.3.88"}
+        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.4.0"}
 
         print("ping, gates")
         answer = request(core, "GET", "/ping")
@@ -81,7 +81,7 @@ def run():
         core.check("unknown paths are 404", answer.status == 404, answer.status)
 
         print("config")
-        answer = request(core, "GET", "/config", {"Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.3.88"})
+        answer = request(core, "GET", "/config", {"Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.4.0"})
         config = answer.json() or {}
         core.check("config has the app's facts", config.get("app") == "FetchJet" and config.get("bridge") == 2 and
                    config.get("language") == "en" and config.get("paired") is False and config.get("pairing") is True and
@@ -208,7 +208,7 @@ def run():
         if edge and edge[0].get("subtitle") == core.strings().get("browserNotInstalled"):
             print("  skip  Edge is shown as connected with its version: Edge is not installed on this machine")
         elif edge:
-            core.check("Edge is shown as connected with its version", "3.3.88" in edge[0].get("subtitle", "") and
+            core.check("Edge is shown as connected with its version", "3.4.0" in edge[0].get("subtitle", "") and
                        edge[0].get("subtitle", "").startswith("\u2713"), edge[0].get("subtitle"))
         saved = json.load(open(os.path.join(core.home, "bridge.json"), encoding="utf-8"))
         core.check("the token is stored encrypted", str(saved.get("token", "")).startswith("fjenc1:") and token not in json.dumps(saved), list(saved.keys()))

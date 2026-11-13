@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FetchJet real extension test page</title>
+<style>
+  body { margin: 0; background: #222; font-family: sans-serif; color: #ddd; min-height: 1400px; }
+  #stage { position: relative; width: 800px; height: 450px; margin: 40px; background: #345; }
+  #stage video { position: absolute; display: block; }
+  #skip { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; background: #c33; color: #fff; border: 0; border-radius: 6px; z-index: 5; }
+  #second { position: relative; width: 400px; height: 225px; margin: 20px 40px; }
+  #second video { width: 400px; height: 225px; display: block; }
+  #pinned { position: fixed; left: 900px; top: 120px; width: 300px; height: 170px; z-index: 1; }
+  #pinned video { width: 300px; height: 170px; display: block; }
+  #cover { position: fixed; left: 880px; top: 100px; width: 360px; height: 230px; background: #fff; z-index: 3; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <button id="skip">Skip</button>
+</div>
+<div id="second"></div>
+<div id="pinned"></div>
+<div id="cover"></div>
+<script>
+  const make = (parent, id, css) => {
+    const c = document.createElement("canvas"); c.width = 320; c.height = 180;
+    const g = c.getContext("2d");
+    setInterval(() => { g.fillStyle = "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0"); g.fillRect(0, 0, 320, 180); }, 200);
+    const v = document.createElement("video");
+    v.id = id; v.muted = true; v.loop = true; v.srcObject = c.captureStream(5);
+    if (css) v.style.cssText += css;
+    parent.appendChild(v); v.play().catch(() => {});
+    return v;
+  };
+  const stage = document.getElementById("stage");
+  make(stage, "hero", "left:0;top:0;width:800px;height:450px");
+  make(stage, "hero2", "left:0;top:0;width:800px;height:450px");
+  make(stage, "nested", "left:30px;top:80px;width:300px;height:170px");
+  make(document.getElementById("second"), "other", "");
+  make(document.getElementById("pinned"), "pinnedvideo", "");
+</script>
+</body>
+</html>
