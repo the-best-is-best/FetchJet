@@ -741,8 +741,8 @@ Bridges:
   local test page (`extension/test/`) and by simulation (`node extension/test/content.sim.js`), Android on the
   A56 (Test the link, torrent details with a real Sintel torrent, add tracker, first / last pieces,
   BitTorrent settings). A torrent magnet that carries `ws=` is downloaded over the web seed, without the
-  torrent engine, so its details are empty: not a bug. NOT tested: macOS, iOS, iPad, Linux (see
-  `HANDOFF-MAC-1.4.1.md`), and the extension in a real Edge / Chrome / Firefox after the last changes.
+  torrent engine, so its details are empty: not a bug. Linux (WSL): 19 test files all passed, and a bridge-port reuse bug was fixed there. NOT tested: macOS,
+  iOS, iPad (see `HANDOFF-MAC-1.4.1.md`), and the extension in a real Edge / Chrome / Firefox after the last changes.
   Keyboard shortcuts also work with Arabic / Persian / Russian layouts (`TaskList.slint`, `TextField.slint`).
 - **1.4.0:** branch `release-v1.4.0` (cut from `master` = 1.3.1 on 2026-11-08), work list
   `ROADMAP-1.4.0.md`: the RAM release (owner's decision 2026-11-08): desktop memory close to

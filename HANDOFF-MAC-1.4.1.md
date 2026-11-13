@@ -109,6 +109,13 @@ server (refused), a file that changes on the server (stops with a clear message)
 certificate (refused: "The secure connection failed"; a real certificate was not tried). The test FTP server has
 `--passive-range LOW-HIGH` so its data ports can be forwarded with `adb reverse`. The extension version is now 3.4.0.
 
+## 4c. Linux (WSL) and the bridge port
+
+Linux was run in WSL (19 corehost test files passed). It found that the bridge port 28450 could not be taken again
+for about a minute after a close; `nativeapp/bridge/HttpListener.kt` now sets `reuseAddress` on every OS except
+Windows. On the Mac: close the app and start it again at once; the log must say `bridge: listening on 127.0.0.1:28450`.
+Run `test_bridge`, `test_unpair`, `test_launch` back to back.
+
 ## 5. Update the docs after the Mac run
 
 Put the results in `CLAUDE.md` (Current state) and delete this file.

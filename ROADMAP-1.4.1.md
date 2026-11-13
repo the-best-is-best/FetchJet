@@ -48,8 +48,16 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] Speed limit only while the computer is in use (`test_idle_limit.py` 12 checks); wake the computer
   for scheduled downloads on Windows (`test_wake.py` 11 checks).
 - [x] Version in the window title.
-- [ ] Tray click opens / hides the window on Linux and macOS, idle time on macOS (`CGEventSource`),
-  Linux idle time through `gdbus`: written, never run.
+- [x] Linux (cross-built on Windows, run in WSL): `test_download` 29, `test_robust` 15, `test_slowtail` 4,
+  `test_integrity` 32, `test_hostlimit` 8, `test_ftp` 34, `test_testlink` 51, `test_keys` 41, `test_bridge` 33,
+  `test_unpair` 8, `test_launch` 33, `test_settings` 87, `test_home` 41, `test_add` 29, `test_network` 17,
+  `test_torrent` 17, `test_torrent_details` 28, `test_torrent_proxy` 51, `test_idle_limit` 12: all passed.
+- [x] Found on Linux: the bridge port was not reusable for about a minute after a close (no `SO_REUSEADDR`),
+  so a quick restart of the app could not bind 28450 (`HttpListener.kt`). Fixed for Linux and macOS; Windows
+  keeps it off on purpose (there it would let another program share the port). Back to back `test_bridge`,
+  `test_unpair`, `test_launch` now pass on Linux; Windows unchanged (34 / 8 / 33).
+- [ ] Tray click opens / hides the window on Linux and macOS and idle time on macOS (`CGEventSource`): written,
+  never run (WSL has no tray or desktop session); Linux idle time is tested only through the fake value.
 
 ## Browser extension 3.4.0
 
@@ -74,5 +82,5 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
 - [x] `release-notes/1.4.1/*.md` in 15 languages (translations not reviewed by a native speaker).
 - [x] `EXTENSION_VERSION` and the three manifests = 3.4.0.
-- [ ] Mac / iOS / iPad / Linux builds and tests: `HANDOFF-MAC-1.4.1.md`.
+- [ ] Mac / iOS / iPad builds and tests: `HANDOFF-MAC-1.4.1.md` (Linux was run in WSL, see above).
 - [ ] The owner runs the release from GitHub Actions.

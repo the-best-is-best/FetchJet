@@ -12,6 +12,9 @@ import io.ktor.utils.io.readUTF8Line
 import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writeStringUtf8
 import kotlin.concurrent.AtomicInt
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.OsFamily
+import kotlin.native.Platform
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -109,7 +112,7 @@ internal class HttpListener(
     suspend fun start(): Boolean {
         return try {
             val created = SelectorManager(Dispatchers.IO)
-            val bound = aSocket(created).tcp().bind(host, port)
+            val bound = aSocket(created).tcp().bind(host, port) { reuseAddress = canReuseAddress() }
             selector = created
             server = bound
             accepting = scope.launch(Dispatchers.IO) {
@@ -258,3 +261,9 @@ internal class HttpListener(
         const val BODY_TIMEOUT_MS = 30_000L
     }
 }
+
+// A restarted app must be able to take the same port at once: on Linux and macOS a closed listener
+// keeps the port for a minute unless the address may be reused. On Windows SO_REUSEADDR would let
+// another program share the port, so it stays off there.
+@OptIn(ExperimentalNativeApi::class)
+private fun canReuseAddress(): Boolean = Platform.osFamily != OsFamily.WINDOWS
