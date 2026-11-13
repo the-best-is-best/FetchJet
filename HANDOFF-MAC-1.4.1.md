@@ -103,7 +103,11 @@ same files at build time; after an incremental build re-embed the appex (see `CL
 Real keys and mouse on the native Windows window: F1, Alt+Enter, Ctrl+N / R / P / A / F, Delete, Home / End,
 Esc, light theme, Arabic / Persian / Russian layouts, Test the link, the checksum field, a torrent with
 details, add tracker, first / last pieces, copy magnet. Android A56: Test the link, BitTorrent settings,
-a real torrent with 8 trackers, add tracker, first / last toggle. The extension version is now 3.4.0.
+a real torrent with 8 trackers, add tracker, first / last toggle; FTP download in parts (9 MB, SHA-256 equal to the
+server's), a correct and a wrong checksum (the wrong one is refused and not saved), a wrong checksum header from the
+server (refused), a file that changes on the server (stops with a clear message), FTPS / FTPES with a self-signed
+certificate (refused: "The secure connection failed"; a real certificate was not tried). The test FTP server has
+`--passive-range LOW-HIGH` so its data ports can be forwarded with `adb reverse`. The extension version is now 3.4.0.
 
 ## 5. Update the docs after the Mac run
 

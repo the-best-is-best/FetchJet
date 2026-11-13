@@ -217,7 +217,20 @@ class Session(threading.Thread):
         if self.passive:
             self.passive.close()
         listener = socket.socket()
-        listener.bind(("127.0.0.1", 0))
+        low, high = 0, 0
+        if getattr(self.state.args, "passive_range", None):
+            low, high = [int(x) for x in self.state.args.passive_range.split("-")]
+        if low:
+            for candidate in range(low, high + 1):
+                try:
+                    listener.bind(("127.0.0.1", candidate))
+                    break
+                except OSError:
+                    continue
+            else:
+                raise OSError("no free passive port in the range")
+        else:
+            listener.bind(("127.0.0.1", 0))
         listener.listen(1)
         listener.settimeout(20)
         self.passive = listener
@@ -393,6 +406,7 @@ def main():
     parser.add_argument("--mdtm", default=None)
     parser.add_argument("--log", default=None)
     parser.add_argument("--pidfile", default=None)
+    parser.add_argument("--passive-range", default=None, help="LOW-HIGH: passive data ports, so a tunnel can forward them")
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args()
     if args.selftest:
