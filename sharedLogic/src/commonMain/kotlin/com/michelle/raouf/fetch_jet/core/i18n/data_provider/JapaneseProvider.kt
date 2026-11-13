@@ -1013,7 +1013,7 @@ object JapaneseProvider : AppLocalization {
     override val audioCompressNothing = "このファイルはすでに小さいため、圧縮しても小さくなりません"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
-    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceSendTitle = "デバイスに送信"
     override val sysDeviceNoDevices = "No devices found on your network"
     override val sysDeviceSearching = "Looking for devices…"
     override val sysDeviceModeLink = "Send link only"

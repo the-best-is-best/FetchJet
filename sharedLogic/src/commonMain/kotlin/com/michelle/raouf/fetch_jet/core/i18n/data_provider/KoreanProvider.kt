@@ -933,7 +933,7 @@ object KoreanProvider : AppLocalization {
     override val audioCompressNothing = "이 파일은 이미 작습니다. 압축해도 더 작아지지 않습니다"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
-    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceSendTitle = "기기로 보내기"
     override val sysDeviceNoDevices = "No devices found on your network"
     override val sysDeviceSearching = "Looking for devices…"
     override val sysDeviceModeLink = "Send link only"

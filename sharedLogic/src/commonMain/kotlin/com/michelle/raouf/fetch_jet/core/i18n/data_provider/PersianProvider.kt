@@ -1002,7 +1002,7 @@ object PersianProvider : AppLocalization {
     override val audioCompressNothing = "این فایل از قبل کوچک است. فشرده‌سازی آن را کوچک‌تر نمی‌کند"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
-    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceSendTitle = "ارسال به دستگاه"
     override val sysDeviceNoDevices = "No devices found on your network"
     override val sysDeviceSearching = "Looking for devices…"
     override val sysDeviceModeLink = "Send link only"

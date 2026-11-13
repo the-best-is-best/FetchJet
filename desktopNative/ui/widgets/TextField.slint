@@ -267,6 +267,7 @@ export component TextArea inherits Rectangle {
     in property <int> max-lines: 3;
     out property <bool> has-focus: input.has-focus;
     callback edited(text: string);
+    callback escaped();
     in property <length> trailing-width: 0px;
     private property <length> line: 20px;
     private property <length> shift;
@@ -382,6 +383,7 @@ export component TextArea inherits Rectangle {
                         }
                         if event.text == Key.Escape {
                             self.clear-focus();
+                            root.escaped();
                             return accept;
                         }
                         reject

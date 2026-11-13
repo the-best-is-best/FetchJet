@@ -214,6 +214,7 @@ component UrlSection inherits VerticalLayout {
         value: Core.add.url;
         rev: Core.add.urlRev;
         edited(text) => { Act.setUrl(text); }
+        escaped => { Act.showAddDialog(false); }
         if field.text != "": FieldIconButton {
             clicked => {
                 field.set-text("");

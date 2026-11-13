@@ -1002,7 +1002,7 @@ object IndonesianProvider : AppLocalization {
     override val audioCompressNothing = "File ini sudah kecil. Kompresi tidak akan membuatnya lebih kecil"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
-    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceSendTitle = "Kirim ke perangkat"
     override val sysDeviceNoDevices = "No devices found on your network"
     override val sysDeviceSearching = "Looking for devices…"
     override val sysDeviceModeLink = "Send link only"

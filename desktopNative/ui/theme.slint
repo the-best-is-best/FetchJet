@@ -57,7 +57,9 @@ export global Theme {
     }
 
     pure public function tag-color(code: int) -> color {
-        return code == 0 ? #C4B5FD : code == 1 ? #6EE7B7 : code == 2 ? #F9A8D4 : code == 3 ? #FCD34D : code == 4 ? #93C5FD : code == 5 ? #FDBA74 : #B7C0D8;
+        return root.dark
+            ? (code == 0 ? #C4B5FD : code == 1 ? #6EE7B7 : code == 2 ? #F9A8D4 : code == 3 ? #FCD34D : code == 4 ? #93C5FD : code == 5 ? #FDBA74 : #B7C0D8)
+            : (code == 0 ? #6D28D9 : code == 1 ? #047857 : code == 2 ? #BE185D : code == 3 ? #B45309 : code == 4 ? #1D4ED8 : code == 5 ? #C2410C : #475569);
     }
 }
 

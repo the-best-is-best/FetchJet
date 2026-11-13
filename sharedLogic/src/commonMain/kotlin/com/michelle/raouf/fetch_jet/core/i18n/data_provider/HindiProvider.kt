@@ -996,7 +996,7 @@ object HindiProvider : AppLocalization {
     override val audioCompressNothing = "यह फ़ाइल पहले से छोटी है। संपीड़न से यह और छोटी नहीं होगी"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
-    override val sysDeviceSendTitle = "Send to device"
+    override val sysDeviceSendTitle = "डिवाइस पर भेजें"
     override val sysDeviceNoDevices = "No devices found on your network"
     override val sysDeviceSearching = "Looking for devices…"
     override val sysDeviceModeLink = "Send link only"
