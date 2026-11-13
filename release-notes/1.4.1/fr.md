@@ -8,6 +8,9 @@
 - **Les limites du serveur sont mémorisées :** un site qui n'autorise que quelques connexions est mémorisé pendant un jour, pour que le téléchargement suivant ne démarre pas avec des connexions qu'il refuse. Après un 403, FetchJet peut réessayer en IPv4 (Windows, Android et Linux).
 - **Tester le lien :** un bouton dans la fenêtre Ajouter vous dit si le lien fonctionne, sa taille et s'il peut être repris, sans le télécharger.
 - **Un dossier par type de fichier :** le dossier choisi pour les vidéos, la musique ou les archives n'est mémorisé que pour ce type.
+- **Lecture depuis la liste :** un fichier vidéo ou audio terminé affiche désormais un bouton ▶ qui l'ouvre dans votre lecteur.
+- **Plus de noms inventés :** un lien sans nom de fichier affiche un champ « Nom du fichier » vide, et le démarrage attend que vous en saisissiez un.
+- **Adapté à votre écran :** la fenêtre du bureau s'ouvre maintenant dans l'écran visible, et non plus en partie sous la barre des tâches.
 
 **Torrents**
 - **Détails :** ratio de partage, quantité envoyée, morceaux et taille des morceaux, trackers avec leur état, pairs, « Vérifier à nouveau », copie du lien magnet et « premiers et derniers morceaux d'abord » pour prévisualiser les vidéos.

@@ -8,6 +8,9 @@
 - **Server limits are remembered:** a site that allows only a few connections is remembered for a day, so the next download does not start with the connections it refuses. After a 403, FetchJet can retry over IPv4 (Windows, Android and Linux).
 - **Test the link:** a button in the Add dialog tells you if the link works, its size and whether it can resume, without downloading it.
 - **Folder per kind of file:** the folder you pick for videos, music or archives is remembered for that kind only.
+- **Play from the list:** a finished video or audio file now shows a ▶ button that opens it in your player.
+- **No made-up file names:** a link with no file name shows an empty File name box, and Start waits until you type one.
+- **Fits your screen:** the desktop window now opens inside the visible screen instead of partly under the taskbar.
 
 **Torrents**
 - **Details:** share ratio, uploaded amount, pieces and piece size, trackers with their state, peers, "check again", copy the magnet link, and "first and last pieces first" for previewing videos.

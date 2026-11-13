@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-13 (1.4.1 work on branch `release-v1.4.1`, see Release plan). Read this first, then `README.md`, `TESTING.md` (how to re-run the
+Last updated: 2026-11-14 (1.4.1 work on branch `release-v1.4.1`, see Release plan). Read this first, then `README.md`, `TESTING.md` (how to re-run the
 manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
@@ -264,6 +264,23 @@ Bridges:
 
 ## Current state (master = 1.3.1; working branch `release-v1.4.0`)
 
+- **2026-11-14, Windows / Linux / Android session on `release-v1.4.1` (committed `9ff1a38` and the play button, pushed):**
+    - The Mac session's shared code (empty File name box, engine switch while an inspect hangs, folder per kind) was built and
+      tested here: Windows corehost all passed (new `test_addname.py` 10, `test_foldertype.py` 8), Linux (WSL) core files passed,
+      the real Windows window through UI Automation, the A56 (details and recipe: `TESTING.md` section 11,
+      `ROADMAP-1.4.1.md`). The Android Compose edits compile and work.
+    - Found and fixed on the A56: the Compose Add dialog stacked the type folder on a remembered folder (`Media/Video`);
+      `AddDownloadSections.kt` now follows the view model's `destinationPath`.
+    - Window: it could open with its bottom under the taskbar (work area 1020, window bottom 1145 at 125% scale):
+      `fit_to_work_area()` in the Windows host. The owner's white strip at the bottom of the window was the Store 1.4.0 (its
+      title has no version number); upstream cause is slint#13537 (software renderer, a grown window is left unpainted,
+      intermittent). A full-window `Rectangle` in `ui/app.slint` that changes with the size is the workaround from the issue;
+      not reproduced here, so not proven fixed.
+    - New: a finished video or audio row shows ▶ (opens the file) instead of ↗ in Slint, Compose and SwiftUI. Checked on
+      Windows, the Android emulator (phone and tablet) and the A56 (the ▶ opens the "open with" chooser). iOS not built.
+      The Store FetchJet holds port 28450: close it for a window test and reopen it after (say so).
+    - Not run: Slint real keys / mouse on Linux (WSLg ignores xdotool), the Mac host (`fit_to_work_area` is empty there),
+      iOS build of the play button, idle speed limit and torrent details through the real window.
 - **2026-11-13, Mac session on `release-v1.4.1` (iOS, iPad, macOS, nothing committed):**
     - iOS: `FJTorrent.xcframework` rebuilt (the 7 new methods compile, no C++ complaint),
       `scripts/ios-dev-build.command all` built with no Kotlin / Swift error. Simulator iPhone 17
@@ -817,8 +834,7 @@ Bridges:
   A56 (Test the link, torrent details with a real Sintel torrent, add tracker, first / last pieces,
   BitTorrent settings). A torrent magnet that carries `ws=` is downloaded over the web seed, without the
   torrent engine, so its details are empty: not a bug. Linux (WSL): 19 test files all passed, and a bridge-port reuse bug was fixed there. Mac session 2026-11-13: iOS, iPad and the
-  macOS core tests passed (see Current state). NOT tested: the macOS window (tray, real keys,
-  non-Latin layouts), the extension in Safari on a Mac, and in a real Edge / Chrome / Firefox after the last changes.
+  macOS core tests passed (see Current state). 2026-11-14: Windows, Linux and the A56 re-checked (see Current state). NOT tested: macOS non-Latin layouts, the play button on iOS, and the extension in a real Edge / Chrome / Firefox after the last changes.
   Keyboard shortcuts also work with Arabic / Persian / Russian layouts (`TaskList.slint`, `TextField.slint`).
 - **1.4.0:** branch `release-v1.4.0` (cut from `master` = 1.3.1 on 2026-11-08), work list
   `ROADMAP-1.4.0.md`: the RAM release (owner's decision 2026-11-08): desktop memory close to

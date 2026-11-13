@@ -8,6 +8,9 @@
 - **Se recuerdan los límites del servidor:** un sitio que permite pocas conexiones se recuerda durante un día, para que la siguiente descarga no empiece con conexiones que rechaza. Tras un 403, FetchJet puede reintentar por IPv4 (Windows, Android y Linux).
 - **Probar el enlace:** un botón en el diálogo Añadir te dice si el enlace funciona, su tamaño y si se puede reanudar, sin descargarlo.
 - **Una carpeta por tipo de archivo:** la carpeta que eliges para vídeos, música o archivos comprimidos se recuerda solo para ese tipo.
+- **Reproducir desde la lista:** un archivo de vídeo o audio terminado muestra ahora un botón ▶ que lo abre en su reproductor.
+- **Sin nombres de archivo inventados:** un enlace sin nombre de archivo muestra el campo «Nombre del archivo» vacío, y el inicio espera a que escriba uno.
+- **Se ajusta a su pantalla:** la ventana de escritorio se abre ahora dentro de la pantalla visible y no en parte bajo la barra de tareas.
 
 **Torrents**
 - **Detalles:** ratio de compartición, cantidad subida, partes y tamaño de parte, trackers con su estado, pares, "Comprobar de nuevo", copiar el enlace magnet y "primeras y últimas partes primero" para previsualizar vídeos.

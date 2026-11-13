@@ -194,6 +194,7 @@ struct TaskQuickActionButton: View {
     @EnvironmentObject var store: FJStore
     let action: TaskRowAction
     var size: CGFloat = 44
+    var play: Bool = false
     let onTap: () -> Void
 
     var body: some View {
@@ -206,7 +207,7 @@ struct TaskQuickActionButton: View {
                 case .pause: return ("pause.fill", s.pause)
                 case .resume: return ("play.fill", s.resume)
                 case .startNow: return ("play.fill", s.homeStartNow)
-                case .open: return ("arrow.up.right", s.open)
+                case .open: return (play ? "play.fill" : "arrow.up.right", s.open)
                 case .none: return ("", "")
                 }
             }()
@@ -269,7 +270,7 @@ struct TaskRowView: View {
                         .padding(.leading, 8)
                 }
                 if !selectionMode {
-                    TaskQuickActionButton(action: TaskUi.rowAction(task), size: 44) {
+                    TaskQuickActionButton(action: TaskUi.rowAction(task), size: 44, play: ["VID", "AUD"].contains(TaskUi.kindTag(task))) {
                         onQuickAction(TaskUi.rowAction(task))
                     }
                     .padding(.leading, 8)

@@ -8,6 +8,9 @@
 - **Server-Grenzen werden gemerkt:** Eine Website, die nur wenige Verbindungen erlaubt, wird einen Tag lang gemerkt, damit der nächste Download nicht mit Verbindungen startet, die sie ablehnt. Nach einem 403 kann FetchJet es über IPv4 erneut versuchen (Windows, Android und Linux).
 - **Link testen:** Eine Schaltfläche im Dialog Hinzufügen zeigt, ob der Link funktioniert, wie groß die Datei ist und ob sie fortgesetzt werden kann, ohne sie zu laden.
 - **Ordner pro Dateityp:** Der Ordner, den du für Videos, Musik oder Archive wählst, wird nur für diesen Typ gemerkt.
+- **Abspielen aus der Liste:** Eine fertige Video- oder Audiodatei zeigt jetzt eine ▶-Schaltfläche, die sie in Ihrem Player öffnet.
+- **Keine erfundenen Dateinamen:** Ein Link ohne Dateinamen zeigt ein leeres Feld „Dateiname“, und der Start wartet, bis Sie einen eingeben.
+- **Passt auf Ihren Bildschirm:** Das Desktop-Fenster öffnet sich jetzt im sichtbaren Bereich statt teilweise unter der Taskleiste.
 
 **Torrents**
 - **Details:** Teilverhältnis, hochgeladene Menge, Teile und Teilgröße, Tracker mit ihrem Status, Peers, "Erneut prüfen", Magnet-Link kopieren und "Erste und letzte Teile zuerst" für die Vorschau von Videos.

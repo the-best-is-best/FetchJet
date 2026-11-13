@@ -8,6 +8,9 @@
 - **Sunucu sınırları hatırlanır:** yalnızca birkaç bağlantıya izin veren site bir gün boyunca hatırlanır; böylece sonraki indirme, reddettiği sayıda bağlantıyla başlamaz. 403'ten sonra FetchJet IPv4 üzerinden yeniden deneyebilir (Windows, Android ve Linux).
 - **Bağlantıyı sına:** Ekle penceresindeki bir düğme, bağlantıyı indirmeden çalışıp çalışmadığını, boyutunu ve kaldığı yerden devam edip edemeyeceğini söyler.
 - **Dosya türüne göre klasör:** video, müzik veya arşivler için seçtiğiniz klasör yalnızca o tür için hatırlanır.
+- **Listeden oynat:** biten bir video veya ses dosyasında artık dosyayı oynatıcınızda açan bir ▶ düğmesi görünür.
+- **Uydurma dosya adı yok:** dosya adı olmayan bir bağlantıda «Dosya adı» kutusu boş görünür ve başlatma, siz bir ad yazana kadar bekler.
+- **Ekranınıza sığar:** masaüstü penceresi artık kısmen görev çubuğunun altında değil, görünen ekranın içinde açılır.
 
 **Torrentler**
 - **Ayrıntılar:** paylaşım oranı, yüklenen miktar, parçalar ve parça boyutu, durumlarıyla izleyiciler, eşler, "Yeniden denetle", magnet bağlantısını kopyala ve videoları önizlemek için "önce ilk ve son parçalar".

@@ -253,7 +253,7 @@ private fun CompressActionButton(sizeDp: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun QuickActionButton(action: RowAction, sizeDp: Int, onClick: () -> Unit) {
+private fun QuickActionButton(action: RowAction, sizeDp: Int, play: Boolean = false, onClick: () -> Unit) {
     if (action == RowAction.NONE) {
         Spacer(modifier = Modifier.width(sizeDp.dp)); return
     }
@@ -267,7 +267,7 @@ private fun QuickActionButton(action: RowAction, sizeDp: Int, onClick: () -> Uni
     val glyph = when (action) {
         RowAction.PAUSE -> "⏸"
         RowAction.RESUME, RowAction.START_NOW -> "▶"
-        RowAction.OPEN -> "↗"
+        RowAction.OPEN -> if (play) "▶" else "↗"
         RowAction.NONE -> ""
     }
     Surface(
@@ -405,7 +405,7 @@ fun TaskRow(
                         PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
                     }
                     if (onCompress != null) CompressActionButton(34, onCompress)
-                    QuickActionButton(action, 34) { onQuickAction(action) }
+                    QuickActionButton(action, 34, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
                 }
             } else {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -443,7 +443,7 @@ fun TaskRow(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         if (!selectionMode && onCompress != null && windowWidth >= 680.dp) CompressActionButton(44, onCompress)
-                        if (!selectionMode) QuickActionButton(action, 44) { onQuickAction(action) }
+                        if (!selectionMode) QuickActionButton(action, 44, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
                     }
                     if (task.status != DownloadStatus.COMPLETED) {
                         Spacer(modifier = Modifier.height(10.dp))

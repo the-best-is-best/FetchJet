@@ -101,6 +101,7 @@ component CompressAction inherits Rectangle {
 
 component QuickAction inherits Rectangle {
     in property <int> action;
+    in property <bool> play;
     in property <length> size: 34px;
     callback clicked();
     width: root.size;
@@ -116,7 +117,7 @@ component QuickAction inherits Rectangle {
             clicked => { root.clicked(); }
         }
         Glyph {
-            text: root.action == RowActionCode.pause ? "⏸" : root.action == RowActionCode.open ? "↗" : "▶";
+            text: root.action == RowActionCode.pause ? "⏸" : root.action == RowActionCode.open ? (root.play ? "▶" : "↗") : "▶";
             color: Theme.on-surface;
             font-family: Theme.symbol-font;
             font-size: 13px;
@@ -395,6 +396,7 @@ export component TaskRow inherits Rectangle {
                 QuickAction {
                     x: Dir.rtl ? 0 : parent.width - 34px;
                     action: root.data.action;
+                    play: root.data.tag == "VID" || root.data.tag == "AUD";
                     clicked => { Act.rowQuickAction(root.data.id); }
                 }
             }
@@ -469,6 +471,7 @@ export component TaskRow inherits Rectangle {
                 if !root.selection-mode: QuickAction {
                     size: 44px;
                     action: root.data.action;
+                    play: root.data.tag == "VID" || root.data.tag == "AUD";
                     clicked => { Act.rowQuickAction(root.data.id); }
                 }
             }

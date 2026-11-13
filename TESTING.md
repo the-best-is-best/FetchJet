@@ -222,3 +222,15 @@ adb reverse tcp:2321 tcp:2321                 # and each port 30000-30059
 A phone cannot reach the PC's loopback ports for a local torrent seeder (the firewall stops the LAN
 route); use a real torrent with a speed limit instead (Sintel, only the small subtitle files).
 Test links that carry `ws=` are downloaded over the web seed and have empty torrent details.
+
+## 11. Driving the real Windows window without the mouse (1.4.1)
+
+The native Windows window exposes its controls to UI Automation (Slint accessibility), so a test can press buttons and fill fields from PowerShell without taking over the mouse. Close the Store FetchJet first: it holds the bridge port 28450 and a second instance exits. Use a throw-away home that already has the media tools (a fresh one downloads ~240 MB): `FetchJet.exe --home E:	oolsjhomepphome4`, env `FETCHJET_TORRENT_LOCAL_ONLY=1`.
+
+- Load `UIAutomationClient`, find the window by process id, then: buttons support `InvokePattern` (e.g. `+  Add download`, note the two spaces), engine and schedule chips support `TogglePattern` only, fields support `ValuePattern.SetValue`.
+- The Add dialog is virtualised: the controls below the fold (Start / Cancel) are not in the tree, so read the Start state from `tests/corehost/test_add.py` (`primaryEnabled`) or from a screenshot of a taller window.
+- Screenshots: `CopyFromScreen` of the window rectangle after `SetProcessDPIAware`; make the window TOPMOST for the shot and remove it. `PrintWindow` returns stale pictures.
+- `SendKeys` reaches the window (F1, Esc in a focused field) but did not open the Add dialog with Ctrl+N right after start (the list had no focus). On Linux (WSLg) `xdotool` clicks and keys are not delivered to the window at all: drive Linux with `--script <file>` (one UiAction JSON per line) and `tests/corehost` instead.
+- Linux host: `desktopNative/host-build` links `libfjcore.so` built as `debugShared`; copy a fresh `releaseShared` core over it before a window run, or the window shows an old core (it showed `download_<n>` names).
+- Core tests added in 1.4.1: `test_addname.py` (empty File name box, Start off, engine switch with a magnet; needs `FETCHJET_TORRENT_DLL`), `test_foldertype.py` (default `Video/`, a remembered folder used as it is, no `Video/Video`), `shots_addname.py` and `shots_playbtn.py` (screenshots of the Add dialog and of the ▶ / ↗ row buttons). FTP over TLS needs `FETCHJET_FTPS_INSECURE=1` against the self-signed test server.
+- The window-size bug (slint#13537) is intermittent: 36 resizes in a loop did not show it.

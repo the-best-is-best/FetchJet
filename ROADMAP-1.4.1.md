@@ -1,6 +1,6 @@
 # FetchJet 1.4.1: work list
 
-Branch `release-v1.4.1` (cut from `master` = 1.4.0). Not released. Written 2026-11-13.
+Branch `release-v1.4.1` (cut from `master` = 1.4.0). Not released. Written 2026-11-13, updated 2026-11-14.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
 ## Downloads
@@ -62,6 +62,11 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] macOS: 32 connections per host (the default 6 made two downloads from one server share 6; `test_home` 41/41 after it) and the Cmd symbol in the F1 list (compiled, not seen).
 - [x] Add dialog: switching engine while an inspect hangs now cancels it and resets the state; no random `download_<n>` file name (empty and required for a Direct link with no name). Mac native tested, iOS built, Android not compiled here.
 - [x] Tray click opens / hides the window on macOS (single click, double click, right-click menu): run on the Mac. Linux: not run.
+- [x] Windows / Linux / Android check of the Mac session's shared code (2026-11-14): the empty File name box (Direct link with no name, Start off until a name is typed), the engine switch while an inspect hangs (Torrent -> Direct -> Media -> Torrent: no stale spinner or error, a new inspect on Torrent) and the folder per kind of file. Windows corehost files all passed (including the new `test_addname.py` 10 checks and `test_foldertype.py` 8 checks); Linux (WSL) the core files passed; real Windows window driven through UI Automation (Add dialog, engine chips, Esc, F1 shows "Ctrl + N"); A56 (link with no name from a share intent, engine switch with a magnet, folder per kind).
+- [x] Android: the Compose Add dialog stacked the type folder on a remembered folder (`Media/Video` instead of `Media`; the view model already gave the right path). `AddDownloadSections.kt` now follows the view model's `destinationPath`. A56: default `Download/Video`, a chosen `Download/Media` is remembered and offered again, Sort off shows `Download`.
+- [x] The desktop window could open taller than the screen's work area, with the bottom under the taskbar (here: top at y=160, height 985, work area ends at 1020). `fit_to_work_area()` (`host/win/platform_win.cpp`, called from `show_window` and again 400 ms later; empty on Linux and macOS) shrinks and moves it. Checked on Windows: fresh start now ends at 1020, and a window moved out and shown again from the tray comes back inside.
+- [x] The white strip at the bottom of the window (owner's screenshot, Store 1.4.0): a known Slint bug with the `winit-software` renderer on Windows, slint#13537 (a window that grows leaves the new area transparent, intermittent). A full-window `Rectangle` in `ui/app.slint` whose colour follows a counter of width / height changes puts the whole window in the dirty region on every resize (the workaround from the issue). Not reproduced here in 36 grows (so not proven fixed); the look did not change. The screenshot's title had no version number, so it was the Store 1.4.0, not 1.4.1.
+- [x] Play button: a finished video or audio row (tag VID / AUD) shows ▶ instead of ↗ and still opens the file. Slint (`TaskRow.slint` `QuickAction.play`), Compose (`TaskRows.kt` `QuickActionButton(play = ...)`), SwiftUI (`TaskRowView.swift` `TaskQuickActionButton(play:)`). Windows rendered (`shots_playbtn.py`), Android emulator phone and tablet sizes and the A56 (the ▶ opens the "open with" chooser); iOS not built (needs a Mac).
 - [ ] Idle time on macOS (`CGEventSource`): compiled, never run (no real 3 minute idle); Linux idle time is tested only through the fake value.
 - [x] macOS window: real keys, Esc / focus, window title, "Test the link" (http and ftp), command line `/d /p /n`: run on the Mac.
 - [ ] macOS: non-Latin keyboard layouts and the ZIP / VID / AUD badges in the light theme: not run.

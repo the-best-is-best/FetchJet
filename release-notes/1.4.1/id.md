@@ -8,6 +8,9 @@
 - **Batas server diingat:** situs yang hanya mengizinkan beberapa koneksi diingat selama sehari, sehingga unduhan berikutnya tidak dimulai dengan koneksi yang ditolaknya. Setelah 403, FetchJet bisa mencoba lagi lewat IPv4 (Windows, Android, dan Linux).
 - **Uji tautan:** tombol di dialog Tambah memberi tahu apakah tautan berfungsi, ukurannya, dan apakah bisa dilanjutkan, tanpa mengunduhnya.
 - **Folder per jenis file:** folder yang Anda pilih untuk video, musik, atau arsip hanya diingat untuk jenis itu.
+- **Putar dari daftar:** file video atau audio yang selesai kini menampilkan tombol ▶ yang membukanya di pemutar Anda.
+- **Tanpa nama file karangan:** tautan tanpa nama file menampilkan kolom «Nama file» kosong, dan Mulai menunggu sampai Anda mengetik nama.
+- **Pas di layar Anda:** jendela desktop kini terbuka di dalam layar yang terlihat, bukan sebagian di bawah bilah tugas.
 
 **Torrent**
 - **Detail:** rasio berbagi, jumlah yang diunggah, bagian dan ukuran bagian, tracker beserta statusnya, peer, "Periksa ulang", salin tautan magnet, dan "bagian pertama dan terakhir dulu" untuk pratinjau video.

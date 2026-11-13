@@ -920,3 +920,4 @@ bridge and test_shell.
 - Found by driving the real window: list keys were off while the details sheet was open, closing the
   sheet lost the focus, Ctrl+V did not paste with a non-Latin layout, Esc in the Add dialog's field did
   not close it. All fixed; `test_keys.py` covers the first.
+- 2026-11-14 (Windows / Linux / Android check of the Mac session): corehost files passed on Windows and Linux, plus new `test_addname.py` and `test_foldertype.py`. Window: `fit_to_work_area()` (the window opened with its bottom under the taskbar on a 1920x1080 screen at 125%) and a repaint guard in `app.slint` for slint#13537 (software renderer leaves a grown window unpainted, Windows). Finished video / audio rows show ▶ (opens the file) in Slint, Compose and SwiftUI. The Linux host was built and run in WSLg; clicks cannot be injected there (use `--script`).
