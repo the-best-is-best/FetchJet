@@ -120,13 +120,23 @@
 
   // ---- click interception -------------------------------------------------
 
-  document.addEventListener("click", (event) => {
+  // Taken after the page's own click code has run (bubble phase, nothing stopped): a site whose
+  // click code makes the link work (sets a cookie, builds the address) no longer answers 403.
+  // A click the page already handled (defaultPrevented) or stopped stays with the page; the
+  // browser's download is then handed over by the background.
+  window.addEventListener("click", (event) => {
     if (!settings.enabled || !settings.captureLinks) return;
     // Only the user's own clicks: a page script's a.click() must not send links with cookies.
     if (!event.isTrusted) return;
     if (event.button !== 0) return;
-    let target = event.target;
-    while (target && target.tagName !== "A") target = target.parentElement;
+    if (event.defaultPrevented) return;
+    let target = null;
+    const path = event.composedPath ? event.composedPath() : [];
+    for (const n of path) { if (n && n.tagName === "A" && n.href) { target = n; break; } }
+    if (!target) {
+      target = event.target;
+      while (target && target.tagName !== "A") target = target.parentElement;
+    }
     if (!target || !target.href) return;
 
     const href = target.href;
@@ -136,6 +146,8 @@
     const direct = isDownloadable(href);
     const hasDownloadAttr = target.hasAttribute("download") && /^https?:|^magnet:/i.test(href);
     if (!direct && !hasDownloadAttr) return;
+    // A PDF link the page does not mark as a download is meant to be read in the browser.
+    if (!hasDownloadAttr) { try { if (/\.pdf$/i.test(new URL(href).pathname)) return; } catch (_) {} }
 
     if (holdKeyPressed(event)) {
       // Let the browser download this one: tell the background to skip the next capture.
@@ -144,7 +156,6 @@
     }
 
     event.preventDefault();
-    event.stopPropagation();
     const fileName = target.getAttribute("download") || "";
     // If FetchJet cannot take it (not running, launch disabled), give the click back to the
     // browser so the file still downloads.
@@ -159,18 +170,22 @@
         .then((r) => { if (!r || !r.ok) browserFallback(); })
         .catch(browserFallback);
     } catch (_) { browserFallback(); }
-  }, true);
+  });
 
   // ---- link collection ("Download all / selected links") ------------------
 
   function collectLinks(selectionOnly) {
     const out = new Map();
-    const push = (url, name) => {
+    const marked = (abs) => {
+      try { const u = new URL(abs); return /^https?:$/.test(u.protocol) && !isExcludedHost(u.hostname) && !isArchiveOrgDirectoryOrDetails(abs); } catch (_) { return false; }
+    };
+    const push = (url, name, asked) => {
       try {
         const abs = new URL(url, window.location.href).href;
-        if (!out.has(abs) && (isDownloadable(abs) || /^magnet:|^ftps?:\/\/.*[^\/]$/i.test(abs))) out.set(abs, { url: abs, fileName: name || "" });
+        if (!out.has(abs) && (isDownloadable(abs) || (asked && marked(abs)) || /^magnet:|^ftps?:\/\/.*[^\/]$/i.test(abs))) out.set(abs, { url: abs, fileName: name || "" });
       } catch (_) {}
     };
+    const DATA_LINKS = "[data-href],[data-url],[data-download],[data-file],[data-link]";
 
     let roots = [document];
     if (selectionOnly) {
@@ -184,7 +199,7 @@
           const container = sel.getRangeAt(i).commonAncestorContainer;
           const el = container.nodeType === 1 ? container : container.parentElement;
           if (el) {
-            el.querySelectorAll("a[href]").forEach(a => { if (sel.containsNode(a, true)) push(a.href, a.getAttribute("download")); });
+            el.querySelectorAll("a[href]").forEach(a => { if (sel.containsNode(a, true)) push(a.href, a.getAttribute("download"), a.hasAttribute("download")); });
           }
         }
       }
@@ -202,8 +217,14 @@
     };
     for (const root of roots) {
       root.querySelectorAll && root.querySelectorAll("a[href]").forEach(a => {
-        push(a.href, a.getAttribute("download"));
+        push(a.href, a.getAttribute("download"), a.hasAttribute("download"));
         if (onSoundCloud) pushTrack(a.getAttribute("href"));
+      });
+      root.querySelectorAll && root.querySelectorAll(DATA_LINKS).forEach(n => {
+        for (const key of ["href", "url", "download", "file", "link"]) {
+          const v = n.getAttribute("data-" + key);
+          if (v && v.length < 2048 && !/\s/.test(v)) push(v, "");
+        }
       });
       if (!selectionOnly) {
         root.querySelectorAll("video[src], audio[src], video source[src], audio source[src]").forEach(m => {
@@ -429,6 +450,10 @@
     #label { display: none; font-size: 12px; padding-right: 10px; }
     .btn:hover #label, .btn.open #label { display: inline; }
     .btn:hover .part, .btn.open .part { width: auto; padding: 0 6px 0 9px; gap: 6px; }
+    .btn:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
+    .btn:focus-visible #label { display: inline; }
+    .btn:focus-visible .part { width: auto; padding: 0 6px 0 9px; gap: 6px; }
+    .item:focus-visible, .act:focus-visible, .cut:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
     .count { position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #0f172a; color: #fff; font-size: 10px; line-height: 16px; text-align: center; border: 1.5px solid #a855f7; display: none; }
     .count.on { display: block; }
     .side { position: absolute; top: -7px; left: -7px; width: 16px; height: 16px; border-radius: 50%; background: #0f172a; color: #e2e8f0; font-size: 9px; line-height: 16px; text-align: center; cursor: pointer; display: none; border: 1px solid rgba(255,255,255,.3); }
@@ -437,6 +462,7 @@
     .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: r .8s linear infinite; }
     @keyframes r { to { transform: rotate(360deg); } }
     .wrap { position: relative; }
+    .wrap.start .list { right: auto; left: 0; }
     .list { position: absolute; right: 0; top: 40px; width: 340px; background: #0f172a; color: #f1f5f9; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.55); max-height: 380px; overflow-y: auto; }
     .head { padding: 8px 12px; background: #141a2e; border-bottom: 1px solid rgba(255,255,255,.08); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.05); display: flex; gap: 8px; }
@@ -501,6 +527,13 @@
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
     const b = { host, root, video, open: false, own: null, loading: false, dismissed: false, lifts: 0 };
+    const mainEl = root.getElementById("main");
+    mainEl.tabIndex = 0;
+    mainEl.setAttribute("role", "button");
+    mainEl.addEventListener("keydown", (e) => {
+      if (!e.isTrusted) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); clicked(b); }
+    });
     root.getElementById("grab").addEventListener("mousedown", (e) => {
       if (e.button !== 0) return;
       const hr = host.getBoundingClientRect();
@@ -528,6 +561,7 @@
       if (!res) return notRunning(b, () => lookUp(b));
       if (res.error) return res.notRunning || /not running/i.test(res.error) ? notRunning(b, () => lookUp(b)) : renderOne(b, res.error, true);
       b.own = res.items || [];
+      if (!b.own.length && /(^|\.)telegram\.org$/i.test(SITE)) return renderOne(b, fjT("telegramNote"), true);
       renderOne(b);
     }).catch(() => { b.loading = false; renderOne(b, fjT("extReloaded"), true); });
   }
@@ -586,7 +620,7 @@
     box.hidden = !b.open;
     box.replaceChildren();
     const file = fileRow(b);
-    const tail = () => { if (file) box.appendChild(file); box.appendChild(footRow()); };
+    const tail = () => { if (file) box.appendChild(file); box.appendChild(footRow()); pressable(box); };
     if (note) {
       const d = el("div", { class: "msg" + (isError ? " err" : ""), text: note });
       if (action) { const a = el("div", { class: "act", text: action.text }); a.addEventListener("click", action.run); d.append(el("br"), a); }
@@ -625,6 +659,17 @@
       box.appendChild(row);
     }
     box.appendChild(footRow());
+    pressable(box);
+  }
+
+  function pressable(box) {
+    box.querySelectorAll(".item:not(.off), .act, .cut").forEach((n) => {
+      n.tabIndex = 0;
+      n.addEventListener("keydown", (e) => {
+        if (!e.isTrusted) return;
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); n.click(); }
+      });
+    });
   }
 
   const download = (b, m) => sendOne(b, { action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } });
@@ -642,6 +687,16 @@
     setTimeout(() => { b.open = false; renderOne(b); }, 2500);
   }
 
+  function snapSpot(b) {
+    const r = b.video.getBoundingClientRect();
+    if (!spot || !r.width || !r.height) return;
+    const near = 24;
+    spot = [
+      spot[0] * r.width < near ? 0 : (1 - spot[0]) * r.width < near ? 1 : spot[0],
+      spot[1] * r.height < near ? 0 : (1 - spot[1]) * r.height < near ? 1 : spot[1]
+    ];
+  }
+
   function placeOne(b) {
     if (b.dismissed) return;
     const fs = document.fullscreenElement || document.webkitFullscreenElement;
@@ -655,28 +710,103 @@
     else if (next && next.localName !== "fetchjet-button" && b.lifts < 6) { b.lifts++; top.appendChild(b.host); }
     const w = b.open ? 340 : 34; // keep the anchor stable while the label expands on hover
     const h = 34;
-    let y = spot ? r.top + spot[1] * r.height : r.top + 10;
+    const sp = spot;
+    let y = sp ? r.top + sp[1] * r.height : r.top + 10;
     y = Math.max(r.top, Math.min(y, r.bottom - h));
     b.host.style.top = `${Math.max(4, Math.min(y, innerHeight - h - 4))}px`;
-    if (!spot) {
+    if (!sp) {
       // Anchored to the video's top-right corner: the label grows to the left on hover,
       // so it never spills outside the video.
       b.host.style.left = "auto";
       b.host.style.right = `${Math.max(4, innerWidth - r.right + 10)}px`;
       b.host.style.flexDirection = "row-reverse";
     } else {
-      let x = r.left + spot[0] * r.width;
+      let x = r.left + sp[0] * r.width;
       x = Math.max(r.left, Math.min(x, r.right - 34));
       b.host.style.right = "auto";
       b.host.style.left = `${Math.max(4, Math.min(x, innerWidth - w))}px`;
     }
+    // Near the left edge the menu opens to the right of the button instead of being cut off.
+    if (!b.open) {
+      const hr = b.host.getBoundingClientRect();
+      const wrapEl = b.root.querySelector(".wrap");
+      if (wrapEl) wrapEl.classList.toggle("start", hr.right - 340 < 4 && hr.left + 340 <= innerWidth - 4);
+    }
+  }
+
+  // A video that is "on screen" but hidden under the page's own content (a fixed background video
+  // that the sections scroll over): nothing of it can be seen, so it gets no button.
+  function pinned(v) {
+    for (let e = v; e && e.nodeType === 1; e = e.parentElement) {
+      let pos = "";
+      try { pos = getComputedStyle(e).position; } catch (_) {}
+      if (pos === "fixed" || pos === "sticky") return true;
+    }
+    return false;
+  }
+  // Does this element (or one of its wrappers up to the video's own) hide what is behind it: a
+  // solid background or a picture, not a clear layer or a gradient?
+  function paintsOver(el, v) {
+    for (let n = el; n && n.nodeType === 1 && !n.contains(v); n = n.parentElement) {
+      let cs = null;
+      try { cs = getComputedStyle(n); } catch (_) { return false; }
+      const m = /rgba?\(([^)]+)\)/.exec(cs.backgroundColor || "");
+      if (m) { const a = m[1].split(",")[3]; if (a === undefined || parseFloat(a) >= 0.9) return true; }
+      if (cs.backgroundImage && cs.backgroundImage !== "none" && !/gradient/.test(cs.backgroundImage)) return true;
+      if (/^(IMG|VIDEO|CANVAS|IFRAME)$/.test(n.tagName)) return true;
+    }
+    return false;
+  }
+  function covered(v) {
+    if (v.tagName !== "VIDEO" || !pinned(v)) return false;
+    const r = v.getBoundingClientRect();
+    // The player: the video's own box plus the wrappers that are about its size (a site draws its
+    // controls and gradients over the video inside them).
+    let box = v;
+    for (let e = v.parentElement; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+      const er = e.getBoundingClientRect();
+      if (er.width > r.width * 1.25 || er.height > r.height * 1.25) break;
+      box = e;
+    }
+    const pts = [[0.12, 0.12], [0.88, 0.12], [0.12, 0.88], [0.88, 0.88]];
+    let seen = 0, tested = 0;
+    for (const [fx, fy] of pts) {
+      const x = r.left + fx * r.width, y = r.top + fy * r.height;
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+      let stack = [];
+      try { stack = document.elementsFromPoint(x, y); } catch (_) { return false; }
+      const top = stack.find(e => e.localName !== "fetchjet-button");
+      if (!top) continue;
+      tested++;
+      if (top === v || box.contains(top) || top.contains(v) || !paintsOver(top, v)) seen++;
+    }
+    return tested > 0 && seen === 0;
+  }
+
+  // Pages stack several videos in one place (a hero that cross-fades clips, a clip inside a
+  // laptop picture): one button for the group, on the main or playing one, then the biggest.
+  function distinct(vids) {
+    const rects = new Map(vids.map(v => [v, v.getBoundingClientRect()]));
+    const area = (r) => r.width * r.height;
+    const common = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    const rank = (v) => (isMain(v) ? 2 : 0) + (v.tagName === "VIDEO" && playing(v) ? 1 : 0);
+    const ranked = vids.slice().sort((a, b) => (rank(b) - rank(a)) || (area(rects.get(b)) - area(rects.get(a))));
+    const kept = [];
+    for (const v of ranked) {
+      const r = rects.get(v);
+      if (kept.some(k => common(rects.get(k), r) > 0.5 * Math.min(area(rects.get(k)), area(r)))) continue;
+      kept.push(v);
+    }
+    return kept;
   }
 
   function place() {
     if (buttonOff()) return;
     const all = allVideos();
-    const vids = all.filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100; });
+    const seen = all.filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100 && !covered(v); });
+    const vids = distinct(seen);
     for (const [v, b] of bubbles) if (!v.isConnected || (v.tagName !== "VIDEO" && !all.includes(v))) { b.host.remove(); bubbles.delete(v); }
+    for (const [v, b] of bubbles) if (!b.dismissed && !vids.includes(v)) { b.host.remove(); bubbles.delete(v); }
     const oneVideoSite = /(^|\.)youtube\.com$/i.test(location.hostname);
     for (const v of vids.slice(0, 12)) {
       if (oneVideoSite && !isMain(v)) {
@@ -725,7 +855,7 @@
     if (!drag) return;
     const d = drag; drag = null;
     d.b.root.getElementById("main").classList.remove("drag");
-    if (d.moved) saveSpot(); else clicked(d.b);
+    if (d.moved) { snapSpot(d.b); bubbles.forEach(b => placeOne(b)); saveSpot(); } else clicked(d.b);
   }, true);
   // Presses on the button or its menu stay inside it: players that listen for every press in
   // their area (Google Drive) would take them. Our own handlers get a copy that never leaves

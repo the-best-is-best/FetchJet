@@ -54,6 +54,7 @@ fjAddLanguage("ko", {
   "courseFailed": "강좌를 읽을 수 없습니다 {reason}",
   "courseDrm": "DRM으로 보호된 강의 {n}개를 건너뛰었습니다",
   "courseAllDrm": "모든 강의가 DRM으로 보호됨: 다운로드할 수 없습니다",
+  "telegramNote": "Telegram 웹은 영상을 작은 조각으로 재생하므로 여기서는 다운로드할 수 없습니다. Telegram 앱에서 영상을 열어 저장하세요.",
   "itemGettingAll": "FetchJet(yt-dlp)에서 모든 화질을 가져오는 중…",
   "itemGettingAllSub": "그동안 가로챈 스트림이 표시됩니다",
   "itemGetting": "동영상 화질을 가져오는 중…",

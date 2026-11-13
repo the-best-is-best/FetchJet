@@ -54,6 +54,7 @@ fjAddLanguage("en", {
   "courseFailed": "Could not read the course {reason}",
   "courseDrm": "{n} lectures are DRM protected and were skipped",
   "courseAllDrm": "Every lecture is DRM protected: it cannot be downloaded",
+  "telegramNote": "Telegram Web plays videos in small pieces, so they cannot be downloaded from here. Open the video in the Telegram app and save it there.",
   "itemGettingAll": "Getting all qualities from FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Captured streams are shown meanwhile",
   "itemGetting": "Getting video qualities…",

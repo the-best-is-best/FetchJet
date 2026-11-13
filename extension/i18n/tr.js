@@ -54,6 +54,7 @@ fjAddLanguage("tr", {
   "courseFailed": "Kurs okunamadı {reason}",
   "courseDrm": "{n} ders DRM korumalı olduğu için atlandı",
   "courseAllDrm": "Tüm dersler DRM korumalı: indirilemez",
+  "telegramNote": "Telegram Web videoları küçük parçalar halinde oynatır, bu yüzden buradan indirilemez. Videoyu Telegram uygulamasında açıp oradan kaydedin.",
   "itemGettingAll": "Tüm kaliteler FetchJet'ten (yt-dlp) alınıyor…",
   "itemGettingAllSub": "Bu arada yakalanan akışlar gösteriliyor",
   "itemGetting": "Video kaliteleri alınıyor…",

@@ -54,6 +54,7 @@ fjAddLanguage("ja", {
   "courseFailed": "コースを読み取れませんでした {reason}",
   "courseDrm": "DRM で保護された {n} 件のレクチャーをスキップしました",
   "courseAllDrm": "すべてのレクチャーが DRM で保護されています: ダウンロードできません",
+  "telegramNote": "Telegram Web は動画を小さな断片で再生するため、ここからはダウンロードできません。Telegram アプリで動画を開き、そこで保存してください。",
   "itemGettingAll": "FetchJet (yt-dlp) からすべての画質を取得中…",
   "itemGettingAllSub": "その間、取得済みのストリームを表示しています",
   "itemGetting": "動画の画質を取得中…",

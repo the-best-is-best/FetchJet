@@ -54,6 +54,7 @@ fjAddLanguage("id", {
   "courseFailed": "Tidak dapat membaca kursus {reason}",
   "courseDrm": "{n} materi dilindungi DRM dan dilewati",
   "courseAllDrm": "Semua materi dilindungi DRM: tidak dapat diunduh",
+  "telegramNote": "Telegram Web memutar video dalam potongan kecil, jadi tidak bisa diunduh dari sini. Buka video di aplikasi Telegram dan simpan dari sana.",
   "itemGettingAll": "Mengambil semua kualitas dari FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Sementara itu, stream yang ditangkap ditampilkan",
   "itemGetting": "Mengambil kualitas video…",

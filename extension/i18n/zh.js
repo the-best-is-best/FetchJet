@@ -54,6 +54,7 @@ fjAddLanguage("zh", {
   "courseFailed": "无法读取课程 {reason}",
   "courseDrm": "已跳过 {n} 个受 DRM 保护的讲座",
   "courseAllDrm": "所有讲座都受 DRM 保护：无法下载",
+  "telegramNote": "Telegram 网页版以小片段播放视频，因此无法从这里下载。请在 Telegram 应用中打开该视频并在那里保存。",
   "itemGettingAll": "正在从 FetchJet (yt-dlp) 获取所有画质…",
   "itemGettingAllSub": "期间先显示已捕获的流",
   "itemGetting": "正在获取视频画质…",

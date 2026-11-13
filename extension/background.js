@@ -432,6 +432,26 @@ async function deliverBatch(requests) {
   } catch (_) { return false; }
 }
 
+// The browser asks "Open FetchJet?" the first time an extension opens fetchjet:// (the answer
+// belongs to the extension, not to a site). That question lives in the tab that opened the link:
+// closing the tab early (or leaving it in the background) hides it and the app never starts.
+// So the tab stays until the app answers, and is brought to the front when it is still not up
+// after a moment, so the question is seen. It is closed as soon as the app is online.
+async function keepLaunchTab(tabId, alreadyFront) {
+  const close = () => api.tabs.remove(tabId).catch(() => {});
+  const start = Date.now();
+  let shown = !!alreadyFront;
+  while (Date.now() - start < 25000) {
+    if (await pingApp(500)) { setTimeout(close, 800); return; }
+    if (!shown && Date.now() - start > 1500) {
+      shown = true;
+      try { await api.tabs.update(tabId, { active: true }); } catch (_) {}
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  close();
+}
+
 async function launchApp(firstUrl) {
   const settings = await getSettings();
   if (!settings.autoLaunch) return false;
@@ -447,7 +467,7 @@ async function launchApp(firstUrl) {
     // Firefox for Android only hands a link to another app from the visible tab.
     const onAndroid = /android/i.test(navigator.userAgent);
     const tab = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(firstUrl || ""), active: onAndroid });
-    if (tab && tab.id != null) setTimeout(() => api.tabs.remove(tab.id).catch(() => {}), 1500);
+    if (tab && tab.id != null) keepLaunchTab(tab.id, onAndroid);
     return true;
   } catch (_) { return false; }
 }
@@ -470,7 +490,7 @@ async function openAppWith(payload, tabId = null) {
   } catch (_) { return false; }
 }
 
-async function waitForApp(maxMs = 8000) {
+async function waitForApp(maxMs = 12000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     if (await pingApp(500)) return true;
@@ -1630,7 +1650,7 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       case "launchApp": {
         const launched = await launchApp(request.url || "");
-        const online = launched ? await waitForApp(6000) : false;
+        const online = launched ? await waitForApp(12000) : false;
         return { online };
       }
       case "getSettings":

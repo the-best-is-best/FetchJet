@@ -54,6 +54,7 @@ fjAddLanguage("hi", {
   "courseFailed": "कोर्स नहीं पढ़ा जा सका {reason}",
   "courseDrm": "{n} लेक्चर DRM से सुरक्षित हैं और छोड़ दिए गए",
   "courseAllDrm": "सभी लेक्चर DRM से सुरक्षित हैं: डाउनलोड नहीं हो सकते",
+  "telegramNote": "Telegram Web वीडियो को छोटे टुकड़ों में चलाता है, इसलिए इसे यहाँ से डाउनलोड नहीं किया जा सकता। वीडियो को Telegram ऐप में खोलकर वहीं सेव करें।",
   "itemGettingAll": "FetchJet (yt-dlp) से सभी क्वालिटी ली जा रही हैं…",
   "itemGettingAllSub": "तब तक पकड़ी गई स्ट्रीम दिखाई जा रही हैं",
   "itemGetting": "वीडियो क्वालिटी ली जा रही हैं…",

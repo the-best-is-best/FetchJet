@@ -54,6 +54,7 @@ fjAddLanguage("fr", {
   "courseFailed": "Impossible de lire le cours {reason}",
   "courseDrm": "{n} leçons sont protégées par DRM et ont été ignorées",
   "courseAllDrm": "Toutes les leçons sont protégées par DRM : téléchargement impossible",
+  "telegramNote": "Telegram Web lit les vidéos par petits morceaux : elles ne peuvent pas être téléchargées d'ici. Ouvrez la vidéo dans l'application Telegram et enregistrez-la là-bas.",
   "itemGettingAll": "Récupération de toutes les qualités depuis FetchJet (yt-dlp)…",
   "itemGettingAllSub": "Les flux interceptés s'affichent en attendant",
   "itemGetting": "Récupération des qualités vidéo…",

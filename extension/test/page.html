@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FetchJet button test page</title>
+<style>
+  body { margin: 0; background: #222; font-family: sans-serif; color: #ddd; }
+  #stage { position: relative; width: 800px; height: 450px; margin: 40px; background: #345; }
+  video { width: 800px; height: 450px; display: block; background: #123; }
+  .ctl { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; background: #c33; color: #fff; border: 0; border-radius: 6px; z-index: 5; }
+  #log { margin: 10px 40px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="v" muted></video>
+  <button class="ctl" id="skip" style="display:none">Skip</button>
+</div>
+<div id="log"></div>
+<script>
+  if (location.search.includes("yt")) {
+    const stage = document.getElementById("stage");
+    const v = document.getElementById("v");
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:absolute;left:0;top:0;width:800px;height:450px";
+    stage.insertBefore(wrap, v); wrap.appendChild(v);
+    const outer = document.createElement("div");
+    outer.id = "player-overlay";
+    outer.style.cssText = "position:absolute;left:0;top:0;width:800px;height:450px;z-index:3;background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,0))";
+    stage.appendChild(outer);
+  }
+</script>
+<script>
+  if (location.search.includes("cover")) {
+    const d = document.createElement("div");
+    d.style.cssText = "position:fixed;left:0;top:0;right:0;bottom:0;background:#fff;z-index:3";
+    document.body.appendChild(d);
+  }
+  if (location.search.includes("text")) {
+    const d = document.createElement("div");
+    d.textContent = "Your videos, your way";
+    d.style.cssText = "position:absolute;left:250px;top:180px;width:300px;height:90px;background:#fff;color:#000;z-index:3";
+    document.getElementById("stage").appendChild(d);
+  }
+</script>
+<script>
+  if (location.search.includes("stack")) {
+    const stage = document.getElementById("stage");
+    const make = (id, left, top, w, h) => {
+      const c = document.createElement("canvas"); c.width = 320; c.height = 180;
+      const g = c.getContext("2d"); setInterval(() => { g.fillStyle = "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0"); g.fillRect(0, 0, 320, 180); }, 200);
+      const v = document.createElement("video"); v.id = id; v.muted = true; v.loop = true; v.srcObject = c.captureStream(5);
+      v.style.cssText = `position:absolute;left:${left}px;top:${top}px;width:${w}px;height:${h}px;display:block`;
+      stage.appendChild(v); v.play().catch(() => {});
+    };
+    make("v2", 0, 0, 800, 450);
+    make("v3", 30, 60, 300, 170);
+    make("v4", 460, 250, 320, 180);
+  }
+</script>
+<a id="zip" href="/test/files/a.zip">a.zip</a>
+<script>
+  window.__sent = [];
+  const settings = { enabled: true, captureLinks: true, extensions: ["zip"], excludedHosts: [], holdKey: "alt", pagePanel: true, hiddenSites: [] };
+  window.chrome = {
+    runtime: {
+      sendMessage(m) {
+        window.__sent.push(m);
+        if (m.action === "getSettings") return Promise.resolve(settings);
+        if (m.action === "getItems") return Promise.resolve({ items: [{ kind: "ytdlp", label: "720p", quality: "720p", title: "Test" }] });
+        if (m.action === "sendToFetchJet" || m.action === "downloadItem") return Promise.resolve({ ok: true });
+        return Promise.resolve({});
+      },
+      onMessage: { addListener() {} }
+    },
+    storage: { onChanged: { addListener() {} }, local: { get: () => Promise.resolve({}), set: () => Promise.resolve() } }
+  };
+</script>
+<script>
+  for (const f of ["/i18n/i18n.js", "/i18n/en.js", "/content.js"]) document.write('<script src="' + f + '?t=' + Date.now() + '"><\/script>');
+</script>
+</body>
+</html>
