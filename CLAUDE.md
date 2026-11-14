@@ -278,13 +278,32 @@ Bridges:
     - macOS native: `make-dmg.sh` (host + Slint with the new host files and `app.slint`) built; the three rows show
       ZIP ↗ / VID ▶ / AUD compress + ▶; window comes up inside the screen; resized to 1300x760, 700x500, 1380x800, 900x700 and
       zoomed (Option + click): always drawn fully, no strip; light theme badges readable.
-    - corehost on the Mac, final core, unthrottled servers: all pass except `test_slowtail` (1) and the FTP pause check
-      of `test_ftp` (1), both only on a fast unthrottled localhost (see below). `test_addname` 10/10 and `test_foldertype`
-      8/8 (new, need `FETCHJET_TORRENT_DLL` + `FETCHJET_TORRENT_LOCAL_ONLY=1` for the magnet part; without them 2 checks
-      fail with "BitTorrent downloads are not available"). `test_settings` / `test_home` / `test_add` must run WITHOUT the
-      torrent library (they assume no torrent backend).
-    - Not run: Tab + Enter on the Safari button (tried again on the iPad simulator: the extension and its video buttons work on
-      `extension/test/real.html`, but no tool here can send a Tab key to the simulator; `content.js` sets `tabIndex = 0` and
+    - corehost on the Mac (core and host rebuilt at tip `d1d81fb` + the Mac fixes, unthrottled servers, one run of all 22 files,
+      `test_bridge` / `test_unpair` / `test_launch` first): every file passed, 0 failed. `test_bridge` 37 checks + 1 skip (Edge
+      not installed here) = the 38 of Windows; unpair 8, launch 33, download 29, robust 15, slowtail 4, integrity 32, hostlimit 8,
+      ftp 34, testlink 51, keys 41, settings 87, home 41, add 29, network 11, idle_limit 12, addname 10, foldertype 8, torrent 17,
+      torrent_details 28, torrent_proxy 51. An earlier run of the same build failed `test_slowtail` and the FTP pause check on the
+      unthrottled localhost and they passed this time with no throttle, so they are timing dependent on a fast Mac, not fixed by
+      anything I changed (cause still unproven). `test_addname` / `test_foldertype` / torrent files need `FETCHJET_TORRENT_DLL` +
+      `FETCHJET_TORRENT_LOCAL_ONLY=1`; `test_settings` / `test_home` / `test_add` must run WITHOUT the torrent library.
+    - Extension 3.4.0 theme on the Mac: the staged `FetchJet.app` on a throw-away `--home`: `/config` answered `"theme":"dark"`,
+      then `"theme":"light"` after the theme button; the window was checked at 4 sizes (no strip); no login item left
+      (`ls ~/Library/LaunchAgents | grep fetch_jet` empty).
+    - Safari on the iPad Pro 13" simulator (iOS build with the theme code, appex re-embedded and re-signed), `extension/test/real.html`
+      from a local server: with the simulator in dark mode the page button is the dark violet circle; after switching the
+      simulator to light the same button became a light circle with a dark icon, live, no reload. Popup and options page of the
+      Safari extension, opened from the Safari toolbar menu (the real `safari-web-extension:` pages): the popup is light with the
+      simulator in light and dark with it in dark (re-opened after each switch); the options page followed live in both (screenshots
+      dark then light). The same files served over http do not switch, by design (`i18n.js` sets `data-theme` only on extension pages).
+      The button's list: not opened (on iOS the button hands over to the app). The iPhone 17: popup and page button follow dark / light the same way.
+    - Found on the iPad: in the light options page the ghost buttons ("Allow all sites", "Reset to defaults") had white text on a pale
+      background (`button.ghost` kept `color: #fff`). `options.html` now has a light rule for it (text colour + border). Not seen
+      again on screen after the fix (the re-embedded appex was reinstalled but the extension settings tab was not reopened), so it is
+      a code fix only. Also seen and fixed: the iPad Safari popup was narrow, the header title overlapped the status chip and
+      "Open in FetchJet" wrapped letter by letter. `popup.html` has a `(pointer: coarse) and (max-width: 520px)` block (header wraps, status
+      wraps, `body` min-width 340 px, smaller tags and buttons). Checked on the iPad (light): header, "All links" and the "Open in FetchJet" row
+      read fine; the iPhone 17 popup (the real Safari popup) is fine in dark and in light (header on one line, buttons whole, page button light in light); the iPad in dark was not re-checked after it. Not checked whether the squeeze existed before 1.4.1.
+    - Not run: Tab + Enter on the Safari button (tried again on the iPad simulator: no tool here can send a Tab key to the simulator; `content.js` sets `tabIndex = 0` and
       handles Enter / Space, code read only), peers rows on the iOS simulator, non-Latin keyboard layouts on the Mac.
 - **2026-11-14, Windows / Linux / Android session on `release-v1.4.1` (committed `9ff1a38` and the play button, pushed):**
     - The Mac session's shared code (empty File name box, engine switch while an inspect hangs, folder per kind) was built and

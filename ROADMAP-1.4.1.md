@@ -58,7 +58,7 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
   so a quick restart of the app could not bind 28450 (`HttpListener.kt`). Fixed for Linux and macOS; Windows
   keeps it off on purpose (there it would let another program share the port). Back to back `test_bridge`,
   `test_unpair`, `test_launch` now pass on Linux; Windows unchanged (34 / 8 / 33).
-- [x] macOS: `corehost` tests run on the Mac, 17 of 19 files pass (`test_slowtail` and the FTP pause check need a throttled server on a fast Mac, see CLAUDE.md); the bridge port is taken again at once after a close, checked on the real app too; app and DMG build.
+- [x] macOS: `corehost` tests run on the Mac, all 22 files pass in one run with `test_bridge` 37 + 1 skip (= 38), `test_unpair` and `test_launch` first (an earlier run failed `test_slowtail` and the FTP pause check on the unthrottled localhost, they passed on the next run: timing dependent, see CLAUDE.md); the bridge port is taken again at once after a close, checked on the real app too; app and DMG build.
 - [x] macOS: 32 connections per host (the default 6 made two downloads from one server share 6; `test_home` 41/41 after it) and the Cmd symbol in the F1 list (compiled, not seen).
 - [x] Add dialog: switching engine while an inspect hangs now cancels it and resets the state; no random `download_<n>` file name (empty and required for a Direct link with no name). Mac native tested, iOS built, Android not compiled here.
 - [x] Tray click opens / hides the window on macOS (single click, double click, right-click menu): run on the Mac. Linux: not run.
@@ -89,7 +89,7 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] Pairing messages, retry after Allow, "Unpair all", Telegram Web note in 15 languages.
 - [x] Tested with `extension/test/content.sim.js` (14 checks), `real.html` and `e2e.html` (pairing, zip and
   download links reach the app, a real PDF stays in the browser).
-- [x] Safari on iOS (iPad simulator): 3.4.0 embedded, one video button, a zip click reaches the app, a plain PDF stays in Safari. Tab + Enter not run (code read). No macOS Safari target exists in the Xcode project.
+- [x] Safari on iOS (iPad simulator): 3.4.0 embedded, one video button, a zip click reaches the app, a plain PDF stays in Safari. Tab + Enter not run (code read). Theme (2026-11-14): the page button, the popup and the options page follow the simulator's dark / light (iPad); light ghost buttons in options were white on pale (fixed in `options.html`, not seen again on screen); the narrow iPad popup (header overlap, "Open in FetchJet" wrapped per letter) fixed in `popup.html` and checked on the iPad in light; iPhone 17 popup and page button follow dark / light. No macOS Safari target exists in the Xcode project.
 - [x] Firefox 159 (the Store build, a separate headless profile driven by geckodriver 0.37.1, the extension installed as a temporary add-on from `build/extension/firefox`): the popup and options follow the stored theme, the page button and its list switch live between dark and light, and the app's own theme message wins over a stored value. Not covered in Firefox: pairing with the app, Tab / Enter on the button, the link click capture. Recipe in `TESTING.md` section 11.
 - [ ] Edge / Chrome with the store build (a separate Chrome with the unpacked extension was used).
 - [x] Decided not to do: the in-page "Part" panel (owner), native messaging, re-sending a form the
