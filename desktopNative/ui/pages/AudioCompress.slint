@@ -194,8 +194,8 @@ export component AudioCompressDialog inherits Rectangle {
         clip: true;
         TouchArea { }
         Flickable {
-            viewport-width: self.width;
-            viewport-height: content.preferred-height;
+            content-width: self.width;
+            content-height: content.preferred-height;
             content := VerticalLayout {
                 padding: 24px;
                 spacing: 10px;

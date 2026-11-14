@@ -104,6 +104,13 @@ and the row is hidden.
 - [ ] Tests: the same `test_wake.py` checks on each system; a real sleep and wake only by hand.
 - [ ] Windows: a real sleep and wake (the core test only checks that the timer is armed, 11 checks 2026-11-14).
 
+## 6. Small items left from 1.4.1
+
+- [x] `AudioCompress.slint`: `viewport-width` / `viewport-height` replaced by `content-width` / `content-height` (the Slint deprecation warning). Built on Windows, no warning left; the window was not opened.
+- [ ] Windows MSI signing: apply to SignPath Foundation (free for open source). Needs a "Code signing policy" section and a privacy statement on the download page, 2FA on GitHub and SignPath, and probably a GitHub-hosted runner for the MSI build (the terms do not say which runner is accepted). The reputation check may refuse a project with few stars and downloads.
+- [ ] iOS CI log: about 1850 warnings, all from libtorrent compiled in the build (none from our Swift or Kotlin). Optional: silence them in `scripts/build-libtorrent-ios.command`; the one warning that is ours is Xcode's "Building targets in manual order".
+- [ ] GitHub shows the licence as `NOASSERTION`: check that `LICENSE` is the unmodified GPL-3.0 text (SignPath needs an OSI licence it can recognise).
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,
