@@ -293,11 +293,13 @@ Bridges:
       `ROADMAP-1.4.1.md`). The Android Compose edits compile and work.
     - Found and fixed on the A56: the Compose Add dialog stacked the type folder on a remembered folder (`Media/Video`);
       `AddDownloadSections.kt` now follows the view model's `destinationPath`.
-    - Window: it could open with its bottom under the taskbar (work area 1020, window bottom 1145 at 125% scale):
-      `fit_to_work_area()` in the Windows host. The owner's white strip at the bottom of the window was the Store 1.4.0 (its
-      title has no version number); upstream cause is slint#13537 (software renderer, a grown window is left unpainted,
-      intermittent). A full-window `Rectangle` in `ui/app.slint` that changes with the size is the workaround from the issue;
-      not reproduced here, so not proven fixed.
+    - Window (owner's screenshots): it opened with its bottom under the taskbar, and sometimes with an unpainted white band at
+      the bottom. The band is slint#13537 (software renderer, the buffer is not repainted in full after a size change,
+      intermittent). The `resize-stamp` rectangle in `ui/app.slint` did not fix it; reproduced on this PC (2 of 5 fresh
+      starts, 54 unpainted rows) and fixed by `refresh_surface()` (grow 1 px, shrink back, 0.9 s and 2.2 s after the show;
+      12 fresh starts, 0 rows). `fit_to_work_area(center)` opens the window in the middle of the work area. All in
+      `host/win/platform_win.cpp` + `host/app.cpp`; empty on Linux / macOS. The Store 1.4.0 has none of this (its title has
+      no version number).
     - New: a finished video or audio row shows ▶ (opens the file) instead of ↗ in Slint, Compose and SwiftUI. Checked on
       Windows, the Android emulator (phone and tablet) and the A56 (the ▶ opens the "open with" chooser). iOS not built.
       The Store FetchJet holds port 28450: close it for a window test and reopen it after (say so).

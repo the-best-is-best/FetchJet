@@ -381,7 +381,9 @@ namespace fjhost::os {
 
     void apply_title_bar(bool) {}
 
-    void fit_to_work_area() {}
+    void fit_to_work_area(bool) {}
+
+    void refresh_surface(bool) {}
 
     void bring_to_front(bool) {
         if (has_ui() && ui().window().is_minimized())

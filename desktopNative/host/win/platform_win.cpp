@@ -305,7 +305,7 @@ namespace fjhost::os {
         DwmSetWindowAttribute(window, 20, &value, sizeof value);
     }
 
-    void fit_to_work_area() {
+    void fit_to_work_area(bool center) {
         HWND window = window_handle();
         if (!window || IsZoomed(window) || IsIconic(window))
             return;
@@ -321,8 +321,33 @@ namespace fjhost::os {
         int height = std::min<int>(rect.bottom - rect.top, area.bottom - area.top);
         int x = std::max<int>(area.left, std::min<int>(rect.left, area.right - width));
         int y = std::max<int>(area.top, std::min<int>(rect.top, area.bottom - height));
-        if (x != rect.left || y != rect.top || width != rect.right - rect.left || height != rect.bottom - rect.top)
-            SetWindowPos(window, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (center) {
+            x = area.left + (area.right - area.left - width) / 2;
+            y = area.top + (area.bottom - area.top - height) / 2;
+        }
+        const bool sizeChanged = width != rect.right - rect.left || height != rect.bottom - rect.top;
+        if (x != rect.left || y != rect.top || sizeChanged)
+            SetWindowPos(window, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE | (sizeChanged ? 0 : SWP_NOSIZE));
+    }
+
+    void refresh_surface(bool grow) {
+        static int base_width = 0;
+        static int base_height = 0;
+        HWND window = window_handle();
+        if (!window || IsZoomed(window) || IsIconic(window) || !IsWindowVisible(window))
+            return;
+        RECT rect{};
+        if (!GetWindowRect(window, &rect))
+            return;
+        if (grow) {
+            base_width = rect.right - rect.left;
+            base_height = rect.bottom - rect.top;
+            SetWindowPos(window, nullptr, 0, 0, base_width + 1, base_height + 1, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        } else if (base_width > 0) {
+            SetWindowPos(window, nullptr, 0, 0, base_width, base_height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            base_width = 0;
+            base_height = 0;
+        }
     }
 
     void bring_to_front(bool focus) {
