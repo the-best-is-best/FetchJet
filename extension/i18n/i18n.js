@@ -47,11 +47,33 @@ if (typeof globalThis.fjT !== "function") (() => {
     }
   };
 
+  let appTheme = "";
+  const onExtensionPage = () => typeof document !== "undefined" && document.documentElement
+    && typeof location !== "undefined" && /^[a-z-]+-extension:$/.test(location.protocol);
+  const applyTheme = () => {
+    if (!onExtensionPage()) return;
+    let theme = appTheme;
+    if (!theme) {
+      try { theme = globalThis.matchMedia && globalThis.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; } catch (_) { theme = "dark"; }
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  };
+  globalThis.fjUseTheme = (theme) => {
+    appTheme = theme === "light" || theme === "dark" ? theme : "";
+    applyTheme();
+  };
+  applyTheme();
   try {
-    const got = extApi && extApi.storage && extApi.storage.local.get("appLanguage");
-    if (got && got.then) got.then(r => fjUseLanguage(r && r.appLanguage)).catch(() => {});
+    if (onExtensionPage() && globalThis.matchMedia) globalThis.matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
+  } catch (_) {}
+
+  try {
+    const got = extApi && extApi.storage && extApi.storage.local.get(["appLanguage", "appTheme"]);
+    if (got && got.then) got.then(r => { fjUseLanguage(r && r.appLanguage); fjUseTheme(r && r.appTheme); }).catch(() => {});
     extApi.storage.onChanged.addListener((changes, area) => {
-      if (area === "local" && changes.appLanguage) fjUseLanguage(changes.appLanguage.newValue);
+      if (area !== "local") return;
+      if (changes.appLanguage) fjUseLanguage(changes.appLanguage.newValue);
+      if (changes.appTheme) fjUseTheme(changes.appTheme.newValue);
     });
   } catch (_) {}
 })();

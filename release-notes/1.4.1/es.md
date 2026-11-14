@@ -33,6 +33,7 @@
 - **El navegador conserva una descarga hasta que la aplicación la tiene,** los formularios que enviaste se quedan en el navegador, y las ventanas privadas usan sus propias cookies.
 - **Enlaces:** un enlace de archivo se toma después de que se ejecute el código de clic de la propia página, así que los sitios que antes respondían 403 ahora funcionan. Un enlace a un PDF se abre en el navegador salvo que la página lo marque como descarga. "Descargar todos los enlaces" también encuentra los enlaces marcados como descargas y los guardados en atributos data-*, y Google Drive tiene una fila "Archivo original".
 - **El botón de vídeo:** funciona con el teclado (Tab, Enter), se pega a un borde cuando lo arrastras hasta allí, hay un botón por cada grupo de vídeos apilados y ninguno en un vídeo oculto bajo la página. Puedes ocultarlo en un sitio, y Telegram Web explica por qué no se puede descargar.
+- **La extensión sigue el tema de la app:** su ventana y su página de ajustes son claras u oscuras como la app (Sistema sigue al dispositivo), y como el navegador cuando la app no está abierta.
 
 **Actualizaciones**
 - **La ventana de actualización** sigue el idioma de la aplicación, y las notas de la versión están traducidas.

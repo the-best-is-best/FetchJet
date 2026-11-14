@@ -33,6 +33,7 @@
 - **The browser keeps a download until the app has it,** forms you posted stay in the browser, and private windows use their own cookies.
 - **Links:** a file link is taken after the page's own click code has run, so sites that used to answer 403 now work. A PDF link opens in the browser unless the page marks it as a download. "Download all links" also finds links marked as downloads and links kept in data-* attributes, and Google Drive has an "Original file" row.
 - **The video button:** it works with the keyboard (Tab, Enter), sticks to an edge when you drag it there, there is one button per group of stacked videos, and none on a video hidden under the page. You can hide it on a site, and Telegram Web explains why it cannot be downloaded.
+- **The extension follows the app's theme:** its popup and settings page are light or dark like the app (System follows the device), and like the browser when the app is not running.
 
 **Updates**
 - **The update window** follows the app's language, and release notes are translated.

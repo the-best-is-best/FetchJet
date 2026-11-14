@@ -43,6 +43,7 @@
 | 🌐 **Proxy & site login**          | Route everything through an HTTP or SOCKS5 proxy (with username / password), and send Basic-auth logins to sites that need them – Settings → Network.                        |
 | 📡 **FTP & FTPS**                  | `ftp://`, `ftps://` and `ftpes://` links download like any direct link: in several parts, with resume when the server allows it. FTP links do not go through the proxy.      |
 | ⌨️ **Keyboard & command line**     | Arrows, Shift, Ctrl+A, Enter / Alt+Enter, Ctrl+R / P / O / E / N / F, Delete, Esc and F1 for the list (also with Arabic, Persian and Russian keyboards). From a terminal: `FetchJet /d link /p folder /n`. |
+| 🎨 **Extension follows the app's theme** | The browser extension's popup and settings page are light or dark like the app (System follows the device; without the app they follow the browser). The button on web pages keeps one look.            |
 | ▶️ **Play from the list**          | A finished video or audio file shows a ▶ button that opens it in your player (other files keep the ↗ open button).                                                         |
 | 🔎 **Test the link**               | A button in the Add dialog tells you if a link works, its size and whether it can resume, without downloading it.                                                            |
 | 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |

@@ -204,6 +204,13 @@ object ExtensionBridgeServer {
                         com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(u))
     }
 
+    private fun appIsDark(): Boolean = when (com.michelle.raouf.fetch_jet.core.settings.AppSettingsRepository().loadSettings().themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> (appContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
     private fun json(s: String): String = buildString {
         for (c in s) when (c) {
             '\\' -> append("\\\\"); '"' -> append("\\\""); '\n' -> append("\\n")
@@ -322,7 +329,7 @@ object ExtensionBridgeServer {
                     out, r, 200,
                     """{"app":"FetchJet","platform":"android","version":"${json(version)}","bridge":2,""" +
                             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
-                            """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}",""" +
+                            """"language":"${json(com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.value)}","theme":"${if (appIsDark()) "dark" else "light"}",""" +
                             """"pairing":true,"pairedMerge":true,"coursePlaylist":true,"paired":${
                                 BridgePairing.isPaired(
                                     r.header(

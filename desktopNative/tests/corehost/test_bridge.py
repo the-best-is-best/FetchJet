@@ -87,8 +87,22 @@ def run():
                    config.get("language") == "en" and config.get("paired") is False and config.get("pairing") is True and
                    config.get("mediaExtractor") is True and "/inspect" in config.get("endpoints", []), config)
         core.check("keys come in the order the extension knows", answer.body.startswith('{"app":"FetchJet","version":"') and
-                   list(config.keys()) == ["app", "version", "bridge", "mediaExtractor", "torrent", "language", "pairing", "pairedMerge",
+                   list(config.keys()) == ["app", "version", "bridge", "mediaExtractor", "torrent", "language", "theme", "pairing", "pairedMerge",
                                            "coursePlaylist", "paired", "endpoints"], answer.body[:80])
+        headers = {"Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.4.0"}
+        core.check("system theme on a light device: light", config.get("theme") == "light", config.get("theme"))
+        core.action("SystemTheme", dark=True)
+        core.pump(0.3)
+        core.check("system theme on a dark device: dark", (request(core, "GET", "/config", headers).json() or {}).get("theme") == "dark")
+        core.action("SettingPick", id="theme", index=1)
+        core.pump(0.3)
+        core.check("light picked in the app wins over a dark device", (request(core, "GET", "/config", headers).json() or {}).get("theme") == "light")
+        core.action("SettingPick", id="theme", index=2)
+        core.action("SystemTheme", dark=False)
+        core.pump(0.3)
+        core.check("dark picked in the app wins over a light device", (request(core, "GET", "/config", headers).json() or {}).get("theme") == "dark")
+        core.action("SettingPick", id="theme", index=0)
+        core.pump(0.3)
 
         print("no token")
         body = {"url": SERVER + "/file/1MB.bin?key=bridge-a", "direct": True, "fileName": "from-browser.bin"}

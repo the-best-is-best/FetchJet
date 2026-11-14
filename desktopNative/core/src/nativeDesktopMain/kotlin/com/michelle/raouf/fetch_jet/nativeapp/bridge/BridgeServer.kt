@@ -52,6 +52,7 @@ internal class BridgeServer(
     private val scope: CoroutineScope,
     private val port: Int,
     private val showAndFocus: () -> Unit,
+    private val isDark: () -> Boolean = { true },
 ) {
     private val cacheLock = Mutex()
     private val inspectCache = LinkedHashMap<String, Pair<Long, List<MediaQualityEntry>>>()
@@ -274,7 +275,7 @@ internal class BridgeServer(
         }
         val json = """{"app":"FetchJet","version":"${jsonEscape(APP_VERSION)}","bridge":2,""" +
             """"mediaExtractor":${AppFeatures.mediaExtractor},"torrent":${AppFeatures.torrent},""" +
-            """"language":"${jsonEscape(AppLanguage.current.value)}",""" +
+            """"language":"${jsonEscape(AppLanguage.current.value)}","theme":"${if (isDark()) "dark" else "light"}",""" +
             """"pairing":true,"pairedMerge":true,"coursePlaylist":true,"paired":$paired,""" +
             """"endpoints":["/ping","/config","/pair","/add","/links","/download","/inspect"]}"""
         return reply(request, 200, json, JSON)

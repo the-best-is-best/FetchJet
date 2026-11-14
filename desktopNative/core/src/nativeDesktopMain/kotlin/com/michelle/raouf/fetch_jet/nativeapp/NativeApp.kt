@@ -26,6 +26,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.host.HostServiceFn
 import com.michelle.raouf.fetch_jet.nativeapp.host.HostServices
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.Presenter
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.dispatch
+import com.michelle.raouf.fetch_jet.nativeapp.presenter.resolveDark
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.ChangeNotifier
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.CrashLog
 import com.michelle.raouf.fetch_jet.nativeapp.runtime.HostMainDispatcher
@@ -135,7 +136,12 @@ internal object NativeApp {
         created.start()
         if (parsed.bridge) {
             val port = if (parsed.bridgePort > 0) parsed.bridgePort else BRIDGE_PORT
-            val server = BridgeServer(created.scope, port) { ExternalDownloadBridge.showAndFocus() }
+            val server = BridgeServer(
+                created.scope,
+                port,
+                { ExternalDownloadBridge.showAndFocus() },
+                { resolveDark(created.vm.uiState.value.themeMode, created.local.value.systemDark) },
+            )
             bridge = server
             created.scope.launch { server.start() }
         }

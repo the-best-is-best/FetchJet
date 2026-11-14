@@ -317,6 +317,7 @@ async function fetchAppConfig() {
     if (!res.ok) return null;
     const cfg = await res.json();
     if (cfg && cfg.language) rememberAppLanguage(cfg.language);
+    if (cfg && cfg.theme) rememberAppTheme(cfg.theme);
     appMerges = !!(cfg && cfg.pairedMerge);
     const courses = !!(cfg && cfg.coursePlaylist);
     if (courses !== appCourses) {
@@ -325,6 +326,10 @@ async function fetchAppConfig() {
     }
     return cfg;
   } catch (_) { return null; }
+}
+
+function rememberAppTheme(theme) {
+  try { Promise.resolve(api.storage.local.set({ appTheme: theme === "light" ? "light" : "dark" })).catch(() => {}); } catch (_) {}
 }
 
 function rememberAppLanguage(code) {

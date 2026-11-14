@@ -14,6 +14,23 @@
           --radius: 14px; --tap: 34px; --fs: 13px;
           color-scheme: dark;
         }
+        :root[data-theme="light"] {
+          --bg: #f3f5fb; --panel: #ffffff; --panel-2: #eef1f9; --panel-3: #dfe5f3;
+          --line: rgba(15,23,42,.10); --line-2: rgba(15,23,42,.18);
+          --text: #0f172a; --muted: #55607c;
+          --ok: #15803d; --bad: #b91c1c; --warn: #b45309;
+          color-scheme: light;
+        }
+        :root[data-theme="light"] .header { background: linear-gradient(135deg, rgba(224,231,255,.97), rgba(243,232,255,.97)); }
+        :root[data-theme="light"] input[type=text]::placeholder { color: #8a94ad; }
+        :root[data-theme="light"] .kind { background: rgba(99,102,241,.14); color: #4338ca; }
+        :root[data-theme="light"] .kind.video { background: rgba(34,197,94,.16); color: #166534; }
+        :root[data-theme="light"] .kind.audio { background: rgba(168,85,247,.16); color: #6b21a8; }
+        :root[data-theme="light"] .kind.stream { background: rgba(245,158,11,.18); color: #92400e; }
+        :root[data-theme="light"] .kind.list { background: rgba(14,165,233,.16); color: #075985; }
+        :root[data-theme="light"] .kind.file { background: rgba(100,116,139,.16); color: #334155; }
+        :root[data-theme="light"] .switch { background: #cbd5e1; }
+        :root[data-theme="light"] .banner { background: rgba(245,158,11,.12); border-color: rgba(180,83,9,.35); color: #92400e; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif; }
         html, body { background: var(--bg); }
         body { width: 380px; color: var(--text); font-size: var(--fs); line-height: 1.35; -webkit-text-size-adjust: 100%; }
