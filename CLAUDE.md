@@ -264,6 +264,28 @@ Bridges:
 
 ## Current state (master = 1.3.1; working branch `release-v1.4.0`)
 
+- **2026-11-14, Mac session on `release-v1.4.1` (play button, window, tests; nothing committed):**
+    - Side effect of my own earlier test run, fixed: the first run of the staged `FetchJet.app` on a fresh `--home` showed the
+      first-run "Main downloader" step and enabled start at login, which writes the global
+      `~/Library/LaunchAgents/com.michelle.raouf.fetch_jet.plist` (not under `--home`). On the next login macOS started the
+      staged build from the repo with `--autostart=true` and no `--home`, on the real `~/.fetch_jet`. The plist was moved out
+      and that instance stopped; if the installed app had start at login on, switch it on again in Settings. Rule for every
+      throw-away run: put `askedMainDownloader=true` in `<home>/behavior.properties` first, clone `~/.fetch_jet/tools` into
+      `<home>/tools` (`cp -c -R`, no network), and check `ls ~/Library/LaunchAgents | grep fetch_jet` after.
+    - iOS: `scripts/ios-dev-build.command all` built with the play button (SwiftUI) and everything since, no error.
+      iPhone 17 and iPad Pro 13" simulators, local server only (`1MB.mp3`, `1MB.mp4`, `1MB.zip`): mp3 / mp4 rows show ▶, zip
+      shows ↗; ▶ opens the file preview; iPad audio row = compress button + ▶, video row = ▶ only; no overflow.
+    - macOS native: `make-dmg.sh` (host + Slint with the new host files and `app.slint`) built; the three rows show
+      ZIP ↗ / VID ▶ / AUD compress + ▶; window comes up inside the screen; resized to 1300x760, 700x500, 1380x800, 900x700 and
+      zoomed (Option + click): always drawn fully, no strip; light theme badges readable.
+    - corehost on the Mac, final core, unthrottled servers: all pass except `test_slowtail` (1) and the FTP pause check
+      of `test_ftp` (1), both only on a fast unthrottled localhost (see below). `test_addname` 10/10 and `test_foldertype`
+      8/8 (new, need `FETCHJET_TORRENT_DLL` + `FETCHJET_TORRENT_LOCAL_ONLY=1` for the magnet part; without them 2 checks
+      fail with "BitTorrent downloads are not available"). `test_settings` / `test_home` / `test_add` must run WITHOUT the
+      torrent library (they assume no torrent backend).
+    - Not run: Tab + Enter on the Safari button (tried again on the iPad simulator: the extension and its video buttons work on
+      `extension/test/real.html`, but no tool here can send a Tab key to the simulator; `content.js` sets `tabIndex = 0` and
+      handles Enter / Space, code read only), peers rows on the iOS simulator, non-Latin keyboard layouts on the Mac.
 - **2026-11-14, Windows / Linux / Android session on `release-v1.4.1` (committed `9ff1a38` and the play button, pushed):**
     - The Mac session's shared code (empty File name box, engine switch while an inspect hangs, folder per kind) was built and
       tested here: Windows corehost all passed (new `test_addname.py` 10, `test_foldertype.py` 8), Linux (WSL) core files passed,
@@ -324,8 +346,8 @@ Bridges:
           Start stays disabled until a name is typed (`DashboardUiState.needsFileName`, `AddFileName.kt`;
           Compose `AddDownloadModalDialog.kt` / `AddDownloadSections.kt`, Slint `AddPresenter.kt`, SwiftUI
           `AddDownloadSheet.swift` / `AddSections.swift`). Callers outside the dialog (browser, /links)
-          still let the engine name the file from the server. The owner's choice; it blocks a link the
-          server would have named (`download.php?id=5`) until a name is typed.
+          still let the engine name the file from the server. The owner's choice, confirmed 2026-11-14: a link the
+          server would have named (`download.php?id=5`) waits until the user types any name.
     - `desktopNative/tests/corehost` now runs on the Mac (`ON_MAC` in `corehost.py`, `yt-dlp_macos`,
       `libfjcore.dylib`, a Mac `fake_ytdlp.cpp`). 17 of 19 files pass on the final build; `test_slowtail` and the
       pause check of `test_ftp` fail only against an unthrottled server (below). Counts: bridge 33 (1 skip: Edge not
