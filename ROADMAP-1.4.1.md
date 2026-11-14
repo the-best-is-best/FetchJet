@@ -90,7 +90,8 @@ Legend: [x] done and tested as said, [ ] not done or not tested yet.
 - [x] Tested with `extension/test/content.sim.js` (14 checks), `real.html` and `e2e.html` (pairing, zip and
   download links reach the app, a real PDF stays in the browser).
 - [x] Safari on iOS (iPad simulator): 3.4.0 embedded, one video button, a zip click reaches the app, a plain PDF stays in Safari. Tab + Enter not run (code read). No macOS Safari target exists in the Xcode project.
-- [ ] Firefox builds with the new behaviour; Edge / Chrome with the store build.
+- [x] Firefox 159 (the Store build, a separate headless profile driven by geckodriver 0.37.1, the extension installed as a temporary add-on from `build/extension/firefox`): the popup and options follow the stored theme, the page button and its list switch live between dark and light, and the app's own theme message wins over a stored value. Not covered in Firefox: pairing with the app, Tab / Enter on the button, the link click capture. Recipe in `TESTING.md` section 11.
+- [ ] Edge / Chrome with the store build (a separate Chrome with the unpacked extension was used).
 - [x] Decided not to do: the in-page "Part" panel (owner), native messaging, re-sending a form the
   browser posted (could repeat a purchase), the page-controls avoidance (it made the button jump on
   YouTube).

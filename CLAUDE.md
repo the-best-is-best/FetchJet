@@ -306,7 +306,8 @@ Bridges:
     - Extension 3.4.0 follows the app's theme (popup, options and the list of the page download button, `content.js` `fjTheme`): `/config` has `"theme"`
       (native `BridgeServer` via `resolveDark`, Android `appIsDark()`), `background.js` stores `appTheme`, `i18n/i18n.js`
       `fjUseTheme` sets `data-theme` on the extension's own pages (never on a web page; the browser's colour scheme without
-      the app), light palettes in `popup.html` / `options.html`. `test_bridge.py` 38 checks; checked in a separate Chrome.
+      the app), light palettes in `popup.html` / `options.html`. `test_bridge.py` 38 checks; checked in a separate Chrome and in
+      Firefox 159 (geckodriver, see `TESTING.md` section 11; the Store Firefox runs a second headless profile next to the owner's).
     - Not run: Slint real keys / mouse on Linux (WSLg ignores xdotool), the Mac host (`fit_to_work_area` is empty there),
       iOS build of the play button, idle speed limit and torrent details through the real window.
 - **2026-11-13, Mac session on `release-v1.4.1` (iOS, iPad, macOS, nothing committed):**
