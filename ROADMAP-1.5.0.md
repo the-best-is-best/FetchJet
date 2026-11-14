@@ -89,6 +89,21 @@ States, about 95 ms"), found with a country database that stays on the computer.
 - [ ] Optional and cosmetic. Needs an IP-to-country database (DB-IP Lite is CC BY 4.0, attribution
   required) and costs size; decide whether it is worth it before building.
 
+## 5. Wake the computer for a scheduled download on more systems
+
+Today only Windows has it: Settings > Downloads > "wake for schedule" arms a Waitable Timer one minute before
+the first scheduled start (`WakeTimer.mingw.kt`, `test_wake.py`). Every other `WakeTimer.isSupported` is false
+and the row is hidden.
+
+- [ ] macOS: `pmset schedule wake "<time>"` (needs admin: a one-time helper or a password prompt); also
+  `pmset repeat`. Decide the permission flow before building.
+- [ ] Linux: `rtcwake` or a systemd timer with `WakeSystem=true` (needs root; not every BIOS wakes from sleep).
+- [ ] Android: `AlarmManager.setExactAndAllowWhileIdle` through WorkManager; needs the exact-alarm permission.
+  Less useful (a phone does not sleep like a laptop).
+- [ ] iOS: no API wakes an app at a chosen time (background tasks are the system's choice). Not planned.
+- [ ] Tests: the same `test_wake.py` checks on each system; a real sleep and wake only by hand.
+- [ ] Windows: a real sleep and wake (the core test only checks that the timer is armed, 11 checks 2026-11-14).
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,
