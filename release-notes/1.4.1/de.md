@@ -33,7 +33,7 @@
 - **Der Browser behält einen Download, bis die App ihn hat,** gesendete Formulare bleiben im Browser, und private Fenster nutzen ihre eigenen Cookies.
 - **Links:** Ein Dateilink wird übernommen, nachdem der eigene Klick-Code der Seite gelaufen ist, daher funktionieren Seiten, die früher 403 meldeten. Ein PDF-Link öffnet sich im Browser, außer die Seite markiert ihn als Download. "Alle Links herunterladen" findet auch als Download markierte Links und Links in data-*-Attributen, und Google Drive hat eine Zeile "Originaldatei".
 - **Die Video-Schaltfläche:** Sie lässt sich per Tastatur bedienen (Tab, Enter), rastet an einem Rand ein, wenn du sie dorthin ziehst, es gibt eine Schaltfläche pro Gruppe übereinanderliegender Videos und keine auf einem Video, das unter der Seite versteckt ist. Du kannst sie auf einer Website ausblenden, und Telegram Web erklärt, warum es sich nicht herunterladen lässt.
-- **Die Erweiterung folgt dem Design der App:** Ihr Popup und die Einstellungsseite sind hell oder dunkel wie die App (System folgt dem Gerät) und wie der Browser, wenn die App nicht läuft.
+- **Die Erweiterung folgt dem Design der App:** Ihr Popup, die Einstellungsseite und die Download-Schaltfläche auf Webseiten sind hell oder dunkel wie die App (System folgt dem Gerät) und wie der Browser, wenn die App nicht läuft.
 
 **Updates**
 - **Das Update-Fenster** folgt der Sprache der App, und die Versionshinweise sind übersetzt.

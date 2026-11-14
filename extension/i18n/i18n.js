@@ -50,21 +50,24 @@ if (typeof globalThis.fjT !== "function") (() => {
   let appTheme = "";
   const onExtensionPage = () => typeof document !== "undefined" && document.documentElement
     && typeof location !== "undefined" && /^[a-z-]+-extension:$/.test(location.protocol);
-  const applyTheme = () => {
-    if (!onExtensionPage()) return;
-    let theme = appTheme;
-    if (!theme) {
-      try { theme = globalThis.matchMedia && globalThis.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; } catch (_) { theme = "dark"; }
-    }
-    document.documentElement.setAttribute("data-theme", theme);
+  const themeListeners = [];
+  const currentTheme = () => {
+    if (appTheme) return appTheme;
+    try { return globalThis.matchMedia && globalThis.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; } catch (_) { return "dark"; }
   };
+  const applyTheme = () => {
+    if (onExtensionPage()) document.documentElement.setAttribute("data-theme", currentTheme());
+    for (const fn of themeListeners) { try { fn(currentTheme()); } catch (_) {} }
+  };
+  globalThis.fjTheme = currentTheme;
+  globalThis.fjOnTheme = (fn) => { themeListeners.push(fn); };
   globalThis.fjUseTheme = (theme) => {
     appTheme = theme === "light" || theme === "dark" ? theme : "";
     applyTheme();
   };
   applyTheme();
   try {
-    if (onExtensionPage() && globalThis.matchMedia) globalThis.matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
+    if (globalThis.matchMedia) globalThis.matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
   } catch (_) {}
 
   try {

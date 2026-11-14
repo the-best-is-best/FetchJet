@@ -65,7 +65,7 @@ function makePage(options) {
     setInterval: () => 1, clearInterval() {},
     addEventListener: win.addEventListener, MouseEvent: function () {}, PerformanceObserver: function () { this.observe = () => {}; },
     performance: { getEntriesByType: () => [] },
-    fjT: (k) => k, fjIsRtl: () => false, fjOnLanguage() {}, fjReason: (r) => r,
+    fjT: (k) => k, fjIsRtl: () => false, fjOnLanguage() {}, fjReason: (r) => r, fjTheme: () => "dark", fjOnTheme() {},
     getComputedStyle: () => ({}), MutationObserver: function () { this.observe = () => {}; },
     requestAnimationFrame: (fn) => fn()
   };

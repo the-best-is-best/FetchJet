@@ -33,7 +33,7 @@
 - **Tarayıcı, uygulama alana kadar indirmeyi saklar,** gönderdiğiniz formlar tarayıcıda kalır ve gizli pencereler kendi çerezlerini kullanır.
 - **Bağlantılar:** bir dosya bağlantısı, sayfanın kendi tıklama kodu çalıştıktan sonra alınır; böylece eskiden 403 veren siteler artık çalışır. Sayfa indirme olarak işaretlemedikçe PDF bağlantısı tarayıcıda açılır. "Tüm bağlantıları indir" indirme olarak işaretlenmiş bağlantıları ve data-* özniteliklerinde tutulan bağlantıları da bulur; Google Drive'da "Özgün dosya" satırı vardır.
 - **Video düğmesi:** klavyeyle çalışır (Tab, Enter), bir kenara sürüklediğinizde o kenara yapışır, üst üste binen videoların her grubu için bir düğme vardır ve sayfanın altında gizli bir videoda düğme yoktur. Bir sitede gizleyebilirsiniz; Telegram Web ise neden indirilemediğini açıklar.
-- **Eklenti uygulamanın temasını izler:** açılır penceresi ve ayar sayfası, uygulama gibi açık veya koyudur (Sistem cihazı izler); uygulama çalışmıyorsa tarayıcı gibi.
+- **Eklenti uygulamanın temasını izler:** açılır penceresi, ayar sayfası ve web sayfalarındaki indirme düğmesi uygulama gibi açık veya koyudur (Sistem cihazı izler); uygulama çalışmıyorsa tarayıcı gibi.
 
 **Güncellemeler**
 - **Güncelleme penceresi** uygulamanın dilini izler ve sürüm notları çevrilmiştir.

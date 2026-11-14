@@ -33,7 +33,7 @@
 - **Il browser tiene un download finché l'app non lo ha,** i moduli che hai inviato restano nel browser, e le finestre private usano i propri cookie.
 - **Link:** un link a un file viene preso dopo che il codice di clic della pagina è stato eseguito, quindi i siti che prima rispondevano 403 ora funzionano. Un link a un PDF si apre nel browser a meno che la pagina lo segni come download. "Scarica tutti i link" trova anche i link segnati come download e quelli conservati negli attributi data-*, e Google Drive ha una riga "File originale".
 - **Il pulsante video:** funziona con la tastiera (Tab, Enter), si aggancia a un bordo quando lo trascini lì, c'è un pulsante per ogni gruppo di video sovrapposti e nessuno su un video nascosto sotto la pagina. Puoi nasconderlo su un sito, e Telegram Web spiega perché non si può scaricare.
-- **L'estensione segue il tema dell'app:** la finestra e la pagina delle impostazioni sono chiare o scure come l'app (Sistema segue il dispositivo), e come il browser quando l'app non è aperta.
+- **L'estensione segue il tema dell'app:** la finestra, la pagina delle impostazioni e il pulsante di download nelle pagine web sono chiari o scuri come l'app (Sistema segue il dispositivo), e come il browser quando l'app non è aperta.
 
 **Aggiornamenti**
 - **La finestra di aggiornamento** segue la lingua dell'app, e le note di versione sono tradotte.

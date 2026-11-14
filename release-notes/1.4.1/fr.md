@@ -33,7 +33,7 @@
 - **Le navigateur garde un téléchargement jusqu'à ce que l'application l'ait,** les formulaires que vous avez envoyés restent dans le navigateur, et les fenêtres privées utilisent leurs propres cookies.
 - **Liens :** un lien de fichier est pris après l'exécution du code de clic de la page elle-même, donc les sites qui répondaient 403 fonctionnent maintenant. Un lien PDF s'ouvre dans le navigateur, sauf si la page le marque comme téléchargement. « Télécharger tous les liens » trouve aussi les liens marqués comme téléchargements et ceux conservés dans des attributs data-*, et Google Drive a une ligne « Fichier d'origine ».
 - **Le bouton vidéo :** il fonctionne au clavier (Tab, Enter), se colle à un bord quand vous l'y faites glisser, il y a un bouton par groupe de vidéos empilées et aucun sur une vidéo cachée sous la page. Vous pouvez le masquer sur un site, et Telegram Web explique pourquoi il ne peut pas être téléchargé.
-- **L'extension suit le thème de l'application :** sa fenêtre et sa page de réglages sont claires ou sombres comme l'application (Système suit l'appareil), et comme le navigateur quand l'application n'est pas lancée.
+- **L'extension suit le thème de l'application :** sa fenêtre, sa page de réglages et le bouton de téléchargement sur les pages web sont clairs ou sombres comme l'application (Système suit l'appareil), et comme le navigateur quand l'application n'est pas lancée.
 
 **Mises à jour**
 - **La fenêtre de mise à jour** suit la langue de l'application, et les notes de version sont traduites.

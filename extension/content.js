@@ -482,6 +482,27 @@
     .all { color: #a5b4fc; font-weight: 700; }
     .msg { padding: 10px 12px; color: #4ade80; }
     .msg.err { color: #f87171; }
+    .wrap[dir="rtl"] .s { text-align: right; }
+    .wrap[data-theme="light"] { color: #0f172a; }
+    .wrap[data-theme="light"] .btn { color: #3730a3; background: linear-gradient(135deg, #e0e7ff, #f5e8ff); box-shadow: 0 2px 10px rgba(15,23,42,.28), 0 0 0 1.5px rgba(99,102,241,.55); }
+    .wrap[data-theme="light"] .ico path { fill: #3730a3; }
+    .wrap[data-theme="light"] .spin { border-color: rgba(67,56,202,.3); border-top-color: #4338ca; }
+    .wrap[data-theme="light"] .btn:focus-visible { outline-color: #4338ca; }
+    .wrap[data-theme="light"] .list { background: #ffffff; color: #0f172a; border-color: rgba(15,23,42,.14); box-shadow: 0 12px 40px rgba(15,23,42,.25); }
+    .wrap[data-theme="light"] .head { background: #f1f5f9; border-bottom-color: rgba(15,23,42,.10); }
+    .wrap[data-theme="light"] .item { border-bottom-color: rgba(15,23,42,.08); }
+    .wrap[data-theme="light"] .item:hover { background: #eef2ff; }
+    .wrap[data-theme="light"] .item.off:hover { background: transparent; }
+    .wrap[data-theme="light"] .foot, .wrap[data-theme="light"] .num, .wrap[data-theme="light"] .s { color: #64748b; }
+    .wrap[data-theme="light"] .cut { border-color: rgba(15,23,42,.18); color: #334155; }
+    .wrap[data-theme="light"] .cut:hover { background: #e2e8f0; color: #0f172a; }
+    .wrap[data-theme="light"] .tag { background: #e2e8f0; color: #0f172a; }
+    .wrap[data-theme="light"] .all { color: #4338ca; }
+    .wrap[data-theme="light"] .msg { color: #15803d; }
+    .wrap[data-theme="light"] .msg.err { color: #b91c1c; }
+    .wrap[data-theme="light"] .count { background: #ffffff; color: #0f172a; }
+    .wrap[data-theme="light"] .side { background: #ffffff; color: #0f172a; border-color: rgba(15,23,42,.25); }
+    .wrap[data-theme="light"] .side:hover { background: #ef4444; color: #fff; }
     .act { margin-top: 6px; display: inline-block; background: #6366f1; color: #fff; border-radius: 6px; padding: 4px 10px; cursor: pointer; }`;
 
   function layer() {
@@ -527,6 +548,8 @@
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
     const b = { host, root, video, open: false, own: null, loading: false, dismissed: false, lifts: 0 };
+    fjOnTheme((theme) => { const w = root.querySelector(".wrap"); if (w) w.setAttribute("data-theme", theme); });
+    root.querySelector(".wrap").setAttribute("data-theme", fjTheme());
     const mainEl = root.getElementById("main");
     mainEl.tabIndex = 0;
     mainEl.setAttribute("role", "button");
@@ -610,6 +633,7 @@
     b.root.getElementById("main").title = byKind(b.video, "btnTitle");
     b.root.getElementById("close").title = fjT("hideButton");
     b.root.querySelector(".wrap").dir = fjIsRtl() ? "rtl" : "ltr";
+    b.root.querySelector(".wrap").setAttribute("data-theme", fjTheme());
     const count = b.root.getElementById("count");
     count.textContent = String(usable.length);
     count.classList.toggle("on", usable.length > 1 && !b.open);
@@ -647,7 +671,7 @@
       if (tag && !/HD|SD|K/.test(m.label)) t.append(el("span", { class: "tag " + tag.replace(/\s/g, "").replace(/^(\d)K$/, "K$1"), text: tag }));
       const subText = m.sub || (m.size ? fmtSize(m.size) : "");
       const row = el("div", { class: "item" + (m.disabled ? " off" : "") },
-        el("span", { class: "num", text: m.disabled ? "" : `${++n}.` }),
+        el("span", { class: "num", dir: "ltr", text: m.disabled ? "" : `${++n}.` }),
         el("div", { class: "body" }, t, el("div", { class: "s", dir: "ltr", text: subText.length > 110 ? subText.slice(0, 110) + "…" : subText })));
       if (!m.disabled) row.addEventListener("click", () => download(b, m));
       if (!m.disabled && m.kind === "ytdlp") {

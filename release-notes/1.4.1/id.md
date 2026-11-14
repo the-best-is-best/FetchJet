@@ -33,7 +33,7 @@
 - **Browser menyimpan unduhan sampai aplikasi menerimanya,** formulir yang Anda kirim tetap di browser, dan jendela pribadi memakai cookie-nya sendiri.
 - **Tautan:** tautan file diambil setelah kode klik milik halaman itu berjalan, sehingga situs yang dulu menjawab 403 kini berfungsi. Tautan PDF dibuka di browser kecuali halaman menandainya sebagai unduhan. "Unduh semua tautan" juga menemukan tautan yang ditandai sebagai unduhan dan tautan yang disimpan di atribut data-*, dan Google Drive punya baris "File asli".
 - **Tombol video:** berfungsi dengan keyboard (Tab, Enter), menempel ke tepi saat Anda menyeretnya ke sana, ada satu tombol per kelompok video yang bertumpuk, dan tidak ada tombol pada video yang tersembunyi di bawah halaman. Anda bisa menyembunyikannya di suatu situs, dan Telegram Web menjelaskan mengapa tidak bisa diunduh.
-- **Ekstensi mengikuti tema aplikasi:** jendela dan halaman pengaturannya terang atau gelap seperti aplikasi (Sistem mengikuti perangkat), dan seperti peramban saat aplikasi tidak berjalan.
+- **Ekstensi mengikuti tema aplikasi:** jendela, halaman pengaturan, dan tombol unduh di halaman web terang atau gelap seperti aplikasi (Sistem mengikuti perangkat), dan seperti peramban saat aplikasi tidak berjalan.
 
 **Pembaruan**
 - **Jendela pembaruan** mengikuti bahasa aplikasi, dan catatan rilis diterjemahkan.
