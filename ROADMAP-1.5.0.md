@@ -111,6 +111,58 @@ and the row is hidden.
 - [ ] iOS CI log: about 1850 warnings, all from libtorrent compiled in the build (none from our Swift or Kotlin). Optional: silence them in `scripts/build-libtorrent-ios.command`; the one warning that is ours is Xcode's "Building targets in manual order".
 - [ ] GitHub shows the licence as `NOASSERTION`: check that `LICENSE` is the unmodified GPL-3.0 text (SignPath needs an OSI licence it can recognise).
 
+## 7. Context menu on a download row (owner's request, 2026-11-14)
+
+Right-click on a download row, finished or not, opens a proper menu with the actions for that download
+(open, open folder, pause / resume, send to device, copy link, details, delete and so on). On phones and
+tablets a long press opens the same menu instead of the details.
+
+- [ ] Desktop (Slint): a right-click menu on every row, with the actions that fit the state of the download.
+  Nothing like it exists in `desktopNative/ui` today.
+- [ ] Compose (Android): a long press opens the menu. A long press now starts the multi-select; decide where
+  selection moves (a "Select" entry in the menu, or the checkbox).
+- [ ] SwiftUI (iOS / iPad): a long press shows the same menu (`contextMenu`).
+- [ ] One list of actions in shared logic, so the three UIs show the same entries; texts in the 15 languages;
+  tests in corehost for the entries per state.
+
+## 8. Sort into folders: rules by site (owner's request, 2026-11-14)
+
+Today "Sort into folders" only sorts by kind of file (Video, Audio, Documents ...), and a folder the user
+picked for a kind is remembered. The addition is rules by site: "everything from this site goes to this
+folder", whatever the file type is. Nothing like it exists today (`HostLimits.kt` only limits connections
+per host).
+
+- [ ] A list of rules in Settings: site (host and its sub-domains) -> folder; edit, delete, order.
+- [ ] A rule wins over the kind-of-file folder; no rule keeps today's behaviour.
+- [ ] Add dialog: the folder field shows the rule's folder and says it came from a rule.
+- [ ] Optional on the same rule: a speed limit or a connection count for that site, and a command to run when
+  the download finishes (decide after the first part is used).
+- [ ] Same on the three UIs (Slint, Compose, SwiftUI); texts in the 15 languages; tests in corehost
+  (rule hit, sub-domain, no rule, a rule beside a remembered kind folder).
+
+## 9. Scan a file after the download (idea, 2026-11-14)
+
+- [ ] Setting "Scan finished files" (off by default): run the system's own scanner on the file when the
+  download completes (Windows Defender on Windows; decide for macOS and Linux). A file the scanner flags is
+  marked in the list with a clear message and is not opened.
+- [ ] Decide what happens when no scanner is found (say so once, do nothing else).
+- [ ] Texts in the 15 languages; tests in corehost with a fake scanner command.
+
+## 10. Monthly downloads report (idea, 2026-11-14)
+
+- [ ] A page that shows, for a month: how many files, how many GB, and which sites they came from. Read only
+  from the history the app already keeps; nothing leaves the device.
+- [ ] Cosmetic. Decide whether it is worth a page before building.
+
+## 11. Portable mode on Windows (idea, 2026-11-14)
+
+- [ ] Run from a folder or a USB stick with no install, keeping its data next to the program. The native app
+  already runs on another data folder with `--home <folder>`; the work is to choose that folder by default
+  when a marker file sits next to `FetchJet.exe`.
+- [ ] No start at login, no registry entries, no tray autostart in this mode; the in-app update must not
+  assume an installed copy.
+- [ ] Check the first-run steps and the media tools download land inside the folder.
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,
