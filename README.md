@@ -58,7 +58,7 @@ platform, with the right file highlighted for your device.
 
 | Platform                                | File                                                                                                | Notes                                                                           |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
+| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
 | macOS 12+ (Apple Silicon)               | `-arm64.dmg`                                                                                        | M1 or newer only. Drag FetchJet to Applications (in-app updates need it there). |
 | Linux                                   | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                     |
 | Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.                |
