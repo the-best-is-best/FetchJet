@@ -163,6 +163,16 @@ per host).
   assume an installed copy.
 - [ ] Check the first-run steps and the media tools download land inside the folder.
 
+## 12. Facebook stories (owner's question, 2026-11-14)
+
+A link like `facebook.com/stories/<id>/<token>/` is not downloaded: the `FacebookIE` pattern of yt-dlp has no
+`/stories/` path (read from its source, `facebook.py`; the link itself was not tried on the network), so the
+app answers "unsupported". A story also needs a login and lasts 24 hours.
+
+- [ ] Try the browser extension on a real story (it may not see the viewer's video); say what it does.
+- [ ] If it does not work: decide whether to read stories in the app (Facebook's own GraphQL + the user's
+  cookies; big and it breaks often) or to say clearly in the Add dialog that stories are not supported.
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,
