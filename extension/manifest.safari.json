@@ -54,9 +54,12 @@
     "default_popup": "popup.html",
     "default_title": "FetchJet",
     "default_icon": {
-      "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+      "16": "toolbar16.png",
+      "19": "toolbar19.png",
+      "32": "toolbar32.png",
+      "38": "toolbar38.png",
+      "48": "toolbar48.png",
+      "64": "toolbar64.png"
     }
   },
   "options_ui": {

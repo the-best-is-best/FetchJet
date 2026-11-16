@@ -319,9 +319,13 @@
   function zoomAudio() {
     try {
       if (!/(^|\.)zoom\.us$/i.test(location.hostname) || !/^\/rec\/(play|share)\//i.test(location.pathname)) return null;
-      if (document.querySelector("video")) return null;
-      const a = document.querySelector("audio");
-      return a && /^https?:/i.test(a.currentSrc || a.src || "") ? a : null;
+      for (const m of document.querySelectorAll("audio, video")) {
+        if (!/^https?:/i.test(m.currentSrc || m.src || "")) continue;
+        const r = m.getBoundingClientRect();
+        if (m.tagName === "VIDEO" && r.width >= 200 && r.height >= 100) return null;
+        return m;
+      }
+      return null;
     } catch (_) { return null; }
   }
   function zoomHero() {
