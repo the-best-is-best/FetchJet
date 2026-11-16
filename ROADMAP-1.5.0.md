@@ -424,8 +424,11 @@ app got the link without them.
   the in-app page found the audio and the file was saved whole; the real Zoom page from Safari (page button > Audio) opened
   in the app, the owner typed the passcode, the download started with no 403 (4 MB of 51 MB, then paused).
   `content.sim.js` / `capture.sim.js` pass.
-- Not run: the Zoom download to its end, iPad, the Zoom audio button in Firefox / Chrome with the changed extension, the
-  popup banner on a device where it stayed on screen (the simulator already had the access).
+- iPad Pro 13" simulator: Safari shows the desktop Zoom page (`<audio>` 0x0 in a 606x341 player); the button shows once
+  the extension has access to `us06web.zoom.us` (Safari asks per site). Owner-checked on the iPad. Firefox on macOS with
+  the 3.5.0 build (temporary add-on): owner-checked. The Safari toolbar icon is now `toolbar16-64.png` (transparent).
+- Not run: the Zoom download to its end, the Zoom audio button in Chrome / Edge / Firefox on Windows, the popup banner on a
+  device where it stayed on screen.
 - Open: no address bar or back button in the in-app page, no entry point inside the app, only `zoom.us` is listed.
 
 ## Looked at and not planned

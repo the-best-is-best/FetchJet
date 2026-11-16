@@ -264,7 +264,7 @@ Bridges:
 
 ## Current state (master = 1.3.1; working branch `release-v1.4.0`)
 
-- **2026-11-16, Mac session on `release-v1.5.0` (commits `0492795`, `8078e5d`; details in ROADMAP-1.5.0.md items 1, 2, 16):**
+- **2026-11-16, Mac session on `release-v1.5.0` (commits `0492795`, `8078e5d`, `1f82a85`, `1561182`; details in ROADMAP-1.5.0.md items 1, 2, 16):**
     - Automation API on the iPhone simulator and the macOS native app, archive extraction and the Extract button on
       iPhone / iPad / the Mac window: built and passed (corehost: extract 16, extract_big 11 at 68 MB/s, addname 14,
       automation 40, settings 87, home 41, add 29, keys 41).
@@ -277,7 +277,13 @@ Bridges:
       it the host shows a system arrow.
     - `extension/background.js` has CRLF line ends: a script that rewrites it must keep them (`newline=''` in Python).
     - Found, not fixed: a zip made by macOS `zip` with an Arabic name and no UTF-8 flag extracts with a CP437 name.
-    - Not committed when written: the popup banner change (`hasSiteAccess` in `popup.js`) and these notes.
+    - Safari's toolbar icon is `extension/toolbar16-64.png` (the arrow on a transparent background, Safari manifest only):
+      the full square icon showed as a black square in Safari's extension menu on iPad. Checked on iPhone 17 and iPad Pro.
+    - On iPad, Safari asks for site access per site: with no access to `us06web.zoom.us` the page button does not show.
+    - Everything above is committed and pushed. For Windows: re-test the extension in Chrome / Edge / Firefox (Zoom audio
+      button, popup banner); `content.js`, `background.js`, `popup.js` and `i18n/*` changed. Windows / Android / Linux
+      builds were not run after these commits (no Kotlin shared code changed after `79f8d5e`, only iOS Swift, extension JS
+      and the macOS tray icon).
 - **2026-11-14, Mac session on `release-v1.4.1` (play button, window, tests; nothing committed):**
     - Side effect of my own earlier test run, fixed: the first run of the staged `FetchJet.app` on a fresh `--home` showed the
       first-run "Main downloader" step and enabled start at login, which writes the global
