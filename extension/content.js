@@ -313,6 +313,9 @@
   const isFileAnchor = (v) => v === fileHero && !/^(VIDEO|IFRAME)$/.test(v.tagName);
 
   let zoomEl = null;
+  const zoomRecording = () => /(^|\.)zoom\.us$/i.test(location.hostname) && /^\/rec\/(play|share)\//i.test(location.pathname);
+  const isZoomMedia = (v) => !!v && v.tagName === "VIDEO" && zoomRecording() && /^https?:/i.test(v.currentSrc || v.src || "") &&
+    /\.(m4a|mp3|aac|ogg|opus|wav)(\?|$)/i.test(new URL(v.currentSrc || v.src, location.href).pathname + "?");
   function zoomAudio() {
     try {
       if (!/(^|\.)zoom\.us$/i.test(location.hostname) || !/^\/rec\/(play|share)\//i.test(location.pathname)) return null;
@@ -548,7 +551,7 @@
     return svg;
   }
 
-  const isAudioAnchor = (v) => v.tagName !== "VIDEO" && v !== fileHero;
+  const isAudioAnchor = (v) => (v.tagName !== "VIDEO" && v !== fileHero) || isZoomMedia(v);
   const byKind = (v, key) => fjT(key + (isFileAnchor(v) ? "File" : isAudioAnchor(v) ? "Audio" : "Video"));
 
   let drag = null;
@@ -640,6 +643,15 @@
     });
     return row;
   }
+  function pageInAppRow() {
+    if (!ON_IOS) return null;
+    const row = el("div", { class: "item" }, el("span", { class: "num", text: "\u2197" }),
+      el("div", { class: "body" }, el("div", { class: "t", text: fjT("openPageInApp") }), el("div", { class: "s", text: fjT("openPageInAppSub") })));
+    row.addEventListener("click", () => {
+      try { api.runtime.sendMessage({ action: "openPageInApp", page: TOP ? location.href : "" }).catch(() => {}); } catch (_) {}
+    });
+    return row;
+  }
   function footRow() {
     const row = el("div", { class: "item foot", text: fjT("hideOnSite") });
     row.addEventListener("click", hideSite);
@@ -665,7 +677,7 @@
     box.hidden = !b.open;
     box.replaceChildren();
     const file = fileRow(b);
-    const tail = () => { if (file) box.appendChild(file); box.appendChild(footRow()); pressable(box); };
+    const tail = () => { if (file) box.appendChild(file); const pg = pageInAppRow(); if (pg) box.appendChild(pg); box.appendChild(footRow()); pressable(box); };
     if (note) {
       const d = el("div", { class: "msg" + (isError ? " err" : ""), text: note });
       if (action) { const a = el("div", { class: "act", text: action.text }); a.addEventListener("click", action.run); d.append(el("br"), a); }
@@ -703,6 +715,8 @@
       }
       box.appendChild(row);
     }
+    const pg = pageInAppRow();
+    if (pg) box.appendChild(pg);
     box.appendChild(footRow());
     pressable(box);
   }
@@ -862,7 +876,7 @@
       let b = bubbles.get(v);
       if (!b) {
         // main video: once the background found something or it plays; others: as soon as they are real players
-        const show = v.tagName !== "VIDEO" || v === fileHero || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
+        const show = v.tagName !== "VIDEO" || v === fileHero || isZoomMedia(v) || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
         if (!show) continue;
         b = makeBubble(v);
       }

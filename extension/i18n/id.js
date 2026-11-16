@@ -187,6 +187,8 @@ fjAddLanguage("id", {
   "originalFile": "File asli",
   "originalFileSub": "File seperti saat diunggah ke Google Drive",
   "hideOnSite": "Sembunyikan di situs ini",
+  "openPageInApp": "Buka halaman ini di FetchJet",
+  "openPageInAppSub": "Masuk di sana jika perlu, lalu ketuk Unduh",
   "popupButtonOff": "Tombol video dimatikan di situs ini",
   "popupTurnOn": "Nyalakan",
   "optHiddenSites": "Situs tempat tombol video dimatikan",

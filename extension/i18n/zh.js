@@ -187,6 +187,8 @@ fjAddLanguage("zh", {
   "originalFile": "原始文件",
   "originalFileSub": "上传到 Google 云端硬盘时的原文件",
   "hideOnSite": "在此网站上隐藏",
+  "openPageInApp": "在 FetchJet 中打开此页面",
+  "openPageInAppSub": "如需登录请在其中登录，然后点按下载",
   "popupButtonOff": "视频按钮已在此网站上关闭",
   "popupTurnOn": "开启",
   "optHiddenSites": "已关闭视频按钮的网站",

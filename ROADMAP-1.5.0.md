@@ -394,6 +394,40 @@ Permission" (`<all_urls>`). Those two are information, not a finding, and `<all_
   (`usesCleartextTraffic="true"` is on for plain http downloads: confirm it is the only reason).
 - [ ] Write the result here: what was found, what was fixed, what was accepted and why.
 
+## 16. Pages that need a session: Zoom recordings on iOS (owner's report, 2026-11-16)
+
+A Zoom cloud recording (`us06web.zoom.us/rec/play/...`, media on `ssrweb.zoom.us`) answers 403 unless the request carries
+the session cookies set after the passcode (HttpOnly, session only) and a zoom.us `Referer`. Measured on the Mac: the
+pasted link, the page's own link, curl / Python / Java / URLSession with every cookie readable from `document.cookie`: 403;
+a `fetch` inside the page with credentials: 200. Firefox (Mac, Android) gives the extension the full cookies, so the app
+downloads there. Safari on iOS gives the extension none (`cookies.getAll` returned 0 with the permission granted), so the
+app got the link without them.
+
+- [x] iOS: `fetchjet://browse?url=<page>` opens the page inside the app (`iosApp/iosApp/SwiftUI/Core/FJPageBrowser.swift`,
+  a `WKWebView` shown from `FJRoot`, handled in `iOSApp.swift` before `IosFetchJetLinks`). It looks for the first
+  `<audio>` / `<video>` with a direct link; "Start Download" hands the link, every cookie of the web view that matches it
+  (HttpOnly too), the page as `Referer` and the web view's User-Agent to the Add dialog through `fetchjet://add?json=`.
+  The passcode is typed once inside the app (Safari's session is not shared with apps).
+- [x] Extension on iOS: links on `zoom.us` open that page in the app (`iosSessionPage` / `openAppAt` in `background.js`,
+  list `IOS_SESSION_SITES`); when the cookies API gives nothing, the page's `document.cookie` is sent (`pageCookie` in
+  `content.js`, same site only).
+- [x] Extension, every browser: the page button also sits on Zoom's audio-only player (`zoomAudio` / `zoomHero` in
+  `content.js`: the page has `<audio>`, no `<video>`) and sends the audio's own link.
+- [x] Popup: the "Allow access to all sites" banner also hides for `*://*/*`, and on Safari when the open site is allowed
+  (`hasSiteAccess` in `popup.js`). Safari grants access site by site, so the `<all_urls>` check alone kept it on screen.
+  `options.js` has the old check.
+- [x] iOS, every site: the page button's list has "Open this page in FetchJet" (`pageInAppRow` in `content.js`, message
+  `openPageInApp` in `background.js`, texts `openPageInApp` / `openPageInAppSub` in the 15 languages): the page opens in
+  the in-app page, for sites that need a login. On Safari for iPhone, Zoom plays the recording in a `<video>` holding an
+  `.m4a`: the button now shows before it plays and says "audio" (`isZoomMedia`).
+- Tested (iPhone 17 simulator): a local server whose media needs an HttpOnly session cookie and the page as Referer:
+  the in-app page found the audio and the file was saved whole; the real Zoom page from Safari (page button > Audio) opened
+  in the app, the owner typed the passcode, the download started with no 403 (4 MB of 51 MB, then paused).
+  `content.sim.js` / `capture.sim.js` pass.
+- Not run: the Zoom download to its end, iPad, the Zoom audio button in Firefox / Chrome with the changed extension, the
+  popup banner on a device where it stayed on screen (the simulator already had the access).
+- Open: no address bar or back button in the in-app page, no entry point inside the app, only `zoom.us` is listed.
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,

@@ -187,6 +187,8 @@ fjAddLanguage("hi", {
   "originalFile": "मूल फ़ाइल",
   "originalFileSub": "फ़ाइल जैसी Google Drive पर अपलोड की गई थी",
   "hideOnSite": "इस साइट पर छिपाएँ",
+  "openPageInApp": "यह पेज FetchJet में खोलें",
+  "openPageInAppSub": "ज़रूरत हो तो वहाँ साइन इन करें, फिर डाउनलोड दबाएँ",
   "popupButtonOff": "इस साइट पर वीडियो बटन बंद है",
   "popupTurnOn": "चालू करें",
   "optHiddenSites": "वे साइटें जहाँ वीडियो बटन बंद है",

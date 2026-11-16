@@ -187,6 +187,8 @@ fjAddLanguage("ru", {
   "originalFile": "Исходный файл",
   "originalFileSub": "Файл в том виде, в каком он загружен на Google Диск",
   "hideOnSite": "Скрыть на этом сайте",
+  "openPageInApp": "Открыть страницу в FetchJet",
+  "openPageInAppSub": "При необходимости войдите там и нажмите «Скачать»",
   "popupButtonOff": "Кнопка видео отключена на этом сайте",
   "popupTurnOn": "Включить",
   "optHiddenSites": "Сайты, где кнопка видео отключена",

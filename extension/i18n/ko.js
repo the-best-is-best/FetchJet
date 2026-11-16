@@ -187,6 +187,8 @@ fjAddLanguage("ko", {
   "originalFile": "원본 파일",
   "originalFileSub": "Google Drive에 업로드된 그대로의 파일",
   "hideOnSite": "이 사이트에서 숨기기",
+  "openPageInApp": "이 페이지를 FetchJet에서 열기",
+  "openPageInAppSub": "필요하면 그곳에서 로그인한 뒤 다운로드를 누르세요",
   "popupButtonOff": "이 사이트에서는 동영상 버튼이 꺼져 있습니다",
   "popupTurnOn": "켜기",
   "optHiddenSites": "동영상 버튼이 꺼진 사이트",

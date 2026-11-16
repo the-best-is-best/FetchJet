@@ -187,6 +187,8 @@ fjAddLanguage("ja", {
   "originalFile": "元のファイル",
   "originalFileSub": "Google ドライブにアップロードされたままのファイル",
   "hideOnSite": "このサイトでは表示しない",
+  "openPageInApp": "このページを FetchJet で開く",
+  "openPageInAppSub": "必要ならそこでサインインし、ダウンロードをタップ",
   "popupButtonOff": "このサイトでは動画ボタンがオフです",
   "popupTurnOn": "オンにする",
   "optHiddenSites": "動画ボタンをオフにしたサイト",

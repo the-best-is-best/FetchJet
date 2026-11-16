@@ -180,11 +180,24 @@ async function toggle(key) {
   renderSwitches();
 }
 
+async function hasSiteAccess() {
+  for (const origins of [["<all_urls>"], ["*://*/*"]]) {
+    try { if (await api.permissions.contains({ origins })) return true; } catch (_) {}
+  }
+  if (typeof FJ_PLATFORM === "undefined" || FJ_PLATFORM.name !== "safari") return false;
+  try {
+    const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+    const page = new URL((tab && tab.url) || "");
+    if (!/^https?:$/.test(page.protocol)) return true;
+    return await api.permissions.contains({ origins: [page.origin + "/*"] });
+  } catch (_) { return false; }
+}
+
 async function checkHostPermission() {
   // Firefox MV3 does not grant host permissions at install time.
   if (!api.permissions || !api.permissions.contains) return;
   try {
-    const ok = await api.permissions.contains({ origins: ["<all_urls>"] });
+    const ok = await hasSiteAccess();
     $("permBanner").style.display = ok ? "none" : "block";
   } catch (_) {}
 }

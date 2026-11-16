@@ -187,6 +187,8 @@ fjAddLanguage("fr", {
   "originalFile": "Fichier d'origine",
   "originalFileSub": "Le fichier tel qu'il a été envoyé sur Google Drive",
   "hideOnSite": "Masquer sur ce site",
+  "openPageInApp": "Ouvrir cette page dans FetchJet",
+  "openPageInAppSub": "Connectez-vous si besoin, puis touchez Télécharger",
   "popupButtonOff": "Le bouton vidéo est désactivé sur ce site",
   "popupTurnOn": "Activer",
   "optHiddenSites": "Sites où le bouton vidéo est désactivé",

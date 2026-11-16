@@ -1688,6 +1688,14 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const config = online ? await fetchAppConfig() : null;
         return { online, config };
       }
+      case "openPageInApp": {
+        if (!ON_IOS) return { ok: false };
+        const tab = sender.tab || null;
+        let page = request.page || (tab && tab.url) || "";
+        try { if (!/^https?:$/.test(new URL(page).protocol)) page = ""; } catch (_) { page = ""; }
+        if (!page) return { ok: false };
+        return { ok: await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) };
+      }
       case "launchApp": {
         const launched = await launchApp(request.url || "");
         const online = launched ? await waitForApp(12000) : false;

@@ -187,6 +187,8 @@ fjAddLanguage("tr", {
   "originalFile": "Özgün dosya",
   "originalFileSub": "Google Drive'a yüklendiği haliyle dosya",
   "hideOnSite": "Bu sitede gizle",
+  "openPageInApp": "Bu sayfayı FetchJet'te aç",
+  "openPageInAppSub": "Gerekirse orada giriş yapın, sonra İndir'e dokunun",
   "popupButtonOff": "Video düğmesi bu sitede kapalı",
   "popupTurnOn": "Aç",
   "optHiddenSites": "Video düğmesinin kapalı olduğu siteler",

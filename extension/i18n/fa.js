@@ -187,6 +187,8 @@ fjAddLanguage("fa", {
   "originalFile": "فایل اصلی",
   "originalFileSub": "فایل همان‌طور که در Google Drive بارگذاری شده است",
   "hideOnSite": "پنهان کردن در این سایت",
+  "openPageInApp": "این صفحه را در FetchJet باز کنید",
+  "openPageInAppSub": "در صورت نیاز آنجا وارد شوید، سپس دانلود را بزنید",
   "popupButtonOff": "دکمهٔ ویدیو در این سایت خاموش است",
   "popupTurnOn": "روشن کردن",
   "optHiddenSites": "سایت‌هایی که دکمهٔ ویدیو در آن‌ها خاموش است",
