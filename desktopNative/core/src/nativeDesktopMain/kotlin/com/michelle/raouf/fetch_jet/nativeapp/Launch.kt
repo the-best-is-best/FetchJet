@@ -43,6 +43,8 @@ internal data class LaunchResult(
     val add: Boolean = false,
     val silent: Boolean = false,
     val startQueue: Boolean = false,
+    val output: String = "",
+    val code: Int = 0,
 )
 
 internal data class LaunchCommand(
@@ -294,6 +296,30 @@ internal object Launch {
         null
     }
 
+    private val API_WORDS = setOf("status", "pause", "start", "remove", "delete", "automation")
+
+    private fun apiPath(args: List<String>): String? {
+        val word = args.firstOrNull()?.trim()?.lowercase() ?: return null
+        if (word !in API_WORDS) return null
+        val rest = args.drop(1).map { it.trim() }.filter { it.isNotEmpty() }
+        fun value(text: String) = text.encodeURLParameter(spaceToPlus = true)
+        return when (word) {
+            "status" -> "/api/status" + (rest.firstOrNull()?.let { "?id=" + value(it) } ?: "")
+            "automation" -> "/api/automation" + when (rest.firstOrNull()?.lowercase()) {
+                "on" -> "?on=1"
+                "off" -> "?on=0"
+                else -> ""
+            }
+            else -> "/api/$word?ids=" + value(rest.joinToString(","))
+        }
+    }
+
+    private fun runApi(port: Int, path: String): LaunchResult {
+        val answer = get(port, path, 3000, withToken = true)
+        if (answer == null) return LaunchResult(exit = true, output = """{"error":"FetchJet is not running"}""", code = 1)
+        return LaunchResult(exit = true, output = answer.second.trim(), code = if (answer.first in 200..299) 0 else 1)
+    }
+
     private fun sendToRunningInstance(port: Int, url: String): Boolean {
         val answer = get(port, "/download?url=" + url.encodeURLParameter(spaceToPlus = true), 800, withToken = true)
         return answer != null && answer.first in 200..299
@@ -326,7 +352,9 @@ internal object Launch {
         val port = if (config.bridgePort > 0) config.bridgePort else com.michelle.raouf.fetch_jet.nativeapp.bridge.BRIDGE_PORT
         val startedAtLogin = config.args.any { it.trim() == AUTOSTART_ARG } ||
             (config.args.isEmpty() && DesktopApp.looksLikeLoginStart())
-        val command = parseCommand(config.args.filter { it.trim() != AUTOSTART_ARG })
+        val plainArgs = config.args.filter { it.trim() != AUTOSTART_ARG }
+        apiPath(plainArgs)?.let { return runApi(port, it) }
+        val command = parseCommand(plainArgs)
         val url = command.urls.firstOrNull().orEmpty()
         if (config.bridge) {
             val attempts = if (config.secondInstance) 10 else 1

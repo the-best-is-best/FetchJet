@@ -342,7 +342,11 @@ namespace fjhost {
         fj::parse_json(take(g_core.prepare((config + (second ? ",\"secondInstance\":true}" : "}")).c_str())), launch, error);
         if (fj::flag(launch, "exit")) {
             os::release_instance(instance);
-            return 0;
+            const fj::Json *output = launch.find("output");
+            if (output && !output->text.empty())
+                os::print_out(output->text + "\n");
+            const fj::Json *code = launch.find("code");
+            return code ? static_cast<int>(code->number) : 0;
         }
         bool start_hidden = fj::flag(launch, "hidden");
 

@@ -21,6 +21,7 @@ namespace fjhost {
         void prepare_process();
         bool load_core(CoreApi &core);
         void fatal(const std::string &text);
+        void print_out(const std::string &text);
         bool system_uses_dark();
         std::string read_text_file(const std::string &utf8_path);
 

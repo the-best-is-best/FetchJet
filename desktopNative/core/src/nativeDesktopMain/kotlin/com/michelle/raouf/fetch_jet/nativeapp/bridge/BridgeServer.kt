@@ -11,6 +11,7 @@ import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.core.util.getString
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
+import com.michelle.raouf.fetch_jet.feature.automation.AutomationApi
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaUrls
 import com.michelle.raouf.fetch_jet.feature.media_extractor.parseExternalPlaylist
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
@@ -26,7 +27,7 @@ private const val JSON = "application/json; charset=UTF-8"
 private const val ALLOWED_HEADERS =
     "Content-Type, X-FetchJet, X-FetchJet-Cookie, X-FetchJet-Referer, X-FetchJet-Token, X-FetchJet-Pairing, X-FetchJet-Ext"
 private const val MAX_BODY = 4 * 1024 * 1024
-private val KNOWN_PATHS = listOf("/ping", "/inspect", "/config", "/pair", "/add", "/links", "/show", "/download")
+private val KNOWN_PATHS = listOf("/ping", "/inspect", "/config", "/pair", "/add", "/links", "/show", "/download", "/api")
 
 internal fun jsonEscape(text: String): String = buildString {
     for (c in text) {
@@ -226,6 +227,7 @@ internal class BridgeServer(
             "/add" -> add(request)
             "/links" -> links(request)
             "/show" -> show(request)
+            "/api" -> api(request)
             else -> download(request)
         }
     }
@@ -346,6 +348,19 @@ internal class BridgeServer(
         refusal(request)?.let { return it }
         showAndFocus()
         return reply(request, 200, "OK")
+    }
+
+    private suspend fun api(request: HttpRequest): HttpReply {
+        if (!isTrusted(request)) return reply(request, 403, "forbidden")
+        val answer = AutomationApi.handle(
+            request.method,
+            request.path,
+            request.header("Origin") != null,
+            !request.header("X-FetchJet").isNullOrBlank(),
+            request.header(BridgePairing.TOKEN_HEADER),
+            request.queryValues(),
+        )
+        return reply(request, answer.code, answer.body, JSON)
     }
 
     private fun download(request: HttpRequest): HttpReply {

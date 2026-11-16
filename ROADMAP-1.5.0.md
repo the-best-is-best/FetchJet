@@ -14,8 +14,8 @@ Two releases if the split happens. The APK size is the highest priority, owner's
 ordered by value for users, cost and risk. Item numbers are the headings below.
 
 Release A:
-1. Item 14, step 0: remove the universal APK from the release (decided, small, first).
-2. Item 14, steps 1 and 2: trimmed Python, our own ffmpeg. Highest priority, the biggest visible gain.
+1. [x] Item 14, step 0: remove the universal APK from the release (decided, small, first).
+2. [x] Item 14, steps 1 and 2: trimmed Python, our own ffmpeg. Highest priority, the biggest visible gain (done and tested on the A56, CI not run yet).
 3. Item 15, security scan: starts with item 14 and runs again before the release. It checks items 1 and 2 as they are built.
 4. Item 1, Automation API and `status` / `pause` / `start` / `remove` / `delete`. Small and low risk, and tests and
    measurements can drive the real app without the mouse.
@@ -25,7 +25,7 @@ Release A:
 8. Item 8, sort into folders: rules by site (owner's request).
 
 Release B:
-9. Item 14 step 3, Python inside the app (`useLegacyPackaging` false). The riskiest, it needs its own testing time.
+9. [x] Item 14 step 3, Python inside the app (`useLegacyPackaging` false). Done early, with Release A, tested on the A56.
 10. Item 3, own DNS and network adapter.
 11. Item 2 phase 2, 7Z / RAR, passwords, split archives, folder choices.
 12. Item 12, Facebook stories (first a test, then a decision).
@@ -50,10 +50,19 @@ server (it would widen what any local program or AI can do to the app, and nobod
 QR for now. It goes first because it also lets a test drive and read the real app without the mouse (the
 mouse takes the owner's PC and clicked the wrong window on 2026-11-14).
 
-- [ ] CLI commands that talk to the running app: `status` (JSON), `pause`, `start`, `remove`, `delete` by
-  download id. Off by default, turned on with a command, token protected like the bridge. A new endpoint goes
-  into the bridge token check (see CLAUDE.md "Bridge pairing").
-- [ ] Enough for a test on the real app with no mouse: add a download (bridge `/add`), read its state, speed
+- [x] CLI commands that talk to the running app: `FetchJet status [id]` (JSON), `pause`, `start`, `remove`, `delete`
+  by download id (several ids with a comma or a space), and `FetchJet automation on|off|` (no word = show). Off by default
+  (`automation` in `bridge.json`), token protected. Written once in `feature/automation/AutomationApi.kt`
+  (`handle(...)` does the checks, `status`, `act`): HTTP `/api/status`, `/api/pause|start|remove|delete?id=`,
+  `/api/automation?on=1|0` in the desktop `BridgeServer.kt` and the Android `ExtensionBridgeServer.kt`, and on iOS in
+  `IosAutomationServer.kt`. A request with an `Origin` header is refused (a web page or the browser extension, even paired),
+  the `X-FetchJet` header and the exact token are needed, `pause` / `start` on a download where they make no sense answer 409.
+  The desktop CLI prints the JSON and exits with 0 or 1 (`LaunchResult.output` / `code`, `os::print_out` in the three
+  hosts; on Windows it attaches to the parent console). Tested: `tests/corehost/test_automation.py` 40 checks (Windows),
+  the real `FetchJet.exe status` / `pause` with no app running (prints the error, exit 1, no window), the A56 over
+  `adb forward` (pair, off 403, on, status, pause, start, delete, 409 on a finished one, off).
+  Not run: macOS / Linux hosts (`print_out` is a plain `fwrite`), the old JVM desktop app (no `/api`), iOS (below).
+- [x] (status, pause, start, remove, delete over the API; memory is read from outside with the OS) Enough for a test on the real app with no mouse: add a download (bridge `/add`), read its state, speed
   and size as JSON, pause / start it, and read the app's memory from outside. Measure idle and during a
   download on the real native app this way, the same way every time.
 - [ ] `get` / `resume` without the window and a JSON progress stream: not decided, ask before building.
@@ -239,28 +248,110 @@ them. The way out is the same as on iOS: libraries of our own, loaded inside the
 
 Steps, each tested on the A56 before the next (the likely split point between two releases is after step 2):
 
-- [ ] Step 1, trim what we ship of Python (about 8 MB, low risk): remove tkinter, tcl / tk, libX11,
+- [x] Step 1, trim what we ship of Python (about 8 MB, low risk): remove tkinter, tcl / tk, libX11,
   pip / ensurepip, idlelib, lib2to3, pydoc_data; check the two copies of sqlite and of libc++_shared before
   removing one. Done when the build repacks the zip and yt-dlp, curl_cffi (the 9gag test in CLAUDE.md) and
   YouTube / SoundCloud / HLS still work.
-- [ ] Step 2, our own ffmpeg (about 25 MB, medium risk): build ffmpeg with the NDK with only what the app uses
+- [x] Step 2, our own ffmpeg (about 25 MB, medium risk): build ffmpeg with the NDK with only what the app uses
   (stream copy and merge, the audio encoders of Convert and Compress audio, subtitles embed, the
   re-encode fallback), no AV1 / x265 / openmpt, as a library called from the app (JNI), not a program.
   List every ffmpeg call first (`runLocalFfmpeg`, audio convert / compress, subtitles, clip cut, HLS) so no
   encoder is missing; a missing encoder breaks a feature.
-- [ ] Step 3, Python inside the app, like iOS (high risk, needs its own release or a long beta): `libpython`
+  - Step 2 inventory (read from the code 2026-11-16, not built yet): the app's own calls (`runLocalFfmpeg`, `MediaOwnEngine`,
+    `MediaAudioConvert`, `AudioCompress`, `HlsDownloader`, clip cut, subtitles embed) use only: stream copy (`-c copy`,
+    `-bsf:a`, `-movflags +faststart`, `-ss` / `-to`, `-map`, `-map_metadata`), audio decode of anything yt-dlp serves
+    (aac, mp3, opus, vorbis, flac, pcm, alac), audio encode `aac` (native), `libmp3lame`, `libopus`, `libvorbis`
+    (or native `vorbis`), `flac`, `pcm_s16le`, subtitle encode `mov_text` (+ srt / webvtt / ass read), muxers mp4, ipod (m4a),
+    matroska / webm, ogg, opus, mp3, flac, wav, adts, srt; demuxers mov, matroska, ogg, mp3, flac, wav, aac, srt,
+    webvtt, ass. No video re-encode anywhere (the fallback is `-c:v copy -c:a aac`). yt-dlp also calls ffmpeg and ffprobe
+    for its post-processors (merge, extract audio, embed thumbnail = mjpeg / png / webp decode + mjpeg / png encode,
+    embed subs, metadata, chapters / SponsorBlock = concat), so the build must include `ffprobe`. Plan: `ffmpeg` and
+    `ffprobe` as static executables built with `--disable-everything` + the list above, delivered as `libffmpeg.so` /
+    `libffprobe.so` in `jniLibs` (no zip, no `libffmpeg.zip.so`), and the `youtubedl-android:ffmpeg` dependency removed.
+    Expected: ~4 MB per program per ABI uncompressed, ~2 MB each in the APK, so about 31 MB saved on arm64.
+    Open: where to build it (Linux NDK in WSL is a ~650 MB download; the Windows NDK has no Linux toolchain; or a CI job).
+  - Step 2 and 3 done in code 2026-11-16 (not committed, not in CI yet). Design: nothing is run from `nativeLibraryDir` any
+    more, so `useLegacyPackaging` is gone (`extractNativeLibs=false`, checked on the A56: `lib/arm64` is empty on disk).
+    `androidApp/src/main/cpp/fjexec.c` (`libfjexec.so`): `fjexec_spawn` forks, redirects the three fds, `dlopen`s the
+    target library and calls its `main` (`Py_BytesMain` for Python), then `_exit`. Kotlin: `NativeExec` / `NativeProcess`
+    (a `Process`), used by `RuntimeManager.launch` for python / ffmpeg / ffprobe / qjs; `PackageBase` unpacks the Python zip
+    straight from the APK entry and creates placeholder files in `no_backup/ytdlnis/bin` so yt-dlp finds a path.
+    `assets/fj_python/sitecustomize.py` makes `subprocess.Popen` start ffmpeg / ffprobe / qjs through `fjexec_spawn`
+    (yt-dlp reports `ffmpeg 7.1.1`, `ffprobe 7.1.1` and runs the QuickJS challenge solver). Python's libs that have no
+    `DT_SONAME` (`libandroid-support`, `libandroid-posix-semaphore`, `libsqlite3`) are lifted out of the zip into jniLibs
+    by `slimPython`, because bionic only matches NEEDED names against a soname or the APK lib dir
+    (`android_update_LD_LIBRARY_PATH` is not available to apps). ffmpeg / ffprobe are our own static builds
+    (`scripts/android-ffmpeg/`, NDK on Windows + MSYS2, lame + opus, `--disable-everything`, ~4.5 MB each, `main` exported),
+    kept in `androidApp/ffmpeg-libs/<abi>/` (gitignored, 4 ABIs); the `youtubedl-android:ffmpeg` and `ytdlnis_packages.bash`
+    dependencies are removed (bash was unused).
+  - Sizes (release, debug-signed): arm64-v8a 53.2 MB, armeabi-v7a 41.5, x86 47.4, x86_64 48.2. With
+    `useLegacyPackaging = true` and our ffmpeg the arm64 file was 39.5 MB (libs compressed in the APK but extracted on the
+    device); without it the libs are stored raw (page aligned), so the file is bigger but nothing is copied at install.
+  - Tested on the A56 (arm64 release): 9gag (curl_cffi), YouTube inspect + download with the local merge, SoundCloud HLS,
+    Compress audio (1.6 MB, aac encoder of our ffmpeg). Emulator x86_64 (debug): YouTube inspect 15 formats with the
+    quickjs solver, download + merge. Direct 8 MB.bin earlier. Not tested: cookies, audio Convert to mp3 / opus / ogg
+    through the app (the encoders were run by hand on the A56), subtitles embed, clip cut, Python 3.14 free-threading
+    (not used), 16 KB page-size devices (our libs link with 16 KB alignment; the Python zip content does not).
+  - More A56 tests (arm64 release, 2026-11-16): Convert to mp3 231 KB, opus 349 KB, ogg 178 KB, flac 1.8 MB, wav 3.2 MB
+    from the Add dialog; subtitles embedded (`mov_text`, ffprobe shows it); 19 ffmpeg command checks by hand (mka, mov_text,
+    srt to vtt, jpg / png / scale, cover art into mp3 and m4a, concat, ffprobe). The first ffmpeg build lacked the `movtext`
+    encoder and the `matroska_audio` muxer (found by these checks, fixed in `ffmpeg-config.sh`). Cookies (A56, 2026-11-16): a
+    test `cookies.txt` in the app's external files folder was read by yt-dlp in the forked Python (YouTube inspect listed the
+    qualities) and written back with the new YouTube cookies and the two test ones kept; the test file was removed after.
+  - CI: `build.yml` Android job caches `androidApp/ffmpeg-libs` (key = hash of `scripts/android-ffmpeg/`) and builds it with
+    `build-linux.sh` (Linux and macOS runners) or `build-all.sh` (Windows runner, needs MSYS2 and the NDK path in the
+    script). `build-linux.sh arm64-v8a` was run in WSL with the Linux NDK r28c and its binaries passed the 19 checks;
+    `RUNNER_ANDROID` is `win-host` (the owner's PC), so the real CI path is `build-all.sh` (MSYS2), the one that built the local
+    APKs. `build-linux.sh` is the fallback for `ubuntu-latest`: it was also run in WSL for all four ABIs and the libs match the
+    Windows ones (same encoder / muxer / demuxer lists, sizes within 0.1%; the x86_64 one was run on the emulator). macOS is not
+    used by the Android job. The workflow was not run on GitHub yet.
+  - Open: CI has to build the ffmpeg libs (they are not in git, `preBuild` fails without them); CMake builds `libfjexec`
+    in the Android job (NDK 28.2.13676358).
+- [x] Step 3, Python inside the app, like iOS (high risk, needs its own release or a long beta): `libpython`
   loaded in the process, the stdlib in a zip, extension modules (curl_cffi, Cryptodome) as real `.so` files in
   `jniLibs`. Today `RuntimeManager` runs yt-dlp as a process; read it before planning (not verified here).
   After steps 2 and 3 nothing is run from `nativeLibraryDir`, so `useLegacyPackaging` can be `false`
   (check 16 KB page alignment of every `.so` at the same time).
-- [ ] Step 0, first (owner's decision 2026-11-16): remove the 282 MB universal APK from the release (24 downloads
+- [x] Step 0, first (owner's decision 2026-11-16): remove the 282 MB universal APK from the release (24 downloads
   of 1.4.1 against 148 for arm64). Files that mention it: `build.yml` (the upload filter, line 247 to 250),
   `androidApp/build.gradle.kts` (`isUniversalApk = true`), `README.md` and `docs/index.html` ("take universal if
   unsure": say arm64-v8a instead and keep the list of the other ABIs), and `PlatformUpdater.android.kt`, which
   falls back to the universal file when no ABI file matches (the in-app update of an app that was installed from
   the universal APK keeps working through its own ABI file; check an x86 emulator install). The `.aab` is separate.
-- [ ] Expected result, not measured: about 8 MB after step 1, about 33 MB after step 2, about 45 MB total APK
-  after step 3. Measure the real APK after each step and write the numbers here.
+- Step 0 and step 1 done in code 2026-11-16 (not committed, A56 tests not run yet):
+  - Step 0: `isUniversalApk = false`, the upload filter has no `*universal*`, README and `docs/index.html` say
+    arm64-v8a, `PlatformUpdater.android.kt` has no universal fallback (an app installed from an old universal
+    APK still gets its own ABI file through `Build.SUPPORTED_ABIS`; a 32-bit x86 device matches the `x86_64`
+    file name first, no x86 APK is uploaded anyway). The `ndk { abiFilters }` block is now only for the bundle
+    run: with `isUniversalApk = false` AGP refuses abiFilters together with ABI splits.
+  - Step 1: task `slimPython` in `androidApp/build.gradle.kts` (commons-compress in `buildscript`) opens the
+    `libpython.zip.so` of each ABI inside the `ytdlnis_packages.python` aar, copies every entry raw (symlinks
+    and modes kept) except tkinter / turtle / idlelib / idle_test / pydoc_data / ensurepip / pip, the test C
+    modules, tcl / tk / itcl / tdbc / thread, the X11, xcb, Xft, fontconfig, freetype, png libs, `usr/lib/jvm`,
+    pkgconfig, cmake, static libs, `usr/etc/fonts` and the unused second sqlite copy
+    (`libsqlite3.53.3.so`; `_sqlite3` links `libsqlite3.so` -> `libsqlite3.so.3.53.3`, kept). The result goes to
+    jniLibs as `libpythonslim.zip.so` (`Python.kt` `bundledZipName`) and the original is excluded
+    (`packaging.jniLibs.excludes`). `libc++_shared.so` is kept twice: curl_cffi needs the hash-named copy and the
+    plain one is on `LD_LIBRARY_PATH` for ffmpeg / others.
+  - Checked with an ELF reader on all four output zips: every kept library's `DT_NEEDED` is still in the zip
+    (or is a system library), no dangling symlink, `testzip` clean. Python zip: arm64 33.2 -> 22.4 MB, v7a 23.4 ->
+    13.3, x86 25.2 -> 14.4, x86_64 25.5 -> 14.7 (about 10.5 MB saved, more than the 8 MB expected).
+  - `assembleRelease` (debug-signed locally): arm64-v8a 69.0 MB, armeabi-v7a 54.7, x86 60.4, x86_64 64.5, no
+    universal file. Before (computed as after + the zip difference, no second build): about 79.4 / 64.3 / 70.7 /
+    74.8 MB. The 1.4.1 arm64 file was 82.9 MB.
+  - x86_64 emulator (debug build, airplane mode, no network): the package unpacks and `libpython.so` runs; imports
+    of sqlite3 (3.53.3), ssl, hashlib, ctypes, zlib, bz2, lzma, brotli, websockets, requests, urllib3, certifi,
+    mutagen, Cryptodome, readline, curses all work. curl_cffi is not in the armeabi-v7a / x86 / x86_64 packages at
+    all (also in the original zips), so it can only be tested on the A56.
+  - A56 (arm64 release APK, debug-signed, installed after `adb uninstall` with the owner's OK, app data wiped), all
+    completed: 9gag `ae5Ag7B` (inspect + download 1.9 MB, so curl_cffi works), YouTube `jNQXAC9IVRw` (15 formats,
+    "Merging audio and video" step ran, 464.8 KB), SoundCloud `forss/flickermood` (m4a 2.4 MB), direct 8MB.bin
+    (1.3 MB/s). Cookies were tested later (see step 2). Not run: the exact log line "no impersonate target" (release build has no log; the
+    9gag success is the proof here, a verbose build would show the line).
+- [x] Result, measured (release APK, debug-signed, 2026-11-16): arm64-v8a 53.2 MB (1.4.1: 82.9 MB), armeabi-v7a 41.5,
+  x86_64 48.2, x86 47.5. With `useLegacyPackaging` false the libs are stored raw, so the file is larger than the legacy 39.5 MB
+  but nothing is extracted on the device (owner's choice). Still to do before the release: the first CI run, the signed APK
+  from CI, the security scan (item 15), a 16 KB page-size device.
 
 ## 15. Security scan (owner's order 2026-11-16, with the APK work and before the release)
 

@@ -8,6 +8,7 @@ import android.widget.Toast
 import com.michelle.raouf.fetch_jet.core.edition.AppFeatures
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.BridgePairing
+import com.michelle.raouf.fetch_jet.feature.automation.AutomationApi
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
@@ -515,6 +516,22 @@ object ExtensionBridgeServer {
                 )
                 deliver {}
                 reply(out, r, 200, "OK")
+            }
+
+            "/api/status", "/api/pause", "/api/start", "/api/remove", "/api/delete", "/api/automation" -> {
+                val values = HashMap<String, String>()
+                for (key in listOf("id", "ids", "on")) queryParam(r.query, key)?.let { values[key] = it }
+                val answer = runBlocking {
+                    AutomationApi.handle(
+                        r.method,
+                        r.path,
+                        r.header("Origin") != null,
+                        !r.header("X-FetchJet").isNullOrBlank(),
+                        r.header(BridgePairing.TOKEN_HEADER),
+                        values,
+                    )
+                }
+                reply(out, r, answer.code, answer.body, "application/json; charset=UTF-8")
             }
 
             else -> reply(out, r, 404, "not found")
