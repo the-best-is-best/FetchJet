@@ -13,9 +13,12 @@ actual suspend fun runLocalFfmpeg(args: List<String>): Boolean = withContext(Dis
         RuntimeManager.init(ctx)
         val exe = RuntimeManager.ffmpegLocation.executable
         if (!exe.exists()) return@withContext false
-        val pb = ProcessBuilder(listOf(exe.absolutePath) + args).redirectErrorStream(true)
-        RuntimeManager.getEnvironment().forEach { (k, v) -> if (v != null) pb.environment()[k] = v }
-        val p = pb.start()
+        val p = RuntimeManager.launch(
+            listOf(exe.absolutePath) + args,
+            RuntimeManager.getEnvironment(),
+            null,
+            true
+        )
         val out = StringBuilder()
         val t = Thread {
             try {

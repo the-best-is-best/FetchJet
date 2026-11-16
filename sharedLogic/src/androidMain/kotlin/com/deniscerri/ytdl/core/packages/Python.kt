@@ -9,7 +9,7 @@ package com.deniscerri.ytdl.core.packages
 object Python : PackageBase() {
     override val executableName: String get() = "python"
     override val packageFolderName: String get() = "python"
-    override val bundledZipName: String get() = "libpython.zip.so"
+    override val bundledZipName: String get() = "libpythonslim.zip.so"
     override val bundledVersion: String get() = "v3.14.6"
     override val canUninstall: Boolean get() = false
     override val githubRepo: String get() = "deniscerri/ytdlnis-packages"

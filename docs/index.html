@@ -96,7 +96,7 @@
     <p class="hint" id="hint"></p>
 </main>
 <footer>Files are published on <a href="#" id="repo-link">GitHub Releases</a>. Android: install the
-    APK for your CPU, or the <em>universal</em> one if unsure. iPhone and iPad: one IPA for both, for sideloading
+    APK for your CPU (<em>arm64-v8a</em> if unsure). iPhone and iPad: one IPA for both, for sideloading
     (AltStore / Sideloadly). Firefox: install from Firefox Add-ons.
 </footer>
 
@@ -123,7 +123,7 @@
         { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },
           hint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet)." },
         { key: "android",   label: "Android",   match: function (n) { return /\.apk$/i.test(n); },
-          hint: "arm64-v8a fits almost every phone made after 2017. Not sure? Take the universal APK." },
+          hint: "arm64-v8a fits almost every phone made after 2017. Older 32-bit phones: armeabi-v7a. Emulators and Chromebooks: x86_64." },
         { key: "ios",       label: "iPhone · iPad",       match: function (n) { return /\.ipa$/i.test(n); },
           hint: "One IPA for iPhone and iPad. Unsigned: sideload it with AltStore or Sideloadly." },
         { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n); },

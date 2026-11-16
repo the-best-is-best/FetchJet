@@ -220,6 +220,24 @@ jobs:
           cp androidApp/src/main/assets/ytdlp androidApp/src/main/res/raw/ytdlp
           ls -la androidApp/src/main/assets/ytdlp
 
+      - name: Cache ffmpeg for Android
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: androidApp/ffmpeg-libs
+          key: android-ffmpeg-${{ runner.os }}-${{ hashFiles('scripts/android-ffmpeg/**') }}
+
+      - name: Build ffmpeg for Android
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            /c/msys64/usr/bin/bash.exe scripts/android-ffmpeg/build-all.sh
+          else
+            bash scripts/android-ffmpeg/build-linux.sh
+          fi
+          ls -l androidApp/ffmpeg-libs/*
+
       - name: Build Android Release APK and Bundle
         env:
           # The alias is saved as an environment *variable*, the rest as secrets.
@@ -244,10 +262,10 @@ jobs:
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
           # Only the CPUs real devices have: arm64 (nearly every phone), armeabi-v7a (old phones),
-          # x86_64 (emulators, Chromebooks) and the universal APK.
+          # x86_64 (emulators, Chromebooks). No universal APK (it was 282 MB).
           FILES=()
           for f in androidApp/build/outputs/apk/release/*.apk androidApp/build/outputs/apk/release/*/*.apk; do
-            case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*|*universal*) FILES+=("$f");; esac
+            case "$f" in *arm64-v8a*|*armeabi-v7a*|*x86_64*) FILES+=("$f");; esac
           done
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Android files were produced"; exit 1; }
           # Every file gets <file>.sig: the in-app updater installs only signed files.

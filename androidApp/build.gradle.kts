@@ -1,8 +1,143 @@
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
+import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.util.zip.ZipFile as JavaZipFile
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.apache.commons:commons-compress:1.28.0")
+    }
+}
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+}
+
+abstract class SlimPythonTask : DefaultTask() {
+    @get:InputFile
+    abstract val aar: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    private val removedPatterns = listOf(
+        "usr/lib/python3\\.14/(tkinter|turtledemo|idlelib|idle_test|pydoc_data|ensurepip|test|lib2to3)(/.*)?",
+        "usr/lib/python3\\.14/turtle\\.py",
+        "usr/lib/python3\\.14/site-packages/pip(/.*)?",
+        "usr/lib/python3\\.14/site-packages/pip-[^/]*(/.*)?",
+        "usr/lib/python3\\.14/lib-dynload/(_tkinter|_testcapi|_testlimitedcapi|_testinternalcapi|_testclinic|_testclinic_limited|_testbuffer|_testmultiphase|_testimportmultiple|_testsinglephase|_xxtestfuzz|_ctypes_test|xxlimited|xxlimited_35|xxsubtype)\\..*",
+        "usr/lib/(libtcl|libtk|libX|libxcb|libfontconfig|libfreetype|libpng)[^/]*",
+        "usr/lib/(tcl8|tcl8\\.6|tk8\\.6|itcl[^/]*|thread[^/]*|tdbc[^/]*|sqlite3|jvm|pkgconfig|cmake)(/.*)?",
+        "usr/lib/(tclConfig|tkConfig|tclooConfig)\\.sh",
+        "usr/lib/pkgIndex\\.tcl",
+        "usr/lib/libsqlite3\\.53\\.3\\.so",
+        "usr/lib/libsqlite3(\\.so.*)?",
+        "usr/lib/libandroid-support\\.so",
+        "usr/lib/libandroid-posix-semaphore\\.so",
+        "usr/lib/[^/]*\\.(a|la)",
+        "usr/etc/fonts(/.*)?"
+    ).map { Regex(it) }
+
+    @TaskAction
+    fun run() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        val tmp = temporaryDir
+        JavaZipFile(aar.get().asFile).use { aarZip ->
+            aarZip.entries().asSequence()
+                .filter { it.name.startsWith("jni/") && it.name.endsWith("/libpython.zip.so") }
+                .forEach { e ->
+                    val abi = e.name.removePrefix("jni/").substringBefore('/')
+                    val src = File(tmp, "$abi-libpython.zip.so")
+                    aarZip.getInputStream(e).use { i -> src.outputStream().use { o -> i.copyTo(o) } }
+                    val dest = File(out, "$abi/libpythonslim.zip.so")
+                    dest.parentFile.mkdirs()
+                    slim(src, dest)
+                    src.delete()
+                }
+        }
+    }
+
+    private val liftedLibs = mapOf(
+        "usr/lib/libandroid-support.so" to "libandroid-support.so",
+        "usr/lib/libandroid-posix-semaphore.so" to "libandroid-posix-semaphore.so",
+        "usr/lib/libsqlite3.so.3.53.3" to "libsqlite3.so"
+    )
+
+    private fun slim(src: File, dest: File) {
+        ZipFile.builder().setFile(src).get().use { zf ->
+            val all = zf.entries.toList()
+            liftedLibs.forEach { (entryName, fileName) ->
+                val entry = all.first { it.name == entryName }
+                zf.getInputStream(entry).use { input ->
+                    File(dest.parentFile, fileName).outputStream().use { out -> input.copyTo(out) }
+                }
+            }
+            val removed = all.filter { e -> removedPatterns.any { it.matches(e.name.trimEnd('/')) } }
+                .map { it.name.trimEnd('/') }.toMutableSet()
+            val survivors = all.map { it.name.trimEnd('/') }.toMutableSet().also { it.removeAll(removed) }
+            var changed = true
+            while (changed) {
+                changed = false
+                for (e in all) {
+                    val n = e.name.trimEnd('/')
+                    if (!e.isUnixSymlink || n !in survivors) continue
+                    val target = zf.getInputStream(e).use { String(it.readBytes(), StandardCharsets.UTF_8) }
+                    val resolved = File(File(n).parentFile, target).toPath().normalize()
+                        .toString().replace('\\', '/')
+                    val keep = resolved in survivors || survivors.any { it.startsWith("$resolved/") }
+                    if (!keep) {
+                        survivors.remove(n)
+                        removed.add(n)
+                        changed = true
+                    }
+                }
+            }
+            ZipArchiveOutputStream(dest).use { zo ->
+                for (e: ZipArchiveEntry in all) {
+                    if (e.name.trimEnd('/') in removed) continue
+                    zo.addRawArchiveEntry(e, zf.getRawInputStream(e))
+                }
+            }
+        }
+    }
+}
+
+val ffmpegLibFiles: List<File> = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").flatMap { abi ->
+    listOf("libffmpeg.so", "libffprobe.so").map { File(projectDir, "ffmpeg-libs/$abi/$it") }
+}
+tasks.matching { it.name == "preBuild" }.configureEach {
+    val needed = ffmpegLibFiles
+    doFirst {
+        val missing = needed.filter { !it.exists() }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Missing ffmpeg binaries: ${missing.joinToString { it.path }}. " +
+                        "Build them with scripts/android-ffmpeg/build-all.sh"
+            )
+        }
+    }
+}
+
+val slimPython = tasks.register<SlimPythonTask>("slimPython") {
+    val pythonAar = configurations.detachedConfiguration(
+        dependencies.create("io.github.deniscerri:ytdlnis_packages.python:${libs.versions.ytdlnis.python.get()}@aar")
+    )
+    aar.set(layout.file(provider { pythonAar.singleFile }))
+    outputDir.set(layout.buildDirectory.dir("generated/slimPython"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(slimPython, SlimPythonTask::outputDir)
+    }
 }
 
 kotlin {
@@ -44,6 +179,13 @@ android {
             ?.toString() ?: "false")
             .trim().equals("true", ignoreCase = true)
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    ndkVersion = "28.2.13676358"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     defaultConfig {
         buildConfigField("boolean", "VERBOSE_LOGS", fetchJetVerboseLogs.toString())
@@ -52,8 +194,10 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = fetchJetVersionCode
         versionName = fetchJetVersion
-        ndk {
-            abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
+        if (!buildingApksNotBundle) {
+            ndk {
+                abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
+            }
         }
     }
     splits {
@@ -66,7 +210,12 @@ android {
             // dead ABIs (no phone ships them) have to be excluded by name.
             include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             exclude("mips", "mips64", "riscv64", "armeabi")
-            isUniversalApk = true
+            isUniversalApk = false
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            jniLibs.directories.add("ffmpeg-libs")
         }
     }
     packaging {
@@ -74,8 +223,9 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         jniLibs {
-            useLegacyPackaging = true
             keepDebugSymbols += "**/*.zip.so"
+            excludes += "**/libpython.zip.so"
+            excludes += "**/libpython.so"
         }
     }
     // Release signing: keystore path and passwords come ONLY from the environment
