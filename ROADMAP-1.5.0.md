@@ -173,6 +173,20 @@ app answers "unsupported". A story also needs a login and lasts 24 hours.
 - [ ] If it does not work: decide whether to read stories in the app (Facebook's own GraphQL + the user's
   cookies; big and it breaks often) or to say clearly in the Add dialog that stories are not supported.
 
+## 13. WhatsApp status and other `blob:` videos (owner's question, 2026-11-14)
+
+A WhatsApp status has no link. On WhatsApp Web (`web.whatsapp.com`) the browser decrypts it and plays it as a
+`blob:` URL inside the page. The extension skips `blob:` on purpose (`content.js` line 90, `background.js` line
+595), because the app is outside the browser and cannot open a blob. On Android the app could read WhatsApp's
+`.Statuses` folder instead (a file read, not a download; needs a file permission; the path changes between
+WhatsApp versions; nothing equal on iOS). Neither was tried.
+
+- [ ] Try on WhatsApp Web: can the content script `fetch(blobUrl)` and hand the bytes to the app (or save them
+  from the browser)? Say what it does before building anything.
+- [ ] If it works, it applies to any site that plays video from a blob, not only WhatsApp; decide how the app
+  receives bytes (the bridge takes links, not files).
+- [ ] Android `.Statuses` reader: outside the plan unless the owner asks.
+
 ## Looked at and not planned
 
 Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqua), debrid accounts,
