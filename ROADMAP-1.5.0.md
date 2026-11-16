@@ -61,7 +61,17 @@ mouse takes the owner's PC and clicked the wrong window on 2026-11-14).
   hosts; on Windows it attaches to the parent console). Tested: `tests/corehost/test_automation.py` 40 checks (Windows),
   the real `FetchJet.exe status` / `pause` with no app running (prints the error, exit 1, no window), the A56 over
   `adb forward` (pair, off 403, on, status, pause, start, delete, 409 on a finished one, off).
-  Not run: macOS / Linux hosts (`print_out` is a plain `fwrite`), the old JVM desktop app (no `/api`), iOS (below).
+  Mac session 2026-11-16: iOS `IosAutomationServer.kt` built (Gradle + Xcode, no change needed); iPhone 17 simulator with
+  `SIMCTL_CHILD_FETCHJET_AUTOMATION=1` (token in `settings/automation-token.txt`), curl: no token 401, wrong token 401, no
+  `X-FetchJet` 403, `Origin` 403, status, add through `fetchjet://add?json=` + Start Download (30 MB, throttled), pause 200,
+  pause again 409, start 200, unknown id 404, no id 400, unknown action 404, pause on a finished one 409, delete 200 and the
+  file gone, automation off 403, on again 200, relaunch without the env var still listens (saved flag). macOS native:
+  core + host + `make-dmg.sh` built (`os::print_out` compiles), `test_automation.py` 40 checks 0 failed, the staged
+  `FetchJet.app` on a throw-away `--home`: not running prints `{"error":"FetchJet is not running"}` exit 1, off by default
+  (exit 1), `automation on`, `status`, `/d` download, `pause`, pause again (exit 1), `start`, `status <id>`, `delete` (file
+  gone), `automation off`; no login item left. Note: `xcodebuild` with `generic/platform=iOS Simulator` fails on a fresh
+  clone ("no XCFramework found", FJTorrent is arm64 only); use the simulator id with `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`.
+  Not run: Linux host, the old JVM desktop app (no `/api`), a real iPhone.
 - [x] (status, pause, start, remove, delete over the API; memory is read from outside with the OS) Enough for a test on the real app with no mouse: add a download (bridge `/add`), read its state, speed
   and size as JSON, pause / start it, and read the app's memory from outside. Measure idle and during a
   download on the real native app this way, the same way every time.
