@@ -162,6 +162,8 @@ fjAddLanguage("zh", {
   "optHoldDisabled": "已停用",
   "optMinSize": "忽略小于此大小的浏览器下载 (KB)",
   "optMinSizeHint": "0 = 全部捕获。仅当服务器报告大小时才能得知文件大小。",
+  "optLimitTypes": "仅限下方列出的文件类型",
+  "optLimitTypesHint": "关闭：FetchJet 接管浏览器发起的所有下载。开启：仅接管下方列表中的类型。",
   "optFileTypes": "文件类型",
   "optExtensions": "要捕获的扩展名（以逗号或空格分隔）",
   "optResetDefaults": "恢复默认设置",

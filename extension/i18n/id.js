@@ -162,6 +162,8 @@ fjAddLanguage("id", {
   "optHoldDisabled": "Nonaktif",
   "optMinSize": "Abaikan unduhan browser yang lebih kecil dari (KB)",
   "optMinSizeHint": "0 = tangkap semuanya. Ukuran hanya diketahui jika server melaporkannya.",
+  "optLimitTypes": "Hanya jenis file yang tercantum di bawah",
+  "optLimitTypesHint": "Nonaktif: FetchJet mengambil setiap unduhan yang dimulai browser. Aktif: hanya jenis dalam daftar di bawah.",
   "optFileTypes": "Jenis file",
   "optExtensions": "Ekstensi yang ditangkap (pisahkan dengan koma atau spasi)",
   "optResetDefaults": "Kembalikan ke default",

@@ -35,10 +35,10 @@ async function appAwake() { return !ON_IOS && ON_ANDROID && await pingApp(1200);
 // ---------------------------------------------------------------------------
 
 const DEFAULT_EXTENSIONS = [
-  "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts",
-  "mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "wma",
-  "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "cab",
-  "pdf", "epub", "mobi", "djvu",
+  "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "mpg", "mpeg", "3gp", "ogv",
+  "mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "wma", "aiff", "mka",
+  "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "tbz2", "xz", "txz", "zst", "lz", "lzma", "cab",
+  "pdf", "epub", "mobi", "djvu", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "csv",
   "exe", "msi", "msix", "dmg", "pkg", "deb", "rpm", "appimage", "iso", "img", "bin",
   "apk", "xapk", "ipa", "jar",
   "torrent"
@@ -52,6 +52,7 @@ const DEFAULT_SETTINGS = {
   sendCookies: true,          // send the site's cookies with the link (needed for logins)
   minSizeKB: 0,               // ignore browser downloads smaller than this (0 = all)
   extensions: DEFAULT_EXTENSIONS,
+  limitToListed: false,
   excludedHosts: [],          // never capture on these hosts (suffix match)
   holdKey: "alt",             // hold this key while clicking to download with the browser
   notifications: true,
@@ -604,7 +605,7 @@ async function shouldTake(item) {
   const fileName = baseName(item.filename);
   // A browser download is already "a file": the extension list only filters when the user
   // narrowed it and the name has an extension we can judge.
-  if ((settings.extensions || []).length > 0 && fileName && extensionOf(fileName) &&
+  if (settings.limitToListed && (settings.extensions || []).length > 0 && fileName && extensionOf(fileName) &&
       !hasWantedExtension(targetUrl, fileName, settings)) return false;
   // App closed and auto-launch off: leave it to the browser (Ezoo behaviour).
   if (!settings.autoLaunch && !(await pingApp())) return false;

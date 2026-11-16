@@ -162,6 +162,8 @@ fjAddLanguage("de", {
   "optHoldDisabled": "Deaktiviert",
   "optMinSize": "Browser-Downloads ignorieren, die kleiner sind als (KB)",
   "optMinSizeHint": "0 = alles abfangen. Die Größe ist nur bekannt, wenn der Server sie meldet.",
+  "optLimitTypes": "Nur die unten aufgeführten Dateitypen",
+  "optLimitTypesHint": "Aus: FetchJet übernimmt jeden Download, den der Browser startet. An: nur die Typen aus der Liste unten.",
   "optFileTypes": "Dateitypen",
   "optExtensions": "Abzufangende Dateiendungen (durch Komma oder Leerzeichen getrennt)",
   "optResetDefaults": "Auf Standard zurücksetzen",

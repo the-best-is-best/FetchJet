@@ -162,6 +162,8 @@ fjAddLanguage("en", {
   "optHoldDisabled": "Disabled",
   "optMinSize": "Ignore browser downloads smaller than (KB)",
   "optMinSizeHint": "0 = capture everything. The size is only known when the server reports it.",
+  "optLimitTypes": "Only the file types listed below",
+  "optLimitTypesHint": "Off: FetchJet takes every download the browser starts. On: only the types in the list below.",
   "optFileTypes": "File types",
   "optExtensions": "Extensions to capture (comma or space separated)",
   "optResetDefaults": "Reset to defaults",

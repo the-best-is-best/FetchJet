@@ -162,6 +162,8 @@ fjAddLanguage("tr", {
   "optHoldDisabled": "Devre dışı",
   "optMinSize": "Şundan küçük tarayıcı indirmelerini yok say (KB)",
   "optMinSizeHint": "0 = her şeyi yakala. Boyut yalnızca sunucu bildirirse bilinir.",
+  "optLimitTypes": "Yalnızca aşağıda listelenen dosya türleri",
+  "optLimitTypesHint": "Kapalı: FetchJet tarayıcının başlattığı her indirmeyi alır. Açık: yalnızca aşağıdaki listedeki türler.",
   "optFileTypes": "Dosya türleri",
   "optExtensions": "Yakalanacak uzantılar (virgül veya boşlukla ayrılmış)",
   "optResetDefaults": "Varsayılanlara sıfırla",

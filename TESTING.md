@@ -200,6 +200,7 @@ Extension, without a browser (the click logic against stubs):
 
 ```
 node extension/test/content.sim.js            # 14 checks
+node extension/test/capture.sim.js            # 12 checks: which browser downloads the extension takes (BG_PATH=<file> runs another background.js, e.g. the old one)
 ```
 
 Extension in a real Chromium (a separate Chrome with a temporary profile, driven over the DevTools

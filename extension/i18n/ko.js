@@ -162,6 +162,8 @@ fjAddLanguage("ko", {
   "optHoldDisabled": "사용 안 함",
   "optMinSize": "다음보다 작은 브라우저 다운로드 무시(KB)",
   "optMinSizeHint": "0 = 모두 가로채기. 크기는 서버가 알려 줄 때만 알 수 있습니다.",
+  "optLimitTypes": "아래에 나열된 파일 형식만",
+  "optLimitTypesHint": "꺼짐: 브라우저가 시작하는 모든 다운로드를 FetchJet이 받습니다. 켜짐: 아래 목록의 형식만.",
   "optFileTypes": "파일 형식",
   "optExtensions": "가로챌 확장자(쉼표 또는 공백으로 구분)",
   "optResetDefaults": "기본값으로 재설정",

@@ -162,6 +162,8 @@ fjAddLanguage("ja", {
   "optHoldDisabled": "無効",
   "optMinSize": "これより小さいブラウザのダウンロードを無視 (KB)",
   "optMinSizeHint": "0 = すべて取得。サイズはサーバーが通知した場合にのみわかります。",
+  "optLimitTypes": "下に挙げたファイル形式のみ",
+  "optLimitTypesHint": "オフ：ブラウザが開始するすべてのダウンロードを FetchJet が引き受けます。オン：下のリストの形式のみ。",
   "optFileTypes": "ファイルの種類",
   "optExtensions": "取得する拡張子（カンマまたはスペース区切り）",
   "optResetDefaults": "デフォルトに戻す",

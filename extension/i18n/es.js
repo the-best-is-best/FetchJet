@@ -162,6 +162,8 @@ fjAddLanguage("es", {
   "optHoldDisabled": "Desactivado",
   "optMinSize": "Ignorar descargas del navegador menores de (KB)",
   "optMinSizeHint": "0 = capturar todo. El tamaño solo se conoce cuando el servidor lo indica.",
+  "optLimitTypes": "Solo los tipos de archivo de la lista",
+  "optLimitTypesHint": "Desactivado: FetchJet toma todas las descargas que inicia el navegador. Activado: solo los tipos de la lista de abajo.",
   "optFileTypes": "Tipos de archivo",
   "optExtensions": "Extensiones a capturar (separadas por comas o espacios)",
   "optResetDefaults": "Restablecer valores predeterminados",
