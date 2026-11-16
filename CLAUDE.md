@@ -52,12 +52,12 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.4.0"` and
-  `EXTENSION_VERSION = "3.3.0"` (1.3.0 and 1.3.1 released 2026-11-08 from `master`; 1.4.0 is
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.5.0"` and
+  `EXTENSION_VERSION = "3.5.0"` (1.3.0 and 1.3.1 released 2026-11-08 from `master`; 1.4.0 is
   being built on `release-v1.4.0`)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.4.0`,
-  `CURRENT_PROJECT_VERSION = 7`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.3.0` (also `manifest.safari.json`);
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.5.0`,
+  `CURRENT_PROJECT_VERSION = 8`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.5.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
@@ -874,6 +874,14 @@ Bridges:
 
 ## Release plan
 
+- **1.5.0, before release (branch `release-v1.5.0`):** the app sends one anonymous usage ping a day
+  (`core/telemetry/UsagePing.kt`: random install id, version, platform; country from Cloudflare) to the
+  Worker in `stats-worker/` (`https://fetchjet.the-best-is-best.workers.dev`; public dashboard `/dashboard` (no token,
+  countries under 5 users hidden, linked from the README), raw data `/stats?token=...`,
+  token only in Cloudflare and with the owner; off switch env `FETCHJET_NO_USAGE_PING=1`; a fresh `--home` counts
+  as a new user without it). README Privacy is updated. **Remind the owner before he releases:** update the
+  Microsoft Store privacy text (it may say no data is collected); AMO and Edge Add-ons need nothing (the extension
+  sends nothing to that server). Optional: a line on the `docs/` download page and in `release-notes/1.5.0/` (15 languages).
 - **1.4.1 (2026-11-13, branch `release-v1.4.1`, not released):** FTP / FTPS, file integrity (checksum,
   ZIP CRC, file changed on the server), torrent details, command line, keyboard, idle speed limit,
   extension 3.4.0 (version tied in `AppVersion.kt` + the 3 manifests), release notes in 15 languages

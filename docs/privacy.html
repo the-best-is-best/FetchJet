@@ -16,12 +16,14 @@
 <body>
 <main>
     <h1>Privacy policy</h1>
-    <p class="date">FetchJet app and FetchJet Download Manager browser extension · last updated 30
-        October 2026</p>
+    <p class="date">FetchJet app and FetchJet Download Manager browser extension · last updated 16
+        November 2026</p>
 
     <h2>Summary</h2>
-    <p>FetchJet does not collect personal data. There are no accounts, no analytics and no tracking.
-        Nothing about you or your browsing is sent to the developer or to any third party.</p>
+    <p>FetchJet does not collect personal data. There are no accounts and no tracking. Nothing about
+        you or your browsing is sent to the developer or to any third party. The only thing the app
+        sends is one anonymous usage count a day, described below. The browser extension sends
+        nothing to the developer.</p>
 
     <h2>The browser extension</h2>
     <p>When you choose to download a link, video or page, the extension sends that link, the referer
@@ -36,6 +38,15 @@
     <p>The app connects only to the sites you download from, and to GitHub to check for a new
         version (this request contains the app version, nothing else). Downloads, settings and
         history stay on your device.</p>
+    <p><strong>Anonymous usage count.</strong> Once a day the app sends one small message to a
+        server run by the developer (Cloudflare Workers) so the developer can see how many people use
+        FetchJet. The message contains a random ID generated on your device, the app version and the
+        platform (Windows, macOS, Linux, Android or iOS). The country is worked out by Cloudflare from
+        the connection. The developer does not store your IP address, name, email, links, file names or
+        anything you download. The totals are public on the
+        <a href="https://fetchjet.the-best-is-best.workers.dev/dashboard">statistics page</a>.
+        You can switch this off by setting the environment variable <code>FETCHJET_NO_USAGE_PING=1</code>
+        before starting the app.</p>
 
     <h2>Changes and contact</h2>
     <p>If this policy changes, the new version will be published on this page. Questions: <a
