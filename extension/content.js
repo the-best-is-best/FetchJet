@@ -312,6 +312,26 @@
   }
   const isFileAnchor = (v) => v === fileHero && !/^(VIDEO|IFRAME)$/.test(v.tagName);
 
+  let zoomEl = null;
+  function zoomAudio() {
+    try {
+      if (!/(^|\.)zoom\.us$/i.test(location.hostname) || !/^\/rec\/(play|share)\//i.test(location.pathname)) return null;
+      if (document.querySelector("video")) return null;
+      const a = document.querySelector("audio");
+      return a && /^https?:/i.test(a.currentSrc || a.src || "") ? a : null;
+    } catch (_) { return null; }
+  }
+  function zoomHero() {
+    const a = zoomAudio();
+    if (!a) return (zoomEl = null);
+    let e = a.parentElement;
+    for (let i = 0; e && i < 8; i++, e = e.parentElement) {
+      const r = e.getBoundingClientRect();
+      if (r.width >= 200 && r.height >= 100) return (zoomEl = e);
+    }
+    return (zoomEl = null);
+  }
+
   function fmtSize(n) {
     if (!n) return "";
     const u = ["B", "KB", "MB", "GB"]; let i = 0;
@@ -374,7 +394,7 @@
     const list = [...document.querySelectorAll("video")];
     if (deepRound++ % 4 === 0) { const found = []; try { collectShadow(document, found, 0); } catch (_) {} shadowVideos = found; }
     for (const v of shadowVideos) if (v.isConnected && !list.includes(v)) list.push(v);
-    for (const hero of [audioHero(), driveHero()]) if (hero && !list.includes(hero)) list.push(hero);
+    for (const hero of [audioHero(), driveHero(), zoomHero()]) if (hero && !list.includes(hero)) list.push(hero);
     return list;
   }
   // The video the user is watching: a playing one first, else the biggest on screen.
@@ -429,7 +449,7 @@
     if (!settings.enabled) return;
     const v = biggestVideo();
     if (!v) return;
-    if (isFileAnchor(v) || (v.paused && !(v.duration > 3) && !v.currentSrc)) return;
+    if (isFileAnchor(v) || v === zoomEl || (v.paused && !(v.duration > 3) && !v.currentSrc)) return;
     const page = v.tagName !== "VIDEO" ? audioPageUrl() : TOP ? linkFor(v) : (isVideoPage(location.href) ? location.href : "");
     const key = (TOP ? "" : "frame:") + page;
     if (key === lastPage) return;
@@ -577,8 +597,9 @@
     b.loading = true; b.open = true;
     renderOne(b, byKind(b.video, "looking"));
     const anchor = b.video.tagName !== "VIDEO";
-    const page = anchor ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
-    const msg = { action: "resolveVideo", page, src: anchor ? "" : directSrc(b.video), frame: !TOP };
+    const zoom = anchor && b.video === zoomEl ? zoomAudio() : null;
+    const page = zoom ? "" : anchor ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
+    const msg = { action: "resolveVideo", page, src: zoom ? (zoom.currentSrc || zoom.src) : anchor ? "" : directSrc(b.video), frame: !TOP };
     api.runtime.sendMessage(msg).then((res) => {
       b.loading = false;
       if (!res) return notRunning(b, () => lookUp(b));
@@ -939,6 +960,13 @@
     }
     if (request && request.action === "collectLinks") {
       sendResponse({ links: collectLinks(!!request.selectionOnly) });
+      return false;
+    }
+    if (request && request.action === "pageCookie") {
+      if (!TOP) return false;
+      let cookie = "";
+      try { cookie = document.cookie || ""; } catch (_) {}
+      sendResponse({ cookie, page: window.location.href });
       return false;
     }
     if (request && request.action === "pageInfo") {

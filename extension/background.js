@@ -365,16 +365,31 @@ async function cookieStoreOf(from) {
   } catch (_) { return null; }
 }
 
+const siteOf = (host) => String(host || "").toLowerCase().split(".").slice(-2).join(".");
+
+async function pageCookieFallback(url, from) {
+  if (!ON_IOS) return "";
+  try {
+    const one = Array.isArray(from) ? from[0] : from;
+    const tabId = typeof one === "number" ? one : one && one.id;
+    if (tabId == null) return "";
+    const res = await api.tabs.sendMessage(tabId, { action: "pageCookie" }, { frameId: 0 });
+    if (!res || !res.cookie || !res.page) return "";
+    return siteOf(new URL(res.page).hostname) === siteOf(new URL(url).hostname) ? res.cookie : "";
+  } catch (_) { return ""; }
+}
+
 async function cookieHeaderFor(url, from = null) {
   const settings = await getSettings();
-  if (!settings.sendCookies || !api.cookies) return "";
+  if (!settings.sendCookies) return "";
+  if (!api.cookies) return pageCookieFallback(url, from);
   try {
     const storeId = await cookieStoreOf(from);
     if (storeId === null) return "";
     const cookies = await api.cookies.getAll(storeId ? { url, storeId } : { url });
-    if (!cookies || cookies.length === 0) return "";
+    if (!cookies || cookies.length === 0) return pageCookieFallback(url, from);
     return cookies.map(c => `${c.name}=${c.value}`).join("; ");
-  } catch (_) { return ""; }
+  } catch (_) { return pageCookieFallback(url, from); }
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
@@ -482,8 +497,23 @@ async function launchApp(firstUrl) {
  * iOS: hands one request (or a list) to the app through fetchjet://add. Safari asks "Open in
  * FetchJet?" and the app opens with the link(s), so nothing waits for an answer here.
  */
-async function openAppWith(payload, tabId = null) {
-  const url = IOS_ADD + encodeURIComponent(JSON.stringify(payload));
+const IOS_SESSION_SITES = /(^|\.)zoom\.us$/i;
+
+function iosSessionPage(request) {
+  try {
+    const target = new URL(request.url);
+    if (!IOS_SESSION_SITES.test(target.hostname)) return "";
+    if (/^\/rec\//i.test(target.pathname)) return request.url;
+    const page = new URL(request.referer || "");
+    return /^https?:$/.test(page.protocol) && IOS_SESSION_SITES.test(page.hostname) ? page.href : "";
+  } catch (_) { return ""; }
+}
+
+function openAppWith(payload, tabId = null) {
+  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(payload)), tabId);
+}
+
+async function openAppAt(url, tabId = null) {
   try {
     let id = tabId;
     if (id == null) {
@@ -523,6 +553,8 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
   const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist, from });
   if (ON_IOS) {
+    const page = iosSessionPage(request);
+    if (page) return (await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page))) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
 
@@ -1347,7 +1379,9 @@ async function downloadItem(item, tab) {
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.
     if (ON_IOS) {
-      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl, from: tab }), tab && tab.id);
+      const request = await buildRequest({ url: item.url, referer: pageUrl, from: tab });
+      const page = iosSessionPage(request);
+      const ok = page ? await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) : await openAppWith(request, tab && tab.id);
       return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     }
     try {

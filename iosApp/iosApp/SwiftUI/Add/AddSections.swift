@@ -136,10 +136,10 @@ struct AddFileNameSection: View {
                     placeholder: (s.needsFileName && !inspecting) ? store.strings.fileNameNeeded : "",
                     text: binding,
                     enabled: !inspecting,
-                    hasError: s.needsFileName && !inspecting,
                     trailing: (!s.fileNameOverride.isEmpty && s.fileNameOverride != s.suggestedFileName)
                         ? AnyView(AddFieldIcon(symbol: "↺") { store.send(DashboardUiEventOnFileNameChanged(name: "")) })
-                        : nil
+                        : nil,
+                    hasError: s.needsFileName && !inspecting
                 )
             }
         }
