@@ -1633,6 +1633,7 @@ async function resolveVideo(msg, tab) {
     // a player in a frame: what was found for the whole page is what it plays
     const found = (await itemsForTab(tab.id)).items.filter(i => !i.disabled);
     if (found.length) return { items: found };
+    if (msg.poll) return { pending: true };
   }
   const page = msg.page || (msg.src && !msg.frame ? "" : (tab && tab.url));
   if (page && /^https?:/i.test(page)) {

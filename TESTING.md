@@ -201,6 +201,8 @@ Extension, without a browser (the click logic against stubs):
 ```
 node extension/test/content.sim.js            # 14 checks
 node extension/test/capture.sim.js            # 12 checks: which browser downloads the extension takes (BG_PATH=<file> runs another background.js, e.g. the old one)
+node extension/test/chrome-check.js           # 16 checks in a separate headless Chrome (temporary profile, no window): load the built extension, page buttons, a Zoom-like audio page (zoom.us mapped to 127.0.0.1 with --host-resolver-rules), popup banner, options
+node extension/test/firefox-check.js          # 12 checks in a headless Firefox through geckodriver (needs extensionuild.ps1 first): same pages
 ```
 
 Extension in a real Chromium (a separate Chrome with a temporary profile, driven over the DevTools

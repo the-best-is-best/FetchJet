@@ -600,16 +600,22 @@
   const itemsOf = (b) => b.own ? b.own : (isMain(b.video) ? items : []);
 
   // Another video on the page (or nothing found yet): look it up now.
-  function lookUp(b) {
+  function lookUp(b, tries = 0) {
     b.loading = true; b.open = true;
     renderOne(b, byKind(b.video, "looking"));
     const anchor = b.video.tagName !== "VIDEO";
     const zoom = anchor && b.video === zoomEl ? zoomAudio() : null;
     const page = zoom ? "" : anchor ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
     const msg = { action: "resolveVideo", page, src: zoom ? (zoom.currentSrc || zoom.src) : anchor ? "" : directSrc(b.video), frame: !TOP };
+    if (tries) msg.poll = true;
     api.runtime.sendMessage(msg).then((res) => {
+      if (res && (res.pending || (res.error && !TOP && !res.notRunning && !/not running/i.test(res.error))) && tries < 40) {
+        setTimeout(() => lookUp(b, tries + 1), 2500);
+        return;
+      }
       b.loading = false;
       if (!res) return notRunning(b, () => lookUp(b));
+      if (res.pending) return renderOne(b, fjT("errCantGet"), true);
       if (res.error) return res.notRunning || /not running/i.test(res.error) ? notRunning(b, () => lookUp(b)) : renderOne(b, res.error, true);
       b.own = res.items || [];
       if (!b.own.length && /(^|\.)telegram\.org$/i.test(SITE)) return renderOne(b, fjT("telegramNote"), true);
