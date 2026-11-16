@@ -83,6 +83,7 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
             settingsPoke()
         }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
+        "extractArchives" -> vm.onEvent(DashboardUiEvent.OnExtractArchivesChanged(on))
         "visibleToDevices" -> BehaviorSettings.setVisibleToDevices(on)
         "wakeForSchedule" -> {
             BehaviorSettings.setWakeForSchedule(on)

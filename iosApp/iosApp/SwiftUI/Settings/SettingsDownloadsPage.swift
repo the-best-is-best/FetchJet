@@ -84,6 +84,12 @@ struct SettingsDownloadsPage: View {
                     subtitle: st.sortIntoFolders ? s.sortIntoFoldersOn : s.sortIntoFoldersOff,
                     isOn: st.sortIntoFolders
                 ) { store.send(DashboardUiEventOnSortIntoFoldersChanged(on: $0)) }
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title: s.extractArchives,
+                    subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
+                    isOn: st.extractArchives
+                ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
             SettingsGroupBox(title: s.homeQueueTitle, footer: s.homeQueueFooter) {
                 SettingsRow(

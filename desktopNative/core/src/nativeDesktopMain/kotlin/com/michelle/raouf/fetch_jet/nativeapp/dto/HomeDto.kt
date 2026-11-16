@@ -85,6 +85,7 @@ data class StatusDto(
 data class TaskRowDto(
     val kind: Int = 0,
     val canCompress: Boolean = false,
+    val canExtract: Boolean = false,
     val id: String = "",
     val name: String = "",
     val nameRtl: Boolean = false,
@@ -102,6 +103,7 @@ data class TaskRowDto(
     val left: String = "",
     val action: Int = 0,
     val completed: Boolean = false,
+    val busy: Boolean = false,
     val priority: Int = 0,
     val priorityLabel: String = "",
     val checked: Boolean = false,

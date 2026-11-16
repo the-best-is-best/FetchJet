@@ -207,21 +207,42 @@ struct TaskQuickActionButton: View {
                 case .pause: return ("pause.fill", s.pause)
                 case .resume: return ("play.fill", s.resume)
                 case .startNow: return ("play.fill", s.homeStartNow)
-                case .open: return (play ? "play.fill" : "arrow.up.right", s.open)
+                case .open: return (play ? "play.fill" : "arrow.up.forward.square", s.open)
                 case .none: return ("", "")
                 }
             }()
             Button(action: onTap) {
                 Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(FJTheme.color.onSurface)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(FJTheme.color.primary)
                     .frame(width: size, height: size)
-                    .overlay(Circle().stroke(FJTheme.color.outlineVariant.opacity(0.7), lineWidth: 1))
+                    .background(FJTheme.color.primary.opacity(0.10), in: Circle())
+                    .overlay(Circle().stroke(FJTheme.color.primary.opacity(0.55), lineWidth: 1))
                     .contentShape(Circle())
             }
             .buttonStyle(.borderless)
             .accessibilityLabel(label)
         }
+    }
+}
+
+struct TaskExtractButton: View {
+    @EnvironmentObject var store: FJStore
+    var size: CGFloat = 44
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: "doc.zipper")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(FJTheme.color.primary)
+                .frame(width: size, height: size)
+                .background(FJTheme.color.primary.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(FJTheme.color.primary.opacity(0.55), lineWidth: 1))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(store.strings.extractNow)
     }
 }
 
@@ -269,15 +290,20 @@ struct TaskRowView: View {
                     AudioCompressRowButton(task: task)
                         .padding(.leading, 8)
                 }
-                if !selectionMode {
+                if !selectionMode && ArchiveTasks.shared.canExtract(task: task) {
+                    TaskExtractButton {
+                        store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+                    }
+                    .padding(.leading, 8)
+                } else if !selectionMode {
                     TaskQuickActionButton(action: TaskUi.rowAction(task), size: 44, play: ["VID", "AUD"].contains(TaskUi.kindTag(task))) {
                         onQuickAction(TaskUi.rowAction(task))
                     }
                     .padding(.leading, 8)
                 }
             }
-            if task.status != .completed {
-                TaskThinBar(fraction: task.progress, color: TaskUi.barColor(task), indeterminate: task.isPreparingFile())
+            if task.status != .completed || task.postProcessLabel != nil {
+                TaskThinBar(fraction: (task.postProcessLabel != nil && task.postProcessProgress >= 0) ? task.postProcessProgress : task.progress, color: TaskUi.barColor(task), indeterminate: task.isPreparingFile())
                     .padding(.top, 10)
             }
         }

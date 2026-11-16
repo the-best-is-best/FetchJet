@@ -9,6 +9,8 @@ import threading
 import time
 import urllib.request
 
+os.environ.setdefault("FETCHJET_NO_USAGE_PING", "1")
+
 sys.stdout.flush()
 sys.stdout = os.fdopen(os.dup(1), "w", encoding="utf-8", errors="replace", buffering=1)
 sys.stderr = sys.stdout

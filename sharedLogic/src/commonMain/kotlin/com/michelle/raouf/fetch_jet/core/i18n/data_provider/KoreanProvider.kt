@@ -1003,4 +1003,16 @@ object KoreanProvider : AppLocalization {
     override val mainSetupExtensionRow = "브라우저 확장 프로그램"
     override val mainSetupExtensionConnected = "브라우저가 이미 FetchJet으로 다운로드를 보내고 있습니다"
     override val mainSetupExtensionMissing = "아직 확장 프로그램이 설치된 브라우저가 없습니다"
+
+    override val extractArchives = "다운로드가 끝나면 압축 파일 풀기"
+    override val extractArchivesOn = "켜짐 · zip, tar, gz, xz 파일을 압축 파일 옆에 풉니다"
+    override val extractArchivesOff = "꺼짐 · 압축 파일은 그대로 둡니다"
+    override fun extractedDone(name: String, files: Int) = "${name} 압축 해제 완료 · 파일 ${files}개"
+    override fun extractFailed(name: String, reason: String) = "${name} 압축을 풀 수 없습니다: $reason"
+    override val extractNow = "압축 풀기"
+    override fun extractStarted(name: String) = "${name} 압축 푸는 중…"
+    override fun extractingState(percent: Int) = "압축 푸는 중 · ${percent}%"
+    override val fileNameNeeded = "시작하려면 파일 이름을 입력하세요"
+    override val storageNeedsAllFiles = "여기에 저장하려면 FetchJet에 '모든 파일 액세스'를 허용하세요(설정 페이지가 열렸습니다). 그런 다음 다시 시도하세요."
+    override fun folderNotWritable(folder: String) = "이 폴더에는 저장할 수 없습니다: ${folder}"
 }

@@ -1072,4 +1072,16 @@ object PersianProvider : AppLocalization {
     override val mainSetupExtensionRow = "افزونهٔ مرورگر"
     override val mainSetupExtensionConnected = "یک مرورگر از قبل دانلودها را به FetchJet می‌فرستد"
     override val mainSetupExtensionMissing = "هنوز هیچ مرورگری افزونه را ندارد"
+
+    override val extractArchives = "استخراج بایگانی‌ها پس از پایان دانلود"
+    override val extractArchivesOn = "روشن · فایل‌های zip، tar، gz و xz کنار بایگانی استخراج می‌شوند"
+    override val extractArchivesOff = "خاموش · بایگانی‌ها همان‌طور که هستند می‌مانند"
+    override fun extractedDone(name: String, files: Int) = "$name استخراج شد · $files فایل"
+    override fun extractFailed(name: String, reason: String) = "استخراج $name ممکن نشد: $reason"
+    override val extractNow = "استخراج"
+    override fun extractStarted(name: String) = "در حال استخراج $name…"
+    override fun extractingState(percent: Int) = "در حال استخراج · $percent%"
+    override val fileNameNeeded = "برای شروع نام فایل را بنویسید"
+    override val storageNeedsAllFiles = "برای ذخیره در اینجا، «دسترسی به همه فایل‌ها» را برای FetchJet روشن کنید (صفحهٔ تنظیمات باز شد) و دوباره تلاش کنید."
+    override fun folderNotWritable(folder: String) = "ذخیره در این پوشه ممکن نیست: $folder"
 }

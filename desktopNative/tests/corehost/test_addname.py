@@ -38,6 +38,24 @@ def run():
         core.check("a link with a name shows it and start is on", add.get("fileName") == "1MB.bin" and add.get("primaryEnabled"),
                    (add.get("fileName"), add.get("primaryEnabled")))
 
+        print("a link only the server can name")
+        core.action("SetUrl", text=SERVER + "/file/get?size=1MB&name=server-named.zip&key=addname-s")
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("at first the box is empty and start is off", add.get("fileName", "") == "" and not add.get("primaryEnabled", False), (add.get("fileName"), add.get("primaryEnabled")))
+        core.pump(2.5)
+        add = core.snapshot("add")
+        core.check("then the app asks the server and fills the name by itself, start is on", add.get("fileName") == "server-named.zip" and add.get("primaryEnabled"),
+                   (add.get("fileName"), add.get("primaryEnabled")))
+        core.action("SetFileName", name="mine.zip")
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("a name the user typed is kept", add.get("fileName") == "mine.zip", add.get("fileName"))
+        core.action("SetUrl", text=SERVER + "/download")
+        core.pump(2.5)
+        add = core.snapshot("add")
+        core.check("a link the server does not name stays empty", add.get("fileName", "") == "" and not add.get("primaryEnabled", False), (add.get("fileName"), add.get("primaryEnabled")))
+
         print("engine switch while a magnet is inspected")
         core.action("SetUrl", text=MAGNET)
         core.pump(1.0)

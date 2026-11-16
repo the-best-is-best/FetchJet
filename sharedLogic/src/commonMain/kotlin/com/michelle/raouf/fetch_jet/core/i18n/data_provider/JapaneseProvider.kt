@@ -1083,4 +1083,16 @@ object JapaneseProvider : AppLocalization {
     override val mainSetupExtensionRow = "ブラウザー拡張機能"
     override val mainSetupExtensionConnected = "ブラウザーからすでに FetchJet にダウンロードが送られています"
     override val mainSetupExtensionMissing = "拡張機能が入ったブラウザーはまだありません"
+
+    override val extractArchives = "ダウンロード完了後にアーカイブを展開"
+    override val extractArchivesOn = "オン · zip、tar、gz、xz をアーカイブの隣に展開します"
+    override val extractArchivesOff = "オフ · アーカイブはそのままにします"
+    override fun extractedDone(name: String, files: Int) = "${name} を展開しました · ${files} ファイル"
+    override fun extractFailed(name: String, reason: String) = "${name} を展開できませんでした: ${reason}"
+    override val extractNow = "展開"
+    override fun extractStarted(name: String) = "${name} を展開中…"
+    override fun extractingState(percent: Int) = "展開中 · ${percent}%"
+    override val fileNameNeeded = "ファイル名を入力すると開始できます"
+    override val storageNeedsAllFiles = "ここに保存するには、FetchJet に「すべてのファイルへのアクセス」を許可してください（設定画面を開きました）。その後もう一度お試しください。"
+    override fun folderNotWritable(folder: String) = "このフォルダには保存できません：${folder}"
 }

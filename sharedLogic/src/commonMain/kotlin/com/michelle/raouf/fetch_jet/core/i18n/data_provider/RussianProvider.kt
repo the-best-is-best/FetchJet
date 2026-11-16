@@ -1102,6 +1102,18 @@ object RussianProvider : AppLocalization {
     override val mainSetupExtensionRow = "Расширение для браузера"
     override val mainSetupExtensionConnected = "Браузер уже отправляет загрузки в FetchJet"
     override val mainSetupExtensionMissing = "Пока ни в одном браузере нет расширения"
+
+    override val extractArchives = "Распаковывать архивы после загрузки"
+    override val extractArchivesOn = "Вкл. · файлы zip, tar, gz и xz распаковываются рядом с архивом"
+    override val extractArchivesOff = "Выкл. · архивы остаются как есть"
+    override fun extractedDone(name: String, files: Int) = "$name распакован · файлов: $files"
+    override fun extractFailed(name: String, reason: String) = "Не удалось распаковать $name: $reason"
+    override val extractNow = "Распаковать"
+    override fun extractStarted(name: String) = "Распаковка $name…"
+    override fun extractingState(percent: Int) = "Распаковка · $percent%"
+    override val fileNameNeeded = "Введите имя файла, чтобы начать"
+    override val storageNeedsAllFiles = "Чтобы сохранять здесь, разрешите FetchJet «Доступ ко всем файлам» (страница настроек открыта) и повторите."
+    override fun folderNotWritable(folder: String) = "Нельзя сохранить в эту папку: $folder"
 }
 
 private fun ruPlural(n: Int, one: String, few: String, many: String): String {

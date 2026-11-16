@@ -399,6 +399,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
             secondaryLabel = secondaryLabel,
             canShare = task.canSendToDevice(),
             canCompress = AudioCompress.canCompress(task),
+            canExtract = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task),
             compressLabel = strings.audioCompressTitle +
                     (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: ""),
             removeLabel = if (completed) strings.detailsRemoveFromList else strings.detailsCancelDownload,

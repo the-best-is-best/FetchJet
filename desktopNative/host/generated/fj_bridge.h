@@ -319,6 +319,7 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.fileNameRev = fj::integer(j, "fileNameRev");
     d.fileNameBusy = fj::flag(j, "fileNameBusy");
     d.fileNameCanReset = fj::flag(j, "fileNameCanReset");
+    d.fileNameNeeded = fj::flag(j, "fileNameNeeded");
     d.checksumShown = fj::flag(j, "checksumShown");
     d.checksum = fj::text(j, "checksum");
     d.checksumRev = fj::integer(j, "checksumRev");
@@ -664,6 +665,7 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.secondaryLabel = fj::text(j, "secondaryLabel");
     d.canShare = fj::flag(j, "canShare");
     d.canCompress = fj::flag(j, "canCompress");
+    d.canExtract = fj::flag(j, "canExtract");
     d.compressLabel = fj::text(j, "compressLabel");
     d.removeLabel = fj::text(j, "removeLabel");
     return d;
@@ -836,6 +838,7 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     TaskRowDto d{};
     d.kind = fj::integer(j, "kind");
     d.canCompress = fj::flag(j, "canCompress");
+    d.canExtract = fj::flag(j, "canExtract");
     d.id = fj::text(j, "id");
     d.name = fj::text(j, "name");
     d.nameRtl = fj::flag(j, "nameRtl");
@@ -853,6 +856,7 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     d.left = fj::text(j, "left");
     d.action = fj::integer(j, "action");
     d.completed = fj::flag(j, "completed");
+    d.busy = fj::flag(j, "busy");
     d.priority = fj::integer(j, "priority");
     d.priorityLabel = fj::text(j, "priorityLabel");
     d.checked = fj::flag(j, "checked");
@@ -1865,6 +1869,12 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_mainSetupExtensionRow(next());
     tr.set_mainSetupExtensionConnected(next());
     tr.set_mainSetupExtensionMissing(next());
+    tr.set_extractArchives(next());
+    tr.set_extractArchivesOn(next());
+    tr.set_extractArchivesOff(next());
+    tr.set_extractNow(next());
+    tr.set_fileNameNeeded(next());
+    tr.set_storageNeedsAllFiles(next());
 }
 
 template <class Send> void bind_actions(const Act &act, Send send) {
@@ -1882,6 +1892,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_rowCheck([send](slint::SharedString id, bool checked) { fj::ActionWriter w("RowCheck"); w.add("id", id); w.add("checked", checked); send(w.finish()); });
     act.on_rowQuickAction([send](slint::SharedString id) { fj::ActionWriter w("RowQuickAction"); w.add("id", id); send(w.finish()); });
     act.on_rowCompress([send](slint::SharedString id) { fj::ActionWriter w("RowCompress"); w.add("id", id); send(w.finish()); });
+    act.on_rowExtract([send](slint::SharedString id) { fj::ActionWriter w("RowExtract"); w.add("id", id); send(w.finish()); });
     act.on_cyclePriority([send](slint::SharedString id) { fj::ActionWriter w("CyclePriority"); w.add("id", id); send(w.finish()); });
     act.on_checkAll([send](bool checked) { fj::ActionWriter w("CheckAll"); w.add("checked", checked); send(w.finish()); });
     act.on_clearChecks([send]() { fj::ActionWriter w("ClearChecks"); send(w.finish()); });
@@ -1907,6 +1918,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_detailsRemove([send]() { fj::ActionWriter w("DetailsRemove"); send(w.finish()); });
     act.on_detailsShare([send]() { fj::ActionWriter w("DetailsShare"); send(w.finish()); });
     act.on_detailsCompress([send]() { fj::ActionWriter w("DetailsCompress"); send(w.finish()); });
+    act.on_detailsExtract([send]() { fj::ActionWriter w("DetailsExtract"); send(w.finish()); });
     act.on_audioCompressSetMode([send](bool simple) { fj::ActionWriter w("AudioCompressSetMode"); w.add("simple", simple); send(w.finish()); });
     act.on_audioCompressSetLevel([send](int level) { fj::ActionWriter w("AudioCompressSetLevel"); w.add("level", level); send(w.finish()); });
     act.on_audioCompressSetBitrate([send](int value) { fj::ActionWriter w("AudioCompressSetBitrate"); w.add("value", value); send(w.finish()); });

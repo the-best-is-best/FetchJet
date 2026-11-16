@@ -94,6 +94,9 @@ private fun etaText(seconds: Long): String = when {
 }
 
 /** The one-line state under the name. */
+fun rowProgress(task: DownloadTask): Float =
+    if (task.postProcessLabel != null && task.postProcessProgress >= 0f) task.postProcessProgress else task.progress
+
 fun taskStateLine(task: DownloadTask, speedUnit: String): String {
     val pct = (task.progress.coerceIn(0f, 1f) * 100).toInt()
     if (task.isPreparingFile()) {
@@ -218,39 +221,109 @@ private fun ThinBar(fraction: Float, color: Color, height: Int = 5, indeterminat
     }
 }
 
+private typealias RowIcon = androidx.compose.ui.graphics.drawscope.DrawScope.(Float, Color) -> Unit
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.iconLine(
+    u: Float, tint: Color, x1: Float, y1: Float, x2: Float, y2: Float
+) = drawLine(
+    tint,
+    androidx.compose.ui.geometry.Offset(x1 * u, y1 * u),
+    androidx.compose.ui.geometry.Offset(x2 * u, y2 * u),
+    2f * u,
+    androidx.compose.ui.graphics.StrokeCap.Round
+)
+
+private val PlayIcon: RowIcon = { u, tint ->
+    val path = androidx.compose.ui.graphics.Path().apply {
+        moveTo(7.5f * u, 5f * u)
+        lineTo(19f * u, 12f * u)
+        lineTo(7.5f * u, 19f * u)
+        close()
+    }
+    drawPath(path, tint)
+    drawPath(
+        path, tint,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.4f * u, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+    )
+}
+
+private val PauseIcon: RowIcon = { u, tint ->
+    drawRoundRect(
+        tint, androidx.compose.ui.geometry.Offset(6f * u, 5f * u),
+        androidx.compose.ui.geometry.Size(4f * u, 14f * u), androidx.compose.ui.geometry.CornerRadius(1.3f * u)
+    )
+    drawRoundRect(
+        tint, androidx.compose.ui.geometry.Offset(14f * u, 5f * u),
+        androidx.compose.ui.geometry.Size(4f * u, 14f * u), androidx.compose.ui.geometry.CornerRadius(1.3f * u)
+    )
+}
+
+private val OpenIcon: RowIcon = { u, tint ->
+    iconLine(u, tint, 10f, 4f, 4f, 4f)
+    iconLine(u, tint, 4f, 4f, 4f, 20f)
+    iconLine(u, tint, 4f, 20f, 20f, 20f)
+    iconLine(u, tint, 20f, 20f, 20f, 14f)
+    iconLine(u, tint, 10f, 14f, 20f, 4f)
+    iconLine(u, tint, 14f, 4f, 20f, 4f)
+    iconLine(u, tint, 20f, 4f, 20f, 10f)
+}
+
+private val CompressIcon: RowIcon = { u, tint ->
+    iconLine(u, tint, 4f, 12f, 20f, 12f)
+    iconLine(u, tint, 12f, 2f, 12f, 8f)
+    iconLine(u, tint, 8.5f, 5f, 12f, 8.5f)
+    iconLine(u, tint, 15.5f, 5f, 12f, 8.5f)
+    iconLine(u, tint, 12f, 22f, 12f, 16f)
+    iconLine(u, tint, 8.5f, 19f, 12f, 15.5f)
+    iconLine(u, tint, 15.5f, 19f, 12f, 15.5f)
+}
+
+private val ExtractIcon: RowIcon = { u, tint ->
+    iconLine(u, tint, 4f, 3f, 20f, 3f)
+    iconLine(u, tint, 20f, 3f, 20f, 21f)
+    iconLine(u, tint, 20f, 21f, 4f, 21f)
+    iconLine(u, tint, 4f, 21f, 4f, 3f)
+    iconLine(u, tint, 12f, 3f, 12f, 6f)
+    iconLine(u, tint, 12f, 8f, 12f, 11f)
+    iconLine(u, tint, 12f, 13f, 12f, 15f)
+    iconLine(u, tint, 9.5f, 15f, 14.5f, 15f)
+    iconLine(u, tint, 14.5f, 15f, 14.5f, 19f)
+    iconLine(u, tint, 14.5f, 19f, 9.5f, 19f)
+    iconLine(u, tint, 9.5f, 19f, 9.5f, 15f)
+}
+
 @Composable
-private fun CompressActionButton(sizeDp: Int, onClick: () -> Unit) {
+private fun RowIconButton(
+    sizeDp: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: RowIcon
+) {
     val tint = MaterialTheme.colorScheme.primary
-    val label = LocalizationManager.Strings.audioCompressTitle
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier
-            .padding(end = 8.dp)
+    Box(
+        modifier = modifier
             .size(sizeDp.dp)
-            .clip(androidx.compose.foundation.shape.CircleShape)
+            .clip(CircleShape)
             .background(tint.copy(alpha = 0.10f))
-            .border(1.dp, tint.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape)
+            .border(1.dp, tint.copy(alpha = 0.55f), CircleShape)
             .clickable(onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.size((sizeDp / 2).dp)) {
-            val u = size.width / 24f
-            val stroke = 2f * u
-            fun line(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(
-                tint, androidx.compose.ui.geometry.Offset(x1 * u, y1 * u),
-                androidx.compose.ui.geometry.Offset(x2 * u, y2 * u), stroke,
-                androidx.compose.ui.graphics.StrokeCap.Round
-            )
-            line(4f, 12f, 20f, 12f)
-            line(12f, 2f, 12f, 8f)
-            line(8.5f, 5f, 12f, 8.5f)
-            line(15.5f, 5f, 12f, 8.5f)
-            line(12f, 22f, 12f, 16f)
-            line(8.5f, 19f, 12f, 15.5f)
-            line(15.5f, 19f, 12f, 15.5f)
+        androidx.compose.foundation.Canvas(modifier = Modifier.size((sizeDp * 0.46f).dp)) {
+            icon(size.width / 24f, tint)
         }
     }
 }
+
+@Composable
+private fun ExtractActionButton(sizeDp: Int, onClick: () -> Unit) =
+    RowIconButton(sizeDp, LocalizationManager.Strings.extractNow, onClick, icon = ExtractIcon)
+
+@Composable
+private fun CompressActionButton(sizeDp: Int, onClick: () -> Unit) =
+    RowIconButton(sizeDp, LocalizationManager.Strings.audioCompressTitle, onClick, Modifier.padding(end = 8.dp), CompressIcon)
 
 @Composable
 private fun QuickActionButton(action: RowAction, sizeDp: Int, play: Boolean = false, onClick: () -> Unit) {
@@ -264,23 +337,13 @@ private fun QuickActionButton(action: RowAction, sizeDp: Int, play: Boolean = fa
         RowAction.OPEN -> LocalizationManager.Strings.open
         RowAction.NONE -> ""
     }
-    val glyph = when (action) {
-        RowAction.PAUSE -> "⏸"
-        RowAction.RESUME, RowAction.START_NOW -> "▶"
-        RowAction.OPEN -> if (play) "▶" else "↗"
-        RowAction.NONE -> ""
+    val icon: RowIcon = when (action) {
+        RowAction.PAUSE -> PauseIcon
+        RowAction.RESUME, RowAction.START_NOW -> PlayIcon
+        RowAction.OPEN -> if (play) PlayIcon else OpenIcon
+        RowAction.NONE -> PlayIcon
     }
-    Surface(
-        shape = CircleShape,
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
-        modifier = Modifier.size(sizeDp.dp).clip(CircleShape)
-            .clickable(onClickLabel = label, onClick = onClick)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(glyph, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-        }
-    }
+    RowIconButton(sizeDp, label, onClick, icon = icon)
 }
 
 /**
@@ -301,7 +364,8 @@ fun TaskRow(
     onCtrlClick: (() -> Unit)? = null,
     onShiftClick: (() -> Unit)? = null,
     onPriorityChanged: (Int) -> Unit = {},
-    onCompress: (() -> Unit)? = null
+    onCompress: (() -> Unit)? = null,
+    onExtract: (() -> Unit)? = null
 ) {
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val windowWidth = with(androidx.compose.ui.platform.LocalDensity.current) { windowInfo.containerSize.width.toDp() }
@@ -378,10 +442,10 @@ fun TaskRow(
                         maxLines = 1
                     )
                     Column(modifier = Modifier.width(140.dp)) {
-                        ThinBar(task.progress, barColor(task), indeterminate = task.isPreparingFile())
+                        ThinBar(rowProgress(task), barColor(task), indeterminate = task.isPreparingFile())
                         Text(
-                            if (task.status == DownloadStatus.COMPLETED) "100%" else "${
-                                (task.progress.coerceIn(
+                            if (task.status == DownloadStatus.COMPLETED && task.postProcessLabel == null) "100%" else "${
+                                (rowProgress(task).coerceIn(
                                     0f,
                                     1f
                                 ) * 100).toInt()
@@ -405,7 +469,8 @@ fun TaskRow(
                         PriorityChip(task.priority) { onPriorityChanged(nextPriority(task.priority)) }
                     }
                     if (onCompress != null) CompressActionButton(34, onCompress)
-                    QuickActionButton(action, 34, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
+                    if (onExtract != null) ExtractActionButton(34, onExtract)
+                    else QuickActionButton(action, 34, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
                 }
             } else {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -443,11 +508,12 @@ fun TaskRow(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         if (!selectionMode && onCompress != null && windowWidth >= 680.dp) CompressActionButton(44, onCompress)
-                        if (!selectionMode) QuickActionButton(action, 44, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
+                        if (!selectionMode && onExtract != null) ExtractActionButton(44, onExtract)
+                        else if (!selectionMode) QuickActionButton(action, 44, play = taskKindTag(task) in setOf("VID", "AUD")) { onQuickAction(action) }
                     }
-                    if (task.status != DownloadStatus.COMPLETED) {
+                    if (task.status != DownloadStatus.COMPLETED || task.postProcessLabel != null) {
                         Spacer(modifier = Modifier.height(10.dp))
-                        ThinBar(task.progress, barColor(task), indeterminate = task.isPreparingFile())
+                        ThinBar(rowProgress(task), barColor(task), indeterminate = task.isPreparingFile())
                     }
                 }
             }

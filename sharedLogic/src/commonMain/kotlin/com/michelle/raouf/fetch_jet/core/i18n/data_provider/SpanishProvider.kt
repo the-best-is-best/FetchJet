@@ -1114,4 +1114,16 @@ object SpanishProvider : AppLocalization {
     override val mainSetupExtensionRow = "Extensión del navegador"
     override val mainSetupExtensionConnected = "Un navegador ya envía descargas a FetchJet"
     override val mainSetupExtensionMissing = "Ningún navegador tiene la extensión todavía"
+
+    override val extractArchives = "Extraer archivos comprimidos al terminar"
+    override val extractArchivesOn = "Activado · los zip, tar, gz y xz se extraen junto al archivo"
+    override val extractArchivesOff = "Desactivado · los archivos comprimidos se quedan como están"
+    override fun extractedDone(name: String, files: Int) = "$name extraído · $files archivos"
+    override fun extractFailed(name: String, reason: String) = "No se pudo extraer $name: $reason"
+    override val extractNow = "Extraer"
+    override fun extractStarted(name: String) = "Extrayendo $name…"
+    override fun extractingState(percent: Int) = "Extrayendo · $percent %"
+    override val fileNameNeeded = "Escribe un nombre de archivo para empezar"
+    override val storageNeedsAllFiles = "Para guardar aquí, permite «Acceso a todos los archivos» a FetchJet (se abrió la página de ajustes) e inténtalo de nuevo."
+    override fun folderNotWritable(folder: String) = "No se puede guardar en esta carpeta: $folder"
 }

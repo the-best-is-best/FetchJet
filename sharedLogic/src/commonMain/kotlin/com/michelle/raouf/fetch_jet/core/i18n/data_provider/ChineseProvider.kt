@@ -1014,4 +1014,16 @@ object ChineseProvider : AppLocalization {
     override val mainSetupExtensionRow = "浏览器扩展"
     override val mainSetupExtensionConnected = "已有浏览器在向 FetchJet 发送下载"
     override val mainSetupExtensionMissing = "还没有浏览器安装扩展"
+
+    override val extractArchives = "下载完成后解压压缩包"
+    override val extractArchivesOn = "开启 · zip、tar、gz 和 xz 文件会解压到压缩包旁边"
+    override val extractArchivesOff = "关闭 · 压缩包保持原样"
+    override fun extractedDone(name: String, files: Int) = "已解压 ${name} · ${files} 个文件"
+    override fun extractFailed(name: String, reason: String) = "无法解压 ${name}：${reason}"
+    override val extractNow = "解压"
+    override fun extractStarted(name: String) = "正在解压 ${name}…"
+    override fun extractingState(percent: Int) = "正在解压 · ${percent}%"
+    override val fileNameNeeded = "输入文件名即可开始"
+    override val storageNeedsAllFiles = "要保存到这里，请为 FetchJet 开启“所有文件访问权限”（设置页面已打开），然后重试。"
+    override fun folderNotWritable(folder: String) = "无法保存到此文件夹：${folder}"
 }

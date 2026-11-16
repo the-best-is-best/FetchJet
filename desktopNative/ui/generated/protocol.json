@@ -562,6 +562,10 @@
     "Boolean"
    ],
    [
+    "fileNameNeeded",
+    "Boolean"
+   ],
+   [
     "checksumShown",
     "Boolean"
    ],
@@ -1618,6 +1622,10 @@
     "Boolean"
    ],
    [
+    "canExtract",
+    "Boolean"
+   ],
+   [
     "compressLabel",
     "String"
    ],
@@ -2090,6 +2098,10 @@
     "Boolean"
    ],
    [
+    "canExtract",
+    "Boolean"
+   ],
+   [
     "id",
     "String"
    ],
@@ -2155,6 +2167,10 @@
    ],
    [
     "completed",
+    "Boolean"
+   ],
+   [
+    "busy",
     "Boolean"
    ],
    [
@@ -2771,6 +2787,12 @@
     "String"
    ]
   ],
+  "RowExtract": [
+   [
+    "id",
+    "String"
+   ]
+  ],
   "CyclePriority": [
    [
     "id",
@@ -2883,6 +2905,7 @@
   "DetailsRemove": [],
   "DetailsShare": [],
   "DetailsCompress": [],
+  "DetailsExtract": [],
   "AudioCompressSetMode": [
    [
     "simple",
@@ -4137,6 +4160,12 @@
   "defaultAppSystemPageHint",
   "mainSetupExtensionRow",
   "mainSetupExtensionConnected",
-  "mainSetupExtensionMissing"
+  "mainSetupExtensionMissing",
+  "extractArchives",
+  "extractArchivesOn",
+  "extractArchivesOff",
+  "extractNow",
+  "fileNameNeeded",
+  "storageNeedsAllFiles"
  ]
 }

@@ -249,10 +249,12 @@ private fun DeviceListGroup(
 internal fun DownloadsPage(
     destinationPath: String,
     sortIntoFolders: Boolean,
+    extractArchives: Boolean,
     defaultConnections: Int,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
     onSortIntoFoldersChanged: (Boolean) -> Unit,
+    onExtractArchivesChanged: (Boolean) -> Unit,
     onDefaultConnectionsChanged: (Int) -> Unit,
     lowBytes: Long = 256L * 1024,
     lowUnit: String = "KB/s",
@@ -420,6 +422,12 @@ internal fun DownloadsPage(
                 subtitle = if (sortIntoFolders) LocalizationManager.Strings.sortIntoFoldersOn else LocalizationManager.Strings.sortIntoFoldersOff,
                 checked = sortIntoFolders,
                 onChange = onSortIntoFoldersChanged
+            )
+            SettingSwitch(
+                title = LocalizationManager.Strings.extractArchives,
+                subtitle = if (extractArchives) LocalizationManager.Strings.extractArchivesOn else LocalizationManager.Strings.extractArchivesOff,
+                checked = extractArchives,
+                onChange = onExtractArchivesChanged
             )
         }
         QueueSettingsCard()

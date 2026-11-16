@@ -97,6 +97,9 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
     internal var testLinkJob: Job? = null
+    internal var nameProbeJob: Job? = null
+    internal var probedNameUrl: String = ""
+    internal var probedName: String = ""
     internal var inspectMediaJob: Job? = null
     internal var inspectTorrentJob: Job? = null
 
@@ -117,6 +120,7 @@ class DashboardViewModel(
 
         observeQueue()
         observeBehaviorSettings()
+        scope.launch { com.michelle.raouf.fetch_jet.core.telemetry.UsagePing.sendIfDue() }
 
         val savedSettings = settingsRepository.loadSettings()
         com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
@@ -578,6 +582,24 @@ class DashboardViewModel(
                 }
             }
         }
+        scope.launch {
+            BehaviorSettings.extractArchives.collect { on ->
+                _uiState.update { it.copy(extractArchives = on) }
+            }
+        }
+        scope.launch {
+            queueRepository.archiveEvents.collect { event ->
+                val strings = LocalizationManager.Strings
+                val failure = event.error
+                _uiEffect.emit(
+                    DashboardUiEffect.ShowToast(
+                        if (event.started) strings.extractStarted(event.name)
+                        else if (failure == null) strings.extractedDone(event.name, event.files)
+                        else strings.extractFailed(event.name, failure)
+                    )
+                )
+            }
+        }
     }
 
     internal fun observeQueue() {
@@ -629,7 +651,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
 
@@ -643,6 +665,8 @@ class DashboardViewModel(
             DashboardUiEvent.OnDismissReceiveClicked,
             is DashboardUiEvent.OnUnblockDeviceClicked,
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
+
+            is DashboardUiEvent.OnExtractTaskClicked -> queueRepository.extractNow(event.taskId)
 
             is DashboardUiEvent.OnAudioCompressClicked,
             is DashboardUiEvent.OnAudioCompressSettingsChanged,
@@ -918,6 +942,7 @@ class DashboardViewModel(
             ""
         }
         _uiState.update { it.copy(suggestedFileName = name) }
+        if (name.isBlank()) startNameProbe(url)
     }
 
     internal fun resolveTargetFileName(
@@ -935,6 +960,9 @@ class DashboardViewModel(
                     com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(url))
         ) {
             return queueRepository.pathResolver.sanitizeFileName(browserName)
+        }
+        if (probedNameUrl == url && probedName.isNotBlank() && currentState.detectedEngine == EngineType.HTTP_DIRECT) {
+            return probedName
         }
         val mediaTitle =
             currentState.inspectedMediaQualities.firstOrNull { !it.videoTitle.isNullOrBlank() }?.videoTitle

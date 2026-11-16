@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.core.settings.FileCategory
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -85,4 +86,20 @@ internal fun DashboardViewModel.rememberAddFolder() {
     if (category.isEmpty() || path.isBlank()) return
     val custom = baseFolder(path) != baseFolder(defaultDestinationPath)
     BehaviorSettings.setCategoryFolder(category, if (custom) path else "")
+}
+
+internal fun DashboardViewModel.destinationAllowed(): Boolean {
+    val state = _uiState.value
+    if (state.detectedEngine == EngineType.BITTORRENT || state.inputUrl.isBlank()) return true
+    val folder = state.destinationPath.trim()
+    if (folder.isBlank() || com.michelle.raouf.fetch_jet.core.filesystem.AllFilesAccess.canWriteInto(folder)) return true
+    val strings = com.tbib.kmp_localization.LocalizationManager.Strings
+    val needsPermission = com.michelle.raouf.fetch_jet.core.filesystem.AllFilesAccess.needed()
+    if (needsPermission) com.michelle.raouf.fetch_jet.core.filesystem.AllFilesAccess.openSettings()
+    scope.launch {
+        _uiEffect.emit(
+            DashboardUiEffect.ShowToast(if (needsPermission) strings.storageNeedsAllFiles else strings.folderNotWritable(folder))
+        )
+    }
+    return false
 }

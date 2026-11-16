@@ -499,6 +499,9 @@ internal fun TaskListArea(
                     onCompress = if (com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                         { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
                     } else null,
+                    onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
+                        { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
+                    } else null,
                     onQuickAction = { action ->
                         when (action) {
                             // A download that cannot resume warns before pausing: in its details.

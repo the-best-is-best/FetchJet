@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -323,6 +324,8 @@ class QueueManagerRepository(
 
     /** Checksum verdicts overlaid onto the engine tasks (true = match, false = mismatch). */
     private val _checksumResults = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private class ExtractState(val fraction: Float, val startedAt: Long)
+    private val extractState = MutableStateFlow<Map<String, ExtractState>>(emptyMap())
     private val checksumVerifyingIds = mutableSetOf<String>()
 
     private val baseTasksFlow: kotlinx.coroutines.flow.Flow<List<DownloadTask>> = combine(
@@ -364,21 +367,42 @@ class QueueManagerRepository(
 
     val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
         baseTasksFlow,
-        _checksumResults
-    ) { tasks, results ->
-        if (results.isEmpty()) tasks
-        else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
+        _checksumResults,
+        extractState
+    ) { tasks, results, extracting ->
+        val withChecksums =
+            if (results.isEmpty()) tasks
+            else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
+        if (extracting.isEmpty()) withChecksums
+        else withChecksums.map { task ->
+            val state = extracting[task.id] ?: return@map task
+            task.copy(
+                postProcessLabel = LocalizationManager.Strings.extractingState((state.fraction * 100).toInt()),
+                postProcessProgress = state.fraction,
+                postProcessStartedAtMs = state.startedAt
+            )
+        }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
+    private val _archiveEvents = kotlinx.coroutines.flow.MutableSharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent>(extraBufferCapacity = 16)
+
+    /** One event per archive the app opened (or failed to open) after its download finished. */
+    val archiveEvents: kotlinx.coroutines.flow.SharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent> =
+        _archiveEvents.asSharedFlow()
+
+    private val unfinishedSeen = mutableSetOf<String>()
+    private val extractingIds = MutableStateFlow<Set<String>>(emptySet())
+
     private val activeRunningTaskIds = mutableSetOf<String>()
     private val completedNotifiedTaskIds = mutableSetOf<String>()
 
     init {
         observeTasksForNotifications()
+        observeArchiveExtraction()
         observeChecksumVerification()
         loadAndRestoreTasks()
         observeTasksForPersistence()
@@ -453,6 +477,66 @@ class QueueManagerRepository(
      * verdict (true = match, false = mismatch) into [_checksumResults], which allTasksFlow overlays.
      * Runs once per task; a restored task that already has a stored verdict is left alone.
      */
+    private fun observeArchiveExtraction() {
+        scope.launch {
+            allTasksFlow.collect { tasks ->
+                for (task in tasks) {
+                    if (task.status != DownloadStatus.COMPLETED) {
+                        unfinishedSeen.add(task.id)
+                        continue
+                    }
+                    if (!unfinishedSeen.remove(task.id)) continue
+                    if (!com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.extractArchives.value) continue
+                    if (task.engineType == EngineType.BITTORRENT || task.fileName.isBlank()) continue
+                    if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.kindOf(task.fileName) == null) continue
+                    scope.launch { extractFinished(task) }
+                }
+            }
+        }
+    }
+
+    private suspend fun extractFinished(task: DownloadTask, openWhenDone: Boolean = false) {
+        if (task.id in extractingIds.value) return
+        extractingIds.update { it + task.id }
+        val startedAt = com.michelle.raouf.fetch_jet.core.util.currentEpochMs()
+        extractState.update { it + (task.id to ExtractState(0f, startedAt)) }
+        try {
+            val path = (task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName).toPath()
+            _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, 0, null, started = true))
+            val event = try {
+                val result = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.extract(path) { fraction ->
+                    val shown = extractState.value[task.id]?.fraction ?: 0f
+                    if (fraction - shown >= 0.01f || fraction >= 1f) {
+                        extractState.update { it + (task.id to ExtractState(fraction, startedAt)) }
+                    }
+                }
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, result.files, null, destination = result.destination)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.fileName}: ${e.message}" }
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, 0, e.message ?: "error")
+            }
+            _archiveEvents.emit(event)
+            if (openWhenDone && event.error == null && event.destination.isNotBlank()) {
+                try {
+                    pathResolver.openFileLocation(event.destination)
+                } catch (_: Throwable) {
+                }
+            }
+        } finally {
+            extractingIds.update { it - task.id }
+            extractState.update { it - task.id }
+        }
+    }
+
+    /** The Extract button: opens a finished archive now, whatever the "extract when they finish" setting says. */
+    fun extractNow(taskId: String) {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return
+        if (!com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.isArchive(task)) return
+        scope.launch { extractFinished(task, openWhenDone = true) }
+    }
+
     private fun observeChecksumVerification() {
         scope.launch {
             allTasksFlow.collect { tasks ->

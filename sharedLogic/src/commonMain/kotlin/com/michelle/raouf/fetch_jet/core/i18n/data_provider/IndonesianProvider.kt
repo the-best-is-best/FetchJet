@@ -1072,4 +1072,16 @@ object IndonesianProvider : AppLocalization {
     override val mainSetupExtensionRow = "Ekstensi browser"
     override val mainSetupExtensionConnected = "Sebuah browser sudah mengirim unduhan ke FetchJet"
     override val mainSetupExtensionMissing = "Belum ada browser yang memiliki ekstensi"
+
+    override val extractArchives = "Ekstrak arsip setelah selesai"
+    override val extractArchivesOn = "Aktif · file zip, tar, gz, dan xz diekstrak di samping arsip"
+    override val extractArchivesOff = "Nonaktif · arsip dibiarkan apa adanya"
+    override fun extractedDone(name: String, files: Int) = "$name diekstrak · $files file"
+    override fun extractFailed(name: String, reason: String) = "Gagal mengekstrak $name: $reason"
+    override val extractNow = "Ekstrak"
+    override fun extractStarted(name: String) = "Mengekstrak $name…"
+    override fun extractingState(percent: Int) = "Mengekstrak · $percent%"
+    override val fileNameNeeded = "Ketik nama file untuk memulai"
+    override val storageNeedsAllFiles = "Untuk menyimpan di sini, izinkan «Akses semua file» untuk FetchJet (halaman pengaturan terbuka), lalu coba lagi."
+    override fun folderNotWritable(folder: String) = "Tidak dapat menyimpan di folder ini: $folder"
 }

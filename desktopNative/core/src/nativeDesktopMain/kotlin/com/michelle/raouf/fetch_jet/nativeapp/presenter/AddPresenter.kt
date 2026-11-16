@@ -322,6 +322,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         fileNameRev = addFields.fileName.rev(fileName),
         fileNameBusy = inspecting,
         fileNameCanReset = s.fileNameOverride.isNotBlank() && s.fileNameOverride != s.suggestedFileName,
+        fileNameNeeded = s.needsFileName && !inspecting,
         checksumShown = !s.showsLinkList && !s.hasPlaylist && s.detectedEngine == EngineType.HTTP_DIRECT,
         checksum = s.checksumInput,
         checksumRev = addFields.checksum.rev(s.checksumInput),

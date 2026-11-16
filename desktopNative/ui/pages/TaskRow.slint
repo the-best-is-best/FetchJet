@@ -67,8 +67,11 @@ component PriorityChip inherits Rectangle {
     }
 }
 
-component CompressAction inherits Rectangle {
+component RowIconButton inherits Rectangle {
     in property <length> size: 34px;
+    in property <string> label;
+    in property <string> commands;
+    in property <bool> filled: false;
     callback clicked();
     width: root.size;
     height: root.size;
@@ -77,26 +80,40 @@ component CompressAction inherits Rectangle {
     border-color: Theme.primary.with-alpha(0.55);
     background: Theme.primary.with-alpha(0.10);
     accessible-role: button;
-    accessible-label: Tr.audioCompressTitle;
+    accessible-label: root.label;
     accessible-action-default => { root.clicked(); }
     ta := TouchArea {
         clicked => { root.clicked(); }
     }
     Path {
-        width: root.size * 0.5;
-        height: root.size * 0.5;
+        width: root.size * 0.46;
+        height: root.size * 0.46;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
         viewbox-width: 24;
         viewbox-height: 24;
-        commands: "M4 12 H20 M12 2 V8 M8.5 5 L12 8.5 L15.5 5 M12 22 V16 M8.5 19 L12 15.5 L15.5 19";
+        commands: root.commands;
         stroke: Theme.primary;
         stroke-width: 2px;
-        fill: transparent;
+        stroke-line-join: round;
+        stroke-line-cap: round;
+        fill: root.filled ? Theme.primary : transparent;
     }
     Hover {
         border-radius: root.size / 2;
         hovered: ta.has-hover;
         pressed: ta.pressed;
     }
+}
+
+component CompressAction inherits RowIconButton {
+    label: Tr.audioCompressTitle;
+    commands: "M4 12 H20 M12 2 V8 M8.5 5 L12 8.5 L15.5 5 M12 22 V16 M8.5 19 L12 15.5 L15.5 19";
+}
+
+component ExtractAction inherits RowIconButton {
+    label: Tr.extractNow;
+    commands: "M4 3 H20 V21 H4 Z M12 3 V6 M12 8 V11 M12 13 V15 M9.5 15 H14.5 V19 H9.5 Z";
 }
 
 component QuickAction inherits Rectangle {
@@ -106,29 +123,14 @@ component QuickAction inherits Rectangle {
     callback clicked();
     width: root.size;
     height: root.size;
-    if root.action != RowActionCode.none: Rectangle {
-        border-radius: root.size / 2;
-        border-width: 1px;
-        border-color: Theme.outline-variant.with-alpha(0.7);
-        accessible-role: button;
-        accessible-label: root.action == RowActionCode.pause ? Tr.pause : root.action == RowActionCode.open ? Tr.open : Tr.resume;
-        accessible-action-default => { root.clicked(); }
-        ta := TouchArea {
-            clicked => { root.clicked(); }
-        }
-        Glyph {
-            text: root.action == RowActionCode.pause ? "⏸" : root.action == RowActionCode.open ? (root.play ? "▶" : "↗") : "▶";
-            color: Theme.on-surface;
-            font-family: Theme.symbol-font;
-            font-size: 13px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-        Hover {
-            border-radius: root.size / 2;
-            hovered: ta.has-hover;
-            pressed: ta.pressed;
-        }
+    if root.action != RowActionCode.none: RowIconButton {
+        size: root.size;
+        label: root.action == RowActionCode.pause ? Tr.pause : root.action == RowActionCode.open ? Tr.open : Tr.resume;
+        filled: root.action != RowActionCode.open || root.play;
+        commands: root.action == RowActionCode.pause ? "M7 5 H9.5 V19 H7 Z M14.5 5 H17 V19 H14.5 Z"
+            : root.action == RowActionCode.open && !root.play ? "M10 4 H4 V20 H20 V14 M10 14 L20 4 M14 4 H20 V10"
+            : "M8 5 L19 12 L8 19 Z";
+        clicked => { root.clicked(); }
     }
 }
 
@@ -393,7 +395,12 @@ export component TaskRow inherits Rectangle {
                     y: (parent.height - self.height) / 2;
                     clicked => { Act.rowCompress(root.data.id); }
                 }
-                QuickAction {
+                if root.data.canExtract: ExtractAction {
+                    x: Dir.rtl ? 0 : parent.width - 34px;
+                    y: (parent.height - self.height) / 2;
+                    clicked => { Act.rowExtract(root.data.id); }
+                }
+                if !root.data.canExtract: QuickAction {
                     x: Dir.rtl ? 0 : parent.width - 34px;
                     action: root.data.action;
                     play: root.data.tag == "VID" || root.data.tag == "AUD";
@@ -468,14 +475,18 @@ export component TaskRow inherits Rectangle {
                 if !root.selection-mode && root.data.canCompress: Rectangle {
                     width: 8px;
                 }
-                if !root.selection-mode: QuickAction {
+                if !root.selection-mode && root.data.canExtract: ExtractAction {
+                    size: 44px;
+                    clicked => { Act.rowExtract(root.data.id); }
+                }
+                if !root.selection-mode && !root.data.canExtract: QuickAction {
                     size: 44px;
                     action: root.data.action;
                     play: root.data.tag == "VID" || root.data.tag == "AUD";
                     clicked => { Act.rowQuickAction(root.data.id); }
                 }
             }
-            if !root.data.completed: ThinBar {
+            if !root.data.completed || root.data.busy: ThinBar {
                 value: root.data.progress;
                 indeterminate: root.data.preparing;
                 ink: root.bar-ink;

@@ -153,6 +153,7 @@ data class DashboardUiState(
     val monitorClipboard: Boolean = false,
     val clipboardVideoPages: Boolean = false,
     val sortIntoFolders: Boolean = false,
+    val extractArchives: Boolean = false,
 
     val duplicateTaskAlert: DownloadTask? = null,
     val fileConflictAlert: FileConflictData? = null,
@@ -393,6 +394,7 @@ sealed interface DashboardUiEvent {
     data class OnMonitorClipboardChanged(val on: Boolean) : DashboardUiEvent
     data class OnClipboardVideoPagesChanged(val on: Boolean) : DashboardUiEvent
     data class OnSortIntoFoldersChanged(val on: Boolean) : DashboardUiEvent
+    data class OnExtractArchivesChanged(val on: Boolean) : DashboardUiEvent
 
     data object OnInspectTorrentClicked : DashboardUiEvent
 
@@ -463,6 +465,7 @@ sealed interface DashboardUiEvent {
         DashboardUiEvent
 
     data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
+    data class OnExtractTaskClicked(val taskId: String) : DashboardUiEvent
     data class OnTorrentDetailsOpened(val taskId: String) : DashboardUiEvent
     data object OnTorrentDetailsClosed : DashboardUiEvent
     data class OnTorrentAddTracker(val taskId: String, val url: String) : DashboardUiEvent

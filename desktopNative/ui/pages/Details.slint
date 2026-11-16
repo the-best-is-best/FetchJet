@@ -1059,6 +1059,17 @@ component DetailsBody inherits VerticalLayout {
             clicked => { Act.detailsAction(Core.details.secondaryAction, false); }
         }
     }
+    if Core.details.canExtract: Rectangle {
+        height: 8px;
+    }
+    if Core.details.canExtract: OutlinedButton {
+        text: Tr.extractNow;
+        height: 42px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        clicked => { Act.detailsExtract(); }
+    }
     if Core.details.canShare: Rectangle {
         height: 8px;
     }

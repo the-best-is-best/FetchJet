@@ -13,6 +13,10 @@ import java.io.File
 actual class PathResolver actual constructor() {
     companion object {
         var appContext: Context? = null
+            set(value) {
+                field = value
+                if (value != null) AndroidStorageAccess.install(value)
+            }
     }
 
     actual fun getDownloadsDirectory(): String {
@@ -388,7 +392,14 @@ actual class PathResolver actual constructor() {
             if (newDir.exists() || newDir.mkdirs()) {
                 newDir.absolutePath
             } else {
-                null
+                val root = Environment.getExternalStorageDirectory().absolutePath
+                if (parentPath.trimEnd('/') == root) {
+                    val inDownloads = File(
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                        safeName
+                    )
+                    if (inDownloads.exists() || inDownloads.mkdirs()) inDownloads.absolutePath else null
+                } else null
             }
         } catch (_: Exception) {
             null

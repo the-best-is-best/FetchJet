@@ -1067,4 +1067,16 @@ object TurkishProvider : AppLocalization {
     override val mainSetupExtensionRow = "Tarayıcı uzantısı"
     override val mainSetupExtensionConnected = "Bir tarayıcı indirmeleri zaten FetchJet'e gönderiyor"
     override val mainSetupExtensionMissing = "Henüz hiçbir tarayıcıda uzantı yok"
+
+    override val extractArchives = "İndirme bitince arşivleri çıkar"
+    override val extractArchivesOn = "Açık · zip, tar, gz ve xz dosyaları arşivin yanına çıkarılır"
+    override val extractArchivesOff = "Kapalı · arşivler olduğu gibi kalır"
+    override fun extractedDone(name: String, files: Int) = "$name çıkarıldı · $files dosya"
+    override fun extractFailed(name: String, reason: String) = "$name çıkarılamadı: $reason"
+    override val extractNow = "Çıkar"
+    override fun extractStarted(name: String) = "$name çıkarılıyor…"
+    override fun extractingState(percent: Int) = "Çıkarılıyor · %$percent"
+    override val fileNameNeeded = "Başlamak için bir dosya adı yazın"
+    override val storageNeedsAllFiles = "Buraya kaydetmek için FetchJet'e «Tüm dosyalara erişim» izni verin (ayarlar sayfası açıldı) ve tekrar deneyin."
+    override fun folderNotWritable(folder: String) = "Bu klasöre kaydedilemiyor: $folder"
 }

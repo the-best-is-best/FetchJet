@@ -66,6 +66,7 @@ data class DetailsDto(
     val secondaryLabel: String = "",
     val canShare: Boolean = false,
     val canCompress: Boolean = false,
+    val canExtract: Boolean = false,
     val compressLabel: String = "",
     val removeLabel: String = "",
 )

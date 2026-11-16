@@ -214,6 +214,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         }
 
         DashboardUiEvent.OnAddDownloadClicked -> {
+            if (!destinationAllowed()) return
             rememberAddFolder()
             addDownload()
         }

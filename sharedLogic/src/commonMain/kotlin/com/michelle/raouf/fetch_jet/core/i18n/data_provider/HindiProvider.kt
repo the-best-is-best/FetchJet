@@ -1066,4 +1066,16 @@ object HindiProvider : AppLocalization {
     override val mainSetupExtensionRow = "ब्राउज़र एक्सटेंशन"
     override val mainSetupExtensionConnected = "एक ब्राउज़र पहले से FetchJet को डाउनलोड भेज रहा है"
     override val mainSetupExtensionMissing = "अभी किसी ब्राउज़र में एक्सटेंशन नहीं है"
+
+    override val extractArchives = "डाउनलोड पूरा होने पर आर्काइव खोलें"
+    override val extractArchivesOn = "चालू · zip, tar, gz और xz फ़ाइलें आर्काइव के पास खोली जाती हैं"
+    override val extractArchivesOff = "बंद · आर्काइव जैसे हैं वैसे रहते हैं"
+    override fun extractedDone(name: String, files: Int) = "$name खोला गया · $files फ़ाइलें"
+    override fun extractFailed(name: String, reason: String) = "$name नहीं खोला जा सका: $reason"
+    override val extractNow = "खोलें"
+    override fun extractStarted(name: String) = "$name खोला जा रहा है…"
+    override fun extractingState(percent: Int) = "खोला जा रहा है · $percent%"
+    override val fileNameNeeded = "शुरू करने के लिए फ़ाइल का नाम लिखें"
+    override val storageNeedsAllFiles = "यहाँ सहेजने के लिए FetchJet को «सभी फ़ाइलों का एक्सेस» दें (सेटिंग्स पेज खुल गया है), फिर दोबारा कोशिश करें।"
+    override fun folderNotWritable(folder: String) = "इस फ़ोल्डर में सहेज नहीं सकते: $folder"
 }

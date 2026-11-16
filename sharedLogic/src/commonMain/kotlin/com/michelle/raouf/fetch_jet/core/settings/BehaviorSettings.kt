@@ -44,6 +44,16 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _extractArchives =
+        MutableStateFlow(read("extractArchives")?.toBooleanStrictOrNull() ?: false)
+
+    /** Open zip / tar / gz / xz files next to the archive when their download finishes. */
+    val extractArchives: StateFlow<Boolean> = _extractArchives.asStateFlow()
+
+    fun setExtractArchives(on: Boolean) {
+        _extractArchives.value = on; write("extractArchives", on.toString())
+    }
+
     private val _visibleToDevices =
         MutableStateFlow(read("visibleToDevices")?.toBooleanStrictOrNull() ?: false)
 

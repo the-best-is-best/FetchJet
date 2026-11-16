@@ -510,6 +510,14 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 v.sortIntoFolders,
             )
         )
+        rows.add(
+            switchRow(
+                "extractArchives",
+                s.extractArchives,
+                if (v.extractArchives) s.extractArchivesOn else s.extractArchivesOff,
+                v.extractArchives,
+            )
+        )
     }
     val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
     rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {

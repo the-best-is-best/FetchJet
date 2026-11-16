@@ -610,6 +610,8 @@ component AddBody inherits VerticalLayout {
     if Core.add.fileNameShown: TextField {
         leading-emoji: Core.add.fileNameBusy ? "⏳" : "📝";
         enabled: !Core.add.fileNameBusy;
+        has-error: Core.add.fileNameNeeded;
+        placeholder: Core.add.fileNameNeeded ? Tr.fileNameNeeded : "";
         has-trailing: Core.add.fileNameCanReset;
         value: Core.add.fileName;
         rev: Core.add.fileNameRev;

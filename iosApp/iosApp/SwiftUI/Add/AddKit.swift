@@ -30,6 +30,7 @@ struct AddField: View {
     var enabled = true
     var keyboard: UIKeyboardType = .default
     var trailing: AnyView? = nil
+    var hasError = false
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -56,7 +57,7 @@ struct AddField: View {
         .background(FJTheme.color.surfaceVariant.opacity(enabled ? 0.45 : 0.25), in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(focused ? FJTheme.color.primary : FJTheme.color.outlineVariant.opacity(0.7), lineWidth: focused ? 1.5 : 1)
+                .stroke(hasError ? FJTheme.color.error : (focused ? FJTheme.color.primary : FJTheme.color.outlineVariant.opacity(0.7)), lineWidth: (focused || hasError) ? 1.5 : 1)
         )
         .shadow(color: focused ? FJTheme.color.primary.opacity(0.25) : .clear, radius: 6)
     }

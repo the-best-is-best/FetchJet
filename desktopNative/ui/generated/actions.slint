@@ -15,6 +15,7 @@ export global Act {
     callback rowCheck(id: string, checked: bool);
     callback rowQuickAction(id: string);
     callback rowCompress(id: string);
+    callback rowExtract(id: string);
     callback cyclePriority(id: string);
     callback checkAll(checked: bool);
     callback clearChecks();
@@ -40,6 +41,7 @@ export global Act {
     callback detailsRemove();
     callback detailsShare();
     callback detailsCompress();
+    callback detailsExtract();
     callback audioCompressSetMode(simple: bool);
     callback audioCompressSetLevel(level: int);
     callback audioCompressSetBitrate(value: int);

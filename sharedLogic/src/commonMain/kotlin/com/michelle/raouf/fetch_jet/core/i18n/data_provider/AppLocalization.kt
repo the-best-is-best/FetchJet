@@ -917,6 +917,18 @@ interface AppLocalization : LocalizationProvider {
     val mainSetupExtensionRow: String
     val mainSetupExtensionConnected: String
     val mainSetupExtensionMissing: String
+
+    val extractArchives: String
+    val extractArchivesOn: String
+    val extractArchivesOff: String
+    fun extractedDone(name: String, files: Int): String
+    fun extractFailed(name: String, reason: String): String
+    val extractNow: String
+    fun extractStarted(name: String): String
+    fun extractingState(percent: Int): String
+    val fileNameNeeded: String
+    val storageNeedsAllFiles: String
+    fun folderNotWritable(folder: String): String
 }
 
 val LocalizationManager.Strings: AppLocalization

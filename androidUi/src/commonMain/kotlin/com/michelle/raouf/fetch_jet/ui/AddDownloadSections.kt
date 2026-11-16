@@ -312,6 +312,7 @@ internal fun FileNameSection(
             value = if (inspecting && fileNameOverride.isEmpty()) LocalizationManager.Strings.findingName else fileNameOverride.ifEmpty { suggestedFileName },
             onValueChange = { onFileNameChanged(it) },
             enabled = !inspecting,
+            error = if (needsFileName && !inspecting) LocalizationManager.Strings.fileNameNeeded else null,
             modifier = Modifier.fillMaxWidth(),
             leading = { Text(if (inspecting) "⏳" else "📝", fontSize = 16.sp) },
             trailing = if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {

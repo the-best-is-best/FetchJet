@@ -54,7 +54,7 @@ def run():
     core = Core("automation", before_start=install_fake_ytdlp, config={"bridge": True, "bridgePort": PORT})
     try:
         core.pump(1.5)
-        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.4.0"}
+        ext = {"X-FetchJet": "1", "Origin": ORIGIN, "User-Agent": EDGE, "X-FetchJet-Ext": "3.5.0"}
         seen = {}
 
         def allow():

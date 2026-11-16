@@ -54,6 +54,7 @@ data class AddDto(
     val fileNameRev: Int = 0,
     val fileNameBusy: Boolean = false,
     val fileNameCanReset: Boolean = false,
+    val fileNameNeeded: Boolean = false,
     val checksumShown: Boolean = false,
     val checksum: String = "",
     val checksumRev: Int = 0,

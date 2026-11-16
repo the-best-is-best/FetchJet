@@ -44,6 +44,7 @@ export struct AddDto {
     fileNameRev: int,
     fileNameBusy: bool,
     fileNameCanReset: bool,
+    fileNameNeeded: bool,
     checksumShown: bool,
     checksum: string,
     checksumRev: int,
@@ -353,6 +354,7 @@ export struct DetailsDto {
     secondaryLabel: string,
     canShare: bool,
     canCompress: bool,
+    canExtract: bool,
     compressLabel: string,
     removeLabel: string,
 }
@@ -501,6 +503,7 @@ export struct StatusDto {
 export struct TaskRowDto {
     kind: int,
     canCompress: bool,
+    canExtract: bool,
     id: string,
     name: string,
     nameRtl: bool,
@@ -518,6 +521,7 @@ export struct TaskRowDto {
     left: string,
     action: int,
     completed: bool,
+    busy: bool,
     priority: int,
     priorityLabel: string,
     checked: bool,

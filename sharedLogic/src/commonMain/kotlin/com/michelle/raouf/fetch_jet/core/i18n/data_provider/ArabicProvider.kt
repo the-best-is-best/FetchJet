@@ -1085,6 +1085,18 @@ object ArabicProvider : AppLocalization {
     override val mainSetupExtensionRow = "امتداد المتصفح"
     override val mainSetupExtensionConnected = "متصفح يرسل التنزيلات إلى FetchJet بالفعل"
     override val mainSetupExtensionMissing = "لا يوجد متصفح عليه الامتداد بعد"
+
+    override val extractArchives = "فك الأرشيفات بعد انتهاء التحميل"
+    override val extractArchivesOn = "مفعّل · تُفك ملفات zip وtar وgz وxz بجانب الأرشيف"
+    override val extractArchivesOff = "متوقف · تبقى الأرشيفات كما هي"
+    override fun extractedDone(name: String, files: Int) = "تم فك $name · $files ملف"
+    override fun extractFailed(name: String, reason: String) = "تعذّر فك $name: $reason"
+    override val extractNow = "فك الضغط"
+    override fun extractStarted(name: String) = "جارٍ فك $name…"
+    override fun extractingState(percent: Int) = "جارٍ الفك · $percent%"
+    override val fileNameNeeded = "اكتب اسم الملف للبدء"
+    override val storageNeedsAllFiles = "للحفظ هنا، فعّل «الوصول إلى كل الملفات» لـ FetchJet (فُتحت صفحة الإعدادات) ثم حاول مجددًا."
+    override fun folderNotWritable(folder: String) = "تعذّر الحفظ في هذا المجلد: $folder"
 }
 
 private fun arCount(
