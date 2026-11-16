@@ -4,9 +4,39 @@ Not started. Written 2026-11-14 after a look at Mister Download Manager 0.5.2 (R
 by Ahmed Nefzaoui; unpacked and read, its CLI run on a 64 MB file; its window and its video part were not
 tested). The list below is what is worth having here. Each item says what the other app does, so we know
 what "done" has to cover. Nothing is built yet.
+Owner, 2026-11-16: 1.5.0 may be split into two releases; the Order section below is the proposal. Item 14 (a
+smaller Android APK) has the highest priority and its steps are the natural place to cut.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
-## 1. Automation API and a fuller command line (first, owner's order 2026-11-14)
+## Order (2026-11-16)
+
+Two releases if the split happens. The APK size is the highest priority, owner's decision 2026-11-16. The rest is
+ordered by value for users, cost and risk. Item numbers are the headings below.
+
+Release A:
+1. Item 14, step 0: remove the universal APK from the release (decided, small, first).
+2. Item 14, steps 1 and 2: trimmed Python, our own ffmpeg. Highest priority, the biggest visible gain.
+3. Item 15, security scan: starts with item 14 and runs again before the release. It checks items 1 and 2 as they are built.
+4. Item 1, Automation API and `status` / `pause` / `start` / `remove` / `delete`. Small and low risk, and tests and
+   measurements can drive the real app without the mouse.
+5. Item 6, small items left from 1.4.1 (the licence check and the SignPath application are cheap and block nothing).
+6. Item 2 phase 1, extract ZIP / TAR / GZ / XZ on every platform.
+7. Item 7, context menu on a download row (owner's request, three UIs).
+8. Item 8, sort into folders: rules by site (owner's request).
+
+Release B:
+9. Item 14 step 3, Python inside the app (`useLegacyPackaging` false). The riskiest, it needs its own testing time.
+10. Item 3, own DNS and network adapter.
+11. Item 2 phase 2, 7Z / RAR, passwords, split archives, folder choices.
+12. Item 12, Facebook stories (first a test, then a decision).
+13. Item 13, WhatsApp status and `blob:` videos (first a test, then a decision).
+14. Item 11, portable mode on Windows.
+15. Item 9, scan a file after the download.
+16. Item 5, wake the computer on macOS / Linux / Android.
+17. Item 10, monthly downloads report. Cosmetic.
+18. Item 4, server country and ping. Cosmetic, last, maybe never.
+
+## 1. Automation API and a fuller command line (owner's order 2026-11-14)
 
 What the other app does: a local API (off by default, turned on with a command) and CLI commands `status`
 (JSON), `pause`, `start`, `remove`, `delete` by download id, plus `get` / `resume` without the window and
@@ -186,6 +216,75 @@ WhatsApp versions; nothing equal on iOS). Neither was tried.
 - [ ] If it works, it applies to any site that plays video from a blob, not only WhatsApp; decide how the app
   receives bytes (the bridge takes links, not files).
 - [ ] Android `.Statuses` reader: outside the plan unless the owner asks.
+
+## 14. A smaller Android APK, and no extracted binaries (highest priority, owner's order 2026-11-16)
+
+Measured 2026-11-16 on the 1.4.1 release `androidApp-arm64-v8a-release.apk` (82.9 MB; the app's own code,
+`classes.dex`, is only 3.2 MB). The rest is prebuilt bundles that are already zips, so APK compression does
+not help:
+
+- `libffmpeg.zip.so` 35.4 MB (184 files, raw 78 MB: libavcodec 6.6, libaom 2.8, SvtAv1Enc 2.0, libavfilter 1.9,
+  libx265 1.0, librav1e 0.9, libopenmpt 0.7, gnutls, gio ...) from `youtubedl-android:ffmpeg`.
+- `libpython.zip.so` 32.5 MB (Python 3.14, curl_cffi 7.3, Cryptodome 1.6, libcrypto 2.4, tk / tcl / libX11 4.0,
+  pip / ensurepip 3.5, idlelib 0.5, two copies of sqlite and of libc++_shared ~2.3) from
+  `ytdlnis_packages.python`.
+- `libtorrent4j.so` 6.2 MB, `assets/ytdlp` 2.9 MB, `libbash.zip.so` 1.5 MB.
+- The universal APK is 281.9 MB (all four ABIs); the per-ABI APKs are 67 to 83 MB.
+
+Why `useLegacyPackaging = true` (`androidApp/build.gradle.kts`): `PackageBase.kt` reads `libpython.zip.so` and
+`libffmpeg.zip.so` from `applicationInfo.nativeLibraryDir` and unpacks them at run time, and Android 10+
+cannot run a downloaded binary, so the files must exist on disk. Its cost: the APK holds compressed libraries
+and the install takes more space. Setting it to `false` while the app still runs these as programs would break
+them. The way out is the same as on iOS: libraries of our own, loaded inside the app, nothing to run.
+
+Steps, each tested on the A56 before the next (the likely split point between two releases is after step 2):
+
+- [ ] Step 1, trim what we ship of Python (about 8 MB, low risk): remove tkinter, tcl / tk, libX11,
+  pip / ensurepip, idlelib, lib2to3, pydoc_data; check the two copies of sqlite and of libc++_shared before
+  removing one. Done when the build repacks the zip and yt-dlp, curl_cffi (the 9gag test in CLAUDE.md) and
+  YouTube / SoundCloud / HLS still work.
+- [ ] Step 2, our own ffmpeg (about 25 MB, medium risk): build ffmpeg with the NDK with only what the app uses
+  (stream copy and merge, the audio encoders of Convert and Compress audio, subtitles embed, the
+  re-encode fallback), no AV1 / x265 / openmpt, as a library called from the app (JNI), not a program.
+  List every ffmpeg call first (`runLocalFfmpeg`, audio convert / compress, subtitles, clip cut, HLS) so no
+  encoder is missing; a missing encoder breaks a feature.
+- [ ] Step 3, Python inside the app, like iOS (high risk, needs its own release or a long beta): `libpython`
+  loaded in the process, the stdlib in a zip, extension modules (curl_cffi, Cryptodome) as real `.so` files in
+  `jniLibs`. Today `RuntimeManager` runs yt-dlp as a process; read it before planning (not verified here).
+  After steps 2 and 3 nothing is run from `nativeLibraryDir`, so `useLegacyPackaging` can be `false`
+  (check 16 KB page alignment of every `.so` at the same time).
+- [ ] Step 0, first (owner's decision 2026-11-16): remove the 282 MB universal APK from the release (24 downloads
+  of 1.4.1 against 148 for arm64). Files that mention it: `build.yml` (the upload filter, line 247 to 250),
+  `androidApp/build.gradle.kts` (`isUniversalApk = true`), `README.md` and `docs/index.html` ("take universal if
+  unsure": say arm64-v8a instead and keep the list of the other ABIs), and `PlatformUpdater.android.kt`, which
+  falls back to the universal file when no ABI file matches (the in-app update of an app that was installed from
+  the universal APK keeps working through its own ABI file; check an x86 emulator install). The `.aab` is separate.
+- [ ] Expected result, not measured: about 8 MB after step 1, about 33 MB after step 2, about 45 MB total APK
+  after step 3. Measure the real APK after each step and write the numbers here.
+
+## 15. Security scan (owner's order 2026-11-16, with the APK work and before the release)
+
+Last review: 2026-11-04 (CLAUDE.md "Bridge pairing"), before the command line, the Automation API, archive
+extraction and the extension 3.4. Socket.dev lists the Firefox extension with "Permission" (8 instances: downloads,
+contextMenus, storage, notifications, cookies, nativeMessaging, webRequest, scripting) and "Wildcard Host
+Permission" (`<all_urls>`). Those two are information, not a finding, and `<all_urls>` is needed (page button,
+`webRequest`, cookies of the page's site).
+
+- [ ] Extension: is `nativeMessaging` still used? Its only call is `sendNativeMessage` in `background.js`. If there is
+  no native host, remove the permission (7 left). Say in the store listing that every request goes to
+  `127.0.0.1:28450` only. Read the Socket report again after the next upload.
+- [ ] Bridge and the new Automation API: token on every endpoint, off by default, constant-time compare, no
+  endpoint that reads or deletes files outside the download folder, `delete` only a download's own file.
+- [ ] Archive extraction (item 2): zip-slip, symlinks, a bomb (size and file-count limit), a path outside the
+  folder; fuzz a few damaged archives. Do this before the feature ships, not after.
+- [ ] Dependencies: known vulnerabilities in the Gradle libraries, the bundled Python packages (yt-dlp, curl_cffi,
+  Cryptodome) and the media tools (ffmpeg, deno). Pin and write down the versions.
+- [ ] The repo and CI: a secrets scan of the history, the permissions of each job in `build.yml`, actions pinned to a
+  commit, signing keys only from secrets.
+- [ ] Release files: the `.sig` check of the in-app updater still refuses an unsigned or changed file.
+- [ ] Android: R8 build, exported components and permissions in `AndroidManifest.xml`, cleartext traffic
+  (`usesCleartextTraffic="true"` is on for plain http downloads: confirm it is the only reason).
+- [ ] Write the result here: what was found, what was fixed, what was accepted and why.
 
 ## Looked at and not planned
 
