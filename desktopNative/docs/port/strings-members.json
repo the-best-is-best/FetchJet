@@ -5357,6 +5357,114 @@
     ]
   },
   {
+    "name": "scanFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesCommand",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanCommandLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanCommandHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanningState",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanClean",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanThreatFound",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanBlocked",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanAntivirusBlockedError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFailedState",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanThreat",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "detail",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanBlockedToast",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "detail",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanNoScanner",
+    "kind": "val",
+    "params": []
+  },
+  {
     "name": "fileNameNeeded",
     "kind": "val",
     "params": []

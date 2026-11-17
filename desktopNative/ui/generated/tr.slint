@@ -759,6 +759,20 @@ export global Tr {
     in property <string> extractArchivesOn: "On · zip, tar, gz and xz files are opened next to the archive";
     in property <string> extractArchivesOff: "Off · archives stay as they are";
     in property <string> extractNow: "Extract";
+    in property <string> scanFiles: "Scan files when they finish";
+    in property <string> scanFilesSystem: "Your antivirus checks each finished file";
+    in property <string> scanFilesCommand: "Your scanner command checks each finished file";
+    in property <string> scanFilesOff: "Off";
+    in property <string> scanCommandLabel: "Scanner command (optional)";
+    in property <string> scanCommandHint: "[File] is replaced by the file. Exit code 0 means clean. Leave it empty to use the antivirus Windows knows.";
+    in property <string> scanningState: "Scanning for viruses…";
+    in property <string> scanTitle: "Virus scan";
+    in property <string> scanClean: "No threat found";
+    in property <string> scanThreatFound: "Threat found";
+    in property <string> scanBlocked: "Blocked by Windows";
+    in property <string> scanAntivirusBlockedError: "The antivirus blocked this file: it found a threat in it";
+    in property <string> scanFailedState: "Scan failed";
+    in property <string> scanNoScanner: "No virus scanner found: add a scanner command in Settings";
     in property <string> fileNameNeeded: "Type a file name to start";
     in property <string> storageNeedsAllFiles: "To save here, allow “All files access” for FetchJet (the settings page just opened), then try again.";
 }

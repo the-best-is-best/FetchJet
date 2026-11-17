@@ -105,6 +105,7 @@ object DesktopFileSystem : FileSystem() {
 
     private fun open(file: Path, write: Boolean, mode: OsOpen): OsFile =
         DesktopOs.openFile(native(file), write, mode) ?: when {
+            DesktopOs.lastOpenBlockedByAntivirus() -> throw com.michelle.raouf.fetch_jet.feature.file_scan.AntivirusBlockedException()
             mode == OsOpen.MUST_CREATE && DesktopOs.exists(native(file)) -> throw IOException("$file already exists.")
             mode == OsOpen.MUST_EXIST && !DesktopOs.exists(native(file)) -> throw FileNotFoundException("no such file: $file")
             else -> throw IOException("failed to open $file")

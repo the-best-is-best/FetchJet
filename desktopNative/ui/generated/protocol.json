@@ -1598,6 +1598,22 @@
     "Int"
    ],
    [
+    "scanShown",
+    "Boolean"
+   ],
+   [
+    "scanIcon",
+    "String"
+   ],
+   [
+    "scanText",
+    "String"
+   ],
+   [
+    "scanTone",
+    "Int"
+   ],
+   [
     "primaryAction",
     "Int"
    ],
@@ -4165,6 +4181,20 @@
   "extractArchivesOn",
   "extractArchivesOff",
   "extractNow",
+  "scanFiles",
+  "scanFilesSystem",
+  "scanFilesCommand",
+  "scanFilesOff",
+  "scanCommandLabel",
+  "scanCommandHint",
+  "scanningState",
+  "scanTitle",
+  "scanClean",
+  "scanThreatFound",
+  "scanBlocked",
+  "scanAntivirusBlockedError",
+  "scanFailedState",
+  "scanNoScanner",
   "fileNameNeeded",
   "storageNeedsAllFiles"
  ]

@@ -178,8 +178,20 @@ fun winOpenFile(
     val access = if (write) GENERIC_READ or GENERIC_WRITE.toUInt() else GENERIC_READ
     val share = FILE_SHARE_READ.toUInt() or FILE_SHARE_WRITE.toUInt() or FILE_SHARE_DELETE.toUInt()
     val handle = CreateFileW(winLongPath(path), access, share, null, disposition, flags, null)
-    return if (handle == INVALID_HANDLE_VALUE) null else handle
+    if (handle == INVALID_HANDLE_VALUE) {
+        winLastOpenBlockedByAntivirus = GetLastError().let { it == ERROR_VIRUS_INFECTED || it == ERROR_VIRUS_DELETED }
+        return null
+    }
+    winLastOpenBlockedByAntivirus = false
+    return handle
 }
+
+private const val ERROR_VIRUS_INFECTED = 225u
+private const val ERROR_VIRUS_DELETED = 226u
+
+@kotlin.native.concurrent.ThreadLocal
+var winLastOpenBlockedByAntivirus = false
+    private set
 
 fun winCloseFile(handle: HANDLE?) {
     if (handle != null) CloseHandle(handle)

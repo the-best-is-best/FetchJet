@@ -160,6 +160,8 @@ actual object DesktopOs {
     actual fun openFile(path: String, write: Boolean): OsFile? =
         openFile(path, write, if (write) OsOpen.TRUNCATE else OsOpen.MUST_EXIST)
 
+    actual fun lastOpenBlockedByAntivirus(): Boolean = false
+
     actual fun openFile(path: String, write: Boolean, mode: OsOpen): OsFile? = try {
         val file = path.toPath()
         val handle = if (!write) {

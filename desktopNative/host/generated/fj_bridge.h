@@ -659,6 +659,10 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.checksumIcon = fj::text(j, "checksumIcon");
     d.checksumText = fj::text(j, "checksumText");
     d.checksumTone = fj::integer(j, "checksumTone");
+    d.scanShown = fj::flag(j, "scanShown");
+    d.scanIcon = fj::text(j, "scanIcon");
+    d.scanText = fj::text(j, "scanText");
+    d.scanTone = fj::integer(j, "scanTone");
     d.primaryAction = fj::integer(j, "primaryAction");
     d.primaryLabel = fj::text(j, "primaryLabel");
     d.secondaryAction = fj::integer(j, "secondaryAction");
@@ -1873,6 +1877,20 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_extractArchivesOn(next());
     tr.set_extractArchivesOff(next());
     tr.set_extractNow(next());
+    tr.set_scanFiles(next());
+    tr.set_scanFilesSystem(next());
+    tr.set_scanFilesCommand(next());
+    tr.set_scanFilesOff(next());
+    tr.set_scanCommandLabel(next());
+    tr.set_scanCommandHint(next());
+    tr.set_scanningState(next());
+    tr.set_scanTitle(next());
+    tr.set_scanClean(next());
+    tr.set_scanThreatFound(next());
+    tr.set_scanBlocked(next());
+    tr.set_scanAntivirusBlockedError(next());
+    tr.set_scanFailedState(next());
+    tr.set_scanNoScanner(next());
     tr.set_fileNameNeeded(next());
     tr.set_storageNeedsAllFiles(next());
 }

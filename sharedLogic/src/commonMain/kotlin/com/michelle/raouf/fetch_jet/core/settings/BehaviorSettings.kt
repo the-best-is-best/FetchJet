@@ -54,6 +54,24 @@ object BehaviorSettings {
         _extractArchives.value = on; write("extractArchives", on.toString())
     }
 
+    private val _scanFiles =
+        MutableStateFlow(read("scanFiles")?.toBooleanStrictOrNull() ?: false)
+
+    val scanFiles: StateFlow<Boolean> = _scanFiles.asStateFlow()
+
+    fun setScanFiles(on: Boolean) {
+        _scanFiles.value = on; write("scanFiles", on.toString())
+    }
+
+    private val _scanCommand = MutableStateFlow(read("scanCommand").orEmpty())
+
+    val scanCommand: StateFlow<String> = _scanCommand.asStateFlow()
+
+    fun setScanCommand(command: String) {
+        val clean = command.lines().joinToString(" ")
+        _scanCommand.value = clean; write("scanCommand", clean)
+    }
+
     private val _visibleToDevices =
         MutableStateFlow(read("visibleToDevices")?.toBooleanStrictOrNull() ?: false)
 

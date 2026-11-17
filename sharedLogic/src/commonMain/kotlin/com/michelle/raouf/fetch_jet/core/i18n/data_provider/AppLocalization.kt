@@ -926,6 +926,23 @@ interface AppLocalization : LocalizationProvider {
     val extractNow: String
     fun extractStarted(name: String): String
     fun extractingState(percent: Int): String
+    val scanFiles: String
+    val scanFilesSystem: String
+    val scanFilesCommand: String
+    val scanFilesOff: String
+    val scanCommandLabel: String
+    val scanCommandHint: String
+    val scanningState: String
+    val scanTitle: String
+    val scanClean: String
+    val scanThreatFound: String
+    val scanBlocked: String
+    val scanAntivirusBlockedError: String
+    val scanFailedState: String
+    fun scanThreat(name: String, detail: String): String
+    fun scanBlockedToast(name: String): String
+    fun scanFailed(name: String, detail: String): String
+    val scanNoScanner: String
     val fileNameNeeded: String
     val storageNeedsAllFiles: String
     fun folderNotWritable(folder: String): String

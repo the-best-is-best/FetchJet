@@ -326,6 +326,8 @@ class QueueManagerRepository(
     private val _checksumResults = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     private class ExtractState(val fraction: Float, val startedAt: Long)
     private val extractState = MutableStateFlow<Map<String, ExtractState>>(emptyMap())
+    private val scanState = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val scanResults = MutableStateFlow<Map<String, String>>(emptyMap())
     private val checksumVerifyingIds = mutableSetOf<String>()
 
     private val baseTasksFlow: kotlinx.coroutines.flow.Flow<List<DownloadTask>> = combine(
@@ -368,13 +370,25 @@ class QueueManagerRepository(
     val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
         baseTasksFlow,
         _checksumResults,
-        extractState
-    ) { tasks, results, extracting ->
+        extractState,
+        scanState,
+        scanResults
+    ) { tasks, results, extracting, scanning, scanned ->
         val withChecksums =
-            if (results.isEmpty()) tasks
-            else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
-        if (extracting.isEmpty()) withChecksums
+            if (results.isEmpty() && scanned.isEmpty()) tasks
+            else tasks.map {
+                val checked = if (it.id in results) it.copy(checksumVerified = results[it.id]) else it
+                scanned[it.id]?.let { verdict -> checked.copy(scanResult = verdict) } ?: checked
+            }
+        if (extracting.isEmpty() && scanning.isEmpty()) withChecksums
         else withChecksums.map { task ->
+            scanning[task.id]?.let { since ->
+                return@map task.copy(
+                    postProcessLabel = LocalizationManager.Strings.scanningState,
+                    postProcessProgress = -1f,
+                    postProcessStartedAtMs = since
+                )
+            }
             val state = extracting[task.id] ?: return@map task
             task.copy(
                 postProcessLabel = LocalizationManager.Strings.extractingState((state.fraction * 100).toInt()),
@@ -393,6 +407,11 @@ class QueueManagerRepository(
     /** One event per archive the app opened (or failed to open) after its download finished. */
     val archiveEvents: kotlinx.coroutines.flow.SharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent> =
         _archiveEvents.asSharedFlow()
+
+    private val _scanEvents = kotlinx.coroutines.flow.MutableSharedFlow<com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent>(extraBufferCapacity = 16)
+
+    val scanEvents: kotlinx.coroutines.flow.SharedFlow<com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent> =
+        _scanEvents.asSharedFlow()
 
     private val unfinishedSeen = mutableSetOf<String>()
     private val extractingIds = MutableStateFlow<Set<String>>(emptySet())
@@ -481,17 +500,69 @@ class QueueManagerRepository(
         scope.launch {
             allTasksFlow.collect { tasks ->
                 for (task in tasks) {
+                    if (task.status == DownloadStatus.ERROR && task.scanResult == null && task.id !in scanResults.value &&
+                        task.errorMessage?.contains(com.michelle.raouf.fetch_jet.feature.file_scan.ANTIVIRUS_BLOCKED_ERROR) == true
+                    ) {
+                        scanResults.update { it + (task.id to com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT.code) }
+                        _scanEvents.tryEmit(
+                            com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(
+                                task.fileName, com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT, "blocked while downloading"
+                            )
+                        )
+                    }
                     if (task.status != DownloadStatus.COMPLETED) {
                         unfinishedSeen.add(task.id)
                         continue
                     }
                     if (!unfinishedSeen.remove(task.id)) continue
-                    if (!com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.extractArchives.value) continue
                     if (task.engineType == EngineType.BITTORRENT || task.fileName.isBlank()) continue
-                    if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.kindOf(task.fileName) == null) continue
-                    scope.launch { extractFinished(task) }
+                    runCatching {
+                        com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(
+                            task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName,
+                            task.url,
+                            task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+                        )
+                    }
+                    val scan = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanFiles.value &&
+                            com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.supported
+                    val extract = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.extractArchives.value &&
+                            com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.kindOf(task.fileName) != null
+                    if (!scan && !extract) continue
+                    scope.launch {
+                        val outcome = if (scan) scanFinished(task) else null
+                        val unsafe = outcome == com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT ||
+                                outcome == com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.BLOCKED
+                        if (extract && !unsafe) extractFinished(task)
+                    }
                 }
             }
+        }
+    }
+
+    private suspend fun scanFinished(task: DownloadTask): com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome? {
+        if (task.id in scanState.value) return null
+        scanState.update { it + (task.id to com.michelle.raouf.fetch_jet.core.util.currentEpochMs()) }
+        try {
+            val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
+            val result = try {
+                com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.scan(
+                    path,
+                    task.url,
+                    com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanCommand.value
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                com.michelle.raouf.fetch_jet.feature.file_scan.ScanResult(
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED, e.message ?: "error"
+                )
+            }
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.fileName}: ${result.outcome.code} ${result.detail}" }
+            scanResults.update { it + (task.id to result.outcome.code) }
+            _scanEvents.emit(com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.fileName, result.outcome, result.detail))
+            return result.outcome
+        } finally {
+            scanState.update { it - task.id }
         }
     }
 

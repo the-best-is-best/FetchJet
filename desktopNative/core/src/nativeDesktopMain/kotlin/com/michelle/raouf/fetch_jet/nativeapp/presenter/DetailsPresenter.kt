@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
@@ -231,6 +232,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
     ).filter { (_, link) -> link.isNotBlank() }.distinctBy { (_, link) -> link }.map { (label, link) -> LinkDto(label, link) }
 
     val checksumShown = !task.expectedChecksum.isNullOrBlank()
+    val scan = ScanOutcome.of(task.scanResult)?.takeIf { it != ScanOutcome.NO_SCANNER }
     val canFolder = pathResolver.isOpenFolderSupported()
     var primary = DetailActionCode.NONE
     var primaryLabel = ""
@@ -392,6 +394,24 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
                 true -> ToneCode.CHECKSUM_OK.ordinal
                 false -> ToneCode.ERROR.ordinal
                 null -> ToneCode.MUTED.ordinal
+            },
+            scanShown = scan != null,
+            scanIcon = when (scan) {
+                ScanOutcome.CLEAN -> "🛡"
+                ScanOutcome.THREAT, ScanOutcome.BLOCKED -> "⚠"
+                else -> if (scan == null) "" else "❔"
+            },
+            scanText = when (scan) {
+                null -> ""
+                ScanOutcome.CLEAN -> strings.scanTitle + ": " + strings.scanClean
+                ScanOutcome.THREAT -> strings.scanTitle + ": " + strings.scanThreatFound
+                ScanOutcome.BLOCKED -> strings.scanTitle + ": " + strings.scanBlocked
+                else -> strings.scanTitle + ": " + strings.scanFailedState
+            },
+            scanTone = when (scan) {
+                ScanOutcome.CLEAN -> ToneCode.CHECKSUM_OK.ordinal
+                ScanOutcome.THREAT, ScanOutcome.BLOCKED -> ToneCode.ERROR.ordinal
+                else -> ToneCode.MUTED.ordinal
             },
             primaryAction = primary.ordinal,
             primaryLabel = primaryLabel,

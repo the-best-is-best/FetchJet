@@ -5,6 +5,7 @@ package com.michelle.raouf.fetch_jet.platform.desktop
 import com.michelle.raouf.fetch_jet.platform.win.WIN_CREATE_ALWAYS
 import com.michelle.raouf.fetch_jet.platform.win.WIN_CREATE_NEW
 import com.michelle.raouf.fetch_jet.platform.win.winSetFileSize
+import com.michelle.raouf.fetch_jet.platform.win.winLastOpenBlockedByAntivirus
 import com.michelle.raouf.fetch_jet.platform.win.WIN_OPEN_ALWAYS
 import com.michelle.raouf.fetch_jet.platform.win.WIN_OPEN_EXISTING
 import com.michelle.raouf.fetch_jet.platform.win.winReadAt
@@ -164,6 +165,8 @@ actual object DesktopOs {
             override fun close() = winCloseFile(handle)
         }
     }
+
+    actual fun lastOpenBlockedByAntivirus(): Boolean = winLastOpenBlockedByAntivirus
 
     actual fun deleteFile(path: String): Boolean = winDeleteFile(path)
     actual fun move(source: String, target: String, replace: Boolean): Boolean = winMove(source, target, replace)

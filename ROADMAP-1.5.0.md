@@ -196,13 +196,50 @@ per host).
 - [ ] Same on the three UIs (Slint, Compose, SwiftUI); texts in the 15 languages; tests in corehost
   (rule hit, sub-domain, no rule, a rule beside a remembered kind folder).
 
-## 9. Scan a file after the download (idea, 2026-11-14)
+## 9. Scan a file after the download (idea, 2026-11-14; built 2026-11-17)
 
-- [ ] Setting "Scan finished files" (off by default): run the system's own scanner on the file when the
-  download completes (Windows Defender on Windows; decide for macOS and Linux). A file the scanner flags is
-  marked in the list with a clear message and is not opened.
-- [ ] Decide what happens when no scanner is found (say so once, do nothing else).
-- [ ] Texts in the 15 languages; tests in corehost with a fake scanner command.
+- [x] Setting "Scan files when they finish" (off by default) in Settings > Downloads, next to "Extract archives",
+  in the native desktop app (Windows / macOS / Linux). Android and iOS: no scanner, the setting is not shown
+  (`FileScanner.supported` false).
+- [x] Windows: the system's attachment scan (`IAttachmentExecute::Save`, what browsers call), so whatever antivirus is
+  installed and registered with Windows checks the file (Defender, Kaspersky, ...). It also writes the Mark of the Web
+  (`Zone.Identifier`, ZoneId=3 + the source link), so SmartScreen / Office warn before the file runs.
+  Verdict: Save OK and the file still there = clean; `INET_E_SECURITY_PROBLEM` = blocked by policy; the file gone =
+  threat (the antivirus removed it); anything else = failed. Same reading as Chromium. Code:
+  `sharedLogic/src/mingwX64Main/.../feature/file_scan/SystemScan.mingw.kt` (COM by its vtable).
+  Ezoo (read in its source, `crates/engine/src/system.rs`) only starts a program the user types and does not read the
+  answer; its Mark of the Web is written separately.
+- [x] A scanner command (optional, every desktop OS): `[File]` is replaced by the file (or the file is added at the end).
+  Exit code 0 = clean, anything else = threat with the scanner's last line, file gone = threat, 15 min = failed.
+  On macOS / Linux there is no system scanner: without a command the toast says to add one (e.g. `clamscan`).
+- [x] Order: scan, then extract; an archive with a threat (or blocked) is not extracted. The row shows
+  "Scanning for viruses…" while it runs, a toast for a threat / block / failure / no scanner (no toast when clean),
+  and the details show "Virus scan: ..." (green / red). The verdict is saved with the task (`scanResult` in
+  `tasks_cache.json`; older versions ignore the field).
+- [x] Texts in the 15 languages. Test `desktopNative/tests/corehost/test_scan.py` (19 checks, real Windows
+  attachment scan on a clean file + a fake scanner command): passed 2026-11-17. Also re-run: extract 16 (one run
+  failed "the second copy" once, then passed twice), settings 87, home 41, integrity 32, add 29. JVM, Android and
+  Linux compile; macOS not built (needs the Mac: only the 5-line `SystemScan.macos.kt` and the shared code).
+- [x] Real threat (EICAR, owner's OK, 2026-11-17, served from memory by a local server, not kept in the repo): Defender's
+  real-time protection blocks the `.part` while it is written, before any scan: opening it again fails with Windows
+  error 225 `ERROR_VIRUS_INFECTED` (checked with `CreateFileW`; 226 = `ERROR_VIRUS_DELETED`). The download used to fail
+  with "failed to open ...part". Now `winOpenFile` keeps that error (`winLastOpenBlockedByAntivirus`),
+  `DesktopFileSystem.open` throws `ANTIVIRUS_BLOCKED_ERROR` ("The antivirus blocked this file: it found a threat in
+  it"), and the repository marks such a task `scanResult = threat` with the threat toast, even with the scan setting
+  off. Verified for `eicar-test.com` and `.txt`; `test_scan` 19/19 after it; Linux and Android compile.
+  The owner's run (eicar.org) took ~31 s to fail: `fetchWithRetry` retried 1+2+4+8+16 s. It is now
+  `AntivirusBlockedException` and is not retried: the task fails in 0.1 s. The message is translated in the 15
+  languages (`scanAntivirusBlockedError`, through `localizeStep`).
+- [ ] Not tested: another antivirus than Defender.
+- [ ] macOS "downloaded from the internet" mark (owner's request, 2026-11-17), always on, not tied to the scan
+  setting: every finished download (not torrents) gets `com.apple.quarantine` through
+  `NSURL.setResourceValue(..., NSURLQuarantinePropertiesKey)` (agent FetchJet, type web download, data URL = the
+  link, origin URL = the page / Referer), as Safari and Chrome do; Gatekeeper / XProtect then check the file when it
+  is opened. `SystemScan.macos.kt` (`systemMarkFromInternet`), called from the repository's completion loop through
+  `FileScanner.markFromInternet` (no-op on Windows, Linux, Android, iOS, JVM). The symbols exist in the Kotlin 2.4.20
+  macos_arm64 Foundation klib; NOT compiled (no Mac here). Mac test: build, download a file and a `.dmg` / `.app`
+  zip, then `xattr -p com.apple.quarantine <file>` (must show `FetchJet`), Finder Get Info, and opening the app must
+  show the "downloaded from the internet" prompt. A failure prints `quarantine: could not mark`. The settings hint says "the antivirus Windows knows" on macOS / Linux too.
 
 ## 10. Monthly downloads report (idea, 2026-11-14)
 

@@ -45,6 +45,7 @@ internal data class PersistedTask(
     val maxConnections: Int = 0,
     val expectedChecksum: String = "",
     val checksumVerified: String = "",
+    val scanResult: String = "",
     val subtitles: String = "",
     val embedSubtitles: Boolean = false,
     val priority: Int = 0
@@ -109,6 +110,7 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     maxConnections = maxConnections,
     expectedChecksum = expectedChecksum.orEmpty(),
     checksumVerified = checksumVerified?.toString().orEmpty(),
+    scanResult = scanResult.orEmpty(),
     subtitles = subtitleTracks.joinToString("\u0002") { t ->
         listOf(
             t.langCode, t.langName, t.ext,
@@ -174,6 +176,7 @@ internal fun PersistedTask.toTask(
         maxConnections = maxConnections,
         expectedChecksum = expectedChecksum.ifBlank { null },
         checksumVerified = checksumVerified.toBooleanStrictOrNull(),
+        scanResult = scanResult.ifBlank { null },
         subtitleTracks = subtitles.ifBlank { null }?.split('\u0002')?.mapNotNull { entry ->
             val f = entry.split('\u0001')
             val code = f.getOrNull(0)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null

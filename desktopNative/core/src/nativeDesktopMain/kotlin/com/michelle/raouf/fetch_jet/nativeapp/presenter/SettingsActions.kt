@@ -84,6 +84,10 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
         }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
         "extractArchives" -> vm.onEvent(DashboardUiEvent.OnExtractArchivesChanged(on))
+        "scanFiles" -> {
+            BehaviorSettings.setScanFiles(on)
+            settingsPoke()
+        }
         "visibleToDevices" -> BehaviorSettings.setVisibleToDevices(on)
         "wakeForSchedule" -> {
             BehaviorSettings.setWakeForSchedule(on)
@@ -223,6 +227,12 @@ internal fun Presenter.settingText(id: String, text: String) {
         id == "destination" -> {
             settingsEcho.of(id).fromUi(text)
             vm.onEvent(DashboardUiEvent.OnDestinationPathChanged(text))
+        }
+
+        id == "scanCommand" -> {
+            settingsEcho.of(id).fromUi(text)
+            BehaviorSettings.setScanCommand(text)
+            settingsPoke()
         }
 
         id == "proxyHost" -> {

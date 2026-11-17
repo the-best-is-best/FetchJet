@@ -99,7 +99,8 @@ data class DownloadTask(
      *  bare hex string whose length picks the algorithm). Blank/null = no verification. */
     val expectedChecksum: String? = null,
     /** Result of the checksum check: true = matched, false = mismatch, null = not checked yet. */
-    val checksumVerified: Boolean? = null
+    val checksumVerified: Boolean? = null,
+    val scanResult: String? = null
 )
 
 const val STEP_PREPARING_FILE = "Preparing file"

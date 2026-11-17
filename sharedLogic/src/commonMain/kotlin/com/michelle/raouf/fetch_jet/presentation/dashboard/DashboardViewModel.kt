@@ -588,6 +588,19 @@ class DashboardViewModel(
             }
         }
         scope.launch {
+            queueRepository.scanEvents.collect { event ->
+                val strings = LocalizationManager.Strings
+                val text = when (event.outcome) {
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT -> strings.scanThreat(event.name, event.detail)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.BLOCKED -> strings.scanBlockedToast(event.name)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED -> strings.scanFailed(event.name, event.detail)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.NO_SCANNER -> strings.scanNoScanner
+                    else -> null
+                }
+                if (text != null) _uiEffect.emit(DashboardUiEffect.ShowToast(text))
+            }
+        }
+        scope.launch {
             queueRepository.archiveEvents.collect { event ->
                 val strings = LocalizationManager.Strings
                 val failure = event.error

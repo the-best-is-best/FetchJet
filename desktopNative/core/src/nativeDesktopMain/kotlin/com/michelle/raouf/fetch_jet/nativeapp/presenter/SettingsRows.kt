@@ -22,6 +22,7 @@ import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
 import com.michelle.raouf.fetch_jet.core.update.isOlderExtension
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice
+import com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingButtonDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingFieldDto
@@ -518,6 +519,35 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 v.extractArchives,
             )
         )
+        val scanOn = BehaviorSettings.scanFiles.value
+        val scanCommand = BehaviorSettings.scanCommand.value
+        rows.add(
+            switchRow(
+                "scanFiles",
+                s.scanFiles,
+                when {
+                    !scanOn -> s.scanFilesOff
+                    scanCommand.isBlank() && FileScanner.hasSystemScanner -> s.scanFilesSystem
+                    else -> s.scanFilesCommand
+                },
+                scanOn,
+            )
+        )
+        if (scanOn) {
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.FIELDS.ordinal,
+                    top = 10,
+                    one = field(
+                        "scanCommand",
+                        scanCommand,
+                        label = s.scanCommandLabel,
+                        placeholder = if (FileScanner.hasSystemScanner) "" else "clamscan --no-summary [File]",
+                    ),
+                )
+            )
+            rows.add(noteRow(s.scanCommandHint, ToneCode.MUTED, top = 6, bottom = 12))
+        }
     }
     val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
     rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {
