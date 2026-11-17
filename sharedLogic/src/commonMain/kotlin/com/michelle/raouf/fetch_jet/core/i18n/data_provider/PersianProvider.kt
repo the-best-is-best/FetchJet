@@ -1087,6 +1087,7 @@ object PersianProvider : AppLocalization {
     override val scanFilesOff = "خاموش"
     override val scanCommandLabel = "دستور اسکن (اختیاری)"
     override val scanCommandHint = "[File] با فایل جایگزین می‌شود. کد خروج 0 یعنی سالم. برای استفاده از آنتی‌ویروسی که Windows می‌شناسد خالی بگذارید."
+    override val scanCommandHintNoScanner = "[File] با فایل جایگزین می‌شود. کد خروج 0 یعنی سالم. این سیستم اسکنر داخلی ندارد: یکی وارد کنید، مثلاً clamscan [File]."
     override val scanningState = "در حال اسکن ویروس…"
     override val scanTitle = "اسکن ویروس"
     override val scanClean = "تهدیدی پیدا نشد"

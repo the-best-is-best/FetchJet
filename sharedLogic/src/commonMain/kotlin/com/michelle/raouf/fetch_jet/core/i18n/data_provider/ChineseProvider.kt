@@ -1029,6 +1029,7 @@ object ChineseProvider : AppLocalization {
     override val scanFilesOff = "关闭"
     override val scanCommandLabel = "扫描命令（可选）"
     override val scanCommandHint = "[File] 会替换为文件。退出码 0 表示安全。留空则使用 Windows 识别的杀毒软件。"
+    override val scanCommandHintNoScanner = "[File] 会替换为文件。退出码 0 表示安全。此系统没有内置扫描程序：请输入一个，例如 clamscan [File]。"
     override val scanningState = "正在扫描病毒…"
     override val scanTitle = "病毒扫描"
     override val scanClean = "未发现威胁"

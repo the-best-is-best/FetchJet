@@ -1124,6 +1124,7 @@ object PortugueseProvider : AppLocalization {
     override val scanFilesOff = "Desligado"
     override val scanCommandLabel = "Comando de verificação (opcional)"
     override val scanCommandHint = "[File] é substituído pelo arquivo. Código de saída 0 significa limpo. Deixe vazio para usar o antivírus que o Windows conhece."
+    override val scanCommandHintNoScanner = "[File] é substituído pelo arquivo. Código de saída 0 significa limpo. Este sistema não tem um verificador próprio: informe um, por exemplo clamscan [File]."
     override val scanningState = "Procurando vírus…"
     override val scanTitle = "Verificação de vírus"
     override val scanClean = "Nenhuma ameaça encontrada"

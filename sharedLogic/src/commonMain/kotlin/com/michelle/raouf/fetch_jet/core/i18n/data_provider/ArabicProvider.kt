@@ -1100,6 +1100,7 @@ object ArabicProvider : AppLocalization {
     override val scanFilesOff = "متوقف"
     override val scanCommandLabel = "أمر الفحص (اختياري)"
     override val scanCommandHint = "يُستبدل [File] بالملف. رمز الخروج 0 يعني أنه سليم. اتركه فارغًا لاستخدام مكافحة الفيروسات التي يعرفها Windows."
+    override val scanCommandHintNoScanner = "يُستبدل [File] بالملف. رمز الخروج 0 يعني أنه سليم. لا يوجد فاحص مدمج في هذا النظام: اكتب أمر فاحص، مثل clamscan [File]."
     override val scanningState = "جارٍ الفحص من الفيروسات…"
     override val scanTitle = "فحص الفيروسات"
     override val scanClean = "لم يُعثر على تهديد"

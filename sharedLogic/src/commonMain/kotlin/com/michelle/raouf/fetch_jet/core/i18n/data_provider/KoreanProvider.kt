@@ -1018,6 +1018,7 @@ object KoreanProvider : AppLocalization {
     override val scanFilesOff = "끔"
     override val scanCommandLabel = "검사 명령 (선택)"
     override val scanCommandHint = "[File]은 파일로 바뀝니다. 종료 코드 0은 안전함을 뜻합니다. 비워 두면 Windows가 아는 백신을 사용합니다."
+    override val scanCommandHintNoScanner = "[File]은 파일로 바뀝니다. 종료 코드 0은 안전함을 뜻합니다. 이 시스템에는 기본 검사 프로그램이 없습니다. 예를 들어 clamscan [File]처럼 입력하세요."
     override val scanningState = "바이러스 검사 중…"
     override val scanTitle = "바이러스 검사"
     override val scanClean = "위협이 없습니다"

@@ -932,6 +932,7 @@ interface AppLocalization : LocalizationProvider {
     val scanFilesOff: String
     val scanCommandLabel: String
     val scanCommandHint: String
+    val scanCommandHintNoScanner: String
     val scanningState: String
     val scanTitle: String
     val scanClean: String

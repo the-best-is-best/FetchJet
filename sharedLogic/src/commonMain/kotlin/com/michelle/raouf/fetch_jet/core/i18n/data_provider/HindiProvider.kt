@@ -1081,6 +1081,7 @@ object HindiProvider : AppLocalization {
     override val scanFilesOff = "बंद"
     override val scanCommandLabel = "स्कैन कमांड (वैकल्पिक)"
     override val scanCommandHint = "[File] की जगह फ़ाइल आती है। एग्ज़िट कोड 0 का मतलब सुरक्षित है। Windows वाला एंटीवायरस इस्तेमाल करने के लिए खाली छोड़ें।"
+    override val scanCommandHintNoScanner = "[File] की जगह फ़ाइल आती है। एग्ज़िट कोड 0 का मतलब सुरक्षित है। इस सिस्टम में कोई बिल्ट-इन स्कैनर नहीं है: कोई एक लिखें, जैसे clamscan [File]।"
     override val scanningState = "वायरस स्कैन हो रहा है…"
     override val scanTitle = "वायरस स्कैन"
     override val scanClean = "कोई ख़तरा नहीं मिला"

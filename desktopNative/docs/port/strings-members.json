@@ -5387,6 +5387,11 @@
     "params": []
   },
   {
+    "name": "scanCommandHintNoScanner",
+    "kind": "val",
+    "params": []
+  },
+  {
     "name": "scanningState",
     "kind": "val",
     "params": []

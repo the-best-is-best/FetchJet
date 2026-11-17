@@ -102,6 +102,17 @@ def run():
         core.pump(0.5)
         saved = open(os.path.join(core.home, "behavior.properties"), encoding="utf-8").read()
         core.check("the setting is saved", "scanFiles=true" in saved, saved)
+        core.action("OpenSettings")
+        core.action("SetSettingsSection", index=1)
+        core.pump(0.6)
+        hints = [r.get("footer", "") for r in core.rows("settingsRows") if r.get("footer", "").startswith("[File] is replaced")]
+        core.action("SetSettingsSection", index=-1)
+        core.action("SetFilter", filter=0)
+        core.pump(0.5)
+        if os.name == "nt":
+            core.check("the hint names Windows' antivirus", len(hints) == 1 and "Windows" in hints[0], hints)
+        else:
+            core.check("the hint says there is no built-in scanner", len(hints) == 1 and "no built-in scanner" in hints[0], hints)
         done = add_and_wait(core, "plain-b.bin")
         line = core.wait_for("the scan of plain-b.bin", lambda: scan_line(core, "plain-b.bin"), 60)
         path = os.path.join(downloads, "plain-b.bin")

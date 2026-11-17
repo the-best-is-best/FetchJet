@@ -1082,6 +1082,7 @@ object TurkishProvider : AppLocalization {
     override val scanFilesOff = "Kapalı"
     override val scanCommandLabel = "Tarama komutu (isteğe bağlı)"
     override val scanCommandHint = "[File] dosyayla değiştirilir. Çıkış kodu 0 temiz demektir. Windows'un bildiği antivirüsü kullanmak için boş bırakın."
+    override val scanCommandHintNoScanner = "[File] dosyayla değiştirilir. Çıkış kodu 0 temiz demektir. Bu sistemde yerleşik bir tarayıcı yok: bir tane girin, örneğin clamscan [File]."
     override val scanningState = "Virüs taranıyor…"
     override val scanTitle = "Virüs taraması"
     override val scanClean = "Tehdit bulunamadı"

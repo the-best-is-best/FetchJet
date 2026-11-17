@@ -1117,6 +1117,7 @@ object RussianProvider : AppLocalization {
     override val scanFilesOff = "Выкл."
     override val scanCommandLabel = "Команда проверки (необязательно)"
     override val scanCommandHint = "[File] заменяется файлом. Код выхода 0 означает «чисто». Оставьте пустым, чтобы использовать антивирус, известный Windows."
+    override val scanCommandHintNoScanner = "[File] заменяется файлом. Код выхода 0 означает «чисто». В этой системе нет встроенного сканера: укажите свой, например clamscan [File]."
     override val scanningState = "Проверка на вирусы…"
     override val scanTitle = "Проверка на вирусы"
     override val scanClean = "Угроз не найдено"

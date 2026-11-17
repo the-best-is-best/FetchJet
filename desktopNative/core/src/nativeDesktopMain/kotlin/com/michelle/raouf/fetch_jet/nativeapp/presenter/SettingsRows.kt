@@ -519,8 +519,11 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 v.extractArchives,
             )
         )
-        val scanOn = BehaviorSettings.scanFiles.value
-        val scanCommand = BehaviorSettings.scanCommand.value
+    }
+    val scanOn = BehaviorSettings.scanFiles.value
+    val scanCommand = BehaviorSettings.scanCommand.value
+    val scanHint = if (FileScanner.hasSystemScanner) s.scanCommandHint else s.scanCommandHintNoScanner
+    rows.group(footer = if (scanOn) scanHint else null) {
         rows.add(
             switchRow(
                 "scanFiles",
@@ -538,6 +541,7 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 SettingRowDto(
                     kind = SettingKind.FIELDS.ordinal,
                     top = 10,
+                    bottom = 12,
                     one = field(
                         "scanCommand",
                         scanCommand,
@@ -546,7 +550,6 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                     ),
                 )
             )
-            rows.add(noteRow(s.scanCommandHint, ToneCode.MUTED, top = 6, bottom = 12))
         }
     }
     val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value

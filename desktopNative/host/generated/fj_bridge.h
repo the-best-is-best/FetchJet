@@ -1883,6 +1883,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_scanFilesOff(next());
     tr.set_scanCommandLabel(next());
     tr.set_scanCommandHint(next());
+    tr.set_scanCommandHintNoScanner(next());
     tr.set_scanningState(next());
     tr.set_scanTitle(next());
     tr.set_scanClean(next());

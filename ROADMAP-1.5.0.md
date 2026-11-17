@@ -263,9 +263,8 @@ per host).
   The simulators' background download daemon was broken again ("unknown error"), so the downloads ran with the speed
   limit on (foreground engine); the limit was switched off after. Not fixed: a zip made by `ditto` without
   `--sequesterRsrc` keeps its `._name` AppleDouble entries as plain files (Archive Utility merges them).
-- [ ] The settings hint still says "Leave it empty to use the antivirus Windows knows" on macOS / Linux. Suggested for
-  macOS / Linux: "[File] is replaced by the file. Exit code 0 means clean. This system has no built-in scanner: enter one,
-  for example clamscan [File]." (needs a per-OS text in the 15 languages; not changed).
+- [x] Settings hint per system (2026-11-17, Windows session): with no built-in scanner (macOS / Linux) it says "This system has no built-in scanner: enter one, for example clamscan [File]." (`scanCommandHintNoScanner`, 15 languages). The hint is now the footer of its own card (scan switch + command): as a note inside the card it was cut to one line (the Windows text too). Screenshots on Linux (en / ar). `test_scan` checks the hint: Windows 20/20, Linux 18/18; `test_settings` 87/87 on both.
+- [x] Windows check of the Mac commit 2087bec (2026-11-17): Windows / Linux cores, JVM, Android build; Windows test_extract 16, test_scan 19, test_settings 87, test_home 41, test_add 29, test_integrity 32; Linux test_extract 20; ArchiveExtractorTest 23. test_extract failed once on Windows ("a second press makes a numbered copy", 30 s) while a Gradle build ran beside it, then passed 3 times; cause not proven. A56: Extract of a zip with 4000 files in 40 folders: 37.2 s on the installed release, 40.7 s on the new debug build; a walk over those files on the phone takes ~0.5 s, so no visible cost.
 - [ ] Not run on the Mac: EICAR (macOS has no real-time antivirus to block it; XProtect checks only when a file is opened).
 
 ## 10. Monthly downloads report (idea, 2026-11-14)

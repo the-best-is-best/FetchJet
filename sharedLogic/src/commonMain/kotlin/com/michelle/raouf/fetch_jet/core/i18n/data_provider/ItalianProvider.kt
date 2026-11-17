@@ -1121,6 +1121,7 @@ object ItalianProvider : AppLocalization {
     override val scanFilesOff = "Disattivato"
     override val scanCommandLabel = "Comando di scansione (facoltativo)"
     override val scanCommandHint = "[File] viene sostituito dal file. Il codice di uscita 0 significa pulito. Lascia vuoto per usare l'antivirus noto a Windows."
+    override val scanCommandHintNoScanner = "[File] viene sostituito dal file. Il codice di uscita 0 significa pulito. Questo sistema non ha uno scanner integrato: inseriscine uno, per esempio clamscan [File]."
     override val scanningState = "Scansione antivirus…"
     override val scanTitle = "Scansione antivirus"
     override val scanClean = "Nessuna minaccia trovata"

@@ -1098,6 +1098,7 @@ object JapaneseProvider : AppLocalization {
     override val scanFilesOff = "オフ"
     override val scanCommandLabel = "スキャンコマンド（任意）"
     override val scanCommandHint = "[File] はファイルに置き換えられます。終了コード 0 は安全を意味します。空欄なら Windows が認識しているウイルス対策ソフトを使います。"
+    override val scanCommandHintNoScanner = "[File] はファイルに置き換えられます。終了コード 0 は安全を意味します。このシステムには組み込みのスキャナーがありません。例えば clamscan [File] のように入力してください。"
     override val scanningState = "ウイルスをスキャン中…"
     override val scanTitle = "ウイルススキャン"
     override val scanClean = "脅威は見つかりませんでした"

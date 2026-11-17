@@ -4187,6 +4187,7 @@
   "scanFilesOff",
   "scanCommandLabel",
   "scanCommandHint",
+  "scanCommandHintNoScanner",
   "scanningState",
   "scanTitle",
   "scanClean",

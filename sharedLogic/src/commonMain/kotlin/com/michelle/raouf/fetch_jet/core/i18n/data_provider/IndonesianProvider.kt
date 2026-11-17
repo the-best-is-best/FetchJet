@@ -1087,6 +1087,7 @@ object IndonesianProvider : AppLocalization {
     override val scanFilesOff = "Mati"
     override val scanCommandLabel = "Perintah pemindai (opsional)"
     override val scanCommandHint = "[File] diganti dengan file. Kode keluar 0 berarti bersih. Biarkan kosong untuk memakai antivirus yang dikenal Windows."
+    override val scanCommandHintNoScanner = "[File] diganti dengan file. Kode keluar 0 berarti bersih. Sistem ini tidak punya pemindai bawaan: masukkan satu, misalnya clamscan [File]."
     override val scanningState = "Memindai virus…"
     override val scanTitle = "Pindai virus"
     override val scanClean = "Tidak ada ancaman"
