@@ -1155,6 +1155,8 @@ object PortugueseProvider : AppLocalization {
     override val deleteToTrashOn = "Ligado · um arquivo concluído excluído pode ser restaurado"
     override val deleteToTrashOff = "Desligado · arquivos excluídos somem de vez"
     override val trashArchive = "Mover o arquivo compactado para a Lixeira após extrair"
+    override val deleteToTrashNotWindows = "Arquivos excluídos vão para a Lixeira"
+    override val trashArchiveNotWindows = "Mover o arquivo compactado para a Lixeira após extrair"
     override val trashArchiveOn = "Ligado · ficam só os arquivos extraídos"
     override val trashArchiveOff = "Desligado · o arquivo compactado fica junto dos arquivos"
     override val archivePasswordTitle = "Este arquivo compactado tem senha"

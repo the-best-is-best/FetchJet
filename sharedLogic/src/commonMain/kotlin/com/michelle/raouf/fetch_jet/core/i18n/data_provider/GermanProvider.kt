@@ -1170,6 +1170,8 @@ object GermanProvider : AppLocalization {
     override val deleteToTrashOn = "An · eine gelöschte fertige Datei lässt sich wiederherstellen"
     override val deleteToTrashOff = "Aus · gelöschte Dateien sind endgültig weg"
     override val trashArchive = "Archiv nach dem Entpacken in den Papierkorb"
+    override val deleteToTrashNotWindows = "Gelöschte Dateien kommen in den Papierkorb"
+    override val trashArchiveNotWindows = "Archiv nach dem Entpacken in den Papierkorb"
     override val trashArchiveOn = "An · nur die entpackten Dateien bleiben"
     override val trashArchiveOff = "Aus · das Archiv bleibt neben seinen Dateien"
     override val archivePasswordTitle = "Dieses Archiv hat ein Passwort"

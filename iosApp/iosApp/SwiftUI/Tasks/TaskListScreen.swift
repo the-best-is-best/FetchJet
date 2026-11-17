@@ -162,6 +162,7 @@ struct TaskListScreen: View {
                 store.selectedTaskId = task.id
             }
         }
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
         .contextMenu {
             if selectionMode {
                 Button(isChecked ? s.selectNone : s.selectAll) { toggle(task.id) }

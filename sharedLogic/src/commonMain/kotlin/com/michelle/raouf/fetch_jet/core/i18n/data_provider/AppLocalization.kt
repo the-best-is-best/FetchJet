@@ -963,6 +963,8 @@ interface AppLocalization : LocalizationProvider {
     val deleteToTrashOn: String
     val deleteToTrashOff: String
     val trashArchive: String
+    val deleteToTrashNotWindows: String
+    val trashArchiveNotWindows: String
     val trashArchiveOn: String
     val trashArchiveOff: String
     val archivePasswordTitle: String

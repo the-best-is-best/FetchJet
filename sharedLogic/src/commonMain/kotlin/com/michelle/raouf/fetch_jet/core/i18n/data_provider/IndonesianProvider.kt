@@ -1118,6 +1118,8 @@ object IndonesianProvider : AppLocalization {
     override val deleteToTrashOn = "Aktif · file selesai yang dihapus bisa dipulihkan"
     override val deleteToTrashOff = "Nonaktif · file yang dihapus hilang selamanya"
     override val trashArchive = "Pindahkan arsip ke Tempat Sampah setelah diekstrak"
+    override val deleteToTrashNotWindows = "File yang dihapus masuk ke Tempat Sampah"
+    override val trashArchiveNotWindows = "Pindahkan arsip ke Tempat Sampah setelah diekstrak"
     override val trashArchiveOn = "Aktif · hanya file hasil ekstrak yang tersisa"
     override val trashArchiveOff = "Nonaktif · arsip tetap di samping filenya"
     override val archivePasswordTitle = "Arsip ini memiliki kata sandi"

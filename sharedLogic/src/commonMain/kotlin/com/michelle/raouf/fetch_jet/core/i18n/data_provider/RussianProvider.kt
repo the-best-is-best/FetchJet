@@ -1148,6 +1148,8 @@ object RussianProvider : AppLocalization {
     override val deleteToTrashOn = "Вкл. · удалённый готовый файл можно восстановить"
     override val deleteToTrashOff = "Выкл. · удалённые файлы удаляются навсегда"
     override val trashArchive = "Перемещать архив в корзину после распаковки"
+    override val deleteToTrashNotWindows = "Удалённые файлы попадают в корзину"
+    override val trashArchiveNotWindows = "Перемещать архив в корзину после распаковки"
     override val trashArchiveOn = "Вкл. · остаются только распакованные файлы"
     override val trashArchiveOff = "Выкл. · архив остаётся рядом с файлами"
     override val archivePasswordTitle = "У этого архива есть пароль"

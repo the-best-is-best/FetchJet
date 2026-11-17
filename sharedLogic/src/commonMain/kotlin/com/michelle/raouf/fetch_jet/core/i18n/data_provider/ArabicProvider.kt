@@ -1131,6 +1131,8 @@ object ArabicProvider : AppLocalization {
     override val deleteToTrashOn = "مفعّل · الملف المكتمل الذي تحذفه يمكن استرجاعه"
     override val deleteToTrashOff = "متوقف · الملفات المحذوفة تُحذف نهائيًا"
     override val trashArchive = "نقل الأرشيف إلى سلة المحذوفات بعد فكّه"
+    override val deleteToTrashNotWindows = "الملفات المحذوفة تذهب إلى سلة المهملات"
+    override val trashArchiveNotWindows = "نقل الأرشيف إلى سلة المهملات بعد فكّه"
     override val trashArchiveOn = "مفعّل · تبقى الملفات المفكوكة فقط"
     override val trashArchiveOff = "متوقف · يبقى الأرشيف بجانب ملفاته"
     override val archivePasswordTitle = "هذا الأرشيف محمي بكلمة مرور"

@@ -1060,6 +1060,8 @@ object ChineseProvider : AppLocalization {
     override val deleteToTrashOn = "开启 · 删除的已完成文件可以恢复"
     override val deleteToTrashOff = "关闭 · 删除的文件将被永久删除"
     override val trashArchive = "解压后将压缩包移到回收站"
+    override val deleteToTrashNotWindows = "删除的文件进入废纸篓"
+    override val trashArchiveNotWindows = "解压后将压缩包移到废纸篓"
     override val trashArchiveOn = "开启 · 只保留解压出的文件"
     override val trashArchiveOff = "关闭 · 压缩包保留在文件旁边"
     override val archivePasswordTitle = "此压缩包有密码"

@@ -1113,6 +1113,8 @@ object TurkishProvider : AppLocalization {
     override val deleteToTrashOn = "Açık · sildiğiniz tamamlanmış dosya geri yüklenebilir"
     override val deleteToTrashOff = "Kapalı · silinen dosyalar kalıcı olarak gider"
     override val trashArchive = "Ayıkladıktan sonra arşivi Geri Dönüşüm Kutusu'na taşı"
+    override val deleteToTrashNotWindows = "Silinen dosyalar Çöp Sepeti'ne gider"
+    override val trashArchiveNotWindows = "Ayıkladıktan sonra arşivi Çöp Sepeti'ne taşı"
     override val trashArchiveOn = "Açık · yalnızca ayıklanan dosyalar kalır"
     override val trashArchiveOff = "Kapalı · arşiv dosyalarının yanında kalır"
     override val archivePasswordTitle = "Bu arşivin parolası var"

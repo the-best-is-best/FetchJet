@@ -13,6 +13,22 @@ Owner, 2026-11-16: 1.5.0 may be split into two releases; the Order section below
 smaller Android APK) has the highest priority and its steps are the natural place to cut.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
+Mac session 2026-11-18 (after `30261ea`): iOS built (one Swift error fixed: `LocalClockKt.localUtcOffsetMs` is the
+`expect`, Swift sees only the iOS `actual`; `SettingsDownloadsPage.swift` now reads the offset from `TimeZone.current`).
+iPhone 17 / iPad Pro 13" simulators: the row context menu (Open folder, Resume, Send to device, Copy link, Select, Details,
+Delete), Copy link filled the clipboard with the "Copied" toast, Settings > Downloads folders-by-site card (rule added for
+127.0.0.1, kept) and the monthly report card, the Add dialog shows "Folder rule for 127.0.0.1" and the task went to the rule's
+folder (the download itself failed with the simulator's broken background daemon, as known). Fixed on the iPad: the lifted
+row of the menu had a white strip over the sidebar (`.contentShape(.contextMenuPreview, ...)` in `TaskListScreen.swift`).
+macOS native: core, torrent, `make-dmg.sh` built; corehost rowmenu 19, siterules 15, dns 14, trash 10, archives7z 15 (7-Zip
+`7zz` from Homebrew), extract 20, settings 87, automation 41, unsafe_names 12, wake skip (1), scan 23, download 29,
+integrity 32, home 41, add 29, network 11 (proxies started by hand): all 0 failed. Fixed: `test_dns` adapter message (the
+Darwin client gives only the standard reason phrase, so the loopback proxy also sends `X-FetchJet-Proxy-Error` and
+`HttpChunkUrls` reads it on an error status); `test_trash` looked in the XDG trash on the Mac (now `~/.Trash`); the trash
+settings rows said "Recycle Bin" on macOS / Linux (`deleteToTrashNotWindows` / `trashArchiveNotWindows`, 15 languages).
+Real window on a throw-away `--home`: right-click row menu, Settings > Downloads (folders by site, report), Settings >
+Network (DNS + adapter) seen and captured. Not built after the fixes: Windows / Linux native, Android.
+
 ## Order (2026-11-16)
 
 Two releases if the split happens. The APK size is the highest priority, owner's decision 2026-11-16. The rest is

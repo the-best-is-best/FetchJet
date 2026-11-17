@@ -1152,6 +1152,8 @@ object ItalianProvider : AppLocalization {
     override val deleteToTrashOn = "Attivo · un file completato eliminato si può ripristinare"
     override val deleteToTrashOff = "Disattivo · i file eliminati spariscono per sempre"
     override val trashArchive = "Sposta l'archivio nel Cestino dopo l'estrazione"
+    override val deleteToTrashNotWindows = "I file eliminati vanno nel Cestino"
+    override val trashArchiveNotWindows = "Sposta l'archivio nel Cestino dopo l'estrazione"
     override val trashArchiveOn = "Attivo · restano solo i file estratti"
     override val trashArchiveOff = "Disattivo · l'archivio resta accanto ai suoi file"
     override val archivePasswordTitle = "Questo archivio ha una password"

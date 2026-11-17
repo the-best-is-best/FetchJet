@@ -1049,6 +1049,8 @@ object KoreanProvider : AppLocalization {
     override val deleteToTrashOn = "켜짐 · 삭제한 완료 파일을 복원할 수 있습니다"
     override val deleteToTrashOff = "꺼짐 · 삭제한 파일은 영구히 사라집니다"
     override val trashArchive = "압축을 푼 뒤 압축 파일을 휴지통으로 이동"
+    override val deleteToTrashNotWindows = "삭제한 파일은 휴지통으로"
+    override val trashArchiveNotWindows = "압축을 푼 뒤 압축 파일을 휴지통으로 이동"
     override val trashArchiveOn = "켜짐 · 압축을 푼 파일만 남습니다"
     override val trashArchiveOff = "꺼짐 · 압축 파일이 그대로 남습니다"
     override val archivePasswordTitle = "이 압축 파일에는 암호가 있습니다"

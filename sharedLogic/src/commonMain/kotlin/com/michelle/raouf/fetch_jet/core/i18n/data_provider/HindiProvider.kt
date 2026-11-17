@@ -1112,6 +1112,8 @@ object HindiProvider : AppLocalization {
     override val deleteToTrashOn = "चालू · हटाई गई पूरी फ़ाइल वापस लाई जा सकती है"
     override val deleteToTrashOff = "बंद · हटाई गई फ़ाइलें हमेशा के लिए चली जाती हैं"
     override val trashArchive = "निकालने के बाद आर्काइव को रीसायकल बिन में भेजें"
+    override val deleteToTrashNotWindows = "हटाई गई फ़ाइलें ट्रैश में जाती हैं"
+    override val trashArchiveNotWindows = "निकालने के बाद आर्काइव को ट्रैश में भेजें"
     override val trashArchiveOn = "चालू · केवल निकाली गई फ़ाइलें रहती हैं"
     override val trashArchiveOff = "बंद · आर्काइव अपनी फ़ाइलों के पास रहता है"
     override val archivePasswordTitle = "इस आर्काइव में पासवर्ड है"

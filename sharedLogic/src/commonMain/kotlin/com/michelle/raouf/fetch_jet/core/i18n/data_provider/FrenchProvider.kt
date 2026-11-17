@@ -1184,6 +1184,8 @@ object FrenchProvider : AppLocalization {
     override val deleteToTrashOn = "Activé · un fichier terminé supprimé peut être restauré"
     override val deleteToTrashOff = "Désactivé · les fichiers supprimés le sont définitivement"
     override val trashArchive = "Mettre l'archive à la Corbeille après l'extraction"
+    override val deleteToTrashNotWindows = "Les fichiers supprimés vont dans la Corbeille"
+    override val trashArchiveNotWindows = "Mettre l'archive à la Corbeille après l'extraction"
     override val trashArchiveOn = "Activé · seuls les fichiers extraits restent"
     override val trashArchiveOff = "Désactivé · l'archive reste à côté de ses fichiers"
     override val archivePasswordTitle = "Cette archive a un mot de passe"

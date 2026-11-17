@@ -1118,6 +1118,8 @@ object PersianProvider : AppLocalization {
     override val deleteToTrashOn = "روشن · فایل کامل‌شده‌ای که حذف کنید قابل بازگردانی است"
     override val deleteToTrashOff = "خاموش · فایل‌های حذف‌شده برای همیشه پاک می‌شوند"
     override val trashArchive = "انتقال آرشیو به سطل بازیافت پس از استخراج"
+    override val deleteToTrashNotWindows = "فایل‌های حذف‌شده به سطل زباله می‌روند"
+    override val trashArchiveNotWindows = "انتقال آرشیو به سطل زباله پس از استخراج"
     override val trashArchiveOn = "روشن · فقط فایل‌های استخراج‌شده می‌مانند"
     override val trashArchiveOff = "خاموش · آرشیو کنار فایل‌هایش می‌ماند"
     override val archivePasswordTitle = "این آرشیو رمز دارد"

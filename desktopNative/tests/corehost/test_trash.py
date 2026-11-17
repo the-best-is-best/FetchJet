@@ -48,7 +48,10 @@ def purge(entries):
 def in_trash(core, name):
     if os.name == "nt":
         return windows_bin_entries(os.path.splitdrive(core.work)[0] + os.sep, name)
-    files = os.path.join(os.environ["XDG_DATA_HOME"], "Trash", "files", name)
+    if sys.platform == "darwin":
+        item = os.path.join(os.path.expanduser("~"), ".Trash", name)
+        return [(item, item)] if os.path.exists(item) else []
+    files =os.path.join(os.environ["XDG_DATA_HOME"], "Trash", "files", name)
     info = os.path.join(os.environ["XDG_DATA_HOME"], "Trash", "info", name + ".trashinfo")
     return [(info, files)] if os.path.exists(files) and os.path.isfile(info) else []
 

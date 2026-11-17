@@ -379,7 +379,7 @@ struct SettingsDownloadReportCard: View {
     var body: some View {
         let s = store.strings
         let tasks = store.state.allTasks
-        let offset = LocalClockKt.localUtcOffsetMs()
+        let offset = Int64(TimeZone.current.secondsFromGMT()) * 1000
         let months = Array(DownloadReport.shared.months(tasks: tasks, utcOffsetMs: offset).prefix(24))
         SettingsGroupBox(title: s.reportGroup, footer: s.reportFooter) {
             if months.isEmpty {

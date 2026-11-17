@@ -1129,6 +1129,8 @@ object JapaneseProvider : AppLocalization {
     override val deleteToTrashOn = "オン · 削除した完了ファイルは元に戻せます"
     override val deleteToTrashOff = "オフ · 削除したファイルは完全に消えます"
     override val trashArchive = "展開後にアーカイブをごみ箱へ移動"
+    override val deleteToTrashNotWindows = "削除したファイルはゴミ箱へ"
+    override val trashArchiveNotWindows = "展開後にアーカイブをゴミ箱へ移動"
     override val trashArchiveOn = "オン · 展開したファイルだけが残ります"
     override val trashArchiveOff = "オフ · アーカイブはファイルの横に残ります"
     override val archivePasswordTitle = "このアーカイブにはパスワードがあります"

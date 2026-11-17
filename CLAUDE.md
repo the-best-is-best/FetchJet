@@ -264,14 +264,14 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
-- **Next on the Mac (after the 2026-11-17 Windows commit):** pull `release-v1.5.0`, `git submodule update --init
-  --recursive`, then build iOS (`scripts/ios-dev-build.command all`) and check the Swift files changed on Windows (not
-  compiled there): `TaskListScreen.swift` (row context menu), `FJStore.swift` (CopyText effect), `SettingsDownloadsPage.swift`
-  (folders by site card + monthly report card), `AddSections.swift` (folder rule line, the type-folder copy removed). Then
-  the macOS native app (`make-dmg.sh`) and the corehost files that changed or are new: `test_rowmenu`, `test_siterules`,
-  `test_dns`, `test_trash`, `test_archives7z` (needs 7-Zip: `brew install sevenzip` or skip), `test_extract`,
-  `test_settings`, `test_automation`, `test_unsafe_names`, `test_wake` (now skips: wake is off). macOS ffmpeg is unchanged
-  (b6.1.1). Release notes `release-notes/1.5.0/` (15 languages) are written; the owner runs the release.
+- **2026-11-18, Mac session on `release-v1.5.0` (after `30261ea`; details at the top of ROADMAP-1.5.0.md):** iOS
+  built and checked on the iPhone 17 / iPad simulators (row menu, Copy link, folders by site, monthly report, the Add
+  dialog rule line); macOS native built, all the new and changed corehost files pass (7-Zip from Homebrew). Fixed: a
+  Swift build error (`localUtcOffsetMs`), the iPad menu preview strip, the adapter error text on macOS
+  (`X-FetchJet-Proxy-Error`), `test_trash` on the Mac, "Recycle Bin" text on macOS / Linux. A FetchJet running in an iOS
+  simulator holds `127.0.0.1:28450` on the Mac: stop it before running the Mac app, or `/d` and the bridge fail
+  (`bridge: not started`). The simulator screenshot tool does not show SwiftUI context menus: use
+  `xcrun simctl io <udid> screenshot`. Next on Windows: build the native app / Android after these commits.
 
 - **2026-11-17, Windows session on `release-v1.5.0` (owner away: "work through the whole ROADMAP, do not ask, test it";
   committed and pushed after `acb625e` at the owner's "ارفع"; details per item in ROADMAP-1.5.0.md):**

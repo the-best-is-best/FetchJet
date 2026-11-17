@@ -1160,6 +1160,8 @@ object SpanishProvider : AppLocalization {
     override val deleteToTrashOn = "Activado · un archivo terminado que eliminas se puede recuperar"
     override val deleteToTrashOff = "Desactivado · los archivos eliminados se borran para siempre"
     override val trashArchive = "Mover el archivo comprimido a la Papelera tras extraerlo"
+    override val deleteToTrashNotWindows = "Los archivos eliminados van a la Papelera"
+    override val trashArchiveNotWindows = "Mover el archivo comprimido a la Papelera tras extraerlo"
     override val trashArchiveOn = "Activado · solo quedan los archivos extraídos"
     override val trashArchiveOff = "Desactivado · el archivo comprimido queda junto a sus archivos"
     override val archivePasswordTitle = "Este archivo comprimido tiene contraseña"

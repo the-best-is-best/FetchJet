@@ -202,7 +202,7 @@ private fun closingResponseHead(head: String): ByteArray {
 
 private fun answer(socket: Long, status: Int, reason: String) {
     val challenge = if (status == 407) "Proxy-Authenticate: Basic realm=\"FetchJet\"\r\n" else ""
-    sendAll(socket, latin1Bytes("HTTP/1.1 $status $reason\r\n${challenge}Content-Length: 0\r\nConnection: close\r\n\r\n"))
+    sendAll(socket, latin1Bytes("HTTP/1.1 $status $reason\r\n${challenge}X-FetchJet-Proxy-Error: $reason\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"))
 }
 
 private fun socksLost(): ProxyFailure =

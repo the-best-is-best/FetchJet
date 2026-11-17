@@ -1113,6 +1113,8 @@ object EnglishProvider : AppLocalization {
     override val deleteToTrashOn = "On · a finished file you delete can be restored"
     override val deleteToTrashOff = "Off · deleted files are gone for good"
     override val trashArchive = "Move the archive to the Recycle Bin after extracting"
+    override val deleteToTrashNotWindows = "Deleted files go to the Trash"
+    override val trashArchiveNotWindows = "Move the archive to the Trash after extracting"
     override val trashArchiveOn = "On · only the extracted files stay"
     override val trashArchiveOff = "Off · the archive stays next to its files"
     override val archivePasswordTitle = "This archive has a password"

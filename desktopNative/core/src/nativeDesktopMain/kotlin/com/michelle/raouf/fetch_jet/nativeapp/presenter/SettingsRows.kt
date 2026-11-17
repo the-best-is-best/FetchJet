@@ -30,6 +30,8 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingKind
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ToneCode
 import com.tbib.kmp_localization.LocalizationManager
+import kotlin.native.OsFamily
+import kotlin.native.Platform
 
 internal val THEME_MODES = listOf("system", "light", "dark")
 internal val SPEED_UNITS = listOf("MB/s", "KB/s", "Mbps", "Kbps")
@@ -525,7 +527,7 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
         if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
             val trashArchive = BehaviorSettings.trashArchiveAfterExtract.value
             if (v.extractArchives) {
-                rows.add(switchRow("trashArchive", s.trashArchive, if (trashArchive) s.trashArchiveOn else s.trashArchiveOff, trashArchive))
+                rows.add(switchRow("trashArchive", if (onWindows) s.trashArchive else s.trashArchiveNotWindows, if (trashArchive) s.trashArchiveOn else s.trashArchiveOff, trashArchive))
             }
         }
         if (v.extractArchives) {
@@ -546,7 +548,7 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
         }
         if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
             val toTrash = BehaviorSettings.deleteToTrash.value
-            rows.add(switchRow("deleteToTrash", s.deleteToTrash, if (toTrash) s.deleteToTrashOn else s.deleteToTrashOff, toTrash))
+            rows.add(switchRow("deleteToTrash", if (onWindows) s.deleteToTrash else s.deleteToTrashNotWindows, if (toTrash) s.deleteToTrashOn else s.deleteToTrashOff, toTrash))
         }
     }
     val scanOn = BehaviorSettings.scanFiles.value
@@ -1254,3 +1256,6 @@ private fun browserRows(rows: Rows, page: SettingsPage) {
         }
     }
 }
+
+@OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+private val onWindows: Boolean = Platform.osFamily == OsFamily.WINDOWS
