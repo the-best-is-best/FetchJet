@@ -8,6 +8,7 @@ internal class TarEntry(
     val size: Long,
     val isDirectory: Boolean,
     val isFile: Boolean,
+    val executable: Boolean = false,
 )
 
 internal class TarReader(private val source: BufferedSource) {
@@ -126,7 +127,7 @@ internal class TarReader(private val source: BufferedSource) {
             val hasData = isFile && !isDirectory
             dataLeft = if (hasData) size else if (type == '1' || type == '2' || type == '3' || type == '4' || type == '5' || type == '6') 0 else size
             padding = if (dataLeft > 0) (512 - dataLeft % 512) % 512 else 0
-            return TarEntry(name, if (hasData) size else 0, isDirectory, hasData)
+            return TarEntry(name, if (hasData) size else 0, isDirectory, hasData, hasData && number(block, 100, 8) and 0x49L != 0L)
         }
     }
 

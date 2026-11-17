@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-16 (1.5.0 work on branch `release-v1.5.0`, see Current state). Read this first, then `README.md`, `TESTING.md` (how to re-run the
+Last updated: 2026-11-17 (1.5.0 work on branch `release-v1.5.0`, see Current state). Read this first, then `README.md`, `TESTING.md` (how to re-run the
 manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
@@ -264,6 +264,13 @@ Bridges:
 
 ## Current state (master = 1.3.1; working branch `release-v1.4.0`)
 
+- **2026-11-17, Mac session on `release-v1.5.0` (ROADMAP-1.5.0.md item 9, nothing committed):** the scan feature and the
+  macOS quarantine mark built and tested (`test_scan.py` 22/22 with 5 new macOS checks; extract 16, settings 87, home 41, add
+  29, integrity 32; iOS compiles). Added: "Where from" xattr (`kMDItemWhereFroms`) and the mark on extracted files
+  (`markExtracted`). macOS stores the quarantine agent / URLs in the QuarantineEventsV2 database, not in the xattr text, so
+  `xattr -p com.apple.quarantine` never shows "FetchJet". The zip / tar extractor now keeps the exec bit
+  (`markExecutable`, `core/filesystem/FileModes*.kt`): Mac test_extract 20/20, iPhone 17 and iPad simulators checked.
+  Open: the scan hint mentions Windows on macOS / Linux.
 - **2026-11-16, Mac session on `release-v1.5.0` (commits `0492795`, `8078e5d`, `1f82a85`, `1561182`; details in ROADMAP-1.5.0.md items 1, 2, 16):**
     - Automation API on the iPhone simulator and the macOS native app, archive extraction and the Extract button on
       iPhone / iPad / the Mac window: built and passed (corehost: extract 16, extract_big 11 at 68 MB/s, addname 14,

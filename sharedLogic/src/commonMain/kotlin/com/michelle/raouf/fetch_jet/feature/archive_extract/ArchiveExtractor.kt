@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.archive_extract
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
+import com.michelle.raouf.fetch_jet.core.filesystem.markExecutable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import okio.BufferedSource
@@ -108,7 +109,7 @@ object ArchiveExtractor {
             if (made.add(path)) AppFileSystem.createDirectories(path)
         }
 
-        suspend fun write(parts: List<String>, source: Source, declared: Long, expectedCrc: Long?) {
+        suspend fun write(parts: List<String>, source: Source, declared: Long, expectedCrc: Long?, executable: Boolean = false) {
             if (files >= limits.maxFiles) throw ArchiveException("the archive holds too many files")
             var target = root
             for (i in 0 until parts.size - 1) target = target / parts[i]
@@ -140,6 +141,7 @@ object ArchiveExtractor {
                 if (declared >= 0 && written != declared) throw ArchiveException("the archive is damaged (a file is smaller than it says)")
                 if (expectedCrc != null && crc.result() != expectedCrc) throw ArchiveException("the file ${parts.last()} is damaged (checksum mismatch)")
                 complete = true
+                if (executable) runCatching { markExecutable(file.toString()) }
             } finally {
                 input.close()
                 if (!complete) try {
@@ -232,7 +234,7 @@ object ArchiveExtractor {
                         override fun timeout() = source.timeout()
                         override fun close() {}
                     }
-                    run.write(parts, piece, entry.size, null)
+                    run.write(parts, piece, entry.size, null, entry.executable)
                     sink.clear()
                 } else {
                     run.skipped.add(entry.name)
@@ -260,7 +262,7 @@ object ArchiveExtractor {
                     run.folder(dir)
                     continue
                 }
-                run.write(parts, reader.open(entry), entry.size, entry.crc)
+                run.write(parts, reader.open(entry), entry.size, entry.crc, entry.executable)
             }
         }
     }

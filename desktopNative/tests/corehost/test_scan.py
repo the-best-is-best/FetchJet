@@ -4,6 +4,8 @@ import sys
 import time
 import zipfile
 
+ON_MAC = sys.platform == "darwin"
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from corehost import Core, CheckFailed
@@ -57,6 +59,18 @@ def details_of(core, task_id):
     return core.snapshot("details") or {}
 
 
+def quarantine_of(path):
+    done = subprocess.run(["xattr", "-p", "com.apple.quarantine", path], capture_output=True, text=True)
+    mark = (done.stdout + done.stderr).strip()
+    parts = mark.split(";")
+    if len(parts) < 4 or not parts[3]:
+        return mark
+    events = os.path.expanduser("~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2")
+    query = "select LSQuarantineAgentName from LSQuarantineEvent where LSQuarantineEventIdentifier='%s'" % parts[3]
+    agent = subprocess.run(["sqlite3", events, query], capture_output=True, text=True).stdout.strip()
+    return mark + " agent=" + agent
+
+
 def run():
     core = Core("scan")
     site = os.path.join(core.work, "site")
@@ -77,6 +91,12 @@ def run():
         add_and_wait(core, "plain-a.bin")
         core.pump(2)
         core.check("no scan while the setting is off", scan_line(core, "plain-a.bin") == "", scan_line(core, "plain-a.bin"))
+        if ON_MAC:
+            mark = quarantine_of(os.path.join(downloads, "plain-a.bin"))
+            core.check("macOS: the quarantine mark is there with the scan off", "FetchJet" in mark, mark)
+            froms = subprocess.run(["xattr", "-p", "com.apple.metadata:kMDItemWhereFroms", os.path.join(downloads, "plain-a.bin")],
+                                   capture_output=True).stdout
+            core.check("macOS: Where from holds the link", (BASE + "/plain-a.bin").encode() in froms, froms[:120])
 
         core.action("SettingToggle", id="scanFiles", on=True)
         core.pump(0.5)
@@ -101,6 +121,10 @@ def run():
         else:
             print("on, with no command: this OS has no built-in scanner")
             core.check("no scanner = 'none', not clean", ": none" in line, line)
+            if ON_MAC:
+                mark = quarantine_of(path)
+                core.check("macOS: the quarantine mark is there with the scan on", "FetchJet" in mark, mark)
+                core.check("macOS: no 'could not mark' in the log", "quarantine: could not mark" not in core.log_text())
             core.check("the file is still there", os.path.isfile(path))
             shown = details_of(core, done["id"])
             core.check("the details show no scan verdict", not shown.get("scanShown"), shown.get("scanText"))
@@ -137,6 +161,9 @@ def run():
         add_and_wait(core, "good-pack.zip")
         core.wait_for("the folder good-pack", lambda: os.path.isfile(os.path.join(downloads, "good-pack", "b.txt")), 30)
         core.check("a clean archive is extracted after the scan", True)
+        if ON_MAC:
+            mark = quarantine_of(os.path.join(downloads, "good-pack", "b.txt"))
+            core.check("macOS: extracted files get the quarantine mark too", "FetchJet" in mark, mark)
         core.action("SettingToggle", id="extractArchives", on=False)
 
         print("restart keeps the result")

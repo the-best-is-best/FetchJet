@@ -22,15 +22,21 @@ def make_site(folder):
         with zipfile.ZipFile(os.path.join(folder, name), "w", zipfile.ZIP_DEFLATED) as z:
             z.writestr("one.txt", text[:5000])
             z.writestr("dir/two.txt", text[:9000])
+            script = zipfile.ZipInfo("run.sh")
+            script.create_system = 3
+            script.external_attr = 0o100755 << 16
+            z.writestr(script, b"#!/bin/sh\nexit 0\n")
     with zipfile.ZipFile(os.path.join(folder, "slip.zip"), "w") as z:
         z.writestr("../escaped.txt", b"nope")
         z.writestr("fine.txt", b"fine")
         z.writestr("fine2.txt", b"fine2")
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as t:
-        for name, data in (("proj/a.txt", b"aaa"), ("proj/sub/b.txt", b"bbb")):
+        for name, data in (("proj/a.txt", b"aaa"), ("proj/sub/b.txt", b"bbb"), ("proj/run.sh", b"#!/bin/sh\nexit 0\n")):
             info = tarfile.TarInfo(name)
             info.size = len(data)
+            if name.endswith(".sh"):
+                info.mode = 0o755
             t.addfile(info, io.BytesIO(data))
     open(os.path.join(folder, "proj.tar.gz"), "wb").write(buffer.getvalue())
     open(os.path.join(folder, "note.txt.gz"), "wb").write(gzip.compress(text))
@@ -80,10 +86,16 @@ def run():
                    open(os.path.join(folder, "dir", "two.txt"), "rb").read() == text[:9000], os.listdir(folder))
         core.check("the archive stays", os.path.isfile(os.path.join(downloads, "bundle-b.zip")))
         core.check("no work folder is left", not [n for n in os.listdir(downloads) if "fetchjet-extract" in n], os.listdir(downloads))
+        if os.name != "nt":
+            core.check("a zip program keeps its run permission", os.access(os.path.join(folder, "run.sh"), os.X_OK))
+            core.check("a plain file in a zip is not made runnable", not os.access(os.path.join(folder, "one.txt"), os.X_OK))
 
         add_and_wait(core, "proj.tar.gz")
         core.wait_for("the folder proj", lambda: os.path.isfile(os.path.join(downloads, "proj", "sub", "b.txt")), 30)
         core.check("a tar.gz with one top folder puts that folder next to the archive", open(os.path.join(downloads, "proj", "a.txt"), "rb").read() == b"aaa")
+        if os.name != "nt":
+            core.check("a tar program keeps its run permission", os.access(os.path.join(downloads, "proj", "run.sh"), os.X_OK))
+            core.check("a plain file in a tar is not made runnable", not os.access(os.path.join(downloads, "proj", "a.txt"), os.X_OK))
 
         add_and_wait(core, "note.txt.gz")
         core.wait_for("note.txt", lambda: os.path.isfile(os.path.join(downloads, "note.txt")), 30)

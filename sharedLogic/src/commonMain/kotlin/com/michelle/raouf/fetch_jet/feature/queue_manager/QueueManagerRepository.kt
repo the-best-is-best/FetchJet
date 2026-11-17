@@ -581,6 +581,7 @@ class QueueManagerRepository(
                         extractState.update { it + (task.id to ExtractState(fraction, startedAt)) }
                     }
                 }
+                markExtracted(task, result.destination)
                 com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, result.files, null, destination = result.destination)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -598,6 +599,16 @@ class QueueManagerRepository(
         } finally {
             extractingIds.update { it - task.id }
             extractState.update { it - task.id }
+        }
+    }
+
+    private fun markExtracted(task: DownloadTask, destination: String) {
+        val page = task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val top = destination.toPath()
+        val all = runCatching { sequenceOf(top) + com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.listRecursively(top) }
+            .getOrDefault(sequenceOf(top))
+        all.forEach { path ->
+            runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), task.url, page) }
         }
     }
 

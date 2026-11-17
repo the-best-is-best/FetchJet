@@ -17,6 +17,7 @@ internal class ZipEntry(
     val size: Long,
     val compressedSize: Long,
     val headerOffset: Long,
+    val executable: Boolean = false,
 )
 
 internal class BoundedSource(private val upstream: Source, private var left: Long) : Source {
@@ -127,6 +128,7 @@ internal class ZipReader(private val handle: FileHandle) {
                     size = size,
                     compressedSize = compressed,
                     headerOffset = offset,
+                    executable = type == 0x8000 && unixMode and 0x49 != 0,
                 )
             )
             p += 46 + nameLen + extraLen + commentLen

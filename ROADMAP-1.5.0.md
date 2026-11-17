@@ -231,15 +231,42 @@ per host).
   `AntivirusBlockedException` and is not retried: the task fails in 0.1 s. The message is translated in the 15
   languages (`scanAntivirusBlockedError`, through `localizeStep`).
 - [ ] Not tested: another antivirus than Defender.
-- [ ] macOS "downloaded from the internet" mark (owner's request, 2026-11-17), always on, not tied to the scan
+- [x] macOS "downloaded from the internet" mark (owner's request, 2026-11-17), always on, not tied to the scan
   setting: every finished download (not torrents) gets `com.apple.quarantine` through
-  `NSURL.setResourceValue(..., NSURLQuarantinePropertiesKey)` (agent FetchJet, type web download, data URL = the
-  link, origin URL = the page / Referer), as Safari and Chrome do; Gatekeeper / XProtect then check the file when it
-  is opened. `SystemScan.macos.kt` (`systemMarkFromInternet`), called from the repository's completion loop through
-  `FileScanner.markFromInternet` (no-op on Windows, Linux, Android, iOS, JVM). The symbols exist in the Kotlin 2.4.20
-  macos_arm64 Foundation klib; NOT compiled (no Mac here). Mac test: build, download a file and a `.dmg` / `.app`
-  zip, then `xattr -p com.apple.quarantine <file>` (must show `FetchJet`), Finder Get Info, and opening the app must
-  show the "downloaded from the internet" prompt. A failure prints `quarantine: could not mark`. The settings hint says "the antivirus Windows knows" on macOS / Linux too.
+  `NSURL.setResourceValue(..., NSURLQuarantinePropertiesKey)` (agent FetchJet, type web download), as Safari and Chrome do;
+  Gatekeeper / XProtect then check the file when it is opened. `SystemScan.macos.kt` (`systemMarkFromInternet`), called
+  from the repository's completion loop through `FileScanner.markFromInternet` (no-op on Windows, Linux, Android, iOS, JVM).
+  **Mac session 2026-11-17:** compiled with no change. Found: macOS keeps only the flags and an event id in the xattr
+  (`0281;<time>;;<uuid>`); the agent name goes to `~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2`, and the
+  data / origin URLs are not stored there at all (Firefox's rows are empty too). "Where from" in Finder is a separate xattr
+  that browsers write themselves, so `markWhereFrom` now writes `com.apple.metadata:kMDItemWhereFroms` (binary plist of the
+  link and the page) through `NSFileManager.setAttributes` + `NSFileExtendedAttributes` (`setxattr` is not in the
+  Kotlin/Native posix klib). Also found: files FetchJet extracted from a marked zip had no mark, so an extracted `.app` opened
+  with no Gatekeeper check. `QueueManagerRepository.markExtracted` now marks the extracted item and everything under it
+  (no-op off macOS).
+  Results: `test_scan.py` 22 / 22 on the Mac (5 new macOS checks: mark with the scan off and on (agent FetchJet read from
+  the events database), Where from holds the link, no "could not mark" in the log, an extracted file is marked); on the Mac
+  without a command the verdict is "none". Re-run: extract 16, settings 87, home 41, add 29, integrity 32, all passed; iOS
+  compiles. Real staged `FetchJet.app` on a throw-away `--home`, local server: a plain file and a zip holding a small
+  ad-hoc-signed `Hello.app` sent with `/d ... /p ... /n` both got the mark and the Where from; the zip opened with Archive
+  Utility and the `.app` extracted by FetchJet both showed "Hello.app Not Opened: Apple could not verify ..." and
+  `spctl` said rejected. No login item left.
+- [x] Found on the Mac and fixed (2026-11-17): the zip / tar extraction dropped the Unix permissions
+  (`Hello.app/Contents/MacOS/Hello` was `rwxr-xr-x` in the zip, `rw-r--r--` after), so an extracted app or script did
+  not start on macOS / Linux ("Launch failed"). `ZipEntry.executable` (Unix zip, any x bit) and `TarEntry.executable`
+  (mode field) now go to `Run.write`, which calls `markExecutable` (new expect in `core/filesystem/FileModes.kt`: JVM /
+  Android `File.setExecutable(true, false)`, iOS `chmod 0755`, native desktop `DesktopOs.makeExecutable`, no-op on
+  Windows). `test_extract.py` has 4 new checks (zip and tar program keep the x bit, plain files are not made runnable),
+  skipped on Windows: 20 / 20 on the Mac; `ArchiveExtractorTest` 23 / 23; Android compiles. iOS built (Gradle + Xcode)
+  and checked on the iPhone 17 and iPad Pro 13" simulators: a zip from the local server with `tool/run.sh` (755) and
+  `tool/note.txt`, Extract button on the row: `run.sh` `rwxr-xr-x`, `note.txt` `rw-r--r--`, Files opened on the folder.
+  The simulators' background download daemon was broken again ("unknown error"), so the downloads ran with the speed
+  limit on (foreground engine); the limit was switched off after. Not fixed: a zip made by `ditto` without
+  `--sequesterRsrc` keeps its `._name` AppleDouble entries as plain files (Archive Utility merges them).
+- [ ] The settings hint still says "Leave it empty to use the antivirus Windows knows" on macOS / Linux. Suggested for
+  macOS / Linux: "[File] is replaced by the file. Exit code 0 means clean. This system has no built-in scanner: enter one,
+  for example clamscan [File]." (needs a per-OS text in the 15 languages; not changed).
+- [ ] Not run on the Mac: EICAR (macOS has no real-time antivirus to block it; XProtect checks only when a file is opened).
 
 ## 10. Monthly downloads report (idea, 2026-11-14)
 
