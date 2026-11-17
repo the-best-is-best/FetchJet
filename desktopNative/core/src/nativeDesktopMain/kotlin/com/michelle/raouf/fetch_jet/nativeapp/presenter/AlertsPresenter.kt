@@ -23,6 +23,7 @@ private data class VmAlerts(
     val fallbackUrl: String?,
     val missingName: String?,
     val restartIsClip: Boolean?,
+    val password: com.michelle.raouf.fetch_jet.presentation.dashboard.ArchivePasswordAsk?,
 )
 
 private data class OtherAlerts(
@@ -44,6 +45,7 @@ internal fun Presenter.startAlerts() {
             fallbackUrl = state.browserFallbackUrl,
             missingName = missing?.fileName,
             restartIsClip = restart?.let { it.engineType == EngineType.MEDIA_STREAM },
+            password = state.archivePassword,
         )
     }.distinctUntilChanged()
     val others = combine(
@@ -204,8 +206,27 @@ private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?): Li
             dismissLabel = strings.homeKeepDownloading,
         )
     }
+    a.password?.let { ask ->
+        list += AlertDto(
+            kind = AlertKind.ARCHIVE_PASSWORD.ordinal,
+            title = strings.archivePasswordTitle,
+            titleSmall = true,
+            text = ask.name,
+            hint = if (ask.wrong) strings.archivePasswordWrong else strings.archivePasswordHint,
+            inputLabel = strings.archivePasswordLabel,
+            inputSecret = true,
+            confirmLabel = strings.rowMenuExtract,
+            dismissLabel = strings.cancel,
+        )
+    }
     if (dialog != null) list += browserAlert(dialog)
     return list
+}
+
+private var alertTyped = HashMap<Int, String>()
+
+internal fun Presenter.alertText(kind: Int, text: String) {
+    alertTyped[kind] = text
 }
 
 internal fun Presenter.alertExtra(kind: Int) {
@@ -238,6 +259,13 @@ internal fun Presenter.alertConfirm(kind: Int, checked: Boolean) {
         AlertKind.EXTENSION_MISSING, AlertKind.EXTENSION_STEPS, AlertKind.EXTENSION_FROM_FILE, AlertKind.EXTENSION_FAILED ->
             browserDialogConfirm()
 
+        AlertKind.ARCHIVE_PASSWORD -> {
+            val ask = vm.uiState.value.archivePassword ?: return
+            val typed = alertTyped.remove(kind).orEmpty()
+            if (typed.isEmpty()) return
+            vm.onEvent(DashboardUiEvent.OnArchivePasswordEntered(ask.taskId, typed))
+        }
+
         AlertKind.NONE, null -> Unit
     }
 }
@@ -254,6 +282,11 @@ internal fun Presenter.alertDismiss(kind: Int, fromScrim: Boolean) {
         AlertKind.RESTART_PAUSE -> local.update { it.copy(restartPauseTaskId = null) }
         AlertKind.EXTENSION_MISSING, AlertKind.EXTENSION_STEPS, AlertKind.EXTENSION_FROM_FILE, AlertKind.EXTENSION_FAILED ->
             showBrowserDialog(null)
+
+        AlertKind.ARCHIVE_PASSWORD -> {
+            alertTyped.remove(kind)
+            vm.onEvent(DashboardUiEvent.OnArchivePasswordDismissed)
+        }
 
         AlertKind.NONE, null -> Unit
     }

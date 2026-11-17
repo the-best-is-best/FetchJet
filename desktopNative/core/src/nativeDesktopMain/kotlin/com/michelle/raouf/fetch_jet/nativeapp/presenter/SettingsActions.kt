@@ -84,6 +84,8 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
         }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
         "extractArchives" -> vm.onEvent(DashboardUiEvent.OnExtractArchivesChanged(on))
+        "deleteToTrash" -> BehaviorSettings.setDeleteToTrash(on)
+        "trashArchive" -> BehaviorSettings.setTrashArchiveAfterExtract(on)
         "scanFiles" -> {
             BehaviorSettings.setScanFiles(on)
             settingsPoke()
@@ -216,6 +218,18 @@ internal fun Presenter.settingPick(id: String, index: Int) {
 
         id == "queue" -> QUEUE_COUNTS.getOrNull(index)?.let { QueueManagerRepository.getInstance().setMaxConcurrentDownloads(it) }
         id == "proxyKind" -> ProxyKind.entries.getOrNull(index)?.let { kind -> editProxy { copy(kind = kind) } }
+        id == "reportMonth" -> {
+            val months = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(
+                vm.uiState.value.allTasks, com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs.localUtcOffsetMs()
+            )
+            months.getOrNull(index)?.let { m -> settingsPage { copy(reportMonth = m.label) } }
+        }
+        id == "extractPlace" -> com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace.entries.getOrNull(index)
+            ?.let { BehaviorSettings.setExtractPlace(it) }
+        id == "dnsMode" -> com.michelle.raouf.fetch_jet.core.network.DnsMode.entries.getOrNull(index)?.let { mode ->
+            val draft = settingsLocal.value.page.dnsCustom
+            NetworkSettings.setDns(NetworkSettings.dns.value.copy(mode = mode, custom = draft ?: NetworkSettings.dns.value.custom))
+        }
         id == "uploadLimit" -> uploadLimitPicked(index)
         id == "uploadLimit.custom" -> speedPresetUnits.getOrNull(index)?.let { uploadLimitUnit(it) }
         isPresetId(id) -> speedPresetUnits.getOrNull(index)?.let { presetUnitPicked(id, it) }
@@ -254,6 +268,26 @@ internal fun Presenter.settingText(id: String, text: String) {
         id == "proxyPassword" -> {
             settingsEcho.of(id).fromUi(text)
             editProxy { copy(password = text) }
+        }
+
+        id == "dnsCustom" -> {
+            settingsEcho.of(id).fromUi(text)
+            settingsPage { copy(dnsCustom = text) }
+        }
+
+        id == "netAdapter" -> {
+            settingsEcho.of(id).fromUi(text)
+            settingsPage { copy(adapterDraft = text) }
+        }
+
+        id == "ruleSite" -> {
+            settingsEcho.of(id).fromUi(text)
+            settingsPage { copy(ruleSite = text) }
+        }
+
+        id == "ruleFolder" -> {
+            settingsEcho.of(id).fromUi(text)
+            settingsPage { copy(ruleFolder = text) }
         }
 
         id == "loginSite" -> {
@@ -332,6 +366,30 @@ private fun Presenter.chooseSaveFolder() {
             vm.onEvent(DashboardUiEvent.OnDestinationPathChanged(chosen))
         }
     }
+}
+
+private fun Presenter.chooseRuleFolder() {
+    val pick = HostHooks.pickFolder ?: return
+    val current = settingsLocal.value.page.ruleFolder.ifBlank { vm.uiState.value.destinationPath }
+    scope.launch(Dispatchers.IO) {
+        val chosen = try {
+            pick("Select Download Directory", current)
+        } catch (_: Throwable) {
+            null
+        }
+        if (!chosen.isNullOrBlank()) withContext(Dispatchers.Main) {
+            settingsEcho.of("ruleFolder").force()
+            settingsPage { copy(ruleFolder = chosen) }
+        }
+    }
+}
+
+private fun Presenter.addSiteRule() {
+    val page = settingsLocal.value.page
+    if (!BehaviorSettings.addSiteFolder(page.ruleSite, page.ruleFolder)) return
+    settingsEcho.of("ruleSite").force()
+    settingsEcho.of("ruleFolder").force()
+    settingsPage { copy(ruleSite = "", ruleFolder = "") }
 }
 
 private fun Presenter.removeWindow(index: Int) {
@@ -443,6 +501,9 @@ internal fun Presenter.browserDialogExtra() {
 internal fun Presenter.settingClick(id: String) {
     when {
         id == "chooseFolder" -> chooseSaveFolder()
+        id == "ruleChoose" -> chooseRuleFolder()
+        id == "ruleAdd" -> addSiteRule()
+        id.startsWith("rule.remove.") -> BehaviorSettings.removeSiteFolder(id.removePrefix("rule.remove."))
         id == "openFolder" -> openFolder(vm.uiState.value.destinationPath)
         id == "useDownloads" -> {
             settingsEcho.of("destination").force()
@@ -456,6 +517,14 @@ internal fun Presenter.settingClick(id: String) {
         id.startsWith("window.") && id.endsWith(".remove") -> windowIndex(id)?.let { removeWindow(it) }
         id.startsWith("window.") && id.endsWith(".pm") -> timeToggled(id.removeSuffix(".pm"))
         id == "proxySave" -> saveProxy()
+        id == "dnsSave" -> {
+            val page = settingsLocal.value.page
+            page.dnsCustom?.let { NetworkSettings.setDns(NetworkSettings.dns.value.copy(custom = it)) }
+            page.adapterDraft?.let { NetworkSettings.setAdapter(it) }
+            settingsEcho.of("dnsCustom").force()
+            settingsEcho.of("netAdapter").force()
+            settingsPage { copy(dnsCustom = null, adapterDraft = null) }
+        }
         id == "loginAdd" -> addLogin()
         id.startsWith("login.remove.") -> NetworkSettings.removeLogin(id.removePrefix("login.remove."))
         id == "toolsFolder" -> openFolder(vm.uiState.value.toolsDirectoryPath)

@@ -5392,6 +5392,236 @@
     "params": []
   },
   {
+    "name": "rowMenuOpen",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuOpenFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuPause",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuResume",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuExtract",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuCompress",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuSendToDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuCopyLink",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuSelect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuDetails",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuDelete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderChoose",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addFolderFromRule",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsCustom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsCustomLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netAdapterLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsProxyOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrash",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrashOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrashOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchiveOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchiveOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordWrong",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceSmart",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceNextTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportMonth",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
     "name": "scanningState",
     "kind": "val",
     "params": []

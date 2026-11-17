@@ -91,6 +91,8 @@ struct SettingsDownloadsPage: View {
                     isOn: st.extractArchives
                 ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
+            SettingsSiteFoldersCard()
+            SettingsDownloadReportCard()
             SettingsGroupBox(title: s.homeQueueTitle, footer: s.homeQueueFooter) {
                 SettingsRow(
                     title: s.homeDownloadsAtSameTime,
@@ -313,5 +315,97 @@ struct SettingsFolderPicker: View {
     private func go(_ path: String) {
         current = path
         subfolders = resolver.listSubdirectories(path: path, includeHidden: false)
+    }
+}
+
+struct SettingsSiteFoldersCard: View {
+    @EnvironmentObject var store: FJStore
+    @State private var rules: [SiteFolderRule] = []
+    @State private var site = ""
+    @State private var folder = ""
+
+    private func reload() {
+        rules = (BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
+    }
+
+    var body: some View {
+        let s = store.strings
+        let canAdd = SiteFolderRules.shared.isValidSite(text: site) && !folder.trimmingCharacters(in: .whitespaces).isEmpty
+        SettingsGroupBox(title: s.siteFoldersGroup, footer: s.siteFoldersHint) {
+            if rules.isEmpty {
+                SettingsRow(title: s.siteFoldersEmpty)
+            }
+            ForEach(rules, id: \.site) { rule in
+                SettingsRow(title: rule.site, subtitle: rule.folder) {
+                    Button(s.netRemove) {
+                        BehaviorSettings.shared.removeSiteFolder(site: rule.site)
+                        reload()
+                    }
+                    .font(FJTheme.font.callout.weight(.semibold))
+                    .foregroundStyle(FJTheme.color.error)
+                    .buttonStyle(.plain)
+                }
+                SettingsDivider()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                SettingsField(label: s.netLoginSite, placeholder: "example.com", text: $site, keyboard: .URL)
+                SettingsField(label: s.siteFolderFolder, text: $folder)
+                HStack {
+                    Spacer()
+                    Button(s.siteFolderAdd) {
+                        if BehaviorSettings.shared.addSiteFolder(site: site, folder: folder) {
+                            site = ""
+                            folder = store.state.destinationPath
+                        }
+                        reload()
+                    }
+                    .buttonStyle(SettingsButtonStyle(filled: true))
+                    .disabled(!canAdd)
+                }
+            }
+            .padding(16)
+        }
+        .onAppear {
+            reload()
+            if folder.isEmpty { folder = store.state.destinationPath }
+        }
+    }
+}
+
+struct SettingsDownloadReportCard: View {
+    @EnvironmentObject var store: FJStore
+    @State private var picked: String?
+
+    var body: some View {
+        let s = store.strings
+        let tasks = store.state.allTasks
+        let offset = LocalClockKt.localUtcOffsetMs()
+        let months = Array(DownloadReport.shared.months(tasks: tasks, utcOffsetMs: offset).prefix(24))
+        SettingsGroupBox(title: s.reportGroup, footer: s.reportFooter) {
+            if months.isEmpty {
+                SettingsRow(title: s.reportEmpty)
+            } else {
+                let chosen = months.first { $0.label == picked } ?? months[0]
+                let report = DownloadReport.shared.forMonth(tasks: tasks, month: chosen, utcOffsetMs: offset, topSites: 5)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(months, id: \.label) { month in
+                            Button(month.label) { picked = month.label }
+                                .buttonStyle(SettingsButtonStyle(filled: month.label == chosen.label))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                SettingsDivider()
+                SettingsRow(title: s.reportFiles, subtitle: "\(report.files)")
+                SettingsDivider()
+                SettingsRow(title: s.reportSize, subtitle: store.host.formatSizeDisplay(bytes: report.bytes))
+                ForEach(report.sites, id: \.site) { site in
+                    SettingsDivider()
+                    SettingsRow(title: site.site, subtitle: "\(site.files) · " + store.host.formatSizeDisplay(bytes: site.bytes))
+                }
+            }
+        }
     }
 }

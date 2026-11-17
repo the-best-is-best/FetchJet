@@ -16,7 +16,6 @@
     "storage",
     "notifications",
     "cookies",
-    "nativeMessaging",
     "webRequest",
     "scripting"
   ],

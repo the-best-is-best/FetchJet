@@ -18,6 +18,12 @@
              SummaryCodepage="1252" />
 
     <MajorUpgrade AllowDowngrades="yes" Schedule="afterInstallValidate" />
+    <Upgrade Id="{7E1C3F2A-5B7D-4C8E-9A61-4F2A9C1B7D30}">
+      <UpgradeVersion OnlyDetect="yes" Property="FJ_SAME_VERSION_FOUND"
+                      Minimum="$(var.Version)" IncludeMinimum="yes" Maximum="$(var.Version)" IncludeMaximum="yes" />
+      <UpgradeVersion OnlyDetect="yes" Property="FJ_NEWER_VERSION_FOUND" Minimum="$(var.Version)" IncludeMinimum="no" />
+      <UpgradeVersion OnlyDetect="yes" Property="FJ_OLDER_VERSION_FOUND" Maximum="$(var.Version)" IncludeMaximum="no" />
+    </Upgrade>
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Icon Id="FetchJetIcon.ico" SourceFile="$(var.Icon)" />
@@ -41,7 +47,7 @@
 
     <DirectoryRef Id="DesktopFolder">
       <Component Id="DesktopShortcut" Guid="{4B0F2E61-8C3A-4D57-9E1B-2A6C7D8E9F01}">
-        <Condition>JP_INSTALL_DESKTOP_SHORTCUT</Condition>
+        <Condition>JP_INSTALL_DESKTOP_SHORTCUT = "1"</Condition>
         <Shortcut Id="DesktopShortcutLink"
                   Name="FetchJet"
                   Description="FetchJet High-Velocity Multi-Engine Downloader"
@@ -53,7 +59,7 @@
 
     <DirectoryRef Id="ProgramMenuDir">
       <Component Id="StartMenuShortcut" Guid="{5C1A3F72-9D4B-4E68-8F2C-3B7D8E9FA012}">
-        <Condition>JP_INSTALL_STARTMENU_SHORTCUT</Condition>
+        <Condition>JP_INSTALL_STARTMENU_SHORTCUT = "1"</Condition>
         <Shortcut Id="StartMenuShortcutLink"
                   Name="FetchJet"
                   Description="FetchJet High-Velocity Multi-Engine Downloader"
@@ -105,11 +111,56 @@
       <ComponentRef Id="DefaultAppsRegistration" />
     </Feature>
 
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.Art)\WixUIDialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.Art)\WixUIBanner.bmp" />
+
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Start FetchJet now" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[INSTALLDIR]FetchJet.exe" />
+    <CustomAction Id="FjLaunchApp" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
     <UI>
       <UIRef Id="WixUI_InstallDir" />
+
+      <Dialog Id="FjOptionsDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.InstallDirDlgBannerBitmap)" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Choose the extras" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Transparent="yes" NoPrefix="yes" Text="Pick the shortcuts FetchJet should add." />
+        <Control Id="Same" Type="Text" X="20" Y="56" Width="330" Height="30" NoPrefix="yes" Hidden="yes"
+                 Text="FetchJet [ProductVersion] is already installed on this computer. Continuing installs it again (a repair); your downloads and settings stay.">
+          <Condition Action="show">FJ_SAME_VERSION_FOUND</Condition>
+        </Control>
+        <Control Id="Newer" Type="Text" X="20" Y="56" Width="330" Height="30" NoPrefix="yes" Hidden="yes"
+                 Text="A newer FetchJet is already installed. Continuing replaces it with the older [ProductVersion]; your downloads and settings stay.">
+          <Condition Action="show">FJ_NEWER_VERSION_FOUND AND NOT FJ_SAME_VERSION_FOUND</Condition>
+        </Control>
+        <Control Id="Older" Type="Text" X="20" Y="56" Width="330" Height="30" NoPrefix="yes" Hidden="yes"
+                 Text="An older FetchJet is installed: it will be updated to [ProductVersion]. Your downloads and settings stay.">
+          <Condition Action="show">FJ_OLDER_VERSION_FOUND AND NOT FJ_SAME_VERSION_FOUND AND NOT FJ_NEWER_VERSION_FOUND</Condition>
+        </Control>
+        <Control Id="DesktopBox" Type="CheckBox" X="20" Y="96" Width="330" Height="17" Property="JP_INSTALL_DESKTOP_SHORTCUT" CheckBoxValue="1"
+                 Text="Create a shortcut on the desktop" />
+        <Control Id="StartMenuBox" Type="CheckBox" X="20" Y="118" Width="330" Height="17" Property="JP_INSTALL_STARTMENU_SHORTCUT" CheckBoxValue="1"
+                 Text="Add FetchJet to the Start menu" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
+          <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+        </Control>
+      </Dialog>
+
       <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
       <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">1</Publish>
+      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="FjOptionsDlg" Order="5">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="FjOptionsDlg" Order="5">NOT Installed</Publish>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="FjLaunchApp">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed</Publish>
     </UI>
   </Product>
 </Wix>

@@ -85,6 +85,10 @@ data class DashboardUiState(
 
     val destinationPath: String = "",
 
+    val addFolderRuleSite: String = "",
+
+    val archivePassword: ArchivePasswordAsk? = null,
+
     val disableTorrentUpload: Boolean = false,
 
     val isDarkMode: Boolean = true,
@@ -466,6 +470,12 @@ sealed interface DashboardUiEvent {
 
     data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
     data class OnExtractTaskClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent
+
+    data class OnArchivePasswordEntered(val taskId: String, val password: String) : DashboardUiEvent
+
+    data object OnArchivePasswordDismissed : DashboardUiEvent
     data class OnTorrentDetailsOpened(val taskId: String) : DashboardUiEvent
     data object OnTorrentDetailsClosed : DashboardUiEvent
     data class OnTorrentAddTracker(val taskId: String, val url: String) : DashboardUiEvent
@@ -528,3 +538,5 @@ sealed interface DashboardUiEffect {
     data class CopyText(val text: String) : DashboardUiEffect
 
 }
+
+data class ArchivePasswordAsk(val taskId: String, val name: String, val wrong: Boolean)

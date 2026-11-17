@@ -33,6 +33,7 @@ interface LoopSockets {
     fun connectLoopback(socket: Long, port: Int): Boolean
     fun resolve(host: String, port: Int): List<LoopAddress>?
     fun connect(socket: Long, address: LoopAddress): Boolean
+    fun bindSource(socket: Long, address: LoopAddress): Boolean
     fun send(socket: Long, data: CPointer<ByteVar>, count: Int): Int
     fun receive(socket: Long, data: CPointer<ByteVar>, count: Int): Int
     fun setNoDelay(socket: Long)

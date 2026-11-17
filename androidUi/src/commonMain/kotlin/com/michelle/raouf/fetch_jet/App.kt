@@ -558,6 +558,7 @@ fun App(
                 AddDownloadModalDialog(
                     inputUrl = state.inputUrl,
                     destinationPath = state.destinationPath,
+                    folderRuleSite = state.addFolderRuleSite,
                     disableTorrentUpload = state.disableTorrentUpload,
                     detectedEngine = state.detectedEngine,
                     isLoading = state.isLoading,

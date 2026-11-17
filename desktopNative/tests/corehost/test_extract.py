@@ -122,6 +122,7 @@ def run():
         core.action("RowExtract", id=done["id"])
         core.wait_for("the folder bundle-c", lambda: os.path.isfile(os.path.join(downloads, "bundle-c", "dir", "two.txt")), 30)
         core.check("the row button opens it even with the setting off", os.path.isfile(os.path.join(downloads, "bundle-c", "one.txt")))
+        core.pump(3)
         core.action("RowExtract", id=done["id"])
         core.pump(0.5)
         core.wait_for("the second copy", lambda: os.path.isfile(os.path.join(downloads, "bundle-c (1)", "dir", "two.txt")), 30)

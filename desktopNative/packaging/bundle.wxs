@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+  <Bundle Name="FetchJet"
+          Version="$(var.Version)"
+          Manufacturer="Michelle Raouf"
+          UpgradeCode="{3D9B5E14-7A2C-4F68-B1E0-5C8D2A6F9B47}"
+          IconSourceFile="$(var.Icon)"
+          AboutUrl="https://github.com/the-best-is-best/FetchJet"
+          HelpUrl="https://the-best-is-best.github.io/FetchJet/"
+          UpdateUrl="https://the-best-is-best.github.io/FetchJet/">
+
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
+      <bal:WixStandardBootstrapperApplication
+          LicenseUrl="https://www.gnu.org/licenses/gpl-3.0.html"
+          ThemeFile="$(var.Art)\theme.xml"
+          LocalizationFile="$(var.Art)\theme.wxl"
+          LogoFile="$(var.Art)\BundleLogo.png"
+          LaunchTarget="[LocalAppDataFolder]FetchJet\FetchJet.exe"
+          SuppressOptionsUI="yes"
+          SuppressRepair="no" />
+      <Payload SourceFile="$(var.Art)\BundleHeader.png" Name="header.png" />
+    </BootstrapperApplicationRef>
+
+    <Variable Name="DesktopShortcutCheckbox" Type="numeric" Value="1" />
+    <Variable Name="StartMenuCheckbox" Type="numeric" Value="1" />
+
+    <Chain>
+      <MsiPackage Id="FetchJetMsi" SourceFile="$(var.Msi)" Compressed="yes" Visible="no" DisplayInternalUI="no">
+        <MsiProperty Name="JP_INSTALL_DESKTOP_SHORTCUT" Value="[DesktopShortcutCheckbox]" />
+        <MsiProperty Name="JP_INSTALL_STARTMENU_SHORTCUT" Value="[StartMenuCheckbox]" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>

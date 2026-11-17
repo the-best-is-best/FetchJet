@@ -76,8 +76,19 @@ class ArchiveExtractorTest {
         assertEquals(ArchiveKind.TAR_GZ, ArchiveExtractor.kindOf("a.tgz"))
         assertEquals(ArchiveKind.TAR_XZ, ArchiveExtractor.kindOf("a.tar.xz"))
         assertEquals(ArchiveKind.GZ, ArchiveExtractor.kindOf("a.txt.gz"))
-        assertNull(ArchiveExtractor.kindOf("a.rar"))
-        assertNull(ArchiveExtractor.kindOf("a.7z"))
+        assertEquals(ArchiveKind.RAR, ArchiveExtractor.kindOf("a.rar"))
+        assertEquals(ArchiveKind.SEVEN_Z, ArchiveExtractor.kindOf("a.7z"))
+        assertEquals(ArchiveKind.SEVEN_Z, ArchiveExtractor.kindOf("big.7z.001"))
+        assertNull(ArchiveExtractor.kindOf("big.7z.002"))
+        assertEquals(ArchiveKind.RAR, ArchiveExtractor.kindOf("movie.part01.rar"))
+        assertNull(ArchiveExtractor.kindOf("movie.part02.rar"))
+        assertEquals(ArchiveKind.SPLIT_ZIP, ArchiveExtractor.kindOf("set.zip.001"))
+        assertEquals("big", ArchiveExtractor.baseName("big.7z.003"))
+        assertEquals("movie", ArchiveExtractor.baseName("movie.part2.rar"))
+        assertEquals(ArchiveExtractor.volumeSet("movie.part1.rar"), ArchiveExtractor.volumeSet("Movie.part12.rar"))
+        assertEquals(12, ArchiveExtractor.volumeNumber("movie.part12.rar"))
+        assertNull(ArchiveExtractor.volumeSet("a.zip"))
+        assertNull(ArchiveExtractor.kindOf("a.doc"))
         assertEquals("a", ArchiveExtractor.baseName("a.tar.gz"))
         assertEquals("data.txt", ArchiveExtractor.baseName("data.txt.xz"))
     }
@@ -105,6 +116,24 @@ class ArchiveExtractorTest {
         assertContentEquals(b, File(folder, "dir/stored.bin").readBytes())
         assertEquals(0, File(folder, "empty.txt").length())
         assertTrue(File(folder, "folder").isDirectory)
+        assertFalse(work.listFiles()!!.any { it.name.contains("fetchjet-extract") })
+    }
+
+    @Test
+    fun theChosenPlaceIsUsed() {
+        val single = zip("one-top.zip", listOf(Triple("proj/a.txt", lorem(100), 8)))
+        val always = runBlocking { ArchiveExtractor.extract(single.toOkioPath(), place = ExtractPlace.ALWAYS_FOLDER) }
+        assertEquals(File(work, "one-top").absolutePath, File(always.destination).absolutePath)
+        assertTrue(File(work, "one-top/proj/a.txt").isFile)
+
+        val loose = zip("loose.zip", listOf(Triple("x.txt", lorem(50), 8), Triple("y.txt", lorem(50), 8)))
+        val next = runBlocking { ArchiveExtractor.extract(loose.toOkioPath(), place = ExtractPlace.NEXT_TO_ARCHIVE) }
+        assertEquals(work.absolutePath, File(next.destination).absolutePath)
+        assertTrue(File(work, "x.txt").isFile && File(work, "y.txt").isFile)
+        assertEquals(setOf("x.txt", "y.txt"), next.items.map { File(it).name }.toSet())
+
+        val again = runBlocking { ArchiveExtractor.extract(loose.toOkioPath(), place = ExtractPlace.NEXT_TO_ARCHIVE) }
+        assertEquals(setOf("x (1).txt", "y (1).txt"), again.items.map { File(it).name }.toSet())
         assertFalse(work.listFiles()!!.any { it.name.contains("fetchjet-extract") })
     }
 

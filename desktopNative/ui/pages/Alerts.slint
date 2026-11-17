@@ -3,6 +3,7 @@ import { HBox, T, Hover } from "../widgets/Base.slint";
 import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
+import { TextField } from "../widgets/TextField.slint";
 import { Core, AlertDto, AlertKind } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 
@@ -129,6 +130,18 @@ component AlertOverlay inherits Rectangle {
                 text: root.data.hint;
                 wrap: word-wrap;
                 max-height: 64px;
+            }
+            if root.data.inputLabel != "": Rectangle {
+                height: 12px;
+            }
+            if root.data.inputLabel != "": TextField {
+                placeholder: root.data.inputLabel;
+                input-type: root.data.inputSecret ? InputType.password : InputType.text;
+                edited(text) => { Act.alertText(root.data.kind, text); }
+                accepted(text) => {
+                    Act.alertText(root.data.kind, text);
+                    Act.alertConfirm(root.data.kind, root.checked);
+                }
             }
             if root.data.checkLabel != "": Rectangle {
                 height: 12px;

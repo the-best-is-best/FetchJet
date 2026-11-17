@@ -1,7 +1,12 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.log.AppLog
+import com.michelle.raouf.fetch_jet.feature.archive_extract.GzipSource
+import okio.Path.Companion.toPath
+import okio.buffer
+import okio.use
 import com.michelle.raouf.fetch_jet.core.network.AppHttp
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopApp
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
@@ -199,22 +204,46 @@ private suspend fun installYtDlp(toolsDir: String, onProgress: (ToolDownloadProg
 
 private suspend fun installFfmpeg(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
     val assets = desktopToolAssets
-    val zip = DesktopOs.join(toolsDir, "ffmpeg.zip")
+    val download = DesktopOs.join(toolsDir, "ffmpeg.download")
+    val unpacked = DesktopOs.join(toolsDir, "ffmpeg.unpacked")
+    val target = DesktopOs.join(toolsDir, programName("ffmpeg"))
     try {
-        val actual = downloadTo(assets.ffmpegUrl, zip) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
+        val actual = downloadTo(assets.ffmpegUrl, download) { onProgress(ToolDownloadProgress("FFmpeg", it)) }
         if (actual != assets.ffmpegSha256) {
             throw IllegalStateException("ffmpeg checksum mismatch (expected ${assets.ffmpegSha256}, got $actual)")
         }
-        if (!assets.ffmpegZipped) {
-            val target = DesktopOs.join(toolsDir, programName("ffmpeg"))
-            check(DesktopOs.move(zip, target, replace = true)) { "could not put ffmpeg in place" }
-            DesktopOs.makeExecutable(target)
-        } else if (!unzipOne(zip, programName("ffmpeg"), toolsDir)) {
-            AppLog.e("ffmpeg archive did not contain ${programName("ffmpeg")}; yt-dlp will work without merging (720p limit)")
+        val program = if (assets.ffmpegGzipped) {
+            GzipSource(AppFileSystem.source(download.toPath()).buffer()).buffer().use { input ->
+                AppFileSystem.sink(unpacked.toPath()).buffer().use { out -> out.writeAll(input) }
+            }
+            unpacked
+        } else {
+            download
         }
+        DesktopOs.makeExecutable(program)
+        check(installedFfmpegMajor(program) != null) { "the new ffmpeg does not start" }
+        check(DesktopOs.move(program, target, replace = true)) { "could not replace ffmpeg (is it running?)" }
     } finally {
-        DesktopOs.deleteFile(zip)
+        DesktopOs.deleteFile(download)
+        DesktopOs.deleteFile(unpacked)
     }
+}
+
+private const val FFMPEG_MIN_MAJOR = 6
+
+private suspend fun installedFfmpegMajor(binary: String): Int? = try {
+    val result = DesktopOs.runProcess(listOf(binary, "-hide_banner", "-version"), mergeStderr = true, timeoutMs = 30_000)
+    if (result.timedOut) null else Regex("ffmpeg version \\D*(\\d+)\\.").find(result.stdout)?.groupValues?.get(1)?.toIntOrNull()
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    null
+}
+
+private suspend fun ffmpegNeedsInstall(): Boolean {
+    val bin = getExistingFfmpegBinary() ?: return !isSystemFfmpegInstalled()
+    val major = installedFfmpegMajor(bin) ?: return true
+    return major < FFMPEG_MIN_MAJOR
 }
 
 private suspend fun installDeno(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
@@ -284,7 +313,7 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
             val bin = getExistingYtDlpBinary()
             bin == null || ytDlpFolderBinary() == null || !sameVersion(installedVersion(bin), ytDlpTag)
         }) { installYtDlp(toolsDir, onProgress) }
-        step("ffmpeg", { getExistingFfmpegBinary() == null && !isSystemFfmpegInstalled() }) {
+        step("ffmpeg", { ffmpegNeedsInstall() }) {
             installFfmpeg(toolsDir, onProgress)
         }
         step("deno", {

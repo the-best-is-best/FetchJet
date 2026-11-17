@@ -43,7 +43,7 @@ def run():
         core.wait_for("the estimate", lambda: estimate_ready(core), 60)
         p = page(core)
         options = p.get("formatOptions", [])
-        core.check("three formats on the desktop", options == ["m4a", "mp3", "opus"], options)
+        core.check("every Convert format on the desktop", options == ["m4a", "mp3", "opus", "ogg", "flac", "wav"], options)
         core.check("the file's own format is chosen", options and options[p.get("formatPick", 0) - 1] == "mp3", p.get("formatPick"))
 
         print("same format")

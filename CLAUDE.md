@@ -53,8 +53,8 @@ The owner wants speed parity and smooth UX.
 Version constants:
 
 - `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.5.0"` and
-  `EXTENSION_VERSION = "3.5.0"` (1.3.0 and 1.3.1 released 2026-11-08 from `master`; 1.4.0 is
-  being built on `release-v1.4.0`)
+  `EXTENSION_VERSION = "3.5.0"` (1.4.1 is the last release, tag `v1.4.1`; 1.5.0 is being finished on
+  `release-v1.5.0`)
 - `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.5.0`,
   `CURRENT_PROJECT_VERSION = 8`
 - `extension/manifest.json` and `manifest.firefox.json` → `3.5.0` (also `manifest.safari.json`);
@@ -178,7 +178,7 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
   `ToolsDownloadBanner` above the home list.
 - Desktop: tools in `~/.fetch_jet/tools` (yt-dlp as the unpacked build in `tools/yt-dlp-dir`,
-  see ROADMAP 6c; ffmpeg pinned 4.4.1 with a per-OS sha256 check, deno from denoland releases
+  see ROADMAP 6c; ffmpeg pinned (eugeneware ffmpeg-static b6.1.1 `.gz`, sha256 per OS; older than 6 is replaced at start), deno from denoland releases
   with sha256 check). Auto-update
   compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
@@ -262,7 +262,48 @@ Bridges:
   text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
   install the Chrome build.
 
-## Current state (master = 1.3.1; working branch `release-v1.4.0`)
+## Current state (last release 1.4.1; working branch `release-v1.5.0`)
+
+- **Next on the Mac (after the 2026-11-17 Windows commit):** pull `release-v1.5.0`, `git submodule update --init
+  --recursive`, then build iOS (`scripts/ios-dev-build.command all`) and check the Swift files changed on Windows (not
+  compiled there): `TaskListScreen.swift` (row context menu), `FJStore.swift` (CopyText effect), `SettingsDownloadsPage.swift`
+  (folders by site card + monthly report card), `AddSections.swift` (folder rule line, the type-folder copy removed). Then
+  the macOS native app (`make-dmg.sh`) and the corehost files that changed or are new: `test_rowmenu`, `test_siterules`,
+  `test_dns`, `test_trash`, `test_archives7z` (needs 7-Zip: `brew install sevenzip` or skip), `test_extract`,
+  `test_settings`, `test_automation`, `test_unsafe_names`, `test_wake` (now skips: wake is off). macOS ffmpeg is unchanged
+  (b6.1.1). Release notes `release-notes/1.5.0/` (15 languages) are written; the owner runs the release.
+
+- **2026-11-17, Windows session on `release-v1.5.0` (owner away: "work through the whole ROADMAP, do not ask, test it";
+  committed and pushed after `acb625e` at the owner's "ارفع"; details per item in ROADMAP-1.5.0.md):**
+    - Item 15 security: extension `nativeMessaging` removed (dead); `enqueueTask` cleans file names (`test_unsafe_names`);
+      temp cleanup no longer deletes other downloads' files (`ownsTempItem`); CI actions pinned to commits; update
+      signature test. ffmpeg on Windows / Linux moved from 4.4.1 to the b6.1.1 builds (ROADMAP item 15).
+    - Item 7 row menu (Slint right-click, Compose long press with "Select", SwiftUI `contextMenu`), item 8 folders by site,
+      item 3 own DNS (DoH / UDP) and adapter through the loopback proxy (native desktop only), item 2 phase 2 (7-Zip for
+      7z / rar / split / password archives, extract place, Recycle Bin for deleted files and extracted archives), item 11
+      portable Windows (`FetchJet.portable`). New tests: `test_rowmenu`, `test_siterules`, `test_dns`, `test_trash`,
+      `test_archives7z`, `test_unsafe_names`; jvmTest `SiteFolderRulesTest`, `DnsWireTest`, `TempCleanupTest`,
+      `UpdateSignatureTest`.
+    - Fixed on the way: the desktop presenter and SwiftUI re-added the type folder by themselves (lost a remembered kind
+      folder); `markExtracted` failed a single-file `.gz` extraction.
+    - New helper: `scripts/i18n-add-strings.py <spec.json>` adds keys to `AppLocalization` and the 15 providers at once
+      (spec: `{"after": "<existing key>", "keys": {"name": {"en": ..., "ar": ..., ...}}}`). Writing Kotlin with backslashes
+      through a bash heredoc in this environment loses them: use the Write / Edit tools for such files.
+    - iOS changes that need the Mac: `TaskListScreen.swift` (context menu), `FJStore.swift` (CopyText effect),
+      `SettingsDownloadsPage.swift` (folders by site), `AddSections.swift` (rule line, the type-folder copy removed).
+    - Later the same day (owner back, "finish everything, do not ask"): item 10 monthly report (all three UIs), item 17
+      Windows installers (MSI options page + version line + launch box + branded images; `FetchJet-<v>-setup.exe` Burn
+      bundle, `build-setup.cmd`; CI uploads both, plus the portable zip). README Windows row lists Setup.exe / .msi /
+      portable .zip.
+    - Full Windows core run (40 files): every file passes except `test_torrent_proxy` (18 fail, the same 18 with the core of
+      the last commit: test setup on this PC, not this work) and `test_extract_big` speed on the debug core (known, needs
+      the release core). FTP / testlink need `servers.sh start` first. `test_compress_format` and `test_testlink` were
+      outdated and were updated. JVM tests 195 / 0. Linux: the new files pass.
+    - Never rewrite a source file with PowerShell `Get-Content -Raw | Set-Content`: 5.1 reads it as ANSI and writes UTF-8
+      with a BOM, so every non-ASCII character is broken (happened to `SettingsRows.kt` and was repaired).
+    - Owner's decisions (same day): wake for schedule stopped on every system (`WakeForSchedule.ENABLED = false`, code
+      kept); items 4, 12, 13 dropped; ffmpeg moved to the b6.1.1 builds, a monthly scheduled task
+      (`fetchjet-ffmpeg-new-version`) says when eugeneware publishes a newer one. `get` / `resume` dropped too.
 
 - **2026-11-17, Mac session on `release-v1.5.0` (ROADMAP-1.5.0.md item 9, nothing committed):** the scan feature and the
   macOS quarantine mark built and tested (`test_scan.py` 22/22 with 5 new macOS checks; extract 16, settings 87, home 41, add
@@ -908,8 +949,10 @@ Bridges:
   token only in Cloudflare and with the owner; off switch env `FETCHJET_NO_USAGE_PING=1`; a fresh `--home` counts
   as a new user without it). README Privacy is updated. **Remind the owner before he releases:** update the
   Microsoft Store privacy text (it may say no data is collected); AMO and Edge Add-ons need nothing (the extension
-  sends nothing to that server). Optional: a line on the `docs/` download page and in `release-notes/1.5.0/` (15 languages).
-- **1.4.1 (2026-11-13, branch `release-v1.4.1`, not released):** FTP / FTPS, file integrity (checksum,
+  sends nothing to that server). `release-notes/1.5.0/` is written (15 languages, 2026-11-17).
+  Users who turned on "wake the computer for scheduled downloads" in 1.4.1 (Windows) lose it in 1.5.0 (owner stopped
+  the feature; the release notes do not mention it).
+- **1.4.1 (released, tag `v1.4.1`):** FTP / FTPS, file integrity (checksum,
   ZIP CRC, file changed on the server), torrent details, command line, keyboard, idle speed limit,
   extension 3.4.0 (version tied in `AppVersion.kt` + the 3 manifests), release notes in 15 languages
   (`release-notes/1.4.1/`). Tested on the Windows native app with real keys and mouse, the extension on a

@@ -430,6 +430,8 @@ internal fun DownloadsPage(
                 onChange = onExtractArchivesChanged
             )
         }
+        SiteFoldersCard()
+        DownloadReportCard()
         QueueSettingsCard()
     }
 }
@@ -837,6 +839,104 @@ private fun LanguageSettingsCard(onLanguageChanged: (String) -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SiteFoldersCard() {
+    val rules by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolders.collectAsState()
+    var site by remember { mutableStateOf("") }
+    var folder by remember { mutableStateOf("") }
+    var picking by remember { mutableStateOf(false) }
+    val resolver = remember { PathResolver() }
+    val canAdd = com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.isValidSite(site) && folder.isNotBlank()
+    SettingsGroup(
+        title = LocalizationManager.Strings.siteFoldersGroup,
+        footer = LocalizationManager.Strings.siteFoldersHint
+    ) {
+        if (rules.isEmpty()) SettingRow(title = LocalizationManager.Strings.siteFoldersEmpty)
+        rules.forEach { rule ->
+            SettingRow(title = rule.site, subtitle = rule.folder) {
+                androidx.compose.material3.TextButton(
+                    onClick = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.removeSiteFolder(rule.site) }
+                ) {
+                    Text(LocalizationManager.Strings.netRemove, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            SettingDivider()
+        }
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FetchJetTextField(
+                value = site,
+                onValueChange = { site = it },
+                label = LocalizationManager.Strings.netLoginSite,
+                placeholder = "example.com",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                modifier = Modifier.fillMaxWidth()
+            )
+            FetchJetTextField(
+                value = folder,
+                onValueChange = { folder = it },
+                label = LocalizationManager.Strings.siteFolderFolder,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+                OutlinedButton(onClick = { picking = true }) { Text(LocalizationManager.Strings.siteFolderChoose) }
+                Button(
+                    enabled = canAdd,
+                    onClick = {
+                        if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.addSiteFolder(site, folder)) {
+                            site = ""; folder = ""
+                        }
+                    }
+                ) { Text(LocalizationManager.Strings.siteFolderAdd) }
+            }
+        }
+    }
+    if (picking) {
+        DirectoryPickerDialog(
+            initialPath = folder,
+            pathResolver = resolver,
+            onDirectorySelected = { folder = it; picking = false },
+            onDismissRequest = { picking = false }
+        )
+    }
+}
+
+@Composable
+private fun DownloadReportCard() {
+    val tasks by com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance().allTasksFlow.collectAsState()
+    val offset = remember { com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs() }
+    val months = remember(tasks) { com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(tasks, offset).take(24) }
+    var picked by remember { mutableStateOf<String?>(null) }
+    SettingsGroup(
+        title = LocalizationManager.Strings.reportGroup,
+        footer = LocalizationManager.Strings.reportFooter
+    ) {
+        if (months.isEmpty()) {
+            SettingRow(title = LocalizationManager.Strings.reportEmpty)
+            return@SettingsGroup
+        }
+        val chosen = months.firstOrNull { it.label == picked } ?: months.first()
+        val report = remember(tasks, chosen) { com.michelle.raouf.fetch_jet.feature.report.DownloadReport.forMonth(tasks, chosen, offset) }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            months.forEach { month ->
+                FilterChip(selected = month == chosen, onClick = { picked = month.label }, label = { Text(month.label) })
+            }
+        }
+        SettingDivider()
+        SettingRow(title = LocalizationManager.Strings.reportFiles) { Text(report.files.toString(), color = MaterialTheme.colorScheme.primary) }
+        SettingDivider()
+        SettingRow(title = LocalizationManager.Strings.reportSize) {
+            Text(com.michelle.raouf.fetch_jet.utils.formatSizeDisplay(report.bytes), color = MaterialTheme.colorScheme.primary)
+        }
+        report.sites.forEach { site ->
+            SettingDivider()
+            SettingRow(title = site.site, subtitle = site.files.toString() + " · " + com.michelle.raouf.fetch_jet.utils.formatSizeDisplay(site.bytes))
         }
     }
 }

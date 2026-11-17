@@ -5,7 +5,7 @@ import okio.BufferedSource
 import okio.Source
 import okio.Timeout
 
-class ArchiveException(message: String) : Exception(message)
+open class ArchiveException(message: String) : Exception(message)
 
 private const val FAST_BITS = 10
 

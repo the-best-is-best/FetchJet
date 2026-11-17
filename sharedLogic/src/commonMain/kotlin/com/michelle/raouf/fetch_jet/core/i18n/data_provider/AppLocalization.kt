@@ -933,6 +933,52 @@ interface AppLocalization : LocalizationProvider {
     val scanCommandLabel: String
     val scanCommandHint: String
     val scanCommandHintNoScanner: String
+    val rowMenuOpen: String
+    val rowMenuOpenFolder: String
+    val rowMenuPause: String
+    val rowMenuResume: String
+    val rowMenuExtract: String
+    val rowMenuCompress: String
+    val rowMenuSendToDevice: String
+    val rowMenuCopyLink: String
+    val rowMenuSelect: String
+    val rowMenuDetails: String
+    val rowMenuDelete: String
+    val siteFoldersGroup: String
+    val siteFoldersHint: String
+    val siteFoldersEmpty: String
+    val siteFolderFolder: String
+    val siteFolderChoose: String
+    val siteFolderAdd: String
+    val addFolderFromRule: String
+    val netDnsGroup: String
+    val netDnsHint: String
+    val netDnsTitle: String
+    val netDnsSystem: String
+    val netDnsCustom: String
+    val netDnsCustomLabel: String
+    val netAdapterLabel: String
+    val netDnsProxyOn: String
+    val deleteToTrash: String
+    val deleteToTrashOn: String
+    val deleteToTrashOff: String
+    val trashArchive: String
+    val trashArchiveOn: String
+    val trashArchiveOff: String
+    val archivePasswordTitle: String
+    val archivePasswordHint: String
+    val archivePasswordWrong: String
+    val archivePasswordLabel: String
+    val extractPlaceTitle: String
+    val extractPlaceSmart: String
+    val extractPlaceFolder: String
+    val extractPlaceNextTo: String
+    val reportGroup: String
+    val reportFooter: String
+    val reportMonth: String
+    val reportFiles: String
+    val reportSize: String
+    val reportEmpty: String
     val scanningState: String
     val scanTitle: String
     val scanClean: String

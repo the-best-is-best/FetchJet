@@ -207,6 +207,9 @@ private object MacLoopSockets : LoopSockets {
     override fun connect(socket: Long, address: LoopAddress): Boolean =
         address.bytes.usePinned { connect(socket.toInt(), it.addressOf(0).reinterpret(), address.bytes.size.toUInt()) == 0 }
 
+    override fun bindSource(socket: Long, address: LoopAddress): Boolean =
+        address.bytes.usePinned { bind(socket.toInt(), it.addressOf(0).reinterpret(), address.bytes.size.toUInt()) == 0 }
+
     override fun send(socket: Long, data: CPointer<ByteVar>, count: Int): Int =
         send(socket.toInt(), data, count.convert(), 0).toInt()
 

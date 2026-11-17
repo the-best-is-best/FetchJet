@@ -246,6 +246,7 @@ actual object DesktopApp {
             "development" -> WinApp.kindOverride = WinInstallKind.DEVELOPMENT
             "installed" -> WinApp.kindOverride = WinInstallKind.INSTALLED
             "store" -> WinApp.kindOverride = WinInstallKind.STORE
+            "portable" -> WinApp.kindOverride = WinInstallKind.PORTABLE
         }
     }
 

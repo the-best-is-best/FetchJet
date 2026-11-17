@@ -35,7 +35,7 @@ namespace {
 
     struct Step {
         enum Kind {
-            Hover, Click, Press, Release, Type, Key, Wait, Scroll, Leave
+            Hover, Click, RightClick, Press, Release, Type, Key, Wait, Scroll, Leave
         };
         Kind kind = Wait;
         float x = 0;
@@ -560,6 +560,9 @@ namespace {
                     return false;
             } else if (a == "--click") {
                 if (!point(Step::Click))
+                    return false;
+            } else if (a == "--right-click") {
+                if (!point(Step::RightClick))
                     return false;
             } else if (a == "--press") {
                 if (!point(Step::Press))
@@ -1209,6 +1212,11 @@ namespace {
                     window.dispatch_pointer_move_event(pos);
                     window.dispatch_pointer_press_event(pos, slint::PointerEventButton::Left);
                     window.dispatch_pointer_release_event(pos, slint::PointerEventButton::Left);
+                    break;
+                case Step::RightClick:
+                    window.dispatch_pointer_move_event(pos);
+                    window.dispatch_pointer_press_event(pos, slint::PointerEventButton::Right);
+                    window.dispatch_pointer_release_event(pos, slint::PointerEventButton::Right);
                     break;
                 case Step::Press:
                     window.dispatch_pointer_move_event(pos);

@@ -676,6 +676,14 @@ component AddBody inherits VerticalLayout {
             }
         }
     }
+    if Core.add.folderRule != "": Text {
+        text: Core.add.folderRule;
+        color: Theme.primary;
+        font-family: Theme.font;
+        font-size: 12px;
+        horizontal-alignment: Dir.start;
+        overflow: elide;
+    }
     Gap {
         size: 8px;
     }

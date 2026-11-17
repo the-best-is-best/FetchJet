@@ -68,7 +68,7 @@ def run():
 
         result, add = probe(core, "the server names the file", SERVER + "/file/1MB.bin?key=tl-name&name=real%20name.zip")
         core.check("the server's name is reported", result.get("code") == "ok" and result.get("fileName") == "real name.zip", result)
-        core.check("the line shows the server's name", "real name.zip" in add.get("testLinkText", ""), add.get("testLinkText"))
+        core.check("the server's name reaches the dialog (the line or the File name box)", "real name.zip" in add.get("testLinkText", "") or add.get("fileName") == "real name.zip", (add.get("testLinkText"), add.get("fileName")))
 
         result, add = probe(core, "403", SERVER + "/file/3MB.bin?key=tl-403&status=403")
         core.check("refused, 403", result.get("code") == "refused" and result.get("status") == 403, result)

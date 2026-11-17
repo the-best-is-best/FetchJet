@@ -19,7 +19,7 @@ actual object BrowserIntegration {
     private const val EDGE_UPDATE_URL = "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
     private const val SCHEME_KEY = "Software\\Classes\\fetchjet"
 
-    private val mayChangeSystem: Boolean get() = !WinApp.isStoreBuild && !WinApp.isDevelopmentBuild
+    private val mayChangeSystem: Boolean get() = !WinApp.isStoreBuild && !WinApp.isDevelopmentBuild && !WinApp.isPortable
 
     actual val canAddToEdgeAutomatically: Boolean get() = mayChangeSystem
 

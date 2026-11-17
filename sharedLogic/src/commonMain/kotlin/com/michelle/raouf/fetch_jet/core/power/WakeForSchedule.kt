@@ -44,7 +44,9 @@ object WakeForSchedule {
     @Volatile
     var dryRun = false
 
-    val isSupported: Boolean get() = WakeTimer.isSupported
+    const val ENABLED = false
+
+    val isSupported: Boolean get() = ENABLED && WakeTimer.isSupported
 
     private var job: Job? = null
     private var awakeJob: Job? = null

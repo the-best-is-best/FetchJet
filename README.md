@@ -47,6 +47,11 @@
 | ▶️ **Play from the list**          | A finished video or audio file shows a ▶ button that opens it in your player (other files keep the ↗ open button).                                                         |
 | 🔎 **Test the link**               | A button in the Add dialog tells you if a link works, its size and whether it can resume, without downloading it.                                                            |
 | 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
+| 📦 **Extract archives**            | ZIP, TAR, TAR.GZ, TAR.XZ, GZ and XZ open by themselves when the download finishes (or with the Extract button), into a folder of their own; names that try to leave the folder and zip bombs are refused. |
+| 🛡️ **Scan after download**         | Turn it on and every finished file is checked by the antivirus Windows knows, or by your own scanner command (`clamscan [File]`); a file the antivirus blocks fails at once with a clear message. |
+| 🖱️ **Right-click menu**            | Right-click a download (long press on phones and tablets) for open, open folder, pause / resume, extract, send to device, copy link, details and delete.                       |
+| 📁 **Folders by site**             | "Everything from this site goes to this folder": a rule per site (and its sub-domains) that wins over the folder by file type – Settings → Downloads.                        |
+| 🤖 **Automation**                  | `FetchJet status`, `pause`, `start`, `remove`, `delete` from a terminal or a script, through a local API that is off until you turn it on and needs the app's token.          |
 | 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
 
 ---
@@ -58,7 +63,7 @@ platform, with the right file highlighted for your device.
 
 | Platform                                | File                                                                                                | Notes                                                                           |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` / `.exe` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
+| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), `Setup.exe`, `.msi` or a portable `.zip` | The Store keeps it updated; the installers update themselves from GitHub; the portable copy keeps its data next to it. |
 | macOS 12+ (Apple Silicon)               | `-arm64.dmg`                                                                                        | M1 or newer only. Drag FetchJet to Applications (in-app updates need it there). |
 | Linux                                   | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                     |
 | Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; `armeabi-v7a` old phones, `x86_64` emulators. |

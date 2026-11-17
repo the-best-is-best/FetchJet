@@ -64,6 +64,7 @@ data class AddDto(
     val testLinkText: String = "",
     val destination: String = "",
     val destinationRev: Int = 0,
+    val folderRule: String = "",
     val quickFolders: List<QuickFolderDto> = emptyList(),
     val linkSummary: String = "",
     val linkAllSelected: Boolean = false,

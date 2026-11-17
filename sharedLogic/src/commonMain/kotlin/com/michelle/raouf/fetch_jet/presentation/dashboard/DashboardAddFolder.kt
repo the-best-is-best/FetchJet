@@ -32,7 +32,15 @@ internal fun DashboardViewModel.baseFolder(path: String): String {
     )
 }
 
+internal fun DashboardUiState.addSiteRule(): com.michelle.raouf.fetch_jet.core.settings.SiteFolderRule? =
+    if (!isAddDialogVisible || inputUrl.isBlank() || linkList.isNotEmpty()) null
+    else BehaviorSettings.siteFolderFor(inputUrl)
+
+internal fun DashboardUiState.ruleSiteFor(path: String): String =
+    addSiteRule()?.takeIf { com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(it.folder, path) }?.site.orEmpty()
+
 internal fun DashboardViewModel.suggestedAddFolder(state: DashboardUiState): String {
+    state.addSiteRule()?.let { return it.folder }
     BehaviorSettings.categoryFolder(state.addFolderCategory())?.let { return it }
     val base = baseFolder(defaultDestinationPath)
     val type = state.addTypeFolder() ?: return base
@@ -42,7 +50,7 @@ internal fun DashboardViewModel.suggestedAddFolder(state: DashboardUiState): Str
 
 internal fun DashboardViewModel.observeAddFolder() {
     scope.launch {
-        _uiState.map { Triple(it.isAddDialogVisible, it.addFolderCategory(), it.addTypeFolder()) }
+        _uiState.map { listOf(it.isAddDialogVisible, it.addFolderCategory(), it.addTypeFolder(), it.addSiteRule()) }
             .distinctUntilChanged()
             .collect {
                 if (!_uiState.value.isAddDialogVisible) addFolderPickedFor = ""
@@ -56,7 +64,11 @@ internal fun DashboardViewModel.observeAddFolder() {
 
                         else -> suggestedAddFolder(state)
                     }
-                    if (target == state.destinationPath) state else state.copy(destinationPath = target)
+                    val rule = state.addSiteRule()?.takeIf {
+                        com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(it.folder, target)
+                    }?.site.orEmpty()
+                    if (target == state.destinationPath && rule == state.addFolderRuleSite) state
+                    else state.copy(destinationPath = target, addFolderRuleSite = rule)
                 }
             }
     }
@@ -67,7 +79,7 @@ internal fun DashboardViewModel.setDestinationFolder(path: String) {
     val category = state.addFolderCategory()
     if (category.isEmpty()) {
         defaultDestinationPath = path
-        _uiState.update { it.copy(destinationPath = path) }
+        _uiState.update { it.copy(destinationPath = path, addFolderRuleSite = it.ruleSiteFor(path)) }
         persistCurrentSettings()
         return
     }
@@ -76,7 +88,7 @@ internal fun DashboardViewModel.setDestinationFolder(path: String) {
             (state.sortIntoFolders || path.trimEnd('/', '\\') == base)
     if (typeFolderOnly && base != baseFolder(defaultDestinationPath)) return
     if (!typeFolderOnly) addFolderPickedFor = category
-    _uiState.update { it.copy(destinationPath = path) }
+    _uiState.update { it.copy(destinationPath = path, addFolderRuleSite = it.ruleSiteFor(path)) }
 }
 
 internal fun DashboardViewModel.rememberAddFolder() {
@@ -84,6 +96,7 @@ internal fun DashboardViewModel.rememberAddFolder() {
     val category = state.addFolderCategory()
     val path = state.destinationPath
     if (category.isEmpty() || path.isBlank()) return
+    if (state.addSiteRule()?.let { com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(it.folder, path) } == true) return
     val custom = baseFolder(path) != baseFolder(defaultDestinationPath)
     BehaviorSettings.setCategoryFolder(category, if (custom) path else "")
 }

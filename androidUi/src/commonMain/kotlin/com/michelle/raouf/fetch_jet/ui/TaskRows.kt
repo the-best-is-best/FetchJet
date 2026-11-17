@@ -365,7 +365,8 @@ fun TaskRow(
     onShiftClick: (() -> Unit)? = null,
     onPriorityChanged: (Int) -> Unit = {},
     onCompress: (() -> Unit)? = null,
-    onExtract: (() -> Unit)? = null
+    onExtract: (() -> Unit)? = null,
+    rowMenu: (@Composable () -> Unit)? = null
 ) {
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val windowWidth = with(androidx.compose.ui.platform.LocalDensity.current) { windowInfo.containerSize.width.toDp() }
@@ -405,6 +406,7 @@ fun TaskRow(
                 onLongClick = onLongClick
             )
         ) {
+            rowMenu?.invoke()
             if (wide) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),

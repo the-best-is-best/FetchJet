@@ -71,6 +71,9 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.RowQuickAction -> rowQuickAction(action.id)
         is UiAction.RowCompress -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(action.id))
         is UiAction.RowExtract -> vm.onEvent(DashboardUiEvent.OnExtractTaskClicked(action.id))
+        is UiAction.RowMenu -> openRowMenu(action.id)
+        is UiAction.RowMenuPick -> pickRowMenu(action.key)
+        UiAction.RowMenuClose -> closeRowMenu()
         is UiAction.CyclePriority -> {
             val task = task(action.id) ?: return
             vm.onEvent(DashboardUiEvent.OnTaskPriorityChanged(task.id, nextPriority(task.priority)))
@@ -158,6 +161,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.CopyText -> scope.launch(Dispatchers.IO) { DesktopOs.setClipboardText(action.text) }
         is UiAction.AlertConfirm -> alertConfirm(action.kind, action.checked)
         is UiAction.AlertDismiss -> alertDismiss(action.kind, action.fromScrim)
+        is UiAction.AlertText -> alertText(action.kind, action.text)
         is UiAction.AlertExtra -> alertExtra(action.kind)
         is UiAction.SetSettingsSection -> settingsOpenSection(action.index)
         is UiAction.SettingToggle -> settingToggle(action.id, action.on)

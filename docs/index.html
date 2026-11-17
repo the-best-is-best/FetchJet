@@ -106,7 +106,7 @@
       document.getElementById("repo-link").href = "https://github.com/" + REPO + "/releases";
 
       var PLATFORMS = [
-        { key: "windows",   label: "Windows",   match: function (n) { return /\.(exe|msi)$/i.test(n); },
+        { key: "windows",   label: "Windows",   match: function (n) { return /\.(exe|msi)$/i.test(n) || /-windows-portable\.zip$/i.test(n); },
           hint: "The .msi installs FetchJet and lets it update itself.",
           noticeHtml:
             '<div class="notice"><h3>Get it from the Microsoft Store (recommended)</h3>' +
@@ -126,7 +126,7 @@
           hint: "arm64-v8a fits almost every phone made after 2017. Older 32-bit phones: armeabi-v7a. Emulators and Chromebooks: x86_64." },
         { key: "ios",       label: "iPhone · iPad",       match: function (n) { return /\.ipa$/i.test(n); },
           hint: "One IPA for iPhone and iPad. Unsigned: sideload it with AltStore or Sideloadly." },
-        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n); },
+        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n) && !/-windows-portable\.zip$/i.test(n); },
           hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
           hintHtml: "",
           // Shown above the version list: stores first, then the manual .zip install with its caveats.
@@ -195,7 +195,7 @@
           return m ? m[1] : name;
         }
         if (platform === "extension") return /\.xpi$/i.test(name) ? "Firefox (.xpi)" : "Chrome / Edge (.zip)";
-        if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : "Installer (.exe)";
+        if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : /\.zip$/i.test(name) ? "Portable, no install (.zip)" : "Setup (.exe)";
         if (platform === "linux") return /\.deb$/i.test(name) ? "Debian / Ubuntu (.deb)" : "Portable (.tar.gz)";
         if (platform === "macos") return "Apple Silicon (.dmg)";
         return name;

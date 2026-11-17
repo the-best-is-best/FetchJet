@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
 
 actual fun getMediaExtractorToolStatus(): String {
@@ -280,15 +281,32 @@ private fun unzipAll(zipFile: File, dir: File) {
 
 // ffbinaries has no Apple Silicon build: its osx-64 ffmpeg needs Rosetta, which Apple is
 // retiring. eugeneware/ffmpeg-static (the npm ffmpeg-static binaries) ships a native one; the
-// hash pins the exact file, as that release publishes no checksum. Everything else (Intel Macs,
-// Windows, Linux on every CPU) keeps ffbinaries.
+// hash pins the exact file, as that release publishes no checksum. Windows and Linux x64 use it
+// too (ffbinaries stopped at 4.4.1); Intel Macs and other Linux CPUs keep ffbinaries.
 private const val FFMPEG_STATIC_BASE =
     "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1"
 
-/** (asset, sha256) of the native ARM ffmpeg for this machine, or null to use ffbinaries. */
+/** (asset, sha256) of the ffmpeg-static build for this machine, or null to use ffbinaries. */
 private val nativeArmFfmpeg: Pair<String, String>? = when {
     isMac && isArm -> "ffmpeg-darwin-arm64" to "a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584"
+    isWin -> "ffmpeg-win32-x64.gz" to "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77"
+    !isMac && !isArm && !isArm32 && !isX86_32 -> "ffmpeg-linux-x64.gz" to "bfe8a8fc511530457b528c48d77b5737527b504a3797a9bc4866aeca69c2dffa"
     else -> null
+}
+
+private const val FFMPEG_MIN_MAJOR = 6
+
+private fun installedFfmpegMajor(binary: File): Int? = try {
+    val process = ProcessBuilder(binary.absolutePath, "-hide_banner", "-version").redirectErrorStream(true).start()
+    if (!process.waitFor(30, TimeUnit.SECONDS)) {
+        process.destroyForcibly()
+        null
+    } else {
+        process.inputStream.bufferedReader().use { it.readText() }
+            .let { Regex("ffmpeg version \\D*(\\d+)\\.").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+    }
+} catch (_: Exception) {
+    null
 }
 
 /** ffbinaries 4.4.1 asset for this OS / CPU. Windows has only x64 (it runs emulated on ARM). */
@@ -318,7 +336,7 @@ private fun installNativeArmFfmpeg(
     sha256: String,
     onProgress: (ToolDownloadProgress) -> Unit
 ) {
-    val ffmpegFile = File(toolsDir, "ffmpeg")
+    val ffmpegFile = File(toolsDir, if (isWin) "ffmpeg.exe" else "ffmpeg")
     val staging = File(toolsDir, "ffmpeg.download")
     val actual = downloadTo(
         "$FFMPEG_STATIC_BASE/$asset",
@@ -327,6 +345,22 @@ private fun installNativeArmFfmpeg(
     if (actual != sha256) {
         staging.delete()
         throw IllegalStateException("ffmpeg checksum mismatch (expected $sha256, got $actual)")
+    }
+    if (asset.endsWith(".gz")) {
+        val unpacked = File(toolsDir, "ffmpeg.unpacked")
+        try {
+            GZIPInputStream(staging.inputStream().buffered()).use { input ->
+                unpacked.outputStream().use { input.copyTo(it) }
+            }
+        } finally {
+            staging.delete()
+        }
+        unpacked.renameTo(staging)
+    }
+    staging.setExecutable(true)
+    if (installedFfmpegMajor(staging) == null) {
+        staging.delete()
+        throw IllegalStateException("the new ffmpeg does not start")
     }
     Files.move(
         staging.toPath(),
@@ -463,7 +497,8 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
         step("ffmpeg", {
             val bin = getExistingFfmpegBinary()
             (bin == null && !isSystemFfmpegInstalled()) ||
-                    (bin != null && isArm && isX86OnlyBinary(bin))
+                    (bin != null && isArm && isX86OnlyBinary(bin)) ||
+                    (bin != null && nativeArmFfmpeg != null && (installedFfmpegMajor(bin) ?: 0) < FFMPEG_MIN_MAJOR)
         }) {
             installFfmpeg(toolsDir, onProgress)
         }

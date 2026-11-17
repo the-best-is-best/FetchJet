@@ -65,10 +65,37 @@ data class SiteLogin(val site: String, val user: String, val password: String) {
 }
 
 @Serializable
+enum class DnsMode { SYSTEM, CLOUDFLARE, GOOGLE, QUAD9, ADGUARD, CUSTOM }
+
+@Serializable
+data class DnsSettings(val mode: DnsMode = DnsMode.SYSTEM, val custom: String = "") {
+    val isOn: Boolean get() = mode != DnsMode.SYSTEM && (mode != DnsMode.CUSTOM || custom.isNotBlank())
+
+    fun dohUrl(): String? = when (mode) {
+        DnsMode.CLOUDFLARE -> "https://1.1.1.1/dns-query"
+        DnsMode.GOOGLE -> "https://8.8.8.8/dns-query"
+        DnsMode.QUAD9 -> "https://9.9.9.9/dns-query"
+        DnsMode.ADGUARD -> "https://94.140.14.14/dns-query"
+        DnsMode.CUSTOM -> custom.trim().takeIf { it.startsWith("https://", true) || it.startsWith("http://", true) }
+        DnsMode.SYSTEM -> null
+    }
+
+    fun servers(): List<String> =
+        if (mode != DnsMode.CUSTOM || dohUrl() != null) emptyList()
+        else custom.split(',', ' ', ';').map { it.trim() }.filter { it.isNotEmpty() }
+}
+
+@Serializable
 private data class NetworkFile(
     val proxy: ProxySettings = ProxySettings(),
-    val logins: List<SiteLogin> = emptyList()
+    val logins: List<SiteLogin> = emptyList(),
+    val dns: DnsSettings = DnsSettings(),
+    val adapter: String = "",
 )
+
+internal expect fun localNetworkProxyPort(dns: DnsSettings, adapter: String): Int?
+
+internal expect val ownDnsSupported: Boolean
 
 /**
  * Proxy and saved site logins (settings folder, network.json; passwords encrypted by [Secrets]). Every HTTP client of the app is
@@ -90,6 +117,33 @@ object NetworkSettings {
 
     private val _logins = MutableStateFlow(loaded.logins)
     val logins: StateFlow<List<SiteLogin>> = _logins.asStateFlow()
+
+    private val _dns = MutableStateFlow(loaded.dns)
+    val dns: StateFlow<DnsSettings> = _dns.asStateFlow()
+
+    private val _adapter = MutableStateFlow(loaded.adapter)
+    val adapter: StateFlow<String> = _adapter.asStateFlow()
+
+    val ownNetworkSupported: Boolean get() = ownDnsSupported
+
+    fun setDns(value: DnsSettings) {
+        val clean = value.copy(custom = value.custom.trim())
+        if (clean == _dns.value) return
+        _dns.value = clean; save()
+    }
+
+    fun setAdapter(value: String) {
+        val clean = value.trim()
+        if (clean == _adapter.value) return
+        _adapter.value = clean; save()
+    }
+
+    fun activeProxy(): ProxySettings {
+        val p = _proxy.value
+        if (p.isOn) return p
+        val port = runCatching { localNetworkProxyPort(_dns.value, _adapter.value) }.getOrNull() ?: return p
+        return ProxySettings(ProxyKind.HTTP, "127.0.0.1", port)
+    }
 
     /** Bumped on every change; [NetworkClient] rebuilds its client when it moves. */
     private val _revision = MutableStateFlow(0)
@@ -126,7 +180,7 @@ object NetworkSettings {
         _logins.value.filter { it.matches(host) }.maxByOrNull { it.site.length }
 
     fun ktorProxy(): ProxyConfig? {
-        val p = _proxy.value
+        val p = activeProxy()
         if (!p.isOn) return null
         return when (p.kind) {
             ProxyKind.SOCKS5 -> ProxyBuilder.socks(p.host, p.port)
@@ -135,7 +189,7 @@ object NetworkSettings {
     }
 
     fun ytDlpArgs(): List<String> {
-        val p = _proxy.value
+        val p = activeProxy()
         return if (p.isOn) listOf("--proxy", p.url()) else emptyList()
     }
 
@@ -160,7 +214,7 @@ object NetworkSettings {
         val logins = stored.logins.map { l ->
             l.copy(password = open(l.password) { lockedLogins[l.site] = l.password })
         }
-        return NetworkFile(proxy, logins)
+        return NetworkFile(proxy, logins, stored.dns, stored.adapter)
     }
 
     private fun save() {
@@ -172,7 +226,9 @@ object NetworkSettings {
             _logins.value.map { l ->
                 l.copy(password = lockedLogins[l.site]?.takeIf { l.password.isEmpty() }
                     ?: Secrets.protect(l.password))
-            }
+            },
+            _dns.value,
+            _adapter.value,
         )
         try {
             file.parent?.let { AppFileSystem.createDirectories(it) }
@@ -217,7 +273,7 @@ fun HttpClientConfig<*>.useNetworkSettings() {
     @Suppress("UNCHECKED_CAST")
     (this as HttpClientConfig<HttpClientEngineConfig>).engine {
         proxy = NetworkSettings.ktorProxy()
-        applyProxyLogin(this, NetworkSettings.proxy.value)
+        applyProxyLogin(this, NetworkSettings.activeProxy())
     }
 }
 

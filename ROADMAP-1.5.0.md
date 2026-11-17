@@ -1,9 +1,14 @@
 # FetchJet 1.5.0: work list
 
-Not started. Written 2026-11-14 after a look at Mister Download Manager 0.5.2 (Rust + egui, GPL-3.0,
+Status 2026-11-17: every item is built and tested as each section says, except items 4, 12, 13 and `get` / `resume`
+(dropped by the owner) and item 5 (wake stopped on every system, code kept). Left: the owner's checks (installers, item
+17), the Mac build of the Swift changes (see CLAUDE.md Current state), optional extras marked [ ] below, and the release
+itself (notes in `release-notes/1.5.0/`).
+
+Written 2026-11-14 after a look at Mister Download Manager 0.5.2 (Rust + egui, GPL-3.0,
 by Ahmed Nefzaoui; unpacked and read, its CLI run on a 64 MB file; its window and its video part were not
 tested). The list below is what is worth having here. Each item says what the other app does, so we know
-what "done" has to cover. Nothing is built yet.
+what "done" has to cover.
 Owner, 2026-11-16: 1.5.0 may be split into two releases; the Order section below is the proposal. Item 14 (a
 smaller Android APK) has the highest priority and its steps are the natural place to cut.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
@@ -77,9 +82,9 @@ mouse takes the owner's PC and clicked the wrong window on 2026-11-14).
 - [x] (status, pause, start, remove, delete over the API; memory is read from outside with the OS) Enough for a test on the real app with no mouse: add a download (bridge `/add`), read its state, speed
   and size as JSON, pause / start it, and read the app's memory from outside. Measure idle and during a
   download on the real native app this way, the same way every time.
-- [ ] `get` / `resume` without the window and a JSON progress stream: not decided, ask before building.
-- [ ] Tests in corehost (off by default answers 401, token required, ids that do not exist, delete keeps or
-  removes the file as asked).
+- [x] Tests in corehost: `test_automation.py` covers off by default (403), no token (401), Origin / foreign Host / no `X-FetchJet` refused, unknown ids (404 with the list), no id (400), unknown action (404), only GET / POST, pause / start 409 on a finished one, delete takes the partial files, and (added 2026-11-17) remove keeps a finished file: 41 checks (Windows). Also `test_unsafe_names.py` 12 (Windows and Linux).
+- `get` / `resume` without the window: dropped (owner's decision, 2026-11-17): `/d` already hands a link to the app, and
+  tests use corehost and the automation commands.
 
 ## 2. Extract archives after a download
 
@@ -108,18 +113,49 @@ Phase 2:
   `commons-compress`, but its optional `xz` classes are not packed (the release build uses `-dontwarn`, see
   CLAUDE.md), so 7Z there needs that dependency added and tested. iOS needs a C library through cinterop
   or Swift. Not verified yet.
-- [ ] 7Z and RAR on desktop through an installed 7-Zip; a clear message when it is missing.
+- [x] 7Z and RAR on desktop through an installed 7-Zip (2026-11-17, Windows session): `ExternalArchiver` (expect/actual;
+  native desktop finds `FETCHJET_7Z`, `Program Files-Zipz.exe`, `/opt/homebrew/bin/7zz`, or `7zz` / `7z` / `7za` on
+  PATH) runs `7z x` into the same work folder as our own code; afterwards the app counts the files and bytes against the
+  limits, deletes any link 7-Zip made, and places the result like the other kinds. Without 7-Zip a .7z / .rar shows no
+  Extract button, and an archive that needs it says "install it from 7-zip.org". Not on Android / iOS (no outside program).
+  RAR was not tested (7-Zip cannot make a .rar to test with); the code path is the same as .7z.
 - RAR is never bundled (the unRAR licence does not allow it inside a GPL-3.0 program) and not on Android or
   iOS (no way to run an outside program there).
-- [ ] Password-protected archives (ZIP AES at least), asked once per archive, never saved.
-- [ ] Split archives wait for all the volumes.
-- [ ] Where the files go: a folder named after the archive / always a folder / next to the archive.
+- [x] Password-protected archives (desktop, through 7-Zip: ZIP AES / ZipCrypto, 7z, rar): a dialog asks for the password
+  (Slint alert with a password field, `ARCHIVE_PASSWORD`; shared `archivePassword` in the UI state, events
+  `OnArchivePasswordEntered` / `OnArchivePasswordDismissed`), a wrong one asks again and says so, Cancel closes it; the
+  password goes to that one extraction only and is never saved. Our own zip code still refuses a password zip clearly when
+  7-Zip is missing. 4 texts in the 15 languages.
+- [x] Split archives wait for all the volumes: `.7z.001`, `.zip.001`, `.part1.rar` (`ArchiveExtractor.volumeSet` /
+  `volumeNumber`); only the first volume has an Extract button; with "extract when they finish" on, the extraction starts
+  when every volume in the list (same folder) is finished and numbered without a gap; an attempt that finds a part missing
+  says nothing (no toast) and is tried again when the next part finishes.
+- [x] Where the files go (`ExtractPlace`, Settings > Downloads under the extract switch): a folder only when there are
+  several things (as before) / always a folder named after the archive / next to the archive (each item numbered when its
+  name exists). 4 texts in the 15 languages. Slint only (Android / iOS keep the first behaviour).
+- [x] Tests: `ArchiveExtractorTest` 24 (new: volume names, the three places); `tests/corehost/test_archives7z.py` 15
+  (Windows, with the installed 7-Zip: .7z through the Extract button, a 3-part split .7z that waits for every part, an AES
+  zip: dialog, wrong password, right password, nothing saved, cancel; Linux without 7-Zip: skipped cleanly, 2);
+  `test_extract` 16 / 20, `test_settings` 87, `test_trash` 10 still pass.
 - [x] Extract, later the same day (2026-11-16): the row shows a second progress line while it extracts (reuses `postProcessLabel` / `postProcessProgress`, text `extractingState`), the Extract button opens the result folder in the file manager when it is done (`PathResolver.openFileLocation`), and the row buttons Play / Pause / Resume / Open / Compress / Extract share one round tinted style with drawn icons (Slint `RowIconButton`, Compose `RowIconButton`, SwiftUI primary tint). Hardening found by a fuzz test of ~880 damaged archives: names with `<>:"|?*` and Windows device names are renamed, every error comes out as an `ArchiveException`. Tests: `ArchiveExtractorTest` 23 (zip64, data descriptor, Arabic / Japanese / CP437 names, GNU long names, 120 MB in 0.8 s on the JVM), `test_extract.py` 16, `test_extract_big.py` 11 (300 MB of text: exact bytes, progress rising 0 to 99 %, release core 25 MB/s, the debug core only 5 MB/s). The A56 (arm64 release, R8): every kind extracted into a root folder, and Files opened on the result; one of the three tar variants was not re-checked there.
 - [x] Android storage (2026-11-16): `MANAGE_EXTERNAL_STORAGE` in the manifest and `AllFilesAccess`; before a download starts the app writes a probe file in the folder, and if it cannot (Android refuses a custom root folder) it opens the "All files access" page and says so instead of failing at 99 % with EPERM. Creating a folder in the storage root falls back to `Download/<name>` when the permission is missing.
 - [x] Add dialog names (2026-11-16): a link the server names (`examplefile.com/file-download/36`) gets its name by itself (silent probe 0.7 s after the paste, and from "Test the link"); a link nobody can name shows the empty File name box with a red border and "Type a file name to start" (`test_addname.py` 14).
 - [x] (the row and the details: a finished zip / tar / gz / xz row shows an Extract button in the place of the open / play button, and the details have an Extract button; works with the setting off, a second press makes a numbered copy, a toast says "Extracting ..." then the result; Slint, Compose and SwiftUI; `ArchiveTasks.canExtract`, event `OnExtractTaskClicked`, actions `RowExtract` / `DetailsExtract`. Tested: `test_extract.py` 16 checks, the Android emulator (both rows tapped, files extracted, screenshot of the icon). Mac session 2026-11-16: iPhone 17 and iPad Pro 13" (light and dark): zip / tar.gz rows show the Extract button, mp3 / mp4 show play (mp3 on iPad also compress), bin shows the open arrow, the details page has Extract; tapping it extracts into a numbered folder (`pack`, `pack (1)`, `pack (2)`) and opens Files on the result; a fake zip gives the toast "Could not extract 300KB.zip: this is not a zip file"; the tar.gz tree equals the source (macOS `tar` adds `._*` files itself). Slint window on the Mac (staged `FetchJet.app`, throw-away `--home`, dark and light): the row buttons are round and tinted, extract on zip / gz, play on mp3 / mp4, compress + play on mp3, open arrow on bin. Found: a zip made by macOS `zip` with an Arabic name and no UTF-8 flag is extracted with a CP437 name (`ZipReader` reads the name as CP437 when bit 11 is not set); the same name inside a tar.gz is right. Not run: the A56, the right-click menu. Still open: the right-click menu, which belongs to item 7.) Extract from the right-click menu and from the details, not only after a download.
-- [ ] "Move the archive to the Recycle Bin after" (Trash on macOS / Linux; decide for Android and iOS).
-- [ ] Texts in the 15 languages; tests in corehost (a good zip, a zip-slip zip, a bomb, a wrong password,
+- [x] "Move the archive to the Recycle Bin after extracting" (2026-11-17, Windows session; off by default, shown under the
+  extract switch) and, asked by the owner the same day, "Deleted files go to the Recycle Bin" (on by default): "Delete with
+  the file" sends a finished download (or a torrent's folder) to the system's trash instead of deleting it; unfinished parts
+  are still deleted. `core/filesystem/SystemTrash.kt`: Windows `SHFileOperationW` (FOF_ALLOWUNDO; a file too big for the
+  Recycle Bin is deleted, Windows' own rule), macOS `NSFileManager.trashItem` (compiled on the Mac only), Linux the
+  freedesktop Trash (`$XDG_DATA_HOME/Trash/files` + `.trashinfo`, same drive only: a file on another mount is deleted).
+  Android and iOS have no trash for any file: not offered there. 6 texts in the 15 languages; Slint switches only.
+  `tests/corehost/test_trash.py` 10 (Windows: the item is found in `$Recycle.Bin` and removed again by the test; Linux:
+  `XDG_DATA_HOME` pointed at a test folder). `test_download` 29, `test_paths` 17, `test_settings` 87 still pass.
+- [x] Found while testing (2026-11-17): the walk over the extracted files added by the Mac commit (`markExtracted`) listed a
+  single extracted file (a `.gz` of one file) as a folder; the listing is lazy, so its error escaped `runCatching` and the
+  extraction was reported as failed ("failed to list ..."). Now the folder walk runs only for a folder. `test_extract` also
+  waits 3 s before the second Extract press (it could land while the first one was still finishing); 16 (Windows, twice) and
+  20 (Linux).
+- [x] Texts in the 15 languages; tests in corehost (a good zip, a zip-slip zip, a bomb, a wrong password,
   a name that already exists).
 
 ## 3. Own DNS and a network adapter
@@ -129,21 +165,48 @@ What the other app does: `--dns` takes "system", a named service ("cloudflare-ht
 fall back to the system DNS. `--adapter` sends every connection through one network adapter (by name or
 address) and fails if it is not there. Useful where a site is blocked by DNS and with a VPN adapter.
 
-- [ ] Settings > Network: DNS = System / a named service / custom (DoH address or server list).
-  Decide how the lookup is done on each platform (our HTTP clients do the lookup themselves: WinHTTP,
-  OkHttp, Darwin; the torrent engine and yt-dlp have their own).
-- [ ] "Use this network adapter" (desktop, maybe Android); fail clearly when it is missing.
-- [ ] Tests with a local DNS / DoH stub; check that it does not leak to the system DNS.
+- [x] Done on the native desktop (Windows, Linux, macOS) 2026-11-17. How: the app's own loopback proxy
+  (`platform/proxy/LoopbackProxy.kt`, already used for SOCKS on Windows) got a resolver hook and a source address.
+  `NetworkSettings.activeProxy()` = the user's proxy if on, else this proxy when DNS or the adapter is set
+  (`OwnNetwork.portFor`, `OwnNetwork.nativeDesktop.kt`), else none; `ktorProxy()`, `ytDlpArgs()` and the WinHTTP / curl
+  clients take it, so downloads, link probes and yt-dlp all use it with no change of their own. TLS stays end to end
+  (CONNECT), so certificates and SNI are untouched. Torrents and FTP keep the system's DNS (said in the hint).
+- [x] Settings > Network > "DNS and network adapter": System / Cloudflare / Google / Quad9 / AdGuard (DNS-over-HTTPS to the
+  service's IP address, so no system lookup is needed to reach it) / Custom (a DoH address, or DNS server addresses for
+  plain DNS over UDP). `DnsWire.kt` builds and reads the DNS messages (A, then AAAA; answers kept for their TTL, 30 s to 1 h).
+  A name our DNS cannot resolve fails with "The name of the server could not be resolved"; there is no fall back to the
+  system DNS. With a user proxy on, a note says the proxy decides instead. Saved in `network.json` (`dns`, `adapter`).
+  8 texts in the 15 languages.
+- [x] "Network adapter": its IP address (empty = any); every connection is bound to it (`LoopSockets.bindSource`, Windows /
+  Linux / macOS). An address that is not on this computer fails at once with "The network adapter <ip> is not available".
+  Picking the adapter by name from a list is not built (it needs GetAdaptersAddresses / getifaddrs).
+- [x] Tests: `DnsWireTest` (jvmTest) 3; `tests/corehost/test_dns.py` 14 (Windows and Linux) with a local DoH stub and a UDP
+  DNS stub for a made-up name: the system DNS cannot resolve it (download fails and our stubs are not asked), DoH works and
+  the stub is asked, UDP works, the adapter 127.0.0.1 works, 203.0.113.7 fails with the clear message, back to System the
+  stubs are not asked again. `test_network` 11 (Windows). On Linux `test_network` fails 4 HTTPS-through-proxy checks on the
+  test certificate; the same 4 fail with the core built from the last commit (checked by stashing the changes), so it
+  is the test setup on WSL, not this work.
+- Not on Android / iOS: the settings rows are shown only where `NetworkSettings.ownNetworkSupported` (native desktop).
+  Android could use OkHttp's `Dns`, but yt-dlp (Python) would not follow it. The real DoH services were not called from
+  here (internet is expensive); only the local stubs.
 
 ## 4. Server country and ping in the Add dialog
+
+Dropped (owner's decision, 2026-11-17): not important, not built.
 
 What the other app does: the Add dialog shows the server's country (flag) and its answer time ("United
 States, about 95 ms"), found with a country database that stays on the computer.
 
+- Not built (2026-11-17): the country needs an IP-to-country database inside the app (DB-IP Lite is several MB, and
+  the APK size is the top priority of this release) or an online lookup (it would send the server's address to a third
+  party, against the privacy promise). Owner's call.
 - [ ] Optional and cosmetic. Needs an IP-to-country database (DB-IP Lite is CC BY 4.0, attribution
   required) and costs size; decide whether it is worth it before building.
 
 ## 5. Wake the computer for a scheduled download on more systems
+
+Stopped on every system (owner's decision, 2026-11-17): `WakeForSchedule.ENABLED = false` hides the setting and never arms a
+timer; the code stays. Set it to `true` to bring it back (`test_wake.py` skips while it is off).
 
 Today only Windows has it: Settings > Downloads > "wake for schedule" arms a Waitable Timer one minute before
 the first scheduled start (`WakeTimer.mingw.kt`, `test_wake.py`). Every other `WakeTimer.isSupported` is false
@@ -155,6 +218,11 @@ and the row is hidden.
 - [ ] Android: `AlarmManager.setExactAndAllowWhileIdle` through WorkManager; needs the exact-alarm permission.
   Less useful (a phone does not sleep like a laptop).
 - [ ] iOS: no API wakes an app at a chosen time (background tasks are the system's choice). Not planned.
+- Not built in the 2026-11-17 run (owner away, told to go through everything): macOS and Linux both need a decision on
+  the permission first (`pmset` needs admin, `rtcwake` / a `WakeSystem` timer needs root or CAP_WAKE_ALARM), which the item
+  says to decide before building; WSL cannot sleep, so nothing could be tested. Android has no `WakeForSchedule` wiring and
+  no switch today; a real wake there needs an exact-alarm permission and a foreground service started from the alarm
+  (Android 12+ rules), and Doze cannot be checked on the emulator in a useful way. Left for the owner's call.
 - [ ] Tests: the same `test_wake.py` checks on each system; a real sleep and wake only by hand.
 - [ ] Windows: a real sleep and wake (the core test only checks that the timer is armed, 11 checks 2026-11-14).
 
@@ -173,13 +241,23 @@ Right-click on a download row, finished or not, opens a proper menu with the act
 (open, open folder, pause / resume, send to device, copy link, details, delete and so on). On phones and
 tablets a long press opens the same menu instead of the details.
 
-- [ ] Desktop (Slint): a right-click menu on every row, with the actions that fit the state of the download.
-  Nothing like it exists in `desktopNative/ui` today.
-- [ ] Compose (Android): a long press opens the menu. A long press now starts the multi-select; decide where
-  selection moves (a "Select" entry in the menu, or the checkbox).
-- [ ] SwiftUI (iOS / iPad): a long press shows the same menu (`contextMenu`).
-- [ ] One list of actions in shared logic, so the three UIs show the same entries; texts in the 15 languages;
-  tests in corehost for the entries per state.
+- [x] Done 2026-11-17 (Windows session). One list in shared logic: `feature/row_menu/RowMenu.kt` (`RowMenu.entries(task,
+  options)`, `RowMenuEntry`: Open, Open folder, Pause, Resume, Extract, Compress audio, Send to device, Copy link, Select,
+  Details, Delete... (asks first, the usual remove dialog); a line before Send and before Delete; Delete in the error colour).
+  11 texts `rowMenu*` in the 15 languages. New shared event `OnCopyTaskLink` (copies and shows "Copied"). Texts were added
+  with the new `scripts/i18n-add-strings.py <spec.json>` (adds a key to `AppLocalization` and the 15 providers at once).
+- [x] Desktop (Slint): right-click on a row opens `RowMenuPopup` (`widgets/Menu.slint`) at the pointer, flipped up near the
+  bottom; channel `rowMenu` (`RowMenuItemDto`), actions `RowMenu` / `RowMenuPick` / `RowMenuClose`, `RowMenuPresenter.kt`
+  (a pick that is not in the current list is ignored). `tests/corehost/test_rowmenu.py` 19 checks (Windows): entries per
+  state (finished, zip, mp3, running, paused), labels, dividers, red Delete, Details, Copy link toast, Delete asks first,
+  Extract, Pause / Resume, unknown id. Screenshots dark and light (`shots_rowmenu.py`, the shot tool got `--right-click`).
+  Not done: Shift+F10 / the Menu key.
+- [x] Compose (Android): a long press opens the same menu (`DropdownMenu` under the row, `rowMenu` slot in `TaskRow`); in
+  selection mode a long press still checks the row; selection now starts from the menu's "Select". Checked on the emulator
+  (Pixel 10 Pro, A56 not connected): menu shown (screenshot), Copy link -> "Copied", Select -> "1 selected".
+- [x] SwiftUI (iOS / iPad): `.contextMenu` on the row with the same entries (switch on `entry.name`), the long press that
+  started the selection is replaced by "Select" in the menu (in selection mode the menu has select / unselect);
+  `FJStore` now copies on `DashboardUiEffect.CopyText`. NOT BUILT: needs the Mac (`TaskListScreen.swift`, `FJStore.swift`).
 
 ## 8. Sort into folders: rules by site (owner's request, 2026-11-14)
 
@@ -188,13 +266,28 @@ picked for a kind is remembered. The addition is rules by site: "everything from
 folder", whatever the file type is. Nothing like it exists today (`HostLimits.kt` only limits connections
 per host).
 
-- [ ] A list of rules in Settings: site (host and its sub-domains) -> folder; edit, delete, order.
-- [ ] A rule wins over the kind-of-file folder; no rule keeps today's behaviour.
-- [ ] Add dialog: the folder field shows the rule's folder and says it came from a rule.
-- [ ] Optional on the same rule: a speed limit or a connection count for that site, and a command to run when
-  the download finishes (decide after the first part is used).
-- [ ] Same on the three UIs (Slint, Compose, SwiftUI); texts in the 15 languages; tests in corehost
-  (rule hit, sub-domain, no rule, a rule beside a remembered kind folder).
+- [x] Done 2026-11-17 (Windows session). Rules live in `core/settings/SiteFolderRules.kt` (`SiteFolderRule(site, folder)`,
+  `match`: the link's host, then the page / Referer; a site matches itself and its sub-domains, `www.` dropped, the most
+  specific site wins, so there is no order to edit) and `BehaviorSettings.siteFolders` (`siteFolders=` JSON line in
+  `behavior.properties`; `addSiteFolder`, `removeSiteFolder`). Edit = remove + add.
+- [x] A rule wins over the kind-of-file folder: `enqueueTask` uses the rule's folder when no folder was given, and adds no
+  type folder to a rule's folder; links that come without the dialog (bridge `/add` direct, `/links`, the list) take the rule's
+  folder too (`DashboardViewModel`). No rule = today's behaviour.
+- [x] Add dialog: the folder field shows the rule's folder and a line "Folder rule for <site>" (`addFolderRuleSite` in the UI
+  state; Slint `AddDialog.slint`, Compose `DestinationSection`, SwiftUI `AddDestinationSection`). A folder picked by hand
+  wins and the line goes away; a rule's folder is never saved as the remembered kind folder. Found on the way: the native
+  desktop presenter and the SwiftUI section re-added the type folder by themselves when the kind changed (the shared view
+  model already does it), which also threw away a remembered kind folder set in `behavior.properties`; both copies removed.
+- [x] Settings > Downloads > "Folders by site": the list with Remove, Site + Folder fields, "Choose folder..." and "Add rule"
+  (Slint `SettingsRows.kt`, Compose `SiteFoldersCard` with the app's folder picker, SwiftUI `SettingsSiteFoldersCard`).
+  7 texts in the 15 languages.
+- [x] Tests: `SiteFolderRulesTest` (jvmTest) 6; `tests/corehost/test_siterules.py` 15 (Windows and Linux): add from Settings
+  (site cleaned, a bad site refused), rule hit through the dialog (folder, rule line, no Archives folder), no rule = the
+  remembered Archives folder, sub-domain without the dialog, a look-alike host, a hand-picked folder wins, remove.
+  `test_foldertype` 8, `test_add` 29, `test_addname` 14 still pass. Not run: Compose and SwiftUI screens (Android built;
+  iOS needs the Mac: `SettingsDownloadsPage.swift`, `AddSections.swift`).
+- [ ] Optional on the same rule: a speed limit or a connection count for that site, and a command to run when the download
+  finishes (the item says to decide after the first part is used; not built).
 
 ## 9. Scan a file after the download (idea, 2026-11-14; built 2026-11-17)
 
@@ -269,30 +362,49 @@ per host).
 
 ## 10. Monthly downloads report (idea, 2026-11-14)
 
-- [ ] A page that shows, for a month: how many files, how many GB, and which sites they came from. Read only
+- [x] A page that shows, for a month: how many files, how many GB, and which sites they came from. Read only
   from the history the app already keeps; nothing leaves the device.
-- [ ] Cosmetic. Decide whether it is worth a page before building.
+- [x] Built 2026-11-17 (owner: "everything on the ROADMAP"): "Downloads by month" at the end of Settings > Downloads on the
+  desktop (Slint), Android (Compose) and iOS (SwiftUI, not built here). A month picker (the months that have finished
+  downloads, newest first, up to 24), the number of files, the total size, and the five sites with the most bytes (the
+  page's site for media, "torrent" for magnets). Counted only from the downloads still in the list
+  (`feature/report/DownloadReport.kt`, by the month they were added, local time); nothing is stored or sent. 6 texts in
+  the 15 languages. `DownloadReportTest` (jvmTest).
 
 ## 11. Portable mode on Windows (idea, 2026-11-14)
 
-- [ ] Run from a folder or a USB stick with no install, keeping its data next to the program. The native app
-  already runs on another data folder with `--home <folder>`; the work is to choose that folder by default
-  when a marker file sits next to `FetchJet.exe`.
-- [ ] No start at login, no registry entries, no tray autostart in this mode; the in-app update must not
-  assume an installed copy.
-- [ ] Check the first-run steps and the media tools download land inside the folder.
+- [x] Done 2026-11-17 (Windows session). A file `FetchJet.portable` next to `FetchJet.exe` makes the native app a
+  portable copy (`WinInstallKind.PORTABLE`, checked before `FetchJet.installed`): its data folder is
+  `<folder>\data\.fetch_jet` (settings, downloads list, logs, the media tools, the cache). `FETCHJET_HOME` and
+  `--home` still win.
+- [x] No start at login, no registry entries, no in-app installer: `launcherPath` is null for a portable copy (so start at
+  login, the torrent / magnet handler and the `fetchjet://` link are not offered and the update dialog points to the
+  download page instead of installing the MSI), and the browser integration does not touch the system
+  (`mayChangeSystem`). Checked: the portable copy was started from `E:\tools\probes\portable-test\usb` (no focus, no
+  bridge): its log says `(portable) home=...\usb\data\.fetch_jet`, `tools`, `cache`, `logs`, `bridge.json` were made
+  there, the `Run` key and the `fetchjet` class in HKCU did not change, `~\.fetch_jet` was not touched.
+- [x] Packaging: `desktopNative/packaging/make-portable.ps1 -StageZip <stage zip> -Out <zip>` (drops `FetchJet.installed`,
+  adds the marker). CI makes `FetchJet-<version>-windows-portable.zip` from the stage zip in the Windows upload step and
+  uploads it with its `.sig` (a failure there is only a warning); the download page lists it under Windows as "Portable, no
+  install (.zip)" and no longer under the extension. CI not run. Not checked: the first-run "Main downloader" step and the
+  media tools download inside a portable copy (the test copy had no internet on purpose).
 
 ## 12. Facebook stories (owner's question, 2026-11-14)
+
+Dropped (owner's decision, 2026-11-17): not important, not built.
 
 A link like `facebook.com/stories/<id>/<token>/` is not downloaded: the `FacebookIE` pattern of yt-dlp has no
 `/stories/` path (read from its source, `facebook.py`; the link itself was not tried on the network), so the
 app answers "unsupported". A story also needs a login and lasts 24 hours.
 
+- Not done (2026-11-17): needs a logged-in Facebook account in a real browser; the session cannot log in as the owner.
 - [ ] Try the browser extension on a real story (it may not see the viewer's video); say what it does.
 - [ ] If it does not work: decide whether to read stories in the app (Facebook's own GraphQL + the user's
   cookies; big and it breaks often) or to say clearly in the Add dialog that stories are not supported.
 
 ## 13. WhatsApp status and other `blob:` videos (owner's question, 2026-11-14)
+
+Dropped (owner's decision, 2026-11-17): not important, not built.
 
 A WhatsApp status has no link. On WhatsApp Web (`web.whatsapp.com`) the browser decrypts it and plays it as a
 `blob:` URL inside the page. The extension skips `blob:` on purpose (`content.js` line 90, `background.js` line
@@ -300,6 +412,7 @@ A WhatsApp status has no link. On WhatsApp Web (`web.whatsapp.com`) the browser 
 `.Statuses` folder instead (a file read, not a download; needs a file permission; the path changes between
 WhatsApp versions; nothing equal on iOS). Neither was tried.
 
+- Not done (2026-11-17): needs the owner's WhatsApp Web session (QR login on his phone).
 - [ ] Try on WhatsApp Web: can the content script `fetch(blobUrl)` and hand the bytes to the app (or save them
   from the browser)? Say what it does before building anything.
 - [ ] If it works, it applies to any site that plays video from a blob, not only WhatsApp; decide how the app
@@ -441,21 +554,56 @@ contextMenus, storage, notifications, cookies, nativeMessaging, webRequest, scri
 Permission" (`<all_urls>`). Those two are information, not a finding, and `<all_urls>` is needed (page button,
 `webRequest`, cookies of the page's site).
 
-- [ ] Extension: is `nativeMessaging` still used? Its only call is `sendNativeMessage` in `background.js`. If there is
-  no native host, remove the permission (7 left). Say in the store listing that every request goes to
-  `127.0.0.1:28450` only. Read the Socket report again after the next upload.
-- [ ] Bridge and the new Automation API: token on every endpoint, off by default, constant-time compare, no
-  endpoint that reads or deletes files outside the download folder, `delete` only a download's own file.
-- [ ] Archive extraction (item 2): zip-slip, symlinks, a bomb (size and file-count limit), a path outside the
-  folder; fuzz a few damaged archives. Do this before the feature ships, not after.
-- [ ] Dependencies: known vulnerabilities in the Gradle libraries, the bundled Python packages (yt-dlp, curl_cffi,
-  Cryptodome) and the media tools (ffmpeg, deno). Pin and write down the versions.
-- [ ] The repo and CI: a secrets scan of the history, the permissions of each job in `build.yml`, actions pinned to a
-  commit, signing keys only from secrets.
-- [ ] Release files: the `.sig` check of the in-app updater still refuses an unsigned or changed file.
-- [ ] Android: R8 build, exported components and permissions in `AndroidManifest.xml`, cleartext traffic
-  (`usesCleartextTraffic="true"` is on for plain http downloads: confirm it is the only reason).
-- [ ] Write the result here: what was found, what was fixed, what was accepted and why.
+- [x] Extension: `nativeMessaging` was dead: the host `com.michelle.raouf.fetch_jet_downloader` is registered by no installer or build,
+  so `sendNativeMessage` always failed and fell to `fetchjet://`. Call and constant removed from `background.js`, permission
+  removed from `manifest.json` and `manifest.firefox.json` (7 permissions left; Safari never had it). `content.sim.js` and
+  `capture.sim.js` pass. Store listing text and the Socket report: after the next upload.
+- [x] Bridge and Automation API (desktop `BridgeServer.kt`, Android `ExtensionBridgeServer.kt`, `AutomationApi.kt`): bound to
+  127.0.0.1 only, Host must be loopback, a web Origin is refused, every acting endpoint needs `X-FetchJet` + the token
+  (constant-time compare), `/api` refuses any request with an Origin and is off until switched on. Accepted: whoever holds
+  the token (the CLI reads it from `bridge.json`) can switch the API on (`fetchjet automation on`); a local program that can
+  read that file can do more than that anyway.
+- [x] FIXED 2026-11-17: `enqueueTask` kept the file name it is given (bridge `/links`, device sync,
+  the external batch) without `sanitizeFileName`; the engines clean it only when the download starts. A task that fails
+  before that keeps a name like `../../x`, and "Delete with the file" (also `/api/delete`) builds `destinationPath/../../x`.
+  Now `enqueueTask` cleans the name with `sanitizeFileName` (not for torrents: their name is the torrent folder).
+  `tests/corehost/test_unsafe_names.py` 12 checks (Windows): `/links` with `../../x`, `..\..\x`, `/abs/x` and `..` gives
+  plain names, and `/api/delete` with the file leaves a file placed outside the folder alone. Not run against the old core.
+- [x] FIXED 2026-11-17: `removeTask(deleteFile = true)` deleted every item of the temp folder whose name starts with the
+  task's base name (`a.bin` -> anything starting with `a`; `.bin` -> everything). Other downloads' temp files can go with it.
+  Now `ownsTempItem` (end of `QueueManagerRepository.kt`): the exact name or `<name>.`, and `<base>.` only for a media
+  download (yt-dlp's `name.f137.mp4` pieces); an empty name takes nothing. `TempCleanupTest` (jvmTest) 3/3.
+- [x] Archive extraction: `..`, absolute and drive paths refused (`safeParts`), links skipped (zip and tar), limits 100k files /
+  64 GB / ratio 2000 from 4 GB, damaged archives (`damagedFilesNeverHangOrCrash`); `ArchiveExtractorTest` 23/23. Accepted: a
+  small bomb can still write up to 4 GB before the ratio check stops it.
+- [x] Dependencies: osv.dev has no known vulnerability for okhttp 5.5.1, okio 3.18.2, ktor 3.6.1, commons-compress 1.28.0,
+  commons-io 2.22.0, gson 2.15.0, libtorrent4j 2.1.0-39, kotlinx-serialization 1.12.0, coroutines 1.11.0, appcompat 1.8.0,
+  core 1.19.1, yt-dlp 2026.10.26, curl_cffi 0.16.3 (2026-11-17). Pinned: iOS Python 3.14 b14 + curl_cffi v0.16.3; desktop
+  ffmpeg by sha256. yt-dlp and deno: "latest" checked against the sha256 file of the same GitHub release (protects against a
+  broken download, not against a hijacked upstream release; accepted).
+- [x] FIXED 2026-11-17: the desktop ffmpeg on Windows and Linux was 4.4.1 (ffbinaries, stopped in 2021). Now the same
+  `eugeneware/ffmpeg-static` b6.1.1 release as macOS, the `.gz` files (28 MB each, pinned sha256): Windows = gyan.dev 6.1.1
+  essentials, Linux x64 = johnvansickle 7.0.2 (both builders are the ones ffmpeg.org links to). BtbN (auto latest) was turned
+  down: 184 MB per download. An installed ffmpeg older than 6 is replaced at the next start (`ffmpegNeedsInstall`, also in the
+  JVM app for Windows / Linux x64). Tested on Windows: a home with the old 4.4.1 updated itself to 6.1.1, no leftovers, and the
+  new one merged h264 + aac with `-c copy` and made an mp3. Linux: the binary checked in WSL (version, encoders); the app's
+  update path not run there.
+- [x] Repo: no private key, GitHub / AWS / Google / Slack token in the whole history; no key files ever added (`cacert.pem` is the
+  public CA list). CI: triggers are tag push and manual only (no `pull_request`, so no outside code on the self-hosted runners);
+  every signing key comes from `secrets`.
+- [x] FIXED 2026-11-17: actions were pinned by tag, not commit (`actions/*@v4`, `gradle/actions/setup-gradle@v4`, `wdzeng/edge-addon@v2`).
+  `wdzeng/edge-addon` is third-party and gets the Edge secrets. Every `uses:` in `build.yml` and `pages.yml` now names the
+  commit the tag pointed to on 2026-11-17, with the version as a comment (checkout v4.4.0, cache v4.3.0, setup-java v4.9.1,
+  upload-artifact v4.6.2, setup-gradle v4.4.3, edge-addon v2.1.1, Pages actions). CI not run after it. `contents: write` is
+  set for the whole workflow; the build jobs upload to the release themselves, so it is needed there (accepted).
+- [x] Release files: `UpdateManager` refuses a release file with no `.sig` and one whose signature does not verify; GitHub's
+  sha256 is checked first. New `UpdateSignatureTest` (jvmTest): empty / broken signature, a signature from another key and a
+  missing file are all refused, 3/3. The native desktop `ecdsaP256Verify` is read, not tested.
+- [x] Android: one exported component (`MainActivity`, needed for share / view / magnet / fetchjet links); a `fetchjet://` link
+  only fills the Add dialog (the user starts it). Services and the FileProvider are not exported. `usesCleartextTraffic` is
+  for plain http downloads only (the bridge is a raw socket). Backups leave out `network.json` and logs; cookies and the
+  bridge token are Keystore-encrypted. Accepted: FileProvider shares `files-path "."` (not exported, only URIs the app grants).
+  R8 release build: see CLAUDE.md (`-dontwarn` for commons-compress).
 
 ## 16. Pages that need a session: Zoom recordings on iOS (owner's report, 2026-11-16)
 
@@ -511,3 +659,29 @@ Image galleries (gallery-dl), RSS feeds, the old Windows themes (Luna, Aero, Aqu
   local file read (`DesktopFileSystem.kt`, `winReadAt` returns -1 without logging `GetLastError`). It did not
   come back in the later runs (two more at 32 connections, two at 8) and the cause was not found. Not a work
   item; if it shows again, log the Windows error code first.
+
+## 17. Windows installers: a nicer MSI and a Setup.exe (owner's request, 2026-11-17)
+
+The owner asked for an .msi and an .exe that look professional, know whether the same version is installed, and offer a
+desktop shortcut with a checkbox.
+
+- [x] MSI (`desktopNative/packaging/product.wxs`): a new page "Choose the extras" after the folder page with two checkboxes
+  (desktop shortcut, Start menu; both on), and one line saying what is installed: the same version ("it will be installed
+  again, a repair"), a newer one (it is replaced by the older one, as before: `AllowDowngrades`), or an older one (updated).
+  Detection: three `OnlyDetect` rows in the Upgrade table (`FJ_SAME_VERSION_FOUND`, `FJ_NEWER_VERSION_FOUND`,
+  `FJ_OLDER_VERSION_FOUND`). The last page has "Start FetchJet now" (checked; `WixShellExec`). The shortcut components now
+  need the property to be exactly "1" (a "0" sent by Setup.exe counts as set in MSI). Images in the app's navy with the
+  logo: `installer/WixUIDialog.bmp`, `installer/WixUIBanner.bmp` (made by `installer/make-art.py` from `res/fetchjet.ico` and
+  the FetchJet font). `check-msi.ps1` passes on a test MSI (upgrade rows, shortcuts, 169 files extracted with the same
+  SHA-256).
+- [x] `FetchJet-<version>-setup.exe` (`packaging/bundle.wxs`, `build-setup.cmd`): a WiX Burn bundle around the MSI with its
+  own theme (`installer/theme.xml`, `theme.wxl`): a navy header with the logo, "Install FetchJet <version>", the two
+  checkboxes (passed to the MSI), the GPL link, Repair / Uninstall when the same version is installed, Burn's own refusal
+  when a newer Setup.exe version is installed, and a Launch button at the end. The MSI inside is hidden from "Installed
+  apps" (only the bundle shows). Built locally (26 MB); the screen was locked, so the windows were not seen.
+- [x] CI: `ci-windows.ps1` builds Setup.exe after the MSI check; the release upload takes it with its `.sig`; the verify run
+  keeps it as an artifact; the download page labels it "Setup (.exe)"; README updated. CI not run. The in-app updater
+  still installs the MSI (unchanged).
+- [ ] For the owner: run `FetchJet-1.5.0-setup.exe` and `FetchJet-1.5.0.msi` from `E:\tools\probes\installer-test\out` (built from
+  the debug core, for looking only), on a clean account or a VM if possible: first install, again (same version), the
+  checkboxes, Uninstall.

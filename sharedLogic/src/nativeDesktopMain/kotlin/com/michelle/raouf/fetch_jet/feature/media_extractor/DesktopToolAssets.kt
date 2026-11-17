@@ -5,7 +5,7 @@ internal class DesktopToolAssets(
     val ytDlpProgram: String,
     val ffmpegUrl: String,
     val ffmpegSha256: String,
-    val ffmpegZipped: Boolean,
+    val ffmpegGzipped: Boolean,
     val denoZip: String,
 )
 

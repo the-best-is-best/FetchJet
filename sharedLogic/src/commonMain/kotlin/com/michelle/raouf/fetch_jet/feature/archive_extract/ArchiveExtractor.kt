@@ -11,7 +11,9 @@ import okio.Source
 import okio.buffer
 import okio.use
 
-enum class ArchiveKind { ZIP, TAR, TAR_GZ, TAR_XZ, GZ, XZ }
+enum class ArchiveKind(val external: Boolean = false) { ZIP, TAR, TAR_GZ, TAR_XZ, GZ, XZ, SEVEN_Z(true), RAR(true), SPLIT_ZIP(true) }
+
+enum class ExtractPlace { SMART, ALWAYS_FOLDER, NEXT_TO_ARCHIVE }
 
 class ExtractLimits(
     val maxFiles: Int = 100_000,
@@ -25,6 +27,7 @@ class ExtractResult(
     val bytes: Long,
     val skipped: List<String>,
     val destination: String,
+    val items: List<String> = listOf(destination),
 )
 
 object ArchiveExtractor {
@@ -39,14 +42,43 @@ object ArchiveExtractor {
         ".tar" to ArchiveKind.TAR,
         ".gz" to ArchiveKind.GZ,
         ".xz" to ArchiveKind.XZ,
+        ".7z" to ArchiveKind.SEVEN_Z,
+        ".rar" to ArchiveKind.RAR,
     )
 
+    private val VOLUME = Regex("""^(.*)(\.(7z|zip)\.(\d{3})|\.part(\d+)\.rar)$""", RegexOption.IGNORE_CASE)
+
+    const val MISSING_PART = "a part of this split archive is missing"
+
+    fun isVolume(fileName: String): Boolean = VOLUME.matches(fileName)
+
+    fun volumeNumber(fileName: String): Int? {
+        val m = VOLUME.matchEntire(fileName) ?: return null
+        return (m.groupValues[4].ifEmpty { m.groupValues[5] }).toIntOrNull()
+    }
+
+    fun volumeSet(fileName: String): String? {
+        val m = VOLUME.matchEntire(fileName) ?: return null
+        val kind = if (m.groupValues[3].isNotEmpty()) m.groupValues[3].lowercase() else "rar"
+        return m.groupValues[1].lowercase() + "|" + kind
+    }
+
     fun kindOf(fileName: String): ArchiveKind? {
+        val m = VOLUME.matchEntire(fileName)
+        if (m != null) {
+            if (volumeNumber(fileName) != 1) return null
+            return when {
+                m.groupValues[3].equals("7z", true) -> ArchiveKind.SEVEN_Z
+                m.groupValues[3].equals("zip", true) -> ArchiveKind.SPLIT_ZIP
+                else -> ArchiveKind.RAR
+            }
+        }
         val lower = fileName.lowercase()
         return SUFFIXES.firstOrNull { lower.endsWith(it.first) }?.second
     }
 
     fun baseName(fileName: String): String {
+        VOLUME.matchEntire(fileName)?.let { return it.groupValues[1].ifBlank { fileName } }
         val lower = fileName.lowercase()
         val suffix = SUFFIXES.firstOrNull { lower.endsWith(it.first) }?.first ?: return fileName
         return fileName.dropLast(suffix.length).ifBlank { fileName }
@@ -105,6 +137,13 @@ object ArchiveExtractor {
         val skipped = ArrayList<String>()
         val made = HashSet<Path>()
 
+        fun reset() {
+            files = 0
+            bytes = 0L
+            skipped.clear()
+            made.clear()
+        }
+
         fun folder(path: Path) {
             if (made.add(path)) AppFileSystem.createDirectories(path)
         }
@@ -156,6 +195,8 @@ object ArchiveExtractor {
     suspend fun extract(
         archive: Path,
         limits: ExtractLimits = ExtractLimits(),
+        password: String? = null,
+        place: ExtractPlace = ExtractPlace.SMART,
         onProgress: (Float) -> Unit = {},
     ): ExtractResult {
         val name = archive.name
@@ -168,7 +209,16 @@ object ArchiveExtractor {
         val run = Run(limits, size, work, onProgress)
         try {
             when (kind) {
-                ArchiveKind.ZIP -> extractZip(archive, run)
+                ArchiveKind.SEVEN_Z, ArchiveKind.RAR, ArchiveKind.SPLIT_ZIP -> external(archive, work, password, run)
+                ArchiveKind.ZIP -> try {
+                    if (password != null && ExternalArchiver.available()) external(archive, work, password, run) else extractZip(archive, run)
+                } catch (e: ArchivePasswordException) {
+                    if (!ExternalArchiver.available()) throw ArchiveException("this zip file has a password: install 7-Zip from 7-zip.org to open it")
+                    AppFileSystem.deleteRecursively(work, mustExist = false)
+                    AppFileSystem.createDirectories(work)
+                    run.reset()
+                    external(archive, work, password, run)
+                }
                 ArchiveKind.TAR -> extractTar(counted(archive, size, onProgress).buffer(), run)
                 ArchiveKind.TAR_GZ -> extractTar(GzipSource(counted(archive, size, onProgress).buffer()).buffer(), run)
                 ArchiveKind.TAR_XZ -> extractTar(XzSource(counted(archive, size, onProgress).buffer()).buffer(), run)
@@ -177,16 +227,23 @@ object ArchiveExtractor {
             }
             if (run.files == 0 && run.made.isEmpty()) throw ArchiveException("the archive is empty")
             val top = AppFileSystem.list(work)
-            val destination = if (top.size == 1) {
-                uniquePath(parent, top[0].name).also { AppFileSystem.atomicMove(top[0], it) }
-            } else {
-                uniquePath(parent, base).also { AppFileSystem.atomicMove(work, it) }
+            val moved = ArrayList<Path>()
+            val destination = when {
+                place == ExtractPlace.NEXT_TO_ARCHIVE -> {
+                    for (item in top) moved += uniquePath(parent, item.name).also { AppFileSystem.atomicMove(item, it) }
+                    parent
+                }
+
+                top.size == 1 && place == ExtractPlace.SMART ->
+                    uniquePath(parent, top[0].name).also { AppFileSystem.atomicMove(top[0], it); moved += it }
+
+                else -> uniquePath(parent, base).also { AppFileSystem.atomicMove(work, it); moved += it }
             }
             try {
                 AppFileSystem.deleteRecursively(work, mustExist = false)
             } catch (_: Throwable) {
             }
-            return ExtractResult(run.files, run.bytes, run.skipped, destination.toString())
+            return ExtractResult(run.files, run.bytes, run.skipped, destination.toString(), moved.map { it.toString() })
         } catch (e: Throwable) {
             try {
                 AppFileSystem.deleteRecursively(work, mustExist = false)
@@ -197,6 +254,26 @@ object ArchiveExtractor {
                 is okio.EOFException -> ArchiveException("the archive ends too early")
                 else -> ArchiveException(e.message ?: "extraction failed")
             }
+        }
+    }
+
+    private suspend fun external(archive: Path, work: Path, password: String?, run: Run) {
+        ExternalArchiver.extract(archive.toString(), work.toString(), password, run.onProgress)
+        for (path in AppFileSystem.listRecursively(work).toList()) {
+            val meta = AppFileSystem.metadataOrNull(path) ?: continue
+            if (meta.symlinkTarget != null) {
+                run.skipped.add(path.name)
+                AppFileSystem.delete(path, mustExist = false)
+                continue
+            }
+            if (meta.isDirectory) {
+                run.made.add(path)
+                continue
+            }
+            run.files++
+            run.bytes += meta.size ?: 0L
+            if (run.files > run.limits.maxFiles) throw ArchiveException("the archive holds too many files")
+            if (run.bytes > run.limits.maxBytes) throw ArchiveException("the archive is larger than the limit")
         }
     }
 
@@ -250,7 +327,7 @@ object ArchiveExtractor {
             run.progressTotal = entries.filter { !it.isDirectory && !it.isLink }.sumOf { it.size }
             for (entry in entries) {
                 currentCoroutineContext().ensureActive()
-                if (entry.encrypted) throw ArchiveException("this zip file has a password")
+                if (entry.encrypted) throw ArchivePasswordException(wrong = false)
                 val parts = safeParts(entry.name)
                 if (parts == null || entry.isLink) {
                     run.skipped.add(entry.name)

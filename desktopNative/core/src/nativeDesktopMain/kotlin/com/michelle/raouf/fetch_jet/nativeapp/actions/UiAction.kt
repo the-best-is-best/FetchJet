@@ -67,6 +67,18 @@ sealed interface UiAction {
     data class RowExtract(val id: String = "") : UiAction
 
     @Serializable
+    @SerialName("RowMenu")
+    data class RowMenu(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("RowMenuPick")
+    data class RowMenuPick(val key: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("RowMenuClose")
+    data object RowMenuClose : UiAction
+
+    @Serializable
     @SerialName("CyclePriority")
     data class CyclePriority(val id: String = "") : UiAction
 
@@ -241,6 +253,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("AlertDismiss")
     data class AlertDismiss(val kind: Int = 0, val fromScrim: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("AlertText")
+    data class AlertText(val kind: Int = 0, val text: String = "") : UiAction
 
     @Serializable
     @SerialName("AlertExtra")

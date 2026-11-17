@@ -254,7 +254,10 @@ internal fun Presenter.buildSettingsRows(section: SettingsSection, v: SettingsSl
     val rows = Rows()
     when (section) {
         SettingsSection.GENERAL -> generalRows(rows, v, page)
-        SettingsSection.DOWNLOADS -> downloadsRows(rows, v, page)
+        SettingsSection.DOWNLOADS -> {
+            downloadsRows(rows, v, page)
+            reportRows(rows, page)
+        }
         SettingsSection.BROWSER -> browserRows(rows, page)
         SettingsSection.DEVICES -> devicesRows(rows, v)
         SettingsSection.NETWORK -> networkRows(rows, page)
@@ -519,6 +522,32 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 v.extractArchives,
             )
         )
+        if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
+            val trashArchive = BehaviorSettings.trashArchiveAfterExtract.value
+            if (v.extractArchives) {
+                rows.add(switchRow("trashArchive", s.trashArchive, if (trashArchive) s.trashArchiveOn else s.trashArchiveOff, trashArchive))
+            }
+        }
+        if (v.extractArchives) {
+            val places = listOf(s.extractPlaceSmart, s.extractPlaceFolder, s.extractPlaceNextTo)
+            val place = BehaviorSettings.extractPlace.value.ordinal
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.MENU.ordinal,
+                    id = "extractPlace",
+                    title = s.extractPlaceTitle,
+                    enabled = true,
+                    clickable = true,
+                    side = places[place],
+                    options = places,
+                    pick = place + 1,
+                )
+            )
+        }
+        if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
+            val toTrash = BehaviorSettings.deleteToTrash.value
+            rows.add(switchRow("deleteToTrash", s.deleteToTrash, if (toTrash) s.deleteToTrashOn else s.deleteToTrashOff, toTrash))
+        }
     }
     val scanOn = BehaviorSettings.scanFiles.value
     val scanCommand = BehaviorSettings.scanCommand.value
@@ -552,6 +581,47 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
             )
         }
     }
+    val rules = BehaviorSettings.siteFolders.value
+    val canAddRule = com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.isValidSite(page.ruleSite) && page.ruleFolder.isNotBlank()
+    rows.group(title = s.siteFoldersGroup, footer = s.siteFoldersHint) {
+        if (rules.isEmpty()) rows.add(infoRow(title = s.siteFoldersEmpty))
+        rules.forEach { rule ->
+            rows.add(
+                infoRow(
+                    title = rule.site,
+                    subtitle = rule.folder,
+                    buttons = listOf(button("rule.remove." + rule.site, s.netRemove, flat = true, tone = ToneCode.ERROR)),
+                )
+            )
+            rows.divider()
+        }
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.FIELDS.ordinal,
+                top = 16,
+                one = field("ruleSite", page.ruleSite, label = s.netLoginSite, placeholder = "example.com"),
+            )
+        )
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.FIELDS.ordinal,
+                top = 10,
+                one = field("ruleFolder", page.ruleFolder, label = s.siteFolderFolder),
+            )
+        )
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.BUTTONS.ordinal,
+                top = 10,
+                bottom = 16,
+                alignEnd = true,
+                buttons = listOf(
+                    button("ruleChoose", s.siteFolderChoose, round = true),
+                    button("ruleAdd", s.siteFolderAdd, filled = true, enabled = canAddRule, round = true),
+                ),
+            )
+        )
+    }
     val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
     rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {
         rows.add(
@@ -574,6 +644,41 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                     BehaviorSettings.wakeForSchedule.value,
                 )
             )
+        }
+    }
+}
+
+private fun Presenter.reportRows(rows: Rows, page: SettingsPage) {
+    val s = LocalizationManager.Strings
+    val tasks = vm.uiState.value.allTasks
+    val offset = com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs()
+    val months = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(tasks, offset).take(24)
+    rows.group(title = s.reportGroup, footer = s.reportFooter) {
+        if (months.isEmpty()) {
+            rows.add(infoRow(title = s.reportEmpty))
+            return@group
+        }
+        val chosen = months.firstOrNull { it.label == page.reportMonth } ?: months.first()
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.MENU.ordinal,
+                id = "reportMonth",
+                title = s.reportMonth,
+                enabled = true,
+                clickable = true,
+                side = chosen.label,
+                options = months.map { it.label },
+                pick = months.indexOf(chosen) + 1,
+            )
+        )
+        rows.divider()
+        val report = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.forMonth(tasks, chosen, offset)
+        rows.add(infoRow(title = s.reportFiles, side = report.files.toString()))
+        rows.divider()
+        rows.add(infoRow(title = s.reportSize, side = formatSizeDisplay(report.bytes)))
+        for (site in report.sites) {
+            rows.divider()
+            rows.add(infoRow(title = site.site, subtitle = site.files.toString() + " · " + formatSizeDisplay(site.bytes)))
         }
     }
 }
@@ -673,6 +778,54 @@ private fun Presenter.networkRows(rows: Rows, page: SettingsPage) {
                 buttons = listOf(button("loginAdd", s.netLoginAdd, filled = true, enabled = canAdd, round = true)),
             )
         )
+    }
+    if (NetworkSettings.ownNetworkSupported) {
+        val dns = NetworkSettings.dns.value
+        val adapter = NetworkSettings.adapter.value
+        val custom = page.dnsCustom ?: dns.custom
+        val adapterText = page.adapterDraft ?: adapter
+        val names = listOf(s.netDnsSystem, "Cloudflare", "Google", "Quad9", "AdGuard", s.netDnsCustom)
+        val changed = custom.trim() != dns.custom || adapterText.trim() != adapter
+        rows.group(title = s.netDnsGroup, footer = s.netDnsHint) {
+            rows.add(
+                pickerRow(
+                    "dnsMode",
+                    s.netDnsTitle,
+                    names.getOrElse(dns.mode.ordinal) { s.netDnsSystem },
+                    names,
+                    dns.mode.ordinal + 1,
+                    below = true,
+                )
+            )
+            if (dns.mode == com.michelle.raouf.fetch_jet.core.network.DnsMode.CUSTOM) {
+                rows.add(
+                    SettingRowDto(
+                        kind = SettingKind.FIELDS.ordinal,
+                        top = 4,
+                        one = field("dnsCustom", custom, label = s.netDnsCustomLabel, placeholder = "https://dns.example/dns-query  /  9.9.9.9, 1.1.1.1"),
+                    )
+                )
+            }
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.FIELDS.ordinal,
+                    top = 10,
+                    one = field("netAdapter", adapterText, label = s.netAdapterLabel, placeholder = "192.168.1.20"),
+                )
+            )
+            if (NetworkSettings.proxy.value.isOn && (dns.isOn || adapter.isNotBlank())) {
+                rows.add(noteRow(s.netDnsProxyOn, ToneCode.PAUSED, top = 8))
+            }
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 10,
+                    bottom = 16,
+                    alignEnd = true,
+                    buttons = listOf(button("dnsSave", s.netSave, filled = true, enabled = changed, round = true)),
+                )
+            )
+        }
     }
 }
 

@@ -345,8 +345,8 @@ class DashboardViewModel(
     ) {
         scope.launch {
             val state = _uiState.value
-            val destDir =
-                state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+            val destDir = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolderFor(request.url, request.referer)?.folder
+                ?: state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
             val qualities = request.mediaQualities
             val selected = qualities.firstOrNull { it.isSelected } ?: qualities.firstOrNull()
             val rawName = request.fileName.ifBlank {
@@ -502,12 +502,14 @@ class DashboardViewModel(
                 if (review || engine == EngineType.MEDIA_STREAM) {
                     mediaPages += req; continue
                 } // a video page: needs the inspector (the Add dialog's link list below)
+                val reqDir = (if (folder.isBlank()) com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+                    .siteFolderFor(req.url, req.referer)?.folder else null) ?: destDir
                 val name = req.fileName.ifBlank { null }
                     ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
-                    ?.let { freeFileName(destDir, it) }
+                    ?.let { freeFileName(reqDir, it) }
                 queueRepository.enqueueTask(
                     url = req.url,
-                    customDestinationPath = destDir,
+                    customDestinationPath = reqDir,
                     customFileName = name,
                     disableUpload = _uiState.value.disableTorrentUpload,
                     maxDownloadSpeedBytesPerSec = _uiState.value.selectedDownloadSpeedLimitBytes,
@@ -604,6 +606,12 @@ class DashboardViewModel(
             queueRepository.archiveEvents.collect { event ->
                 val strings = LocalizationManager.Strings
                 val failure = event.error
+                if (event.needsPassword && event.taskId.isNotEmpty()) {
+                    _uiState.update {
+                        it.copy(archivePassword = ArchivePasswordAsk(event.taskId, event.name, event.wrongPassword))
+                    }
+                    return@collect
+                }
                 _uiEffect.emit(
                     DashboardUiEffect.ShowToast(
                         if (event.started) strings.extractStarted(event.name)
@@ -680,6 +688,18 @@ class DashboardViewModel(
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
 
             is DashboardUiEvent.OnExtractTaskClicked -> queueRepository.extractNow(event.taskId)
+            is DashboardUiEvent.OnArchivePasswordEntered -> {
+                _uiState.update { it.copy(archivePassword = null) }
+                if (event.password.isNotEmpty()) queueRepository.extractNow(event.taskId, event.password)
+            }
+            DashboardUiEvent.OnArchivePasswordDismissed -> _uiState.update { it.copy(archivePassword = null) }
+            is DashboardUiEvent.OnCopyTaskLink -> scope.launch {
+                val link = queueRepository.allTasksFlow.value.firstOrNull { it.id == event.taskId }?.url?.trim().orEmpty()
+                if (link.isNotBlank()) {
+                    _uiEffect.emit(DashboardUiEffect.CopyText(link))
+                    _uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.copied))
+                }
+            }
 
             is DashboardUiEvent.OnAudioCompressClicked,
             is DashboardUiEvent.OnAudioCompressSettingsChanged,

@@ -182,6 +182,12 @@ def run():
         core.check("start on a finished download: 409", answer.status == 409, (answer.status, answer.body))
         core.pump(1)
         core.check("it is still completed", core.task(url_part="auto-c")["status"] == "COMPLETED", core.task(url_part="auto-c"))
+        file_c = os.path.join(done.get("destinationPath") or core.downloads, "c.bin")
+        if not os.path.isfile(file_c):
+            file_c = os.path.join(core.downloads, "c.bin")
+        answer = request(core, "POST", "/api/remove?id=" + quote(done["id"]), local)
+        core.wait_for("the finished row to go", lambda: not core.tasks(), 15)
+        core.check("remove on a finished download keeps its file", answer.status == 200 and os.path.isfile(file_c), (answer.status, file_c))
 
         print("turn it off")
         answer = request(core, "GET", "/api/automation?on=0", local)

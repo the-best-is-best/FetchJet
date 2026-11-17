@@ -9,7 +9,7 @@ object ArchiveTasks {
         task.status == DownloadStatus.COMPLETED &&
             task.engineType != EngineType.BITTORRENT &&
             task.fileName.isNotBlank() &&
-            ArchiveExtractor.kindOf(task.fileName) != null
+            ArchiveExtractor.kindOf(task.fileName)?.let { !it.external || ExternalArchiver.available() } == true
 
     fun canExtract(task: DownloadTask): Boolean = isArchive(task) && task.postProcessLabel == null
 }

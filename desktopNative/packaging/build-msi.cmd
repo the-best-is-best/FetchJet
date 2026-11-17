@@ -38,10 +38,10 @@ echo START %DATE% %TIME% version %VER% stage %FJ_STAGE% wix %WIXBIN% > "%LOG%"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%gen-files.ps1" -Stage "%FJ_STAGE%" -Out "%OBJ%\files.wxs" >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
-start "" /low /b /wait "%WIXBIN%\candle.exe" -nologo -arch x64 -dStage="%FJ_STAGE%" -dVersion=%VER% -dIcon="%REPO%\desktopNative\res\fetchjet.ico" -out "%OBJ%\\" "%HERE%product.wxs" "%OBJ%\files.wxs" >> "%LOG%" 2>&1
+start "" /low /b /wait "%WIXBIN%\candle.exe" -nologo -arch x64 -dStage="%FJ_STAGE%" -dVersion=%VER% -dIcon="%REPO%\desktopNative\res\fetchjet.ico" -dArt="%HERE%installer" -ext WixUtilExtension -out "%OBJ%\\" "%HERE%product.wxs" "%OBJ%\files.wxs" >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 
-start "" /low /b /wait "%WIXBIN%\light.exe" -nologo -ext WixUIExtension -cultures:en-us -sice:ICE91 -spdb -out "%MSI%" "%OBJ%\product.wixobj" "%OBJ%\files.wixobj" >> "%LOG%" 2>&1
+start "" /low /b /wait "%WIXBIN%\light.exe" -nologo -ext WixUIExtension -ext WixUtilExtension -cultures:en-us -sice:ICE91 -spdb -out "%MSI%" "%OBJ%\product.wixobj" "%OBJ%\files.wixobj" >> "%LOG%" 2>&1
 if errorlevel 1 goto failed
 if not exist "%MSI%" goto failed
 

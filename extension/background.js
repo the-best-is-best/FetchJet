@@ -14,7 +14,6 @@ const IS_FIREFOX = typeof browser !== "undefined" && /firefox|thunderbird/i.test
 
 const FETCHJET_PORT = 28450;
 const FETCHJET_BASE = `http://127.0.0.1:${FETCHJET_PORT}`;
-const NATIVE_HOST_NAME = "com.michelle.raouf.fetch_jet_downloader";
 const PROTOCOL = "fetchjet://download?url=";
 // Android freezes FetchJet while Firefox is in front, so asking it for qualities hangs until the
 // app is opened. If the app answers a quick ping (its "Keep ready for the browser" setting is on)
@@ -477,13 +476,6 @@ async function launchApp(firstUrl) {
   const settings = await getSettings();
   if (!settings.autoLaunch) return false;
 
-  // 1. Native messaging host (installed with the desktop app)
-  try {
-    await api.runtime.sendNativeMessage(NATIVE_HOST_NAME, { action: "download", url: firstUrl || "" });
-    return true;
-  } catch (_) { /* not registered */ }
-
-  // 2. fetchjet:// protocol handler (registered by the installer)
   try {
     // Firefox for Android only hands a link to another app from the visible tab.
     const onAndroid = /android/i.test(navigator.userAgent);

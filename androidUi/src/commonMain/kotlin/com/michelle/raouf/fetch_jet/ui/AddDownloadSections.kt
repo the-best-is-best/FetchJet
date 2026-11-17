@@ -361,6 +361,7 @@ internal fun DestinationSection(
     defaultDownloads: String,
     defaultDocs: String,
     defaultDesktop: String,
+    folderRuleSite: String = "",
     onDestinationPathChanged: (String) -> Unit
 ) {
     var pathTextFieldValue by pathField
@@ -390,6 +391,14 @@ internal fun DestinationSection(
         leading = { Text("📁", fontSize = 16.sp) },
         trailing = { FieldIconButton("📂", onClick = { showDirectoryPicker = true }) }
     )
+    if (folderRuleSite.isNotBlank()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = LocalizationManager.Strings.addFolderFromRule + " " + folderRuleSite,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
     Spacer(modifier = Modifier.height(8.dp))
 
     // Quick Directory Buttons (Always fit cleanly on mobile!)

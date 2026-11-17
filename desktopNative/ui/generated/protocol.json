@@ -202,6 +202,13 @@
    "name": "torrentDetails",
    "kind": "STRUCT",
    "dto": "TorrentDetailsDto"
+  },
+  {
+   "const": "ROW_MENU",
+   "id": 29,
+   "name": "rowMenu",
+   "kind": "LIST",
+   "dto": "RowMenuItemDto"
   }
  ],
  "enums": {
@@ -277,7 +284,8 @@
    "EXTENSION_MISSING",
    "EXTENSION_STEPS",
    "EXTENSION_FROM_FILE",
-   "EXTENSION_FAILED"
+   "EXTENSION_FAILED",
+   "ARCHIVE_PASSWORD"
   ],
   "ChannelKind": [
    "STRINGS",
@@ -600,6 +608,10 @@
    [
     "destinationRev",
     "Int"
+   ],
+   [
+    "folderRule",
+    "String"
    ],
    [
     "quickFolders",
@@ -1269,6 +1281,14 @@
    ],
    [
     "round",
+    "Boolean"
+   ],
+   [
+    "inputLabel",
+    "String"
+   ],
+   [
+    "inputSecret",
     "Boolean"
    ]
   ],
@@ -2230,6 +2250,24 @@
     "Boolean"
    ]
   ],
+  "RowMenuItemDto": [
+   [
+    "key",
+    "Int"
+   ],
+   [
+    "label",
+    "String"
+   ],
+   [
+    "danger",
+    "Boolean"
+   ],
+   [
+    "divider",
+    "Boolean"
+   ]
+  ],
   "SettingsSectionDto": [
    [
     "glyph",
@@ -2809,6 +2847,19 @@
     "String"
    ]
   ],
+  "RowMenu": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "RowMenuPick": [
+   [
+    "key",
+    "Int"
+   ]
+  ],
+  "RowMenuClose": [],
   "CyclePriority": [
    [
     "id",
@@ -3020,6 +3071,16 @@
    [
     "fromScrim",
     "Boolean"
+   ]
+  ],
+  "AlertText": [
+   [
+    "kind",
+    "Int"
+   ],
+   [
+    "text",
+    "String"
    ]
   ],
   "AlertExtra": [
@@ -4188,6 +4249,52 @@
   "scanCommandLabel",
   "scanCommandHint",
   "scanCommandHintNoScanner",
+  "rowMenuOpen",
+  "rowMenuOpenFolder",
+  "rowMenuPause",
+  "rowMenuResume",
+  "rowMenuExtract",
+  "rowMenuCompress",
+  "rowMenuSendToDevice",
+  "rowMenuCopyLink",
+  "rowMenuSelect",
+  "rowMenuDetails",
+  "rowMenuDelete",
+  "siteFoldersGroup",
+  "siteFoldersHint",
+  "siteFoldersEmpty",
+  "siteFolderFolder",
+  "siteFolderChoose",
+  "siteFolderAdd",
+  "addFolderFromRule",
+  "netDnsGroup",
+  "netDnsHint",
+  "netDnsTitle",
+  "netDnsSystem",
+  "netDnsCustom",
+  "netDnsCustomLabel",
+  "netAdapterLabel",
+  "netDnsProxyOn",
+  "deleteToTrash",
+  "deleteToTrashOn",
+  "deleteToTrashOff",
+  "trashArchive",
+  "trashArchiveOn",
+  "trashArchiveOff",
+  "archivePasswordTitle",
+  "archivePasswordHint",
+  "archivePasswordWrong",
+  "archivePasswordLabel",
+  "extractPlaceTitle",
+  "extractPlaceSmart",
+  "extractPlaceFolder",
+  "extractPlaceNextTo",
+  "reportGroup",
+  "reportFooter",
+  "reportMonth",
+  "reportFiles",
+  "reportSize",
+  "reportEmpty",
   "scanningState",
   "scanTitle",
   "scanClean",

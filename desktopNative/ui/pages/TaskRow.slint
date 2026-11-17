@@ -7,6 +7,8 @@ import { EmojiIcon, Glyph } from "../widgets/Icons.slint";
 import { TaskRowDto, RowKind, RowActionCode, BarColorCode, GroupColorCode } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
+import { Core } from "../generated/dto.slint";
+import { RowMenuPopup, Screen } from "../widgets/Menu.slint";
 
 component KindSquare inherits Rectangle {
     in property <string> tag;
@@ -244,7 +246,18 @@ export component TaskRow inherits Rectangle {
         : root.data.barColor == BarColorCode.paused ? Theme.bar-paused : Theme.primary;
     private property <bool> ctrl;
     private property <bool> shift;
+    private property <length> menu-x;
+    private property <length> menu-y;
     height: (root.is-header ? 32px : root.wide ? 68px : root.data.completed ? 75px : 90px) + 6px;
+
+    row-menu := RowMenuPopup {
+        private property <length> tall: Core.rowMenu.length * 38px + 30px;
+        x: Dir.rtl ? max(0px, root.menu-x - self.width) : min(root.menu-x, root.width - self.width);
+        y: root.absolute-position.y + root.menu-y + self.tall <= Screen.height - 12px ? root.menu-y
+            : max(-root.absolute-position.y + 12px, root.menu-y - self.tall);
+        items: Core.rowMenu;
+        picked(key) => { Act.rowMenuPick(key); }
+    }
 
     if root.is-header: SectionHeader {
         y: 0;
@@ -269,6 +282,12 @@ export component TaskRow inherits Rectangle {
                 if e.kind == PointerEventKind.down {
                     root.ctrl = e.modifiers.control;
                     root.shift = e.modifiers.shift;
+                }
+                if e.kind == PointerEventKind.down && e.button == PointerEventButton.right {
+                    root.menu-x = self.mouse-x;
+                    root.menu-y = self.mouse-y;
+                    Act.rowMenu(root.data.id);
+                    row-menu.show();
                 }
             }
             clicked => {
