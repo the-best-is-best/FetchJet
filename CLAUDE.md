@@ -264,6 +264,13 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, CI Linux job (1.5.0 release run):** `:desktopNativeCore:linkReleaseSharedLinuxX64` failed on the WSL
+  runner with "SDK location not found": since `a88e188` `androidApp` has `externalNativeBuild` (own ffmpeg), so AGP needs
+  the Android SDK while configuring, and the Linux runner has none. `settings.gradle.kts` now leaves out `:androidApp` and
+  `:androidUi` when `-Pfetchjet.nativeDesktop=true` and no SDK is visible (`ANDROID_HOME`, `ANDROID_SDK_ROOT` or
+  `sdk.dir` in `local.properties`). Checked on Windows: the Linux core builds with `local.properties` hidden; with it,
+  `gradlew projects` still lists both Android projects.
+
 - **2026-11-18, Windows installers (owner-tested: installed the release Setup.exe and checked it on screen):** the
   install folder is fixed to `%LOCALAPPDATA%\FetchJet` in both: the MSI skips `InstallDirDlg` (Welcome -> shortcuts page,
   `product.wxs`; `check-msi.ps1` checks there is no way to the folder page) and Setup.exe keeps `SuppressOptionsUI`. No
@@ -527,9 +534,10 @@ Bridges:
       `open <path>` may start the `/Applications` one, use `open -n <path>`.
     - iOS UI is SwiftUI; Python starts on the first inspect (51-60 MB idle on the simulator).
     - "Main downloader" first-run step on all platforms (`core/setup/`).
-    - CI: `desktop_engine` input (native default) releases the native desktop app on all three
-      OSes with the JVM file names; never run yet. Windows / Linux native and the Android changes
-      of this day are compiled, not run.
+    - CI: the native desktop app is released on all three OSes with the JVM file names. The
+      `desktop_engine` input was removed later (`4b9f695`, native only): the release form has only
+      `release_version`, `beta` and the platform boxes. The plan step still reads an empty
+      `inputs.desktop_engine` and treats it as native.
     - Send to device is visible in the native app (`DEVICE_SYNC_READY = true`).
 - **2026-11-12 (branch `desktop-native`): Compress audio** on every platform, details and test
   results in ROADMAP-1.4.0.md "Compress audio". Logic once in

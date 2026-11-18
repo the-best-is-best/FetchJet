@@ -32,9 +32,16 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":androidApp")
+val nativeDesktopBuild = providers.gradleProperty("fetchjet.nativeDesktop").orNull == "true"
+val hasAndroidSdk = !System.getenv("ANDROID_HOME").isNullOrBlank() ||
+    !System.getenv("ANDROID_SDK_ROOT").isNullOrBlank() ||
+    file("local.properties").let { it.isFile && it.readLines().any { line -> line.trim().startsWith("sdk.dir") } }
+
+if (hasAndroidSdk || !nativeDesktopBuild) {
+    include(":androidApp")
+    include(":androidUi")
+}
 include(":sharedLogic")
-include(":androidUi")
 
 
 include(":kmpLocalization")
