@@ -44,6 +44,7 @@ extension FJStore {
 struct FJRoot: View {
     @EnvironmentObject var store: FJStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @ObservedObject private var browser = FJPageBrowser.shared
 
     var body: some View {
         Group {
@@ -62,12 +63,23 @@ struct FJRoot: View {
         )) {
             AddDownloadSheet().environmentObject(store)
         }
+        .fullScreenCover(item: Binding(
+            get: { browser.page.map(FJPageTarget.init) },
+            set: { browser.page = $0?.url }
+        )) { target in
+            FJPageBrowserSheet(url: target.url) { browser.page = nil }.environmentObject(store)
+        }
         .overlay(alignment: .bottom) { FJToastHost() }
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
         .id(store.language)
         .onAppear { FJInterfaceStyle.apply(store.state.themeMode) }
         .onChange(of: store.state.themeMode) { _, mode in FJInterfaceStyle.apply(mode) }
     }
+}
+
+struct FJPageTarget: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
 }
 
 struct FJDeviceSheetModifier: ViewModifier {

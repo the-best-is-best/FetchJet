@@ -21,6 +21,8 @@ internal suspend fun <T> fetchWithRetry(
             throw e // the file is another file now: retrying cannot help
         } catch (e: ChecksumMismatchException) {
             throw e
+        } catch (e: com.michelle.raouf.fetch_jet.feature.file_scan.AntivirusBlockedException) {
+            throw e
         } catch (e: Exception) {
             delay(currentDelay)
             currentDelay = (currentDelay * 2).coerceAtMost(maxDelayMs)

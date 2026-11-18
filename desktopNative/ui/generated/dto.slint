@@ -44,6 +44,7 @@ export struct AddDto {
     fileNameRev: int,
     fileNameBusy: bool,
     fileNameCanReset: bool,
+    fileNameNeeded: bool,
     checksumShown: bool,
     checksum: string,
     checksumRev: int,
@@ -53,6 +54,7 @@ export struct AddDto {
     testLinkText: string,
     destination: string,
     destinationRev: int,
+    folderRule: string,
     quickFolders: [QuickFolderDto],
     linkSummary: string,
     linkAllSelected: bool,
@@ -253,6 +255,8 @@ export struct AlertDto {
     extraLabel: string,
     flatDismiss: bool,
     round: bool,
+    inputLabel: string,
+    inputSecret: bool,
 }
 
 export struct AudioCopyDto {
@@ -347,12 +351,17 @@ export struct DetailsDto {
     checksumIcon: string,
     checksumText: string,
     checksumTone: int,
+    scanShown: bool,
+    scanIcon: string,
+    scanText: string,
+    scanTone: int,
     primaryAction: int,
     primaryLabel: string,
     secondaryAction: int,
     secondaryLabel: string,
     canShare: bool,
     canCompress: bool,
+    canExtract: bool,
     compressLabel: string,
     removeLabel: string,
 }
@@ -501,6 +510,7 @@ export struct StatusDto {
 export struct TaskRowDto {
     kind: int,
     canCompress: bool,
+    canExtract: bool,
     id: string,
     name: string,
     nameRtl: bool,
@@ -518,6 +528,7 @@ export struct TaskRowDto {
     left: string,
     action: int,
     completed: bool,
+    busy: bool,
     priority: int,
     priorityLabel: string,
     checked: bool,
@@ -528,6 +539,13 @@ export struct TaskRowDto {
     headerCount: int,
     headerColor: int,
     headerCollapsed: bool,
+}
+
+export struct RowMenuItemDto {
+    key: int,
+    label: string,
+    danger: bool,
+    divider: bool,
 }
 
 export struct SettingsSectionDto {
@@ -573,6 +591,26 @@ export struct SettingButtonDto {
     tone: int,
 }
 
+export struct StatTileDto {
+    value: string,
+    label: string,
+}
+
+export struct StatBarDto {
+    label: string,
+    value: string,
+    fraction: float,
+}
+
+export struct CalendarDayDto {
+    label: string,
+    id: string,
+    blank: bool,
+    inRange: bool,
+    edge: bool,
+    today: bool,
+}
+
 export struct SettingRowDto {
     kind: int,
     id: string,
@@ -609,6 +647,9 @@ export struct SettingRowDto {
     indeterminate: bool,
     alignEnd: bool,
     hint: string,
+    tiles: [StatTileDto],
+    bars: [StatBarDto],
+    days: [CalendarDayDto],
 }
 
 export struct ShellDto {
@@ -762,6 +803,7 @@ export global AlertKind {
     out property <int> extension-steps: 10;
     out property <int> extension-from-file: 11;
     out property <int> extension-failed: 12;
+    out property <int> archive-password: 13;
 }
 
 export global ToneCode {
@@ -900,6 +942,9 @@ export global SettingKind {
     out property <int> buttons: 9;
     out property <int> progress: 10;
     out property <int> limit-box: 11;
+    out property <int> stats: 12;
+    out property <int> bars: 13;
+    out property <int> calendar: 14;
 }
 
 export global TrackerStateCode {
@@ -938,4 +983,5 @@ export global Core {
     in property <[TorrentFileRowDto]> addTorrentFiles;
     in property <AudioCompressDto> audioCompress;
     in property <TorrentDetailsDto> torrentDetails;
+    in property <[RowMenuItemDto]> rowMenu;
 }

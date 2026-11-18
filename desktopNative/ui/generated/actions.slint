@@ -15,6 +15,10 @@ export global Act {
     callback rowCheck(id: string, checked: bool);
     callback rowQuickAction(id: string);
     callback rowCompress(id: string);
+    callback rowExtract(id: string);
+    callback rowMenu(id: string);
+    callback rowMenuPick(key: int);
+    callback rowMenuClose();
     callback cyclePriority(id: string);
     callback checkAll(checked: bool);
     callback clearChecks();
@@ -40,6 +44,7 @@ export global Act {
     callback detailsRemove();
     callback detailsShare();
     callback detailsCompress();
+    callback detailsExtract();
     callback audioCompressSetMode(simple: bool);
     callback audioCompressSetLevel(level: int);
     callback audioCompressSetBitrate(value: int);
@@ -58,6 +63,7 @@ export global Act {
     callback copyText(text: string);
     callback alertConfirm(kind: int, checked: bool);
     callback alertDismiss(kind: int, fromScrim: bool);
+    callback alertText(kind: int, text: string);
     callback alertExtra(kind: int);
     callback setSettingsSection(index: int);
     callback settingToggle(id: string, on: bool);

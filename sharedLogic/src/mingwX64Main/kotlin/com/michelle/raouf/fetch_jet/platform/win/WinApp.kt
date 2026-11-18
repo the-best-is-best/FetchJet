@@ -2,10 +2,12 @@ package com.michelle.raouf.fetch_jet.platform.win
 
 import kotlin.concurrent.Volatile
 
-enum class WinInstallKind { DEVELOPMENT, INSTALLED, STORE }
+enum class WinInstallKind { DEVELOPMENT, INSTALLED, STORE, PORTABLE }
 
 object WinApp {
     const val INSTALLED_MARKER = "FetchJet.installed"
+    const val PORTABLE_MARKER = "FetchJet.portable"
+    const val PORTABLE_DATA = "data"
     const val HOME_FOLDER = ".fetch_jet"
 
     @Volatile
@@ -24,6 +26,7 @@ object WinApp {
     private val detectedKind: WinInstallKind by lazy {
         when {
             exePath.contains("\\WindowsApps\\", ignoreCase = true) -> WinInstallKind.STORE
+            exeDir.isNotEmpty() && winExists("$exeDir\\$PORTABLE_MARKER") -> WinInstallKind.PORTABLE
             exeDir.isNotEmpty() && winExists("$exeDir\\$INSTALLED_MARKER") -> WinInstallKind.INSTALLED
             winGetEnv("FETCHJET_INSTALLED") == "1" -> WinInstallKind.INSTALLED
             else -> WinInstallKind.DEVELOPMENT
@@ -36,12 +39,15 @@ object WinApp {
 
     val isDevelopmentBuild: Boolean get() = kind == WinInstallKind.DEVELOPMENT
 
-    val launcherPath: String? get() = if (kind == WinInstallKind.DEVELOPMENT) null else exePath
+    val isPortable: Boolean get() = kind == WinInstallKind.PORTABLE
+
+    val launcherPath: String? get() = if (kind == WinInstallKind.DEVELOPMENT || kind == WinInstallKind.PORTABLE) null else exePath
 
     val appHome: String
         get() {
             homeOverride?.let { return it }
             winGetEnv("FETCHJET_HOME")?.takeIf { it.isNotBlank() }?.let { return it.replace('/', '\\').trimEnd('\\') }
+            if (kind == WinInstallKind.PORTABLE) return "$exeDir\\$PORTABLE_DATA\\$HOME_FOLDER"
             if (kind != WinInstallKind.DEVELOPMENT) return winUserProfile() + "\\" + HOME_FOLDER
             val local = winGetEnv("LOCALAPPDATA") ?: winUserProfile()
             return "$local\\FetchJetDev\\$HOME_FOLDER"

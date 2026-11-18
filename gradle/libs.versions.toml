@@ -21,7 +21,6 @@ material3 = "1.12.0-alpha03"
 ktor = "3.6.1"
 okio = "3.18.2"
 libtorrent4j = "2.1.0-39"
-ytdlnis-bash = "1.0.0"
 ytdlnis-python = "3.14.6"
 commons-io = "2.22.0"
 commons-compress = "1.28.0"
@@ -35,9 +34,7 @@ androidx-testCore = "1.7.0"
 [libraries]
 navigationevent-compose = { module = "org.jetbrains.androidx.navigationevent:navigationevent-compose", version.ref = "navigationevent" }
 auto-launch = { module = "io.github.vinceglb:auto-launch", version.ref = "autoLaunch" }
-ffmpeg = { module = "io.github.junkfood02.youtubedl-android:ffmpeg", version.ref = "library" }
 okhttp3 = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp3" }
-ytdlnis-packages-bash = { module = "io.github.deniscerri:ytdlnis_packages.bash", version.ref = "ytdlnis-bash" }
 ytdlnis-packages-python = { module = "io.github.deniscerri:ytdlnis_packages.python", version.ref = "ytdlnis-python" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }

@@ -41,6 +41,7 @@ internal fun SettingsContentView(
         monitorClipboard = state.monitorClipboard,
         clipboardVideoPages = state.clipboardVideoPages,
         sortIntoFolders = state.sortIntoFolders,
+        extractArchives = state.extractArchives,
         defaultConnections = state.defaultConnections,
         pathResolver = pathResolver,
         onDestinationPathChanged = { viewModel.onEvent(DashboardUiEvent.OnDestinationPathChanged(it)) },
@@ -59,6 +60,7 @@ internal fun SettingsContentView(
             )
         },
         onSortIntoFoldersChanged = { viewModel.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(it)) },
+        onExtractArchivesChanged = { viewModel.onEvent(DashboardUiEvent.OnExtractArchivesChanged(it)) },
         themeMode = state.themeMode,
         onThemeModeChanged = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(it)) },
         pairedDevices = state.pairedDevices,

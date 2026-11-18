@@ -52,7 +52,7 @@ if [ ! -d "$BUILD/xcode/FJTorrent.xcodeproj" ]; then
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS="iphonesimulator iphoneos macosx" \
     -DCMAKE_XCODE_ATTRIBUTE_ARCHS="\$(ARCHS_STANDARD)" \
     -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=NO \
-    -DCMAKE_CXX_FLAGS="$FLAGS" \
+    -DCMAKE_CXX_FLAGS="$FLAGS -w" \
     -DCMAKE_OBJCXX_FLAGS="$FLAGS" \
     -DBOOST_ROOT="$BREW_PREFIX" \
     -Ddeprecated-functions=OFF \

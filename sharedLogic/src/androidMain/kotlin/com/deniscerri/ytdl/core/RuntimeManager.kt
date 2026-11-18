@@ -72,6 +72,7 @@ object RuntimeManager {
     private var OPEN_SSL_CONF: String? = null
     private var ENV_PYTHONHOME: String? = null
     private var TMPDIR: String = ""
+    private var PYTHON_SHIM_DIR: String = ""
     private var YTDLP_CACHE_DIR: String = ""
     private var EJS_CACHE_PLUGIN_DIR: String? = null
 
@@ -200,6 +201,11 @@ object RuntimeManager {
                         NODE_OPTIONS = "--require ${optionsFile.absolutePath}"
                     }
 
+                    PYTHON_SHIM_DIR = File(appContext.filesDir, "fj_python").absolutePath
+                    copyAssetFolder(appContext, "fj_python", File(PYTHON_SHIM_DIR))
+                    File(baseDir, "bin").mkdirs()
+                    File(baseDir, "bin/ffprobe").let { if (!it.exists()) it.createNewFile() }
+
                     val ytdlpPluginsFolder = File(FileUtil.getBundledYTDLPPluginsPath(appContext))
                     copyAssetFolder(appContext, "yt_dlp_plugins", ytdlpPluginsFolder)
 
@@ -268,6 +274,40 @@ object RuntimeManager {
                 input.copyTo(output)
             }
         }
+    }
+
+    fun launch(
+        command: List<String>,
+        env: Map<String, String?>,
+        directory: File?,
+        mergeErr: Boolean
+    ): Process {
+        val exe = File(command[0])
+        val args = command.drop(1)
+        val target: NativeExec.Target? = when (exe.name) {
+            "python" -> {
+                val usr = File(pythonLocation.ldDir, "usr")
+                val lib = File(usr, "lib")
+                NativeExec.Target(
+                    File(lib, "libpython3.14.so").absolutePath,
+                    "Py_BytesMain",
+                    listOf(lib, File(lib, "python3.14/site-packages/curl_cffi.libs"))
+                        .joinToString(":") { it.absolutePath }
+                )
+            }
+            "ffmpeg" -> NativeExec.Target("libffmpeg.so", "main", null)
+            "ffprobe" -> NativeExec.Target("libffprobe.so", "main", null)
+            "qjs" -> NativeExec.Target("libqjs.so", "main", null)
+            else -> null
+        }
+        if (target == null) {
+            val pb = ProcessBuilder(command).redirectErrorStream(mergeErr)
+            pb.environment().putAll(env.filterValues { it != null }.mapValues { it.value!! })
+            if (directory != null) pb.directory(directory)
+            return pb.start()
+        }
+        val argv = listOf(exe.absolutePath) + args
+        return NativeExec.start(target, argv, env, directory, mergeErr)
     }
 
     fun assertInit() {
@@ -477,20 +517,11 @@ object RuntimeManager {
         }
 
         val startTime = System.currentTimeMillis()
-        val processBuilder = ProcessBuilder(fullCommand).redirectErrorStream(redirectErrorStream)
-
-        processBuilder.environment().putAll(getEnvironment())
-        processBuilder.environment().putAll(extraEnv)
-
         val outBuffer = StringBuffer()
         val errBuffer = StringBuffer()
 
-        if (executeDirectory != null) {
-            processBuilder.directory(executeDirectory)
-        }
-
         val process = try {
-            processBuilder.start()
+            launch(fullCommand, getEnvironment() + extraEnv, executeDirectory, redirectErrorStream)
         } catch (e: IOException) {
             throw ExecuteException(e)
         }
@@ -512,6 +543,7 @@ object RuntimeManager {
             )
 
             if (!successCodes.contains(exitCode)) {
+                com.michelle.raouf.fetch_jet.core.log.AppLog.e("process exit $exitCode: ${err.takeLast(600)} ${out.takeLast(300)}")
                 // Check if process was manually killed (removed from map)
                 if (processId != null && !idProcessMap.containsKey(processId)) throw CanceledException()
                 throw ExecuteException(err)
@@ -535,14 +567,8 @@ object RuntimeManager {
             throw ExecuteException("Process ID already exists")
         }
 
-        val processBuilder = ProcessBuilder(fullCommand)
-        processBuilder.environment().putAll(getEnvironment())
-        if (executeDirectory != null) {
-            processBuilder.directory(executeDirectory)
-        }
-
         val process = try {
-            processBuilder.start()
+            launch(fullCommand, getEnvironment(), executeDirectory, false)
         } catch (e: IOException) {
             throw ExecuteException(e)
         }
@@ -611,6 +637,8 @@ object RuntimeManager {
         env["NPM_CLI_PATH"] = NPM_CLI_PATH
         //env["NODE_OPTIONS"] = NODE_OPTIONS
         env["TERM"] = "xterm-256color"
+        env["PYTHONPATH"] = PYTHON_SHIM_DIR
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
 
         return env
     }

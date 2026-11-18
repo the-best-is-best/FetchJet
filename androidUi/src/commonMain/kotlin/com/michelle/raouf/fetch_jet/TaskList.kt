@@ -146,6 +146,7 @@ internal fun TaskListArea(
     val uiState by viewModel.uiState.collectAsState()
 
     var checkedIds by remember { mutableStateOf(emptySet<String>()) }
+    var menuTaskId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(allTasks) {
         val ids = allTasks.mapTo(HashSet()) { it.id }
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
@@ -495,9 +496,64 @@ internal fun TaskListArea(
                                 checkedIds + ids.subList(minOf(from, to), maxOf(from, to) + 1)
                         }
                     }),
-                    onLongClick = { checkedIds = checkedIds + task.id },
+                    onLongClick = {
+                        if (selectionMode) checkedIds = checkedIds + task.id else menuTaskId = task.id
+                    },
+                    rowMenu = {
+                        val strings = com.tbib.kmp_localization.LocalizationManager.Strings
+                        val entries = remember(task, menuTaskId) {
+                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu.entries(
+                                task,
+                                com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions(selectEntry = true)
+                            )
+                        }
+                        DropdownMenu(expanded = menuTaskId == task.id, onDismissRequest = { menuTaskId = null }) {
+                            entries.forEach { entry ->
+                                if (entry.dividerBefore) androidx.compose.material3.HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu.label(entry, strings),
+                                            color = if (entry.danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    onClick = {
+                                        menuTaskId = null
+                                        when (entry) {
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.OPEN -> {
+                                                openDownloadedFile(fullPathOf(task), task.id)
+                                            }
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.OPEN_FOLDER ->
+                                                if (pathResolver.isOpenFolderSupported()) pathResolver.openFileLocation(fullPathOf(task)) else onSelect(task.id)
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.PAUSE ->
+                                                if (task.canResume() == false) onSelect(task.id)
+                                                else viewModel.onEvent(DashboardUiEvent.OnPauseClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.RESUME ->
+                                                viewModel.onEvent(DashboardUiEvent.OnResumeClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.EXTRACT ->
+                                                viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COMPRESS ->
+                                                viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SEND_TO_DEVICE ->
+                                                viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COPY_LINK ->
+                                                viewModel.onEvent(DashboardUiEvent.OnCopyTaskLink(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SELECT ->
+                                                checkedIds = checkedIds + task.id
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.DETAILS -> onSelect(task.id)
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.DELETE ->
+                                                viewModel.onEvent(DashboardUiEvent.OnRemoveClicked(task.id))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    },
                     onCompress = if (com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                         { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
+                    } else null,
+                    onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
+                        { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
                     } else null,
                     onQuickAction = { action ->
                         when (action) {

@@ -15,11 +15,13 @@ import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.core.ZipUtils
 import org.apache.commons.io.FileUtils
 import java.io.File
+import java.io.FileOutputStream
 
 abstract class PackageBase {
     protected abstract val executableName: String      // e.g., "ffmpeg"
     protected abstract val packageFolderName: String      // e.g., "ffmpeg"
     protected abstract val bundledZipName: String   // e.g., "libffmpeg.zip.so"
+    open val bundledLibName: String? get() = null
     protected abstract val canUninstall: Boolean   // set false if library is essential
     protected abstract val githubRepo: String  // e.g deniscerri/ytdlnis-packages
     protected abstract val githubPackageName: String  // e.g ffmpeg
@@ -55,8 +57,8 @@ abstract class PackageBase {
         val packageDir = File(baseDir, "$packagesRoot/$packageFolderName")
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         //try init bundled
-        val bundledZip = File(context.applicationInfo.nativeLibraryDir, bundledZipName)
-        initBundled(context, bundledZip, packageDir)
+        initBundledFromApk(context, packageDir)
+        createPlaceholder(context, baseDir)
         if (apkPackage.isNotBlank()) {
             //try init from package apk
             try {
@@ -79,6 +81,64 @@ abstract class PackageBase {
             prefs.getString(downloadedVersionKey, null)
         } else {
             ""
+        }
+    }
+
+    private fun apkEntry(context: Context, name: String): Triple<java.util.zip.ZipFile, java.util.zip.ZipEntry, String>? {
+        val apk = java.util.zip.ZipFile(context.applicationInfo.sourceDir)
+        for (abi in Build.SUPPORTED_ABIS) {
+            val e = apk.getEntry("lib/$abi/$name")
+            if (e != null) return Triple(apk, e, abi)
+        }
+        apk.close()
+        return null
+    }
+
+    private fun payloadPresent(context: Context): Boolean {
+        val names = listOfNotNull(bundledLibName, bundledZipName.takeIf { it.isNotBlank() })
+        return names.any { n ->
+            File(context.applicationInfo.nativeLibraryDir, n).exists() ||
+                    apkEntry(context, n)?.let { it.first.close(); true } == true
+        }
+    }
+
+    private fun createPlaceholder(context: Context, baseDir: File) {
+        if (!payloadPresent(context)) return
+        val binDir = File(baseDir, "bin").apply { mkdirs() }
+        File(binDir, executableName).let { if (!it.exists()) it.createNewFile() }
+    }
+
+    private fun initBundledFromApk(context: Context, targetDir: File) {
+        if (bundledZipName.isBlank()) return
+        val onDisk = File(context.applicationInfo.nativeLibraryDir, bundledZipName)
+        if (onDisk.exists()) {
+            initBundled(context, onDisk, targetDir)
+            return
+        }
+        val found = apkEntry(context, bundledZipName) ?: return
+        val (apk, entry, _) = found
+        try {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+            val currentSize = entry.size.toString()
+            val sizeMismatch = prefs.getString(bundledVerKey, "") != currentSize
+            if (!targetDir.exists() || sizeMismatch) {
+                val tmp = File(context.cacheDir, "bundled-$executableName.zip")
+                apk.getInputStream(entry).use { input ->
+                    FileOutputStream(tmp).use { out -> input.copyTo(out) }
+                }
+                FileUtils.deleteQuietly(targetDir)
+                targetDir.mkdirs()
+                try {
+                    ZipUtils.unzip(tmp, targetDir)
+                    prefs.edit { putString(bundledVerKey, currentSize) }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    tmp.delete()
+                }
+            }
+        } finally {
+            apk.close()
         }
     }
 
@@ -137,9 +197,9 @@ abstract class PackageBase {
         val downloadedExe = File(packageBinDir, "lib$executableName.so")
 
         //bundled location
-        val bundledBinDir = File(context.applicationInfo.nativeLibraryDir)
+        val bundledBinDir = File(baseDir, "bin")
         val bundledLDDir = File(File(baseDir, packagesRoot), packageFolderName)
-        val bundledExe = File(bundledBinDir, "lib$executableName.so")
+        val bundledExe = File(bundledBinDir, executableName)
 
         val isPackageActive = downloadedExe.exists()
         val isBundleActive = bundledExe.exists()

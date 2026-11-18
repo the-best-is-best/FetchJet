@@ -44,6 +44,63 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _extractArchives =
+        MutableStateFlow(read("extractArchives")?.toBooleanStrictOrNull() ?: false)
+
+    /** Open zip / tar / gz / xz files next to the archive when their download finishes. */
+    val extractArchives: StateFlow<Boolean> = _extractArchives.asStateFlow()
+
+    fun setExtractArchives(on: Boolean) {
+        _extractArchives.value = on; write("extractArchives", on.toString())
+    }
+
+    private val _extractPlace = MutableStateFlow(
+        read("extractPlace")?.let { v -> com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace.entries.firstOrNull { it.name == v } }
+            ?: com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace.SMART
+    )
+
+    val extractPlace: StateFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace> = _extractPlace.asStateFlow()
+
+    fun setExtractPlace(place: com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace) {
+        _extractPlace.value = place; write("extractPlace", place.name)
+    }
+
+    private val _deleteToTrash =
+        MutableStateFlow(read("deleteToTrash")?.toBooleanStrictOrNull() ?: true)
+
+    val deleteToTrash: StateFlow<Boolean> = _deleteToTrash.asStateFlow()
+
+    fun setDeleteToTrash(on: Boolean) {
+        _deleteToTrash.value = on; write("deleteToTrash", on.toString())
+    }
+
+    private val _trashArchiveAfterExtract =
+        MutableStateFlow(read("trashArchiveAfterExtract")?.toBooleanStrictOrNull() ?: false)
+
+    val trashArchiveAfterExtract: StateFlow<Boolean> = _trashArchiveAfterExtract.asStateFlow()
+
+    fun setTrashArchiveAfterExtract(on: Boolean) {
+        _trashArchiveAfterExtract.value = on; write("trashArchiveAfterExtract", on.toString())
+    }
+
+    private val _scanFiles =
+        MutableStateFlow(read("scanFiles")?.toBooleanStrictOrNull() ?: false)
+
+    val scanFiles: StateFlow<Boolean> = _scanFiles.asStateFlow()
+
+    fun setScanFiles(on: Boolean) {
+        _scanFiles.value = on; write("scanFiles", on.toString())
+    }
+
+    private val _scanCommand = MutableStateFlow(read("scanCommand").orEmpty())
+
+    val scanCommand: StateFlow<String> = _scanCommand.asStateFlow()
+
+    fun setScanCommand(command: String) {
+        val clean = command.lines().joinToString(" ")
+        _scanCommand.value = clean; write("scanCommand", clean)
+    }
+
     private val _visibleToDevices =
         MutableStateFlow(read("visibleToDevices")?.toBooleanStrictOrNull() ?: false)
 
@@ -123,6 +180,34 @@ object BehaviorSettings {
             if (folder.isEmpty()) _categoryFolders.value - category else _categoryFolders.value + (category to folder)
         write("folder.$category", folder)
     }
+
+    private val _siteFolders = MutableStateFlow(
+        SiteFolderRules.decode(read("siteFolders")).map {
+            it.copy(folder = com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath(it.folder))
+        }
+    )
+
+    val siteFolders: StateFlow<List<SiteFolderRule>> = _siteFolders.asStateFlow()
+
+    fun siteFolderFor(vararg urls: String?): SiteFolderRule? = SiteFolderRules.match(_siteFolders.value, *urls)
+
+    fun setSiteFolders(rules: List<SiteFolderRule>) {
+        val clean = rules.map { SiteFolderRule(SiteFolderRules.cleanSite(it.site), it.folder.trim()) }
+            .filter { SiteFolderRules.isValidSite(it.site) && it.folder.isNotBlank() }
+            .distinctBy { it.site }
+        if (clean == _siteFolders.value) return
+        _siteFolders.value = clean
+        write("siteFolders", SiteFolderRules.encode(clean))
+    }
+
+    fun addSiteFolder(site: String, folder: String): Boolean {
+        val clean = SiteFolderRules.cleanSite(site)
+        if (!SiteFolderRules.isValidSite(clean) || folder.isBlank()) return false
+        setSiteFolders(_siteFolders.value.filter { it.site != clean } + SiteFolderRule(clean, folder.trim()))
+        return true
+    }
+
+    fun removeSiteFolder(site: String) = setSiteFolders(_siteFolders.value.filter { it.site != site })
 
     private fun read(key: String): String? = try {
         if (!AppFileSystem.exists(file)) null

@@ -14,7 +14,6 @@ const IS_FIREFOX = typeof browser !== "undefined" && /firefox|thunderbird/i.test
 
 const FETCHJET_PORT = 28450;
 const FETCHJET_BASE = `http://127.0.0.1:${FETCHJET_PORT}`;
-const NATIVE_HOST_NAME = "com.michelle.raouf.fetch_jet_downloader";
 const PROTOCOL = "fetchjet://download?url=";
 // Android freezes FetchJet while Firefox is in front, so asking it for qualities hangs until the
 // app is opened. If the app answers a quick ping (its "Keep ready for the browser" setting is on)
@@ -35,10 +34,10 @@ async function appAwake() { return !ON_IOS && ON_ANDROID && await pingApp(1200);
 // ---------------------------------------------------------------------------
 
 const DEFAULT_EXTENSIONS = [
-  "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts",
-  "mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "wma",
-  "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "cab",
-  "pdf", "epub", "mobi", "djvu",
+  "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "mpg", "mpeg", "3gp", "ogv",
+  "mp3", "flac", "wav", "m4a", "aac", "ogg", "opus", "wma", "aiff", "mka",
+  "zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "tbz2", "xz", "txz", "zst", "lz", "lzma", "cab",
+  "pdf", "epub", "mobi", "djvu", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "csv",
   "exe", "msi", "msix", "dmg", "pkg", "deb", "rpm", "appimage", "iso", "img", "bin",
   "apk", "xapk", "ipa", "jar",
   "torrent"
@@ -52,6 +51,7 @@ const DEFAULT_SETTINGS = {
   sendCookies: true,          // send the site's cookies with the link (needed for logins)
   minSizeKB: 0,               // ignore browser downloads smaller than this (0 = all)
   extensions: DEFAULT_EXTENSIONS,
+  limitToListed: false,
   excludedHosts: [],          // never capture on these hosts (suffix match)
   holdKey: "alt",             // hold this key while clicking to download with the browser
   notifications: true,
@@ -364,16 +364,31 @@ async function cookieStoreOf(from) {
   } catch (_) { return null; }
 }
 
+const siteOf = (host) => String(host || "").toLowerCase().split(".").slice(-2).join(".");
+
+async function pageCookieFallback(url, from) {
+  if (!ON_IOS) return "";
+  try {
+    const one = Array.isArray(from) ? from[0] : from;
+    const tabId = typeof one === "number" ? one : one && one.id;
+    if (tabId == null) return "";
+    const res = await api.tabs.sendMessage(tabId, { action: "pageCookie" }, { frameId: 0 });
+    if (!res || !res.cookie || !res.page) return "";
+    return siteOf(new URL(res.page).hostname) === siteOf(new URL(url).hostname) ? res.cookie : "";
+  } catch (_) { return ""; }
+}
+
 async function cookieHeaderFor(url, from = null) {
   const settings = await getSettings();
-  if (!settings.sendCookies || !api.cookies) return "";
+  if (!settings.sendCookies) return "";
+  if (!api.cookies) return pageCookieFallback(url, from);
   try {
     const storeId = await cookieStoreOf(from);
     if (storeId === null) return "";
     const cookies = await api.cookies.getAll(storeId ? { url, storeId } : { url });
-    if (!cookies || cookies.length === 0) return "";
+    if (!cookies || cookies.length === 0) return pageCookieFallback(url, from);
     return cookies.map(c => `${c.name}=${c.value}`).join("; ");
-  } catch (_) { return ""; }
+  } catch (_) { return pageCookieFallback(url, from); }
 }
 
 /** Builds the JSON the app's /add and /links endpoints accept. */
@@ -461,13 +476,6 @@ async function launchApp(firstUrl) {
   const settings = await getSettings();
   if (!settings.autoLaunch) return false;
 
-  // 1. Native messaging host (installed with the desktop app)
-  try {
-    await api.runtime.sendNativeMessage(NATIVE_HOST_NAME, { action: "download", url: firstUrl || "" });
-    return true;
-  } catch (_) { /* not registered */ }
-
-  // 2. fetchjet:// protocol handler (registered by the installer)
   try {
     // Firefox for Android only hands a link to another app from the visible tab.
     const onAndroid = /android/i.test(navigator.userAgent);
@@ -481,8 +489,23 @@ async function launchApp(firstUrl) {
  * iOS: hands one request (or a list) to the app through fetchjet://add. Safari asks "Open in
  * FetchJet?" and the app opens with the link(s), so nothing waits for an answer here.
  */
-async function openAppWith(payload, tabId = null) {
-  const url = IOS_ADD + encodeURIComponent(JSON.stringify(payload));
+const IOS_SESSION_SITES = /(^|\.)zoom\.us$/i;
+
+function iosSessionPage(request) {
+  try {
+    const target = new URL(request.url);
+    if (!IOS_SESSION_SITES.test(target.hostname)) return "";
+    if (/^\/rec\//i.test(target.pathname)) return request.url;
+    const page = new URL(request.referer || "");
+    return /^https?:$/.test(page.protocol) && IOS_SESSION_SITES.test(page.hostname) ? page.href : "";
+  } catch (_) { return ""; }
+}
+
+function openAppWith(payload, tabId = null) {
+  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(payload)), tabId);
+}
+
+async function openAppAt(url, tabId = null) {
   try {
     let id = tabId;
     if (id == null) {
@@ -522,6 +545,8 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
   const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist, from });
   if (ON_IOS) {
+    const page = iosSessionPage(request);
+    if (page) return (await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page))) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
 
@@ -604,7 +629,7 @@ async function shouldTake(item) {
   const fileName = baseName(item.filename);
   // A browser download is already "a file": the extension list only filters when the user
   // narrowed it and the name has an extension we can judge.
-  if ((settings.extensions || []).length > 0 && fileName && extensionOf(fileName) &&
+  if (settings.limitToListed && (settings.extensions || []).length > 0 && fileName && extensionOf(fileName) &&
       !hasWantedExtension(targetUrl, fileName, settings)) return false;
   // App closed and auto-launch off: leave it to the browser (Ezoo behaviour).
   if (!settings.autoLaunch && !(await pingApp())) return false;
@@ -1071,6 +1096,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
 async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
+  if (UDEMY_COURSE_PAGE.test(page)) return;
   const current = await tabState(RES_KEY, tabId);
   if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
@@ -1177,6 +1203,8 @@ async function itemsForTab(tabId) {
 }
 
 /** A Udemy course page (`udemy.com/course/<name>/...`, business sub-domains too). */
+const UDEMY_COURSE_PAGE = /^https:\/\/([\w-]+\.)?udemy\.com\/course\/[^/?#]+/i;
+
 async function udemyCourseForTab(tabId) {
   let pageUrl = "";
   try { pageUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) { return null; }
@@ -1197,8 +1225,18 @@ async function readUdemyCourseInPage(slug, part) {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.json();
   };
+  const courseIdInPage = () => {
+    const html = document.documentElement.innerHTML;
+    const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
+    return found ? found[1] : "";
+  };
   try {
     if (part) {
+      if (!part.id) {
+        part.id = courseIdInPage();
+        if (!part.id) part.id = String((await get(`/api-2.0/courses/${encodeURIComponent(slug)}/?fields[course]=id`)).id || "");
+        if (!part.id) throw new Error("no course id");
+      }
       const pick = (asset) => {
         const all = [].concat(asset.media_sources || [],
           (asset.stream_urls && asset.stream_urls.Video) || [],
@@ -1219,9 +1257,7 @@ async function readUdemyCourseInPage(slug, part) {
         } catch (_) { return {}; }
       }));
     }
-    const html = document.documentElement.innerHTML;
-    const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
-    let id = found ? found[1] : "";
+    let id = courseIdInPage();
     let title = "";
     try {
       const c = await get(`/api-2.0/courses/${id || encodeURIComponent(slug)}/?fields[course]=id,title`);
@@ -1346,7 +1382,9 @@ async function downloadItem(item, tab) {
   if (item.kind === "openApp") {
     // Android / iOS: the app opens with the link and shows the qualities itself.
     if (ON_IOS) {
-      const ok = await openAppWith(await buildRequest({ url: item.url, referer: pageUrl, from: tab }), tab && tab.id);
+      const request = await buildRequest({ url: item.url, referer: pageUrl, from: tab });
+      const page = iosSessionPage(request);
+      const ok = page ? await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) : await openAppWith(request, tab && tab.id);
       return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     }
     try {
@@ -1594,10 +1632,12 @@ async function resolveVideo(msg, tab) {
   if (msg.src && /^https?:/i.test(msg.src)) {
     items.push({ kind: "media", label: fjT("itemVideoFile", { name: baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video" }), sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });
   }
-  if (msg.frame && tab && !msg.page) {
+  const udemy = !!tab && UDEMY_COURSE_PAGE.test(msg.page || tab.url || "");
+  if (tab && (udemy || (msg.frame && !msg.page))) {
     // a player in a frame: what was found for the whole page is what it plays
     const found = (await itemsForTab(tab.id)).items.filter(i => !i.disabled);
     if (found.length) return { items: found };
+    if (msg.poll || udemy) return { pending: true };
   }
   const page = msg.page || (msg.src && !msg.frame ? "" : (tab && tab.url));
   if (page && /^https?:/i.test(page)) {
@@ -1652,6 +1692,14 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const online = await pingApp();
         const config = online ? await fetchAppConfig() : null;
         return { online, config };
+      }
+      case "openPageInApp": {
+        if (!ON_IOS) return { ok: false };
+        const tab = sender.tab || null;
+        let page = request.page || (tab && tab.url) || "";
+        try { if (!/^https?:$/.test(new URL(page).protocol)) page = ""; } catch (_) { page = ""; }
+        if (!page) return { ok: false };
+        return { ok: await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) };
       }
       case "launchApp": {
         const launched = await launchApp(request.url || "");

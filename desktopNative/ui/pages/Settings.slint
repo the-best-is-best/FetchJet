@@ -6,7 +6,7 @@ import { LinearProgress } from "../widgets/Progress.slint";
 import { ScrollArea } from "../widgets/Scroll.slint";
 import { EmojiIcon, Glyph } from "../widgets/Icons.slint";
 import { PickMenu } from "../widgets/Menu.slint";
-import { Core, SettingRowDto, SettingFieldDto, SettingButtonDto, SettingsSectionDto, SettingKind } from "../generated/dto.slint";
+import { Core, SettingRowDto, SettingFieldDto, SettingButtonDto, SettingsSectionDto, SettingKind, CalendarDayDto } from "../generated/dto.slint";
 import { Tr } from "../generated/tr.slint";
 import { Act } from "../generated/actions.slint";
 
@@ -420,6 +420,299 @@ component MenuRow inherits TitleRow {
     }
 }
 
+component WrapChips inherits HorizontalLayout {
+    in property <[string]> options;
+    in property <int> pick;
+    callback picked(index: int);
+    alignment: Dir.rtl ? end : start;
+    spacing: 8px;
+    height: 36px;
+    for unused[slot] in root.options: cell := Rectangle {
+        property <int> i: Dir.rtl ? root.options.length - 1 - slot : slot;
+        property <bool> selected: cell.i + 1 == root.pick;
+        width: label.preferred-width + 30px;
+        height: 34px;
+        border-radius: 17px;
+        border-width: cell.selected ? 0px : 1px;
+        border-color: Theme.outline-variant;
+        background: cell.selected ? Theme.primary : transparent;
+        accessible-role: button;
+        accessible-label: root.options[cell.i];
+        accessible-checkable: true;
+        accessible-checked: cell.selected;
+        accessible-action-default => { root.picked(cell.i); }
+        ta := TouchArea {
+            clicked => { root.picked(cell.i); }
+        }
+        label := Text {
+            text: root.options[cell.i];
+            color: cell.selected ? Theme.on-primary : Theme.on-surface-variant;
+            font-family: Theme.font;
+            font-size: 13px;
+            font-weight: cell.selected ? 700 : 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: 17px;
+            ink: Theme.primary;
+            hovered: ta.has-hover && !cell.selected;
+            pressed: ta.pressed;
+        }
+    }
+}
+
+component StatTiles inherits HorizontalLayout {
+    in property <SettingRowDto> data;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: root.data.top * 1px;
+    padding-bottom: root.data.bottom * 1px;
+    spacing: 12px;
+    for unused[slot] in root.data.tiles: tile := Rectangle {
+        property <int> i: Dir.rtl ? root.data.tiles.length - 1 - slot : slot;
+        width: (root.width - 32px - (root.data.tiles.length - 1) * 12px) / max(1, root.data.tiles.length);
+        height: 92px;
+        border-radius: 14px;
+        background: @linear-gradient(135deg, Theme.primary.with-alpha(tile.i == 0 ? 0.16 : 0.07), Theme.surface-variant.with-alpha(0.45));
+        border-width: 1px;
+        border-color: Theme.primary.with-alpha(tile.i == 0 ? 0.35 : 0.14);
+        VerticalLayout {
+            padding: 16px;
+            spacing: 4px;
+            alignment: center;
+            Text {
+                text: root.data.tiles[tile.i].value;
+                color: tile.i == 0 ? Theme.primary : Theme.on-surface;
+                font-family: Theme.font;
+                font-size: 26px;
+                font-weight: 700;
+                horizontal-alignment: Dir.start;
+                overflow: elide;
+            }
+            Text {
+                text: root.data.tiles[tile.i].label;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: Dir.rtl ? 0px : 0.6px;
+                horizontal-alignment: Dir.start;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component SiteBars inherits VerticalLayout {
+    in property <SettingRowDto> data;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: root.data.top * 1px;
+    padding-bottom: root.data.bottom * 1px;
+    spacing: 14px;
+    for bar[i] in root.data.bars: VerticalLayout {
+        spacing: 6px;
+        HorizontalLayout {
+            spacing: 12px;
+            if Dir.rtl: Text {
+                text: bar.value;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                width: 22px;
+                height: 22px;
+                border-radius: 11px;
+                background: i == 0 ? Theme.primary.with-alpha(0.18) : Theme.surface-variant;
+                Text {
+                    text: i + 1;
+                    color: i == 0 ? Theme.primary : Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: 11px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            Text {
+                text: bar.label;
+                color: Theme.on-surface;
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: 600;
+                horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if !Dir.rtl: Text {
+                text: bar.value;
+                color: Theme.on-surface-variant;
+                font-family: Theme.font;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+        }
+        track := Rectangle {
+            height: 8px;
+            border-radius: 4px;
+            background: Theme.outline-variant.with-alpha(0.45);
+            Rectangle {
+                x: Dir.rtl ? track.width - self.width : 0px;
+                width: max(8px, track.width * bar.fraction);
+                height: 8px;
+                border-radius: 4px;
+                background: i == 0 ? @linear-gradient(90deg, Theme.primary, Theme.secondary) : Theme.primary.with-alpha(0.55);
+            }
+        }
+    }
+}
+
+component CalendarDayCell inherits Rectangle {
+    in property <CalendarDayDto> day;
+    accessible-role: button;
+    accessible-label: root.day.label;
+    accessible-action-default => { Act.settingClick(root.day.id); }
+    Rectangle {
+        visible: !root.day.blank && root.day.inRange && !root.day.edge;
+        y: (parent.height - 34px) / 2;
+        height: 34px;
+        background: Theme.primary.with-alpha(0.13);
+    }
+    Rectangle {
+        visible: !root.day.blank;
+        width: 34px;
+        height: 34px;
+        border-radius: 17px;
+        background: root.day.edge ? Theme.primary : transparent;
+        border-width: root.day.today && !root.day.edge ? 1px : 0px;
+        border-color: Theme.primary;
+        ta := TouchArea {
+            enabled: !root.day.blank;
+            clicked => { Act.settingClick(root.day.id); }
+        }
+        Hover {
+            border-radius: 17px;
+            ink: Theme.primary;
+            hovered: ta.has-hover && !root.day.edge;
+            pressed: ta.pressed;
+        }
+        Text {
+            text: root.day.label;
+            color: root.day.edge ? Theme.on-primary : root.day.inRange ? Theme.primary : Theme.on-surface;
+            font-family: Theme.font;
+            font-size: 13px;
+            font-weight: root.day.edge || root.day.today ? 700 : 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component CalendarArrow inherits Rectangle {
+    in property <string> glyph;
+    in property <string> action;
+    width: 36px;
+    border-radius: 18px;
+    accessible-role: button;
+    accessible-label: root.glyph;
+    accessible-action-default => { Act.settingClick(root.action); }
+    ta := TouchArea {
+        clicked => { Act.settingClick(root.action); }
+    }
+    Hover {
+        border-radius: 18px;
+        ink: Theme.primary;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Text {
+        text: root.glyph;
+        color: Theme.primary;
+        font-family: Theme.symbol-font;
+        font-size: 22px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component MonthCalendar inherits VerticalLayout {
+    in property <SettingRowDto> data;
+    private property <int> weeks: Math.floor((root.data.days.length + 6) / 7);
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: root.data.top * 1px;
+    padding-bottom: root.data.bottom * 1px;
+    Rectangle {
+        border-radius: 14px;
+        background: Theme.surface-variant.with-alpha(0.35);
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.5);
+        VerticalLayout {
+            padding: 12px;
+            spacing: 6px;
+            HorizontalLayout {
+                height: 40px;
+                spacing: 8px;
+                CalendarArrow {
+                    glyph: "‹";
+                    action: Dir.rtl ? "cal.next" : "cal.prev";
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: root.data.title;
+                        color: Theme.on-surface;
+                        font-family: Theme.font;
+                        font-size: 15px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+                    Text {
+                        text: root.data.subtitle;
+                        color: Theme.primary;
+                        font-family: Theme.font;
+                        font-size: 11px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                    }
+                }
+                CalendarArrow {
+                    glyph: "›";
+                    action: Dir.rtl ? "cal.prev" : "cal.next";
+                }
+            }
+            heads := Rectangle {
+                height: 24px;
+                for name[c] in root.data.options: Text {
+                    x: (Dir.rtl ? 6 - c : c) * heads.width / 7;
+                    width: heads.width / 7;
+                    text: name;
+                    color: Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: 11px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            grid := Rectangle {
+                height: root.weeks * 40px;
+                for day[i] in root.data.days: CalendarDayCell {
+                    x: (Dir.rtl ? 6 - Math.mod(i, 7) : Math.mod(i, 7)) * grid.width / 7;
+                    y: Math.floor(i / 7) * 40px;
+                    width: grid.width / 7;
+                    height: 40px;
+                    day: day;
+                }
+            }
+        }
+    }
+}
+
 component RowView inherits VerticalLayout {
     in property <SettingRowDto> data;
     in property <int> index;
@@ -556,10 +849,15 @@ component RowView inherits VerticalLayout {
                     font-weight: 500;
                     overflow: elide;
                 }
-                FilterChips {
+                if !root.data.large: FilterChips {
                     options: root.data.options;
                     pick: root.data.pick;
                     small: root.data.compact;
+                    picked(i) => { Act.settingPick(root.data.id, i); }
+                }
+                if root.data.large: WrapChips {
+                    options: root.data.options;
+                    pick: root.data.pick;
                     picked(i) => { Act.settingPick(root.data.id, i); }
                 }
             }
@@ -737,6 +1035,15 @@ component RowView inherits VerticalLayout {
                         }
                     }
                 }
+            }
+            if root.kind == SettingKind.stats: StatTiles {
+                data: root.data;
+            }
+            if root.kind == SettingKind.bars: SiteBars {
+                data: root.data;
+            }
+            if root.kind == SettingKind.calendar: MonthCalendar {
+                data: root.data;
             }
             if root.kind == SettingKind.progress: LinearProgress {
                 value: root.data.progress;

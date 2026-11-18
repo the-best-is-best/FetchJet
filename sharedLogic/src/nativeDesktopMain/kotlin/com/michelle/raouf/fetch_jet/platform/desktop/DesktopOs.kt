@@ -57,6 +57,7 @@ expect object DesktopOs {
     fun appendBytes(path: String, bytes: ByteArray): Boolean
     fun openFile(path: String, write: Boolean): OsFile?
     fun openFile(path: String, write: Boolean, mode: OsOpen): OsFile?
+    fun lastOpenBlockedByAntivirus(): Boolean
     fun deleteFile(path: String): Boolean
     fun move(source: String, target: String, replace: Boolean): Boolean
     fun restrictToOwner(path: String): Boolean

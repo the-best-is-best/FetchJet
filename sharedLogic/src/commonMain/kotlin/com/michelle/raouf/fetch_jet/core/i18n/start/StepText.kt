@@ -77,6 +77,7 @@ private fun mapCore(s: AppLocalization, core: String): String? {
 
 private fun exact(s: AppLocalization, text: String): String? = when (text.trim().lowercase()) {
     "completed" -> s.stepCompleted
+    com.michelle.raouf.fetch_jet.feature.file_scan.ANTIVIRUS_BLOCKED_ERROR.lowercase() -> s.scanAntivirusBlockedError
     "seeding" -> s.stepSeeding
     "fetching metadata" -> s.stepFetchingMetadata
     "connecting to peers" -> s.stepConnectingToPeers

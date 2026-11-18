@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -323,6 +324,10 @@ class QueueManagerRepository(
 
     /** Checksum verdicts overlaid onto the engine tasks (true = match, false = mismatch). */
     private val _checksumResults = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private class ExtractState(val fraction: Float, val startedAt: Long)
+    private val extractState = MutableStateFlow<Map<String, ExtractState>>(emptyMap())
+    private val scanState = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val scanResults = MutableStateFlow<Map<String, String>>(emptyMap())
     private val checksumVerifyingIds = mutableSetOf<String>()
 
     private val baseTasksFlow: kotlinx.coroutines.flow.Flow<List<DownloadTask>> = combine(
@@ -364,21 +369,59 @@ class QueueManagerRepository(
 
     val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
         baseTasksFlow,
-        _checksumResults
-    ) { tasks, results ->
-        if (results.isEmpty()) tasks
-        else tasks.map { if (it.id in results) it.copy(checksumVerified = results[it.id]) else it }
+        _checksumResults,
+        extractState,
+        scanState,
+        scanResults
+    ) { tasks, results, extracting, scanning, scanned ->
+        val withChecksums =
+            if (results.isEmpty() && scanned.isEmpty()) tasks
+            else tasks.map {
+                val checked = if (it.id in results) it.copy(checksumVerified = results[it.id]) else it
+                scanned[it.id]?.let { verdict -> checked.copy(scanResult = verdict) } ?: checked
+            }
+        if (extracting.isEmpty() && scanning.isEmpty()) withChecksums
+        else withChecksums.map { task ->
+            scanning[task.id]?.let { since ->
+                return@map task.copy(
+                    postProcessLabel = LocalizationManager.Strings.scanningState,
+                    postProcessProgress = -1f,
+                    postProcessStartedAtMs = since
+                )
+            }
+            val state = extracting[task.id] ?: return@map task
+            task.copy(
+                postProcessLabel = LocalizationManager.Strings.extractingState((state.fraction * 100).toInt()),
+                postProcessProgress = state.fraction,
+                postProcessStartedAtMs = state.startedAt
+            )
+        }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
+    private val _archiveEvents = kotlinx.coroutines.flow.MutableSharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent>(extraBufferCapacity = 16)
+
+    /** One event per archive the app opened (or failed to open) after its download finished. */
+    val archiveEvents: kotlinx.coroutines.flow.SharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent> =
+        _archiveEvents.asSharedFlow()
+
+    private val _scanEvents = kotlinx.coroutines.flow.MutableSharedFlow<com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent>(extraBufferCapacity = 16)
+
+    val scanEvents: kotlinx.coroutines.flow.SharedFlow<com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent> =
+        _scanEvents.asSharedFlow()
+
+    private val unfinishedSeen = mutableSetOf<String>()
+    private val extractingIds = MutableStateFlow<Set<String>>(emptySet())
+
     private val activeRunningTaskIds = mutableSetOf<String>()
     private val completedNotifiedTaskIds = mutableSetOf<String>()
 
     init {
         observeTasksForNotifications()
+        observeArchiveExtraction()
         observeChecksumVerification()
         loadAndRestoreTasks()
         observeTasksForPersistence()
@@ -453,6 +496,173 @@ class QueueManagerRepository(
      * verdict (true = match, false = mismatch) into [_checksumResults], which allTasksFlow overlays.
      * Runs once per task; a restored task that already has a stored verdict is left alone.
      */
+    private fun observeArchiveExtraction() {
+        scope.launch {
+            allTasksFlow.collect { tasks ->
+                for (task in tasks) {
+                    if (task.status == DownloadStatus.ERROR && task.scanResult == null && task.id !in scanResults.value &&
+                        task.errorMessage?.contains(com.michelle.raouf.fetch_jet.feature.file_scan.ANTIVIRUS_BLOCKED_ERROR) == true
+                    ) {
+                        scanResults.update { it + (task.id to com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT.code) }
+                        _scanEvents.tryEmit(
+                            com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(
+                                task.fileName, com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT, "blocked while downloading"
+                            )
+                        )
+                    }
+                    if (task.status != DownloadStatus.COMPLETED) {
+                        unfinishedSeen.add(task.id)
+                        continue
+                    }
+                    if (!unfinishedSeen.remove(task.id)) continue
+                    if (task.engineType == EngineType.BITTORRENT || task.fileName.isBlank()) continue
+                    runCatching {
+                        com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(
+                            task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName,
+                            task.url,
+                            task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+                        )
+                    }
+                    val scan = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanFiles.value &&
+                            com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.supported
+                    val target = extractTargetFor(task, tasks)
+                    val extract = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.extractArchives.value && target != null
+                    if (!scan && !extract) continue
+                    scope.launch {
+                        val outcome = if (scan) scanFinished(task) else null
+                        val unsafe = outcome == com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT ||
+                                outcome == com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.BLOCKED
+                        if (extract && !unsafe && target != null) {
+                            extractFinished(
+                                target,
+                                quietIfIncomplete = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.isVolume(target.fileName)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun scanFinished(task: DownloadTask): com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome? {
+        if (task.id in scanState.value) return null
+        scanState.update { it + (task.id to com.michelle.raouf.fetch_jet.core.util.currentEpochMs()) }
+        try {
+            val path = task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName
+            val result = try {
+                com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.scan(
+                    path,
+                    task.url,
+                    com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanCommand.value
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                com.michelle.raouf.fetch_jet.feature.file_scan.ScanResult(
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED, e.message ?: "error"
+                )
+            }
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.fileName}: ${result.outcome.code} ${result.detail}" }
+            scanResults.update { it + (task.id to result.outcome.code) }
+            _scanEvents.emit(com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.fileName, result.outcome, result.detail))
+            return result.outcome
+        } finally {
+            scanState.update { it - task.id }
+        }
+    }
+
+    private fun extractTargetFor(task: DownloadTask, tasks: List<DownloadTask>): DownloadTask? {
+        val set = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.volumeSet(task.fileName)
+        if (set == null) return task.takeIf { com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.isArchive(it) }
+        val folder = task.destinationPath.trimEnd('/', '\\')
+        val parts = tasks.filter {
+            it.destinationPath.trimEnd('/', '\\') == folder &&
+                    com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.volumeSet(it.fileName) == set
+        }
+        if (parts.any { it.status != DownloadStatus.COMPLETED }) return null
+        val numbers = parts.mapNotNull { com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.volumeNumber(it.fileName) }.toSet()
+        if (numbers.isEmpty() || (1..numbers.max()).any { it !in numbers }) return null
+        return parts.firstOrNull { com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.volumeNumber(it.fileName) == 1 }
+            ?.takeIf { com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.isArchive(it) }
+    }
+
+    private suspend fun extractFinished(
+        task: DownloadTask,
+        openWhenDone: Boolean = false,
+        password: String? = null,
+        quietIfIncomplete: Boolean = false,
+    ) {
+        if (task.id in extractingIds.value) return
+        extractingIds.update { it + task.id }
+        val startedAt = com.michelle.raouf.fetch_jet.core.util.currentEpochMs()
+        extractState.update { it + (task.id to ExtractState(0f, startedAt)) }
+        try {
+            val path = (task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName).toPath()
+            if (!quietIfIncomplete) {
+                _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, 0, null, started = true))
+            }
+            val event = try {
+                val result = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.extract(
+                    path, password = password, place = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.extractPlace.value
+                ) { fraction ->
+                    val shown = extractState.value[task.id]?.fraction ?: 0f
+                    if (fraction - shown >= 0.01f || fraction >= 1f) {
+                        extractState.update { it + (task.id to ExtractState(fraction, startedAt)) }
+                    }
+                }
+                result.items.forEach { markExtracted(task, it) }
+                if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.trashArchiveAfterExtract.value &&
+                    com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported
+                ) {
+                    com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path.toString())
+                }
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, result.files, null, destination = result.destination)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.fileName}: ${e.message}" }
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(
+                    task.fileName, 0, e.message ?: "error", taskId = task.id,
+                    needsPassword = e is com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException,
+                    wrongPassword = (e as? com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException)?.wrong == true,
+                )
+            }
+            if (quietIfIncomplete && event.error == com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.MISSING_PART) return
+            _archiveEvents.emit(event)
+            if (openWhenDone && event.error == null && event.destination.isNotBlank()) {
+                try {
+                    pathResolver.openFileLocation(event.destination)
+                } catch (_: Throwable) {
+                }
+            }
+        } finally {
+            extractingIds.update { it - task.id }
+            extractState.update { it - task.id }
+        }
+    }
+
+    private fun markExtracted(task: DownloadTask, destination: String) {
+        val page = task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val top = destination.toPath()
+        runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(top.toString(), task.url, page) }
+        val isFolder = runCatching {
+            com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.metadataOrNull(top)?.isDirectory == true
+        }.getOrDefault(false)
+        if (!isFolder) return
+        runCatching {
+            com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.listRecursively(top).forEach { path ->
+                runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), task.url, page) }
+            }
+        }
+    }
+
+    /** The Extract button: opens a finished archive now, whatever the "extract when they finish" setting says. */
+    fun extractNow(taskId: String, password: String? = null) {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return
+        if (!com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.isArchive(task)) return
+        scope.launch { extractFinished(task, openWhenDone = true, password = password) }
+    }
+
     private fun observeChecksumVerification() {
         scope.launch {
             allTasksFlow.collect { tasks ->
@@ -498,6 +708,12 @@ class QueueManagerRepository(
         headers: Map<String, String> = emptyMap()
     ): com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist? =
         com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url, headers)
+
+    private fun trashInsteadOfDelete(task: DownloadTask, path: String): Boolean =
+        task.status == DownloadStatus.COMPLETED &&
+                com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.deleteToTrash.value &&
+                com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported &&
+                com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path)
 
     private fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
@@ -596,12 +812,23 @@ class QueueManagerRepository(
         val cutAfterDownload =
             clipByCutting && (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank())
         val taskId = generateUniqueTaskId()
-        val baseDir =
-            if (!customDestinationPath.isNullOrBlank()) customDestinationPath else pathResolver.getDownloadsDirectory()
+        val safeFileName = customFileName?.let {
+            if (engineType == EngineType.BITTORRENT) it else pathResolver.sanitizeFileName(it).ifBlank { null }
+        }
+        val siteRule = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolderFor(
+            targetUrl, originalMediaUrl, requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        )
+        val fromSiteRule = siteRule != null && (customDestinationPath.isNullOrBlank() ||
+                com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(customDestinationPath, siteRule.folder))
+        val baseDir = when {
+            !customDestinationPath.isNullOrBlank() -> customDestinationPath
+            siteRule != null -> siteRule.folder
+            else -> pathResolver.getDownloadsDirectory()
+        }
         // "Sort into folders": Video / Music / Archives / ... under the chosen folder, by file type.
         val destDir =
-            if (sortByType && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
-                val nameForType = (customFileName ?: torrentName ?: targetUrl.substringBefore('?')
+            if (!fromSiteRule && sortByType && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.sortIntoFolders.value) {
+                val nameForType = (safeFileName ?: torrentName ?: targetUrl.substringBefore('?')
                     .substringAfterLast('/'))
                 com.michelle.raouf.fetch_jet.core.settings.FileCategory.folderFor(
                     nameForType,
@@ -623,7 +850,7 @@ class QueueManagerRepository(
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
-            fileName = customFileName?.let { if (keepExistingFiles) freeNameIn(destDir, it) else it }
+            fileName = safeFileName?.let { if (keepExistingFiles) freeNameIn(destDir, it) else it }
                 ?: torrentName ?: "",
             destinationPath = destDir,
             engineType = engineType,
@@ -756,7 +983,7 @@ class QueueManagerRepository(
                                 try {
                                     val okPath = p.toPath()
                                     if (AppFileSystem.exists(okPath)) {
-                                        AppFileSystem.delete(okPath)
+                                        if (p != filePathsToCheck.first() || !trashInsteadOfDelete(task, p)) AppFileSystem.delete(okPath)
                                     }
                                 } catch (_: Exception) {
                                 }
@@ -789,10 +1016,7 @@ class QueueManagerRepository(
                                 if (AppFileSystem.exists(tempOkioPath)) {
                                     val list = AppFileSystem.list(tempOkioPath)
                                     for (item in list) {
-                                        if (item.name.startsWith(baseName) || item.name.startsWith(
-                                                effectiveFileName
-                                            )
-                                        ) {
+                                        if (ownsTempItem(item.name, effectiveFileName, baseName, task.engineType)) {
                                             try {
                                                 AppFileSystem.delete(item)
                                             } catch (_: Exception) {
@@ -810,7 +1034,7 @@ class QueueManagerRepository(
                             val dirPath = "${task.destinationPath}/${task.fileName}".toPath()
                             if (AppFileSystem.exists(dirPath)) {
                                 try {
-                                    AppFileSystem.deleteRecursively(dirPath)
+                                    if (!trashInsteadOfDelete(task, dirPath.toString())) AppFileSystem.deleteRecursively(dirPath)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -1082,4 +1306,10 @@ internal fun codeHostRawUrl(url: String): String {
         Regex("""^(https?://(?:www\.)?gitlab\.com/.+?/-)/blob/(.+)$""", RegexOption.IGNORE_CASE)
     gitlab.matchEntire(url)?.let { return "${it.groupValues[1]}/raw/${it.groupValues[2]}" }
     return url
+}
+
+internal fun ownsTempItem(itemName: String, fileName: String, baseName: String, engine: EngineType): Boolean {
+    if (fileName.isBlank()) return false
+    if (itemName == fileName || itemName.startsWith("$fileName.")) return true
+    return engine == EngineType.MEDIA_STREAM && baseName.isNotBlank() && itemName.startsWith("$baseName.")
 }

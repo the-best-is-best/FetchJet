@@ -133,11 +133,13 @@ struct AddFileNameSection: View {
                 AddLabel(text: store.strings.addFileNameLabel)
                 AddField(
                     icon: inspecting ? "⏳" : "📝",
+                    placeholder: (s.needsFileName && !inspecting) ? store.strings.fileNameNeeded : "",
                     text: binding,
                     enabled: !inspecting,
                     trailing: (!s.fileNameOverride.isEmpty && s.fileNameOverride != s.suggestedFileName)
                         ? AnyView(AddFieldIcon(symbol: "↺") { store.send(DashboardUiEventOnFileNameChanged(name: "")) })
-                        : nil
+                        : nil,
+                    hasError: s.needsFileName && !inspecting
                 )
             }
         }
@@ -165,13 +167,6 @@ struct AddDestinationSection: View {
     @Binding var showFolderPicker: Bool
     private let resolver = PathResolver()
 
-    private var typeFolder: String? {
-        let s = store.state
-        guard s.sortIntoFolders else { return nil }
-        let name = s.fileNameOverride.isEmpty ? s.suggestedFileName : s.fileNameOverride
-        return FileCategory.shared.folderFor(fileName: name, isMedia: s.detectedEngine == .mediaStream, isTorrent: s.detectedEngine == .bittorrent)
-    }
-
     var body: some View {
         let strings = store.strings
         let downloads = resolver.getDownloadsDirectory()
@@ -185,6 +180,11 @@ struct AddDestinationSection: View {
                 text: Binding(get: { store.state.destinationPath }, set: { store.send(DashboardUiEventOnDestinationPathChanged(path: $0)) }),
                 trailing: AnyView(AddFieldIcon(symbol: "📂") { showFolderPicker = true })
             )
+            if !store.state.addFolderRuleSite.isEmpty {
+                Text(strings.addFolderFromRule + " " + store.state.addFolderRuleSite)
+                    .font(.system(size: 12))
+                    .foregroundStyle(FJTheme.color.primary)
+            }
             HStack(spacing: 8) {
                 quick("📥", strings.quickFolderDownloads) { set(downloads) }
                 quick("📄", strings.quickFolderDocuments) { set(docs) }
@@ -197,20 +197,10 @@ struct AddDestinationSection: View {
                 }
             }
         }
-        .onAppear { applyTypeFolder(downloads, docs, desktop) }
-        .onChange(of: typeFolder) { _, _ in applyTypeFolder(downloads, docs, desktop) }
     }
 
     private func set(_ path: String) {
         store.send(DashboardUiEventOnDestinationPathChanged(path: path))
-    }
-
-    private func applyTypeFolder(_ downloads: String, _ docs: String, _ desktop: String) {
-        let current = store.state.destinationPath
-        let base = FileCategory.shared.stripTypeFolders(path: current, keep: [downloads, docs, desktop])
-        let sep = base.contains("\\") ? "\\" : "/"
-        let full = typeFolder.map { base + sep + $0 } ?? base
-        if full != current { set(full) }
     }
 
     private func quick(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {

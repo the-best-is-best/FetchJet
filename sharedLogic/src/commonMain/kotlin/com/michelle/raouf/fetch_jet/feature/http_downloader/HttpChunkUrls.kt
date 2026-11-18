@@ -45,7 +45,8 @@ internal suspend fun HttpChunkDownloader.resolveFinalUrlAndMetadata(
             ResolvedHttpMetadata(
                 finalUrl = currentUrl,
                 statusCode = response.status.value,
-                statusDescription = response.status.description,
+                statusDescription = response.headers["X-FetchJet-Proxy-Error"]?.takeIf { status !in 200..299 && it.isNotBlank() }
+                    ?: response.status.description,
                 contentType = contentType,
                 contentLength = response.contentLength() ?: -1L,
                 acceptRanges = response.headers[HttpHeaders.AcceptRanges]?.lowercase() == "bytes",

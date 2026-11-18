@@ -14,6 +14,8 @@ internal interface DeviceSyncStore {
 
     fun removePairing(deviceId: String)
 
+    fun renamePaired(deviceId: String, name: String): Boolean
+
     fun blockedDevices(): List<PairedDevice>
 
     fun isBlocked(deviceId: String): Boolean

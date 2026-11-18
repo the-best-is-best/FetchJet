@@ -42,6 +42,8 @@ object Channels {
 
     val TORRENT_DETAILS = ChannelSpec(28, "torrentDetails", ChannelKind.STRUCT, "TorrentDetailsDto")
 
-    const val COUNT = 29
+    val ROW_MENU = ChannelSpec(29, "rowMenu", ChannelKind.LIST, "RowMenuItemDto")
+
+    const val COUNT = 30
     const val FULL_FLAG = 0x100
 }

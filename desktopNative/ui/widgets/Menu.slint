@@ -1,6 +1,6 @@
 import { Theme, Dir } from "../theme.slint";
 import { Hover } from "Base.slint";
-import { MenuOptionDto } from "../generated/dto.slint";
+import { MenuOptionDto, RowMenuItemDto } from "../generated/dto.slint";
 
 export component OptionsMenu inherits PopupWindow {
     in property <[MenuOptionDto]> options;
@@ -184,6 +184,88 @@ export component PickMenu inherits PopupWindow {
                 Hover {
                     hovered: tap.has-hover;
                     pressed: tap.pressed;
+                }
+            }
+        }
+    }
+}
+
+export component RowMenuPopup inherits PopupWindow {
+    in property <[RowMenuItemDto]> items;
+    callback picked(key: int);
+    width: clamp(measure.preferred-width + 40px, 180px, 300px);
+    close-policy: PopupClosePolicy.close-on-click-outside;
+    forward-focus: keys;
+    Rectangle {
+        background: Theme.surface-container;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        drop-shadow-blur: 12px;
+        drop-shadow-color: #00000040;
+    }
+    measure := VerticalLayout {
+        visible: false;
+        for item in root.items: Text {
+            text: item.label;
+            font-family: Theme.font;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.close();
+                return accept;
+            }
+            reject
+        }
+        VerticalLayout {
+            padding-top: 6px;
+            padding-bottom: 6px;
+            for item in root.items: VerticalLayout {
+                if item.divider: Rectangle {
+                    height: 9px;
+                    Rectangle {
+                        x: 8px;
+                        width: parent.width - 16px;
+                        height: 1px;
+                        background: Theme.outline-variant.with-alpha(0.5);
+                    }
+                }
+                Rectangle {
+                    height: 38px;
+                    accessible-role: button;
+                    accessible-label: item.label;
+                    accessible-action-default => {
+                        root.picked(item.key);
+                        root.close();
+                    }
+                    ta := TouchArea {
+                        clicked => {
+                            root.picked(item.key);
+                            root.close();
+                        }
+                    }
+                    Text {
+                        x: 16px;
+                        width: parent.width - 32px;
+                        text: item.label;
+                        color: item.danger ? Theme.error : Theme.on-surface;
+                        font-family: Theme.font;
+                        font-size: 14px;
+                        font-weight: 500;
+                        letter-spacing: Dir.rtl ? 0px : 0.1px;
+                        horizontal-alignment: Dir.start;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    Hover {
+                        ink: item.danger ? Theme.error : Theme.on-surface;
+                        hovered: ta.has-hover;
+                        pressed: ta.pressed;
+                    }
                 }
             }
         }

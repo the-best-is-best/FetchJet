@@ -123,6 +123,11 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         Channels.TORRENT_DETAILS.id, Channels.TORRENT_DETAILS.name,
         com.michelle.raouf.fetch_jet.nativeapp.dto.TorrentDetailsDto.serializer(), notifier
     )
+    val rowMenu = ListChannel(
+        Channels.ROW_MENU.id, Channels.ROW_MENU.name,
+        com.michelle.raouf.fetch_jet.nativeapp.dto.RowMenuItemDto.serializer(), notifier
+    )
+    val rowMenuTask = MutableStateFlow<String?>(null)
     val torrentLocal = MutableStateFlow(TorrentLocal())
     val debugSections = MutableStateFlow(false)
     val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
@@ -130,7 +135,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
         addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, updateDialog, addLinks, deviceSheet,
-        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails,
+        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails, rowMenu,
     )
 
     @kotlin.concurrent.Volatile

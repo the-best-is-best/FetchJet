@@ -202,7 +202,7 @@ private fun closingResponseHead(head: String): ByteArray {
 
 private fun answer(socket: Long, status: Int, reason: String) {
     val challenge = if (status == 407) "Proxy-Authenticate: Basic realm=\"FetchJet\"\r\n" else ""
-    sendAll(socket, latin1Bytes("HTTP/1.1 $status $reason\r\n${challenge}Content-Length: 0\r\nConnection: close\r\n\r\n"))
+    sendAll(socket, latin1Bytes("HTTP/1.1 $status $reason\r\n${challenge}X-FetchJet-Proxy-Error: $reason\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"))
 }
 
 private fun socksLost(): ProxyFailure =
@@ -360,6 +360,8 @@ class LoopbackProxy private constructor(
     private val upstream: SocksUpstream?,
     private val login: String?,
     speedLimit: (() -> Long)?,
+    private val resolver: ((String) -> List<String>?)?,
+    private val source: String?,
 ) {
     private val limiter = speedLimit?.let { ProxyRateLimiter(it) }
     private val lock = sockets.newLock()
@@ -542,16 +544,33 @@ class LoopbackProxy private constructor(
         pumpDown(tunnel, !tunnelled)
     }
 
+    private fun lookUp(host: String, port: Int): List<LoopAddress>? {
+        val own = resolver
+        if (own == null || sockets.numericAddress(host) != null || host.equals("localhost", ignoreCase = true)) {
+            return sockets.resolve(host, port)
+        }
+        val ips = own(host) ?: return null
+        return ips.flatMap { sockets.resolve(it, port).orEmpty() }.ifEmpty { null }
+    }
+
     private fun openSocket(tunnel: ProxyTunnel, host: String, port: Int, what: String): ProxyFailure? {
-        val found = sockets.resolve(host, port) ?: return ProxyFailure(502, "The name of $what could not be resolved")
+        val found = lookUp(host, port) ?: return ProxyFailure(502, "The name of $what could not be resolved")
+        val from = source?.let { sockets.resolve(it, 0)?.firstOrNull() ?: return ProxyFailure(502, "The network adapter $it is not available") }
         var attempts = 0
+        var bindFailed = false
         for (v6 in booleanArrayOf(false, true)) {
+            if (from != null && from.isV6 != v6) continue
             for (address in found) {
                 if (address.isV6 != v6) continue
                 if (attempts >= CONNECT_ATTEMPTS) break
                 attempts++
                 val socket = sockets.newTcp(v6)
                 if (socket == sockets.noSocket) continue
+                if (from != null && !sockets.bindSource(socket, from)) {
+                    sockets.close(socket)
+                    bindFailed = true
+                    continue
+                }
                 if (!adopt(tunnel, socket)) {
                     sockets.close(socket)
                     return TUNNEL_STOPPED
@@ -564,6 +583,8 @@ class LoopbackProxy private constructor(
                 if (tunnel.stopping.value != 0) return TUNNEL_STOPPED
             }
         }
+        if (bindFailed) return ProxyFailure(502, "The network adapter $source is not available")
+        if (from != null && attempts == 0) return ProxyFailure(502, "The network adapter $source cannot reach $what")
         return ProxyFailure(502, "Could not connect to $what")
     }
 
@@ -636,6 +657,8 @@ class LoopbackProxy private constructor(
             upstream: SocksUpstream? = null,
             login: String? = null,
             speedLimit: (() -> Long)? = null,
+            resolver: ((String) -> List<String>?)? = null,
+            source: String? = null,
         ): LoopbackProxy {
             sockets.prepare()
             val listener = sockets.newTcp(false)
@@ -647,7 +670,7 @@ class LoopbackProxy private constructor(
                 throw LoopbackProxyException("listen on 127.0.0.1: $text")
             }
             val expected = login?.let { "Basic " + Base64.encode(it.encodeToByteArray()) }
-            val proxy = LoopbackProxy(listener, port, upstream, expected, speedLimit)
+            val proxy = LoopbackProxy(listener, port, upstream, expected, speedLimit, resolver, source)
             if (!sockets.startThread { proxy.acceptLoop() }) {
                 val text = sockets.lastErrorText()
                 sockets.close(listener)

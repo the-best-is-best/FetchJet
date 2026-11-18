@@ -917,6 +917,101 @@ interface AppLocalization : LocalizationProvider {
     val mainSetupExtensionRow: String
     val mainSetupExtensionConnected: String
     val mainSetupExtensionMissing: String
+
+    val extractArchives: String
+    val extractArchivesOn: String
+    val extractArchivesOff: String
+    fun extractedDone(name: String, files: Int): String
+    fun extractFailed(name: String, reason: String): String
+    val extractNow: String
+    fun extractStarted(name: String): String
+    fun extractingState(percent: Int): String
+    val scanFiles: String
+    val scanFilesSystem: String
+    val scanFilesCommand: String
+    val scanFilesOff: String
+    val scanCommandLabel: String
+    val scanCommandHint: String
+    val scanCommandHintNoScanner: String
+    val rowMenuOpen: String
+    val rowMenuOpenFolder: String
+    val rowMenuPause: String
+    val rowMenuResume: String
+    val rowMenuExtract: String
+    val rowMenuCompress: String
+    val rowMenuSendToDevice: String
+    val rowMenuCopyLink: String
+    val rowMenuSelect: String
+    val rowMenuDetails: String
+    val rowMenuDelete: String
+    val siteFoldersGroup: String
+    val siteFoldersHint: String
+    val siteFoldersEmpty: String
+    val siteFolderFolder: String
+    val siteFolderChoose: String
+    val siteFolderAdd: String
+    val siteFolderLink: String
+    val siteFolderNotChosen: String
+    val addFolderFromRule: String
+    val netDnsGroup: String
+    val netDnsHint: String
+    val netDnsTitle: String
+    val netDnsSystem: String
+    val netDnsCustom: String
+    val netDnsCustomLabel: String
+    val netAdapterLabel: String
+    val netDnsProxyOn: String
+    val deleteToTrash: String
+    val deleteToTrashOn: String
+    val deleteToTrashOff: String
+    val trashArchive: String
+    val deleteToTrashNotWindows: String
+    val trashArchiveNotWindows: String
+    val trashArchiveOn: String
+    val trashArchiveOff: String
+    val archivePasswordTitle: String
+    val archivePasswordHint: String
+    val archivePasswordWrong: String
+    val archivePasswordLabel: String
+    val extractPlaceTitle: String
+    val extractPlaceSmart: String
+    val extractPlaceFolder: String
+    val extractPlaceNextTo: String
+    val reportFooter: String
+    val reportFiles: String
+    val reportSize: String
+    val reportEmpty: String
+    val sectionReport: String
+    val sectionReportBlurb: String
+    val reportPeriod: String
+    val reportThisMonth: String
+    val reportLastMonth: String
+    val reportLast7: String
+    val reportLast30: String
+    val reportThisYear: String
+    val reportAllTime: String
+    val reportCustom: String
+    val reportFrom: String
+    val reportTo: String
+    val reportSites: String
+    val reportTopSites: String
+    val reportNothingInPeriod: String
+    val reportMonthNames: String
+    val reportWeekdays: String
+    val scanningState: String
+    val scanTitle: String
+    val scanClean: String
+    val scanThreatFound: String
+    val scanBlocked: String
+    val scanAntivirusBlockedError: String
+    val scanFailedState: String
+    fun scanThreat(name: String, detail: String): String
+    fun scanBlockedToast(name: String): String
+    fun scanFailed(name: String, detail: String): String
+    val scanNoScanner: String
+    val fileNameNeeded: String
+    val storageNeedsAllFiles: String
+    fun folderNotWritable(folder: String): String
 }
 
 val LocalizationManager.Strings: AppLocalization

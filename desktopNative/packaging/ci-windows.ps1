@@ -212,13 +212,21 @@ function Package {
     if (-not (Test-Path -LiteralPath $msi)) { Fail "no $msi" }
     RunScript 'check-msi.ps1' @('-Msi', $msi, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msi'))
 
+    & (Join-Path $packaging 'build-setup.cmd')
+    if ($LASTEXITCODE -ne 0) {
+        $log = Join-Path $out 'build-setup.log'
+        if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 80 }
+        Fail 'build-setup.cmd failed'
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $out "FetchJet-$version-setup.exe"))) { Fail "no FetchJet-$version-setup.exe" }
+
     RunScript 'msix\build-msix.ps1' @('-Stage', $stage, '-Out', $out, '-SdkBin', $env:FJ_SDK_BIN)
     $msix = Join-Path $out "FetchJet-$version-store.msix"
     if (-not (Test-Path -LiteralPath $msix)) { Fail "no $msix" }
     RunScript 'msix\check-msix.ps1' @('-Msix', $msix, '-Stage', $stage, '-Scratch', (Join-Path $ciBase 'check-msix'), '-SdkBin', $env:FJ_SDK_BIN)
 
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath (Join-Path $out "FetchJet-$version-native-stage.zip")
-    Get-ChildItem -LiteralPath $out -File | Where-Object { $_.Extension -in @('.msi', '.msix', '.zip') } |
+    Get-ChildItem -LiteralPath $out -File | Where-Object { $_.Extension -in @('.msi', '.msix', '.zip', '.exe') } |
         ForEach-Object { Write-Host ("{0}  {1:N0} bytes" -f $_.FullName, $_.Length) }
 }
 

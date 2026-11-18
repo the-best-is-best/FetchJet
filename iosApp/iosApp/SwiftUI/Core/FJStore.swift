@@ -61,6 +61,9 @@ final class FJStore: ObservableObject {
         if let t = effect as? DashboardUiEffectShowToast {
             showToast(t.text)
         }
+        if let c = effect as? DashboardUiEffectCopyText {
+            UIPasteboard.general.string = c.text
+        }
         onEffect?(effect)
     }
 }

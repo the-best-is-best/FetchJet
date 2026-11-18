@@ -270,6 +270,25 @@ namespace fjhost::os {
         MessageBoxW(nullptr, widen(text).c_str(), L"FetchJet", MB_ICONERROR | MB_OK);
     }
 
+    void print_out(const std::string &text) {
+        HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (out == nullptr || out == INVALID_HANDLE_VALUE || GetFileType(out) == FILE_TYPE_UNKNOWN) {
+            if (!AttachConsole(ATTACH_PARENT_PROCESS))
+                return;
+            out = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
+            if (out == INVALID_HANDLE_VALUE)
+                return;
+        }
+        DWORD mode = 0;
+        DWORD written = 0;
+        if (GetConsoleMode(out, &mode)) {
+            std::wstring wide = widen(text);
+            WriteConsoleW(out, wide.c_str(), static_cast<DWORD>(wide.size()), &written, nullptr);
+        } else {
+            WriteFile(out, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
+        }
+    }
+
     bool system_uses_dark() {
         DWORD value = 1;
         DWORD size = sizeof value;
@@ -340,6 +359,8 @@ namespace fjhost::os {
         if (!GetWindowRect(window, &rect))
             return;
         if (grow) {
+            if (base_width > 0)
+                return;
             base_width = rect.right - rect.left;
             base_height = rect.bottom - rect.top;
             SetWindowPos(window, nullptr, 0, 0, base_width + 1, base_height + 1, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);

@@ -202,6 +202,13 @@
    "name": "torrentDetails",
    "kind": "STRUCT",
    "dto": "TorrentDetailsDto"
+  },
+  {
+   "const": "ROW_MENU",
+   "id": 29,
+   "name": "rowMenu",
+   "kind": "LIST",
+   "dto": "RowMenuItemDto"
   }
  ],
  "enums": {
@@ -277,7 +284,8 @@
    "EXTENSION_MISSING",
    "EXTENSION_STEPS",
    "EXTENSION_FROM_FILE",
-   "EXTENSION_FAILED"
+   "EXTENSION_FAILED",
+   "ARCHIVE_PASSWORD"
   ],
   "ChannelKind": [
    "STRINGS",
@@ -407,7 +415,10 @@
    "PRESET",
    "BUTTONS",
    "PROGRESS",
-   "LIMIT_BOX"
+   "LIMIT_BOX",
+   "STATS",
+   "BARS",
+   "CALENDAR"
   ],
   "TrackerStateCode": [
    "WORKING",
@@ -562,6 +573,10 @@
     "Boolean"
    ],
    [
+    "fileNameNeeded",
+    "Boolean"
+   ],
+   [
     "checksumShown",
     "Boolean"
    ],
@@ -596,6 +611,10 @@
    [
     "destinationRev",
     "Int"
+   ],
+   [
+    "folderRule",
+    "String"
    ],
    [
     "quickFolders",
@@ -1266,6 +1285,14 @@
    [
     "round",
     "Boolean"
+   ],
+   [
+    "inputLabel",
+    "String"
+   ],
+   [
+    "inputSecret",
+    "Boolean"
    ]
   ],
   "AudioCopyDto": [
@@ -1594,6 +1621,22 @@
     "Int"
    ],
    [
+    "scanShown",
+    "Boolean"
+   ],
+   [
+    "scanIcon",
+    "String"
+   ],
+   [
+    "scanText",
+    "String"
+   ],
+   [
+    "scanTone",
+    "Int"
+   ],
+   [
     "primaryAction",
     "Int"
    ],
@@ -1615,6 +1658,10 @@
    ],
    [
     "canCompress",
+    "Boolean"
+   ],
+   [
+    "canExtract",
     "Boolean"
    ],
    [
@@ -2090,6 +2137,10 @@
     "Boolean"
    ],
    [
+    "canExtract",
+    "Boolean"
+   ],
+   [
     "id",
     "String"
    ],
@@ -2158,6 +2209,10 @@
     "Boolean"
    ],
    [
+    "busy",
+    "Boolean"
+   ],
+   [
     "priority",
     "Int"
    ],
@@ -2195,6 +2250,24 @@
    ],
    [
     "headerCollapsed",
+    "Boolean"
+   ]
+  ],
+  "RowMenuItemDto": [
+   [
+    "key",
+    "Int"
+   ],
+   [
+    "label",
+    "String"
+   ],
+   [
+    "danger",
+    "Boolean"
+   ],
+   [
+    "divider",
     "Boolean"
    ]
   ],
@@ -2328,6 +2401,56 @@
    [
     "tone",
     "Int"
+   ]
+  ],
+  "StatTileDto": [
+   [
+    "value",
+    "String"
+   ],
+   [
+    "label",
+    "String"
+   ]
+  ],
+  "StatBarDto": [
+   [
+    "label",
+    "String"
+   ],
+   [
+    "value",
+    "String"
+   ],
+   [
+    "fraction",
+    "Float"
+   ]
+  ],
+  "CalendarDayDto": [
+   [
+    "label",
+    "String"
+   ],
+   [
+    "id",
+    "String"
+   ],
+   [
+    "blank",
+    "Boolean"
+   ],
+   [
+    "inRange",
+    "Boolean"
+   ],
+   [
+    "edge",
+    "Boolean"
+   ],
+   [
+    "today",
+    "Boolean"
    ]
   ],
   "SettingRowDto": [
@@ -2470,6 +2593,18 @@
    [
     "hint",
     "String"
+   ],
+   [
+    "tiles",
+    "List<StatTileDto>"
+   ],
+   [
+    "bars",
+    "List<StatBarDto>"
+   ],
+   [
+    "days",
+    "List<CalendarDayDto>"
    ]
   ],
   "ShellDto": [
@@ -2771,6 +2906,25 @@
     "String"
    ]
   ],
+  "RowExtract": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "RowMenu": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "RowMenuPick": [
+   [
+    "key",
+    "Int"
+   ]
+  ],
+  "RowMenuClose": [],
   "CyclePriority": [
    [
     "id",
@@ -2883,6 +3037,7 @@
   "DetailsRemove": [],
   "DetailsShare": [],
   "DetailsCompress": [],
+  "DetailsExtract": [],
   "AudioCompressSetMode": [
    [
     "simple",
@@ -2981,6 +3136,16 @@
    [
     "fromScrim",
     "Boolean"
+   ]
+  ],
+  "AlertText": [
+   [
+    "kind",
+    "Int"
+   ],
+   [
+    "text",
+    "String"
    ]
   ],
   "AlertExtra": [
@@ -4137,6 +4302,92 @@
   "defaultAppSystemPageHint",
   "mainSetupExtensionRow",
   "mainSetupExtensionConnected",
-  "mainSetupExtensionMissing"
+  "mainSetupExtensionMissing",
+  "extractArchives",
+  "extractArchivesOn",
+  "extractArchivesOff",
+  "extractNow",
+  "scanFiles",
+  "scanFilesSystem",
+  "scanFilesCommand",
+  "scanFilesOff",
+  "scanCommandLabel",
+  "scanCommandHint",
+  "scanCommandHintNoScanner",
+  "rowMenuOpen",
+  "rowMenuOpenFolder",
+  "rowMenuPause",
+  "rowMenuResume",
+  "rowMenuExtract",
+  "rowMenuCompress",
+  "rowMenuSendToDevice",
+  "rowMenuCopyLink",
+  "rowMenuSelect",
+  "rowMenuDetails",
+  "rowMenuDelete",
+  "siteFoldersGroup",
+  "siteFoldersHint",
+  "siteFoldersEmpty",
+  "siteFolderFolder",
+  "siteFolderChoose",
+  "siteFolderAdd",
+  "siteFolderLink",
+  "siteFolderNotChosen",
+  "addFolderFromRule",
+  "netDnsGroup",
+  "netDnsHint",
+  "netDnsTitle",
+  "netDnsSystem",
+  "netDnsCustom",
+  "netDnsCustomLabel",
+  "netAdapterLabel",
+  "netDnsProxyOn",
+  "deleteToTrash",
+  "deleteToTrashOn",
+  "deleteToTrashOff",
+  "trashArchive",
+  "deleteToTrashNotWindows",
+  "trashArchiveNotWindows",
+  "trashArchiveOn",
+  "trashArchiveOff",
+  "archivePasswordTitle",
+  "archivePasswordHint",
+  "archivePasswordWrong",
+  "archivePasswordLabel",
+  "extractPlaceTitle",
+  "extractPlaceSmart",
+  "extractPlaceFolder",
+  "extractPlaceNextTo",
+  "reportFooter",
+  "reportFiles",
+  "reportSize",
+  "reportEmpty",
+  "sectionReport",
+  "sectionReportBlurb",
+  "reportPeriod",
+  "reportThisMonth",
+  "reportLastMonth",
+  "reportLast7",
+  "reportLast30",
+  "reportThisYear",
+  "reportAllTime",
+  "reportCustom",
+  "reportFrom",
+  "reportTo",
+  "reportSites",
+  "reportTopSites",
+  "reportNothingInPeriod",
+  "reportMonthNames",
+  "reportWeekdays",
+  "scanningState",
+  "scanTitle",
+  "scanClean",
+  "scanThreatFound",
+  "scanBlocked",
+  "scanAntivirusBlockedError",
+  "scanFailedState",
+  "scanNoScanner",
+  "fileNameNeeded",
+  "storageNeedsAllFiles"
  ]
 }

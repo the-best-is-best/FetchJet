@@ -50,6 +50,7 @@ internal enum class SettingsSection(val glyph: String) {
     NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
+    REPORT("≡"),
     UPDATES("↻"),
 }
 
@@ -63,6 +64,7 @@ internal fun SettingsSection.title(): String {
         SettingsSection.NETWORK -> s.sectionNetwork
         SettingsSection.MEDIA -> s.sectionMedia
         SettingsSection.TORRENT -> s.sectionTorrent
+        SettingsSection.REPORT -> s.sectionReport
         SettingsSection.UPDATES -> s.sectionUpdates
     }
 }
@@ -77,6 +79,7 @@ internal fun SettingsSection.blurb(): String {
         SettingsSection.NETWORK -> s.sectionNetworkBlurb
         SettingsSection.MEDIA -> s.sectionMediaBlurb
         SettingsSection.TORRENT -> s.sectionTorrentBlurb
+        SettingsSection.REPORT -> s.sectionReportBlurb
         SettingsSection.UPDATES -> s.sectionUpdatesBlurb
     }
 }
@@ -118,6 +121,15 @@ internal data class SettingsPage(
     val proxy: ProxyDraft? = null,
     val proxyJustSaved: Boolean = false,
     val loginSite: String = "",
+    val ruleSite: String = "",
+    val reportPeriod: com.michelle.raouf.fetch_jet.feature.report.ReportPeriod = com.michelle.raouf.fetch_jet.feature.report.ReportPeriod.THIS_MONTH,
+    val reportFrom: String? = null,
+    val reportTo: String? = null,
+    val reportEditing: String? = null,
+    val reportShownMonth: String? = null,
+    val ruleFolder: String = "",
+    val dnsCustom: String? = null,
+    val adapterDraft: String? = null,
     val loginUser: String = "",
     val loginPassword: String = "",
     val startupBusy: Boolean = true,
@@ -169,6 +181,7 @@ internal data class SettingsSlice(
     val clipboardVideoPages: Boolean,
     val destinationPath: String,
     val sortIntoFolders: Boolean,
+    val extractArchives: Boolean,
     val defaultConnections: Int,
     val lowBytes: Long,
     val lowUnit: String,
@@ -209,6 +222,7 @@ internal fun DashboardUiState.settingsSlice() = SettingsSlice(
     clipboardVideoPages = clipboardVideoPages,
     destinationPath = destinationPath,
     sortIntoFolders = sortIntoFolders,
+    extractArchives = extractArchives,
     defaultConnections = defaultConnections,
     lowBytes = speedPresetLowBytes,
     lowUnit = speedPresetLowUnit,
@@ -237,6 +251,7 @@ internal fun Presenter.visibleSettingsSections(): List<SettingsSection> = Settin
     when (it) {
         SettingsSection.TORRENT -> AppFeatures.torrent || debugSections.value
         SettingsSection.UPDATES -> updateState().supported
+        SettingsSection.REPORT -> com.michelle.raouf.fetch_jet.feature.report.DownloadReport.ENABLED || debugSections.value
         SettingsSection.DEVICES -> DEVICE_SYNC_READY || debugSections.value
         else -> true
     }
@@ -290,6 +305,8 @@ private fun Presenter.sectionHint(section: SettingsSection, v: SettingsSlice): P
                 (if (visible) ToneCode.COMPLETED else ToneCode.MUTED)
         }
 
+        SettingsSection.REPORT -> reportSummary() to ToneCode.MUTED
+
         SettingsSection.UPDATES -> {
             val update = updateState()
             update.available?.let { s.summaryVersionAvailable(it.version) to ToneCode.COMPLETED }
@@ -339,6 +356,14 @@ internal fun Presenter.startSettings() {
         BehaviorSettings.visibleToDevices.map { },
         NetworkSettings.proxy.map { },
         NetworkSettings.logins.map { },
+        BehaviorSettings.siteFolders.map { },
+        BehaviorSettings.deleteToTrash.map { },
+        vm.uiState.map { state -> state.allTasks.count { it.status == com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.COMPLETED } }
+            .distinctUntilChanged().map { },
+        BehaviorSettings.extractPlace.map { },
+        BehaviorSettings.trashArchiveAfterExtract.map { },
+        NetworkSettings.dns.map { },
+        NetworkSettings.adapter.map { },
         SpeedSchedule.enabled.map { },
         SpeedSchedule.windows.map { },
         SpeedSchedule.activeCap.map { },

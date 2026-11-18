@@ -30,7 +30,6 @@ actual object PlatformUpdater {
                 )
             }
         }
-            ?: apks.firstOrNull { it.name.contains("universal", ignoreCase = true) }
             ?: apks.firstOrNull()
     }
 

@@ -334,6 +334,11 @@ namespace fjhost::os {
         std::fprintf(stderr, "FetchJet: %s\n", text.c_str());
     }
 
+    void print_out(const std::string &text) {
+        std::fwrite(text.data(), 1, text.size(), stdout);
+        std::fflush(stdout);
+    }
+
     bool system_uses_dark() {
         const char *forced = std::getenv("FETCHJET_THEME");
         if (forced && *forced)

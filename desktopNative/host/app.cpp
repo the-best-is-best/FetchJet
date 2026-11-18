@@ -281,12 +281,15 @@ namespace fjhost {
 
     void show_window(bool focus) {
         const bool first = !g_shown;
+        const bool was_visible = g_shown && ui().window().is_visible();
         ui().show();
         os::fit_to_work_area(first);
-        slint::Timer::single_shot(std::chrono::milliseconds(400), [first] { os::fit_to_work_area(first); });
-        for (int at : {900, 2200}) {
-            slint::Timer::single_shot(std::chrono::milliseconds(at), [] { os::refresh_surface(true); });
-            slint::Timer::single_shot(std::chrono::milliseconds(at + 250), [] { os::refresh_surface(false); });
+        if (!was_visible) {
+            slint::Timer::single_shot(std::chrono::milliseconds(400), [first] { os::fit_to_work_area(first); });
+            for (int at : {900, 2200}) {
+                slint::Timer::single_shot(std::chrono::milliseconds(at), [] { os::refresh_surface(true); });
+                slint::Timer::single_shot(std::chrono::milliseconds(at + 250), [] { os::refresh_surface(false); });
+            }
         }
         g_shown = true;
         os::apply_title_bar(ui().global<Core>().get_shell().dark);
@@ -342,7 +345,11 @@ namespace fjhost {
         fj::parse_json(take(g_core.prepare((config + (second ? ",\"secondInstance\":true}" : "}")).c_str())), launch, error);
         if (fj::flag(launch, "exit")) {
             os::release_instance(instance);
-            return 0;
+            const fj::Json *output = launch.find("output");
+            if (output && !output->text.empty())
+                os::print_out(output->text + "\n");
+            const fj::Json *code = launch.find("code");
+            return code ? static_cast<int>(code->number) : 0;
         }
         bool start_hidden = fj::flag(launch, "hidden");
 

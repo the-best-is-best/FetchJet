@@ -144,6 +144,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
             if (!event.show) _uiState.update { it.copy(linkListFolder = "") }
             if (!event.show) clearTestLink()
+            if (!event.show) pendingExternalPlaylist = null
             if (!event.show && pendingExternalUrl != null) {
                 val urlToFallback = pendingExternalUrl!!
                 pendingExternalUrl = null
@@ -214,6 +215,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         }
 
         DashboardUiEvent.OnAddDownloadClicked -> {
+            if (!destinationAllowed()) return
             rememberAddFolder()
             addDownload()
         }

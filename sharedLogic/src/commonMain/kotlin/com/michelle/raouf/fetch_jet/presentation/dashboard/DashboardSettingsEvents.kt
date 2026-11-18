@@ -21,6 +21,10 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
             event.on
         )
 
+        is DashboardUiEvent.OnExtractArchivesChanged -> BehaviorSettings.setExtractArchives(
+            event.on
+        )
+
         is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged -> {
 
             _uiState.update {

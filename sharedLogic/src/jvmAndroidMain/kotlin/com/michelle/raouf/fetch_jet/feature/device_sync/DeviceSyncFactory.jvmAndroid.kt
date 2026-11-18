@@ -28,7 +28,11 @@ private fun deviceSyncPlatformName(): String {
     }
     val host = runCatching { deviceSyncHostName() }.getOrNull()?.trim()
         ?.takeIf { it.isNotBlank() && !it.equals("localhost", ignoreCase = true) }
-    return if (host != null && !platform.startsWith("Android")) "$host · $label" else label
+    return when {
+        host == null -> label
+        platform.startsWith("Android") -> host
+        else -> "$host · $label"
+    }
 }
 
 internal expect fun deviceSyncHostName(): String?

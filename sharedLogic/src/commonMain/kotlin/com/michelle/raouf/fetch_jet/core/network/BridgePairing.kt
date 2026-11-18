@@ -45,7 +45,8 @@ object BridgePairing {
         val legacyOrigins: List<String> = emptyList(),
         val blockedOrigins: List<String> = emptyList(),
         val seenBrowsers: Map<String, Long> = emptyMap(),
-        val seenVersions: Map<String, String> = emptyMap()
+        val seenVersions: Map<String, String> = emptyMap(),
+        val automation: Boolean = false
     )
 
     data class Request(val origin: String, val legacy: Boolean)
@@ -56,6 +57,20 @@ object BridgePairing {
     private val blockedOrigins = MutableStateFlow<Set<String>>(emptySet())
     private val seen = MutableStateFlow<Map<String, Long>>(emptyMap())
     private val versions = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val automation = MutableStateFlow(false)
+
+    val automationOn: Boolean
+        get() {
+            token // loads the file
+            return automation.value
+        }
+
+    fun setAutomation(on: Boolean) {
+        val current = token
+        automation.value = on
+        save(current)
+        println("FetchJet bridge: automation API ${if (on) "on" else "off"}")
+    }
 
     /** The extension version last reported by each browser (`X-FetchJet-Ext`); 3.3.0 and newer send it. */
     val seenVersions: StateFlow<Map<String, String>>
@@ -100,6 +115,7 @@ object BridgePairing {
         blockedOrigins.value = stored.blockedOrigins.toSet()
         seen.value = stored.seenBrowsers
         versions.value = stored.seenVersions
+        automation.value = stored.automation
         Secrets.reveal(stored.token)?.takeIf { it.length >= 32 }
             ?: Secrets.randomHex().also { save(it) }
     }
@@ -276,7 +292,8 @@ object BridgePairing {
                     legacyOrigins.value.sorted(),
                     blockedOrigins.value.sorted(),
                     seen.value,
-                    versions.value
+                    versions.value,
+                    automation.value
                 )
             )
             file.parent?.let { AppFileSystem.createDirectories(it) }

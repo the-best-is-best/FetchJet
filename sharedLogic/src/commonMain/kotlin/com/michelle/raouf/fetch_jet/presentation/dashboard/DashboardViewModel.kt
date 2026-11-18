@@ -97,6 +97,9 @@ class DashboardViewModel(
         com.michelle.raouf.fetch_jet.feature.queue_manager.DetectLinkTypeUseCase()
     internal var toolStatusPollJob: Job? = null
     internal var testLinkJob: Job? = null
+    internal var nameProbeJob: Job? = null
+    internal var probedNameUrl: String = ""
+    internal var probedName: String = ""
     internal var inspectMediaJob: Job? = null
     internal var inspectTorrentJob: Job? = null
 
@@ -117,6 +120,7 @@ class DashboardViewModel(
 
         observeQueue()
         observeBehaviorSettings()
+        scope.launch { com.michelle.raouf.fetch_jet.core.telemetry.UsagePing.sendIfDue() }
 
         val savedSettings = settingsRepository.loadSettings()
         com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
@@ -280,6 +284,7 @@ class DashboardViewModel(
             pendingExternalHeaders = request.toRequestHeaders()
             pendingExternalFileName = null
             pendingExternalPlaylist = null
+            _uiState.update { it.copy(courseReading = request.reading) }
             onEvent(DashboardUiEvent.OnUrlChanged(request.url))
             onEvent(DashboardUiEvent.OnToggleAddDialog(true))
         }
@@ -341,8 +346,8 @@ class DashboardViewModel(
     ) {
         scope.launch {
             val state = _uiState.value
-            val destDir =
-                state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
+            val destDir = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolderFor(request.url, request.referer)?.folder
+                ?: state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
             val qualities = request.mediaQualities
             val selected = qualities.firstOrNull { it.isSelected } ?: qualities.firstOrNull()
             val rawName = request.fileName.ifBlank {
@@ -403,6 +408,7 @@ class DashboardViewModel(
                 pendingExternalUrl = request.url
                 pendingExternalHeaders = request.toRequestHeaders()
                 pendingExternalFileName = request.fileName.ifBlank { null }
+                pendingExternalPlaylist = null
                 onEvent(DashboardUiEvent.OnUrlChanged(request.url))
                 onEvent(DashboardUiEvent.OnToggleAddDialog(true))
                 return@launch
@@ -498,12 +504,14 @@ class DashboardViewModel(
                 if (review || engine == EngineType.MEDIA_STREAM) {
                     mediaPages += req; continue
                 } // a video page: needs the inspector (the Add dialog's link list below)
+                val reqDir = (if (folder.isBlank()) com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+                    .siteFolderFor(req.url, req.referer)?.folder else null) ?: destDir
                 val name = req.fileName.ifBlank { null }
                     ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
-                    ?.let { freeFileName(destDir, it) }
+                    ?.let { freeFileName(reqDir, it) }
                 queueRepository.enqueueTask(
                     url = req.url,
-                    customDestinationPath = destDir,
+                    customDestinationPath = reqDir,
                     customFileName = name,
                     disableUpload = _uiState.value.disableTorrentUpload,
                     maxDownloadSpeedBytesPerSec = _uiState.value.selectedDownloadSpeedLimitBytes,
@@ -578,6 +586,43 @@ class DashboardViewModel(
                 }
             }
         }
+        scope.launch {
+            BehaviorSettings.extractArchives.collect { on ->
+                _uiState.update { it.copy(extractArchives = on) }
+            }
+        }
+        scope.launch {
+            queueRepository.scanEvents.collect { event ->
+                val strings = LocalizationManager.Strings
+                val text = when (event.outcome) {
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.THREAT -> strings.scanThreat(event.name, event.detail)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.BLOCKED -> strings.scanBlockedToast(event.name)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED -> strings.scanFailed(event.name, event.detail)
+                    com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.NO_SCANNER -> strings.scanNoScanner
+                    else -> null
+                }
+                if (text != null) _uiEffect.emit(DashboardUiEffect.ShowToast(text))
+            }
+        }
+        scope.launch {
+            queueRepository.archiveEvents.collect { event ->
+                val strings = LocalizationManager.Strings
+                val failure = event.error
+                if (event.needsPassword && event.taskId.isNotEmpty()) {
+                    _uiState.update {
+                        it.copy(archivePassword = ArchivePasswordAsk(event.taskId, event.name, event.wrongPassword))
+                    }
+                    return@collect
+                }
+                _uiEffect.emit(
+                    DashboardUiEffect.ShowToast(
+                        if (event.started) strings.extractStarted(event.name)
+                        else if (failure == null) strings.extractedDone(event.name, event.files)
+                        else strings.extractFailed(event.name, failure)
+                    )
+                )
+            }
+        }
     }
 
     internal fun observeQueue() {
@@ -629,7 +674,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
 
@@ -643,6 +688,20 @@ class DashboardViewModel(
             DashboardUiEvent.OnDismissReceiveClicked,
             is DashboardUiEvent.OnUnblockDeviceClicked,
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
+
+            is DashboardUiEvent.OnExtractTaskClicked -> queueRepository.extractNow(event.taskId)
+            is DashboardUiEvent.OnArchivePasswordEntered -> {
+                _uiState.update { it.copy(archivePassword = null) }
+                if (event.password.isNotEmpty()) queueRepository.extractNow(event.taskId, event.password)
+            }
+            DashboardUiEvent.OnArchivePasswordDismissed -> _uiState.update { it.copy(archivePassword = null) }
+            is DashboardUiEvent.OnCopyTaskLink -> scope.launch {
+                val link = queueRepository.allTasksFlow.value.firstOrNull { it.id == event.taskId }?.url?.trim().orEmpty()
+                if (link.isNotBlank()) {
+                    _uiEffect.emit(DashboardUiEffect.CopyText(link))
+                    _uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.copied))
+                }
+            }
 
             is DashboardUiEvent.OnAudioCompressClicked,
             is DashboardUiEvent.OnAudioCompressSettingsChanged,
@@ -802,6 +861,7 @@ class DashboardViewModel(
                         headersForLink(url)
                     )
                 } ?: emptyList()
+                if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
                 if (_uiState.value.inputUrl != url) {
                     // Results of a link that is no longer in the box.
                     _uiState.update { it.copy(isInspectingMedia = false) }
@@ -853,6 +913,7 @@ class DashboardViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
                 _uiState.update {
                     it.copy(
                         isInspectingMedia = false,
@@ -918,6 +979,7 @@ class DashboardViewModel(
             ""
         }
         _uiState.update { it.copy(suggestedFileName = name) }
+        if (name.isBlank()) startNameProbe(url)
     }
 
     internal fun resolveTargetFileName(
@@ -935,6 +997,9 @@ class DashboardViewModel(
                     com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(url))
         ) {
             return queueRepository.pathResolver.sanitizeFileName(browserName)
+        }
+        if (probedNameUrl == url && probedName.isNotBlank() && currentState.detectedEngine == EngineType.HTTP_DIRECT) {
+            return probedName
         }
         val mediaTitle =
             currentState.inspectedMediaQualities.firstOrNull { !it.videoTitle.isNullOrBlank() }?.videoTitle

@@ -582,6 +582,401 @@
     "params": []
   },
   {
+    "name": "extPairedLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extUnpair",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsLoading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsUnsupported",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsRatio",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsUploaded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsPieces",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsPieceSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsTrackers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsNoTrackers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsTrackerHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsAddTracker",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsTrackerInvalid",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsTrackerRefused",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsPeers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsNoPeers",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsFirstLast",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsRecheck",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsCopyMagnet",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsStateWorking",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsStateUpdating",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsStateWaiting",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsStateError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentDetailsStateDisabled",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentStopRatioTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentStopRatioHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitWhileInUseTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "speedLimitWhileInUseFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "wakeForScheduleTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "wakeForScheduleHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutMove",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutExtend",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutFirstLast",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutPage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutOpen",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutDetails",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutResume",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutPause",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutOpenFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutOpenFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutSearch",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutSelectAll",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutDelete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutClickSelect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutClearSelection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutCancelSelection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "shortcutHelp",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkButton",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkOk",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkResumable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkNotResumable",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkSizeUnknown",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkServerName",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkRefused",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkNotFound",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkLoginNeeded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkServerBusy",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkServerError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkHttpError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkWebPage",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkRobot",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkTimeout",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkNoConnection",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkSecureFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkRedirects",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkInvalid",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkFtpLogin",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkFtpProxy",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkFtpNoTool",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "testLinkFtpError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCheckingFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepCheckingArchive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepRefetchingDamaged",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepArchiveMayBeDamaged",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "torrentProxyHint",
+    "kind": "val",
+    "params": []
+  },
+  {
     "name": "homeBrowserFallbackText",
     "kind": "val",
     "params": []
@@ -4424,6 +4819,126 @@
     ]
   },
   {
+    "name": "audioCompressTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressOriginalSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressNewSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressReading",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressMode",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressSimple",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressAdvanced",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressLevel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressLevelHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressBitrate",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressSampleRate",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressChannels",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressFormat",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressAuto",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressMono",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressStereo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressStart",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressRunning",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressCopies",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressDelete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressHigherQuality",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressSmallerFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "audioCompressNothing",
+    "kind": "val",
+    "params": []
+  },
+  {
     "name": "sysDeviceSendTitle",
     "kind": "val",
     "params": []
@@ -4642,5 +5157,566 @@
     "name": "sysDeviceConnect",
     "kind": "val",
     "params": []
+  },
+  {
+    "name": "sysDeviceOfferTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceOfferFrom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceOfferAccept",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceOfferReject",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deviceNoAnswer",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "stepPreparingFile",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceReceivingTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "sysDeviceReceiveFailed",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupText",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupTorrents",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupClipboard",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupStartup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupKeepReady",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupExtension",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupLater",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupAccept",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "defaultAppRowTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "defaultAppIsDefault",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "defaultAppNotDefault",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "defaultAppMakeDefault",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "defaultAppSystemPageHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupExtensionRow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupExtensionConnected",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "mainSetupExtensionMissing",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractArchives",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractArchivesOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractArchivesOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractedDone",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "files",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "extractFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "reason",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "extractNow",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractStarted",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "extractingState",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "percent",
+        "type": "Int"
+      }
+    ]
+  },
+  {
+    "name": "scanFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesCommand",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFilesOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanCommandLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanCommandHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanCommandHintNoScanner",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuOpen",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuOpenFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuPause",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuResume",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuExtract",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuCompress",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuSendToDevice",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuCopyLink",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuSelect",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuDetails",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "rowMenuDelete",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFoldersEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderChoose",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "siteFolderAdd",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "addFolderFromRule",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsSystem",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsCustom",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsCustomLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netAdapterLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "netDnsProxyOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrash",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrashOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "deleteToTrashOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchive",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchiveOn",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "trashArchiveOff",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordHint",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordWrong",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "archivePasswordLabel",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceSmart",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceFolder",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "extractPlaceNextTo",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportGroup",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportFooter",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportMonth",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportSize",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "reportEmpty",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanningState",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanTitle",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanClean",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanThreatFound",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanBlocked",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanAntivirusBlockedError",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanFailedState",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "scanThreat",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "detail",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanBlockedToast",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanFailed",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "name",
+        "type": "String"
+      },
+      {
+        "name": "detail",
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "scanNoScanner",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "fileNameNeeded",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "storageNeedsAllFiles",
+    "kind": "val",
+    "params": []
+  },
+  {
+    "name": "folderNotWritable",
+    "kind": "fun",
+    "params": [
+      {
+        "name": "folder",
+        "type": "String"
+      }
+    ]
   }
 ]

@@ -22,13 +22,17 @@ import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
 import com.michelle.raouf.fetch_jet.core.update.isOlderExtension
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice
+import com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
+import com.michelle.raouf.fetch_jet.feature.report.DownloadReport
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingButtonDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingFieldDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingKind
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ToneCode
 import com.tbib.kmp_localization.LocalizationManager
+import kotlin.native.OsFamily
+import kotlin.native.Platform
 
 internal val THEME_MODES = listOf("system", "light", "dark")
 internal val SPEED_UNITS = listOf("MB/s", "KB/s", "Mbps", "Kbps")
@@ -254,6 +258,7 @@ internal fun Presenter.buildSettingsRows(section: SettingsSection, v: SettingsSl
     when (section) {
         SettingsSection.GENERAL -> generalRows(rows, v, page)
         SettingsSection.DOWNLOADS -> downloadsRows(rows, v, page)
+        SettingsSection.REPORT -> reportRows(rows, page)
         SettingsSection.BROWSER -> browserRows(rows, page)
         SettingsSection.DEVICES -> devicesRows(rows, v)
         SettingsSection.NETWORK -> networkRows(rows, page)
@@ -510,6 +515,114 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 v.sortIntoFolders,
             )
         )
+        rows.add(
+            switchRow(
+                "extractArchives",
+                s.extractArchives,
+                if (v.extractArchives) s.extractArchivesOn else s.extractArchivesOff,
+                v.extractArchives,
+            )
+        )
+        if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
+            val trashArchive = BehaviorSettings.trashArchiveAfterExtract.value
+            if (v.extractArchives) {
+                rows.add(switchRow("trashArchive", if (onWindows) s.trashArchive else s.trashArchiveNotWindows, if (trashArchive) s.trashArchiveOn else s.trashArchiveOff, trashArchive))
+            }
+        }
+        if (v.extractArchives) {
+            val places = listOf(s.extractPlaceSmart, s.extractPlaceFolder, s.extractPlaceNextTo)
+            val place = BehaviorSettings.extractPlace.value.ordinal
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.MENU.ordinal,
+                    id = "extractPlace",
+                    title = s.extractPlaceTitle,
+                    enabled = true,
+                    clickable = true,
+                    side = places[place],
+                    options = places,
+                    pick = place + 1,
+                )
+            )
+        }
+        if (com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported) {
+            val toTrash = BehaviorSettings.deleteToTrash.value
+            rows.add(switchRow("deleteToTrash", if (onWindows) s.deleteToTrash else s.deleteToTrashNotWindows, if (toTrash) s.deleteToTrashOn else s.deleteToTrashOff, toTrash))
+        }
+    }
+    val scanOn = BehaviorSettings.scanFiles.value
+    val scanCommand = BehaviorSettings.scanCommand.value
+    val scanHint = if (FileScanner.hasSystemScanner) s.scanCommandHint else s.scanCommandHintNoScanner
+    rows.group(footer = if (scanOn) scanHint else null) {
+        rows.add(
+            switchRow(
+                "scanFiles",
+                s.scanFiles,
+                when {
+                    !scanOn -> s.scanFilesOff
+                    scanCommand.isBlank() && FileScanner.hasSystemScanner -> s.scanFilesSystem
+                    else -> s.scanFilesCommand
+                },
+                scanOn,
+            )
+        )
+        if (scanOn) {
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.FIELDS.ordinal,
+                    top = 10,
+                    bottom = 12,
+                    one = field(
+                        "scanCommand",
+                        scanCommand,
+                        label = s.scanCommandLabel,
+                        placeholder = if (FileScanner.hasSystemScanner) "" else "clamscan --no-summary [File]",
+                    ),
+                )
+            )
+        }
+    }
+    val rules = BehaviorSettings.siteFolders.value
+    val canAddRule = com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.isValidSite(page.ruleSite) && page.ruleFolder.isNotBlank()
+    rows.group(title = s.siteFoldersGroup, footer = s.siteFoldersHint) {
+        if (rules.isEmpty()) rows.add(infoRow(title = s.siteFoldersEmpty))
+        rules.forEach { rule ->
+            rows.add(
+                infoRow(
+                    title = rule.site,
+                    subtitle = rule.folder,
+                    buttons = listOf(button("rule.remove." + rule.site, s.netRemove, flat = true, tone = ToneCode.ERROR)),
+                )
+            )
+            rows.divider()
+        }
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.FIELDS.ordinal,
+                top = 16,
+                one = field("ruleSite", page.ruleSite, label = s.siteFolderLink, placeholder = "example.com/course"),
+            )
+        )
+        rows.add(
+            infoRow(
+                title = s.siteFolderFolder,
+                subtitle = page.ruleFolder.ifBlank { s.siteFolderNotChosen },
+                id = "ruleChoose",
+                clickable = true,
+                side = s.siteFolderChoose,
+            )
+        )
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.BUTTONS.ordinal,
+                top = 10,
+                bottom = 16,
+                alignEnd = true,
+                buttons = listOf(
+                    button("ruleAdd", s.siteFolderAdd, filled = true, enabled = canAddRule, round = true),
+                ),
+            )
+        )
     }
     val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
     rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {
@@ -534,6 +647,106 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 )
             )
         }
+    }
+}
+
+private fun Presenter.reportRows(rows: Rows, page: SettingsPage) {
+    val s = LocalizationManager.Strings
+    val today = reportToday()
+    val periods = com.michelle.raouf.fetch_jet.feature.report.ReportPeriod.entries
+    val (from, to) = page.reportRange(today)
+    val custom = page.reportPeriod == com.michelle.raouf.fetch_jet.feature.report.ReportPeriod.CUSTOM
+    val rangeText = if (from == null || to == null) "" else if (from == to) dayText(from) else dayText(from) + "  –  " + dayText(to)
+    rows.group(title = s.reportPeriod, footer = rangeText.ifEmpty { null }) {
+        val picked = periods.indexOf(page.reportPeriod)
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.CHIPS.ordinal,
+                id = "reportPeriod",
+                top = 22,
+                bottom = 12,
+                large = true,
+                options = periods.take(REPORT_FIRST_LINE).map { reportPeriodLabel(it) },
+                pick = if (picked < REPORT_FIRST_LINE) picked + 1 else 0,
+            )
+        )
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.CHIPS.ordinal,
+                id = "reportPeriod2",
+                top = 12,
+                bottom = if (custom) 14 else 22,
+                large = true,
+                options = periods.drop(REPORT_FIRST_LINE).map { reportPeriodLabel(it) },
+                pick = if (picked >= REPORT_FIRST_LINE) picked - REPORT_FIRST_LINE + 1 else 0,
+            )
+        )
+        if (custom) {
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 4,
+                    bottom = if (page.reportEditing != null) 4 else 16,
+                    buttons = listOf(
+                        button("reportFrom", s.reportFrom + "  ·  " + (from?.let { dayText(it) } ?: ""), filled = page.reportEditing == "from", round = true),
+                        button("reportTo", s.reportTo + "  ·  " + (to?.let { dayText(it) } ?: ""), filled = page.reportEditing == "to", round = true),
+                    ),
+                )
+            )
+            if (page.reportEditing != null) {
+                val (shown, days) = reportCalendarDays(page, today)
+                rows.add(
+                    SettingRowDto(
+                        kind = SettingKind.CALENDAR.ordinal,
+                        id = "calendar",
+                        title = monthName(shown),
+                        subtitle = if (page.reportEditing == "to") s.reportTo else s.reportFrom,
+                        options = weekdayNames(),
+                        days = days,
+                        top = 4,
+                        bottom = 16,
+                    )
+                )
+            }
+        }
+    }
+    val report = DownloadReport.forRange(vm.uiState.value.allTasks, from, to, com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs())
+    rows.group {
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.STATS.ordinal,
+                id = "reportStats",
+                top = 16,
+                bottom = 16,
+                tiles = listOf(
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(report.files.toString(), s.reportFiles),
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(formatBytes(report.bytes), s.reportSize),
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(report.siteCount.toString(), s.reportSites),
+                ),
+            )
+        )
+    }
+    rows.group(title = s.reportTopSites, footer = s.reportFooter) {
+        if (report.sites.isEmpty()) {
+            rows.add(infoRow(title = if (vm.uiState.value.allTasks.isEmpty()) s.reportEmpty else s.reportNothingInPeriod))
+            return@group
+        }
+        val top = report.sites.maxOf { it.bytes }.coerceAtLeast(1L)
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.BARS.ordinal,
+                id = "reportSites",
+                top = 14,
+                bottom = 14,
+                bars = report.sites.map {
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatBarDto(
+                        label = it.site,
+                        value = formatBytes(it.bytes) + "  ·  " + it.files,
+                        fraction = (it.bytes.toDouble() / top).toFloat().coerceIn(0.02f, 1f),
+                    )
+                },
+            )
+        )
     }
 }
 
@@ -632,6 +845,54 @@ private fun Presenter.networkRows(rows: Rows, page: SettingsPage) {
                 buttons = listOf(button("loginAdd", s.netLoginAdd, filled = true, enabled = canAdd, round = true)),
             )
         )
+    }
+    if (NetworkSettings.ownNetworkSupported) {
+        val dns = NetworkSettings.dns.value
+        val adapter = NetworkSettings.adapter.value
+        val custom = page.dnsCustom ?: dns.custom
+        val adapterText = page.adapterDraft ?: adapter
+        val names = listOf(s.netDnsSystem, "Cloudflare", "Google", "Quad9", "AdGuard", s.netDnsCustom)
+        val changed = custom.trim() != dns.custom || adapterText.trim() != adapter
+        rows.group(title = s.netDnsGroup, footer = s.netDnsHint) {
+            rows.add(
+                pickerRow(
+                    "dnsMode",
+                    s.netDnsTitle,
+                    names.getOrElse(dns.mode.ordinal) { s.netDnsSystem },
+                    names,
+                    dns.mode.ordinal + 1,
+                    below = true,
+                )
+            )
+            if (dns.mode == com.michelle.raouf.fetch_jet.core.network.DnsMode.CUSTOM) {
+                rows.add(
+                    SettingRowDto(
+                        kind = SettingKind.FIELDS.ordinal,
+                        top = 4,
+                        one = field("dnsCustom", custom, label = s.netDnsCustomLabel, placeholder = "https://dns.example/dns-query  /  9.9.9.9, 1.1.1.1"),
+                    )
+                )
+            }
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.FIELDS.ordinal,
+                    top = 10,
+                    one = field("netAdapter", adapterText, label = s.netAdapterLabel, placeholder = "192.168.1.20"),
+                )
+            )
+            if (NetworkSettings.proxy.value.isOn && (dns.isOn || adapter.isNotBlank())) {
+                rows.add(noteRow(s.netDnsProxyOn, ToneCode.PAUSED, top = 8))
+            }
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 10,
+                    bottom = 16,
+                    alignEnd = true,
+                    buttons = listOf(button("dnsSave", s.netSave, filled = true, enabled = changed, round = true)),
+                )
+            )
+        }
     }
 }
 
@@ -1060,3 +1321,6 @@ private fun browserRows(rows: Rows, page: SettingsPage) {
         }
     }
 }
+
+@OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+private val onWindows: Boolean = Platform.osFamily == OsFamily.WINDOWS

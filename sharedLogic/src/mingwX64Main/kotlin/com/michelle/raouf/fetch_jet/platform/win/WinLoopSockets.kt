@@ -185,6 +185,9 @@ private object WinLoopSockets : LoopSockets {
     override fun connect(socket: Long, address: LoopAddress): Boolean =
         address.bytes.usePinned { connect(socket.socket(), it.addressOf(0).reinterpret(), address.bytes.size) == 0 }
 
+    override fun bindSource(socket: Long, address: LoopAddress): Boolean =
+        address.bytes.usePinned { bind(socket.socket(), it.addressOf(0).reinterpret(), address.bytes.size) == 0 }
+
     override fun send(socket: Long, data: CPointer<ByteVar>, count: Int): Int = send(socket.socket(), data, count, 0)
 
     override fun receive(socket: Long, data: CPointer<ByteVar>, count: Int): Int = recv(socket.socket(), data, count, 0)

@@ -121,6 +121,9 @@ struct iOSApp: App {
                 // A .torrent opened from Files / Safari / Mail, a magnet: link, or a
                 // fetchjet:// link from the Safari extension.
                 .onOpenURL { url in
+                    if FJPageBrowser.shared.handle(url) {
+                        return
+                    }
                     if IosFetchJetLinks.shared.handle(link: url.absoluteString) {
                         return
                     }

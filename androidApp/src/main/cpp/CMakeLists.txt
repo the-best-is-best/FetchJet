@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(fjexec C)
+add_library(fjexec SHARED fjexec.c)
+target_compile_options(fjexec PRIVATE -Os -fvisibility=hidden)
+target_link_libraries(fjexec dl log)
+target_link_options(fjexec PRIVATE -Wl,-z,max-page-size=16384)

@@ -249,10 +249,12 @@ private fun DeviceListGroup(
 internal fun DownloadsPage(
     destinationPath: String,
     sortIntoFolders: Boolean,
+    extractArchives: Boolean,
     defaultConnections: Int,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
     onSortIntoFoldersChanged: (Boolean) -> Unit,
+    onExtractArchivesChanged: (Boolean) -> Unit,
     onDefaultConnectionsChanged: (Int) -> Unit,
     lowBytes: Long = 256L * 1024,
     lowUnit: String = "KB/s",
@@ -421,7 +423,14 @@ internal fun DownloadsPage(
                 checked = sortIntoFolders,
                 onChange = onSortIntoFoldersChanged
             )
+            SettingSwitch(
+                title = LocalizationManager.Strings.extractArchives,
+                subtitle = if (extractArchives) LocalizationManager.Strings.extractArchivesOn else LocalizationManager.Strings.extractArchivesOff,
+                checked = extractArchives,
+                onChange = onExtractArchivesChanged
+            )
         }
+        SiteFoldersCard()
         QueueSettingsCard()
     }
 }
@@ -832,3 +841,73 @@ private fun LanguageSettingsCard(onLanguageChanged: (String) -> Unit) {
         }
     }
 }
+
+@Composable
+private fun SiteFoldersCard() {
+    val rules by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolders.collectAsState()
+    var site by remember { mutableStateOf("") }
+    var folder by remember { mutableStateOf("") }
+    var picking by remember { mutableStateOf(false) }
+    val resolver = remember { PathResolver() }
+    val canAdd = com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.isValidSite(site) && folder.isNotBlank()
+    SettingsGroup(
+        title = LocalizationManager.Strings.siteFoldersGroup,
+        footer = LocalizationManager.Strings.siteFoldersHint
+    ) {
+        if (rules.isEmpty()) SettingRow(title = LocalizationManager.Strings.siteFoldersEmpty)
+        rules.forEach { rule ->
+            SettingRow(title = rule.site, subtitle = rule.folder) {
+                androidx.compose.material3.TextButton(
+                    onClick = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.removeSiteFolder(rule.site) }
+                ) {
+                    Text(LocalizationManager.Strings.netRemove, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            SettingDivider()
+        }
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FetchJetTextField(
+                value = site,
+                onValueChange = { site = it },
+                label = LocalizationManager.Strings.siteFolderLink,
+                placeholder = "example.com/course",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(LocalizationManager.Strings.siteFolderFolder, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        folder.ifBlank { LocalizationManager.Strings.siteFolderNotChosen },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (folder.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                OutlinedButton(onClick = { picking = true }) { Text(LocalizationManager.Strings.siteFolderChoose) }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+                Button(
+                    enabled = canAdd,
+                    onClick = {
+                        if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.addSiteFolder(site, folder)) {
+                            site = ""; folder = ""
+                        }
+                    }
+                ) { Text(LocalizationManager.Strings.siteFolderAdd) }
+            }
+        }
+    }
+    if (picking) {
+        DirectoryPickerDialog(
+            initialPath = folder,
+            pathResolver = resolver,
+            onDirectorySelected = { folder = it; picking = false },
+            onDismissRequest = { picking = false }
+        )
+    }
+}
+

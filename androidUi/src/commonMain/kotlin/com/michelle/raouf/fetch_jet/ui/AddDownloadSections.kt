@@ -312,6 +312,7 @@ internal fun FileNameSection(
             value = if (inspecting && fileNameOverride.isEmpty()) LocalizationManager.Strings.findingName else fileNameOverride.ifEmpty { suggestedFileName },
             onValueChange = { onFileNameChanged(it) },
             enabled = !inspecting,
+            error = if (needsFileName && !inspecting) LocalizationManager.Strings.fileNameNeeded else null,
             modifier = Modifier.fillMaxWidth(),
             leading = { Text(if (inspecting) "⏳" else "📝", fontSize = 16.sp) },
             trailing = if (fileNameOverride.isNotBlank() && fileNameOverride != suggestedFileName) {
@@ -360,6 +361,7 @@ internal fun DestinationSection(
     defaultDownloads: String,
     defaultDocs: String,
     defaultDesktop: String,
+    folderRuleSite: String = "",
     onDestinationPathChanged: (String) -> Unit
 ) {
     var pathTextFieldValue by pathField
@@ -389,6 +391,14 @@ internal fun DestinationSection(
         leading = { Text("📁", fontSize = 16.sp) },
         trailing = { FieldIconButton("📂", onClick = { showDirectoryPicker = true }) }
     )
+    if (folderRuleSite.isNotBlank()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = LocalizationManager.Strings.addFolderFromRule + " " + folderRuleSite,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
     Spacer(modifier = Modifier.height(8.dp))
 
     // Quick Directory Buttons (Always fit cleanly on mobile!)

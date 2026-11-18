@@ -1,6 +1,6 @@
 # FetchJet: project memory for Claude Code
 
-Last updated: 2026-11-14 (1.4.1 work on branch `release-v1.4.1`, see Release plan). Read this first, then `README.md`, `TESTING.md` (how to re-run the
+Last updated: 2026-11-17 (1.5.0 work on branch `release-v1.5.0`, see Current state). Read this first, then `README.md`, `TESTING.md` (how to re-run the
 manual tests) and `CLAUDE_HANDOFF.md` (the
 handoff is from 2026-10-28 and partly outdated).
 
@@ -52,12 +52,12 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.4.0"` and
-  `EXTENSION_VERSION = "3.3.0"` (1.3.0 and 1.3.1 released 2026-11-08 from `master`; 1.4.0 is
-  being built on `release-v1.4.0`)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.4.0`,
-  `CURRENT_PROJECT_VERSION = 7`
-- `extension/manifest.json` and `manifest.firefox.json` → `3.3.0` (also `manifest.safari.json`);
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.5.0"` and
+  `EXTENSION_VERSION = "3.5.0"` (1.4.1 is the last release, tag `v1.4.1`; 1.5.0 is being finished on
+  `release-v1.5.0`)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.5.0`,
+  `CURRENT_PROJECT_VERSION = 8`
+- `extension/manifest.json` and `manifest.firefox.json` → `3.5.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)
@@ -178,7 +178,7 @@ Media tools (yt-dlp, ffmpeg, JS runtime):
   `toolDownloadName/Fraction` in the UI state: progress bar on the Media tools page and
   `ToolsDownloadBanner` above the home list.
 - Desktop: tools in `~/.fetch_jet/tools` (yt-dlp as the unpacked build in `tools/yt-dlp-dir`,
-  see ROADMAP 6c; ffmpeg pinned 4.4.1 with a per-OS sha256 check, deno from denoland releases
+  see ROADMAP 6c; ffmpeg pinned (eugeneware ffmpeg-static b6.1.1 `.gz`, sha256 per OS; older than 6 is replaced at start), deno from denoland releases
   with sha256 check). Auto-update
   compares `--version` with the latest GitHub tag. Every yt-dlp call
   gets `ytDlpRuntimeArgs()`: `--js-runtimes deno:<path>|deno`, `node`, `--cache-dir
@@ -262,8 +262,118 @@ Bridges:
   text, and on Safari hides "Get qualities" (`qualitiesInPopup: false`). Brave/Opera/Vivaldi/Arc
   install the Chrome build.
 
-## Current state (master = 1.3.1; working branch `release-v1.4.0`)
+## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Windows installers (owner-tested: installed the release Setup.exe and checked it on screen):** the
+  install folder is fixed to `%LOCALAPPDATA%\FetchJet` in both: the MSI skips `InstallDirDlg` (Welcome -> shortcuts page,
+  `product.wxs`; `check-msi.ps1` checks there is no way to the folder page) and Setup.exe keeps `SuppressOptionsUI`. No
+  licence agreement in either (GPL-3.0 asks no acceptance to install or use): Setup.exe lost its "I agree" box and keeps
+  the GPL v3 link line (`installer/theme.xml`, `theme.wxl`). Android release (R8) built and installed on the A56 over
+  the debug build (same key), a 4 MB download completed, no crash. The Store privacy field is a URL to
+  `docs/privacy.html`, which already describes the usage count but is live only after `release-v1.5.0` reaches `master`
+  (`pages.yml`): merge before sending the Store submission.
+
+- **2026-11-18, Windows, Udemy and device name (owner-tested in Edge, "works"):**
+    - Udemy single video opened the Add dialog with the whole course list: `pendingExternalPlaylist` kept the last course
+      read by the browser; it is now cleared when a single link arrives (`startExternalDirectly`) and when the dialog closes.
+    - yt-dlp treats a Udemy lecture link as the whole course and, with the browser's cookies, runs until the 90 s limit;
+      meanwhile the extension hid the captured stream ("Getting the qualities..."). The extension no longer asks the app
+      to inspect Udemy course pages (`UDEMY_COURSE_PAGE` in `background.js`: `resolvePage`, `resolveVideo`).
+    - "Whole course": the app's own inspect of the course link raced the browser's reading and flashed its error
+      (`Unable to extract course id`); `showCourseReading` now sets `courseReading` before the link, and a late inspect
+      result is dropped while the reading runs.
+    - The window grew 1 px on every progress post (found by diffing the owner's screen recording): `show_window` ran the
+      `refresh_surface` grow / shrink timers on every call and they overlapped. Now only when the window was hidden
+      (`app.cpp`), and a second grow is refused while one is pending (`platform_win.cpp`).
+    - Device sync name: Android sends the device name the user set (Settings.Global `device_name`), else maker + model,
+      instead of "Android <sdk>" (`DeviceHostName.android.kt`); a paired device's stored name follows its announce
+      (`renamePaired`). Android built, not installed on the A56 yet. iOS gives apps only "iPhone" since iOS 16.
+
+- **2026-11-18, Windows check after the Mac commit `2b49191`** (pulled and merged with the uncommitted Windows work:
+  folder rules by link start + folder picker, the hidden Report page; nothing committed). Built: Windows core + host,
+  Linux core + host (WSL), Android `assembleDebug`, `:sharedLogic:jvmTest` 200 / 0. Windows corehost: `test_dns` 14,
+  `test_network` 11 (1 skip: HTTPS through the proxy, WinHTTP does not trust the test certificate, as before),
+  `test_trash` 10, `test_settings` 87, `test_siterules` 22, `test_report` 17, all 0 failed. Linux (WSL): `test_dns` 14,
+  `test_trash` 10, `test_settings` 87, 0 failed. Settings > Downloads row: Windows "Deleted files go to the Recycle Bin",
+  Linux "Deleted files go to the Trash". Linux `test_dns` needs the test HTTP server running inside WSL
+  (`python3 desktopNative/tools/testserver/server.py --port 18200`): the Windows `servers.sh` ones are not reachable
+  from WSL's 127.0.0.1 (without it: "HTTP Error 502: Could not connect to the server"). Skipped (code unchanged since
+  they passed on 2026-11-17): `test_download`, `test_integrity`, `test_home`, `test_add`, `test_rowmenu`, `test_extract`,
+  `test_scan`, `test_automation`.
+
+- **2026-11-18, Mac session on `release-v1.5.0` (after `30261ea`; details at the top of ROADMAP-1.5.0.md):** iOS
+  built and checked on the iPhone 17 / iPad simulators (row menu, Copy link, folders by site, monthly report, the Add
+  dialog rule line); macOS native built, all the new and changed corehost files pass (7-Zip from Homebrew). Fixed: a
+  Swift build error (`localUtcOffsetMs`), the iPad menu preview strip, the adapter error text on macOS
+  (`X-FetchJet-Proxy-Error`), `test_trash` on the Mac, "Recycle Bin" text on macOS / Linux. A FetchJet running in an iOS
+  simulator holds `127.0.0.1:28450` on the Mac: stop it before running the Mac app, or `/d` and the bridge fail
+  (`bridge: not started`). The simulator screenshot tool does not show SwiftUI context menus: use
+  `xcrun simctl io <udid> screenshot`. Next on Windows: build the native app / Android after these commits.
+- **2026-11-18, Mac check after `f4c9618`:** iOS built and checked on the iPhone 17 / iPad (folders by site: "No folder
+  chosen", picker, link-start rule saved; no Report page in Settings). Fixed: a Swift spacing build error, the card filled
+  in the save folder by itself, and `SettingsFolderPicker` saved a bare subfolder name (iOS `listSubdirectories` returns
+  names). macOS native built; corehost `test_siterules` 22, `test_settings` 87, `test_report` 17, `test_trash` 10,
+  `test_dns` 14, all 0 failed (`test_siterules` now waits for its tasks; `shots.py` skips without `shot.exe`).
+
+- **2026-11-17, Windows session on `release-v1.5.0` (owner away: "work through the whole ROADMAP, do not ask, test it";
+  committed and pushed after `acb625e` at the owner's "ارفع"; details per item in ROADMAP-1.5.0.md):**
+    - Item 15 security: extension `nativeMessaging` removed (dead); `enqueueTask` cleans file names (`test_unsafe_names`);
+      temp cleanup no longer deletes other downloads' files (`ownsTempItem`); CI actions pinned to commits; update
+      signature test. ffmpeg on Windows / Linux moved from 4.4.1 to the b6.1.1 builds (ROADMAP item 15).
+    - Item 7 row menu (Slint right-click, Compose long press with "Select", SwiftUI `contextMenu`), item 8 folders by site,
+      item 3 own DNS (DoH / UDP) and adapter through the loopback proxy (native desktop only), item 2 phase 2 (7-Zip for
+      7z / rar / split / password archives, extract place, Recycle Bin for deleted files and extracted archives), item 11
+      portable Windows (`FetchJet.portable`). New tests: `test_rowmenu`, `test_siterules`, `test_dns`, `test_trash`,
+      `test_archives7z`, `test_unsafe_names`; jvmTest `SiteFolderRulesTest`, `DnsWireTest`, `TempCleanupTest`,
+      `UpdateSignatureTest`.
+    - Fixed on the way: the desktop presenter and SwiftUI re-added the type folder by themselves (lost a remembered kind
+      folder); `markExtracted` failed a single-file `.gz` extraction.
+    - New helper: `scripts/i18n-add-strings.py <spec.json>` adds keys to `AppLocalization` and the 15 providers at once
+      (spec: `{"after": "<existing key>", "keys": {"name": {"en": ..., "ar": ..., ...}}}`). Writing Kotlin with backslashes
+      through a bash heredoc in this environment loses them: use the Write / Edit tools for such files.
+    - iOS changes that need the Mac: `TaskListScreen.swift` (context menu), `FJStore.swift` (CopyText effect),
+      `SettingsDownloadsPage.swift` (folders by site), `AddSections.swift` (rule line, the type-folder copy removed).
+    - Later the same day (owner back, "finish everything, do not ask"): item 10 monthly report (all three UIs), item 17
+      Windows installers (MSI options page + version line + launch box + branded images; `FetchJet-<v>-setup.exe` Burn
+      bundle, `build-setup.cmd`; CI uploads both, plus the portable zip). README Windows row lists Setup.exe / .msi /
+      portable .zip.
+    - Full Windows core run (40 files): every file passes except `test_torrent_proxy` (18 fail, the same 18 with the core of
+      the last commit: test setup on this PC, not this work) and `test_extract_big` speed on the debug core (known, needs
+      the release core). FTP / testlink need `servers.sh start` first. `test_compress_format` and `test_testlink` were
+      outdated and were updated. JVM tests 195 / 0. Linux: the new files pass.
+    - Never rewrite a source file with PowerShell `Get-Content -Raw | Set-Content`: 5.1 reads it as ANSI and writes UTF-8
+      with a BOM, so every non-ASCII character is broken (happened to `SettingsRows.kt` and was repaired).
+    - Owner's decisions (same day): wake for schedule stopped on every system (`WakeForSchedule.ENABLED = false`, code
+      kept); items 4, 12, 13 dropped; ffmpeg moved to the b6.1.1 builds, a monthly scheduled task
+      (`fetchjet-ffmpeg-new-version`) says when eugeneware publishes a newer one. `get` / `resume` dropped too.
+
+- **2026-11-17, Mac session on `release-v1.5.0` (ROADMAP-1.5.0.md item 9, nothing committed):** the scan feature and the
+  macOS quarantine mark built and tested (`test_scan.py` 22/22 with 5 new macOS checks; extract 16, settings 87, home 41, add
+  29, integrity 32; iOS compiles). Added: "Where from" xattr (`kMDItemWhereFroms`) and the mark on extracted files
+  (`markExtracted`). macOS stores the quarantine agent / URLs in the QuarantineEventsV2 database, not in the xattr text, so
+  `xattr -p com.apple.quarantine` never shows "FetchJet". The zip / tar extractor now keeps the exec bit
+  (`markExecutable`, `core/filesystem/FileModes*.kt`): Mac test_extract 20/20, iPhone 17 and iPad simulators checked.
+  Open: the scan hint mentions Windows on macOS / Linux.
+- **2026-11-16, Mac session on `release-v1.5.0` (commits `0492795`, `8078e5d`, `1f82a85`, `1561182`; details in ROADMAP-1.5.0.md items 1, 2, 16):**
+    - Automation API on the iPhone simulator and the macOS native app, archive extraction and the Extract button on
+      iPhone / iPad / the Mac window: built and passed (corehost: extract 16, extract_big 11 at 68 MB/s, addname 14,
+      automation 40, settings 87, home 41, add 29, keys 41).
+    - A fresh clone needs `scripts/ios-prepare-frameworks.sh` (downloads Python, builds FJTorrent) and
+      `ANDROID_HOME` for Gradle. `xcodebuild` with `generic/platform=iOS Simulator` fails there ("no XCFramework found",
+      FJTorrent is arm64 only): use the simulator id with `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`.
+    - iOS has an in-app page (`FJPageBrowser.swift`, `fetchjet://browse?url=`) for downloads that need the page's session
+      (Zoom recordings): Safari gives the extension no cookies. See ROADMAP item 16 before touching it.
+    - macOS native: the menu bar icon is `desktopNative/res/fetchjet-tray.png` (copied to `Contents/Resources`); without
+      it the host shows a system arrow.
+    - `extension/background.js` has CRLF line ends: a script that rewrites it must keep them (`newline=''` in Python).
+    - Found, not fixed: a zip made by macOS `zip` with an Arabic name and no UTF-8 flag extracts with a CP437 name.
+    - Safari's toolbar icon is `extension/toolbar16-64.png` (the arrow on a transparent background, Safari manifest only):
+      the full square icon showed as a black square in Safari's extension menu on iPad. Checked on iPhone 17 and iPad Pro.
+    - On iPad, Safari asks for site access per site: with no access to `us06web.zoom.us` the page button does not show.
+    - Everything above is committed and pushed. For Windows: re-test the extension in Chrome / Edge / Firefox (Zoom audio
+      button, popup banner); `content.js`, `background.js`, `popup.js` and `i18n/*` changed. Windows / Android / Linux
+      builds were not run after these commits (no Kotlin shared code changed after `79f8d5e`, only iOS Swift, extension JS
+      and the macOS tray icon).
 - **2026-11-14, Mac session on `release-v1.4.1` (play button, window, tests; nothing committed):**
     - Side effect of my own earlier test run, fixed: the first run of the staged `FetchJet.app` on a fresh `--home` showed the
       first-run "Main downloader" step and enabled start at login, which writes the global
@@ -874,7 +984,17 @@ Bridges:
 
 ## Release plan
 
-- **1.4.1 (2026-11-13, branch `release-v1.4.1`, not released):** FTP / FTPS, file integrity (checksum,
+- **1.5.0, before release (branch `release-v1.5.0`):** the app sends one anonymous usage ping a day
+  (`core/telemetry/UsagePing.kt`: random install id, version, platform; country from Cloudflare) to the
+  Worker in `stats-worker/` (`https://fetchjet.the-best-is-best.workers.dev`; public dashboard `/dashboard` (no token,
+  countries under 5 users hidden, linked from the README), raw data `/stats?token=...`,
+  token only in Cloudflare and with the owner; off switch env `FETCHJET_NO_USAGE_PING=1`; a fresh `--home` counts
+  as a new user without it). README Privacy is updated. **Remind the owner before he releases:** update the
+  Microsoft Store privacy text (it may say no data is collected); AMO and Edge Add-ons need nothing (the extension
+  sends nothing to that server). `release-notes/1.5.0/` is written (15 languages, 2026-11-17).
+  Users who turned on "wake the computer for scheduled downloads" in 1.4.1 (Windows) lose it in 1.5.0 (owner stopped
+  the feature; the release notes do not mention it).
+- **1.4.1 (released, tag `v1.4.1`):** FTP / FTPS, file integrity (checksum,
   ZIP CRC, file changed on the server), torrent details, command line, keyboard, idle speed limit,
   extension 3.4.0 (version tied in `AppVersion.kt` + the 3 manifests), release notes in 15 languages
   (`release-notes/1.4.1/`). Tested on the Windows native app with real keys and mouse, the extension on a

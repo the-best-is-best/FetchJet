@@ -39,6 +39,27 @@ internal fun DashboardViewModel.testLink() {
                 st.copy(testLink = current.copy(testing = false, result = result))
             } else st
         }
+        val serverName = (result as? LinkProbeResult.Ok)?.fileName.orEmpty()
+        if (serverName.isNotBlank() && _uiState.value.inputUrl == shown) {
+            probedNameUrl = shown.trim()
+            probedName = serverName
+            refreshSuggestedFileName()
+        }
+    }
+}
+
+internal fun DashboardViewModel.startNameProbe(url: String) {
+    nameProbeJob?.cancel()
+    val state = _uiState.value
+    if (state.detectedEngine != EngineType.HTTP_DIRECT || state.linkList.isNotEmpty() || !canProbeLink(url) || probedNameUrl == url) return
+    nameProbeJob = scope.launch {
+        kotlinx.coroutines.delay(700)
+        val probed = probeLink(com.michelle.raouf.fetch_jet.feature.queue_manager.codeHostRawUrl(url), headersForLink(url))
+        val name = (probed as? LinkProbeResult.Ok)?.fileName.orEmpty()
+        if (name.isBlank() || _uiState.value.inputUrl.trim() != url) return@launch
+        probedNameUrl = url
+        probedName = queueRepository.pathResolver.sanitizeFileName(name)
+        refreshSuggestedFileName()
     }
 }
 

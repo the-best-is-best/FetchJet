@@ -1030,6 +1030,27 @@ component DetailsBody inherits VerticalLayout {
             horizontal-stretch: 1;
         }
     }
+    if Core.details.scanShown: Rectangle {
+        height: 10px;
+    }
+    if Core.details.scanShown: HBox {
+        height: 16px;
+        spacing: 4px;
+        cross-axis-alignment: center;
+        EmojiIcon {
+            glyph: Core.details.scanIcon;
+            size: 13px;
+        }
+        T {
+            text: Core.details.scanText;
+            line: 16px;
+            tracking: 0.4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: Theme.tone(Core.details.scanTone);
+            horizontal-stretch: 1;
+        }
+    }
     Rectangle {
         height: 18px;
     }
@@ -1058,6 +1079,17 @@ component DetailsBody inherits VerticalLayout {
             horizontal-stretch: 1;
             clicked => { Act.detailsAction(Core.details.secondaryAction, false); }
         }
+    }
+    if Core.details.canExtract: Rectangle {
+        height: 8px;
+    }
+    if Core.details.canExtract: OutlinedButton {
+        text: Tr.extractNow;
+        height: 42px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        clicked => { Act.detailsExtract(); }
     }
     if Core.details.canShare: Rectangle {
         height: 8px;

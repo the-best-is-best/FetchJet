@@ -63,7 +63,7 @@ def run():
         core.action("OpenSettings")
         core.pump(0.6)
         sections = nav(core).get("sections", [])
-        core.check("seven pages (no torrents yet)", [s.get("title") for s in sections] == [
+        core.check("seven pages (no torrents yet, the report is hidden)", [s.get("title") for s in sections] == [
             strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionDevices"], strings["sectionNetwork"],
             strings["sectionMedia"], strings["sectionUpdates"]], [s.get("title") for s in sections])
         core.check("the first page is shown, the list is still the start", nav(core).get("current", 0) == 0 and
@@ -337,9 +337,9 @@ def run():
         core.debug("sections", {"all": "true"})
         core.pump(0.5)
         titles = [s.get("title") for s in nav(core).get("sections", [])]
-        core.check("all eight pages in the desktop order", titles == [
+        core.check("all nine pages in the desktop order (hidden ones shown for tests)", titles == [
             strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionDevices"],
-            strings["sectionNetwork"], strings["sectionMedia"], strings["sectionTorrent"], strings["sectionUpdates"]], titles)
+            strings["sectionNetwork"], strings["sectionMedia"], strings["sectionTorrent"], strings["sectionReport"], strings["sectionUpdates"]], titles)
         open_page(core, titles.index(strings["sectionTorrent"]))
         chips = row(core, "uploadLimit")
         core.check("upload limit: six choices, no limit picked", len(chips.get("options", [])) == 6 and chips.get("pick") == 1 and

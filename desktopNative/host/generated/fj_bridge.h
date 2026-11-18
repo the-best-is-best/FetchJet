@@ -87,6 +87,7 @@ namespace AlertKind {
     inline constexpr int ExtensionSteps = 10;
     inline constexpr int ExtensionFromFile = 11;
     inline constexpr int ExtensionFailed = 12;
+    inline constexpr int ArchivePassword = 13;
 }
 
 namespace ToneCode {
@@ -225,6 +226,9 @@ namespace SettingKind {
     inline constexpr int Buttons = 9;
     inline constexpr int Progress = 10;
     inline constexpr int LimitBox = 11;
+    inline constexpr int Stats = 12;
+    inline constexpr int Bars = 13;
+    inline constexpr int Calendar = 14;
 }
 
 namespace TrackerStateCode {
@@ -265,7 +269,8 @@ namespace Channel {
     inline constexpr int AddTorrentFiles = 26;
     inline constexpr int AudioCompress = 27;
     inline constexpr int TorrentDetails = 28;
-    inline constexpr int Count = 29;
+    inline constexpr int RowMenu = 29;
+    inline constexpr int Count = 30;
 }
 
 inline EngineChoiceDto parse_EngineChoiceDto(const fj::Json &j) {
@@ -319,6 +324,7 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.fileNameRev = fj::integer(j, "fileNameRev");
     d.fileNameBusy = fj::flag(j, "fileNameBusy");
     d.fileNameCanReset = fj::flag(j, "fileNameCanReset");
+    d.fileNameNeeded = fj::flag(j, "fileNameNeeded");
     d.checksumShown = fj::flag(j, "checksumShown");
     d.checksum = fj::text(j, "checksum");
     d.checksumRev = fj::integer(j, "checksumRev");
@@ -328,6 +334,7 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.testLinkText = fj::text(j, "testLinkText");
     d.destination = fj::text(j, "destination");
     d.destinationRev = fj::integer(j, "destinationRev");
+    d.folderRule = fj::text(j, "folderRule");
     d.quickFolders = fj::struct_model<QuickFolderDto>(j, "quickFolders", parse_QuickFolderDto);
     d.linkSummary = fj::text(j, "linkSummary");
     d.linkAllSelected = fj::flag(j, "linkAllSelected");
@@ -554,6 +561,8 @@ inline AlertDto parse_AlertDto(const fj::Json &j) {
     d.extraLabel = fj::text(j, "extraLabel");
     d.flatDismiss = fj::flag(j, "flatDismiss");
     d.round = fj::flag(j, "round");
+    d.inputLabel = fj::text(j, "inputLabel");
+    d.inputSecret = fj::flag(j, "inputSecret");
     return d;
 }
 
@@ -658,12 +667,17 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.checksumIcon = fj::text(j, "checksumIcon");
     d.checksumText = fj::text(j, "checksumText");
     d.checksumTone = fj::integer(j, "checksumTone");
+    d.scanShown = fj::flag(j, "scanShown");
+    d.scanIcon = fj::text(j, "scanIcon");
+    d.scanText = fj::text(j, "scanText");
+    d.scanTone = fj::integer(j, "scanTone");
     d.primaryAction = fj::integer(j, "primaryAction");
     d.primaryLabel = fj::text(j, "primaryLabel");
     d.secondaryAction = fj::integer(j, "secondaryAction");
     d.secondaryLabel = fj::text(j, "secondaryLabel");
     d.canShare = fj::flag(j, "canShare");
     d.canCompress = fj::flag(j, "canCompress");
+    d.canExtract = fj::flag(j, "canExtract");
     d.compressLabel = fj::text(j, "compressLabel");
     d.removeLabel = fj::text(j, "removeLabel");
     return d;
@@ -836,6 +850,7 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     TaskRowDto d{};
     d.kind = fj::integer(j, "kind");
     d.canCompress = fj::flag(j, "canCompress");
+    d.canExtract = fj::flag(j, "canExtract");
     d.id = fj::text(j, "id");
     d.name = fj::text(j, "name");
     d.nameRtl = fj::flag(j, "nameRtl");
@@ -853,6 +868,7 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     d.left = fj::text(j, "left");
     d.action = fj::integer(j, "action");
     d.completed = fj::flag(j, "completed");
+    d.busy = fj::flag(j, "busy");
     d.priority = fj::integer(j, "priority");
     d.priorityLabel = fj::text(j, "priorityLabel");
     d.checked = fj::flag(j, "checked");
@@ -863,6 +879,15 @@ inline TaskRowDto parse_TaskRowDto(const fj::Json &j) {
     d.headerCount = fj::integer(j, "headerCount");
     d.headerColor = fj::integer(j, "headerColor");
     d.headerCollapsed = fj::flag(j, "headerCollapsed");
+    return d;
+}
+
+inline RowMenuItemDto parse_RowMenuItemDto(const fj::Json &j) {
+    RowMenuItemDto d{};
+    d.key = fj::integer(j, "key");
+    d.label = fj::text(j, "label");
+    d.danger = fj::flag(j, "danger");
+    d.divider = fj::flag(j, "divider");
     return d;
 }
 
@@ -917,6 +942,32 @@ inline SettingButtonDto parse_SettingButtonDto(const fj::Json &j) {
     return d;
 }
 
+inline StatTileDto parse_StatTileDto(const fj::Json &j) {
+    StatTileDto d{};
+    d.value = fj::text(j, "value");
+    d.label = fj::text(j, "label");
+    return d;
+}
+
+inline StatBarDto parse_StatBarDto(const fj::Json &j) {
+    StatBarDto d{};
+    d.label = fj::text(j, "label");
+    d.value = fj::text(j, "value");
+    d.fraction = fj::real(j, "fraction");
+    return d;
+}
+
+inline CalendarDayDto parse_CalendarDayDto(const fj::Json &j) {
+    CalendarDayDto d{};
+    d.label = fj::text(j, "label");
+    d.id = fj::text(j, "id");
+    d.blank = fj::flag(j, "blank");
+    d.inRange = fj::flag(j, "inRange");
+    d.edge = fj::flag(j, "edge");
+    d.today = fj::flag(j, "today");
+    return d;
+}
+
 inline SettingRowDto parse_SettingRowDto(const fj::Json &j) {
     SettingRowDto d{};
     d.kind = fj::integer(j, "kind");
@@ -954,6 +1005,9 @@ inline SettingRowDto parse_SettingRowDto(const fj::Json &j) {
     d.indeterminate = fj::flag(j, "indeterminate");
     d.alignEnd = fj::flag(j, "alignEnd");
     d.hint = fj::text(j, "hint");
+    d.tiles = fj::struct_model<StatTileDto>(j, "tiles", parse_StatTileDto);
+    d.bars = fj::struct_model<StatBarDto>(j, "bars", parse_StatBarDto);
+    d.days = fj::struct_model<CalendarDayDto>(j, "days", parse_CalendarDayDto);
     return d;
 }
 
@@ -1050,6 +1104,7 @@ struct Models {
     std::shared_ptr<slint::VectorModel<LinkRowDto>> addLinks = std::make_shared<slint::VectorModel<LinkRowDto>>();
     std::shared_ptr<slint::VectorModel<DeviceRowDto>> deviceRows = std::make_shared<slint::VectorModel<DeviceRowDto>>();
     std::shared_ptr<slint::VectorModel<TorrentFileRowDto>> addTorrentFiles = std::make_shared<slint::VectorModel<TorrentFileRowDto>>();
+    std::shared_ptr<slint::VectorModel<RowMenuItemDto>> rowMenu = std::make_shared<slint::VectorModel<RowMenuItemDto>>();
 };
 
 inline void bind_models(const Core &core, const Models &models) {
@@ -1066,6 +1121,7 @@ inline void bind_models(const Core &core, const Models &models) {
     core.set_addLinks(models.addLinks);
     core.set_deviceRows(models.deviceRows);
     core.set_addTorrentFiles(models.addTorrentFiles);
+    core.set_rowMenu(models.rowMenu);
 }
 
 inline bool apply_channel(const Core &core, Models &models, int channel, const fj::Json &j) {
@@ -1097,6 +1153,7 @@ inline bool apply_channel(const Core &core, Models &models, int channel, const f
         case 26: fj::apply_rows<TorrentFileRowDto>(*models.addTorrentFiles, j, parse_TorrentFileRowDto); return true;
         case 27: core.set_audioCompress(parse_AudioCompressDto(j)); return true;
         case 28: core.set_torrentDetails(parse_TorrentDetailsDto(j)); return true;
+        case 29: fj::apply_rows<RowMenuItemDto>(*models.rowMenu, j, parse_RowMenuItemDto); return true;
         default: return false;
     }
 }
@@ -1865,6 +1922,92 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_mainSetupExtensionRow(next());
     tr.set_mainSetupExtensionConnected(next());
     tr.set_mainSetupExtensionMissing(next());
+    tr.set_extractArchives(next());
+    tr.set_extractArchivesOn(next());
+    tr.set_extractArchivesOff(next());
+    tr.set_extractNow(next());
+    tr.set_scanFiles(next());
+    tr.set_scanFilesSystem(next());
+    tr.set_scanFilesCommand(next());
+    tr.set_scanFilesOff(next());
+    tr.set_scanCommandLabel(next());
+    tr.set_scanCommandHint(next());
+    tr.set_scanCommandHintNoScanner(next());
+    tr.set_rowMenuOpen(next());
+    tr.set_rowMenuOpenFolder(next());
+    tr.set_rowMenuPause(next());
+    tr.set_rowMenuResume(next());
+    tr.set_rowMenuExtract(next());
+    tr.set_rowMenuCompress(next());
+    tr.set_rowMenuSendToDevice(next());
+    tr.set_rowMenuCopyLink(next());
+    tr.set_rowMenuSelect(next());
+    tr.set_rowMenuDetails(next());
+    tr.set_rowMenuDelete(next());
+    tr.set_siteFoldersGroup(next());
+    tr.set_siteFoldersHint(next());
+    tr.set_siteFoldersEmpty(next());
+    tr.set_siteFolderFolder(next());
+    tr.set_siteFolderChoose(next());
+    tr.set_siteFolderAdd(next());
+    tr.set_siteFolderLink(next());
+    tr.set_siteFolderNotChosen(next());
+    tr.set_addFolderFromRule(next());
+    tr.set_netDnsGroup(next());
+    tr.set_netDnsHint(next());
+    tr.set_netDnsTitle(next());
+    tr.set_netDnsSystem(next());
+    tr.set_netDnsCustom(next());
+    tr.set_netDnsCustomLabel(next());
+    tr.set_netAdapterLabel(next());
+    tr.set_netDnsProxyOn(next());
+    tr.set_deleteToTrash(next());
+    tr.set_deleteToTrashOn(next());
+    tr.set_deleteToTrashOff(next());
+    tr.set_trashArchive(next());
+    tr.set_deleteToTrashNotWindows(next());
+    tr.set_trashArchiveNotWindows(next());
+    tr.set_trashArchiveOn(next());
+    tr.set_trashArchiveOff(next());
+    tr.set_archivePasswordTitle(next());
+    tr.set_archivePasswordHint(next());
+    tr.set_archivePasswordWrong(next());
+    tr.set_archivePasswordLabel(next());
+    tr.set_extractPlaceTitle(next());
+    tr.set_extractPlaceSmart(next());
+    tr.set_extractPlaceFolder(next());
+    tr.set_extractPlaceNextTo(next());
+    tr.set_reportFooter(next());
+    tr.set_reportFiles(next());
+    tr.set_reportSize(next());
+    tr.set_reportEmpty(next());
+    tr.set_sectionReport(next());
+    tr.set_sectionReportBlurb(next());
+    tr.set_reportPeriod(next());
+    tr.set_reportThisMonth(next());
+    tr.set_reportLastMonth(next());
+    tr.set_reportLast7(next());
+    tr.set_reportLast30(next());
+    tr.set_reportThisYear(next());
+    tr.set_reportAllTime(next());
+    tr.set_reportCustom(next());
+    tr.set_reportFrom(next());
+    tr.set_reportTo(next());
+    tr.set_reportSites(next());
+    tr.set_reportTopSites(next());
+    tr.set_reportNothingInPeriod(next());
+    tr.set_reportMonthNames(next());
+    tr.set_reportWeekdays(next());
+    tr.set_scanningState(next());
+    tr.set_scanTitle(next());
+    tr.set_scanClean(next());
+    tr.set_scanThreatFound(next());
+    tr.set_scanBlocked(next());
+    tr.set_scanAntivirusBlockedError(next());
+    tr.set_scanFailedState(next());
+    tr.set_scanNoScanner(next());
+    tr.set_fileNameNeeded(next());
+    tr.set_storageNeedsAllFiles(next());
 }
 
 template <class Send> void bind_actions(const Act &act, Send send) {
@@ -1882,6 +2025,10 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_rowCheck([send](slint::SharedString id, bool checked) { fj::ActionWriter w("RowCheck"); w.add("id", id); w.add("checked", checked); send(w.finish()); });
     act.on_rowQuickAction([send](slint::SharedString id) { fj::ActionWriter w("RowQuickAction"); w.add("id", id); send(w.finish()); });
     act.on_rowCompress([send](slint::SharedString id) { fj::ActionWriter w("RowCompress"); w.add("id", id); send(w.finish()); });
+    act.on_rowExtract([send](slint::SharedString id) { fj::ActionWriter w("RowExtract"); w.add("id", id); send(w.finish()); });
+    act.on_rowMenu([send](slint::SharedString id) { fj::ActionWriter w("RowMenu"); w.add("id", id); send(w.finish()); });
+    act.on_rowMenuPick([send](int key) { fj::ActionWriter w("RowMenuPick"); w.add("key", key); send(w.finish()); });
+    act.on_rowMenuClose([send]() { fj::ActionWriter w("RowMenuClose"); send(w.finish()); });
     act.on_cyclePriority([send](slint::SharedString id) { fj::ActionWriter w("CyclePriority"); w.add("id", id); send(w.finish()); });
     act.on_checkAll([send](bool checked) { fj::ActionWriter w("CheckAll"); w.add("checked", checked); send(w.finish()); });
     act.on_clearChecks([send]() { fj::ActionWriter w("ClearChecks"); send(w.finish()); });
@@ -1907,6 +2054,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_detailsRemove([send]() { fj::ActionWriter w("DetailsRemove"); send(w.finish()); });
     act.on_detailsShare([send]() { fj::ActionWriter w("DetailsShare"); send(w.finish()); });
     act.on_detailsCompress([send]() { fj::ActionWriter w("DetailsCompress"); send(w.finish()); });
+    act.on_detailsExtract([send]() { fj::ActionWriter w("DetailsExtract"); send(w.finish()); });
     act.on_audioCompressSetMode([send](bool simple) { fj::ActionWriter w("AudioCompressSetMode"); w.add("simple", simple); send(w.finish()); });
     act.on_audioCompressSetLevel([send](int level) { fj::ActionWriter w("AudioCompressSetLevel"); w.add("level", level); send(w.finish()); });
     act.on_audioCompressSetBitrate([send](int value) { fj::ActionWriter w("AudioCompressSetBitrate"); w.add("value", value); send(w.finish()); });
@@ -1925,6 +2073,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_copyText([send](slint::SharedString text) { fj::ActionWriter w("CopyText"); w.add("text", text); send(w.finish()); });
     act.on_alertConfirm([send](int kind, bool checked) { fj::ActionWriter w("AlertConfirm"); w.add("kind", kind); w.add("checked", checked); send(w.finish()); });
     act.on_alertDismiss([send](int kind, bool fromScrim) { fj::ActionWriter w("AlertDismiss"); w.add("kind", kind); w.add("fromScrim", fromScrim); send(w.finish()); });
+    act.on_alertText([send](int kind, slint::SharedString text) { fj::ActionWriter w("AlertText"); w.add("kind", kind); w.add("text", text); send(w.finish()); });
     act.on_alertExtra([send](int kind) { fj::ActionWriter w("AlertExtra"); w.add("kind", kind); send(w.finish()); });
     act.on_setSettingsSection([send](int index) { fj::ActionWriter w("SetSettingsSection"); w.add("index", index); send(w.finish()); });
     act.on_settingToggle([send](slint::SharedString id, bool on) { fj::ActionWriter w("SettingToggle"); w.add("id", id); w.add("on", on); send(w.finish()); });

@@ -44,3 +44,12 @@ iosApp/ThirdParty/
 
 /desktopNative/build-mac/
 /desktopNative/torrent/build-mac/
+
+# generated files
+__pycache__/
+*.pyc
+/desktopNative/build.log
+/desktopNative/tools/shot/probes/out/
+
+# built by scripts/android-ffmpeg
+androidApp/ffmpeg-libs/

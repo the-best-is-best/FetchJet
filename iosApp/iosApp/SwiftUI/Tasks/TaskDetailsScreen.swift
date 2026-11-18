@@ -417,6 +417,11 @@ private struct TaskDetailsContent: View {
                     if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
                 }
             }
+            if ArchiveTasks.shared.canExtract(task: task) {
+                TaskDetailButton(text: s.extractNow, primary: false) {
+                    store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+                }
+            }
             if !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task) {
                 AudioCompressButton(task: task)
             }

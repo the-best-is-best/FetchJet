@@ -44,6 +44,7 @@ import com.tbib.kmp_localization.LocalizationManager
 fun AddDownloadModalDialog(
     inputUrl: String,
     destinationPath: String,
+    folderRuleSite: String = "",
     disableTorrentUpload: Boolean,
     detectedEngine: EngineType,
     isLoading: Boolean,
@@ -491,6 +492,7 @@ fun AddDownloadModalDialog(
                     defaultDownloads = defaultDownloads,
                     defaultDocs = defaultDocs,
                     defaultDesktop = defaultDesktop,
+                    folderRuleSite = folderRuleSite,
                     onDestinationPathChanged = onDestinationPathChanged
                 )
 

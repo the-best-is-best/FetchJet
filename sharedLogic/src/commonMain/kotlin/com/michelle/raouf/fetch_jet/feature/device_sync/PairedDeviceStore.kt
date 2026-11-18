@@ -112,6 +112,14 @@ object PairedDeviceStore {
         save(cache.copy(peers = cache.peers.filterNot { it.id == deviceId }))
     }
 
+    fun renamePaired(deviceId: String, name: String): Boolean {
+        val clean = name.trim()
+        val peer = cache.peers.firstOrNull { it.id == deviceId } ?: return false
+        if (clean.isEmpty() || peer.name == clean) return false
+        save(cache.copy(peers = cache.peers.map { if (it.id == deviceId) it.copy(name = clean) else it }))
+        return true
+    }
+
     fun blockedDevices(): List<PairedDevice> = cache.blocked
 
     fun isBlocked(deviceId: String): Boolean = cache.blocked.any { it.id == deviceId }
@@ -149,6 +157,9 @@ internal class SharedPairedDeviceStore(private val lock: SyncLock) : DeviceSyncS
     override fun addPairing(device: PairedDevice, key: ByteArray) = lock.withLock { PairedDeviceStore.addPairing(device, key) }
 
     override fun removePairing(deviceId: String) = lock.withLock { PairedDeviceStore.removePairing(deviceId) }
+
+    override fun renamePaired(deviceId: String, name: String): Boolean =
+        lock.withLock { PairedDeviceStore.renamePaired(deviceId, name) }
 
     override fun blockedDevices(): List<PairedDevice> = lock.withLock { PairedDeviceStore.blockedDevices() }
 

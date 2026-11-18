@@ -162,8 +162,13 @@ struct TaskListScreen: View {
                 store.selectedTaskId = task.id
             }
         }
-        .onLongPressGesture(minimumDuration: 0.4) {
-            checked.insert(task.id)
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
+        .contextMenu {
+            if selectionMode {
+                Button(isChecked ? s.selectNone : s.selectAll) { toggle(task.id) }
+            } else {
+                rowMenu(task)
+            }
         }
         .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
         .listRowSeparator(.hidden)
@@ -182,6 +187,54 @@ struct TaskListScreen: View {
                 Label(isChecked ? s.selectNone : s.selectAll, systemImage: isChecked ? "square" : "checkmark.square")
             }
             .tint(FJTheme.color.primary)
+        }
+    }
+
+    @ViewBuilder
+    private func rowMenu(_ task: DownloadTask) -> some View {
+        let s = store.strings
+        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, selectEntry: true))
+        ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+            if entry.dividerBefore { Divider() }
+            Button(role: entry.danger ? ButtonRole.destructive : nil) {
+                pickRowMenu(task, entry)
+            } label: {
+                Text(RowMenu.shared.label(entry: entry, s: s))
+            }
+        }
+    }
+
+    private func pickRowMenu(_ task: DownloadTask, _ entry: RowMenuEntry) {
+        switch entry.name {
+        case "OPEN":
+            store.openFile(task)
+        case "OPEN_FOLDER":
+            let resolver = PathResolver()
+            if resolver.isOpenFolderSupported() {
+                _ = resolver.openFileLocation(filePath: store.host.taskFilePath(task: task))
+            } else {
+                store.selectedTaskId = task.id
+            }
+        case "PAUSE":
+            quickAction(task, .pause)
+        case "RESUME":
+            store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
+        case "EXTRACT":
+            store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+        case "COMPRESS":
+            store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
+        case "SEND_TO_DEVICE":
+            store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
+        case "COPY_LINK":
+            store.send(DashboardUiEventOnCopyTaskLink(taskId: task.id))
+        case "SELECT":
+            checked.insert(task.id)
+        case "DETAILS":
+            store.selectedTaskId = task.id
+        case "DELETE":
+            store.send(DashboardUiEventOnRemoveClicked(taskId: task.id))
+        default:
+            break
         }
     }
 

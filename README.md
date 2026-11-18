@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="desktopApp/src/main/resources/launcher.png" width="96" alt="FetchJet">
+  <img src="docs/media/logo.png" width="96" alt="FetchJet">
 </p>
 
 <h1 align="center">FetchJet</h1>
@@ -47,6 +47,11 @@
 | ▶️ **Play from the list**          | A finished video or audio file shows a ▶ button that opens it in your player (other files keep the ↗ open button).                                                         |
 | 🔎 **Test the link**               | A button in the Add dialog tells you if a link works, its size and whether it can resume, without downloading it.                                                            |
 | 💤 **When downloads finish**       | On desktop, have FetchJet sleep, shut down or quit the moment the queue is empty.                                                                                            |
+| 📦 **Extract archives**            | ZIP, TAR, TAR.GZ, TAR.XZ, GZ and XZ open by themselves when the download finishes (or with the Extract button), into a folder of their own; names that try to leave the folder and zip bombs are refused. |
+| 🛡️ **Scan after download**         | Turn it on and every finished file is checked by the antivirus Windows knows, or by your own scanner command (`clamscan [File]`); a file the antivirus blocks fails at once with a clear message. |
+| 🖱️ **Right-click menu**            | Right-click a download (long press on phones and tablets) for open, open folder, pause / resume, extract, send to device, copy link, details and delete.                       |
+| 📁 **Folders by site**             | "Everything from this site goes to this folder": a rule per site (and its sub-domains) that wins over the folder by file type – Settings → Downloads.                        |
+| 🤖 **Automation**                  | `FetchJet status`, `pause`, `start`, `remove`, `delete` from a terminal or a script, through a local API that is off until you turn it on and needs the app's token.          |
 | 🌍 **15 languages**                | English, Arabic and Persian (both right-to-left), French, German, Spanish, Portuguese, Italian, Russian, Turkish, Indonesian, Chinese, Japanese, Korean and Hindi.           |
 
 ---
@@ -58,10 +63,10 @@ platform, with the right file highlighted for your device.
 
 | Platform                                | File                                                                                                | Notes                                                                           |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), or `.msi` | The Store keeps it updated; the MSI updates itself from GitHub.                 |
+| Windows 10 / 11                         | [Microsoft Store](https://apps.microsoft.com/detail/9NP3HJRHMPJS) (recommended), `Setup.exe`, `.msi` or a portable `.zip` | The Store keeps it updated; the installers update themselves from GitHub; the portable copy keeps its data next to it. |
 | macOS 12+ (Apple Silicon)               | `-arm64.dmg`                                                                                        | M1 or newer only. Drag FetchJet to Applications (in-app updates need it there). |
 | Linux                                   | `.deb` or `.tar.gz`                                                                                 | The tarball runs anywhere: unpack and start `bin/FetchJet`.                     |
-| Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; take *universal* if unsure.                |
+| Android 8+                              | `.apk`                                                                                              | `arm64-v8a` fits almost every phone; `armeabi-v7a` old phones, `x86_64` emulators. |
 | iOS 16+                                 | `.ipa`                                                                                              | Sideload with AltStore or Sideloadly. Includes the Safari extension.            |
 | Chrome / Edge / Brave / Opera / Vivaldi | `.zip`                                                                                              | Load it on `chrome://extensions` (Developer mode → Load unpacked).              |
 | Safari (iPhone / iPad)                  | inside the `.ipa`                                                                                   | Turn it on in Settings › Safari › Extensions. Qualities are listed in the app.  |
@@ -164,7 +169,18 @@ If FetchJet is not running, the extension tells you, and the plain browser downl
 ## Privacy
 
 FetchJet talks only to the sites you download from, to GitHub (for update checks) and – for Firefox
-signing in CI – to Mozilla. No analytics, no accounts.
+signing in CI – to Mozilla. No accounts.
+
+**Anonymous usage count.** Once a day the app sends one small message to a server we run
+(Cloudflare Workers) so we can see how many people use FetchJet, on which platform, which version and
+from which country. It contains a random ID generated on your device, the app version and the
+platform (Windows, macOS, Linux, Android or iOS). The country is worked out by Cloudflare from the
+connection. We do not store your IP address, name, email, links, file names or anything you
+download. The server code is in [`stats-worker/`](stats-worker/worker.js). To switch it off, set the
+environment variable `FETCHJET_NO_USAGE_PING=1` before starting the app.
+
+The totals are public: [FetchJet usage statistics](https://fetchjet.the-best-is-best.workers.dev/dashboard)
+(users, platforms, versions and countries; a country with fewer than 5 users is hidden).
 
 Saved passwords, cookies and download links are stored encrypted with your system's key store
 (Keychain, Android Keystore, Windows DPAPI). The browser extension has to be allowed once in the
@@ -177,23 +193,24 @@ app before it can send links, and updates are installed only when they carry Fet
 <details>
 <summary>Developers: click to expand</summary>
 
-FetchJet is a **Kotlin Multiplatform** / **Compose Multiplatform** project.
+FetchJet is a **Kotlin Multiplatform** project: the engines are shared Kotlin, the desktop app is
+native (Kotlin/Native core + Slint UI + C++ host), Android uses Compose and iOS uses SwiftUI.
 
-| Module         | What it is                                                                                  |
-|----------------|---------------------------------------------------------------------------------------------|
-| `sharedLogic/` | Engines (HTTP chunks, yt-dlp media, libtorrent), queue, scheduling, updates – all platforms |
-| `sharedUI/`    | The Compose UI shared by desktop, Android and iOS                                           |
-| `desktopApp/`  | JVM app (Windows / macOS / Linux installers via jpackage)                                   |
-| `androidApp/`  | Android app                                                                                 |
-| `iosApp/`      | Xcode project (SwiftUI shell, Live Activity, native bridges)                                |
-| `extension/`   | Chrome / Firefox extension                                                                  |
-| `docs/`        | The downloads page (GitHub Pages)                                                           |
+| Module            | What it is                                                                                  |
+|-------------------|---------------------------------------------------------------------------------------------|
+| `sharedLogic/`    | Engines (HTTP chunks, yt-dlp media, libtorrent), queue, scheduling, updates – all platforms |
+| `desktopNative/`  | Native desktop app for Windows, macOS and Linux (core, Slint UI, C++ host, installers)      |
+| `androidUi/`      | The Compose UI of the Android app                                                           |
+| `androidApp/`     | Android app                                                                                 |
+| `iosApp/`         | Xcode project (SwiftUI app, Live Activity, native bridges)                                  |
+| `extension/`      | Chrome / Firefox extension                                                                  |
+| `stats-worker/`   | The anonymous usage count server (Cloudflare Worker)                                        |
+| `docs/`           | The downloads page (GitHub Pages)                                                           |
 
 ```bash
-# Desktop
-./gradlew :desktopApp:run            # run
-./gradlew :desktopApp:hotRun --auto  # hot reload
-./gradlew :desktopApp:packageMsi     # installer for the current OS (packageDmg / packageDeb)
+# Desktop (Windows; needs Visual Studio and CMake, other systems: desktopNative/README.md)
+./gradlew :desktopNativeCore:linkReleaseSharedMingwX64 -Pfetchjet.nativeDesktop=true
+desktopNative\packaging\build-release.cmd    # FetchJet.exe and its DLLs
 
 # Android
 ./gradlew :androidApp:assembleDebug
@@ -207,6 +224,9 @@ open iosApp/iosApp.xcodeproj         # build & run from Xcode
 
 Releases are built by GitHub Actions: push a `v1.2.3` tag for all platforms, or run the workflow by
 hand and tick only the platforms that changed. See `.github/workflows/build.yml`.
+
+The desktop build steps for each system, the project layout and the tests are in
+[desktopNative/README.md](desktopNative/README.md).
 
 Set `fetchjet.verboseLogs=true` in `gradle.properties` (or the `FETCHJET_VERBOSE_LOGS` env var) for
 a build with detailed engine logs; on desktop the log is at `~/.fetch_jet/logs/app.log`.

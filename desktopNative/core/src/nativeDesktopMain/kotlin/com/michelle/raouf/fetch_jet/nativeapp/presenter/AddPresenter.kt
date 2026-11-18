@@ -89,6 +89,7 @@ private data class AddSlice(
     val visible: Boolean,
     val inputUrl: String,
     val destinationPath: String,
+    val addFolderRuleSite: String,
     val disableTorrentUpload: Boolean,
     val detectedEngine: EngineType,
     val isLoading: Boolean,
@@ -125,6 +126,7 @@ private fun DashboardUiState.addSlice() = AddSlice(
     visible = isAddDialogVisible,
     inputUrl = inputUrl,
     destinationPath = destinationPath,
+    addFolderRuleSite = addFolderRuleSite,
     disableTorrentUpload = disableTorrentUpload,
     detectedEngine = detectedEngine,
     isLoading = isLoading,
@@ -221,19 +223,6 @@ internal fun Presenter.startAdd() {
         }
     }
     scope.launch {
-        slices.map { it.visible to it.typeFolder() }.distinctUntilChanged().collect { (visible, typeFolder) ->
-            if (!visible) return@collect
-            val state = vm.uiState.value
-            val base = FileCategory.stripTypeFolders(
-                state.destinationPath,
-                listOf(pathResolver.getDownloadsDirectory(), pathResolver.getDocumentsDirectory(), pathResolver.getDesktopDirectory()),
-            )
-            val sep = if (base.contains('\\')) "\\" else "/"
-            val full = if (typeFolder != null) base + sep + typeFolder else base
-            if (full != state.destinationPath) vm.onEvent(DashboardUiEvent.OnDestinationPathChanged(full))
-        }
-    }
-    scope.launch {
         slices.map { it.visible }.distinctUntilChanged().collect { visible ->
             if (!visible) addLocal.value = AddLocal()
         }
@@ -322,6 +311,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         fileNameRev = addFields.fileName.rev(fileName),
         fileNameBusy = inspecting,
         fileNameCanReset = s.fileNameOverride.isNotBlank() && s.fileNameOverride != s.suggestedFileName,
+        fileNameNeeded = s.needsFileName && !inspecting,
         checksumShown = !s.showsLinkList && !s.hasPlaylist && s.detectedEngine == EngineType.HTTP_DIRECT,
         checksum = s.checksumInput,
         checksumRev = addFields.checksum.rev(s.checksumInput),
@@ -331,6 +321,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         testLinkText = com.michelle.raouf.fetch_jet.presentation.dashboard.testLinkText(s.testLink, s.suggestedFileName) { formatBytes(it) },
         destination = s.destinationPath,
         destinationRev = addFields.destination.rev(s.destinationPath),
+        folderRule = if (s.addFolderRuleSite.isBlank()) "" else LocalizationManager.Strings.addFolderFromRule + " " + s.addFolderRuleSite,
         quickFolders = listOf(
             QuickFolderDto("📥", strings.quickFolderDownloads, downloads),
             QuickFolderDto("📄", strings.quickFolderDocuments, documents),

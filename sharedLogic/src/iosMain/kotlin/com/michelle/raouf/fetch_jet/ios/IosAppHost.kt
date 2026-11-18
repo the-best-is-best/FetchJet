@@ -40,6 +40,7 @@ class IosAppHost {
     init {
         LocalizationManager.start()
         viewModel = DashboardViewModel()
+        IosAutomationServer(scope).startIfRequested()
         watchClipboard()
     }
 

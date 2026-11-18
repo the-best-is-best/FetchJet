@@ -80,6 +80,7 @@ internal fun DownloadTaskItem(
     onFilePriorityChanged: (Int, Int) -> Unit,
     onShare: (() -> Unit)? = null,
     onCompress: (() -> Unit)? = null,
+    onExtract: (() -> Unit)? = null,
     compressedCopies: Int = 0,
     torrentSection: (@Composable () -> Unit)? = null
 ) {
@@ -663,6 +664,20 @@ internal fun DownloadTaskItem(
                     }
                 }
             }
+            if (onExtract != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onExtract,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Text(
+                        LocalizationManager.Strings.extractNow,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
             if (onCompress != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
@@ -911,6 +926,9 @@ internal fun TaskDetailsPane(
                 } else null,
                 onCompress = if (fullScreen && com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
+                } else null,
+                onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
                 } else null,
                 compressedCopies = compressedCopies,
                 torrentSection = if (task.engineType == EngineType.BITTORRENT) {

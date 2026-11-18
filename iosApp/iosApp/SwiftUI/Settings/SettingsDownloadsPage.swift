@@ -84,7 +84,14 @@ struct SettingsDownloadsPage: View {
                     subtitle: st.sortIntoFolders ? s.sortIntoFoldersOn : s.sortIntoFoldersOff,
                     isOn: st.sortIntoFolders
                 ) { store.send(DashboardUiEventOnSortIntoFoldersChanged(on: $0)) }
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title: s.extractArchives,
+                    subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
+                    isOn: st.extractArchives
+                ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
+            SettingsSiteFoldersCard()
             SettingsGroupBox(title: s.homeQueueTitle, footer: s.homeQueueFooter) {
                 SettingsRow(
                     title: s.homeDownloadsAtSameTime,
@@ -280,7 +287,7 @@ struct SettingsFolderPicker: View {
                         Text(s.dirPickerNoSubfolders).foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }
                     ForEach(subfolders, id: \.self) { path in
-                        Button { go(path) } label: {
+                        Button { go(path.hasPrefix("/") ? path : (current.hasSuffix("/") ? current : current + "/") + path) } label: {
                             Label(settingsFolderName(path), systemImage: "folder.fill")
                                 .foregroundStyle(FJTheme.color.onSurface)
                         }
@@ -307,5 +314,79 @@ struct SettingsFolderPicker: View {
     private func go(_ path: String) {
         current = path
         subfolders = resolver.listSubdirectories(path: path, includeHidden: false)
+    }
+}
+
+struct SettingsSiteFoldersCard: View {
+    @EnvironmentObject var store: FJStore
+    @State private var rules: [SiteFolderRule] = []
+    @State private var site = ""
+    @State private var folder = ""
+    @State private var pickingFolder = false
+
+    private func reload() {
+        rules = (BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
+    }
+
+    var body: some View {
+        let s = store.strings
+        let canAdd = SiteFolderRules.shared.isValidSite(text: site) && !folder.trimmingCharacters(in: .whitespaces).isEmpty
+        SettingsGroupBox(title: s.siteFoldersGroup, footer: s.siteFoldersHint) {
+            if rules.isEmpty {
+                SettingsRow(title: s.siteFoldersEmpty)
+            }
+            ForEach(rules, id: \.site) { rule in
+                SettingsRow(title: rule.site, subtitle: rule.folder) {
+                    Button(s.netRemove) {
+                        BehaviorSettings.shared.removeSiteFolder(site: rule.site)
+                        reload()
+                    }
+                    .font(FJTheme.font.callout.weight(.semibold))
+                    .foregroundStyle(FJTheme.color.error)
+                    .buttonStyle(.plain)
+                }
+                SettingsDivider()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                SettingsField(label: s.siteFolderLink, placeholder: "example.com/course", text: $site, keyboard: .URL)
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.siteFolderFolder)
+                            .font(FJTheme.font.caption)
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        Text(folder.isEmpty ? s.siteFolderNotChosen : folder)
+                            .font(FJTheme.font.body)
+                            .foregroundStyle(folder.isEmpty ? FJTheme.color.onSurfaceVariant : FJTheme.color.onSurface)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button(s.siteFolderChoose) { pickingFolder = true }
+                        .buttonStyle(SettingsButtonStyle(filled: false))
+                }
+                HStack {
+                    Spacer()
+                    Button(s.siteFolderAdd) {
+                        if BehaviorSettings.shared.addSiteFolder(site: site, folder: folder) {
+                            site = ""
+                            folder = ""
+                        }
+                        reload()
+                    }
+                    .buttonStyle(SettingsButtonStyle(filled: true))
+                    .disabled(!canAdd)
+                }
+            }
+            .padding(16)
+        }
+        .onAppear {
+            reload()
+        }
+        .sheet(isPresented: $pickingFolder) {
+            SettingsFolderPicker(initialPath: folder.isEmpty ? store.state.destinationPath : folder) { picked in
+                folder = picked
+            }
+            .environmentObject(store)
+        }
     }
 }
