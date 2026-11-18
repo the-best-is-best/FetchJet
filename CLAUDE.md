@@ -265,6 +265,26 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Mac check of `release-v1.5.1` (`8aaca47`, nothing committed):**
+    - `FJTorrent.xcframework` rebuilt (`scripts/build-libtorrent-ios.command`; `-[FJTorrentSession setProxyKind:...]` in
+      the simulator library), `scripts/ios-dev-build.command all` built with no Kotlin / Swift error; app 1.5.1 (9).
+    - iOS torrent proxy, iPhone 17 simulator, `scripts/network-test/test_proxies.py /tmp/proxies.log`, a 16 KB torrent
+      from `tiny_torrent.py` whose own tracker is a local HTTP tracker (`127.0.0.1:18101`, answers one peer
+      `127.0.0.1:18102`, a listener that logs connections), added with `fetchjet://download?url=...` (`xcrun simctl
+      openurl`), proxy set by writing `network.json` before each launch. SOCKS5 (fj / secret): `SOCKS OK 127.0.0.1 18101`
+      (announce) and `SOCKS OK 127.0.0.1 18102` (peer), plus `0.0.0.0 0` lines (UDP associate). HTTP: `GET
+      http://127.0.0.1:18101/announce?...` and `CONNECT 127.0.0.1:18102`. Off: nothing in the proxy log, tracker and
+      peer reached directly. Seen, not looked into: in the SOCKS run the `.torrent` file fetch and the announce gave one
+      `127.0.0.1 18101` line between them (one of them may have gone direct; with HTTP both went through), and the HTTP
+      run also asked the proxy for `http://127.0.0.1:18101/fj-http.bin` (a probe of the link's name?).
+    - Usage ping: the app was launched 3 times WITHOUT `FETCHJET_NO_USAGE_PING` after moving the old
+      `usage.properties` out of the container: no `usage.properties` was created and no request to
+      `fetchjet.the-best-is-best.workers.dev` reached the proxy (the proxy saw only `api.github.com`, the update check).
+    - Settings > Updates shows "Version 1.5.1".
+    - macOS: `linkReleaseSharedMacosArm64` and `make-dmg.sh` built (`FetchJet-1.5.1-arm64.dmg`); corehost `test_extract`
+      20 / 0. `test_extract` has no Arabic-name case; a separate run through the core (a zip made by `/usr/bin/zip` with
+      `تقرير الشهر.txt` and `ملف.txt`, no UTF-8 flag) extracted both names right.
+
 - **2026-11-18, Mac check of `88afe81` (long press selects, on `master`):** the iOS `onAppear` / `onDisappear` on the
   `contextMenu` content never fire (SwiftUI turns it into a UIMenu), so closing the menu selected nothing. Fixed in
   `TaskListScreen.swift`: the row menu has its own `preview:` (a `TaskRowView`), whose `onDisappear` selects the row
@@ -803,7 +823,7 @@ Bridges:
   did not answer the proxy's 407. A new network call = `NetworkClient` / `useNetworkSettings`
   or `openAppConnection`, never a bare client. iOS torrents (1.5.1): `FJTorrent`
   `setProxy(kind:host:port:user:password:)`, called by `NativeTorrentBridge.setProxy` from `TorrentBackend.ios.kt`
-  (`syncProxy`); not built or run yet: rebuild the xcframework on the Mac. Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
+  (`syncProxy`); built and checked on the Mac simulator 2026-11-18 (Current state). Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
   login, basic-auth site) was used on Windows; see ROADMAP item 6.
 - **Item 6 (network) on iOS: done on the Mac simulator (2026-11-03), see ROADMAP item 6.** It
   compiled with no change. Results: HTTP / SOCKS5 proxy with login, YouTube through the proxy,
@@ -835,8 +855,9 @@ Bridges:
        `SOCKS OK ...`). A wrong password must fail. Proxy Off: nothing in the log.
     4. Site login: proxy Off, save `127.0.0.1` / `site` / `pw`, download the 18090 link (log:
        `SITE ... auth-ok`); without the login it fails with 401.
-    5. iOS torrents use the proxy since 1.5.1 (new `FJTorrent` method, needs a Mac build and a test
-       with the local proxy: the proxy log must show the tracker / peer connections).
+    5. iOS torrents use the proxy since 1.5.1 (new `FJTorrent` method). Checked 2026-11-18 on the
+       iPhone 17 simulator: SOCKS5 and HTTP carry the tracker announce and the peer connection,
+       proxy Off sends nothing through it (Current state).
        Web seeds (HTTP) of a torrent do use it.
     6. Update ROADMAP item 6 and this note with the result.
 - Security (2026-11-03, ROADMAP item 6b): passwords and task cookies are stored encrypted
