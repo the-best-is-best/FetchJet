@@ -359,6 +359,8 @@ namespace fjhost::os {
         if (!GetWindowRect(window, &rect))
             return;
         if (grow) {
+            if (base_width > 0)
+                return;
             base_width = rect.right - rect.left;
             base_height = rect.bottom - rect.top;
             SetWindowPos(window, nullptr, 0, 0, base_width + 1, base_height + 1, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);

@@ -164,6 +164,7 @@ internal class SyncDiscovery(private val engine: DeviceSyncEngine) {
                 host = sender, port = ann.port, paired = store.isPaired(ann.id)
             )
         )
+        if (store.renamePaired(ann.id, ann.name.take(60))) engine.publishPaired()
     }
 
     suspend fun expireLoop() {

@@ -284,6 +284,7 @@ class DashboardViewModel(
             pendingExternalHeaders = request.toRequestHeaders()
             pendingExternalFileName = null
             pendingExternalPlaylist = null
+            _uiState.update { it.copy(courseReading = request.reading) }
             onEvent(DashboardUiEvent.OnUrlChanged(request.url))
             onEvent(DashboardUiEvent.OnToggleAddDialog(true))
         }
@@ -407,6 +408,7 @@ class DashboardViewModel(
                 pendingExternalUrl = request.url
                 pendingExternalHeaders = request.toRequestHeaders()
                 pendingExternalFileName = request.fileName.ifBlank { null }
+                pendingExternalPlaylist = null
                 onEvent(DashboardUiEvent.OnUrlChanged(request.url))
                 onEvent(DashboardUiEvent.OnToggleAddDialog(true))
                 return@launch
@@ -859,6 +861,7 @@ class DashboardViewModel(
                         headersForLink(url)
                     )
                 } ?: emptyList()
+                if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
                 if (_uiState.value.inputUrl != url) {
                     // Results of a link that is no longer in the box.
                     _uiState.update { it.copy(isInspectingMedia = false) }
@@ -910,6 +913,7 @@ class DashboardViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
                 _uiState.update {
                     it.copy(
                         isInspectingMedia = false,

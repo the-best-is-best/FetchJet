@@ -264,6 +264,22 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Windows, Udemy and device name (owner-tested in Edge, "works"):**
+    - Udemy single video opened the Add dialog with the whole course list: `pendingExternalPlaylist` kept the last course
+      read by the browser; it is now cleared when a single link arrives (`startExternalDirectly`) and when the dialog closes.
+    - yt-dlp treats a Udemy lecture link as the whole course and, with the browser's cookies, runs until the 90 s limit;
+      meanwhile the extension hid the captured stream ("Getting the qualities..."). The extension no longer asks the app
+      to inspect Udemy course pages (`UDEMY_COURSE_PAGE` in `background.js`: `resolvePage`, `resolveVideo`).
+    - "Whole course": the app's own inspect of the course link raced the browser's reading and flashed its error
+      (`Unable to extract course id`); `showCourseReading` now sets `courseReading` before the link, and a late inspect
+      result is dropped while the reading runs.
+    - The window grew 1 px on every progress post (found by diffing the owner's screen recording): `show_window` ran the
+      `refresh_surface` grow / shrink timers on every call and they overlapped. Now only when the window was hidden
+      (`app.cpp`), and a second grow is refused while one is pending (`platform_win.cpp`).
+    - Device sync name: Android sends the device name the user set (Settings.Global `device_name`), else maker + model,
+      instead of "Android <sdk>" (`DeviceHostName.android.kt`); a paired device's stored name follows its announce
+      (`renamePaired`). Android built, not installed on the A56 yet. iOS gives apps only "iPhone" since iOS 16.
+
 - **2026-11-18, Windows check after the Mac commit `2b49191`** (pulled and merged with the uncommitted Windows work:
   folder rules by link start + folder picker, the hidden Report page; nothing committed). Built: Windows core + host,
   Linux core + host (WSL), Android `assembleDebug`, `:sharedLogic:jvmTest` 200 / 0. Windows corehost: `test_dns` 14,

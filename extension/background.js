@@ -1096,6 +1096,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
 async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
+  if (UDEMY_COURSE_PAGE.test(page)) return;
   const current = await tabState(RES_KEY, tabId);
   if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
@@ -1202,6 +1203,8 @@ async function itemsForTab(tabId) {
 }
 
 /** A Udemy course page (`udemy.com/course/<name>/...`, business sub-domains too). */
+const UDEMY_COURSE_PAGE = /^https:\/\/([\w-]+\.)?udemy\.com\/course\/[^/?#]+/i;
+
 async function udemyCourseForTab(tabId) {
   let pageUrl = "";
   try { pageUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) { return null; }
@@ -1222,8 +1225,18 @@ async function readUdemyCourseInPage(slug, part) {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.json();
   };
+  const courseIdInPage = () => {
+    const html = document.documentElement.innerHTML;
+    const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
+    return found ? found[1] : "";
+  };
   try {
     if (part) {
+      if (!part.id) {
+        part.id = courseIdInPage();
+        if (!part.id) part.id = String((await get(`/api-2.0/courses/${encodeURIComponent(slug)}/?fields[course]=id`)).id || "");
+        if (!part.id) throw new Error("no course id");
+      }
       const pick = (asset) => {
         const all = [].concat(asset.media_sources || [],
           (asset.stream_urls && asset.stream_urls.Video) || [],
@@ -1244,9 +1257,7 @@ async function readUdemyCourseInPage(slug, part) {
         } catch (_) { return {}; }
       }));
     }
-    const html = document.documentElement.innerHTML;
-    const found = /data-course-id="(\d+)"/.exec(html) || /&quot;courseId&quot;:\s*(\d+)/.exec(html) || /"courseId":\s*(\d+)/.exec(html);
-    let id = found ? found[1] : "";
+    let id = courseIdInPage();
     let title = "";
     try {
       const c = await get(`/api-2.0/courses/${id || encodeURIComponent(slug)}/?fields[course]=id,title`);
@@ -1621,11 +1632,12 @@ async function resolveVideo(msg, tab) {
   if (msg.src && /^https?:/i.test(msg.src)) {
     items.push({ kind: "media", label: fjT("itemVideoFile", { name: baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video" }), sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });
   }
-  if (msg.frame && tab && !msg.page) {
+  const udemy = !!tab && UDEMY_COURSE_PAGE.test(msg.page || tab.url || "");
+  if (tab && (udemy || (msg.frame && !msg.page))) {
     // a player in a frame: what was found for the whole page is what it plays
     const found = (await itemsForTab(tab.id)).items.filter(i => !i.disabled);
     if (found.length) return { items: found };
-    if (msg.poll) return { pending: true };
+    if (msg.poll || udemy) return { pending: true };
   }
   const page = msg.page || (msg.src && !msg.frame ? "" : (tab && tab.url));
   if (page && /^https?:/i.test(page)) {

@@ -281,12 +281,15 @@ namespace fjhost {
 
     void show_window(bool focus) {
         const bool first = !g_shown;
+        const bool was_visible = g_shown && ui().window().is_visible();
         ui().show();
         os::fit_to_work_area(first);
-        slint::Timer::single_shot(std::chrono::milliseconds(400), [first] { os::fit_to_work_area(first); });
-        for (int at : {900, 2200}) {
-            slint::Timer::single_shot(std::chrono::milliseconds(at), [] { os::refresh_surface(true); });
-            slint::Timer::single_shot(std::chrono::milliseconds(at + 250), [] { os::refresh_surface(false); });
+        if (!was_visible) {
+            slint::Timer::single_shot(std::chrono::milliseconds(400), [first] { os::fit_to_work_area(first); });
+            for (int at : {900, 2200}) {
+                slint::Timer::single_shot(std::chrono::milliseconds(at), [] { os::refresh_surface(true); });
+                slint::Timer::single_shot(std::chrono::milliseconds(at + 250), [] { os::refresh_surface(false); });
+            }
         }
         g_shown = true;
         os::apply_title_bar(ui().global<Core>().get_shell().dark);
