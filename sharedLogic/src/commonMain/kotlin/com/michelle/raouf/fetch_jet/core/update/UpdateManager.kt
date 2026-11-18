@@ -305,7 +305,12 @@ object UpdateManager {
 
     private suspend fun fetchLatestRelease(): AppRelease? {
         if (PlatformUpdater.updatesFromStore) {
-            val version = PlatformUpdater.latestStoreVersion() ?: APP_VERSION
+            val reported = PlatformUpdater.latestStoreVersion()
+            val version = when {
+                reported == null -> APP_VERSION
+                isNewer(reported, APP_VERSION) -> reported
+                else -> storeCatalogVersion()?.takeIf { isNewer(it, APP_VERSION) } ?: APP_VERSION
+            }
             return AppRelease(
                 version = version,
                 tag = "v$version",
@@ -341,6 +346,12 @@ object UpdateManager {
             !PlatformUpdater.canInstallInApp || PlatformUpdater.pickAsset(assets) != null
         }
     }
+
+    private suspend fun storeCatalogVersion(): String? = runCatching {
+        val response = client.get(MICROSOFT_STORE_CATALOG) { header("User-Agent", "FetchJet/$APP_VERSION") }
+        if (!response.status.isSuccess()) return@runCatching null
+        storeVersionFromCatalog(response.bodyAsText())
+    }.getOrNull()
 
     internal suspend fun fetchLatestFromWebPage(): AppRelease? {
         val latest = client.get("https://github.com/$UPDATE_REPOSITORY/releases/latest") {
@@ -513,6 +524,14 @@ object UpdateManager {
 }
 
 const val MICROSOFT_STORE_PAGE = "ms-windows-store://pdp/?productid=9NP3HJRHMPJS"
+
+const val MICROSOFT_STORE_CATALOG =
+    "https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=9NP3HJRHMPJS&market=US&languages=en-us"
+
+internal fun storeVersionFromCatalog(json: String): String? =
+    Regex("MichelleRaouf\\.FetchJet_(\\d+)\\.(\\d+)\\.(\\d+)\\.\\d+_").findAll(json)
+        .map { "${it.groupValues[1]}.${it.groupValues[2]}.${it.groupValues[3]}" }
+        .reduceOrNull { best, next -> if (isNewer(next, best)) next else best }
 
 /** Release file with the raw notes (markers included), uploaded by CI next to the builds. */
 const val RELEASE_NOTES_FILE = "release-notes.md"
