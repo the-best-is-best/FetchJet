@@ -12,12 +12,19 @@ private struct TaskGroup: Identifiable {
 
 struct TaskListScreen: View {
     @EnvironmentObject var store: FJStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var search = ""
     @State private var collapsed: Set<String> = []
     @State private var checked: Set<String> = []
     @State private var menuPicked = false
+    @State private var listWidth: CGFloat = 0
 
     private var selectionMode: Bool { !checked.isEmpty }
+
+    private var previewWidth: CGFloat {
+        let row = max(listWidth - 16, 200)
+        return sizeClass == .regular ? min(row, 360) : row
+    }
 
     private var allTasks: [DownloadTask] { store.state.filteredTasks }
 
@@ -139,6 +146,7 @@ struct TaskListScreen: View {
                     .listRowBackground(Color.clear)
             }
             .listStyle(.plain)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { listWidth = $0 }
             .environment(\.defaultMinListRowHeight, 0)
             .contentMargins(.top, 0, for: .scrollContent)
             .listSectionSpacing(0)
@@ -163,17 +171,24 @@ struct TaskListScreen: View {
                 store.selectedTaskId = task.id
             }
         }
-        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
         .contextMenu {
             if selectionMode {
-                Button(isChecked ? s.selectNone : s.selectAll) { toggle(task.id) }
+                Button(isChecked ? s.selectNone : s.selectAll) {
+                    menuPicked = true
+                    toggle(task.id)
+                }
             } else {
                 rowMenu(task)
-                    .onAppear { menuPicked = false }
-                    .onDisappear {
-                        if !menuPicked { checked.insert(task.id) }
-                    }
             }
+        } preview: {
+            TaskRowView(task: task, checked: isChecked, selectionMode: selectionMode) { _ in }
+                .environmentObject(store)
+                .frame(width: previewWidth)
+                .fixedSize(horizontal: false, vertical: true)
+                .onAppear { menuPicked = false }
+                .onDisappear {
+                    if !menuPicked { checked.insert(task.id) }
+                }
         }
         .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
         .listRowSeparator(.hidden)

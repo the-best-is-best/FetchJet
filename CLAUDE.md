@@ -264,6 +264,21 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Mac check of `88afe81` (long press selects, on `master`):** the iOS `onAppear` / `onDisappear` on the
+  `contextMenu` content never fire (SwiftUI turns it into a UIMenu), so closing the menu selected nothing. Fixed in
+  `TaskListScreen.swift`: the row menu has its own `preview:` (a `TaskRowView`), whose `onDisappear` selects the row
+  unless an entry was picked (`menuPicked`, set by every entry and by the selection-mode toggle). The preview width is
+  the row width (`listWidth` from `onGeometryChange`), capped at 360 pt on regular width: on iPad UIKit shrinks a wider
+  preview to fit next to the menu, keeps the aspect and clips the SwiftUI view to a thin strip. iPhone 17 and iPad Pro:
+  close outside -> row selected and the selection bar shows; long press another row while selecting -> it joins;
+  "Copy link" -> link on the clipboard, nothing selected. Mac without the Android SDK (`local.properties` moved aside,
+  `ANDROID_HOME` empty): `:desktopNativeCore:linkReleaseSharedMacosArm64 -Pfetchjet.nativeDesktop=true` built, no
+  "SDK location not found". macOS `make-dmg.sh` built; corehost `test_rowmenu` 19, `test_settings` 87, `test_home` 41,
+  0 failed. macOS window (staged app, throw-away `--home`, 3 local downloads): a 0.9 s left hold selects the row and the
+  click after it does not undo it; a second hold on another row adds it (2 selected); hold and move 25 px selects
+  nothing and the release counts as a normal click (details open); right-click opens the row menu, nothing selected;
+  a normal click opens the details as before.
+
 - **2026-11-18, CI Linux job (1.5.0 release run):** `:desktopNativeCore:linkReleaseSharedLinuxX64` failed on the WSL
   runner with "SDK location not found": since `a88e188` `androidApp` has `externalNativeBuild` (own ffmpeg), so AGP needs
   the Android SDK while configuring, and the Linux runner has none. `settings.gradle.kts` now leaves out `:androidApp` and
