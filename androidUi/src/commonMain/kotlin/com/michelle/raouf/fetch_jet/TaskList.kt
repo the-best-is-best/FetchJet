@@ -507,7 +507,10 @@ internal fun TaskListArea(
                                 com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions(selectEntry = true)
                             )
                         }
-                        DropdownMenu(expanded = menuTaskId == task.id, onDismissRequest = { menuTaskId = null }) {
+                        DropdownMenu(expanded = menuTaskId == task.id, onDismissRequest = {
+                            menuTaskId = null
+                            checkedIds = checkedIds + task.id
+                        }) {
                             entries.forEach { entry ->
                                 if (entry.dividerBefore) androidx.compose.material3.HorizontalDivider()
                                 DropdownMenuItem(

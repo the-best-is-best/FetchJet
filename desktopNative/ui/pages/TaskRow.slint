@@ -248,6 +248,10 @@ export component TaskRow inherits Rectangle {
     private property <bool> shift;
     private property <length> menu-x;
     private property <length> menu-y;
+    private property <bool> holding;
+    private property <bool> held;
+    private property <length> hold-x;
+    private property <length> hold-y;
     height: (root.is-header ? 32px : root.wide ? 68px : root.data.completed ? 75px : 90px) + 6px;
 
     row-menu := RowMenuPopup {
@@ -277,11 +281,35 @@ export component TaskRow inherits Rectangle {
         accessible-checkable: true;
         accessible-checked: root.data.selected;
         accessible-action-default => { Act.rowClick(root.data.id, false, false); }
+        hold-timer := Timer {
+            interval: 550ms;
+            running: root.holding;
+            triggered => {
+                root.holding = false;
+                root.held = true;
+                root.focus-list();
+                Act.rowClick(root.data.id, true, false);
+            }
+        }
         ta := TouchArea {
+            moved => {
+                if root.holding && (abs(self.mouse-x - root.hold-x) > 6px || abs(self.mouse-y - root.hold-y) > 6px) {
+                    root.holding = false;
+                }
+            }
             pointer-event(e) => {
                 if e.kind == PointerEventKind.down {
                     root.ctrl = e.modifiers.control;
                     root.shift = e.modifiers.shift;
+                }
+                if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+                    root.held = false;
+                    root.hold-x = self.mouse-x;
+                    root.hold-y = self.mouse-y;
+                    root.holding = true;
+                }
+                if e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
+                    root.holding = false;
                 }
                 if e.kind == PointerEventKind.down && e.button == PointerEventButton.right {
                     root.menu-x = self.mouse-x;
@@ -291,6 +319,10 @@ export component TaskRow inherits Rectangle {
                 }
             }
             clicked => {
+                if root.held {
+                    root.held = false;
+                    return;
+                }
                 root.focus-list();
                 Act.rowClick(root.data.id, root.ctrl, root.shift);
             }

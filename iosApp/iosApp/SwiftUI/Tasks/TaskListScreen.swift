@@ -15,6 +15,7 @@ struct TaskListScreen: View {
     @State private var search = ""
     @State private var collapsed: Set<String> = []
     @State private var checked: Set<String> = []
+    @State private var menuPicked = false
 
     private var selectionMode: Bool { !checked.isEmpty }
 
@@ -168,6 +169,10 @@ struct TaskListScreen: View {
                 Button(isChecked ? s.selectNone : s.selectAll) { toggle(task.id) }
             } else {
                 rowMenu(task)
+                    .onAppear { menuPicked = false }
+                    .onDisappear {
+                        if !menuPicked { checked.insert(task.id) }
+                    }
             }
         }
         .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
@@ -205,6 +210,7 @@ struct TaskListScreen: View {
     }
 
     private func pickRowMenu(_ task: DownloadTask, _ entry: RowMenuEntry) {
+        menuPicked = true
         switch entry.name {
         case "OPEN":
             store.openFile(task)
