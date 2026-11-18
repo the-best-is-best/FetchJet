@@ -330,6 +330,47 @@ class ArchiveExtractorTest {
     }
 
     @Test
+    fun utf8NamesWithoutTheUtf8FlagLikeMacZip() {
+        val bytes = java.io.ByteArrayOutputStream().also { out ->
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                zip.putNextEntry(java.util.zip.ZipEntry("محاضرات/الدرس الأول.txt")); zip.write("arabic".toByteArray())
+                zip.putNextEntry(java.util.zip.ZipEntry("résumé.txt")); zip.write("latin".toByteArray())
+            }
+        }.toByteArray()
+        var flagsCleared = 0
+        for (i in 0 until bytes.size - 4) {
+            val sig = (bytes[i].toInt() and 0xFF) or ((bytes[i + 1].toInt() and 0xFF) shl 8) or
+                ((bytes[i + 2].toInt() and 0xFF) shl 16) or ((bytes[i + 3].toInt() and 0xFF) shl 24)
+            val flagAt = when (sig) { 0x04034b50 -> i + 7; 0x02014b50 -> i + 9; else -> -1 }
+            if (flagAt > 0 && bytes[flagAt].toInt() and 0x08 != 0) {
+                bytes[flagAt] = (bytes[flagAt].toInt() and 0xF7).toByte(); flagsCleared++
+            }
+        }
+        assertEquals(4, flagsCleared)
+        val dir = File(work, "macnames").also { it.mkdirs() }
+        val folder = File(extract(File(dir, "mac.zip").also { it.writeBytes(bytes) }).destination)
+        assertEquals("arabic", File(folder, "محاضرات/الدرس الأول.txt").readText())
+        assertEquals("latin", File(folder, "résumé.txt").readText())
+    }
+
+    @Test
+    fun realInfoZipArchiveWithArabicNames() {
+        val folder = extractResource("infozip-utf8.zip")
+        assertEquals("محاضرات", folder.name)
+        assertEquals("hi\n", File(folder, "الدرس.txt").readText())
+    }
+
+    @Test
+    fun strictUtf8Check() {
+        assertTrue(isStrictUtf8("دراسات".toByteArray()))
+        assertTrue(isStrictUtf8("plain".toByteArray()))
+        assertTrue(!isStrictUtf8(byteArrayOf(0x63, 0x61, 0x66, 0x82.toByte())))
+        assertTrue(!isStrictUtf8(byteArrayOf(0xC3.toByte())))
+        assertTrue(!isStrictUtf8(byteArrayOf(0xED.toByte(), 0xA0.toByte(), 0x80.toByte())))
+        assertEquals("café", zipEntryName(byteArrayOf(0x63, 0x61, 0x66, 0x82.toByte()), false))
+    }
+
+    @Test
     fun storedEmptyFilesAndDeepFolders() {
         val folder = extractResource("mixed.zip")
         assertContentEquals(ByteArray(256 * 500) { (it % 256).toByte() }, File(folder, "stored.bin").readBytes())

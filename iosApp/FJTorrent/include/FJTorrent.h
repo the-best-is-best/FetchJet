@@ -128,6 +128,8 @@ NS_SWIFT_NAME(TorrentSession)
 
 - (int64_t)uploadedBytesFor:(NSString *)key NS_SWIFT_NAME(uploadedBytes(_:));
 
+- (void)setProxyKind:(NSInteger)kind host:(NSString *)host port:(NSInteger)port user:(NSString *)user password:(NSString *)password NS_SWIFT_NAME(setProxy(kind:host:port:user:password:));
+
 - (void)shutdown;
 
 @end

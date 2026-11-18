@@ -489,6 +489,33 @@ priorities
     } catch (...) {}
 }
 
+- (void)setProxyKind:(NSInteger)kind host:(NSString *)host port:(NSInteger)port user:(NSString *)user password:(NSString *)password {
+    if (!_session) return;
+    try {
+        bool const on = kind != 0 && host.length > 0 && port > 0;
+        bool const login = user.length > 0;
+        bool const socks = kind == 2;
+        lt::settings_pack pack;
+        int type = lt::settings_pack::none;
+        if (on) type = socks ? (login ? lt::settings_pack::socks5_pw : lt::settings_pack::socks5)
+                             : (login ? lt::settings_pack::http_pw : lt::settings_pack::http);
+        pack.set_int(lt::settings_pack::proxy_type, type);
+        pack.set_str(lt::settings_pack::proxy_hostname, on ? host.UTF8String : "");
+        pack.set_int(lt::settings_pack::proxy_port, on ? (int) port : 0);
+        pack.set_str(lt::settings_pack::proxy_username, on ? user.UTF8String : "");
+        pack.set_str(lt::settings_pack::proxy_password, on ? password.UTF8String : "");
+        pack.set_bool(lt::settings_pack::proxy_hostnames, true);
+        pack.set_bool(lt::settings_pack::proxy_peer_connections, true);
+        pack.set_bool(lt::settings_pack::proxy_tracker_connections, true);
+        bool const udp = !(on && !socks);
+        pack.set_bool(lt::settings_pack::enable_dht, udp);
+        pack.set_bool(lt::settings_pack::enable_lsd, udp);
+        pack.set_bool(lt::settings_pack::enable_outgoing_utp, udp);
+        pack.set_bool(lt::settings_pack::enable_incoming_utp, udp);
+        _session->apply_settings(std::move(pack));
+    } catch (...) {}
+}
+
 - (NSArray<FJTorrentTracker *> *)trackersFor:(NSString *)key {
     lt::torrent_handle h = [self handleFor:key];
     if (!h.is_valid()) return @[];

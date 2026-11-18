@@ -3,6 +3,9 @@
 package com.michelle.raouf.fetch_jet.feature.torrent_engine
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
+import com.michelle.raouf.fetch_jet.core.network.ProxyKind
+import com.michelle.raouf.fetch_jet.core.network.ProxySettings
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -36,9 +39,23 @@ private class IosTorrentBackend : TorrentBackend {
         if (isSupported) Result.success(Unit)
         else Result.failure(UnsupportedOperationException(engineStatus()))
 
+    private var appliedProxy: ProxySettings? = null
+
+    private fun syncProxy(b: IosTorrentBridge) {
+        val p = NetworkSettings.proxy.value
+        if (p == appliedProxy) return
+        val kind = when {
+            !p.isOn -> 0
+            p.kind == ProxyKind.SOCKS5 -> 2
+            else -> 1
+        }
+        b.setProxy(kind, p.host, p.port, p.user, p.password)
+        appliedProxy = p
+    }
+
     private fun requireBridge(): IosTorrentBridge =
-        bridge?.takeIf { it.isAvailable() }
-            ?: throw UnsupportedOperationException(engineStatus())
+        (bridge?.takeIf { it.isAvailable() }
+            ?: throw UnsupportedOperationException(engineStatus())).also { syncProxy(it) }
 
     private fun failure(b: IosTorrentBridge, fallback: String): Nothing =
         throw IllegalStateException(b.lastError()?.takeIf { it.isNotBlank() } ?: fallback)
@@ -131,6 +148,7 @@ private class IosTorrentBackend : TorrentBackend {
     }
 
     override fun progress(taskId: String): TorrentProgress? {
+        bridge?.let { syncProxy(it) }
         val p = bridge?.progress(taskId) ?: return null
         return TorrentProgress(
             downloadedBytes = p.downloadedBytes,

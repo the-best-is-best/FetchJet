@@ -52,11 +52,12 @@ The owner wants speed parity and smooth UX.
 
 Version constants:
 
-- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.5.0"` and
-  `EXTENSION_VERSION = "3.5.0"` (1.4.1 is the last release, tag `v1.4.1`; 1.5.0 is being finished on
-  `release-v1.5.0`)
-- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.5.0`,
-  `CURRENT_PROJECT_VERSION = 8`
+- `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.5.1"` and
+  `EXTENSION_VERSION = "3.5.0"` (1.5.0 is the last release, tag `v1.5.0`; 1.5.1 is next, on `release-v1.5.1`)
+- `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.5.1`,
+  `CURRENT_PROJECT_VERSION = 9`
+- Usage ping (1.5.1): not sent from desktop development builds (`DesktopApp.isDevelopmentBuild`), the Android
+  emulator or a debuggable Android build (`UsagePing.jvmAndroid.kt`), or the iOS simulator (`SIMULATOR_*` env).
 - `extension/manifest.json` and `manifest.firefox.json` → `3.5.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
@@ -375,7 +376,7 @@ Bridges:
   (`markExtracted`). macOS stores the quarantine agent / URLs in the QuarantineEventsV2 database, not in the xattr text, so
   `xattr -p com.apple.quarantine` never shows "FetchJet". The zip / tar extractor now keeps the exec bit
   (`markExecutable`, `core/filesystem/FileModes*.kt`): Mac test_extract 20/20, iPhone 17 and iPad simulators checked.
-  Open: the scan hint mentions Windows on macOS / Linux.
+  The scan hint per system (no built-in scanner on macOS / Linux) was fixed in `acb625e`.
 - **2026-11-16, Mac session on `release-v1.5.0` (commits `0492795`, `8078e5d`, `1f82a85`, `1561182`; details in ROADMAP-1.5.0.md items 1, 2, 16):**
     - Automation API on the iPhone simulator and the macOS native app, archive extraction and the Extract button on
       iPhone / iPad / the Mac window: built and passed (corehost: extract 16, extract_big 11 at 68 MB/s, addname 14,
@@ -388,7 +389,9 @@ Bridges:
     - macOS native: the menu bar icon is `desktopNative/res/fetchjet-tray.png` (copied to `Contents/Resources`); without
       it the host shows a system arrow.
     - `extension/background.js` has CRLF line ends: a script that rewrites it must keep them (`newline=''` in Python).
-    - Found, not fixed: a zip made by macOS `zip` with an Arabic name and no UTF-8 flag extracts with a CP437 name.
+    - Fixed 2026-11-18: a zip made by macOS / Info-ZIP `zip` (UTF-8 names, no UTF-8 flag) extracted with CP437 names;
+      `ZipReader` now reads the Info-ZIP Unicode Path field and takes names that are valid UTF-8 as UTF-8
+      (`zipEntryName`, test `infozip-utf8.zip`).
     - Safari's toolbar icon is `extension/toolbar16-64.png` (the arrow on a transparent background, Safari manifest only):
       the full square icon showed as a black square in Safari's extension menu on iPad. Checked on iPhone 17 and iPad Pro.
     - On iPad, Safari asks for site access per site: with no access to `us06web.zoom.us` the page button does not show.
@@ -798,8 +801,9 @@ Bridges:
   (`jvmAndroidMain/.../core/network/ProxiedConnection.kt`); web seeds use the ktor client
   (`streamUrlWithClient`, common) while a proxy is on, because Android's `HttpURLConnection`
   did not answer the proxy's 407. A new network call = `NetworkClient` / `useNetworkSettings`
-  or `openAppConnection`, never a bare client. Not on iOS torrents (FJTorrent would need a new
-  method + xcframework rebuild). Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
+  or `openAppConnection`, never a bare client. iOS torrents (1.5.1): `FJTorrent`
+  `setProxy(kind:host:port:user:password:)`, called by `NativeTorrentBridge.setProxy` from `TorrentBackend.ios.kt`
+  (`syncProxy`); not built or run yet: rebuild the xcframework on the Mac. Test proxy: a local Python script (HTTP CONNECT + SOCKS5 with
   login, basic-auth site) was used on Windows; see ROADMAP item 6.
 - **Item 6 (network) on iOS: done on the Mac simulator (2026-11-03), see ROADMAP item 6.** It
   compiled with no change. Results: HTTP / SOCKS5 proxy with login, YouTube through the proxy,
@@ -831,8 +835,8 @@ Bridges:
        `SOCKS OK ...`). A wrong password must fail. Proxy Off: nothing in the log.
     4. Site login: proxy Off, save `127.0.0.1` / `site` / `pw`, download the 18090 link (log:
        `SITE ... auth-ok`); without the login it fails with 401.
-    5. Known gaps on iOS: torrents do not use the proxy (FJTorrent has no proxy setting; adding
-       it = a new `FJTorrent` method + Swift bridge + rebuild the xcframework, owner's call).
+    5. iOS torrents use the proxy since 1.5.1 (new `FJTorrent` method, needs a Mac build and a test
+       with the local proxy: the proxy log must show the tracker / peer connections).
        Web seeds (HTTP) of a torrent do use it.
     6. Update ROADMAP item 6 and this note with the result.
 - Security (2026-11-03, ROADMAP item 6b): passwords and task cookies are stored encrypted

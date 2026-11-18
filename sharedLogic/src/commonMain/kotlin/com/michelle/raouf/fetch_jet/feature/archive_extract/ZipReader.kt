@@ -95,11 +95,17 @@ internal class ZipReader(private val handle: FileHandle) {
             var offset = u32(directory, p + 42)
             if (p + 46 + nameLen + extraLen + commentLen > directory.size) throw ArchiveException("the zip file is damaged")
             val rawName = directory.copyOfRange(p + 46, p + 46 + nameLen)
+            var unicodeName: String? = null
             var e = p + 46 + nameLen
             val extraEnd = e + extraLen
             while (e + 4 <= extraEnd) {
                 val id = u16(directory, e)
                 val len = u16(directory, e + 2)
+                if (id == 0x7075 && len > 5 && e + 4 + len <= extraEnd && directory[e + 4].toInt() == 1 &&
+                    u32(directory, e + 5) == crc32Of(rawName)
+                ) {
+                    unicodeName = directory.copyOfRange(e + 9, e + 4 + len).decodeToString()
+                }
                 if (id == 1) {
                     var q = e + 4
                     if (size == 0xFFFFFFFFL && q + 8 <= e + 4 + len) {
@@ -114,7 +120,7 @@ internal class ZipReader(private val handle: FileHandle) {
                 }
                 e += 4 + len
             }
-            val name = if (flags and 0x800 != 0) rawName.decodeToString() else decodeCp437(rawName)
+            val name = unicodeName ?: zipEntryName(rawName, flags and 0x800 != 0)
             val unixMode = if (madeBy == 3) (external ushr 16).toInt() else 0
             val type = unixMode and 0xF000
             list.add(
@@ -150,22 +156,59 @@ internal class ZipReader(private val handle: FileHandle) {
         }
     }
 
-    private fun decodeCp437(bytes: ByteArray): String {
-        val builder = StringBuilder(bytes.size)
-        for (b in bytes) {
-            val v = b.toInt() and 0xFF
-            builder.append(if (v < 128) v.toChar() else CP437_HIGH[v - 128])
-        }
-        return builder.toString()
-    }
-
     private companion object {
         const val END_SIGNATURE = 0x06054b50L
         const val CENTRAL_SIGNATURE = 0x02014b50L
         const val LOCAL_SIGNATURE = 0x04034b50L
         const val LOCATOR64_SIGNATURE = 0x07064b50L
         const val END64_SIGNATURE = 0x06064b50L
-        const val CP437_HIGH =
-            "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ "
     }
+}
+
+private const val CP437_HIGH =
+    "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ "
+
+internal fun zipEntryName(bytes: ByteArray, utf8Flag: Boolean): String {
+    if (utf8Flag || isStrictUtf8(bytes)) return bytes.decodeToString()
+    val builder = StringBuilder(bytes.size)
+    for (b in bytes) {
+        val v = b.toInt() and 0xFF
+        builder.append(if (v < 128) v.toChar() else CP437_HIGH[v - 128])
+    }
+    return builder.toString()
+}
+
+internal fun isStrictUtf8(bytes: ByteArray): Boolean {
+    var i = 0
+    while (i < bytes.size) {
+        val b = bytes[i].toInt() and 0xFF
+        val extra = when {
+            b < 0x80 -> 0
+            b in 0xC2..0xDF -> 1
+            b in 0xE0..0xEF -> 2
+            b in 0xF0..0xF4 -> 3
+            else -> return false
+        }
+        if (i + extra >= bytes.size) return false
+        for (k in 1..extra) if ((bytes[i + k].toInt() and 0xC0) != 0x80) return false
+        if (extra == 2) {
+            val c = bytes[i + 1].toInt() and 0xFF
+            if (b == 0xE0 && c < 0xA0 || b == 0xED && c > 0x9F) return false
+        }
+        if (extra == 3) {
+            val c = bytes[i + 1].toInt() and 0xFF
+            if (b == 0xF0 && c < 0x90 || b == 0xF4 && c > 0x8F) return false
+        }
+        i += extra + 1
+    }
+    return true
+}
+
+private fun crc32Of(bytes: ByteArray): Long {
+    var crc = 0xFFFFFFFFL
+    for (b in bytes) {
+        crc = crc xor (b.toLong() and 0xFF)
+        repeat(8) { crc = if (crc and 1L != 0L) (crc ushr 1) xor 0xEDB88320L else crc ushr 1 }
+    }
+    return crc xor 0xFFFFFFFFL
 }

@@ -22,6 +22,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
     private var session: TorrentSession?
     private var sessionError: String?
     private var lastErrorText: String?
+    private var proxy: (kind: Int, host: String, port: Int, user: String, password: String) = (0, "", 0, "", "")
 
     private let engineDirectory: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -200,6 +201,18 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
         reapplyFirstLast(taskId: taskId)
     }
 
+    public func setProxy(kind: Int32, host: String, port: Int32, user: String, password: String) {
+        lock.lock(); defer {
+            lock.unlock()
+        }
+        proxy = (Int(kind), host, Int(port), user, password)
+        applyProxy()
+    }
+
+    private func applyProxy() {
+        session?.setProxy(kind: proxy.kind, host: proxy.host, port: proxy.port, user: proxy.user, password: proxy.password)
+    }
+
     public func setLimits(taskId: String, downloadLimitBytesPerSec: Int64, uploadLimitBytesPerSec: Int64) {
         lock.lock(); defer {
             lock.unlock()
@@ -361,6 +374,7 @@ public final class NativeTorrentBridge: NSObject, IosTorrentBridge {
             )
             session = s
             sessionError = nil
+            applyProxy()
             NSLog("[torrent] libtorrent %@ session started", TorrentSession.libtorrentVersion)
             return s
         } catch {

@@ -120,6 +120,7 @@ interface IosTorrentBridge {
     fun addTracker(taskId: String, url: String): Boolean
     fun recheck(taskId: String): Boolean
     fun setFirstLastPiecesFirst(taskId: String, on: Boolean): Boolean
+    fun setProxy(kind: Int, host: String, port: Int, user: String, password: String)
     fun lastError(): String?
     fun shutdown()
 }

@@ -9,6 +9,7 @@ const root = path.join(__dirname, "..", "..");
 const built = path.join(root, "build", "extension", "chrome");
 const chrome = process.env.CHROME || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const SITE_PORT = 18460;
+const TLS_PORT = 18461;
 const DEBUG_PORT = 9334;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), "fj-chrome-"));
 
@@ -22,6 +23,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const zoomPage = '<!doctype html><title>zoom test</title><body style="margin:0"><div id="hero" style="width:600px;height:340px;margin:60px;background:#223">' +
   '<audio controls preload="none" src="/rec/play/audio.m4a"></audio></div></body>';
 const plainPage = '<!doctype html><title>plain</title><body><video controls src="/test/files/none.mp4" width="640" height="360"></video></body>';
+const loopVideo = (id, w, h) => '<video id="' + id + '" src="/test/files/loop.webm" autoplay muted loop playsinline style="display:block;width:' + w + 'px;height:' + h + 'px;background:#000"></video>';
+const youTubePage = '<!doctype html><title>watch</title><body style="margin:0;display:flex;gap:24px;padding:24px">' +
+  '<div id="player" style="position:relative">' + loopVideo("main", 854, 480) +
+  '<div class="ytp-ad-player-overlay" style="position:absolute;left:0;top:0;width:854px;height:480px">' + loopVideo("ad", 854, 480) + '</div></div>' +
+  '<div id="related">' + loopVideo("preview1", 360, 202) + loopVideo("preview2", 360, 202) + '</div></body>';
 
 const site = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
@@ -32,6 +38,10 @@ const site = http.createServer((req, res) => {
   if (url.pathname === "/rec/play/audio.m4a") {
     res.writeHead(200, { "Content-Type": "audio/mp4" });
     return res.end(Buffer.alloc(2048));
+  }
+  if (url.pathname === "/watch") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    return res.end(youTubePage);
   }
   if (url.pathname === "/plain.html") {
     res.writeHead(200, { "Content-Type": "text/html" });
@@ -85,13 +95,27 @@ async function openTab(cdp, url) {
   return { targetId, sessionId };
 }
 
+function tlsSite() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fj-tls-"));
+  const key = path.join(dir, "key.pem");
+  const cert = path.join(dir, "cert.pem");
+  const made = require("child_process").spawnSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+    "-subj", "/CN=www.youtube.com", "-keyout", key, "-out", cert], { stdio: "ignore" });
+  if (made.status !== 0) return null;
+  const server = require("https").createServer({ key: fs.readFileSync(key), cert: fs.readFileSync(cert) }, (req, res) => site.emit("request", req, res));
+  fs.rmSync(dir, { recursive: true, force: true });
+  return server;
+}
+
 async function main() {
   await new Promise((r) => site.listen(SITE_PORT, "127.0.0.1", r));
+  const tls = tlsSite();
+  if (tls) await new Promise((r) => tls.listen(TLS_PORT, "127.0.0.1", r));
   const child = spawn(chrome, [
     "--headless=new", "--remote-debugging-port=" + DEBUG_PORT, "--remote-allow-origins=*", "--user-data-dir=" + profile,
     "--enable-unsafe-extension-debugging", "--no-first-run", "--disable-gpu", "--disable-background-networking",
     "--disable-component-update", "--no-pings", "--disable-sync", "--metrics-recording-only",
-    "--host-resolver-rules=MAP us06web.zoom.us 127.0.0.1", "about:blank"
+    "--host-resolver-rules=MAP us06web.zoom.us 127.0.0.1, MAP www.youtube.com 127.0.0.1", "--autoplay-policy=no-user-gesture-required", "--ignore-certificate-errors", "about:blank"
   ], { stdio: "ignore" });
   let version;
   for (let i = 0; i < 40 && !version; i++) {
@@ -137,6 +161,21 @@ async function main() {
     const rows = await evaluate(cdp, zoom.sessionId, "document.querySelector('fetchjet-button') ? 'present' : 'none'");
     check("the iOS-only row is not built outside iOS (no page-in-app text in the button list)", rows === "present", rows);
 
+    check("openssl made a certificate for the YouTube-like page", !!tls);
+    const yt = await openTab(cdp, "https://www.youtube.com:" + TLS_PORT + "/watch?v=jNQXAC9IVRw");
+    await sleep(4500);
+    const ytInfo = JSON.parse(await evaluate(cdp, yt.sessionId, `(() => {
+      const main = document.getElementById('player').getBoundingClientRect();
+      const playing = [...document.querySelectorAll('video')].filter((v) => !v.paused).map((v) => v.id);
+      const buttons = [...document.querySelectorAll('fetchjet-button')].map((b) => { const r = b.getBoundingClientRect(); return { x: r.x, y: r.y }; });
+      return JSON.stringify({ playing, buttons, main: { x: main.x, y: main.y, w: main.width, h: main.height } });
+    })()`));
+    check("the YouTube-like page plays its main video, the ad layer and two previews", ytInfo.playing.length === 4, ytInfo);
+    check("YouTube gets one page button, not one per player (ad / previews)", ytInfo.buttons.length === 1, ytInfo);
+    const yb = ytInfo.buttons[0];
+    check("the YouTube button sits on the main player", !!yb && yb.x >= ytInfo.main.x - 5 && yb.x <= ytInfo.main.x + ytInfo.main.w &&
+      yb.y >= ytInfo.main.y - 5 && yb.y <= ytInfo.main.y + ytInfo.main.h, ytInfo);
+
     const popup = await openTab(cdp, "chrome-extension://" + id + "/popup.html");
     await sleep(2500);
     const popupInfo = JSON.parse(await evaluate(cdp, popup.sessionId, `(() => {
@@ -177,6 +216,7 @@ async function main() {
     try { await cdp.send("Browser.close"); } catch (_) {}
     child.kill();
     site.close();
+    if (tls) tls.close();
     await sleep(1500);
     try { fs.rmSync(profile, { recursive: true, force: true }); } catch (_) {}
   }
