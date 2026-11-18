@@ -32,9 +32,14 @@ internal fun DashboardViewModel.baseFolder(path: String): String {
     )
 }
 
-internal fun DashboardUiState.addSiteRule(): com.michelle.raouf.fetch_jet.core.settings.SiteFolderRule? =
-    if (!isAddDialogVisible || inputUrl.isBlank() || linkList.isNotEmpty()) null
-    else BehaviorSettings.siteFolderFor(inputUrl)
+internal fun DashboardUiState.addSiteRule(): com.michelle.raouf.fetch_jet.core.settings.SiteFolderRule? {
+    if (!isAddDialogVisible) return null
+    if (linkList.isNotEmpty()) {
+        val rules = linkList.map { BehaviorSettings.siteFolderFor(it.url) ?: return null }
+        return rules.distinct().singleOrNull()
+    }
+    return if (inputUrl.isBlank()) null else BehaviorSettings.siteFolderFor(inputUrl)
+}
 
 internal fun DashboardUiState.ruleSiteFor(path: String): String =
     addSiteRule()?.takeIf { com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(it.folder, path) }?.site.orEmpty()

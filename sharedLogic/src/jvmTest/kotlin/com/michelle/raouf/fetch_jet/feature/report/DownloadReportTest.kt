@@ -42,4 +42,61 @@ class DownloadReportTest {
         assertEquals(listOf("b.org", "a.com", "cdn.a.com", "youtube.com"), report.sites.map { it.site })
         assertEquals(listOf(MonthKey(2026, 11), MonthKey(2026, 10)), DownloadReport.months(tasks))
     }
+
+    @Test
+    fun daysMatchJavaTime() {
+        var day = java.time.LocalDate.of(1999, 12, 25)
+        repeat(4000) {
+            val key = DayKey.fromEpochDay(day.toEpochDay())
+            assertEquals(DayKey(day.year, day.monthValue, day.dayOfMonth), key)
+            assertEquals(day.toEpochDay(), key.epochDay)
+            assertEquals(day.dayOfWeek.value - 1, key.dayOfWeekFromMonday)
+            day = day.plusDays(1)
+        }
+        assertEquals(DayKey(2024, 2, 29), DayKey.parse("2024-02-29"))
+        assertEquals(null, DayKey.parse("2025-02-29"))
+        assertEquals(null, DayKey.parse("2025-13-01"))
+    }
+
+    @Test
+    fun periodsGiveTheirDays() {
+        val today = DayKey(2026, 3, 5)
+        assertEquals(DayKey(2026, 3, 1) to today, DownloadReport.rangeOf(ReportPeriod.THIS_MONTH, today))
+        assertEquals(DayKey(2026, 2, 1) to DayKey(2026, 2, 28), DownloadReport.rangeOf(ReportPeriod.LAST_MONTH, today))
+        assertEquals(DayKey(2026, 2, 27) to today, DownloadReport.rangeOf(ReportPeriod.LAST_7_DAYS, today))
+        assertEquals(DayKey(2026, 2, 4) to today, DownloadReport.rangeOf(ReportPeriod.LAST_30_DAYS, today))
+        assertEquals(DayKey(2026, 1, 1) to today, DownloadReport.rangeOf(ReportPeriod.THIS_YEAR, today))
+        assertEquals(null to null, DownloadReport.rangeOf(ReportPeriod.ALL, today))
+        assertEquals(
+            DayKey(2025, 12, 1) to DayKey(2026, 1, 9),
+            DownloadReport.rangeOf(ReportPeriod.CUSTOM, today, DayKey(2026, 1, 9), DayKey(2025, 12, 1))
+        )
+        assertEquals(DayKey(2025, 12, 1) to DayKey(2025, 12, 31), DownloadReport.rangeOf(ReportPeriod.LAST_MONTH, DayKey(2026, 1, 15)))
+    }
+
+    @Test
+    fun aRangeIncludesBothEnds() {
+        val tasks = listOf(
+            task("https://a.com/1.bin", at(2026, 11, 1, 0), 100),
+            task("https://a.com/2.bin", at(2026, 11, 10, 23), 200),
+            task("https://b.org/3.bin", at(2026, 11, 11, 0), 400),
+            task("https://c.net/4.bin", at(2026, 10, 31, 23), 800),
+        )
+        val report = DownloadReport.forRange(tasks, DayKey(2026, 11, 1), DayKey(2026, 11, 10))
+        assertEquals(2, report.files)
+        assertEquals(300, report.bytes)
+        assertEquals(1, report.siteCount)
+        val all = DownloadReport.forRange(tasks, null, null)
+        assertEquals(4, all.files)
+        assertEquals(3, all.siteCount)
+    }
+
+    @Test
+    fun theCalendarStartsOnMonday() {
+        val cells = DownloadReport.calendarDays(MonthKey(2026, 11))
+        assertEquals(6, cells.indexOfFirst { it != null })
+        assertEquals(DayKey(2026, 11, 1), cells[6])
+        assertEquals(0, cells.size % 7)
+        assertEquals(30, cells.count { it != null })
+    }
 }

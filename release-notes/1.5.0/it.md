@@ -6,10 +6,9 @@
 
 **Download**
 - **Menu del clic destro su un download** (pressione prolungata sui telefoni): apri, apri la cartella, copia il link, metti in pausa, riprendi, elimina e altro.
-- **Cartelle per sito:** manda tutto ciò che arriva da un sito a tua scelta in una cartella tutta sua.
+- **Cartelle per sito:** manda tutto ciò che arriva da un sito, o da link che iniziano allo stesso modo (un corso, un progetto), nella cartella che scegli. Anche un corso inviato dal browser la segue.
 - **I file eliminati finiscono nel Cestino** (anche su macOS e Linux) invece di sparire. Puoi disattivarlo in Impostazioni.
 - **Scansione dopo il download:** Windows controlla un file finito con il tuo antivirus, e un download bloccato dall'antivirus si ferma subito con un messaggio chiaro. Su macOS i file scaricati ed estratti hanno il solito contrassegno "scaricato da Internet".
-- **Resoconto mensile:** Impostazioni > Download mostra, per ogni mese, quanti file hai scaricato, la loro dimensione totale e i siti da cui provengono. Il conteggio avviene solo sul tuo dispositivo.
 
 **Rete (desktop)**
 - **Il tuo DNS:** scegli un server DNS per i download di FetchJet (DNS over HTTPS o un normale server DNS) e quale scheda di rete usano. Riguarda solo i download di FetchJet, non il resto del computer.

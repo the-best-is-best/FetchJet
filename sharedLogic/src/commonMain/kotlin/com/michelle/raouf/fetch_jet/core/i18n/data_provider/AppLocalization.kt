@@ -950,6 +950,8 @@ interface AppLocalization : LocalizationProvider {
     val siteFolderFolder: String
     val siteFolderChoose: String
     val siteFolderAdd: String
+    val siteFolderLink: String
+    val siteFolderNotChosen: String
     val addFolderFromRule: String
     val netDnsGroup: String
     val netDnsHint: String
@@ -975,12 +977,27 @@ interface AppLocalization : LocalizationProvider {
     val extractPlaceSmart: String
     val extractPlaceFolder: String
     val extractPlaceNextTo: String
-    val reportGroup: String
     val reportFooter: String
-    val reportMonth: String
     val reportFiles: String
     val reportSize: String
     val reportEmpty: String
+    val sectionReport: String
+    val sectionReportBlurb: String
+    val reportPeriod: String
+    val reportThisMonth: String
+    val reportLastMonth: String
+    val reportLast7: String
+    val reportLast30: String
+    val reportThisYear: String
+    val reportAllTime: String
+    val reportCustom: String
+    val reportFrom: String
+    val reportTo: String
+    val reportSites: String
+    val reportTopSites: String
+    val reportNothingInPeriod: String
+    val reportMonthNames: String
+    val reportWeekdays: String
     val scanningState: String
     val scanTitle: String
     val scanClean: String

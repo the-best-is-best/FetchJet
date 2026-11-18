@@ -14,10 +14,14 @@ def settings_text(core):
     return open(os.path.join(core.home, "behavior.properties"), encoding="utf-8").read()
 
 
+PICKED = {"path": ""}
+
+
 def add_rule(core, site, folder):
     core.action("SettingText", id="ruleSite", text=site)
-    core.action("SettingText", id="ruleFolder", text=folder)
-    core.pump(0.2)
+    PICKED["path"] = folder
+    core.action("SettingClick", id="ruleChoose")
+    core.pump(0.4)
     core.action("SettingClick", id="ruleAdd")
     core.pump(0.4)
 
@@ -39,7 +43,7 @@ def run():
         with open(os.path.join(core.home, "behavior.properties"), "a", encoding="utf-8") as f:
             f.write("askedMainDownloader=true\nsortIntoFolders=true\nfolder.Archives=%s\n" % remembered["path"].replace("\\", "/"))
 
-    core = Core("siterules", before_start=seed)
+    core = Core("siterules", before_start=seed, host_services={"pickFolder": lambda args: PICKED["path"]})
     local_rule = os.path.join(core.work, "from-local")
     test_rule = os.path.join(core.work, "from-example")
     try:
@@ -49,13 +53,18 @@ def run():
         core.pump(0.5)
         print("rules are added from Settings")
         add_rule(core, "127.0.0.1", local_rule)
-        add_rule(core, "https://www.Example.test/some/page", test_rule)
+        add_rule(core, "https://www.Example.test/?ref=1", test_rule)
         add_rule(core, "not a site", test_rule)
+        repo_rule = os.path.join(core.work, "from-repo")
+        add_rule(core, "https://www.Example.test/Repo/Name/?tab=1", repo_rule)
         saved = settings_text(core)
-        core.check("two rules saved, the site cleaned", "siteFolders=" in saved and '"site":"example.test"' in saved and saved.count('"site":') == 2, saved[-300:])
+        core.check("three rules saved, the site and link part cleaned", "siteFolders=" in saved and '"site":"example.test"' in saved and '"site":"example.test/repo/name"' in saved and saved.count('"site":') == 3, saved[-400:])
         rows = core.rows("settingsRows")
         titles = [r.get("title", "") for r in rows]
-        core.check("both rules listed in Settings", "127.0.0.1" in titles and "example.test" in titles, titles)
+        core.check("the rules are listed in Settings", "127.0.0.1" in titles and "example.test" in titles and "example.test/repo/name" in titles, titles)
+        chooser = next((r for r in rows if r.get("id") == "ruleChoose"), {})
+        core.check("the folder is a chooser row, not a text field", chooser.get("clickable") and not any(r.get("one", {}).get("id") == "ruleFolder" for r in rows), chooser)
+        core.check("the picker was asked", any(name == "pickFolder" for name, _ in core.host_calls), core.host_calls[-3:])
 
         print("a rule wins over the kind-of-file folder")
         core.action("ShowAddDialog", show=True)
@@ -84,6 +93,13 @@ def run():
         y = core.task(file_name="y.bin") or {}
         core.check("a sub-domain follows the rule (no dialog: bridge / list path)", norm(x.get("destinationPath")) == norm(test_rule), x.get("destinationPath"))
         core.check("a look-alike host does not", norm(y.get("destinationPath")) != norm(test_rule), y.get("destinationPath"))
+        core.debug("addDirect", {"url": "http://example.test/repo/name/releases/r.bin", "fileName": "r.bin"})
+        core.debug("addDirect", {"url": "http://example.test/repo/other/s.bin", "fileName": "s.bin"})
+        core.pump(1.5)
+        r = core.task(file_name="r.bin") or {}
+        s2 = core.task(file_name="s.bin") or {}
+        core.check("a link under the link rule goes to its folder", norm(r.get("destinationPath")) == norm(repo_rule), r.get("destinationPath"))
+        core.check("another path on the site uses the site rule", norm(s2.get("destinationPath")) == norm(test_rule), s2.get("destinationPath"))
 
         print("a folder picked by hand wins")
         mine = os.path.join(core.work, "picked")
@@ -98,6 +114,21 @@ def run():
         core.action("StartDownload")
         task = core.wait_task("COMPLETED", timeout=40, file_name="pack-b.zip")
         core.check("saved where it was picked", norm(task["destinationPath"]).startswith(norm(mine)), task["destinationPath"])
+
+        print("a list of links")
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        same = "http://example.test/repo/name/a.bin\nhttp://example.test/repo/name/b.bin"
+        destination, rule = dialog_destination(core, same)
+        core.check("a list whose links all follow one rule uses its folder", norm(destination) == norm(repo_rule), destination)
+        core.check("and says so", "example.test/repo/name" in rule, rule)
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        mixed = "http://example.test/repo/name/a.bin\nhttp://other.invalid/c.bin"
+        destination, rule = dialog_destination(core, mixed)
+        core.check("a mixed list does not", norm(destination) != norm(repo_rule) and rule == "", (destination, rule))
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
 
         print("remove")
         core.action("SettingClick", id="rule.remove.example.test")

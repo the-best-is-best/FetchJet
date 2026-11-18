@@ -2,7 +2,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.dto
 
 import kotlinx.serialization.Serializable
 
-enum class SettingKind { NONE, SWITCH, INFO, MENU, PICKER, CHIPS, NOTE, FIELDS, PRESET, BUTTONS, PROGRESS, LIMIT_BOX }
+enum class SettingKind { NONE, SWITCH, INFO, MENU, PICKER, CHIPS, NOTE, FIELDS, PRESET, BUTTONS, PROGRESS, LIMIT_BOX, STATS, BARS, CALENDAR }
 
 @Serializable
 data class SettingsSectionDto(
@@ -52,6 +52,29 @@ data class SettingButtonDto(
 )
 
 @Serializable
+data class StatTileDto(
+    val value: String = "",
+    val label: String = "",
+)
+
+@Serializable
+data class StatBarDto(
+    val label: String = "",
+    val value: String = "",
+    val fraction: Float = 0f,
+)
+
+@Serializable
+data class CalendarDayDto(
+    val label: String = "",
+    val id: String = "",
+    val blank: Boolean = false,
+    val inRange: Boolean = false,
+    val edge: Boolean = false,
+    val today: Boolean = false,
+)
+
+@Serializable
 data class SettingRowDto(
     val kind: Int = 0,
     val id: String = "",
@@ -88,4 +111,7 @@ data class SettingRowDto(
     val indeterminate: Boolean = false,
     val alignEnd: Boolean = false,
     val hint: String = "",
+    val tiles: List<StatTileDto> = emptyList(),
+    val bars: List<StatBarDto> = emptyList(),
+    val days: List<CalendarDayDto> = emptyList(),
 )

@@ -302,6 +302,17 @@ per host).
   remembered Archives folder, sub-domain without the dialog, a look-alike host, a hand-picked folder wins, remove.
   `test_foldertype` 8, `test_add` 29, `test_addname` 14 still pass. Not run: Compose and SwiftUI screens (Android built;
   iOS needs the Mac: `SettingsDownloadsPage.swift`, `AddSections.swift`).
+- [x] Changed 2026-11-18 (owner: a whole-site rule like github.com is not useful, and a course list ignored the rule): a rule
+  can be a site or the start of a link (`github.com/the-best-is-best/FetchJet`, `udemy.com/course/kotlin`); the path part
+  matches whole path segments, case-insensitive, query and fragment ignored; the longest matching rule over the link, the
+  page and the Referer wins (`SiteFolderRule.matchesLink`, `SiteFolderRules.match`). The folder is chosen with the folder
+  picker only (Slint: a "Folder / No folder chosen / Choose folder..." row, Compose: text + button with
+  `DirectoryPickerDialog`, SwiftUI: text + button with `SettingsFolderPicker`); the folder text field is gone. A link list
+  (a course from the extension, pasted links) uses the rule's folder when every link follows the same rule
+  (`addSiteRule`). 2 new texts and the hint rewritten in the 15 languages. The native core now asks the host's folder
+  picker in headless mode too (`NativeApp.kt`), so a test can answer it. Tests: `SiteFolderRulesTest` 7,
+  `test_siterules.py` 22 (picker asked, link rules, a list of one rule and a mixed list), `test_settings` 87, `test_add` 29,
+  `test_home` 41, `test_foldertype` 8; Android compiles; SwiftUI not built (Mac).
 - [ ] Optional on the same rule: a speed limit or a connection count for that site, and a command to run when the download
   finishes (the item says to decide after the first part is used; not built).
 
@@ -386,6 +397,21 @@ per host).
   page's site for media, "torrent" for magnets). Counted only from the downloads still in the list
   (`feature/report/DownloadReport.kt`, by the month they were added, local time); nothing is stored or sent. 6 texts in
   the 15 languages. `DownloadReportTest` (jvmTest).
+- [x] Changed 2026-11-18 (owner: the place was wrong, and any period): a "Report" page of its own in Settings (before
+  Updates) on the desktop (Slint), Android (Compose) and iOS (SwiftUI); the card left Settings > Downloads. Periods: this
+  month, last month, last 7 / 30 days, this year, all time, and chosen dates (`ReportPeriod`, `DownloadReport.rangeOf`,
+  `forRange`; days are `DayKey`, both ends included). The page: period chips, From / To, three tiles (files, total size,
+  sites), the top 5 sites as bars. Dates: desktop = an inline month calendar (new row kinds `STATS`, `BARS`, `CALENDAR`,
+  `ReportPage.kt`; pick the start then the end; month names and weekdays from `reportMonthNames` / `reportWeekdays`),
+  Android = Material `DateRangePicker` dialog (`SettingsReportPage.kt`), iOS = two system `DatePicker`s
+  (`SettingsReportPage.swift`). 17 new texts in the 15 languages, `reportGroup` / `reportMonth` removed. Tests:
+  `DownloadReportTest` 6 (days checked against java.time over 4000 days, periods, both range ends, calendar),
+  `test_report.py` 16 (seeded history: section, periods, all time, last month, chosen dates through the calendar, Arabic
+  day names; screenshots dark / light / Arabic), `test_settings` 87 (the new page in the order). Android compiles and the
+  debug APK builds, not seen on screen (the emulator needs ~6 GB, 5.6 were free); iOS not built (Mac).
+- Hidden the same day (owner: the numbers drop when finished downloads are removed from the list, and few people would
+  look for it): `DownloadReport.ENABLED = false` hides the page on all three UIs; the code stays. The desktop shows it with
+  the debug "all sections" switch, so `test_report.py` still runs. Its line was removed from the 1.5.0 release notes.
 
 ## 11. Portable mode on Windows (idea, 2026-11-14)
 

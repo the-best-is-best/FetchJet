@@ -6,10 +6,9 @@
 
 **İndirmeler**
 - **Bir indirmede sağ tık menüsü** (telefonlarda uzun basma): aç, klasörü aç, bağlantıyı kopyala, duraklat, devam et, sil ve daha fazlası.
-- **Siteye göre klasör:** seçtiğiniz bir siteden gelen her şeyi kendi klasörüne gönderin.
+- **Siteye göre klasör:** bir siteden ya da aynı şekilde başlayan bağlantılardan (bir kurs, bir proje) gelen her şeyi seçtiğiniz klasöre gönderin. Tarayıcıdan gönderilen bir kurs da buna uyar.
 - **Silinen dosyalar Geri Dönüşüm Kutusu'na gider** (macOS ve Linux'ta Çöp Sepeti), kaybolmaz. Ayarlar'dan kapatabilirsiniz.
 - **İndirmeden sonra tara:** Windows biten dosyayı antivirüsünüzle denetler ve antivirüsün engellediği bir indirme net bir iletiyle hemen durur. macOS'ta indirilen ve çıkarılan dosyalar alışılmış "internetten indirildi" işaretini taşır.
-- **Aylık rapor:** Ayarlar > İndirmeler her ay için kaç dosya indirdiğinizi, toplam boyutlarını ve hangi sitelerden geldiklerini gösterir. Yalnızca cihazınızda sayılır.
 
 **Ağ (masaüstü)**
 - **Kendi DNS'iniz:** FetchJet'in indirmeleri için bir DNS sunucusu seçin (DNS over HTTPS ya da düz bir DNS sunucusu) ve hangi ağ bağdaştırıcısını kullanacaklarını belirleyin. Bilgisayarın geri kalanı değil, yalnızca FetchJet'in indirmeleri etkilenir.

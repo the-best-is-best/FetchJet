@@ -6,10 +6,9 @@
 
 **Downloads**
 - **Menu do clique direito em um download** (toque longo nos celulares): abrir, abrir a pasta, copiar o link, pausar, retomar, excluir e mais.
-- **Pastas por site:** mande tudo o que vem de um site que você escolher para uma pasta própria.
+- **Pastas por site:** mande tudo o que vem de um site, ou de links que começam igual (um curso, um projeto), para a pasta que você escolher. Um curso enviado pelo navegador também segue a regra.
 - **Arquivos excluídos vão para a Lixeira** (também no macOS e no Linux) em vez de sumir. Você pode desativar isso em Configurações.
 - **Verificação depois do download:** o Windows verifica o arquivo concluído com o seu antivírus, e um download bloqueado pelo antivírus para na hora com uma mensagem clara. No macOS, os arquivos baixados e extraídos levam a marca habitual de "baixado da internet".
-- **Relatório mensal:** Configurações > Downloads mostra, para cada mês, quantos arquivos você baixou, o tamanho total e os sites de onde vieram. A contagem é feita só no seu dispositivo.
 
 **Rede (computador)**
 - **Seu próprio DNS:** escolha um servidor DNS para os downloads do FetchJet (DNS over HTTPS ou um servidor DNS comum) e o adaptador de rede que eles usam. Só os downloads do FetchJet são afetados, não o resto do computador.

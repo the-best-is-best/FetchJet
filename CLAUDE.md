@@ -264,6 +264,18 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Windows check after the Mac commit `2b49191`** (pulled and merged with the uncommitted Windows work:
+  folder rules by link start + folder picker, the hidden Report page; nothing committed). Built: Windows core + host,
+  Linux core + host (WSL), Android `assembleDebug`, `:sharedLogic:jvmTest` 200 / 0. Windows corehost: `test_dns` 14,
+  `test_network` 11 (1 skip: HTTPS through the proxy, WinHTTP does not trust the test certificate, as before),
+  `test_trash` 10, `test_settings` 87, `test_siterules` 22, `test_report` 17, all 0 failed. Linux (WSL): `test_dns` 14,
+  `test_trash` 10, `test_settings` 87, 0 failed. Settings > Downloads row: Windows "Deleted files go to the Recycle Bin",
+  Linux "Deleted files go to the Trash". Linux `test_dns` needs the test HTTP server running inside WSL
+  (`python3 desktopNative/tools/testserver/server.py --port 18200`): the Windows `servers.sh` ones are not reachable
+  from WSL's 127.0.0.1 (without it: "HTTP Error 502: Could not connect to the server"). Skipped (code unchanged since
+  they passed on 2026-11-17): `test_download`, `test_integrity`, `test_home`, `test_add`, `test_rowmenu`, `test_extract`,
+  `test_scan`, `test_automation`.
+
 - **2026-11-18, Mac session on `release-v1.5.0` (after `30261ea`; details at the top of ROADMAP-1.5.0.md):** iOS
   built and checked on the iPhone 17 / iPad simulators (row menu, Copy link, folders by site, monthly report, the Add
   dialog rule line); macOS native built, all the new and changed corehost files pass (7-Zip from Homebrew). Fixed: a
@@ -272,6 +284,11 @@ Bridges:
   simulator holds `127.0.0.1:28450` on the Mac: stop it before running the Mac app, or `/d` and the bridge fail
   (`bridge: not started`). The simulator screenshot tool does not show SwiftUI context menus: use
   `xcrun simctl io <udid> screenshot`. Next on Windows: build the native app / Android after these commits.
+- **Still for the Mac (Windows work of 2026-11-18, not built there):** `SettingsDownloadsPage.swift` (folders by site:
+  the folder is chosen with `SettingsFolderPicker`, the rule can be a link start; the report card is gone),
+  `SettingsReportPage.swift` (new) + `SettingsScreen.swift` (a Report page with any period, hidden by
+  `DownloadReport.ENABLED = false`, so only a build check is needed). The offset uses
+  `Int64(TimeZone.current.secondsFromGMT()) * 1000` like the Mac fix.
 
 - **2026-11-17, Windows session on `release-v1.5.0` (owner away: "work through the whole ROADMAP, do not ask, test it";
   committed and pushed after `acb625e` at the owner's "ارفع"; details per item in ROADMAP-1.5.0.md):**

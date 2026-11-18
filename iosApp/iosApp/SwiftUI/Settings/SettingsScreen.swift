@@ -2,7 +2,7 @@ import SwiftUI
 import SharedLogic
 
 enum SettingsSection: String, CaseIterable, Hashable {
-    case general, downloads, browser, devices, network, media, torrent, updates
+    case general, downloads, browser, devices, network, media, torrent, report, updates
 
     var icon: String {
         switch self {
@@ -13,6 +13,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .network: return "network"
         case .media: return "play.rectangle"
         case .torrent: return "arrow.up.arrow.down"
+        case .report: return "chart.bar.xaxis"
         case .updates: return "arrow.clockwise"
         }
     }
@@ -26,6 +27,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .network: return s.sectionNetwork
         case .media: return s.sectionMedia
         case .torrent: return s.sectionTorrent
+        case .report: return s.sectionReport
         case .updates: return s.sectionUpdates
         }
     }
@@ -39,6 +41,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .network: return s.sectionNetworkBlurb
         case .media: return s.sectionMediaBlurb
         case .torrent: return s.sectionTorrentBlurb
+        case .report: return s.sectionReportBlurb
         case .updates: return s.sectionUpdatesBlurb
         }
     }
@@ -112,6 +115,7 @@ struct SettingsScreen: View {
             case .media: return store.host.mediaEnabled
             case .torrent: return store.host.torrentEnabled
             case .updates: return live.update?.supported ?? true
+            case .report: return DownloadReport.shared.ENABLED
             default: return true
             }
         }
@@ -162,6 +166,8 @@ struct SettingsScreen: View {
                 : (s.summarySetupNeeded, FJTheme.color.statusPaused)
         case .torrent:
             return (st.disableTorrentUpload ? s.summaryUploadingOff : s.summaryUploadingOn, nil)
+        case .report:
+            return (s.sectionReportBlurb, nil)
         case .browser:
             return ("Safari", nil)
         case .devices:
@@ -213,6 +219,7 @@ struct SettingsPageScreen: View {
         case .network: SettingsNetworkPage(live: live)
         case .media: SettingsMediaPage()
         case .torrent: SettingsTorrentPage()
+        case .report: SettingsReportPage()
         case .updates: SettingsUpdatesPage(live: live)
         }
     }

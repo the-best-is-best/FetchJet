@@ -24,6 +24,7 @@ import com.michelle.raouf.fetch_jet.core.update.isOlderExtension
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice
 import com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
+import com.michelle.raouf.fetch_jet.feature.report.DownloadReport
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingButtonDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingFieldDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.SettingKind
@@ -256,10 +257,8 @@ internal fun Presenter.buildSettingsRows(section: SettingsSection, v: SettingsSl
     val rows = Rows()
     when (section) {
         SettingsSection.GENERAL -> generalRows(rows, v, page)
-        SettingsSection.DOWNLOADS -> {
-            downloadsRows(rows, v, page)
-            reportRows(rows, page)
-        }
+        SettingsSection.DOWNLOADS -> downloadsRows(rows, v, page)
+        SettingsSection.REPORT -> reportRows(rows, page)
         SettingsSection.BROWSER -> browserRows(rows, page)
         SettingsSection.DEVICES -> devicesRows(rows, v)
         SettingsSection.NETWORK -> networkRows(rows, page)
@@ -601,14 +600,16 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
             SettingRowDto(
                 kind = SettingKind.FIELDS.ordinal,
                 top = 16,
-                one = field("ruleSite", page.ruleSite, label = s.netLoginSite, placeholder = "example.com"),
+                one = field("ruleSite", page.ruleSite, label = s.siteFolderLink, placeholder = "example.com/course"),
             )
         )
         rows.add(
-            SettingRowDto(
-                kind = SettingKind.FIELDS.ordinal,
-                top = 10,
-                one = field("ruleFolder", page.ruleFolder, label = s.siteFolderFolder),
+            infoRow(
+                title = s.siteFolderFolder,
+                subtitle = page.ruleFolder.ifBlank { s.siteFolderNotChosen },
+                id = "ruleChoose",
+                clickable = true,
+                side = s.siteFolderChoose,
             )
         )
         rows.add(
@@ -618,7 +619,6 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 bottom = 16,
                 alignEnd = true,
                 buttons = listOf(
-                    button("ruleChoose", s.siteFolderChoose, round = true),
                     button("ruleAdd", s.siteFolderAdd, filled = true, enabled = canAddRule, round = true),
                 ),
             )
@@ -652,36 +652,101 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
 
 private fun Presenter.reportRows(rows: Rows, page: SettingsPage) {
     val s = LocalizationManager.Strings
-    val tasks = vm.uiState.value.allTasks
-    val offset = com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs()
-    val months = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(tasks, offset).take(24)
-    rows.group(title = s.reportGroup, footer = s.reportFooter) {
-        if (months.isEmpty()) {
-            rows.add(infoRow(title = s.reportEmpty))
-            return@group
-        }
-        val chosen = months.firstOrNull { it.label == page.reportMonth } ?: months.first()
+    val today = reportToday()
+    val periods = com.michelle.raouf.fetch_jet.feature.report.ReportPeriod.entries
+    val (from, to) = page.reportRange(today)
+    val custom = page.reportPeriod == com.michelle.raouf.fetch_jet.feature.report.ReportPeriod.CUSTOM
+    val rangeText = if (from == null || to == null) "" else if (from == to) dayText(from) else dayText(from) + "  –  " + dayText(to)
+    rows.group(title = s.reportPeriod, footer = rangeText.ifEmpty { null }) {
+        val picked = periods.indexOf(page.reportPeriod)
         rows.add(
             SettingRowDto(
-                kind = SettingKind.MENU.ordinal,
-                id = "reportMonth",
-                title = s.reportMonth,
-                enabled = true,
-                clickable = true,
-                side = chosen.label,
-                options = months.map { it.label },
-                pick = months.indexOf(chosen) + 1,
+                kind = SettingKind.CHIPS.ordinal,
+                id = "reportPeriod",
+                top = 22,
+                bottom = 12,
+                large = true,
+                options = periods.take(REPORT_FIRST_LINE).map { reportPeriodLabel(it) },
+                pick = if (picked < REPORT_FIRST_LINE) picked + 1 else 0,
             )
         )
-        rows.divider()
-        val report = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.forMonth(tasks, chosen, offset)
-        rows.add(infoRow(title = s.reportFiles, side = report.files.toString()))
-        rows.divider()
-        rows.add(infoRow(title = s.reportSize, side = formatSizeDisplay(report.bytes)))
-        for (site in report.sites) {
-            rows.divider()
-            rows.add(infoRow(title = site.site, subtitle = site.files.toString() + " · " + formatSizeDisplay(site.bytes)))
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.CHIPS.ordinal,
+                id = "reportPeriod2",
+                top = 12,
+                bottom = if (custom) 14 else 22,
+                large = true,
+                options = periods.drop(REPORT_FIRST_LINE).map { reportPeriodLabel(it) },
+                pick = if (picked >= REPORT_FIRST_LINE) picked - REPORT_FIRST_LINE + 1 else 0,
+            )
+        )
+        if (custom) {
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 4,
+                    bottom = if (page.reportEditing != null) 4 else 16,
+                    buttons = listOf(
+                        button("reportFrom", s.reportFrom + "  ·  " + (from?.let { dayText(it) } ?: ""), filled = page.reportEditing == "from", round = true),
+                        button("reportTo", s.reportTo + "  ·  " + (to?.let { dayText(it) } ?: ""), filled = page.reportEditing == "to", round = true),
+                    ),
+                )
+            )
+            if (page.reportEditing != null) {
+                val (shown, days) = reportCalendarDays(page, today)
+                rows.add(
+                    SettingRowDto(
+                        kind = SettingKind.CALENDAR.ordinal,
+                        id = "calendar",
+                        title = monthName(shown),
+                        subtitle = if (page.reportEditing == "to") s.reportTo else s.reportFrom,
+                        options = weekdayNames(),
+                        days = days,
+                        top = 4,
+                        bottom = 16,
+                    )
+                )
+            }
         }
+    }
+    val report = DownloadReport.forRange(vm.uiState.value.allTasks, from, to, com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs())
+    rows.group {
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.STATS.ordinal,
+                id = "reportStats",
+                top = 16,
+                bottom = 16,
+                tiles = listOf(
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(report.files.toString(), s.reportFiles),
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(formatBytes(report.bytes), s.reportSize),
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatTileDto(report.siteCount.toString(), s.reportSites),
+                ),
+            )
+        )
+    }
+    rows.group(title = s.reportTopSites, footer = s.reportFooter) {
+        if (report.sites.isEmpty()) {
+            rows.add(infoRow(title = if (vm.uiState.value.allTasks.isEmpty()) s.reportEmpty else s.reportNothingInPeriod))
+            return@group
+        }
+        val top = report.sites.maxOf { it.bytes }.coerceAtLeast(1L)
+        rows.add(
+            SettingRowDto(
+                kind = SettingKind.BARS.ordinal,
+                id = "reportSites",
+                top = 14,
+                bottom = 14,
+                bars = report.sites.map {
+                    com.michelle.raouf.fetch_jet.nativeapp.dto.StatBarDto(
+                        label = it.site,
+                        value = formatBytes(it.bytes) + "  ·  " + it.files,
+                        fraction = (it.bytes.toDouble() / top).toFloat().coerceIn(0.02f, 1f),
+                    )
+                },
+            )
+        )
     }
 }
 

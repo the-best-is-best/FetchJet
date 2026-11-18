@@ -591,6 +591,26 @@ export struct SettingButtonDto {
     tone: int,
 }
 
+export struct StatTileDto {
+    value: string,
+    label: string,
+}
+
+export struct StatBarDto {
+    label: string,
+    value: string,
+    fraction: float,
+}
+
+export struct CalendarDayDto {
+    label: string,
+    id: string,
+    blank: bool,
+    inRange: bool,
+    edge: bool,
+    today: bool,
+}
+
 export struct SettingRowDto {
     kind: int,
     id: string,
@@ -627,6 +647,9 @@ export struct SettingRowDto {
     indeterminate: bool,
     alignEnd: bool,
     hint: string,
+    tiles: [StatTileDto],
+    bars: [StatBarDto],
+    days: [CalendarDayDto],
 }
 
 export struct ShellDto {
@@ -919,6 +942,9 @@ export global SettingKind {
     out property <int> buttons: 9;
     out property <int> progress: 10;
     out property <int> limit-box: 11;
+    out property <int> stats: 12;
+    out property <int> bars: 13;
+    out property <int> calendar: 14;
 }
 
 export global TrackerStateCode {

@@ -6,10 +6,9 @@
 
 **Downloads**
 - **Right-click menu on a download** (long press on phones): open, open the folder, copy the link, pause, resume, delete, and more.
-- **Folders by site:** send everything from a site you choose to its own folder.
+- **Folders by site:** send everything from a site, or from links that start the same way (a course, a project), to the folder you pick. A course sent from the browser follows it too.
 - **Deleted files go to the Recycle Bin** (Trash on macOS and Linux) instead of disappearing. You can switch it off in Settings.
 - **Scan after the download:** Windows checks a finished file with your antivirus, and a download the antivirus blocks stops at once with a clear message. On macOS, downloaded and extracted files carry the usual "downloaded from the internet" mark.
-- **Monthly report:** Settings > Downloads shows, for each month, how many files you downloaded, their total size and the sites they came from. It is counted on your device only.
 
 **Network (desktop)**
 - **Your own DNS:** pick a DNS server for FetchJet's downloads (DNS over HTTPS or a plain DNS server), and choose which network adapter they use. Only FetchJet's downloads are affected, not the rest of the computer.

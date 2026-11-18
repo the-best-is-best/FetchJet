@@ -185,7 +185,7 @@ internal object NativeApp {
             }
         }
         if (services != null) HostHooks.storeUpdates = { services.call("storeUpdates") }
-        if (services != null && !config.headless) {
+        if (services != null) {
             HostHooks.pickFile = { title, filterName, pattern ->
                 services.call("pickFile") {
                     put("title", title)

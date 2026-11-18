@@ -415,7 +415,10 @@
    "PRESET",
    "BUTTONS",
    "PROGRESS",
-   "LIMIT_BOX"
+   "LIMIT_BOX",
+   "STATS",
+   "BARS",
+   "CALENDAR"
   ],
   "TrackerStateCode": [
    "WORKING",
@@ -2400,6 +2403,56 @@
     "Int"
    ]
   ],
+  "StatTileDto": [
+   [
+    "value",
+    "String"
+   ],
+   [
+    "label",
+    "String"
+   ]
+  ],
+  "StatBarDto": [
+   [
+    "label",
+    "String"
+   ],
+   [
+    "value",
+    "String"
+   ],
+   [
+    "fraction",
+    "Float"
+   ]
+  ],
+  "CalendarDayDto": [
+   [
+    "label",
+    "String"
+   ],
+   [
+    "id",
+    "String"
+   ],
+   [
+    "blank",
+    "Boolean"
+   ],
+   [
+    "inRange",
+    "Boolean"
+   ],
+   [
+    "edge",
+    "Boolean"
+   ],
+   [
+    "today",
+    "Boolean"
+   ]
+  ],
   "SettingRowDto": [
    [
     "kind",
@@ -2540,6 +2593,18 @@
    [
     "hint",
     "String"
+   ],
+   [
+    "tiles",
+    "List<StatTileDto>"
+   ],
+   [
+    "bars",
+    "List<StatBarDto>"
+   ],
+   [
+    "days",
+    "List<CalendarDayDto>"
    ]
   ],
   "ShellDto": [
@@ -4266,6 +4331,8 @@
   "siteFolderFolder",
   "siteFolderChoose",
   "siteFolderAdd",
+  "siteFolderLink",
+  "siteFolderNotChosen",
   "addFolderFromRule",
   "netDnsGroup",
   "netDnsHint",
@@ -4279,6 +4346,8 @@
   "deleteToTrashOn",
   "deleteToTrashOff",
   "trashArchive",
+  "deleteToTrashNotWindows",
+  "trashArchiveNotWindows",
   "trashArchiveOn",
   "trashArchiveOff",
   "archivePasswordTitle",
@@ -4289,12 +4358,27 @@
   "extractPlaceSmart",
   "extractPlaceFolder",
   "extractPlaceNextTo",
-  "reportGroup",
   "reportFooter",
-  "reportMonth",
   "reportFiles",
   "reportSize",
   "reportEmpty",
+  "sectionReport",
+  "sectionReportBlurb",
+  "reportPeriod",
+  "reportThisMonth",
+  "reportLastMonth",
+  "reportLast7",
+  "reportLast30",
+  "reportThisYear",
+  "reportAllTime",
+  "reportCustom",
+  "reportFrom",
+  "reportTo",
+  "reportSites",
+  "reportTopSites",
+  "reportNothingInPeriod",
+  "reportMonthNames",
+  "reportWeekdays",
   "scanningState",
   "scanTitle",
   "scanClean",

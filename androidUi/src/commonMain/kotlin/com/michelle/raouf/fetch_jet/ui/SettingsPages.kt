@@ -431,7 +431,6 @@ internal fun DownloadsPage(
             )
         }
         SiteFoldersCard()
-        DownloadReportCard()
         QueueSettingsCard()
     }
 }
@@ -870,19 +869,27 @@ private fun SiteFoldersCard() {
             FetchJetTextField(
                 value = site,
                 onValueChange = { site = it },
-                label = LocalizationManager.Strings.netLoginSite,
-                placeholder = "example.com",
+                label = LocalizationManager.Strings.siteFolderLink,
+                placeholder = "example.com/course",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth()
             )
-            FetchJetTextField(
-                value = folder,
-                onValueChange = { folder = it },
-                label = LocalizationManager.Strings.siteFolderFolder,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(LocalizationManager.Strings.siteFolderFolder, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        folder.ifBlank { LocalizationManager.Strings.siteFolderNotChosen },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (folder.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 OutlinedButton(onClick = { picking = true }) { Text(LocalizationManager.Strings.siteFolderChoose) }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
                 Button(
                     enabled = canAdd,
                     onClick = {
@@ -904,39 +911,3 @@ private fun SiteFoldersCard() {
     }
 }
 
-@Composable
-private fun DownloadReportCard() {
-    val tasks by com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance().allTasksFlow.collectAsState()
-    val offset = remember { com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs() }
-    val months = remember(tasks) { com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(tasks, offset).take(24) }
-    var picked by remember { mutableStateOf<String?>(null) }
-    SettingsGroup(
-        title = LocalizationManager.Strings.reportGroup,
-        footer = LocalizationManager.Strings.reportFooter
-    ) {
-        if (months.isEmpty()) {
-            SettingRow(title = LocalizationManager.Strings.reportEmpty)
-            return@SettingsGroup
-        }
-        val chosen = months.firstOrNull { it.label == picked } ?: months.first()
-        val report = remember(tasks, chosen) { com.michelle.raouf.fetch_jet.feature.report.DownloadReport.forMonth(tasks, chosen, offset) }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            months.forEach { month ->
-                FilterChip(selected = month == chosen, onClick = { picked = month.label }, label = { Text(month.label) })
-            }
-        }
-        SettingDivider()
-        SettingRow(title = LocalizationManager.Strings.reportFiles) { Text(report.files.toString(), color = MaterialTheme.colorScheme.primary) }
-        SettingDivider()
-        SettingRow(title = LocalizationManager.Strings.reportSize) {
-            Text(com.michelle.raouf.fetch_jet.utils.formatSizeDisplay(report.bytes), color = MaterialTheme.colorScheme.primary)
-        }
-        report.sites.forEach { site ->
-            SettingDivider()
-            SettingRow(title = site.site, subtitle = site.files.toString() + " · " + com.michelle.raouf.fetch_jet.utils.formatSizeDisplay(site.bytes))
-        }
-    }
-}

@@ -6,10 +6,9 @@
 
 **Téléchargements**
 - **Menu clic droit sur un téléchargement** (appui long sur les téléphones) : ouvrir, ouvrir le dossier, copier le lien, mettre en pause, reprendre, supprimer, et plus encore.
-- **Dossiers par site :** envoyez tout ce qui vient d'un site choisi dans son propre dossier.
+- **Dossiers par site :** envoyez tout ce qui vient d'un site, ou de liens qui commencent pareil (un cours, un projet), dans le dossier de votre choix. Un cours envoyé depuis le navigateur le suit aussi.
 - **Les fichiers supprimés vont dans la Corbeille** (aussi sur macOS et Linux) au lieu de disparaître. Vous pouvez désactiver cela dans Réglages.
 - **Analyse après le téléchargement :** Windows vérifie un fichier terminé avec votre antivirus, et un téléchargement bloqué par l'antivirus s'arrête aussitôt avec un message clair. Sur macOS, les fichiers téléchargés et extraits portent la marque habituelle « téléchargé depuis Internet ».
-- **Rapport mensuel :** Réglages > Téléchargements affiche, pour chaque mois, le nombre de fichiers téléchargés, leur taille totale et les sites d'où ils viennent. Le calcul se fait uniquement sur votre appareil.
 
 **Réseau (bureau)**
 - **Votre propre DNS :** choisissez un serveur DNS pour les téléchargements de FetchJet (DNS over HTTPS ou un serveur DNS classique), et l'adaptateur réseau qu'ils utilisent. Seuls les téléchargements de FetchJet sont concernés, pas le reste de l'ordinateur.

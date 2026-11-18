@@ -6,10 +6,9 @@
 
 **Downloads**
 - **Rechtsklick-Menü auf einem Download** (lange drücken auf Smartphones): öffnen, Ordner öffnen, Link kopieren, pausieren, fortsetzen, löschen und mehr.
-- **Ordner nach Website:** Alles von einer Website deiner Wahl landet in einem eigenen Ordner.
+- **Ordner nach Website:** Alles von einer Website oder von Links, die gleich beginnen (ein Kurs, ein Projekt), landet im Ordner deiner Wahl. Auch ein Kurs aus dem Browser folgt der Regel.
 - **Gelöschte Dateien kommen in den Papierkorb** (auch unter macOS und Linux), statt zu verschwinden. Du kannst das in den Einstellungen abschalten.
 - **Prüfung nach dem Download:** Windows prüft eine fertige Datei mit deinem Virenschutz, und ein Download, den der Virenschutz blockiert, stoppt sofort mit einer klaren Meldung. Unter macOS tragen heruntergeladene und entpackte Dateien die übliche Markierung "aus dem Internet geladen".
-- **Monatsbericht:** Einstellungen > Downloads zeigt für jeden Monat, wie viele Dateien du geladen hast, ihre Gesamtgröße und von welchen Websites sie kamen. Gezählt wird nur auf deinem Gerät.
 
 **Netzwerk (Desktop)**
 - **Eigenes DNS:** Wähle einen DNS-Server für die Downloads von FetchJet (DNS über HTTPS oder ein normaler DNS-Server) und den Netzwerkadapter, den sie nutzen. Das betrifft nur die Downloads von FetchJet, nicht den Rest des Computers.

@@ -1,16 +1,22 @@
 package com.michelle.raouf.fetch_jet.core.settings
 
-import com.michelle.raouf.fetch_jet.core.network.SiteLogin
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 @Serializable
 data class SiteFolderRule(val site: String, val folder: String) {
-    fun matches(host: String): Boolean {
-        val h = host.lowercase().trimEnd('.').removePrefix("www.")
-        val s = SiteLogin.cleanSite(site)
-        return s.isNotEmpty() && (h == s || h.endsWith(".$s"))
+    private val host: String get() = SiteFolderRules.cleanSite(site).substringBefore('/')
+    private val path: String get() = SiteFolderRules.cleanSite(site).substringAfter('/', "")
+
+    fun matchesLink(linkHost: String, linkPath: String): Boolean {
+        val h = linkHost.lowercase().trimEnd('.').removePrefix("www.")
+        val s = host
+        if (s.isEmpty() || !(h == s || h.endsWith(".$s"))) return false
+        val p = path
+        if (p.isEmpty()) return true
+        val l = linkPath.lowercase().trim('/')
+        return l == p || l.startsWith("$p/")
     }
 }
 
@@ -18,26 +24,39 @@ object SiteFolderRules {
     private val json = Json { ignoreUnknownKeys = true }
     private val serializer = ListSerializer(SiteFolderRule.serializer())
 
-    fun hostOf(url: String): String {
+    private fun linkParts(url: String): Pair<String, String>? {
         val text = url.trim()
-        if (!text.contains("://")) return ""
-        return SiteLogin.cleanSite(text)
+        if (!text.contains("://")) return null
+        val rest = text.substringAfter("://").substringBefore('#').substringBefore('?')
+        val authority = rest.substringBefore('/')
+        val host = authority.substringAfterLast('@').substringBefore(':').lowercase().trimEnd('.').removePrefix("www.")
+        if (host.isEmpty()) return null
+        val path = if (rest.contains('/')) rest.substringAfter('/') else ""
+        return host to path
     }
 
-    fun cleanSite(text: String): String = SiteLogin.cleanSite(text)
+    fun hostOf(url: String): String = linkParts(url)?.first.orEmpty()
+
+    fun cleanSite(text: String): String {
+        var t = text.trim().substringBefore('#').substringBefore('?')
+        if (t.contains("://")) t = t.substringAfter("://")
+        val authority = t.substringBefore('/')
+        val host = authority.substringAfterLast('@').substringBefore(':').lowercase().trimEnd('.').removePrefix("www.")
+        val path = t.substringAfter('/', "").lowercase().split('/').filter { it.isNotEmpty() }.joinToString("/")
+        return if (path.isEmpty()) host else "$host/$path"
+    }
 
     fun isValidSite(text: String): Boolean {
         val site = cleanSite(text)
-        return site.contains('.') && site.none { it.isWhitespace() || it in "/\\?#" } && !site.startsWith('.')
+        val host = site.substringBefore('/')
+        return host.contains('.') && !host.startsWith('.') && site.none { it.isWhitespace() || it in "\\?#" }
     }
 
     fun match(rules: List<SiteFolderRule>, vararg urls: String?): SiteFolderRule? {
-        for (url in urls) {
-            val host = hostOf(url ?: continue)
-            if (host.isEmpty()) continue
-            rules.filter { it.matches(host) }.maxByOrNull { cleanSite(it.site).length }?.let { return it }
-        }
-        return null
+        val links = urls.mapNotNull { url -> url?.let { linkParts(it) } }
+        if (links.isEmpty()) return null
+        return rules.filter { rule -> links.any { (host, path) -> rule.matchesLink(host, path) } }
+            .maxByOrNull { cleanSite(it.site).length }
     }
 
     fun encode(rules: List<SiteFolderRule>): String = json.encodeToString(serializer, rules)

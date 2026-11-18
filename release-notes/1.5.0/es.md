@@ -6,10 +6,9 @@
 
 **Descargas**
 - **Menú del clic derecho en una descarga** (pulsación larga en los teléfonos): abrir, abrir la carpeta, copiar el enlace, pausar, reanudar, eliminar y más.
-- **Carpetas por sitio:** envía todo lo que llega de un sitio que elijas a su propia carpeta.
+- **Carpetas por sitio:** envía todo lo que llega de un sitio, o de enlaces que empiezan igual (un curso, un proyecto), a la carpeta que elijas. Un curso enviado desde el navegador también la sigue.
 - **Los archivos eliminados van a la Papelera de reciclaje** (la Papelera en macOS y Linux) en lugar de desaparecer. Puedes desactivarlo en Ajustes.
 - **Análisis tras la descarga:** Windows revisa el archivo terminado con tu antivirus, y una descarga que el antivirus bloquea se detiene al instante con un mensaje claro. En macOS, los archivos descargados y extraídos llevan la marca habitual de "descargado de internet".
-- **Informe mensual:** Ajustes > Descargas muestra, para cada mes, cuántos archivos descargaste, su tamaño total y los sitios de donde vinieron. Se cuenta solo en tu dispositivo.
 
 **Red (escritorio)**
 - **Tu propio DNS:** elige un servidor DNS para las descargas de FetchJet (DNS sobre HTTPS o un servidor DNS normal) y el adaptador de red que usan. Solo afecta a las descargas de FetchJet, no al resto del ordenador.

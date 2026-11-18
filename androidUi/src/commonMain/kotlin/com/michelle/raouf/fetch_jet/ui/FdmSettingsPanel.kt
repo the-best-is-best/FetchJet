@@ -57,6 +57,7 @@ internal enum class SettingsSection(val glyph: String) {
     NETWORK("◎"),
     MEDIA("▶"),
     TORRENT("⇅"),
+    REPORT("≡"),
     UPDATES("↻");
 
     val title: String
@@ -68,6 +69,7 @@ internal enum class SettingsSection(val glyph: String) {
             NETWORK -> LocalizationManager.Strings.sectionNetwork
             MEDIA -> LocalizationManager.Strings.sectionMedia
             TORRENT -> LocalizationManager.Strings.sectionTorrent
+            REPORT -> LocalizationManager.Strings.sectionReport
             UPDATES -> LocalizationManager.Strings.sectionUpdates
         }
 
@@ -80,6 +82,7 @@ internal enum class SettingsSection(val glyph: String) {
             NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
             MEDIA -> LocalizationManager.Strings.sectionMediaBlurb
             TORRENT -> LocalizationManager.Strings.sectionTorrentBlurb
+            REPORT -> LocalizationManager.Strings.sectionReportBlurb
             UPDATES -> LocalizationManager.Strings.sectionUpdatesBlurb
         }
 }
@@ -158,6 +161,7 @@ fun FdmSettingsPanel(
             SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
             SettingsSection.TORRENT -> AppFeatures.torrent
             SettingsSection.UPDATES -> updateState.supported
+            SettingsSection.REPORT -> com.michelle.raouf.fetch_jet.feature.report.DownloadReport.ENABLED
             else -> true
         }
     }
@@ -190,6 +194,7 @@ fun FdmSettingsPanel(
             (if (visibleToDevices) LocalizationManager.Strings.summaryVisible else LocalizationManager.Strings.summaryHidden) +
                     (if (pairedDevices.isNotEmpty()) " · ${pairedDevices.size}" else "") to
                     (if (visibleToDevices) StatusCompleted else null)
+        SettingsSection.REPORT -> LocalizationManager.Strings.sectionReportBlurb to null
         SettingsSection.UPDATES -> updateState.available?.let {
             LocalizationManager.Strings.summaryVersionAvailable(
                 it.version
@@ -253,6 +258,7 @@ fun FdmSettingsPanel(
                 showEngine = isJvm, isTorrentEngineReady, torrentEngineStatus
             )
 
+            SettingsSection.REPORT -> ReportPage()
             SettingsSection.UPDATES -> UpdatesSettingsCard()
             SettingsSection.BROWSER -> BrowserExtensionPage(isJvm)
             SettingsSection.DEVICES -> DevicesPage(pairedDevices, onUnpairDevice, blockedDevices, onUnblockDevice)

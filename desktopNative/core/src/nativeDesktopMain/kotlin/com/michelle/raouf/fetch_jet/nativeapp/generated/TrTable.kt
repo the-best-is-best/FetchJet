@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 820
+internal const val TR_COUNT = 839
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -787,6 +787,8 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.siteFolderFolder,
     s.siteFolderChoose,
     s.siteFolderAdd,
+    s.siteFolderLink,
+    s.siteFolderNotChosen,
     s.addFolderFromRule,
     s.netDnsGroup,
     s.netDnsHint,
@@ -800,6 +802,8 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.deleteToTrashOn,
     s.deleteToTrashOff,
     s.trashArchive,
+    s.deleteToTrashNotWindows,
+    s.trashArchiveNotWindows,
     s.trashArchiveOn,
     s.trashArchiveOff,
     s.archivePasswordTitle,
@@ -810,12 +814,27 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.extractPlaceSmart,
     s.extractPlaceFolder,
     s.extractPlaceNextTo,
-    s.reportGroup,
     s.reportFooter,
-    s.reportMonth,
     s.reportFiles,
     s.reportSize,
     s.reportEmpty,
+    s.sectionReport,
+    s.sectionReportBlurb,
+    s.reportPeriod,
+    s.reportThisMonth,
+    s.reportLastMonth,
+    s.reportLast7,
+    s.reportLast30,
+    s.reportThisYear,
+    s.reportAllTime,
+    s.reportCustom,
+    s.reportFrom,
+    s.reportTo,
+    s.reportSites,
+    s.reportTopSites,
+    s.reportNothingInPeriod,
+    s.reportMonthNames,
+    s.reportWeekdays,
     s.scanningState,
     s.scanTitle,
     s.scanClean,

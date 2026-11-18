@@ -226,6 +226,9 @@ namespace SettingKind {
     inline constexpr int Buttons = 9;
     inline constexpr int Progress = 10;
     inline constexpr int LimitBox = 11;
+    inline constexpr int Stats = 12;
+    inline constexpr int Bars = 13;
+    inline constexpr int Calendar = 14;
 }
 
 namespace TrackerStateCode {
@@ -939,6 +942,32 @@ inline SettingButtonDto parse_SettingButtonDto(const fj::Json &j) {
     return d;
 }
 
+inline StatTileDto parse_StatTileDto(const fj::Json &j) {
+    StatTileDto d{};
+    d.value = fj::text(j, "value");
+    d.label = fj::text(j, "label");
+    return d;
+}
+
+inline StatBarDto parse_StatBarDto(const fj::Json &j) {
+    StatBarDto d{};
+    d.label = fj::text(j, "label");
+    d.value = fj::text(j, "value");
+    d.fraction = fj::real(j, "fraction");
+    return d;
+}
+
+inline CalendarDayDto parse_CalendarDayDto(const fj::Json &j) {
+    CalendarDayDto d{};
+    d.label = fj::text(j, "label");
+    d.id = fj::text(j, "id");
+    d.blank = fj::flag(j, "blank");
+    d.inRange = fj::flag(j, "inRange");
+    d.edge = fj::flag(j, "edge");
+    d.today = fj::flag(j, "today");
+    return d;
+}
+
 inline SettingRowDto parse_SettingRowDto(const fj::Json &j) {
     SettingRowDto d{};
     d.kind = fj::integer(j, "kind");
@@ -976,6 +1005,9 @@ inline SettingRowDto parse_SettingRowDto(const fj::Json &j) {
     d.indeterminate = fj::flag(j, "indeterminate");
     d.alignEnd = fj::flag(j, "alignEnd");
     d.hint = fj::text(j, "hint");
+    d.tiles = fj::struct_model<StatTileDto>(j, "tiles", parse_StatTileDto);
+    d.bars = fj::struct_model<StatBarDto>(j, "bars", parse_StatBarDto);
+    d.days = fj::struct_model<CalendarDayDto>(j, "days", parse_CalendarDayDto);
     return d;
 }
 
@@ -1918,6 +1950,8 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_siteFolderFolder(next());
     tr.set_siteFolderChoose(next());
     tr.set_siteFolderAdd(next());
+    tr.set_siteFolderLink(next());
+    tr.set_siteFolderNotChosen(next());
     tr.set_addFolderFromRule(next());
     tr.set_netDnsGroup(next());
     tr.set_netDnsHint(next());
@@ -1931,6 +1965,8 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_deleteToTrashOn(next());
     tr.set_deleteToTrashOff(next());
     tr.set_trashArchive(next());
+    tr.set_deleteToTrashNotWindows(next());
+    tr.set_trashArchiveNotWindows(next());
     tr.set_trashArchiveOn(next());
     tr.set_trashArchiveOff(next());
     tr.set_archivePasswordTitle(next());
@@ -1941,12 +1977,27 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_extractPlaceSmart(next());
     tr.set_extractPlaceFolder(next());
     tr.set_extractPlaceNextTo(next());
-    tr.set_reportGroup(next());
     tr.set_reportFooter(next());
-    tr.set_reportMonth(next());
     tr.set_reportFiles(next());
     tr.set_reportSize(next());
     tr.set_reportEmpty(next());
+    tr.set_sectionReport(next());
+    tr.set_sectionReportBlurb(next());
+    tr.set_reportPeriod(next());
+    tr.set_reportThisMonth(next());
+    tr.set_reportLastMonth(next());
+    tr.set_reportLast7(next());
+    tr.set_reportLast30(next());
+    tr.set_reportThisYear(next());
+    tr.set_reportAllTime(next());
+    tr.set_reportCustom(next());
+    tr.set_reportFrom(next());
+    tr.set_reportTo(next());
+    tr.set_reportSites(next());
+    tr.set_reportTopSites(next());
+    tr.set_reportNothingInPeriod(next());
+    tr.set_reportMonthNames(next());
+    tr.set_reportWeekdays(next());
     tr.set_scanningState(next());
     tr.set_scanTitle(next());
     tr.set_scanClean(next());

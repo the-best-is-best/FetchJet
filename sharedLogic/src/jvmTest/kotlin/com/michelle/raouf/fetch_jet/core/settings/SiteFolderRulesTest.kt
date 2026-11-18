@@ -40,8 +40,26 @@ class SiteFolderRulesTest {
     }
 
     @Test
+    fun aRuleCanBeAPartOfALink() {
+        val withPaths = listOf(
+            SiteFolderRule("github.com", "/all"),
+            SiteFolderRule("github.com/the-best-is-best/FetchJet", "/fj"),
+            SiteFolderRule("udemy.com/course/kotlin", "/kotlin"),
+        )
+        assertEquals("/fj", SiteFolderRules.match(withPaths, "https://github.com/the-best-is-best/FetchJet/releases/download/v1.4.1/a.msi")?.folder)
+        assertEquals("/fj", SiteFolderRules.match(withPaths, "https://github.com/The-Best-Is-Best/fetchjet")?.folder)
+        assertEquals("/all", SiteFolderRules.match(withPaths, "https://github.com/the-best-is-best/FetchJetOther/a.zip")?.folder)
+        assertEquals("/all", SiteFolderRules.match(withPaths, "https://github.com/other/repo/a.zip")?.folder)
+        assertEquals("/kotlin", SiteFolderRules.match(withPaths, "https://cdn.udemycdn.com/v.mp4", "https://www.udemy.com/course/kotlin/learn/lecture/7?x=1")?.folder)
+        assertNull(SiteFolderRules.match(withPaths, "https://www.udemy.com/course/swift/learn/lecture/7"))
+        assertEquals("/fj", SiteFolderRules.match(withPaths, "https://objects.githubusercontent.com/x", "https://github.com/the-best-is-best/FetchJet/releases/tag/v1.4.1")?.folder)
+    }
+
+    @Test
     fun sitesAreCleanedAndChecked() {
-        assertEquals("example.com", SiteFolderRules.cleanSite("https://www.Example.com/page?x=1"))
+        assertEquals("github.com/the-best-is-best/fetchjet", SiteFolderRules.cleanSite("https://www.GitHub.com/the-best-is-best/FetchJet/?tab=1"))
+        assertTrue(SiteFolderRules.isValidSite("github.com/the-best-is-best"))
+        assertEquals("example.com", SiteFolderRules.cleanSite("https://www.Example.com/?x=1"))
         assertTrue(SiteFolderRules.isValidSite("example.com"))
         assertFalse(SiteFolderRules.isValidSite("localhost"))
         assertFalse(SiteFolderRules.isValidSite("not a site"))

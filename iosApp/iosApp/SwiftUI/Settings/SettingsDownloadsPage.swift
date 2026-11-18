@@ -92,7 +92,6 @@ struct SettingsDownloadsPage: View {
                 ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
             SettingsSiteFoldersCard()
-            SettingsDownloadReportCard()
             SettingsGroupBox(title: s.homeQueueTitle, footer: s.homeQueueFooter) {
                 SettingsRow(
                     title: s.homeDownloadsAtSameTime,
@@ -323,9 +322,10 @@ struct SettingsSiteFoldersCard: View {
     @State private var rules: [SiteFolderRule] = []
     @State private var site = ""
     @State private var folder = ""
+    @State private var pickingFolder = false
 
     private func reload() {
-        rules = (BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
+        rules =(BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
     }
 
     var body: some View {
@@ -348,8 +348,22 @@ struct SettingsSiteFoldersCard: View {
                 SettingsDivider()
             }
             VStack(alignment: .leading, spacing: 10) {
-                SettingsField(label: s.netLoginSite, placeholder: "example.com", text: $site, keyboard: .URL)
-                SettingsField(label: s.siteFolderFolder, text: $folder)
+                SettingsField(label: s.siteFolderLink, placeholder: "example.com/course", text: $site, keyboard: .URL)
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.siteFolderFolder)
+                            .font(FJTheme.font.caption)
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        Text(folder.isEmpty ? s.siteFolderNotChosen : folder)
+                            .font(FJTheme.font.body)
+                            .foregroundStyle(folder.isEmpty ? FJTheme.color.onSurfaceVariant : FJTheme.color.onSurface)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button(s.siteFolderChoose) { pickingFolder = true }
+                        .buttonStyle(SettingsButtonStyle(filled: false))
+                }
                 HStack {
                     Spacer()
                     Button(s.siteFolderAdd) {
@@ -369,43 +383,11 @@ struct SettingsSiteFoldersCard: View {
             reload()
             if folder.isEmpty { folder = store.state.destinationPath }
         }
-    }
-}
-
-struct SettingsDownloadReportCard: View {
-    @EnvironmentObject var store: FJStore
-    @State private var picked: String?
-
-    var body: some View {
-        let s = store.strings
-        let tasks = store.state.allTasks
-        let offset = Int64(TimeZone.current.secondsFromGMT()) * 1000
-        let months = Array(DownloadReport.shared.months(tasks: tasks, utcOffsetMs: offset).prefix(24))
-        SettingsGroupBox(title: s.reportGroup, footer: s.reportFooter) {
-            if months.isEmpty {
-                SettingsRow(title: s.reportEmpty)
-            } else {
-                let chosen = months.first { $0.label == picked } ?? months[0]
-                let report = DownloadReport.shared.forMonth(tasks: tasks, month: chosen, utcOffsetMs: offset, topSites: 5)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(months, id: \.label) { month in
-                            Button(month.label) { picked = month.label }
-                                .buttonStyle(SettingsButtonStyle(filled: month.label == chosen.label))
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                }
-                SettingsDivider()
-                SettingsRow(title: s.reportFiles, subtitle: "\(report.files)")
-                SettingsDivider()
-                SettingsRow(title: s.reportSize, subtitle: store.host.formatSizeDisplay(bytes: report.bytes))
-                ForEach(report.sites, id: \.site) { site in
-                    SettingsDivider()
-                    SettingsRow(title: site.site, subtitle: "\(site.files) · " + store.host.formatSizeDisplay(bytes: site.bytes))
-                }
+        .sheet(isPresented: $pickingFolder) {
+            SettingsFolderPicker(initialPath: folder.isEmpty ? store.state.destinationPath : folder) { picked in
+                folder = picked
             }
+            .environmentObject(store)
         }
     }
 }

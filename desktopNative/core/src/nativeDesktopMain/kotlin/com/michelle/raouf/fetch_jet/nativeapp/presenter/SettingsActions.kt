@@ -218,12 +218,8 @@ internal fun Presenter.settingPick(id: String, index: Int) {
 
         id == "queue" -> QUEUE_COUNTS.getOrNull(index)?.let { QueueManagerRepository.getInstance().setMaxConcurrentDownloads(it) }
         id == "proxyKind" -> ProxyKind.entries.getOrNull(index)?.let { kind -> editProxy { copy(kind = kind) } }
-        id == "reportMonth" -> {
-            val months = com.michelle.raouf.fetch_jet.feature.report.DownloadReport.months(
-                vm.uiState.value.allTasks, com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs.localUtcOffsetMs()
-            )
-            months.getOrNull(index)?.let { m -> settingsPage { copy(reportMonth = m.label) } }
-        }
+        id == "reportPeriod" -> reportPick(index)
+        id == "reportPeriod2" -> reportPick(index + REPORT_FIRST_LINE)
         id == "extractPlace" -> com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace.entries.getOrNull(index)
             ?.let { BehaviorSettings.setExtractPlace(it) }
         id == "dnsMode" -> com.michelle.raouf.fetch_jet.core.network.DnsMode.entries.getOrNull(index)?.let { mode ->
@@ -283,11 +279,6 @@ internal fun Presenter.settingText(id: String, text: String) {
         id == "ruleSite" -> {
             settingsEcho.of(id).fromUi(text)
             settingsPage { copy(ruleSite = text) }
-        }
-
-        id == "ruleFolder" -> {
-            settingsEcho.of(id).fromUi(text)
-            settingsPage { copy(ruleFolder = text) }
         }
 
         id == "loginSite" -> {
@@ -378,7 +369,6 @@ private fun Presenter.chooseRuleFolder() {
             null
         }
         if (!chosen.isNullOrBlank()) withContext(Dispatchers.Main) {
-            settingsEcho.of("ruleFolder").force()
             settingsPage { copy(ruleFolder = chosen) }
         }
     }
@@ -388,7 +378,6 @@ private fun Presenter.addSiteRule() {
     val page = settingsLocal.value.page
     if (!BehaviorSettings.addSiteFolder(page.ruleSite, page.ruleFolder)) return
     settingsEcho.of("ruleSite").force()
-    settingsEcho.of("ruleFolder").force()
     settingsPage { copy(ruleSite = "", ruleFolder = "") }
 }
 
@@ -499,6 +488,7 @@ internal fun Presenter.browserDialogExtra() {
 }
 
 internal fun Presenter.settingClick(id: String) {
+    if (reportClick(id)) return
     when {
         id == "chooseFolder" -> chooseSaveFolder()
         id == "ruleChoose" -> chooseRuleFolder()

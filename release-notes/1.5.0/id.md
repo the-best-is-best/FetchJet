@@ -6,10 +6,9 @@
 
 **Unduhan**
 - **Menu klik kanan pada unduhan** (tekan lama di ponsel): buka, buka folder, salin tautan, jeda, lanjutkan, hapus, dan lainnya.
-- **Folder per situs:** kirim semua yang berasal dari situs pilihan Anda ke foldernya sendiri.
+- **Folder per situs:** kirim semua yang berasal dari sebuah situs, atau dari tautan yang awalnya sama (kursus, proyek), ke folder yang Anda pilih. Kursus yang dikirim dari browser juga mengikutinya.
 - **File yang dihapus masuk ke Recycle Bin** (Tempat Sampah di macOS dan Linux), tidak hilang begitu saja. Anda bisa mematikannya di Pengaturan.
 - **Pindai setelah unduhan:** Windows memeriksa file yang selesai dengan antivirus Anda, dan unduhan yang diblokir antivirus langsung berhenti dengan pesan yang jelas. Di macOS, file yang diunduh dan diekstrak membawa tanda "diunduh dari internet" seperti biasa.
-- **Laporan bulanan:** Pengaturan > Unduhan menampilkan, untuk setiap bulan, berapa file yang Anda unduh, total ukurannya, dan situs asalnya. Dihitung hanya di perangkat Anda.
 
 **Jaringan (desktop)**
 - **DNS Anda sendiri:** pilih server DNS untuk unduhan FetchJet (DNS over HTTPS atau server DNS biasa), dan pilih adaptor jaringan yang dipakai. Hanya unduhan FetchJet yang terpengaruh, bukan seluruh komputer.
