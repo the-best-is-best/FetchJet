@@ -264,6 +264,15 @@ Bridges:
 
 ## Current state (last release 1.4.1; working branch `release-v1.5.0`)
 
+- **2026-11-18, Windows installers (owner-tested: installed the release Setup.exe and checked it on screen):** the
+  install folder is fixed to `%LOCALAPPDATA%\FetchJet` in both: the MSI skips `InstallDirDlg` (Welcome -> shortcuts page,
+  `product.wxs`; `check-msi.ps1` checks there is no way to the folder page) and Setup.exe keeps `SuppressOptionsUI`. No
+  licence agreement in either (GPL-3.0 asks no acceptance to install or use): Setup.exe lost its "I agree" box and keeps
+  the GPL v3 link line (`installer/theme.xml`, `theme.wxl`). Android release (R8) built and installed on the A56 over
+  the debug build (same key), a 4 MB download completed, no crash. The Store privacy field is a URL to
+  `docs/privacy.html`, which already describes the usage count but is live only after `release-v1.5.0` reaches `master`
+  (`pages.yml`): merge before sending the Store submission.
+
 - **2026-11-18, Windows, Udemy and device name (owner-tested in Edge, "works"):**
     - Udemy single video opened the Add dialog with the whole course list: `pendingExternalPlaylist` kept the last course
       read by the browser; it is now cleared when a single link arrives (`startExternalDirectly`) and when the dialog closes.

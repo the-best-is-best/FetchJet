@@ -146,7 +146,7 @@
                  Text="Add FetchJet to the Start menu" />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)">
-          <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+          <Publish Event="NewDialog" Value="WelcomeDlg">1</Publish>
         </Control>
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)">
           <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
@@ -156,9 +156,7 @@
         </Control>
       </Dialog>
 
-      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
-      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">1</Publish>
-      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="FjOptionsDlg" Order="5">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="FjOptionsDlg" Order="2">1</Publish>
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="FjOptionsDlg" Order="5">NOT Installed</Publish>
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="FjLaunchApp">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed</Publish>
     </UI>

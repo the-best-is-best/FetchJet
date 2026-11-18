@@ -127,8 +127,10 @@ $dirsUnderInstall = @($dirs | Where-Object { $_.Directory -like 'd_*' -or $_.Dir
 Check ($rf.Count -ge $dirsUnderInstall.Count + 1) "RemoveFolder rows $($rf.Count) for $($dirsUnderInstall.Count) install folders + ProgramMenuDir"
 $ui = $tables.ContainsKey('Dialog') -and @($tables['Dialog'] | Where-Object { $_.Dialog -eq 'InstallDirDlg' }).Count -eq 1
 Check $ui 'WixUI_InstallDir dialogs present'
-$pub = @($tables['ControlEvent'] | Where-Object { $_.Dialog_ -eq 'WelcomeDlg' -and $_.Control_ -eq 'Next' -and $_.Argument -eq 'InstallDirDlg' })
-Check ($pub.Count -ge 1) 'WelcomeDlg Next -> InstallDirDlg (licence page skipped)'
+$pub = @($tables['ControlEvent'] | Where-Object { $_.Dialog_ -eq 'WelcomeDlg' -and $_.Control_ -eq 'Next' -and $_.Argument -eq 'FjOptionsDlg' })
+$toFolder = @($tables['ControlEvent'] | Where-Object { $_.Argument -eq 'InstallDirDlg' -and $_.Event -eq 'NewDialog' -and ($_.Dialog_ -eq 'WelcomeDlg' -or $_.Dialog_ -eq 'FjOptionsDlg') })
+Check ($pub.Count -ge 1) 'WelcomeDlg Next -> FjOptionsDlg (licence and folder pages skipped)'
+Check ($toFolder.Count -eq 0) 'no way to the folder page (the install folder is fixed)'
 
 Write-Host 'Administrative extraction (msiexec /a, not an install)'
 $admin = Join-Path $scratchFull 'admin'

@@ -19,8 +19,7 @@
     <Text X="24" Y="150" Width="-24" Height="40" FontId="2" DisablePrefix="yes">#(loc.InstallMessage)</Text>
     <Checkbox Name="DesktopShortcutCheckbox" X="24" Y="206" Width="-24" Height="20" TabStop="yes" FontId="3">#(loc.DesktopShortcutCheckbox)</Checkbox>
     <Checkbox Name="StartMenuCheckbox" X="24" Y="232" Width="-24" Height="20" TabStop="yes" FontId="3">#(loc.StartMenuCheckbox)</Checkbox>
-    <Hypertext Name="EulaHyperlink" X="24" Y="-56" Width="-24" Height="18" TabStop="yes" FontId="4" HideWhenDisabled="yes">#(loc.InstallLicenseLinkText)</Hypertext>
-    <Checkbox Name="EulaAcceptCheckbox" X="24" Y="-16" Width="260" Height="20" TabStop="yes" FontId="3" HideWhenDisabled="yes">#(loc.InstallAcceptCheckbox)</Checkbox>
+    <Hypertext Name="EulaHyperlink" X="24" Y="-20" Width="-24" Height="18" TabStop="yes" FontId="4" HideWhenDisabled="yes">#(loc.InstallLicenseLinkText)</Hypertext>
     <Button Name="InstallButton" X="-120" Y="-16" Width="88" Height="28" TabStop="yes" FontId="0">#(loc.InstallInstallButton)</Button>
     <Button Name="WelcomeCancelButton" X="-24" Y="-16" Width="88" Height="28" TabStop="yes" FontId="0">#(loc.InstallCloseButton)</Button>
   </Page>
