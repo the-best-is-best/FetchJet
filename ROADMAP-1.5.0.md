@@ -313,6 +313,14 @@ per host).
   picker in headless mode too (`NativeApp.kt`), so a test can answer it. Tests: `SiteFolderRulesTest` 7,
   `test_siterules.py` 22 (picker asked, link rules, a list of one rule and a mixed list), `test_settings` 87, `test_add` 29,
   `test_home` 41, `test_foldertype` 8; Android compiles; SwiftUI not built (Mac).
+  Mac 2026-11-18 (after `f4c9618`): iOS built (a Swift spacing error, `rules =(`, fixed) and checked on the iPhone 17 /
+  iPad Pro 13" simulators: the card starts with "No folder chosen" (it used to fill in the save folder on open and after
+  Add), Add stays disabled without a folder, "Choose folder..." opens the picker, rule `example.com/course` saved with
+  the picked folder (`behavior.properties` `siteFolders`). Fixed: `SettingsFolderPicker` opened a subfolder by its bare name
+  (iOS `listSubdirectories` returns names), so picking `Archives` saved "Archives"; it now joins the name to the current path
+  (the Add dialog's picker already did). macOS native: `test_siterules` 22 (one early run failed "another path on the site
+  uses the site rule" after a fixed 1.5 s wait; the test now waits for each task; 3 runs after it passed; cause = timing,
+  my reading), `test_settings` 87, `test_trash` 10, `test_dns` 14.
 - [ ] Optional on the same rule: a speed limit or a connection count for that site, and a command to run when the download
   finishes (the item says to decide after the first part is used; not built).
 
@@ -412,6 +420,9 @@ per host).
 - Hidden the same day (owner: the numbers drop when finished downloads are removed from the list, and few people would
   look for it): `DownloadReport.ENABLED = false` hides the page on all three UIs; the code stays. The desktop shows it with
   the debug "all sections" switch, so `test_report.py` still runs. Its line was removed from the 1.5.0 release notes.
+  Mac 2026-11-18: iOS builds with `SettingsReportPage.swift`; the Report page is not in the Settings list on the iPhone 17
+  and the iPad. macOS `test_report.py` 17 / 0 (the screenshots skip: `shot.exe` is Windows only, `shots.py` now skips when
+  the tool is missing).
 
 ## 11. Portable mode on Windows (idea, 2026-11-14)
 

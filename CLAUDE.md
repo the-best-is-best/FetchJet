@@ -284,11 +284,11 @@ Bridges:
   simulator holds `127.0.0.1:28450` on the Mac: stop it before running the Mac app, or `/d` and the bridge fail
   (`bridge: not started`). The simulator screenshot tool does not show SwiftUI context menus: use
   `xcrun simctl io <udid> screenshot`. Next on Windows: build the native app / Android after these commits.
-- **Still for the Mac (Windows work of 2026-11-18, not built there):** `SettingsDownloadsPage.swift` (folders by site:
-  the folder is chosen with `SettingsFolderPicker`, the rule can be a link start; the report card is gone),
-  `SettingsReportPage.swift` (new) + `SettingsScreen.swift` (a Report page with any period, hidden by
-  `DownloadReport.ENABLED = false`, so only a build check is needed). The offset uses
-  `Int64(TimeZone.current.secondsFromGMT()) * 1000` like the Mac fix.
+- **2026-11-18, Mac check after `f4c9618`:** iOS built and checked on the iPhone 17 / iPad (folders by site: "No folder
+  chosen", picker, link-start rule saved; no Report page in Settings). Fixed: a Swift spacing build error, the card filled
+  in the save folder by itself, and `SettingsFolderPicker` saved a bare subfolder name (iOS `listSubdirectories` returns
+  names). macOS native built; corehost `test_siterules` 22, `test_settings` 87, `test_report` 17, `test_trash` 10,
+  `test_dns` 14, all 0 failed (`test_siterules` now waits for its tasks; `shots.py` skips without `shot.exe`).
 
 - **2026-11-17, Windows session on `release-v1.5.0` (owner away: "work through the whole ROADMAP, do not ask, test it";
   committed and pushed after `acb625e` at the owner's "ارفع"; details per item in ROADMAP-1.5.0.md):**
