@@ -15,6 +15,9 @@ MEDIA = {name: index for index, name in enumerate(ENUMS["MediaStateCode"])}
 
 
 def shot(core, name, width=1200, height=760, extra=None):
+    if not os.path.isfile(SHOT):
+        print("  skip  " + name + " (no shot tool on this system)")
+        return True
     os.makedirs(OUT, exist_ok=True)
     fixture = os.path.join(OUT, name + ".json")
     data = core.fixture(fixture, {"Emoji": {"ready": True}})

@@ -287,7 +287,7 @@ struct SettingsFolderPicker: View {
                         Text(s.dirPickerNoSubfolders).foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }
                     ForEach(subfolders, id: \.self) { path in
-                        Button { go(path) } label: {
+                        Button { go(path.hasPrefix("/") ? path : (current.hasSuffix("/") ? current : current + "/") + path) } label: {
                             Label(settingsFolderName(path), systemImage: "folder.fill")
                                 .foregroundStyle(FJTheme.color.onSurface)
                         }
@@ -325,7 +325,7 @@ struct SettingsSiteFoldersCard: View {
     @State private var pickingFolder = false
 
     private func reload() {
-        rules =(BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
+        rules = (BehaviorSettings.shared.siteFolders.value as? [SiteFolderRule]) ?? []
     }
 
     var body: some View {
@@ -369,7 +369,7 @@ struct SettingsSiteFoldersCard: View {
                     Button(s.siteFolderAdd) {
                         if BehaviorSettings.shared.addSiteFolder(site: site, folder: folder) {
                             site = ""
-                            folder = store.state.destinationPath
+                            folder = ""
                         }
                         reload()
                     }
@@ -381,7 +381,6 @@ struct SettingsSiteFoldersCard: View {
         }
         .onAppear {
             reload()
-            if folder.isEmpty { folder = store.state.destinationPath }
         }
         .sheet(isPresented: $pickingFolder) {
             SettingsFolderPicker(initialPath: folder.isEmpty ? store.state.destinationPath : folder) { picked in

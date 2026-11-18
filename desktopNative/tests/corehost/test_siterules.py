@@ -88,16 +88,14 @@ def run():
         core.action("ShowAddDialog", show=False)
         core.debug("addDirect", {"url": "http://dl.example.test/x.bin", "fileName": "x.bin"})
         core.debug("addDirect", {"url": "http://example.test.evil.invalid/y.bin", "fileName": "y.bin"})
-        core.pump(1.5)
-        x = core.task(file_name="x.bin") or {}
-        y = core.task(file_name="y.bin") or {}
+        x = core.wait_for("the task x.bin", lambda: core.task(file_name="x.bin"), 15) or {}
+        y = core.wait_for("the task y.bin", lambda: core.task(file_name="y.bin"), 15) or {}
         core.check("a sub-domain follows the rule (no dialog: bridge / list path)", norm(x.get("destinationPath")) == norm(test_rule), x.get("destinationPath"))
         core.check("a look-alike host does not", norm(y.get("destinationPath")) != norm(test_rule), y.get("destinationPath"))
         core.debug("addDirect", {"url": "http://example.test/repo/name/releases/r.bin", "fileName": "r.bin"})
         core.debug("addDirect", {"url": "http://example.test/repo/other/s.bin", "fileName": "s.bin"})
-        core.pump(1.5)
-        r = core.task(file_name="r.bin") or {}
-        s2 = core.task(file_name="s.bin") or {}
+        r = core.wait_for("the task r.bin", lambda: core.task(file_name="r.bin"), 15) or {}
+        s2 = core.wait_for("the task s.bin", lambda: core.task(file_name="s.bin"), 15) or {}
         core.check("a link under the link rule goes to its folder", norm(r.get("destinationPath")) == norm(repo_rule), r.get("destinationPath"))
         core.check("another path on the site uses the site rule", norm(s2.get("destinationPath")) == norm(test_rule), s2.get("destinationPath"))
 
