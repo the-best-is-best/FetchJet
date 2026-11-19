@@ -48,7 +48,7 @@ private struct TaskDetailsContent: View {
         let isCompleted = task.status == .completed
         VStack(alignment: .leading, spacing: 0) {
             Text(TaskUi.displayName(task, store.host))
-                .font(.system(size: 17, weight: .bold))
+                .font(.fj(17, .bold))
                 .foregroundStyle(FJTheme.color.onSurface)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
@@ -74,17 +74,17 @@ private struct TaskDetailsContent: View {
 
             if task.status == .error, let err = task.errorMessage, !err.isEmpty {
                 Label(store.host.localizeStep(text: err), systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.fj(12, .medium))
                     .foregroundStyle(FJTheme.color.error)
                     .padding(.top, 6)
             }
 
             Text(s.detailsSavedTo)
-                .font(.system(size: 11))
+                .font(.fj(11))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .padding(.top, 14)
             Text(fullPath)
-                .font(.system(size: 12))
+                .font(.fj(12))
                 .foregroundStyle(FJTheme.color.onSurface.opacity(0.75))
                 .lineLimit(3)
                 .truncationMode(.middle)
@@ -142,9 +142,9 @@ private struct TaskDetailsContent: View {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
                     Text(s.detailsTorrentFiles(selected: Int32(files.filter { $0.isSelected }.count), total: Int32(files.count)))
-                    Image(systemName: showFiles ? "chevron.up" : "chevron.down").font(.system(size: 10, weight: .bold))
+                    Image(systemName: showFiles ? "chevron.up" : "chevron.down").font(.fj(10, .bold))
                 }
-                .font(.system(size: 12, weight: .bold))
+                .font(.fj(12, .bold))
                 .foregroundStyle(FJTheme.color.primary)
                 .padding(.vertical, 2)
             }
@@ -182,15 +182,15 @@ private struct TaskDetailsContent: View {
                 store.send(DashboardUiEventOnTaskTorrentFileSelectionToggled(taskId: task.id, fileIndex: file.index, isSelected: !file.isSelected))
             } label: {
                 Image(systemName: file.isSelected ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 18))
+                    .font(.fj(18))
                     .foregroundStyle(file.isSelected ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
             }
             .buttonStyle(.plain)
             Image(systemName: file.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 11))
+                .font(.fj(11))
                 .foregroundStyle(file.isCompleted ? FJTheme.color.statusCompleted : FJTheme.color.onSurfaceVariant)
             Text(file.path)
-                .font(.system(size: 12))
+                .font(.fj(12))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .foregroundStyle(file.isSelected ? FJTheme.color.onSurface : FJTheme.color.onSurfaceVariant.opacity(0.5))
@@ -200,7 +200,7 @@ private struct TaskDetailsContent: View {
                 store.send(DashboardUiEventOnTaskTorrentFilePriorityChanged(taskId: task.id, fileIndex: file.index, priority: next))
             } label: {
                 Text(label)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.fj(10, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -208,7 +208,7 @@ private struct TaskDetailsContent: View {
             }
             .buttonStyle(.plain)
             Text(progressText)
-                .font(.system(size: 10))
+                .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
         }
         .padding(.horizontal, 4)
@@ -282,17 +282,17 @@ private struct TaskDetailsContent: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .bottom) {
                 Text("\(TaskUi.percent(task))%")
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.fj(30, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Spacer()
                 Text(statusWord)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.fj(12, .medium))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .padding(.bottom, 6)
             }
             if let step = task.currentStepText, !step.isEmpty, running {
                 Label(store.host.localizeStep(text: step), systemImage: "bolt.fill")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.fj(11, .bold))
                     .foregroundStyle(FJTheme.color.onPrimaryContainer)
                     .lineLimit(1)
                     .padding(.horizontal, 8)
@@ -348,7 +348,7 @@ private struct TaskDetailsContent: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(label)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     Spacer()
                     Button {
@@ -356,7 +356,7 @@ private struct TaskDetailsContent: View {
                         store.showToast(s.copied)
                     } label: {
                         Text(s.copy)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.fj(11, .semibold))
                             .foregroundStyle(FJTheme.color.primary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -364,7 +364,7 @@ private struct TaskDetailsContent: View {
                     .buttonStyle(.plain)
                 }
                 Text(store.host.displayUrl(url: link))
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface.opacity(0.75))
                     .lineLimit(4)
                     .textSelection(.enabled)
@@ -383,7 +383,7 @@ private struct TaskDetailsContent: View {
             }
         }()
         return Label(text, systemImage: icon)
-            .font(.system(size: 12, weight: .medium))
+            .font(.fj(12, .medium))
             .foregroundStyle(color)
     }
 
@@ -437,7 +437,7 @@ private struct TaskDetailsContent: View {
                 store.send(DashboardUiEventOnCancelClicked(taskId: task.id))
             } label: {
                 Text(isCompleted ? s.detailsRemoveFromList : s.detailsCancelDownload)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.fj(13, .semibold))
                     .foregroundStyle(FJTheme.color.error)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
@@ -463,7 +463,7 @@ struct TaskDetailChip: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.fj(11, .semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -479,10 +479,10 @@ struct TaskDetailStat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 11))
+                .font(.fj(11))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
             Text(value)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.fj(14, .semibold))
                 .foregroundStyle(color)
                 .lineLimit(2)
         }
@@ -498,7 +498,7 @@ struct TaskDetailButton: View {
     var body: some View {
         Button(action: action) {
             Text(text)
-                .font(.system(size: 13, weight: primary ? .bold : .semibold))
+                .font(.fj(13, primary ? .bold : .semibold))
                 .lineLimit(1)
                 .foregroundStyle(primary ? FJTheme.color.onPrimary : FJTheme.color.onSurface)
                 .frame(maxWidth: .infinity)
@@ -533,7 +533,7 @@ struct TaskPostProcessLine: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Label(store.host.localizeStep(text: label), systemImage: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
                     .foregroundStyle(FJTheme.color.tertiary)
                     .lineLimit(1)
                 Spacer()
@@ -542,7 +542,7 @@ struct TaskPostProcessLine: View {
                     let m = sec / 60, s = sec % 60
                     let elapsed = m >= 60 ? String(format: "%d:%02d:%02d", m / 60, m % 60, s) : String(format: "%d:%02d", m, s)
                     Text((progress >= 0 ? "\(Int(progress * 100))% · " : "") + elapsed)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             }

@@ -44,11 +44,11 @@ private struct AddDialogTitle: View {
     var body: some View {
         HStack(spacing: 10) {
             Text(icon)
-                .font(.system(size: 20))
+                .font(.fj(20))
                 .frame(width: 40, height: 40)
                 .background(tint.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(FJTheme.color.onSurface)
+                Text(title).font(.fj(17, .bold)).foregroundStyle(FJTheme.color.onSurface)
                 Text(subtitle).font(FJTheme.font.small).foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
         }
@@ -63,7 +63,7 @@ private struct AddDialogButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 14, weight: .bold))
+                .font(.fj(14, .bold))
                 .foregroundStyle(textColor)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
@@ -95,12 +95,12 @@ struct AddDuplicateCard: View {
             AddDialogTitle(icon: "📋", title: strings.duplicateDialogTitle, subtitle: strings.duplicateDialogSubtitle, tint: FJTheme.color.statusPaused)
             VStack(alignment: .leading, spacing: 8) {
                 Text(task.fileName.isEmpty ? store.host.displayUrl(url: task.url) : task.fileName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.fj(13, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(2)
                 HStack {
                     Text(strings.duplicateDialogStatus(status: task.status.name))
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.fj(11, .bold))
                         .foregroundStyle(color)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -108,7 +108,7 @@ struct AddDuplicateCard: View {
                     Spacer()
                     if task.progress > 0 {
                         Text("\(Int(task.progress * 100))%")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.fj(12, .bold))
                             .foregroundStyle(FJTheme.color.primary)
                     }
                 }
@@ -171,8 +171,8 @@ struct AddConflictCard: View {
 
     private func item(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(label).font(.system(size: 10, weight: .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
-            Text(value).font(.system(size: 12, weight: .medium)).foregroundStyle(FJTheme.color.onSurface).lineLimit(2).truncationMode(.middle)
+            Text(label).font(.fj(10, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
+            Text(value).font(.fj(12, .medium)).foregroundStyle(FJTheme.color.onSurface).lineLimit(2).truncationMode(.middle)
         }
     }
 }

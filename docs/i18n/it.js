@@ -1,0 +1,22 @@
+window.FJ_PAGE_TEXT = window.FJ_PAGE_TEXT || {};
+window.FJ_PAGE_TEXT.it = {
+  pageTitle: "Download di FetchJet", title: "Download di FetchJet", subtitle: "Ogni versione, per ogni piattaforma. Scegli la tua.",
+  loading: "caricamento…", loadingReleases: "Caricamento delle versioni da GitHub…",
+  footer: 'I file sono pubblicati su <a href="{releases}">GitHub Releases</a>. Android: installa l’APK per la tua CPU (<em>arm64-v8a</em> se non sei sicuro). iPhone e iPad: un solo IPA per entrambi, da installare in sideload (AltStore / Sideloadly). Firefox: installa da Firefox Add-ons. <a href="privacy.html">Informativa sulla privacy</a>',
+  winHint: "Il .msi installa FetchJet e gli permette di aggiornarsi da solo.",
+  winNotice: '<div class="notice"><h3>Scaricalo dal Microsoft Store (consigliato)</h3>Installazione con un clic, nessun avviso SmartScreen, e Windows lo tiene aggiornato.<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div><div class="hint">Preferisci un programma di installazione? Prendi il .msi qui sotto; si aggiorna da GitHub.</div></div>',
+  macHint: "Solo per Mac con Apple Silicon (M1 o successivi); i Mac Intel non sono supportati. Apri il .dmg e trascina FetchJet in Applicazioni.",
+  macNotice: '<div class="notice"><h3>Primo avvio: "Apple could not verify FetchJet"</h3>FetchJet non è ancora autenticato da Apple, quindi macOS blocca il primo avvio. Aprilo una volta, chiudi l’avviso, poi vai in <b>Impostazioni di Sistema &rarr; Privacy e sicurezza</b> e fai clic su <b>Apri comunque</b>. Oppure esegui questo una volta nel Terminale:<div class="hint"><code>xattr -dr com.apple.quarantine /Applications/FetchJet.app</code></div></div>',
+  linuxHint: ".deb per Debian/Ubuntu; il .tar.gz funziona ovunque (estrailo e avvia bin/FetchJet).",
+  androidHint: "arm64-v8a va bene per quasi tutti i telefoni prodotti dopo il 2017. Telefoni a 32 bit più vecchi: armeabi-v7a. Emulatori e Chromebook: x86_64.",
+  iosLabel: "iPhone · iPad", iosHint: "Un solo IPA per iPhone e iPad. Non firmato: installalo con AltStore o Sideloadly.",
+  extLabel: "Estensione del browser", extHint: ".zip = Chrome / Edge / Brave (carica l’estensione non pacchettizzata o trascinala su chrome://extensions).",
+  extNotice: '<div class="notice"><h3>Installa da uno store (consigliato)</h3>Gli aggiornamenti si installano da soli e il browser non mostra avvisi.<div class="stores"><a class="btn" href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">Firefox Add-ons</a><a class="btn" href="https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj">Microsoft Edge Add-ons</a></div><div class="hint">Chrome, Brave, Opera e Vivaldi: FetchJet non è nel Chrome Web Store, quindi usa il .zip qui sotto.</div></div><div class="notice warn"><h3>⚠ Installare il .zip qui sotto (modalità sviluppatore)</h3>Il .zip è per Chrome / Edge / Brave quando non puoi usare uno store. Il browser lo tratta come un’estensione da sviluppatore: all’avvio può mostrare un avviso "developer mode extensions", e <b>non</b> si aggiorna da sola - torna qui per le nuove versioni.<ol><li>Scarica il <code>.zip</code> ed estrailo in una cartella che conserverai (non eliminarla dopo).</li><li>Apri <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li><li>Attiva la <b>Modalità sviluppatore</b>.</li><li>Fai clic su <b>Carica estensione non pacchettizzata</b> e scegli la cartella estratta.</li></ol></div>',
+  noBuild: "Non è ancora stata pubblicata nessuna versione per {p}.", latestFor: "Ultima per {p}: {v}",
+  skipped: "le versioni più recenti ({list}) non avevano modifiche per {p}", releaseNotes: "Note di rilascio", whatsNew: "Novità della {v}",
+  hideOlder: "Nascondi versioni precedenti", showOlder: "Mostra versioni precedenti ({n})", preRelease: "pre-release", beta: "beta",
+  whatChanged: "cosa è cambiato", onGitHub: "su GitHub", release1: "1 versione", releasesN: "{n} versioni", offline: "offline",
+  loadError: 'Impossibile caricare l’elenco delle versioni ({e}). Apri invece <a href="{releases}">la pagina delle versioni su GitHub</a>.',
+  fileMsi: "Programma di installazione (.msi)", fileZip: "Portatile, senza installazione (.zip)", fileExe: "Setup (.exe)", fileDeb: "Debian / Ubuntu (.deb)",
+  fileTar: "Portatile (.tar.gz)", fileDmg: "Apple Silicon (.dmg)", fileXpi: "Firefox (.xpi)", fileExtZip: "Chrome / Edge (.zip)"
+};

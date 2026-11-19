@@ -21,7 +21,7 @@
           }
         }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", "Nirmala UI", "Noto Sans Devanagari", "Noto Sans Arabic", sans-serif; }
         a { color: var(--accent); }
         header { max-width: 1100px; margin: 0 auto; padding: 40px 16px 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
         header .logo { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
@@ -29,11 +29,12 @@
         header p { margin: 0; color: var(--muted); }
         header .grow { flex: 1 1 auto; }
         .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+        .lang { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; }
         main { max-width: 1100px; margin: 0 auto; padding: 8px 16px 60px; }
         .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 16px; }
         .tab { border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
         .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-        .tab .n { opacity: 0.7; font-weight: 500; margin-left: 4px; }
+        .tab .n { opacity: 0.7; font-weight: 500; margin-inline-start: 6px; unicode-bidi: isolate; }
         .latest { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
         .latest .v { font-size: 22px; font-weight: 700; }
         .latest .d { color: var(--muted); font-size: 13px; }
@@ -60,7 +61,7 @@
         .notice { margin: 0 0 16px; padding: 14px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); font-size: 14px; }
         .notice.warn { border-color: rgba(251,191,36,.45); }
         .notice h3 { margin: 0 0 8px; font-size: 15px; }
-        .notice ol { margin: 6px 0 0 18px; padding: 0; } .notice li { margin: 3px 0; }
+        .notice ol { margin: 6px 0 0; padding-inline-start: 18px; } .notice li { margin: 3px 0; }
         .stores { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
         .notice code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
         .notes-body { margin-top: 10px; padding: 12px 14px; background: var(--panel-2); border-radius: 10px; font-size: 13px; white-space: pre-wrap; color: var(--muted); display: none; }
@@ -83,9 +84,10 @@
             <path d="M5 20h14"/>
         </svg>
     </div>
-    <div><h1>FetchJet downloads</h1>
-        <p>Every version, for every platform. Pick yours.</p></div>
+    <div><h1 id="title">FetchJet downloads</h1>
+        <p id="subtitle">Every version, for every platform. Pick yours.</p></div>
     <div class="grow"></div>
+    <select aria-label="Language" class="lang" id="lang"></select>
     <span class="pill" id="count">loading…</span>
 </header>
 <main>
@@ -95,68 +97,111 @@
     </section>
     <p class="hint" id="hint"></p>
 </main>
-<footer>Files are published on <a href="#" id="repo-link">GitHub Releases</a>. Android: install the
-    APK for your CPU (<em>arm64-v8a</em> if unsure). iPhone and iPad: one IPA for both, for sideloading
-    (AltStore / Sideloadly). Firefox: install from Firefox Add-ons.
-</footer>
+<footer id="footer"></footer>
 
 <script>
     (function () {
       var REPO = "the-best-is-best/FetchJet";
-      document.getElementById("repo-link").href = "https://github.com/" + REPO + "/releases";
+      var RELEASES_URL = "https://github.com/" + REPO + "/releases";
+      var LANGS = [
+        ["en", "English"], ["ar", "العربية"], ["zh", "中文"], ["fr", "Français"], ["de", "Deutsch"],
+        ["hi", "हिन्दी"], ["id", "Bahasa Indonesia"], ["it", "Italiano"], ["ja", "日本語"], ["ko", "한국어"],
+        ["fa", "فارسی"], ["pt", "Português"], ["ru", "Русский"], ["es", "Español"], ["tr", "Türkçe"]
+      ];
+      var RTL = { ar: true, fa: true };
+      var notesCache = {};
+
+      var TEXT = {
+        en: {
+          pageTitle: "FetchJet downloads", title: "FetchJet downloads", subtitle: "Every version, for every platform. Pick yours.",
+          loading: "loading…", loadingReleases: "Loading releases from GitHub…",
+          footer: 'Files are published on <a href="{releases}">GitHub Releases</a>. Android: install the APK for your CPU (<em>arm64-v8a</em> if unsure). iPhone and iPad: one IPA for both, for sideloading (AltStore / Sideloadly). Firefox: install from Firefox Add-ons. <a href="privacy.html">Privacy policy</a>',
+          winHint: "The .msi installs FetchJet and lets it update itself.",
+          winNotice: '<div class="notice"><h3>Get it from the Microsoft Store (recommended)</h3>One click to install, no SmartScreen warning, and Windows keeps it updated.<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div><div class="hint">Prefer an installer? Take the .msi below; it updates itself from GitHub.</div></div>',
+          macHint: "For Apple Silicon Macs (M1 or newer) only; Intel Macs are not supported. Open the .dmg and drag FetchJet to Applications.",
+          macNotice: '<div class="notice"><h3>First launch: "Apple could not verify FetchJet"</h3>FetchJet is not notarized by Apple yet, so macOS blocks the first launch. Open it once, close the warning, then go to <b>System Settings &rarr; Privacy &amp; Security</b> and click <b>Open Anyway</b>. Or run this once in Terminal:<div class="hint"><code>xattr -dr com.apple.quarantine /Applications/FetchJet.app</code></div></div>',
+          linuxHint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet).",
+          androidHint: "arm64-v8a fits almost every phone made after 2017. Older 32-bit phones: armeabi-v7a. Emulators and Chromebooks: x86_64.",
+          iosLabel: "iPhone · iPad", iosHint: "One IPA for iPhone and iPad. Unsigned: sideload it with AltStore or Sideloadly.",
+          extLabel: "Browser extension", extHint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
+          extNotice: '<div class="notice"><h3>Install from a store (recommended)</h3>Updates install by themselves and the browser shows no warnings.<div class="stores"><a class="btn" href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">Firefox Add-ons</a><a class="btn" href="https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj">Microsoft Edge Add-ons</a></div><div class="hint">Chrome, Brave, Opera and Vivaldi: FetchJet is not in the Chrome Web Store, so use the .zip below.</div></div><div class="notice warn"><h3>⚠ Installing the .zip below (developer mode)</h3>The .zip is for Chrome / Edge / Brave when you cannot use a store. The browser treats it as a developer extension: it may show a "developer mode extensions" warning at start-up, and it does <b>not</b> update by itself - come back here for new versions.<ol><li>Download the <code>.zip</code> and unzip it into a folder you keep (do not delete it afterwards).</li><li>Open <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li><li>Turn on <b>Developer mode</b>.</li><li>Click <b>Load unpacked</b> and choose the unzipped folder.</li></ol></div>',
+          noBuild: "No {p} build has been published yet.", latestFor: "Latest for {p}: {v}",
+          skipped: "newer releases ({list}) had no changes for {p}", releaseNotes: "Release notes", whatsNew: "What's new in {v}",
+          hideOlder: "Hide older versions", showOlder: "Show older versions ({n})", preRelease: "pre-release", beta: "beta",
+          whatChanged: "what changed", onGitHub: "on GitHub", release1: "1 release", releasesN: "{n} releases", offline: "offline",
+          loadError: 'Could not load the release list ({e}). Open <a href="{releases}">the releases page on GitHub</a> instead.',
+          fileMsi: "Installer (.msi)", fileZip: "Portable, no install (.zip)", fileExe: "Setup (.exe)", fileDeb: "Debian / Ubuntu (.deb)",
+          fileTar: "Portable (.tar.gz)", fileDmg: "Apple Silicon (.dmg)", fileXpi: "Firefox (.xpi)", fileExtZip: "Chrome / Edge (.zip)"
+        }
+      };
+
+      function known(code) {
+        for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === code) return true;
+        return false;
+      }
+      function pickLanguage() {
+        var q = /[?&]lang=([a-z]+)/i.exec(location.search);
+        if (q && known(q[1].toLowerCase())) return q[1].toLowerCase();
+        try { var saved = localStorage.getItem("fj.lang"); if (saved && known(saved)) return saved; } catch (e) {}
+        var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+        for (var i = 0; i < list.length; i++) {
+          var code = String(list[i] || "").toLowerCase().split("-")[0];
+          if (known(code)) return code;
+        }
+        return "en";
+      }
+      function loadLanguage(code, done) {
+        if (TEXT[code]) return done();
+        var tag = document.createElement("script");
+        tag.src = "i18n/" + code + ".js";
+        tag.onload = function () { if (window.FJ_PAGE_TEXT && window.FJ_PAGE_TEXT[code]) TEXT[code] = window.FJ_PAGE_TEXT[code]; done(); };
+        tag.onerror = function () { done(); };
+        document.head.appendChild(tag);
+      }
+      var lang = pickLanguage();
+
+      function t(key, vars) {
+        var s = (TEXT[lang] && TEXT[lang][key] !== undefined) ? TEXT[lang][key] : TEXT.en[key];
+        if (vars) for (var k in vars) s = s.split("{" + k + "}").join(vars[k]);
+        return s.split("{releases}").join(RELEASES_URL);
+      }
+
+      function applyStatic() {
+        document.documentElement.lang = lang;
+        document.documentElement.dir = RTL[lang] ? "rtl" : "ltr";
+        document.title = t("pageTitle");
+        document.getElementById("title").textContent = t("title");
+        document.getElementById("subtitle").textContent = t("subtitle");
+        document.getElementById("footer").innerHTML = t("footer");
+        document.getElementById("lang").value = lang;
+      }
 
       var PLATFORMS = [
         { key: "windows",   label: "Windows",   match: function (n) { return /\.(exe|msi)$/i.test(n) || /-windows-portable\.zip$/i.test(n); },
-          hint: "The .msi installs FetchJet and lets it update itself.",
-          noticeHtml:
-            '<div class="notice"><h3>Get it from the Microsoft Store (recommended)</h3>' +
-            'One click to install, no SmartScreen warning, and Windows keeps it updated.' +
-            '<div class="stores"><a class="btn" href="https://apps.microsoft.com/detail/9NP3HJRHMPJS">Microsoft Store</a></div>' +
-            '<div class="hint">Prefer an installer? Take the .msi below; it updates itself from GitHub.</div></div>' },
+          hintKey: "winHint", noticeKey: "winNotice" },
         { key: "macos",     label: "macOS",     match: function (n) { return /\.dmg$/i.test(n); },
-          hint: "For Apple Silicon Macs (M1 or newer) only; Intel Macs are not supported. Open the .dmg and drag FetchJet to Applications.",
-          noticeHtml:
-            '<div class="notice"><h3>First launch: "Apple could not verify FetchJet"</h3>' +
-            'FetchJet is not notarized by Apple yet, so macOS blocks the first launch. Open it once, close the warning, ' +
-            'then go to <b>System Settings &rarr; Privacy &amp; Security</b> and click <b>Open Anyway</b>. ' +
-            'Or run this once in Terminal:<div class="hint"><code>xattr -dr com.apple.quarantine /Applications/FetchJet.app</code></div></div>' },
+          hintKey: "macHint", noticeKey: "macNotice" },
         { key: "linux",     label: "Linux",     match: function (n) { return /\.(deb|tar\.gz|AppImage)$/i.test(n); },
-          hint: ".deb for Debian/Ubuntu; the .tar.gz runs anywhere (unpack and start bin/FetchJet)." },
+          hintKey: "linuxHint" },
         { key: "android",   label: "Android",   match: function (n) { return /\.apk$/i.test(n); },
-          hint: "arm64-v8a fits almost every phone made after 2017. Older 32-bit phones: armeabi-v7a. Emulators and Chromebooks: x86_64." },
-        { key: "ios",       label: "iPhone · iPad",       match: function (n) { return /\.ipa$/i.test(n); },
-          hint: "One IPA for iPhone and iPad. Unsigned: sideload it with AltStore or Sideloadly." },
-        { key: "extension", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n) && !/-windows-portable\.zip$/i.test(n); },
-          hint: ".zip = Chrome / Edge / Brave (load unpacked or drag onto chrome://extensions).",
-          hintHtml: "",
-          // Shown above the version list: stores first, then the manual .zip install with its caveats.
-          noticeHtml:
-            '<div class="notice"><h3>Install from a store (recommended)</h3>' +
-            'Updates install by themselves and the browser shows no warnings.' +
-            '<div class="stores">' +
-            '<a class="btn" href="https://addons.mozilla.org/firefox/addon/fetchjet-download-manager/">Firefox Add-ons</a>' +
-            '<a class="btn" href="https://microsoftedge.microsoft.com/addons/detail/phngekpnkcnpkjkcoggcfmlmebmociaj">Microsoft Edge Add-ons</a>' +
-            '</div><div class="hint">Chrome, Brave, Opera and Vivaldi: FetchJet is not in the Chrome Web Store, so use the .zip below.</div></div>' +
-            '<div class="notice warn"><h3>⚠ Installing the .zip below (developer mode)</h3>' +
-            'The .zip is for Chrome / Edge / Brave when you cannot use a store. The browser treats it as a developer extension: ' +
-            'it may show a "developer mode extensions" warning at start-up, and it does <b>not</b> update by itself - come back here for new versions.' +
-            '<ol><li>Download the <code>.zip</code> and unzip it into a folder you keep (do not delete it afterwards).</li>' +
-            '<li>Open <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>' +
-            '<li>Turn on <b>Developer mode</b>.</li>' +
-            '<li>Click <b>Load unpacked</b> and choose the unzipped folder.</li></ol></div>' }
+          hintKey: "androidHint" },
+        { key: "ios",       labelKey: "iosLabel", label: "iPhone · iPad", match: function (n) { return /\.ipa$/i.test(n); },
+          hintKey: "iosHint" },
+        { key: "extension", labelKey: "extLabel", label: "Browser extension", match: function (n) { return /\.(zip|xpi)$/i.test(n) && !/-store-/i.test(n) && !/-windows-portable\.zip$/i.test(n); },
+          hintKey: "extHint", noticeKey: "extNotice" }
       ];
 
       var tabsEl = document.getElementById("tabs"), contentEl = document.getElementById("content"),
           hintEl = document.getElementById("hint"), countEl = document.getElementById("count");
-      var releases = [], current = guessPlatform(), showOld = false;
+      var releases = [], current = guessPlatform(), showOld = false, latestOpen = false;
 
       function guessPlatform() {
         var ua = navigator.userAgent, saved = null;
-    // A link to #extension (from the app's settings) opens that tab.
-    if (location.hash && location.hash.length > 1) {
-      var want = location.hash.slice(1).toLowerCase();
-      for (var i = 0; i < PLATFORMS.length; i++) if (PLATFORMS[i].key === want) return want;
-    }
+        // A link to #extension (from the app's settings) opens that tab.
+        if (location.hash && location.hash.length > 1) {
+          var want = location.hash.slice(1).toLowerCase();
+          for (var i = 0; i < PLATFORMS.length; i++) if (PLATFORMS[i].key === want) return want;
+        }
         try { saved = localStorage.getItem("fj.platform"); } catch (e) {}
         if (saved) return saved;
         if (/Android/i.test(ua)) return "android";
@@ -173,7 +218,7 @@
         return (i ? b.toFixed(1) : b) + " " + u[i];
       }
       function fmtDate(s) {
-        try { return new Date(s).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); } catch (e) { return s; }
+        try { return new Date(s).toLocaleDateString(lang === "en" ? undefined : lang, { year: "numeric", month: "short", day: "numeric" }); } catch (e) { return s; }
       }
       function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
       function unchangedOf(r) {
@@ -189,15 +234,39 @@
       function cleanNotes(body) {
         return (body || "").replace(/<!--\s*fetchjet-(unchanged|beta):[^>]*-->\s*/gi, "").trim();
       }
+      function versionOf(tag) { return String(tag || "").replace(/^v/i, ""); }
+      function notesOf(r) {
+        var key = lang + "/" + versionOf(r.tag_name);
+        var local = lang !== "en" ? notesCache[key] : null;
+        return local || cleanNotes(r.body);
+      }
+      function fetchNotes() {
+        if (lang === "en") return;
+        var want = lang;
+        releases.forEach(function (r) {
+          var key = want + "/" + versionOf(r.tag_name);
+          if (notesCache[key] !== undefined) return;
+          notesCache[key] = null;
+          fetch("https://raw.githubusercontent.com/" + REPO + "/master/release-notes/" + versionOf(r.tag_name) + "/" + want + ".md")
+            .then(function (res) { return res.ok ? res.text() : null; })
+            .then(function (text) {
+              if (!text || !text.trim()) return;
+              notesCache[key] = text.trim();
+              if (lang === want) renderList();
+            })
+            .catch(function () {});
+        });
+      }
+      function labelOf(p) { return p.labelKey ? t(p.labelKey) : p.label; }
       function fileLabel(name, platform) {
         if (platform === "android") {
           var m = /(arm64-v8a|armeabi-v7a|x86_64|x86|universal)/i.exec(name);
           return m ? m[1] : name;
         }
-        if (platform === "extension") return /\.xpi$/i.test(name) ? "Firefox (.xpi)" : "Chrome / Edge (.zip)";
-        if (platform === "windows") return /\.msi$/i.test(name) ? "Installer (.msi)" : /\.zip$/i.test(name) ? "Portable, no install (.zip)" : "Setup (.exe)";
-        if (platform === "linux") return /\.deb$/i.test(name) ? "Debian / Ubuntu (.deb)" : "Portable (.tar.gz)";
-        if (platform === "macos") return "Apple Silicon (.dmg)";
+        if (platform === "extension") return /\.xpi$/i.test(name) ? t("fileXpi") : t("fileExtZip");
+        if (platform === "windows") return /\.msi$/i.test(name) ? t("fileMsi") : /\.zip$/i.test(name) ? t("fileZip") : t("fileExe");
+        if (platform === "linux") return /\.deb$/i.test(name) ? t("fileDeb") : t("fileTar");
+        if (platform === "macos") return t("fileDmg");
         return name;
       }
 
@@ -208,7 +277,7 @@
           var b = document.createElement("button");
           b.className = "tab"; b.setAttribute("role", "tab");
           b.setAttribute("aria-selected", p.key === current ? "true" : "false");
-          b.innerHTML = esc(p.label) + '<span class="n">' + n + "</span>";
+          b.innerHTML = esc(labelOf(p)) + '<span class="n">' + n + "</span>";
           b.onclick = function () { current = p.key; showOld = false; try { localStorage.setItem("fj.platform", p.key); } catch (e) {} renderTabs(); renderList(); };
           tabsEl.appendChild(b);
         });
@@ -219,38 +288,38 @@
         var rows = releases.map(function (r) {
           return { r: r, files: r.assets.filter(function (a) { return p.match(a.name); }) };
         }).filter(function (x) { return x.files.length; });
-        if (p.hintHtml) hintEl.innerHTML = p.hintHtml; else hintEl.textContent = p.hint;
-        var notice = p.noticeHtml || "";
+        hintEl.textContent = t(p.hintKey);
+        var notice = p.noticeKey ? t(p.noticeKey) : "";
         if (!rows.length) {
-          contentEl.innerHTML = notice + '<div class="empty">No ' + esc(p.label) + " build has been published yet.</div>";
+          contentEl.innerHTML = notice + '<div class="empty">' + esc(t("noBuild", { p: labelOf(p) })) + "</div>";
           return;
         }
         var latest = rows[0], html = "";
         var skippedIn = releases.filter(function (r) { return unchangedOf(r).indexOf(p.key) >= 0 && r.tag_name !== latest.r.tag_name && isNewerTag(r.tag_name, latest.r.tag_name); });
-        html += '<div class="latest"><div><div class="v">Latest for ' + esc(p.label) + ": " + esc(latest.r.tag_name) +
-                (isBeta(latest.r, p.key) ? ' <span class="tag beta">beta</span>' : "") + '</div><div class="d">' + fmtDate(latest.r.published_at) +
-                (skippedIn.length ? " · newer releases (" + skippedIn.map(function (r) { return esc(r.tag_name); }).join(", ") + ") had no changes for " + esc(p.label) : "") +
+        html += '<div class="latest"><div><div class="v">' + esc(t("latestFor", { p: labelOf(p), v: latest.r.tag_name })) +
+                (isBeta(latest.r, p.key) ? ' <span class="tag beta">' + esc(t("beta")) + '</span>' : "") + '</div><div class="d">' + fmtDate(latest.r.published_at) +
+                (skippedIn.length ? " · " + esc(t("skipped", { list: skippedIn.map(function (r) { return r.tag_name; }).join(", "), p: labelOf(p) })) : "") +
                 '</div></div><div class="grow"></div>' +
                 latest.files.map(function (a) { return '<a class="btn" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + " <small>" + fmtSize(a.size) + "</small></a>"; }).join(" ") +
-                '<a class="btn ghost" href="' + latest.r.html_url + '">Release notes</a></div>';
-        var latestNotes = cleanNotes(latest.r.body);
+                '<a class="btn ghost" href="' + latest.r.html_url + '">' + esc(t("releaseNotes")) + '</a></div>';
+        var latestNotes = notesOf(latest.r);
         if (latestNotes) {
-          html += '<button class="more" id="toggle-latest-notes">What&#39;s new in ' + esc(latest.r.tag_name) + "</button>" +
-                  '<div class="latest-notes" id="latest-notes">' + esc(latestNotes) + "</div>";
+          html += '<button class="more" id="toggle-latest-notes">' + esc(t("whatsNew", { v: latest.r.tag_name })) + "</button>" +
+                  '<div class="latest-notes' + (latestOpen ? " open" : "") + '" id="latest-notes">' + esc(latestNotes) + "</div>";
         }
         var older = rows.slice(1);
         if (older.length) {
-          html += '<div><button class="more" id="toggle-old">' + (showOld ? "Hide older versions" : "Show older versions (" + older.length + ")") + "</button></div>";
+          html += '<div><button class="more" id="toggle-old">' + esc(showOld ? t("hideOlder") : t("showOlder", { n: older.length })) + "</button></div>";
         }
         html += '<div class="list"' + (showOld ? "" : ' hidden') + '>';
         older.forEach(function (x) {
-          var notes = cleanNotes(x.r.body);
+          var notes = notesOf(x.r);
           html += '<div class="rel" id="rel-' + esc(x.r.tag_name) + '"><div class="rel-head"><span class="v">' + esc(x.r.tag_name) + "</span>" +
-                  (x.r.prerelease ? '<span class="tag">pre-release</span>' : "") +
-                  (isBeta(x.r, p.key) ? '<span class="tag beta">beta</span>' : "") +
+                  (x.r.prerelease ? '<span class="tag">' + esc(t("preRelease")) + '</span>' : "") +
+                  (isBeta(x.r, p.key) ? '<span class="tag beta">' + esc(t("beta")) + '</span>' : "") +
                   '<span class="d">' + fmtDate(x.r.published_at) + '</span><span class="grow"></span>' +
-                  (notes ? '<a class="notes" href="#" data-toggle="' + esc(x.r.tag_name) + '">what changed</a>' : "") +
-                  '<a class="notes" href="' + x.r.html_url + '">on GitHub</a></div>' +
+                  (notes ? '<a class="notes" href="#" data-toggle="' + esc(x.r.tag_name) + '">' + esc(t("whatChanged")) + '</a>' : "") +
+                  '<a class="notes" href="' + x.r.html_url + '">' + esc(t("onGitHub")) + '</a></div>' +
                   '<div class="files">' + x.files.map(function (a) {
                     return '<a class="file" href="' + a.browser_download_url + '">' + esc(fileLabel(a.name, p.key)) + '<span class="sz">' + fmtSize(a.size) + "</span></a>";
                   }).join("") + "</div>" +
@@ -259,7 +328,7 @@
         html += "</div>";
         contentEl.innerHTML = notice + html;
         var tl = document.getElementById("toggle-latest-notes");
-        if (tl) tl.onclick = function () { document.getElementById("latest-notes").classList.toggle("open"); };
+        if (tl) tl.onclick = function () { latestOpen = !latestOpen; document.getElementById("latest-notes").classList.toggle("open", latestOpen); };
         var to = document.getElementById("toggle-old");
         if (to) to.onclick = function () { showOld = !showOld; renderList(); };
         Array.prototype.forEach.call(contentEl.querySelectorAll("a[data-toggle]"), function (a) {
@@ -273,16 +342,42 @@
         return false;
       }
 
+      function showCount() {
+        if (!releases.length) return;
+        countEl.textContent = releases.length === 1 ? t("release1") : t("releasesN", { n: releases.length });
+      }
+
+      var menu = document.getElementById("lang");
+      LANGS.forEach(function (l) {
+        var o = document.createElement("option");
+        o.value = l[0]; o.textContent = l[1];
+        menu.appendChild(o);
+      });
+      function showLanguage() {
+        applyStatic(); showCount();
+        if (releases.length) { renderTabs(); renderList(); fetchNotes(); }
+        else if (!loaded) contentEl.innerHTML = '<div class="empty">' + esc(t("loadingReleases")) + '</div>';
+      }
+      var loaded = false;
+      loadLanguage(lang, function () { showLanguage(); if (!loaded) countEl.textContent = t("loading"); });
+      menu.onchange = function (e) {
+        var next = e.target.value;
+        try { localStorage.setItem("fj.lang", next); } catch (err) {}
+        loadLanguage(next, function () { lang = next; showLanguage(); });
+      };
+
       fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100", { headers: { Accept: "application/vnd.github+json" } })
         .then(function (r) { if (!r.ok) throw new Error("GitHub answered " + r.status); return r.json(); })
         .then(function (list) {
           releases = list.filter(function (r) { return !r.draft; });
-          countEl.textContent = releases.length + (releases.length === 1 ? " release" : " releases");
-          renderTabs(); renderList();
+          loaded = true;
+          showCount();
+          renderTabs(); renderList(); fetchNotes();
         })
         .catch(function (e) {
-          countEl.textContent = "offline";
-          contentEl.innerHTML = '<div class="error">Could not load the release list (' + esc(e.message) + '). Open <a href="https://github.com/' + REPO + '/releases">the releases page on GitHub</a> instead.</div>';
+          loaded = true;
+          countEl.textContent = t("offline");
+          contentEl.innerHTML = '<div class="error">' + t("loadError", { e: esc(e.message) }) + '</div>';
         });
     })();
 </script>

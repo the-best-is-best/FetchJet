@@ -44,7 +44,7 @@ struct TaskPiecesBar: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Text(s.homePiecesLabel)
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 pill(many ? s.homeSegmentsCount(count: Int32(pieces.count)) : s.homePiecesCount(count: Int32(pieces.count)),
@@ -68,7 +68,7 @@ struct TaskPiecesBar: View {
                 Text(s.homeSegmentsProgress(
                     finished: Int32(finished), total: Int32(pieces.count),
                     downloading: active.isEmpty ? nil : active.map { "#\($0.index + 1)" }.joined(separator: ", ")))
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .lineLimit(2)
                     .padding(.top, 6)
@@ -86,7 +86,7 @@ struct TaskPiecesBar: View {
     private func pill(_ text: String, _ fg: Color, _ bg: Color, dot: Bool = false) -> some View {
         HStack(spacing: 5) {
             if dot { Circle().fill(fg).frame(width: 6, height: 6) }
-            Text(text).font(.system(size: 10, weight: .semibold)).foregroundStyle(fg).lineLimit(1)
+            Text(text).font(.fj(10, .semibold)).foregroundStyle(fg).lineLimit(1)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
@@ -149,19 +149,19 @@ struct TaskPiecesBar: View {
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text("#\(p.index + 1)")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.fj(10, .bold))
                     .foregroundStyle(tint)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
                     .background(tint.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
                 Text(p.active ? store.host.formatSpeed(bytesPerSec: p.speed, unit: store.state.speedDisplayUnit)
                      : store.strings.homeRetryingNote(note: p.note))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
                     .foregroundStyle(p.active ? FJTheme.color.onSurface : tint)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("\(Int(frac * 100))%")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.fj(11, .bold))
                     .foregroundStyle(FJTheme.color.onSurface.opacity(0.85))
             }
             GeometryReader { geo in

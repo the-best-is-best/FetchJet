@@ -98,7 +98,7 @@ struct TaskListScreen: View {
         return VStack(spacing: 4) {
             Spacer()
             Image(systemName: "tray.and.arrow.down")
-                .font(.system(size: 44))
+                .font(.fj(44))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .padding(.bottom, 12)
             Text(q.isEmpty ? s.homeNoTasksInView : s.homeNoDownloadsMatch(query: q))
@@ -296,19 +296,19 @@ struct TaskSectionHeader: View {
         Button(action: onToggle) {
             HStack(spacing: 0) {
                 Image(systemName: collapsed ? "chevron.right" : "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.fj(10, .bold))
                     .foregroundStyle(color)
                     .frame(width: 12)
                     .padding(.trailing, 6)
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.fj(12, .bold))
                     .foregroundStyle(color)
                     .padding(.trailing, 6)
                 Text(title)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.fj(14, .bold))
                     .foregroundStyle(color)
                 Text("\(count)")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.fj(11, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
@@ -333,7 +333,7 @@ struct TaskSearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
+                .font(.fj(14))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
             TextField(store.strings.homeSearchDownloadsByNamePlaceholder, text: $text)
                 .font(FJTheme.font.callout)
@@ -373,19 +373,19 @@ struct TaskSelectionBar: View {
         let s = store.strings
         HStack(spacing: 8) {
             Button(action: onClose) {
-                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold))
+                Image(systemName: "xmark").font(.fj(14, .semibold))
                     .frame(width: 34, height: 34)
             }
             .buttonStyle(.borderless)
             .foregroundStyle(FJTheme.color.onSurface)
             Text(s.homeSelectedCount(count: Int32(count)))
-                .font(.system(size: 13, weight: .semibold))
+                .font(.fj(13, .semibold))
                 .foregroundStyle(FJTheme.color.onSurface)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
             Button { onCheckAll(!allChecked) } label: {
                 Text(allChecked ? s.selectNone : s.selectAll)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
@@ -394,7 +394,7 @@ struct TaskSelectionBar: View {
             Spacer(minLength: 0)
             Button(action: onExport) {
                 Text(s.homeExport)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                     .padding(.horizontal, 12)
                     .frame(height: 34)
@@ -405,7 +405,7 @@ struct TaskSelectionBar: View {
             .fixedSize()
             Button(action: onDelete) {
                 Label(s.delete_, systemImage: "trash")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                     .padding(.horizontal, 12)
                     .frame(height: 34)
@@ -426,7 +426,7 @@ struct TaskToolsBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(store.strings.homeUpdatingMediaTools(tool: tool, percent: fraction.map { KotlinInt(int: Int32($0 * 100)) }))
-                .font(.system(size: 12, weight: .semibold))
+                .font(.fj(12, .semibold))
                 .foregroundStyle(FJTheme.color.primary)
             if let f = fraction {
                 ProgressView(value: Double(min(max(f, 0), 1)))
@@ -466,18 +466,18 @@ struct TaskListHeader: View {
         let dark = store.host.isDark(themeMode: st.themeMode, systemDark: colorScheme == .dark)
         HStack(spacing: 6) {
             Text(s.homeDownloads)
-                .font(.system(size: 24, weight: .bold))
+                .font(.fj(24, .bold))
                 .foregroundStyle(FJTheme.color.onBackground)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
                 Text("↓ " + store.host.formatSpeed(bytesPerSec: st.totalDownloadSpeedBytesPerSec, unit: st.speedDisplayUnit))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                     .lineLimit(1)
                 Text("↑ " + store.host.formatSpeed(bytesPerSec: st.totalUploadSpeedBytesPerSec, unit: st.speedDisplayUnit))
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .lineLimit(1)
             }
@@ -502,7 +502,7 @@ struct TaskListHeader: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .rotationEffect(.degrees(90))
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.fj(18, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
@@ -539,7 +539,7 @@ struct TaskListHeader: View {
             Button {
                 store.send(DashboardUiEventOnGlobalDownloadSpeedLimitChanged(limitBytesPerSec: turtle ? 0 : Self.turtleBytes))
             } label: {
-                Text("🐢").font(.system(size: 17))
+                Text("🐢").font(.fj(17))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .background(turtle ? FJTheme.color.primary.opacity(0.22) : .clear, in: RoundedRectangle(cornerRadius: 10))
@@ -556,11 +556,11 @@ struct TaskListHeader: View {
             } label: {
                 HStack(spacing: 2) {
                     Text(mode)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.fj(12, .semibold))
                         .foregroundStyle(capped ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.fj(8, .bold))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
                 .padding(.horizontal, 8)

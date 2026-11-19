@@ -17,7 +17,7 @@ struct TaskTorrentDetailsSection: View {
         let s = store.strings
         VStack(alignment: .leading, spacing: 0) {
             Text(s.torrentDetailsTitle)
-                .font(.system(size: 12, weight: .bold))
+                .font(.fj(12, .bold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .padding(.bottom, 10)
             if let ui = current, !ui.loading {
@@ -25,7 +25,7 @@ struct TaskTorrentDetailsSection: View {
                     content(ui)
                 } else {
                     Text(s.torrentDetailsUnsupported)
-                        .font(.system(size: 12))
+                        .font(.fj(12))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             } else {
@@ -115,7 +115,7 @@ struct TaskTorrentDetailsSection: View {
             set: { store.send(DashboardUiEventOnTorrentFirstLastChanged(taskId: taskId, on: $0)) }
         )) {
             Text(s.torrentDetailsFirstLast)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.fj(13, .semibold))
                 .foregroundStyle(FJTheme.color.onSurface)
         }
         .tint(FJTheme.color.primary)
@@ -156,13 +156,13 @@ struct TaskTorrentDetailsSection: View {
 
     private func caption(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .bold))
+            .font(.fj(11, .bold))
             .foregroundStyle(FJTheme.color.onSurfaceVariant)
     }
 
     private func emptyLine(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12))
+            .font(.fj(12))
             .foregroundStyle(FJTheme.color.onSurfaceVariant.opacity(0.7))
             .padding(.top, 6)
     }
@@ -190,7 +190,7 @@ struct TaskTorrentDetailsSection: View {
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
                 Text(store.host.ltr(text: trackerHost(tracker.url)))
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -199,7 +199,7 @@ struct TaskTorrentDetailsSection: View {
             }
             if tracker.state == "error" && !tracker.message.trimmingCharacters(in: .whitespaces).isEmpty {
                 Text(tracker.message)
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.error)
                     .lineLimit(2)
             }
@@ -213,23 +213,23 @@ struct TaskTorrentDetailsSection: View {
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
                 Text(host.ltr(text: peer.address))
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(host.ltr(text: "\(percent)%"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
                     .foregroundStyle(peer.isSeed ? FJTheme.color.statusCompleted : FJTheme.color.onSurfaceVariant)
             }
             HStack(spacing: 8) {
                 Text(peer.client)
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("↓ \(host.formatSpeed(bytesPerSec: peer.downloadRate, unit: unit))  ↑ \(host.formatSpeed(bytesPerSec: peer.uploadRate, unit: unit))")
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .lineLimit(1)
             }
@@ -250,7 +250,7 @@ struct TaskTorrentDetailsSection: View {
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 TextField(s.torrentDetailsTrackerHint, text: $newTracker)
-                    .font(.system(size: 13))
+                    .font(.fj(13))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
@@ -265,7 +265,7 @@ struct TaskTorrentDetailsSection: View {
                     )
                 Button(action: submitTracker) {
                     Text(s.torrentDetailsAddTracker)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.fj(13, .bold))
                         .lineLimit(1)
                         .foregroundStyle(FJTheme.color.onPrimary)
                         .padding(.horizontal, 14)
@@ -279,7 +279,7 @@ struct TaskTorrentDetailsSection: View {
             }
             if let error {
                 Text(error)
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.error)
             }
         }

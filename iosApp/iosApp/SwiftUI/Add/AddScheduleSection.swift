@@ -53,7 +53,7 @@ struct AddScheduleSection: View {
                         .labelsHidden()
                     Spacer()
                     Button(strings.scheduleSetTime) { setTime() }
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.fj(12, .bold))
                         .buttonStyle(.borderedProminent)
                 }
                 if let timeError {
@@ -62,7 +62,7 @@ struct AddScheduleSection: View {
             }
             if start > 0 {
                 Text("🕑 \(strings.scheduleStartsAt(time: LocalClockKt.formatLocalSchedule(epochMs: start, nowMs: LocalClockKt.currentEpochMs())))")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)

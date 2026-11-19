@@ -8,12 +8,12 @@ struct AddHeader: View {
     var body: some View {
         HStack(spacing: 10) {
             Text("⚡")
-                .font(.system(size: 18))
+                .font(.fj(18))
                 .frame(width: 36, height: 36)
                 .background(FJTheme.color.primaryContainer.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 1) {
                 Text(store.strings.addDialogTitle)
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.fj(18, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(store.strings.addDialogSubtitle)
                     .font(FJTheme.font.small)
@@ -43,7 +43,7 @@ struct AddUrlSection: View {
                             DispatchQueue.main.async { store.send(DashboardUiEventOnUrlChanged(url: text)) }
                         }
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                 }
                 if store.host.torrentEnabled && TorrentFilePicker.shared.isSupported {
@@ -53,7 +53,7 @@ struct AddUrlSection: View {
                             DispatchQueue.main.async { store.send(DashboardUiEventOnUrlChanged(url: path)) }
                         }
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                 }
             }
@@ -102,7 +102,7 @@ struct AddEngineSelector: View {
             store.send(DashboardUiEventOnEngineSelected(engine: type))
         } label: {
             Text(label)
-                .font(.system(size: 12, weight: selected ? .bold : .medium))
+                .font(.fj(12, selected ? .bold : .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .foregroundStyle(selected ? FJTheme.color.onPrimary : FJTheme.color.onSurface)
@@ -182,7 +182,7 @@ struct AddDestinationSection: View {
             )
             if !store.state.addFolderRuleSite.isEmpty {
                 Text(strings.addFolderFromRule + " " + store.state.addFolderRuleSite)
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.primary)
             }
             HStack(spacing: 8) {
@@ -206,9 +206,9 @@ struct AddDestinationSection: View {
     private func quick(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Text(icon).font(.system(size: 12))
+                Text(icon).font(.fj(12))
                 Text(label)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.fj(11, .medium))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
             }
@@ -257,7 +257,7 @@ struct AddActions: View {
                 Spacer(minLength: 0)
                 Button(action: onDismiss) {
                     Text(strings.cancel)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.fj(13, .medium))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
@@ -273,7 +273,7 @@ struct AddActions: View {
                         }
                     } label: {
                         Text("🔄 \(strings.addRetryInspect)")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.fj(13, .bold))
                             .foregroundStyle(FJTheme.color.onError)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -287,7 +287,7 @@ struct AddActions: View {
                     HStack(spacing: 8) {
                         if s.isLoading { ProgressView().controlSize(.small) }
                         Text(startLabel(s, strings, v))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.fj(13, .bold))
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(v.canStart ? FJTheme.color.onPrimary : FJTheme.color.onSurfaceVariant.opacity(0.6))

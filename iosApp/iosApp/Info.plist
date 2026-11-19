@@ -2,6 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>FetchJetSans-Bold.ttf</string>
+		<string>FetchJetSans-Medium.ttf</string>
+		<string>FetchJetSans-Regular.ttf</string>
+		<string>FetchJetSans-SemiBold.ttf</string>
+		<string>FetchJetSansJP-Bold.ttf</string>
+		<string>FetchJetSansJP-Medium.ttf</string>
+		<string>FetchJetSansJP-Regular.ttf</string>
+		<string>FetchJetSansJP-SemiBold.ttf</string>
+		<string>FetchJetSansKR-Bold.ttf</string>
+		<string>FetchJetSansKR-Medium.ttf</string>
+		<string>FetchJetSansKR-Regular.ttf</string>
+		<string>FetchJetSansKR-SemiBold.ttf</string>
+		<string>FetchJetSansSC-Bold.ttf</string>
+		<string>FetchJetSansSC-Medium.ttf</string>
+		<string>FetchJetSansSC-Regular.ttf</string>
+		<string>FetchJetSansSC-SemiBold.ttf</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
     <key>FetchJetEdition</key>

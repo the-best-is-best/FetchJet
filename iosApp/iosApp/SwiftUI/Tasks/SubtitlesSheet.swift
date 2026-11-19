@@ -70,7 +70,7 @@ struct SubtitlesSheet: View {
                 store.send(DashboardUiEventOnSubtitlesAddClicked.shared)
             } label: {
                 Text(s.subtitlesAddSelected)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.fj(15, .semibold))
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 48)
             }
@@ -89,7 +89,7 @@ struct SubtitlesSheet: View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(s.subtitlesAddButton)
-                    .font(.title2.weight(.bold))
+                    .font(.fj(22, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(store.host.decodeUnicodeText(input: page.fileName))
                     .font(FJTheme.font.callout)
@@ -102,7 +102,7 @@ struct SubtitlesSheet: View {
                 store.send(DashboardUiEventOnDismissSubtitles.shared)
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
@@ -124,10 +124,10 @@ struct SubtitlesSheet: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20))
+                    .font(.fj(20))
                     .foregroundStyle(checked && enabled ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                 Text(DashboardSubtitlesKt.trackLabel(track: track))
-                    .font(.body)
+                    .font(.fj(17))
                     .foregroundStyle(enabled ? FJTheme.color.onSurface : FJTheme.color.onSurfaceVariant)
                     .lineLimit(1)
                 Spacer(minLength: 0)

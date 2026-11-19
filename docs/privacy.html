@@ -5,54 +5,123 @@
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>FetchJet privacy policy</title>
     <style>
-        :root { --bg:#0B1020; --text:#E8ECF5; --muted:#8A94B0; --accent:#22D3EE; }
-        @media (prefers-color-scheme: light) { :root { --bg:#F4F6FB; --text:#0F172A; --muted:#5B6478; --accent:#0891B2; } }
-        body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+        :root { --bg:#0B1020; --text:#E8ECF5; --muted:#8A94B0; --accent:#22D3EE; --panel:#141B33; --line:rgba(255,255,255,0.07); }
+        @media (prefers-color-scheme: light) { :root { --bg:#F4F6FB; --text:#0F172A; --muted:#5B6478; --accent:#0891B2; --panel:#EEF1F8; --line:rgba(10,20,40,0.10); } }
+        body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", "Nirmala UI", "Noto Sans Devanagari", "Noto Sans Arabic", sans-serif; }
         main { max-width:760px; margin:0 auto; padding:40px 16px 60px; }
+        .top { display:flex; justify-content:flex-end; }
+        .lang { border:1px solid var(--line); background:var(--panel); color:var(--text); font:inherit; font-size:13px; font-weight:600; padding:6px 10px; border-radius:999px; }
         h1 { font-size:28px; margin:0 0 4px; } h2 { font-size:19px; margin-top:28px; }
         p.date, footer { color:var(--muted); font-size:14px; } a { color:var(--accent); }
+        code { unicode-bidi: isolate; direction: ltr; }
     </style>
 </head>
 <body>
 <main>
-    <h1>Privacy policy</h1>
-    <p class="date">FetchJet app and FetchJet Download Manager browser extension · last updated 16
-        November 2026</p>
+    <div class="top">
+        <select aria-label="Language" class="lang" id="lang"></select>
+    </div>
 
-    <h2>Summary</h2>
-    <p>FetchJet does not collect personal data. There are no accounts and no tracking. Nothing about
-        you or your browsing is sent to the developer or to any third party. The only thing the app
-        sends is one anonymous usage count a day, described below. The browser extension sends
-        nothing to the developer.</p>
+    <article id="text">
+        <h1>Privacy policy</h1>
+        <p class="date">FetchJet app and FetchJet Download Manager browser extension · last updated 16
+            November 2026</p>
 
-    <h2>The browser extension</h2>
-    <p>When you choose to download a link, video or page, the extension sends that link, the referer
-        and the cookies of that site <strong>only to the FetchJet app on your own device</strong>
-        (address 127.0.0.1, port 28450). The cookies are used so downloads that require a login
-        work, exactly as they would in the browser. They never leave your device through the
-        extension.</p>
-    <p>The extension's settings (capture on/off, file types, minimum size, excluded sites) are
-        stored in the browser's local extension storage.</p>
+        <h2>Summary</h2>
+        <p>FetchJet does not collect personal data. There are no accounts and no tracking. Nothing about
+            you or your browsing is sent to the developer or to any third party. The only thing the app
+            sends is one anonymous usage count a day, described below. The browser extension sends
+            nothing to the developer.</p>
 
-    <h2>The FetchJet app</h2>
-    <p>The app connects only to the sites you download from, and to GitHub to check for a new
-        version (this request contains the app version, nothing else). Downloads, settings and
-        history stay on your device.</p>
-    <p><strong>Anonymous usage count.</strong> Once a day the app sends one small message to a
-        server run by the developer (Cloudflare Workers) so the developer can see how many people use
-        FetchJet. The message contains a random ID generated on your device, the app version and the
-        platform (Windows, macOS, Linux, Android or iOS). The country is worked out by Cloudflare from
-        the connection. The developer does not store your IP address, name, email, links, file names or
-        anything you download. The totals are public on the
-        <a href="https://fetchjet.the-best-is-best.workers.dev/dashboard">statistics page</a>.
-        You can switch this off by setting the environment variable <code>FETCHJET_NO_USAGE_PING=1</code>
-        before starting the app.</p>
+        <h2>The browser extension</h2>
+        <p>When you choose to download a link, video or page, the extension sends that link, the referer
+            and the cookies of that site <strong>only to the FetchJet app on your own device</strong>
+            (address 127.0.0.1, port 28450). The cookies are used so downloads that require a login
+            work, exactly as they would in the browser. They never leave your device through the
+            extension.</p>
+        <p>The extension's settings (capture on/off, file types, minimum size, excluded sites) are
+            stored in the browser's local extension storage.</p>
 
-    <h2>Changes and contact</h2>
-    <p>If this policy changes, the new version will be published on this page. Questions: <a
-            href="mailto:eng.michelle.raouf@gmail.com">eng.michelle.raouf@gmail.com</a>.</p>
+        <h2>The FetchJet app</h2>
+        <p>The app connects only to the sites you download from, and to GitHub to check for a new
+            version (this request contains the app version, nothing else). Downloads, settings and
+            history stay on your device.</p>
+        <p><strong>Anonymous usage count.</strong> Once a day the app sends one small message to a
+            server run by the developer (Cloudflare Workers) so the developer can see how many people use
+            FetchJet. The message contains a random ID generated on your device, the app version and the
+            platform (Windows, macOS, Linux, Android or iOS). The country is worked out by Cloudflare from
+            the connection. The developer does not store your IP address, name, email, links, file names or
+            anything you download. The totals are public on the
+            <a href="https://fetchjet.the-best-is-best.workers.dev/dashboard">statistics page</a>.
+            You can switch this off by setting the environment variable <code>FETCHJET_NO_USAGE_PING=1</code>
+            before starting the app.</p>
 
-    <footer><a href="./">FetchJet downloads</a></footer>
+        <h2>Changes and contact</h2>
+        <p>If this policy changes, the new version will be published on this page. Questions: <a
+                href="mailto:eng.michelle.raouf@gmail.com">eng.michelle.raouf@gmail.com</a>.</p>
+
+        <footer><a href="./">FetchJet downloads</a></footer>
+    </article>
 </main>
+<script>
+    (function () {
+      var LANGS = [
+        ["en", "English"], ["ar", "العربية"], ["zh", "中文"], ["fr", "Français"], ["de", "Deutsch"],
+        ["hi", "हिन्दी"], ["id", "Bahasa Indonesia"], ["it", "Italiano"], ["ja", "日本語"], ["ko", "한국어"],
+        ["fa", "فارسی"], ["pt", "Português"], ["ru", "Русский"], ["es", "Español"], ["tr", "Türkçe"]
+      ];
+      var RTL = { ar: true, fa: true };
+      var article = document.getElementById("text");
+      var english = { title: document.title, html: article.innerHTML };
+      var loaded = { en: english };
+
+      function known(code) {
+        for (var i = 0; i < LANGS.length; i++) if (LANGS[i][0] === code) return true;
+        return false;
+      }
+      function pick() {
+        var q = /[?&]lang=([a-z]+)/i.exec(location.search);
+        if (q && known(q[1].toLowerCase())) return q[1].toLowerCase();
+        try { var saved = localStorage.getItem("fj.lang"); if (saved && known(saved)) return saved; } catch (e) {}
+        var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"];
+        for (var i = 0; i < list.length; i++) {
+          var code = String(list[i] || "").toLowerCase().split("-")[0];
+          if (known(code)) return code;
+        }
+        return "en";
+      }
+      function load(code, done) {
+        if (loaded[code]) return done();
+        var tag = document.createElement("script");
+        tag.src = "i18n/privacy-" + code + ".js";
+        tag.onload = function () { if (window.FJ_PRIVACY && window.FJ_PRIVACY[code]) loaded[code] = window.FJ_PRIVACY[code]; done(); };
+        tag.onerror = function () { done(); };
+        document.head.appendChild(tag);
+      }
+      function show(code) {
+        var text = loaded[code] || english;
+        var used = loaded[code] ? code : "en";
+        article.innerHTML = text.html;
+        document.title = text.title;
+        document.documentElement.lang = used;
+        document.documentElement.dir = RTL[used] ? "rtl" : "ltr";
+        menu.value = used;
+      }
+
+      var menu = document.getElementById("lang");
+      LANGS.forEach(function (l) {
+        var o = document.createElement("option");
+        o.value = l[0]; o.textContent = l[1];
+        menu.appendChild(o);
+      });
+      var first = pick();
+      load(first, function () { show(first); });
+      menu.onchange = function (e) {
+        var next = e.target.value;
+        try { localStorage.setItem("fj.lang", next); } catch (err) {}
+        load(next, function () { show(next); });
+      };
+    })();
+</script>
 </body>
 </html>

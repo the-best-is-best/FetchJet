@@ -33,14 +33,14 @@ enum FJTheme {
     }
 
     struct Fonts {
-        let largeTitle = Font.system(size: 26, weight: .bold)
-        let title = Font.system(size: 20, weight: .semibold)
-        let headline = Font.system(size: 16, weight: .semibold)
-        let body = Font.system(size: 15)
-        let callout = Font.system(size: 14)
-        let caption = Font.system(size: 12)
-        let small = Font.system(size: 11)
-        let mono = Font.system(size: 12, design: .monospaced)
+        var largeTitle: Font { .fj(26, .bold) }
+        var title: Font { .fj(20, .semibold) }
+        var headline: Font { .fj(16, .semibold) }
+        var body: Font { .fj(15) }
+        var callout: Font { .fj(14) }
+        var caption: Font { .fj(12) }
+        var small: Font { .fj(11) }
+        var mono: Font { .system(size: 12, design: .monospaced) }
     }
 
     static let color = Colors()

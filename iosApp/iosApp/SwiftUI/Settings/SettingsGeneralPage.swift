@@ -74,8 +74,8 @@ struct SettingsGeneralPage: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(currentName).font(FJTheme.font.callout.weight(.semibold)).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+                Text(currentName).font(Font.fj(14, .semibold)).lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").font(.fj(11, .semibold))
             }
             .foregroundStyle(FJTheme.color.primary)
         }

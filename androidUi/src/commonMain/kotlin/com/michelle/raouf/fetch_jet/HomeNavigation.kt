@@ -65,9 +65,6 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
 import com.tbib.kmp_localization.LocalizationManager
-import fetchjet.androidui.generated.resources.Res
-import fetchjet.androidui.generated.resources.ic_fetchjet_logo
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 internal fun FdmBottomNavigation(
@@ -212,7 +209,7 @@ internal fun FjSidebar(
                 modifier = Modifier.padding(start = 6.dp, bottom = 18.dp)
             ) {
                 Image(
-                    painter = painterResource(Res.drawable.ic_fetchjet_logo),
+                    painter = com.michelle.raouf.fetch_jet.theme.appLogoPainter(),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp))
                 )
@@ -712,7 +709,7 @@ internal fun FjRail(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Image(
-                painter = painterResource(Res.drawable.ic_fetchjet_logo),
+                painter = com.michelle.raouf.fetch_jet.theme.appLogoPainter(),
                 contentDescription = null,
                 modifier = Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
             )

@@ -43,12 +43,12 @@ struct AddTorrentFilesCard: View {
         AddCard {
             HStack {
                 Text(name ?? strings.torrentFiles)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
                 Spacer()
                 Button(all ? strings.addDeselectAll : strings.addSelectAll) { onSelectAll(!all) }
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
             }
             ScrollView {
                 LazyVStack(spacing: 2) {
@@ -75,12 +75,12 @@ struct AddTorrentFilesCard: View {
                     AddCheckbox(checked: file.isSelected)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(file.path)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.fj(12, .semibold))
                             .foregroundStyle(FJTheme.color.onSurface)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Text(store.host.formatBytes(bytes: file.size))
-                            .font(.system(size: 10))
+                            .font(.fj(10))
                             .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }
                     Spacer(minLength: 0)
@@ -93,7 +93,7 @@ struct AddTorrentFilesCard: View {
                 onPriority(file.index, next)
             } label: {
                 Text(label)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.fj(10, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -119,11 +119,11 @@ struct AddLinkListSection: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)))
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Spacer()
                 Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
             }
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(
@@ -131,7 +131,7 @@ struct AddLinkListSection: View {
                 set: { store.send(DashboardUiEventOnLinkListFolderChanged(name: $0)) }
             ))
             Text(strings.playlistFolderHint)
-                .font(.system(size: 10))
+                .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
             VStack(spacing: 0) {
                 ForEach(Array(links.enumerated()), id: \.offset) { i, link in
@@ -164,17 +164,17 @@ struct AddLinkListSection: View {
                 AddCheckbox(checked: link.isSelected)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.fj(12, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(1)
                     Text(AddLinkText.host(link.url))
-                        .font(.system(size: 10))
+                        .font(.fj(10))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 Text(tag)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.fj(9, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
@@ -195,7 +195,7 @@ struct AddLinkListSection: View {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
                     Text(strings.inspectingVideoQualities)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             } else if !link.mediaQualities.isEmpty {
@@ -206,7 +206,7 @@ struct AddLinkListSection: View {
                     }
                 } label: {
                     Text(qualityText(current) + "  ▾")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.fj(11, .semibold))
                         .foregroundStyle(FJTheme.color.primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -216,10 +216,10 @@ struct AddLinkListSection: View {
             } else if link.mediaInspectFailed {
                 HStack(spacing: 6) {
                     Text(strings.sysFailedToInspectMediaQualities)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.error)
                     Button(strings.retry) { store.send(DashboardUiEventOnLinkListRetryInspect(linkIndex: index)) }
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.fj(11, .bold))
                 }
             }
         }
@@ -236,7 +236,7 @@ struct AddLinkListSection: View {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
                     Text(strings.readingTorrentFiles)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             } else if !link.torrentFiles.isEmpty {
@@ -249,7 +249,7 @@ struct AddLinkListSection: View {
                 )
             } else if let err = link.inspectError {
                 Text(strings.couldNotReadTorrentFiles(error: err))
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.error)
             }
         }

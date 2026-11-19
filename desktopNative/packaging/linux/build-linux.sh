@@ -97,7 +97,7 @@ Architecture: amd64
 Installed-Size: $SIZE_KB
 Maintainer: FetchJet <fetchjet@users.noreply.github.com>
 Depends: libc6 (>= 2.31), libstdc++6, libgcc-s1, libcurl4t64 | libcurl4, libssl3t64 | libssl3, libfontconfig1, libfreetype6, libxkbcommon0, libinput10, libudev1, libgbm1, zlib1g
-Recommends: xdg-utils, libnotify-bin, zenity | kdialog, wl-clipboard | xclip
+Recommends: xdg-utils, libnotify-bin, zenity | kdialog, wl-clipboard | xclip, fonts-noto-core
 Description: FetchJet download manager (native build)
  Multi-connection downloads, video downloads through yt-dlp and a browser
  extension bridge. Native build: Kotlin/Native core with a Slint window.

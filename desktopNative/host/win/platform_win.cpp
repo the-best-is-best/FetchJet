@@ -68,6 +68,77 @@ namespace fjhost::os {
             return std::wstring(path, length);
         }
 
+        const wchar_t *RUN_KEY = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+        const wchar_t *RUN_VALUE = L"com.michelle.raouf.fetch_jet";
+
+        std::wstring lower(std::wstring text) {
+            CharLowerBuffW(text.data(), DWORD(text.size()));
+            return text;
+        }
+
+        struct UserRoot {
+            HKEY root = HKEY_CURRENT_USER;
+            bool owned = false;
+            UserRoot() {
+                HKEY opened = nullptr;
+                if (RegOpenCurrentUser(KEY_READ | KEY_SET_VALUE, &opened) == ERROR_SUCCESS) {
+                    root = opened;
+                    owned = true;
+                }
+            }
+            ~UserRoot() {
+                if (owned)
+                    RegCloseKey(root);
+            }
+        };
+
+        bool read_run_value(HKEY root, std::wstring &value) {
+            DWORD size = 0;
+            if (RegGetValueW(root, RUN_KEY, RUN_VALUE, RRF_RT_REG_SZ, nullptr, nullptr, &size) != ERROR_SUCCESS || size == 0)
+                return false;
+            std::wstring buffer(size / sizeof(wchar_t), L'\0');
+            if (RegGetValueW(root, RUN_KEY, RUN_VALUE, RRF_RT_REG_SZ, nullptr, buffer.data(), &size) != ERROR_SUCCESS)
+                return false;
+            buffer.resize(wcsnlen(buffer.c_str(), buffer.size()));
+            value = buffer;
+            return true;
+        }
+
+        bool run_value_is_ours(const std::wstring &value) {
+            std::wstring exe = module_path();
+            std::wstring folder = exe.substr(0, exe.find_last_of(L'\\') + 1);
+            return !folder.empty() && lower(value).find(lower(folder)) != std::wstring::npos;
+        }
+
+        int remove_startup_entry() {
+            UserRoot user;
+            std::wstring value;
+            if (!read_run_value(user.root, value) || !run_value_is_ours(value))
+                return 0;
+            HKEY key = nullptr;
+            if (RegOpenKeyExW(user.root, RUN_KEY, 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+                return 0;
+            RegDeleteValueW(key, RUN_VALUE);
+            RegCloseKey(key);
+            return 0;
+        }
+
+        void upgrade_old_startup_entry() {
+            UserRoot user;
+            std::wstring value;
+            if (!read_run_value(user.root, value) || !run_value_is_ours(value))
+                return;
+            if (lower(value).rfind(L"cmd ", 0) != 0)
+                return;
+            std::wstring command = L"\"" + module_path() + L"\" --autostart=true";
+            HKEY key = nullptr;
+            if (RegOpenKeyExW(user.root, RUN_KEY, 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+                return;
+            RegSetValueExW(key, RUN_VALUE, 0, REG_SZ, reinterpret_cast<const BYTE *>(command.c_str()),
+                           DWORD((command.size() + 1) * sizeof(wchar_t)));
+            RegCloseKey(key);
+        }
+
         void copy_text(wchar_t *target, size_t capacity, const std::wstring &text) {
             size_t length = text.size() < capacity - 1 ? text.size() : capacity - 1;
             std::wmemcpy(target, text.data(), length);
@@ -236,6 +307,12 @@ namespace fjhost::os {
     }
 
     int child_main(int argc, char **argv, bool &handled) {
+        for (int i = 1; i < argc; i++) {
+            if (std::string(argv[i]) == "--remove-startup") {
+                handled = true;
+                return remove_startup_entry();
+            }
+        }
         for (int i = 1; i + 3 < argc; i++) {
             if (std::string(argv[i]) == "--emoji-cache" && std::string(argv[i + 2]) == "--emoji-list") {
                 handled = true;
@@ -246,6 +323,7 @@ namespace fjhost::os {
     }
 
     void prepare_process() {
+        upgrade_old_startup_entry();
         if (!std::getenv("SLINT_BACKEND"))
             _putenv_s("SLINT_BACKEND", "winit-software");
     }

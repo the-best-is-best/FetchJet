@@ -63,7 +63,7 @@ struct SettingsScreen: View {
                                 withAnimation(.easeInOut(duration: 0.22)) { self.open = nil }
                             } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "chevron.backward").font(.system(size: 15, weight: .semibold))
+                                    Image(systemName: "chevron.backward").font(.fj(15, .semibold))
                                     Text(s.settingsAllSettings)
                                 }
                             }
@@ -125,13 +125,13 @@ struct SettingsScreen: View {
         let (hint, hintColor) = summary(section, s)
         return HStack(spacing: 12) {
             Image(systemName: section.icon)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.fj(15, .semibold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .frame(width: 34, height: 34)
                 .background(FJTheme.color.surfaceVariant, in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 2) {
                 Text(section.title(s))
-                    .font(FJTheme.font.body.weight(.semibold))
+                    .font(Font.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(hint)
                     .font(FJTheme.font.caption)
@@ -140,7 +140,7 @@ struct SettingsScreen: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.forward")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.fj(13, .semibold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
         }
         .padding(.horizontal, 12)

@@ -49,7 +49,7 @@ struct SettingsDownloadsPage: View {
             }
             SettingsGroupBox(title: s.settingsConnectionsGroup, footer: s.connectionsFooter) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(s.settingsConnectionsPerDownload).font(FJTheme.font.body.weight(.medium))
+                    Text(s.settingsConnectionsPerDownload).font(Font.fj(15, .medium))
                     SettingsFlow(spacing: 6) {
                         ForEach([0, 1, 4, 8, 16, 32], id: \.self) { n in
                             SettingsChip(label: n == 0 ? s.settingsConnectionsAuto : "\(n)",
@@ -66,7 +66,7 @@ struct SettingsDownloadsPage: View {
                 HStack {
                     Text(s.speedPresetHigh).font(FJTheme.font.headline)
                     Spacer()
-                    Text(s.speedLimitUnlimited).font(FJTheme.font.caption.weight(.bold))
+                    Text(s.speedLimitUnlimited).font(Font.fj(12, .bold))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
                 .padding(16)
@@ -187,7 +187,7 @@ struct SettingsScheduleWindowRow: View {
                     live.refresh()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.fj(13, .bold))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .frame(width: 34, height: 34)
                         .background(FJTheme.color.surfaceVariant, in: Circle())
@@ -211,7 +211,7 @@ struct SettingsScheduleWindowRow: View {
         let base = cal.startOfDay(for: Date())
         let date = cal.date(byAdding: .minute, value: m, to: base) ?? base
         return VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(FJTheme.font.small.weight(.semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
+            Text(label).font(Font.fj(11, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
             DatePicker("", selection: Binding(get: { date }, set: { d in
                 let c = cal.dateComponents([.hour, .minute], from: d)
                 onChange((c.hour ?? 0) * 60 + (c.minute ?? 0))
@@ -341,7 +341,7 @@ struct SettingsSiteFoldersCard: View {
                         BehaviorSettings.shared.removeSiteFolder(site: rule.site)
                         reload()
                     }
-                    .font(FJTheme.font.callout.weight(.semibold))
+                    .font(Font.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.error)
                     .buttonStyle(.plain)
                 }

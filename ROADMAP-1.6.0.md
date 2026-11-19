@@ -43,7 +43,10 @@ Done 2026-11-19 (Windows):
   "Add subtitles" later uses it; a VTT track stays VTT, an SRT one is converted by ffmpeg. jvmTest
   `SubtitleFilesTest` 8 / 0, corehost `test_subtitles` 27 / 0 (now with VTT: `.en.vtt` at download, `.ar.vtt` added),
   test_media 31 / 0, test_add 29 / 0. Installed on the A56, not checked there yet.
-- [ ] SwiftUI (`SubtitlesSheet.swift`, details button, menu entry, the three cards): written, not compiled (needs the Mac).
+- [x] SwiftUI (`SubtitlesSheet.swift`, details button, menu entry, the three cards): Mac session 2026-11-19 on `8c4e238`,
+  `ios-dev-build.command all` built with no change; iPhone 17 simulator, YouTube `jNQXAC9IVRw` (en + de): card hidden
+  for Audio Only, 3 cards; VTT download `.en.vtt`; Add German -> `.de.vtt`, "Added: German"; long-press menu entry;
+  embed: `ffmpeg -i` shows mov_text eng then ger; no Source row, no `fjenc1:`; Arabic arrows ↖ on both places.
 - [ ] Not tested: a real YouTube 429 (the server side was faked in the unit test), embedding into a real downloaded video.
 
 Ezoo's version, for reference:
@@ -55,7 +58,13 @@ refused are named in a clear message ("try again in a few minutes"), what came i
 Here: only `embedSubtitles` (into the video). To do: subtitles-only download (SRT / VTT, choose languages), one
 language at a time with retry on 429, a clear message in 15 languages. All platforms.
 
-## 2. A file with the same name [ ]
+## 2. A file with the same name [x] (already there)
+
+Checked 2026-11-19: FetchJet already asks before the download starts (`fileConflictAlert`, "File Already Exists":
+Overwrite / Save as Copy `name (1).ext` / close and change the name), on Compose, Slint (corehost `test_media` checks
+the three answers) and SwiftUI; the new file is downloaded into temporary parts and the old one is deleted only at the
+end (`copyIntoPlace`). Nothing to do. Ezoo's version, for reference:
+
 
 Ezoo: the Add window says a file of that name is already in the folder and offers "Replace it", "New name
 (numbered)" or changing the name; "Replace it" keeps the old file until the new one is complete.
@@ -117,7 +126,21 @@ it. Test pages: https://bitmovin.com/demos/drm,
 https://reference.dashif.org/dash.js/latest/samples/drm/widevine.html,
 https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd.
 
-## 10. Uninstall removes the startup entry [ ]
+## 10. Uninstall removes the startup entry [x]
+
+Done 2026-11-19 (Windows): `FetchJet.exe --remove-startup` (host `platform_win.cpp`, Win32 registry calls, no
+`reg.exe`) deletes `HKCU\...\Run\com.michelle.raouf.fetch_jet` only when it points into the exe's own folder; the MSI
+runs it (`FjRemoveStartup`, type 98, sequence 3499 just before `RemoveFiles`, condition
+`REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE`, so not on an update). At every start the host rewrites an old
+`cmd /c start ...` value of its own folder to `"<exe>" --autostart=true`. Tested: `--remove-startup` left a value of
+another folder and removed one of its own folder (registry restored after); test MSI built, `check-msi.ps1` all
+passed, the custom action and sequence read from the table dump. Real MSI test on the owner's PC (2026-11-19): the test MSI installed and uninstalled cleanly (exit 0, folder gone) and
+`FjRemoveStartup` ran (now deferred + impersonated; the exe uses `RegOpenCurrentUser`), but the value written from my
+tool shell was not seen by the installer: a diagnostic build showed the action runs as the same user / SID / session and
+reads the real Run key (13 values, ours not among them), so writes from my sandboxed shell do not reach the real
+registry. The full cycle (turn autostart on in the installed app, uninstall, log in) still needs the owner. Not run:
+the rewrite at start (needs the window), Setup.exe (the bundle runs the same MSI).
+
 
 Seen 2026-11-19 on the owner's PC: after the MSI / Setup.exe FetchJet was uninstalled (only the Store 1.5.0 left), every
 login opened a cmd window and "Windows cannot find 'C:\Users\miche\AppData\Local\FetchJet\FetchJet.exe'". The
@@ -131,6 +154,53 @@ install / turn autostart on / uninstall / log in. Also: the native app rewrites 
 form at start, so no cmd window shows at login (antivirus programs dislike it too, see item 7).
 
 ## 11. Languages of India [ ]
+
+Done 2026-11-19 (parts 1 and 2 of the owner's choice; new languages wait for more numbers):
+- [x] `docs/index.html`: English / हिन्दी menu next to the release count; Hindi when the browser language is `hi`,
+  `?lang=hi`, remembered in `localStorage` (`fj.lang`); every text of the page (titles, hints, store notices, file
+  labels, buttons, errors, footer) in both; dates in `hi-IN`. Checked in the browser pane with the live GitHub list
+  (7 releases): Windows tab, file labels and footer in Hindi. Live only after `docs/` reaches `master`.
+- [x] Owner's request (same day): the whole download page in the app's 15 languages. Texts in `docs/i18n/<code>.js`
+  (40 keys each, `window.FJ_PAGE_TEXT`; English stays in the page; a file loads only when that language is picked),
+  menu with the 15 native names, the browser's first matching language picked by itself, `dir=rtl` for ar / fa (tab
+  counts isolated so "7 Windows" reads right), dates in the page language, and "What's new" read from
+  `release-notes/<version>/<lang>.md` on `master` (raw.githubusercontent.com), English GitHub text when missing.
+  Checked: a node script (all 14 files have the 40 keys, same placeholders), a local server in the browser pane: all
+  15 languages switched with no error, release notes of 1.5.0 shown in each, Arabic / Persian right-to-left.
+- [x] `docs/privacy.html` in all 15 languages too (owner, same day: "everything in every language"): English in the
+  page, the others in `docs/i18n/privacy-<code>.js` (`window.FJ_PRIVACY`, title + article), each marked as a translation
+  where the English text wins on a difference; same menu, same language pick, RTL for ar / fa. Checked on a local
+  server: all 15 switch with no error, each has the 4 sections, the statistics link and the env variable.
+- [x] Slint app: Hindi drawn with `FetchJet Sans` + Windows fallback, offscreen with `shot.exe` (22 / 16 / 13 / 11 px,
+  regular / semibold / bold, conjuncts क्ष त्र ज्ञ श्र द्ध, all matras, Devanagari digits, mixed with Latin and Arabic): all
+  correct. WSL Ubuntu 26.04 has no Devanagari font at all (`fc-list :lang=hi` empty), so the .deb now recommends
+  `fonts-noto-core` (has Noto Sans Devanagari; `build-linux.sh`). Checked in WSLg (Ubuntu 26.04, the Linux core
+  and host built from this tree, throw-away `--home` in Hindi, `--no-auto-downloads --no-bridge --no-focus`): with no
+  Devanagari font every Hindi text of the window is simply not drawn (empty sidebar, no boxes); with a Devanagari
+  font present (Nirmala copied into `~/.local/share/fonts` for the test, removed after) the whole window is right
+  (sidebar, search, empty-list text, conjuncts). So Linux needs the font on the system; the app uses it by itself.
+  A first run without `--no-auto-downloads` fetched 13 MB of yt-dlp before it was stopped. Not checked: a real Linux desktop, macOS (system
+  Devanagari fonts, fallback not looked at), the portable .tar.gz on a system without the font.
+- [x] One app font per language on every platform (owner, same day: "every language its right font, the same on all
+  systems"). `make_fonts.py` now builds **FetchJet Sans** (Noto Sans + Arabic + **Devanagari** + symbols) and
+  **FetchJet Sans SC / JP / KR** (the same + Noto Sans SC / JP / KR cut to the characters of that language's provider,
+  CJK punctuation, kana / jamo), 4 weights each, 16 files (550 KB base, 0.96 / 1.0 / 1.2 MB CJK per weight, ~15 MB in
+  all); `--check` fails when a provider text has a character missing from its font (0 missing now). One shared choice:
+  `core/i18n/start/AppFont.kt` (zh -> SC, ja -> JP, ko -> KR, else base). Desktop (Slint): `uiFontFor` uses it (zh no
+  longer "Microsoft YaHei UI"; file names with Han still use YaHei on Windows through `nameHan`). Android: fonts in
+  `androidUi/src/androidMain/res/font` (native res, Compose Resources removed from `androidUi` at the owner's request,
+  the logo moved to `res/drawable`), `FetchJetTheme` puts the language family on all Material typography; APK
+  79.4 -> 93.7 MB. iOS: fonts in `iosApp/iosApp/Fonts` + `UIAppFonts`, `Font.fj(size, weight)` (`FJFont.swift`, fixed
+  size like the old `.system(size:)`), ~230 call sites switched, monospaced kept. Notices: `THIRD-PARTY.txt`,
+  `THIRD_PARTY_NOTICES.md`; build command in `LINUX.md`.
+  Checked: offscreen render of every family and weight; the Windows app on a hidden desktop (`deskrun`) in zh / hi /
+  ja / ko: every text in its font, nothing downloaded; the Linux app in WSLg with **no** Hindi or Chinese system font:
+  Hindi and Chinese both drawn (Chinese first looked empty because the old `libfjcore.so` was still next to the host;
+  after copying the new one it is right). Android built and installed on the A56 (screen was locked, not seen). iOS not
+  compiled (needs the Mac). Text typed by the user in a CJK script outside the app's own strings falls back to the
+  system fonts (Linux needs them).
+- [ ] Hindi read by someone who knows it; new languages (bn, mr, te, ta).
+
 
 Why: on 2026-11-19 India was the second country on the usage dashboard (6 of 25 users, Egypt 7), almost all Android.
 Today Hindi is in the app (`HindiProvider`), the extension (`extension/i18n/hi.js`) and the release notes
