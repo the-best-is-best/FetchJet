@@ -6,7 +6,47 @@ Each item says what Ezoo does, so we know what "done" has to cover. FetchJet alr
 unpacked yt-dlp folder build, a zip unpacker that checks names and CRC, a file name box in the Add dialog.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
-## 1. Subtitles on their own [ ]
+## 1. Subtitles: one at a time, and added to a finished video [ ]
+
+Owner's decision (2026-11-19): no "subtitles only" download. Instead: the video downloads with its subtitles as before
+(one language at a time now), and the details of a finished video have "Add subtitles": the page is read again (fresh
+links), the languages already in / next to the file are marked, the new ones go into the file when the task embeds them
+(after the subtitle streams already there) or next to it as `name.<lang>.srt`.
+Done 2026-11-19 (Windows):
+- [x] `SubtitleFiles.kt` (`fetchSubtitleFiles`: 1.5 s between languages, a 429 is asked again after 5 / 15 / 30 s, then
+  reported as refused; `embedSubtitleFiles` counts the subtitle streams already in the file and numbers the new ones
+  after them; `placeSubtitleFilesBeside`); `processSubtitles` uses it and keeps on the task only the tracks that reached
+  the file; `addSubtitlesToFinished` + `QueueManagerRepository.inspectSubtitlesOf` / `addSubtitles`;
+  `DashboardSubtitles.kt` (`SubtitlesUi`, 4 events); 12 texts in 15 languages.
+- [x] jvmTest `SubtitleFilesTest` 6 / 6 (order and pause, retry after 429, refused / failed kept apart, VTT -> SRT, side
+  names, stream numbering); all jvmTest 214 / 0.
+- [x] ffmpeg check by hand with the app's arguments: an mp4 with an English track got an Arabic track as a second stream
+  (eng + ara, the probe counted 0 -> 1 -> 2). mkv / webm not run.
+- [x] Compose (`SubtitlesDialog.kt`, details button): owner-tested on the A56 (2026-11-19, embed on): a YouTube video
+  with one language at download and another added later from the details; the file pulled from the phone has two
+  mov_text streams (ara, eng) with the right text, and the owner sees both in his player.
+- [x] Add dialog: the subtitles card shows only while a quality with video is picked; an audio-only download carries no
+  subtitles (`subtitlesOffered`, `anyVideoSelected`; Compose, Slint, SwiftUI). Owner-checked on the A56.
+- [x] Details: "Source" row removed on Android and iOS (the desktop had only "Page"); a link that is still encrypted
+  (`fjenc1:`, e.g. tasks restored by Android backup after a reinstall, the Keystore key is not in the backup) is not
+  shown on any of the three.
+- [x] Slint (`SubtitlesPage.slint`, channel 30 `subtitlesPage`, actions `DetailsSubtitles` / `SubtitlesToggle` /
+  `SubtitlesAdd` / `SubtitlesDismiss`): core + host build; new corehost `test_subtitles.py` 22 / 0 (download with
+  English next to the video, details button, page lists 3 tracks with English marked, add Arabic -> `.ar.srt`, reopen
+  shows both, a plain file offers nothing); test_home 41 / 0, test_add 29 / 0, test_media 31 / 0 (2 failed once in the
+  first run, 0 in the second). The real window was not opened.
+- [x] Row menu (right-click / long press): `RowMenuEntry.SUBTITLES` after Compress, for a finished video; Compose,
+  Slint and SwiftUI map it (iOS opens the details and the sheet there). corehost `test_rowmenu` 19 / 0 (keys list
+  updated), `test_subtitles` 25 / 0 (menu offers it on the video, the pick opens the page, not on a plain file).
+- [x] SRT or VTT for the separate file (as Ezoo): the Add dialog has three cards (Embed / Separate file (SRT) /
+  Separate file (VTT)), the choice is saved on the task (`subtitleFormat`, `tasks_cache.json` field, "" = srt) and
+  "Add subtitles" later uses it; a VTT track stays VTT, an SRT one is converted by ffmpeg. jvmTest
+  `SubtitleFilesTest` 8 / 0, corehost `test_subtitles` 27 / 0 (now with VTT: `.en.vtt` at download, `.ar.vtt` added),
+  test_media 31 / 0, test_add 29 / 0. Installed on the A56, not checked there yet.
+- [ ] SwiftUI (`SubtitlesSheet.swift`, details button, menu entry, the three cards): written, not compiled (needs the Mac).
+- [ ] Not tested: a real YouTube 429 (the server side was faked in the unit test), embedding into a real downloaded video.
+
+Ezoo's version, for reference:
 
 Ezoo: two tabs in the add dialog, "With subtitles" (the video with the subtitles of one chosen language) and
 "Subtitles" (all of a video's subtitles, or the chosen ones, as SRT or VTT). Languages are asked for one at a time

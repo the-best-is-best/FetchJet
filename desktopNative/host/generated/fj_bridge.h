@@ -270,7 +270,8 @@ namespace Channel {
     inline constexpr int AudioCompress = 27;
     inline constexpr int TorrentDetails = 28;
     inline constexpr int RowMenu = 29;
-    inline constexpr int Count = 30;
+    inline constexpr int SubtitlesPage = 30;
+    inline constexpr int Count = 31;
 }
 
 inline EngineChoiceDto parse_EngineChoiceDto(const fj::Json &j) {
@@ -444,6 +445,7 @@ inline AddMediaDto parse_AddMediaDto(const fj::Json &j) {
     d.subtitlesShown = fj::flag(j, "subtitlesShown");
     d.subtitlesAnySelected = fj::flag(j, "subtitlesAnySelected");
     d.embedSubtitles = fj::flag(j, "embedSubtitles");
+    d.subtitleVtt = fj::flag(j, "subtitleVtt");
     d.clipAvailable = fj::flag(j, "clipAvailable");
     d.clipEnabled = fj::flag(j, "clipEnabled");
     d.clipTitle = fj::text(j, "clipTitle");
@@ -678,6 +680,7 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.canShare = fj::flag(j, "canShare");
     d.canCompress = fj::flag(j, "canCompress");
     d.canExtract = fj::flag(j, "canExtract");
+    d.canSubtitles = fj::flag(j, "canSubtitles");
     d.compressLabel = fj::text(j, "compressLabel");
     d.removeLabel = fj::text(j, "removeLabel");
     return d;
@@ -1027,6 +1030,35 @@ inline ShellDto parse_ShellDto(const fj::Json &j) {
     return d;
 }
 
+inline SubtitlePageRowDto parse_SubtitlePageRowDto(const fj::Json &j) {
+    SubtitlePageRowDto d{};
+    d.key = fj::text(j, "key");
+    d.name = fj::text(j, "name");
+    d.checked = fj::flag(j, "checked");
+    d.present = fj::flag(j, "present");
+    d.enabled = fj::flag(j, "enabled");
+    return d;
+}
+
+inline SubtitlesPageDto parse_SubtitlesPageDto(const fj::Json &j) {
+    SubtitlesPageDto d{};
+    d.open = fj::flag(j, "open");
+    d.fileName = fj::text(j, "fileName");
+    d.reading = fj::flag(j, "reading");
+    d.message = fj::text(j, "message");
+    d.messageError = fj::flag(j, "messageError");
+    d.note = fj::text(j, "note");
+    d.rows = fj::struct_model<SubtitlePageRowDto>(j, "rows", parse_SubtitlePageRowDto);
+    d.running = fj::flag(j, "running");
+    d.progress = fj::real(j, "progress");
+    d.progressText = fj::text(j, "progressText");
+    d.added = fj::text(j, "added");
+    d.refused = fj::text(j, "refused");
+    d.failed = fj::text(j, "failed");
+    d.canAdd = fj::flag(j, "canAdd");
+    return d;
+}
+
 inline TorrentTrackerDto parse_TorrentTrackerDto(const fj::Json &j) {
     TorrentTrackerDto d{};
     d.name = fj::text(j, "name");
@@ -1154,6 +1186,7 @@ inline bool apply_channel(const Core &core, Models &models, int channel, const f
         case 27: core.set_audioCompress(parse_AudioCompressDto(j)); return true;
         case 28: core.set_torrentDetails(parse_TorrentDetailsDto(j)); return true;
         case 29: fj::apply_rows<RowMenuItemDto>(*models.rowMenu, j, parse_RowMenuItemDto); return true;
+        case 30: core.set_subtitlesPage(parse_SubtitlesPageDto(j)); return true;
         default: return false;
     }
 }
@@ -1380,6 +1413,18 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_subtitlesAuto(next());
     tr.set_subtitlesEmbedInVideo(next());
     tr.set_subtitlesSeparateFile(next());
+    tr.set_subtitlesAddButton(next());
+    tr.set_subtitlesReading(next());
+    tr.set_subtitlesNone(next());
+    tr.set_subtitlesReadFailed(next());
+    tr.set_subtitlesAlreadyThere(next());
+    tr.set_subtitlesGoInside(next());
+    tr.set_subtitlesGoBeside(next());
+    tr.set_subtitlesAddSelected(next());
+    tr.set_subtitlesAddingProgress(next());
+    tr.set_subtitlesAddedList(next());
+    tr.set_subtitlesRefusedList(next());
+    tr.set_subtitlesFailedList(next());
     tr.set_addSelectAll(next());
     tr.set_addClearSelection(next());
     tr.set_inspectingVideoQualities(next());
@@ -2064,6 +2109,10 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_audioCompressSetFormat([send](int index) { fj::ActionWriter w("AudioCompressSetFormat"); w.add("index", index); send(w.finish()); });
     act.on_audioCompressDelete([send](slint::SharedString path) { fj::ActionWriter w("AudioCompressDelete"); w.add("path", path); send(w.finish()); });
     act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
+    act.on_detailsSubtitles([send]() { fj::ActionWriter w("DetailsSubtitles"); send(w.finish()); });
+    act.on_subtitlesToggle([send](slint::SharedString key, bool selected) { fj::ActionWriter w("SubtitlesToggle"); w.add("key", key); w.add("selected", selected); send(w.finish()); });
+    act.on_subtitlesAdd([send]() { fj::ActionWriter w("SubtitlesAdd"); send(w.finish()); });
+    act.on_subtitlesDismiss([send]() { fj::ActionWriter w("SubtitlesDismiss"); send(w.finish()); });
     act.on_toggleDetailFile([send](int index, bool selected) { fj::ActionWriter w("ToggleDetailFile"); w.add("index", index); w.add("selected", selected); send(w.finish()); });
     act.on_cycleDetailFilePriority([send](int index) { fj::ActionWriter w("CycleDetailFilePriority"); w.add("index", index); send(w.finish()); });
     act.on_torrentAddTracker([send](slint::SharedString url) { fj::ActionWriter w("TorrentAddTracker"); w.add("url", url); send(w.finish()); });
@@ -2132,6 +2181,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_selectAllQualities([send](bool selected) { fj::ActionWriter w("SelectAllQualities"); w.add("selected", selected); send(w.finish()); });
     act.on_toggleSubtitle([send](slint::SharedString code, bool selected) { fj::ActionWriter w("ToggleSubtitle"); w.add("code", code); w.add("selected", selected); send(w.finish()); });
     act.on_setEmbedSubtitles([send](bool embed) { fj::ActionWriter w("SetEmbedSubtitles"); w.add("embed", embed); send(w.finish()); });
+    act.on_setSubtitleFormat([send](slint::SharedString format) { fj::ActionWriter w("SetSubtitleFormat"); w.add("format", format); send(w.finish()); });
     act.on_setClipEnabled([send](bool on) { fj::ActionWriter w("SetClipEnabled"); w.add("on", on); send(w.finish()); });
     act.on_setClipRange([send](slint::SharedString start, slint::SharedString end) { fj::ActionWriter w("SetClipRange"); w.add("start", start); w.add("end", end); send(w.finish()); });
     act.on_setClipFastMode([send](bool on) { fj::ActionWriter w("SetClipFastMode"); w.add("on", on); send(w.finish()); });

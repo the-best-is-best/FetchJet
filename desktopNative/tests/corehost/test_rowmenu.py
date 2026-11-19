@@ -11,7 +11,7 @@ from test_bridge import ALERT
 
 PORT = int(os.environ.get("FJ_ROWMENU_PORT", "18264"))
 BASE = "http://127.0.0.1:%d" % PORT
-KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "DELETE"]
+KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "DELETE"]
 KEY = {name: index for index, name in enumerate(KEYS)}
 
 

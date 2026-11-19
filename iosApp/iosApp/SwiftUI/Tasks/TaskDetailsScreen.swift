@@ -341,7 +341,7 @@ private struct TaskDetailsContent: View {
         let s = store.strings
         let page = task.requestHeaders["Referer"] ?? task.originalUrl ?? ""
         var items: [(String, String)] = []
-        for (label, link) in [(s.detailsSource, task.url), (s.detailsPage, page)] where !link.isEmpty {
+        for (label, link) in [(s.detailsPage, page)] where !link.isEmpty && !Secrets.shared.isProtected(stored: link) {
             if !items.contains(where: { $0.1 == link }) { items.append((label, link)) }
         }
         return ForEach(items, id: \.1) { label, link in
@@ -421,6 +421,9 @@ private struct TaskDetailsContent: View {
                 TaskDetailButton(text: s.extractNow, primary: false) {
                     store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
                 }
+            }
+            if task.canAddSubtitles() {
+                SubtitlesButton(task: task)
             }
             if !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task) {
                 AudioCompressButton(task: task)

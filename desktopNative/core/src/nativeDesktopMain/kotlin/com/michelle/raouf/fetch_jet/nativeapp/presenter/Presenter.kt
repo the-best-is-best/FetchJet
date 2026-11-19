@@ -119,6 +119,10 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         Channels.AUDIO_COMPRESS.id, Channels.AUDIO_COMPRESS.name,
         com.michelle.raouf.fetch_jet.nativeapp.dto.AudioCompressDto.serializer(), notifier
     )
+    val subtitlesPage = StructChannel(
+        Channels.SUBTITLES_PAGE.id, Channels.SUBTITLES_PAGE.name,
+        com.michelle.raouf.fetch_jet.nativeapp.dto.SubtitlesPageDto.serializer(), notifier
+    )
     val torrentDetails = StructChannel(
         Channels.TORRENT_DETAILS.id, Channels.TORRENT_DETAILS.name,
         com.michelle.raouf.fetch_jet.nativeapp.dto.TorrentDetailsDto.serializer(), notifier
@@ -135,7 +139,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
         addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, updateDialog, addLinks, deviceSheet,
-        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails, rowMenu,
+        deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails, rowMenu, subtitlesPage,
     )
 
     @kotlin.concurrent.Volatile
@@ -188,6 +192,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         startDevices()
         startAddTorrent()
         startAudioCompress()
+        startSubtitlesPage()
         startTorrentDetails()
         startMainDownloaderSetup()
     }

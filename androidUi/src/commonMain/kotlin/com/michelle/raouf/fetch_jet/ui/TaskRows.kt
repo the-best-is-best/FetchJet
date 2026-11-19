@@ -259,13 +259,15 @@ private val PauseIcon: RowIcon = { u, tint ->
 }
 
 private val OpenIcon: RowIcon = { u, tint ->
-    iconLine(u, tint, 10f, 4f, 4f, 4f)
-    iconLine(u, tint, 4f, 4f, 4f, 20f)
-    iconLine(u, tint, 4f, 20f, 20f, 20f)
-    iconLine(u, tint, 20f, 20f, 20f, 14f)
-    iconLine(u, tint, 10f, 14f, 20f, 4f)
-    iconLine(u, tint, 14f, 4f, 20f, 4f)
-    iconLine(u, tint, 20f, 4f, 20f, 10f)
+    val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+    fun x(v: Float) = if (rtl) 24f - v else v
+    iconLine(u, tint, x(10f), 4f, x(4f), 4f)
+    iconLine(u, tint, x(4f), 4f, x(4f), 20f)
+    iconLine(u, tint, x(4f), 20f, x(20f), 20f)
+    iconLine(u, tint, x(20f), 20f, x(20f), 14f)
+    iconLine(u, tint, x(10f), 14f, x(20f), 4f)
+    iconLine(u, tint, x(14f), 4f, x(20f), 4f)
+    iconLine(u, tint, x(20f), 4f, x(20f), 10f)
 }
 
 private val CompressIcon: RowIcon = { u, tint ->

@@ -48,6 +48,7 @@ internal data class PersistedTask(
     val scanResult: String = "",
     val subtitles: String = "",
     val embedSubtitles: Boolean = false,
+    val subtitleFormat: String = "",
     val priority: Int = 0
 )
 
@@ -118,6 +119,7 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
         ).joinToString("\u0001")
     },
     embedSubtitles = embedSubtitles,
+    subtitleFormat = if (subtitleFormat == "srt") "" else subtitleFormat,
     priority = priority
 )
 
@@ -191,6 +193,7 @@ internal fun PersistedTask.toTask(
             )
         } ?: emptyList(),
         embedSubtitles = embedSubtitles,
+        subtitleFormat = subtitleFormat.ifBlank { "srt" },
         priority = priority
     )
 }

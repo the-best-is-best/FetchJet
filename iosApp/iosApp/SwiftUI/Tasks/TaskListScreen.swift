@@ -244,6 +244,9 @@ struct TaskListScreen: View {
             store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
         case "COMPRESS":
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
+        case "SUBTITLES":
+            store.selectedTaskId = task.id
+            store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
         case "SEND_TO_DEVICE":
             store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
         case "COPY_LINK":

@@ -64,6 +64,7 @@ data class DownloadTask(
     val pairedAudioUrl: String? = null,
     val subtitleTracks: List<SubtitleTrack> = emptyList(),
     val embedSubtitles: Boolean = false,
+    val subtitleFormat: String = "srt",
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,

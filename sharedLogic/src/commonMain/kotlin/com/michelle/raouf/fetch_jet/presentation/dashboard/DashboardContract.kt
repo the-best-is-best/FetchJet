@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
@@ -142,6 +143,7 @@ data class DashboardUiState(
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     val inspectedSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
     val embedSubtitles: Boolean = false,
+    val subtitleFormat: String = "srt",
 
     val inspectMediaError: String? = null,
 
@@ -229,9 +231,12 @@ data class DashboardUiState(
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
+    val subtitlesPage: SubtitlesUi? = null,
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
 ) {
+    val subtitlesOffered: Boolean
+        get() = inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()
     val needsFileName: Boolean
         get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
 }
@@ -250,6 +255,29 @@ data class TorrentDetailsUi(
     /** English code of the last tracker-add failure ("invalid", "refused") or empty. */
     val trackerError: String = ""
 )
+
+data class SubtitlesUi(
+    val taskId: String,
+    val fileName: String,
+    val embed: Boolean,
+    val format: String = "srt",
+    val reading: Boolean = true,
+    val readFailed: Boolean = false,
+    val tracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val present: Set<String> = emptySet(),
+    val running: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0,
+    val added: List<String> = emptyList(),
+    val refused: List<String> = emptyList(),
+    val failed: List<String> = emptyList()
+) {
+    val canAdd: Boolean
+        get() = !reading && !running && tracks.any { it.isSelected && subtitleKey(it) !in present }
+}
+
+fun subtitleKey(track: com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack): String =
+    track.langCode + if (track.isAuto) ".auto" else ""
 
 data class AudioCompressUi(
     val taskId: String,
@@ -416,6 +444,8 @@ sealed interface DashboardUiEvent {
     data class OnSubtitleToggled(val langCode: String, val isSelected: Boolean) :
         DashboardUiEvent
 
+    data class OnSubtitleFormatSelected(val format: String) : DashboardUiEvent
+
     data class OnToggleEmbedSubtitles(val embed: Boolean) :
         DashboardUiEvent
 
@@ -469,6 +499,10 @@ sealed interface DashboardUiEvent {
         DashboardUiEvent
 
     data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
+    data class OnSubtitlesClicked(val taskId: String) : DashboardUiEvent
+    data class OnSubtitleTrackToggled(val key: String, val selected: Boolean) : DashboardUiEvent
+    data object OnSubtitlesAddClicked : DashboardUiEvent
+    data object OnDismissSubtitles : DashboardUiEvent
     data class OnExtractTaskClicked(val taskId: String) : DashboardUiEvent
 
     data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent

@@ -11,6 +11,7 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.http_downloader.HttpDownloadEngine
 import com.michelle.raouf.fetch_jet.feature.http_downloader.createHttpEngine
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaStreamDownloader
+import com.michelle.raouf.fetch_jet.feature.media_extractor.addSubtitlesToFinished
 import com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDownloader
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
@@ -702,6 +703,30 @@ class QueueManagerRepository(
     val lastMediaSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>
         get() = mediaEngine.lastSubtitles
 
+    /** The subtitle tracks the page of a finished video offers now (fresh links). */
+    suspend fun inspectSubtitlesOf(task: DownloadTask): List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> {
+        val page = task.originalUrl?.takeIf { it.isNotBlank() } ?: task.url
+        inspectMediaQualities(page, task.requestHeaders)
+        return mediaEngine.lastSubtitles
+    }
+
+    suspend fun addSubtitles(
+        taskId: String,
+        tracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>,
+        onTrackDone: (Int) -> Unit = {}
+    ): com.michelle.raouf.fetch_jet.feature.media_extractor.SubtitleAddResult? {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return null
+        val result = mediaEngine.addSubtitlesToFinished(task, tracks, onTrackDone)
+        if (result.added.isNotEmpty()) {
+            val current = allTasksFlow.value.firstOrNull { it.id == taskId } ?: task
+            val addedKeys = result.added.map { it.langCode to it.isAuto }.toSet()
+            val merged = current.subtitleTracks.filter { (it.langCode to it.isAuto) !in addedKeys } +
+                    result.added.map { it.copy(isSelected = true) }
+            mediaEngine.enqueueTask(current.copy(subtitleTracks = merged))
+        }
+        return result
+    }
+
     /** The videos of a playlist / channel link (null = not a playlist). */
     suspend fun inspectPlaylist(
         url: String,
@@ -750,6 +775,7 @@ class QueueManagerRepository(
         expectedChecksum: String? = null,
         subtitleTracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
         embedSubtitles: Boolean = false,
+        subtitleFormat: String = "srt",
         initialStepText: String? = null,
         displayTotalBytes: Long = 0L,
         displayDownloadedBytes: Long = 0L,
@@ -877,7 +903,8 @@ class QueueManagerRepository(
             maxConnections = maxConnections.coerceIn(0, 32),
             expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() },
             subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
-            embedSubtitles = embedSubtitles
+            embedSubtitles = embedSubtitles,
+            subtitleFormat = subtitleFormat
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump

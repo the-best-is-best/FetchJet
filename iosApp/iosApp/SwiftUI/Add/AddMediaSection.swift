@@ -33,7 +33,7 @@ struct AddMediaSection: View {
                 ) { store.send(DashboardUiEventOnInspectMediaClicked.shared) }
             } else {
                 AddQualitiesCard()
-                if !s.inspectedSubtitles.isEmpty { AddSubtitlesCard() }
+                if s.subtitlesOffered { AddSubtitlesCard() }
                 if s.mediaDurationSeconds > 0 { AddClipCard(validity: validity) }
             }
         }
@@ -183,8 +183,11 @@ struct AddSubtitlesCard: View {
                     AddOptionCard(selected: store.state.embedSubtitles, title: strings.subtitlesEmbedInVideo) {
                         store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: true))
                     }
-                    AddOptionCard(selected: !store.state.embedSubtitles, title: strings.subtitlesSeparateFile) {
-                        store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: false))
+                    AddOptionCard(selected: !store.state.embedSubtitles && store.state.subtitleFormat != "vtt", title: strings.subtitlesSeparateFile + " (SRT)") {
+                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: "srt"))
+                    }
+                    AddOptionCard(selected: !store.state.embedSubtitles && store.state.subtitleFormat == "vtt", title: strings.subtitlesSeparateFile + " (VTT)") {
+                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: "vtt"))
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)

@@ -243,6 +243,10 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(embedSubtitles = event.embed) }
         }
 
+        is DashboardUiEvent.OnSubtitleFormatSelected -> {
+            _uiState.update { it.copy(embedSubtitles = false, subtitleFormat = if (event.format == "vtt") "vtt" else "srt") }
+        }
+
         is DashboardUiEvent.OnClipStartTimeChanged -> {
             _uiState.update { it.copy(clipStartTime = event.time) }
         }

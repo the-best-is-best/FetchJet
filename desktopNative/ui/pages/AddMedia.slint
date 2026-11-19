@@ -426,17 +426,24 @@ component SubtitlesCard inherits SectionCard {
             spacing: 8px;
             OptionCard {
                 row: 0;
-                col: Dir.rtl ? 1 : 0;
+                col: Dir.rtl ? 2 : 0;
                 selected: Core.addMedia.embedSubtitles;
                 title: Tr.subtitlesEmbedInVideo;
                 clicked => { Act.setEmbedSubtitles(true); }
             }
             OptionCard {
                 row: 0;
-                col: Dir.rtl ? 0 : 1;
-                selected: !Core.addMedia.embedSubtitles;
-                title: Tr.subtitlesSeparateFile;
-                clicked => { Act.setEmbedSubtitles(false); }
+                col: 1;
+                selected: !Core.addMedia.embedSubtitles && !Core.addMedia.subtitleVtt;
+                title: Tr.subtitlesSeparateFile + " (SRT)";
+                clicked => { Act.setSubtitleFormat("srt"); }
+            }
+            OptionCard {
+                row: 0;
+                col: Dir.rtl ? 0 : 2;
+                selected: !Core.addMedia.embedSubtitles && Core.addMedia.subtitleVtt;
+                title: Tr.subtitlesSeparateFile + " (VTT)";
+                clicked => { Act.setSubtitleFormat("vtt"); }
             }
         }
     }

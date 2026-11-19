@@ -54,6 +54,10 @@ export global Act {
     callback audioCompressSetFormat(index: int);
     callback audioCompressDelete(path: string);
     callback audioCompressDismiss();
+    callback detailsSubtitles();
+    callback subtitlesToggle(key: string, selected: bool);
+    callback subtitlesAdd();
+    callback subtitlesDismiss();
     callback toggleDetailFile(index: int, selected: bool);
     callback cycleDetailFilePriority(index: int);
     callback torrentAddTracker(url: string);
@@ -122,6 +126,7 @@ export global Act {
     callback selectAllQualities(selected: bool);
     callback toggleSubtitle(code: string, selected: bool);
     callback setEmbedSubtitles(embed: bool);
+    callback setSubtitleFormat(format: string);
     callback setClipEnabled(on: bool);
     callback setClipRange(start: string, end: string);
     callback setClipFastMode(on: bool);

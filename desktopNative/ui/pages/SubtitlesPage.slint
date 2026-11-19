@@ -1,0 +1,161 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
+import { Core, SubtitlePageRowDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component SubtitleLine inherits Rectangle {
+    in property <SubtitlePageRowDto> data;
+    height: 44px;
+    border-radius: 6px;
+    background: root.data.checked && root.data.enabled ? Theme.primary-container.with-alpha(0.4) : transparent;
+    ta := TouchArea {
+        enabled: root.data.enabled;
+        clicked => { Act.subtitlesToggle(root.data.key, !root.data.checked); }
+    }
+    Hover {
+        border-radius: 6px;
+        hovered: ta.has-hover && root.data.enabled;
+        pressed: ta.pressed && root.data.enabled;
+    }
+    HBox {
+        padding-start: 6px;
+        padding-end: 10px;
+        spacing: 6px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 40px;
+            height: 40px;
+            CheckBox {
+                checked: root.data.checked;
+                enabled: root.data.enabled;
+                label: root.data.name;
+                toggled(on) => { Act.subtitlesToggle(root.data.key, on); }
+            }
+        }
+        T {
+            text: root.data.name;
+            font-size: 13px;
+            overflow: elide;
+            horizontal-stretch: 1;
+            color: root.data.enabled ? Theme.on-surface : Theme.on-surface-variant;
+        }
+        if root.data.present: T {
+            text: Tr.subtitlesAlreadyThere;
+            font-size: 12px;
+            color: Theme.on-surface-variant;
+        }
+    }
+}
+
+export component SubtitlesDialog inherits Rectangle {
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => { Act.subtitlesDismiss(); }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                Act.subtitlesDismiss();
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: max(280px, min(520px, root.width - 48px));
+        height: min(content.preferred-height, root.height - 48px);
+        border-radius: 18px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
+        clip: true;
+        TouchArea { }
+        Flickable {
+            content-width: self.width;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                padding: 24px;
+                spacing: 10px;
+                T {
+                    text: Tr.subtitlesAddButton;
+                    line: 30px;
+                    tracking: 0px;
+                    font-size: 22px;
+                    font-weight: 700;
+                }
+                T {
+                    text: Core.subtitlesPage.fileName;
+                    line: 20px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
+                if Core.subtitlesPage.message != "": T {
+                    text: Core.subtitlesPage.message;
+                    wrap: word-wrap;
+                    color: Core.subtitlesPage.messageError ? Theme.error : Theme.on-surface-variant;
+                }
+                if Core.subtitlesPage.reading: LinearProgress {
+                    indeterminate: true;
+                }
+                if Core.subtitlesPage.note != "": T {
+                    text: Core.subtitlesPage.note;
+                    wrap: word-wrap;
+                    color: Theme.on-surface-variant;
+                }
+                for row in Core.subtitlesPage.rows: SubtitleLine {
+                    data: row;
+                }
+                if Core.subtitlesPage.running: T {
+                    text: Core.subtitlesPage.progressText;
+                    color: Theme.on-surface-variant;
+                }
+                if Core.subtitlesPage.running: LinearProgress {
+                    value: Core.subtitlesPage.progress;
+                }
+                if Core.subtitlesPage.added != "": T {
+                    text: Core.subtitlesPage.added;
+                    wrap: word-wrap;
+                    color: Theme.primary;
+                }
+                if Core.subtitlesPage.refused != "": T {
+                    text: Core.subtitlesPage.refused;
+                    wrap: word-wrap;
+                    color: Theme.error;
+                }
+                if Core.subtitlesPage.failed != "": T {
+                    text: Core.subtitlesPage.failed;
+                    wrap: word-wrap;
+                    color: Theme.error;
+                }
+                HBox {
+                    height: 44px;
+                    spacing: 8px;
+                    alignment: end;
+                    cross-axis-alignment: center;
+                    OutlinedButton {
+                        text: Tr.close;
+                        border-radius: 10px;
+                        ink: Theme.on-surface;
+                        line: Theme.outline;
+                        enabled: !Core.subtitlesPage.running;
+                        clicked => { Act.subtitlesDismiss(); }
+                    }
+                    FilledButton {
+                        text: Tr.subtitlesAddSelected;
+                        enabled: Core.subtitlesPage.canAdd;
+                        border-radius: 10px;
+                        clicked => { Act.subtitlesAdd(); }
+                    }
+                }
+            }
+        }
+    }
+}

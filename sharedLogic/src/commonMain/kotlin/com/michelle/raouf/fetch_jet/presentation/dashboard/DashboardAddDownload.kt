@@ -188,8 +188,9 @@ internal fun DashboardViewModel.addDownload(
             scheduledAtMs = currentState.scheduleStartMs,
             maxConnections = currentState.selectedConnections,
             expectedChecksum = currentState.checksumInput,
-            subtitleTracks = currentState.inspectedSubtitles,
-            embedSubtitles = currentState.embedSubtitles
+            subtitleTracks = if (currentState.subtitlesOffered) currentState.inspectedSubtitles else emptyList(),
+            embedSubtitles = currentState.embedSubtitles,
+            subtitleFormat = currentState.subtitleFormat
         ).onSuccess { task ->
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()

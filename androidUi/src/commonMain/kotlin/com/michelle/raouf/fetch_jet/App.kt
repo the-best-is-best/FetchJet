@@ -579,6 +579,8 @@ fun App(
                     onToggleEmbedSubtitles = { embed ->
                         viewModel.onEvent(DashboardUiEvent.OnToggleEmbedSubtitles(embed))
                     },
+                    subtitleFormat = state.subtitleFormat,
+                    onSubtitleFormat = { viewModel.onEvent(DashboardUiEvent.OnSubtitleFormatSelected(it)) },
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
                     ytDlpStatus = state.ytDlpStatus,
@@ -838,6 +840,9 @@ fun App(
             }
 
             // "Send to device" sheet + first-time pairing (ROADMAP-1.3.0 item 4).
+            state.subtitlesPage?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.SubtitlesDialog(page) { viewModel.onEvent(it) }
+            }
             state.audioCompress?.let { page ->
                 com.michelle.raouf.fetch_jet.ui.AudioCompressDialog(page) { viewModel.onEvent(it) }
             }

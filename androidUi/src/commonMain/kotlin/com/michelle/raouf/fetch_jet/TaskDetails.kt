@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet
 
+import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,6 +81,7 @@ internal fun DownloadTaskItem(
     onFilePriorityChanged: (Int, Int) -> Unit,
     onShare: (() -> Unit)? = null,
     onCompress: (() -> Unit)? = null,
+    onSubtitles: (() -> Unit)? = null,
     onExtract: (() -> Unit)? = null,
     compressedCopies: Int = 0,
     torrentSection: (@Composable () -> Unit)? = null
@@ -530,10 +532,9 @@ internal fun DownloadTaskItem(
 
             val clipboard = LocalClipboardManager.current
             listOf(
-                LocalizationManager.Strings.detailsSource to task.url,
                 LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
                     ?: task.originalUrl.orEmpty())
-            ).filter { (_, link) -> link.isNotBlank() }
+            ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }
                 .distinctBy { (_, link) -> link }
                 .forEach { (label, link) ->
                     Spacer(modifier = Modifier.height(10.dp))
@@ -673,6 +674,20 @@ internal fun DownloadTaskItem(
                 ) {
                     Text(
                         LocalizationManager.Strings.extractNow,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            if (onSubtitles != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSubtitles,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Text(
+                        LocalizationManager.Strings.subtitlesAddButton,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -926,6 +941,9 @@ internal fun TaskDetailsPane(
                 } else null,
                 onCompress = if (fullScreen && com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
+                } else null,
+                onSubtitles = if (task.canAddSubtitles()) {
+                    { viewModel.onEvent(DashboardUiEvent.OnSubtitlesClicked(task.id)) }
                 } else null,
                 onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }

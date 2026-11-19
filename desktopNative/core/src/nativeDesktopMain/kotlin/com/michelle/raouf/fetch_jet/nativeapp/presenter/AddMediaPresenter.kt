@@ -6,6 +6,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMATS
@@ -110,6 +111,7 @@ private data class MediaSlice(
     val qualities: List<MediaQualityEntry>,
     val subtitles: List<SubtitleTrack>,
     val embedSubtitles: Boolean,
+    val subtitleVtt: Boolean,
     val error: String?,
     val ytDlpInstalled: Boolean,
     val ytDlpStatus: String,
@@ -134,6 +136,7 @@ private fun DashboardUiState.mediaSlice() = MediaSlice(
     qualities = inspectedMediaQualities,
     subtitles = inspectedSubtitles,
     embedSubtitles = embedSubtitles,
+    subtitleVtt = subtitleFormat == "vtt",
     error = inspectMediaError,
     ytDlpInstalled = isYtDlpInstalled,
     ytDlpStatus = ytDlpStatus,
@@ -294,9 +297,10 @@ private fun Presenter.publishMedia(s: MediaSlice) {
             qualitiesTitle = qualitiesTitle,
             qualitiesTitleRtl = startsRightToLeft(qualitiesTitle),
             qualitiesCount = strings.selectedOfAvailable(s.qualities.count { it.isSelected }, s.qualities.size),
-            subtitlesShown = state == MediaStateCode.QUALITIES && s.subtitles.isNotEmpty(),
+            subtitlesShown = state == MediaStateCode.QUALITIES && s.subtitles.isNotEmpty() && s.qualities.anyVideoSelected(),
             subtitlesAnySelected = s.subtitles.any { it.isSelected },
             embedSubtitles = s.embedSubtitles,
+            subtitleVtt = s.subtitleVtt,
             clipAvailable = state == MediaStateCode.QUALITIES && s.duration > 0L,
             clipEnabled = s.clipEnabled,
             clipTitle = strings.clipSectionTitle(isAnyAudio),

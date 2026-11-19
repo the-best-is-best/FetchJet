@@ -138,6 +138,10 @@ internal fun Presenter.dispatch(action: UiAction) {
         UiAction.AudioCompressStart -> vm.onEvent(DashboardUiEvent.OnAudioCompressStartClicked)
         is UiAction.AudioCompressDelete -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteCopy(action.path))
         UiAction.AudioCompressDismiss -> vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)
+        UiAction.DetailsSubtitles -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(it)) }
+        is UiAction.SubtitlesToggle -> vm.onEvent(DashboardUiEvent.OnSubtitleTrackToggled(action.key, action.selected))
+        UiAction.SubtitlesAdd -> vm.onEvent(DashboardUiEvent.OnSubtitlesAddClicked)
+        UiAction.SubtitlesDismiss -> vm.onEvent(DashboardUiEvent.OnDismissSubtitles)
         UiAction.DetailsShare -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnShareTaskClicked(it)) }
         is UiAction.ToggleDetailFile -> local.value.selectedTaskId?.let {
             vm.onEvent(DashboardUiEvent.OnTaskTorrentFileSelectionToggled(it, action.index, action.selected))
@@ -239,6 +243,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.SelectAllQualities -> vm.onEvent(DashboardUiEvent.OnSelectAllMediaQualitiesToggled(action.selected))
         is UiAction.ToggleSubtitle -> vm.onEvent(DashboardUiEvent.OnSubtitleToggled(action.code, action.selected))
         is UiAction.SetEmbedSubtitles -> vm.onEvent(DashboardUiEvent.OnToggleEmbedSubtitles(action.embed))
+        is UiAction.SetSubtitleFormat -> vm.onEvent(DashboardUiEvent.OnSubtitleFormatSelected(action.format))
         is UiAction.SetClipEnabled -> vm.onEvent(DashboardUiEvent.OnToggleClipRange(action.on))
         is UiAction.SetClipRange -> {
             vm.onEvent(DashboardUiEvent.OnClipStartTimeChanged(action.start))

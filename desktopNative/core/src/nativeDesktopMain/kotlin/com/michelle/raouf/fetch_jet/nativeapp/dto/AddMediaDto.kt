@@ -69,6 +69,7 @@ data class AddMediaDto(
     val subtitlesShown: Boolean = false,
     val subtitlesAnySelected: Boolean = false,
     val embedSubtitles: Boolean = false,
+    val subtitleVtt: Boolean = false,
     val clipAvailable: Boolean = false,
     val clipEnabled: Boolean = false,
     val clipTitle: String = "",

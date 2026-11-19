@@ -148,6 +148,7 @@ export struct AddMediaDto {
     subtitlesShown: bool,
     subtitlesAnySelected: bool,
     embedSubtitles: bool,
+    subtitleVtt: bool,
     clipAvailable: bool,
     clipEnabled: bool,
     clipTitle: string,
@@ -362,6 +363,7 @@ export struct DetailsDto {
     canShare: bool,
     canCompress: bool,
     canExtract: bool,
+    canSubtitles: bool,
     compressLabel: string,
     removeLabel: string,
 }
@@ -664,6 +666,31 @@ export struct ShellDto {
     whenDoneIndex: int,
     toastText: string,
     toastShown: bool,
+}
+
+export struct SubtitlePageRowDto {
+    key: string,
+    name: string,
+    checked: bool,
+    present: bool,
+    enabled: bool,
+}
+
+export struct SubtitlesPageDto {
+    open: bool,
+    fileName: string,
+    reading: bool,
+    message: string,
+    messageError: bool,
+    note: string,
+    rows: [SubtitlePageRowDto],
+    running: bool,
+    progress: float,
+    progressText: string,
+    added: string,
+    refused: string,
+    failed: string,
+    canAdd: bool,
 }
 
 export struct TorrentTrackerDto {
@@ -984,4 +1011,5 @@ export global Core {
     in property <AudioCompressDto> audioCompress;
     in property <TorrentDetailsDto> torrentDetails;
     in property <[RowMenuItemDto]> rowMenu;
+    in property <SubtitlesPageDto> subtitlesPage;
 }

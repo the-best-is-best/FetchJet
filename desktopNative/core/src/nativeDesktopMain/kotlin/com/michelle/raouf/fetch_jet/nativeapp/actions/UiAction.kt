@@ -219,6 +219,22 @@ sealed interface UiAction {
     data object AudioCompressDismiss : UiAction
 
     @Serializable
+    @SerialName("DetailsSubtitles")
+    data object DetailsSubtitles : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesToggle")
+    data class SubtitlesToggle(val key: String = "", val selected: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesAdd")
+    data object SubtitlesAdd : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesDismiss")
+    data object SubtitlesDismiss : UiAction
+
+    @Serializable
     @SerialName("ToggleDetailFile")
     data class ToggleDetailFile(val index: Int = 0, val selected: Boolean = false) : UiAction
 
@@ -489,6 +505,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("SetEmbedSubtitles")
     data class SetEmbedSubtitles(val embed: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("SetSubtitleFormat")
+    data class SetSubtitleFormat(val format: String = "srt") : UiAction
 
     @Serializable
     @SerialName("SetClipEnabled")

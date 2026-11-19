@@ -794,7 +794,7 @@ component RowView inherits VerticalLayout {
                 if root.data.side != "": Rectangle {
                     width: side.preferred-width;
                     side := Text {
-                        text: root.data.side;
+                        text: Dir.rtl && root.data.side == "↗" ? "↖" : root.data.side;
                         color: Theme.tone(root.data.sideTone);
                         font-family: Theme.font;
                         font-size: 16px;

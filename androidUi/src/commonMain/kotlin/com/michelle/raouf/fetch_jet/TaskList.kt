@@ -537,6 +537,8 @@ internal fun TaskListArea(
                                                 viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COMPRESS ->
                                                 viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SUBTITLES ->
+                                                viewModel.onEvent(DashboardUiEvent.OnSubtitlesClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SEND_TO_DEVICE ->
                                                 viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COPY_LINK ->

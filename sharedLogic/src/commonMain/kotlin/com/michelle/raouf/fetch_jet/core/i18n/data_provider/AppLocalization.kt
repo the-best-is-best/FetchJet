@@ -249,6 +249,18 @@ interface AppLocalization : LocalizationProvider {
     val subtitlesAuto: String
     val subtitlesEmbedInVideo: String
     val subtitlesSeparateFile: String
+    val subtitlesAddButton: String
+    val subtitlesReading: String
+    val subtitlesNone: String
+    val subtitlesReadFailed: String
+    val subtitlesAlreadyThere: String
+    val subtitlesGoInside: String
+    val subtitlesGoBeside: String
+    val subtitlesAddSelected: String
+    val subtitlesAddingProgress: String
+    val subtitlesAddedList: String
+    val subtitlesRefusedList: String
+    val subtitlesFailedList: String
     val addSelectAll: String
     val addClearSelection: String
     fun selectedOfAvailable(selected: Int, total: Int): String

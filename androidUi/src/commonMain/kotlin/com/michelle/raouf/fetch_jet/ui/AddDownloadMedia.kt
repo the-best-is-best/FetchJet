@@ -52,6 +52,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.utils.formatBytes
@@ -212,7 +213,9 @@ internal fun SubtitlesSelectionCard(
     subtitles: List<SubtitleTrack>,
     embedSubtitles: Boolean,
     onSubtitleToggled: (String, Boolean) -> Unit,
-    onToggleEmbedSubtitles: (Boolean) -> Unit
+    onToggleEmbedSubtitles: (Boolean) -> Unit,
+    subtitleFormat: String = "srt",
+    onSubtitleFormat: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -313,10 +316,17 @@ internal fun SubtitlesSelectionCard(
                         modifier = Modifier.weight(1f)
                     )
                     ClipModeOption(
-                        selected = !embedSubtitles,
-                        title = LocalizationManager.Strings.subtitlesSeparateFile,
+                        selected = !embedSubtitles && subtitleFormat != "vtt",
+                        title = LocalizationManager.Strings.subtitlesSeparateFile + " (SRT)",
                         lines = emptyList(),
-                        onClick = { onToggleEmbedSubtitles(false) },
+                        onClick = { onSubtitleFormat("srt") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ClipModeOption(
+                        selected = !embedSubtitles && subtitleFormat == "vtt",
+                        title = LocalizationManager.Strings.subtitlesSeparateFile + " (VTT)",
+                        lines = emptyList(),
+                        onClick = { onSubtitleFormat("vtt") },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -423,6 +433,8 @@ internal fun MediaInspectionSection(
     embedSubtitles: Boolean,
     onSubtitleToggled: (String, Boolean) -> Unit,
     onToggleEmbedSubtitles: (Boolean) -> Unit,
+    subtitleFormat: String = "srt",
+    onSubtitleFormat: (String) -> Unit = {},
     clipStartTime: String,
     clipEndTime: String,
     isClipRangeEnabled: Boolean,
@@ -598,13 +610,15 @@ internal fun MediaInspectionSection(
                 onSelectAll = onSelectAllMediaQualitiesToggled
             )
 
-            if (inspectedSubtitles.isNotEmpty()) {
+            if (inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 SubtitlesSelectionCard(
                     subtitles = inspectedSubtitles,
                     embedSubtitles = embedSubtitles,
                     onSubtitleToggled = onSubtitleToggled,
-                    onToggleEmbedSubtitles = onToggleEmbedSubtitles
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                    subtitleFormat = subtitleFormat,
+                    onSubtitleFormat = onSubtitleFormat
                 )
             }
 
