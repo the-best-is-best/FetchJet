@@ -267,13 +267,14 @@ struct AddFolderPicker: View {
             .navigationTitle("📁 \(strings.dirPickerSelectFolder)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(strings.cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Text(strings.cancel).font(.fj(17)) }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(strings.dirPickerSelectFolder) {
+                    Button {
                         onSelected(path)
                         dismiss()
-                    }
-                    .fontWeight(.bold)
+                    } label: { Text(strings.dirPickerSelectFolder).font(.fj(17, .bold)) }
                 }
             }
         }

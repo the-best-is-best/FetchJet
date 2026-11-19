@@ -64,7 +64,7 @@ struct SettingsScreen: View {
                             } label: {
                                 HStack(spacing: 4) {
                                     Image(systemName: "chevron.backward").font(.fj(15, .semibold))
-                                    Text(s.settingsAllSettings)
+                                    Text(s.settingsAllSettings).font(.fj(17))
                                 }
                             }
                         }

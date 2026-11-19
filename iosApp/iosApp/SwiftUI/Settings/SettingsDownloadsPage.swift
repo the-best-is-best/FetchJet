@@ -300,9 +300,11 @@ struct SettingsFolderPicker: View {
             .navigationTitle(s.dirPickerSelectFolder)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(s.cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Text(s.cancel).font(.fj(17)) }
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(s.dirPickerSelectFolder) { onPick(current); dismiss() }.fontWeight(.semibold)
+                    Button { onPick(current); dismiss() } label: { Text(s.dirPickerSelectFolder).font(.fj(17, .semibold)) }
                 }
             }
         }
