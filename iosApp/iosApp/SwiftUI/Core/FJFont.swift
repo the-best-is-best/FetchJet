@@ -21,6 +21,10 @@ enum FJFont {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [.font: uiFont(34, .bold)]
         bar.titleTextAttributes = [.font: uiFont(17, .semibold)]
+        let button = UIBarButtonItem.appearance()
+        for state in [UIControl.State.normal, .highlighted, .disabled] {
+            button.setTitleTextAttributes([.font: uiFont(17, .regular)], for: state)
+        }
     }
 }
 

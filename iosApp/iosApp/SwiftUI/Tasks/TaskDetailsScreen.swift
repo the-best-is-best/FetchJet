@@ -26,7 +26,6 @@ struct TaskDetailsScreen: View {
         .navigationTitle(store.strings.detailsHeaderDownload)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(FJTheme.color.background, for: .navigationBar)
     }
 }
 
