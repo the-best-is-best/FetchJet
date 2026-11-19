@@ -112,9 +112,10 @@ internal fun DashboardViewModel.joiningPlaylist(state: DashboardUiState): Playli
 
 /** Downloads saved on their own in a saved playlist's folder (named after it) become its videos. */
 private fun DashboardViewModel.adoptLoneVideos(tasks: List<DownloadTask>) {
-    if (PlaylistStore.records.value.isEmpty()) return
+    val records = PlaylistStore.records.value
+    if (records.isEmpty()) return
     for (task in tasks) {
-        if (task.playlistId.isNotEmpty() || task.engineType == com.michelle.raouf.fetch_jet.domain.model.EngineType.BITTORRENT) continue
+        if (task.playlistId in records || task.engineType == com.michelle.raouf.fetch_jet.domain.model.EngineType.BITTORRENT) continue
         val list = PlaylistStore.inFolder(task.destinationPath) ?: continue
         queueRepository.setPlaylist(task.id, list.id, list.title)
     }
