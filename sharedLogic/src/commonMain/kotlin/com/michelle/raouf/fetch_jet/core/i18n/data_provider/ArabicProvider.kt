@@ -874,6 +874,11 @@ object ArabicProvider : AppLocalization {
     override val sysUnknownErrorCapital = "خطأ غير معروف"
     override fun sysCouldNotSaveFileTo(dir: String) = "تعذّر حفظ الملف في $dir"
     override val sysPlaylistFallbackTitle = "قائمة تشغيل"
+    override val sysPlaylistDoneTitle = "قائمة التشغيل اكتملت"
+    override val sysPlaylistDoneCount = "%1: تم تنزيل %2 فيديو"
+    override val sysPlaylistDoneFailed = "%1 فشل"
+    override val playlistOldestFirst = "الأقدم أولاً"
+    override val playlistDownloadedBefore = "تم تنزيله من قبل"
     override val sysPlaylistQualityBest = "الأفضل"
     override val sysPlaylistQualityAudioOnly = "الصوت فقط"
     override val sysToolsReadyYtDlpFfmpeg =

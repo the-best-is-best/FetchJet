@@ -912,6 +912,11 @@ object FrenchProvider : AppLocalization {
         "Impossible d'enregistrer le fichier dans $dir"
 
     override val sysPlaylistFallbackTitle = "Playlist"
+    override val sysPlaylistDoneTitle = "Playlist terminée"
+    override val sysPlaylistDoneCount = "%1 : %2 vidéos téléchargées"
+    override val sysPlaylistDoneFailed = "%1 en échec"
+    override val playlistOldestFirst = "Plus anciennes d'abord"
+    override val playlistDownloadedBefore = "Déjà téléchargée"
     override val sysPlaylistQualityBest = "Meilleure"
     override val sysPlaylistQualityAudioOnly = "Audio seulement"
     override val sysToolsReadyYtDlpFfmpeg = "Prêt : yt-dlp et ffmpeg installés (1080p et plus)"

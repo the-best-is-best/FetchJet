@@ -251,6 +251,7 @@ internal object DebugCalls {
                 put("downloadedBytes", task.downloadedBytes)
                 put("speed", task.downloadSpeedBytesPerSec)
                 put("progress", task.progress)
+                put("playlistId", task.playlistId)
                 put("connections", task.connections)
                 put("chunks", task.chunks.size)
                 put("error", task.errorMessage.orEmpty())

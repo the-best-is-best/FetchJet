@@ -880,6 +880,11 @@ object ItalianProvider : AppLocalization {
     override val sysUnknownErrorCapital = "Errore sconosciuto"
     override fun sysCouldNotSaveFileTo(dir: String) = "Impossibile salvare il file in $dir"
     override val sysPlaylistFallbackTitle = "Playlist"
+    override val sysPlaylistDoneTitle = "Playlist completata"
+    override val sysPlaylistDoneCount = "%1: %2 video scaricati"
+    override val sysPlaylistDoneFailed = "%1 non riusciti"
+    override val playlistOldestFirst = "Prima i più vecchi"
+    override val playlistDownloadedBefore = "Già scaricato"
     override val sysPlaylistQualityBest = "Migliore"
     override val sysPlaylistQualityAudioOnly = "Solo audio"
     override val sysToolsReadyYtDlpFfmpeg =

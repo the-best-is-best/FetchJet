@@ -258,6 +258,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         s.showsLinkList && s.linkSelected > 0 ->
             if (s.scheduleStartMs > 0L) strings.scheduleLinks(s.linkSelected) else strings.downloadLinks(s.linkSelected)
 
+        s.needsFileName && s.detectedEngine == EngineType.MEDIA_STREAM -> strings.fileNameNeeded
         !complete && s.detectedEngine == EngineType.MEDIA_STREAM -> strings.inspectVideoFirst
         !complete && s.detectedEngine == EngineType.BITTORRENT -> strings.inspectTorrentFirst
         !s.clipValid -> strings.invalidTimeRange

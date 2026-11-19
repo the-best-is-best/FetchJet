@@ -456,7 +456,15 @@
   function reportDrm() {
     if (drmFor === location.href) return;
     drmFor = location.href;
-    try { api.runtime.sendMessage({ action: "drmSeen" }).catch(() => {}); } catch (_) {}
+    try {
+      api.runtime.sendMessage({ action: "drmSeen" }).then(() => {
+        for (const b of bubbles.values()) {
+          if (!b.own || b.loading) continue;
+          b.own = null;
+          if (b.open) lookUp(b); else renderOne(b);
+        }
+      }).catch(() => {});
+    } catch (_) {}
   }
   function checkDrm() {
     for (const v of document.querySelectorAll("video, audio")) if (v.mediaKeys) return reportDrm();

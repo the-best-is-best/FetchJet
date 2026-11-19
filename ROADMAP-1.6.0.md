@@ -79,12 +79,24 @@ refused are counted; a page that builds its links with JavaScript is named, with
 Here: "Download all links on this page" from the extension only. To do: read the page in the app and fill the
 existing link list (`linkList`, `extractLinks`), HEAD for the nameless links, the same hints.
 
-## 4. Playlists [ ]
+## 4. Playlists [x]
 
 Ezoo: a Size column, a wider / narrower Video column, "Oldest first" numbering, videos downloaded before are not
 added again, one "Download complete" window at the end of a playlist instead of one per file.
 To do: size per row (we already probe sizes), oldest-first order, skip videos already in the task list, one
 completion notice per playlist.
+
+Done (2026-11-19, Windows; all three UIs):
+- Size per row: each video's qualities are read in the background, two at a time in the order shown
+  (`DashboardPlaylist.kt` `startPlaylistSizes`), the size follows the chosen quality (`playlistSizeFor`); "…" while
+  not read. A quality change works the sizes out again from what was read. Not for a list read by the browser.
+- "Oldest first": reverses the list and the numbering; the videos are queued in that order.
+- Videos already in the downloads list (`url` / `originalUrl`, YouTube links compared by video id) are marked
+  "Downloaded before" and left unticked; ticking one adds it again.
+- One notice per playlist: playlist downloads carry `playlistId` / `playlistTitle` (saved in tasks_cache.json);
+  their per-file "complete" notice is dropped, and when every video of a list that ran in this session is finished
+  or failed, one `SystemNotice` says "<list>: N videos downloaded · M failed".
+- Tests: corehost `test_playlist.py` 16 / 0, `test_media` updated (31 / 0). iOS SwiftUI changes need the Mac.
 
 ## 5. YouTube "made for kids" and faster qualities [ ]
 

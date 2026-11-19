@@ -65,6 +65,9 @@ data class DownloadTask(
     val subtitleTracks: List<SubtitleTrack> = emptyList(),
     val embedSubtitles: Boolean = false,
     val subtitleFormat: String = "srt",
+    /** Added with a playlist: its id and name, for one notice when the whole list is done. */
+    val playlistId: String = "",
+    val playlistTitle: String = "",
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,

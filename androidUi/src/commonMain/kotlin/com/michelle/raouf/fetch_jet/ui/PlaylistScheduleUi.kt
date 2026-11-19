@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.michelle.raouf.fetch_jet.utils.formatBytes
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -57,7 +59,9 @@ fun PlaylistSelectionCard(
     onSelectAll: (Boolean) -> Unit,
     onQualityChanged: (PlaylistQuality) -> Unit,
     onFolderChanged: (String) -> Unit,
-    onUseSingleVideo: (() -> Unit)?
+    onUseSingleVideo: (() -> Unit)?,
+    oldestFirst: Boolean = false,
+    onOldestFirst: (Boolean) -> Unit = {}
 ) {
     val selectedCount = playlist.entries.count { it.isSelected }
     val allSelected = selectedCount == playlist.entries.size
@@ -141,6 +145,15 @@ fun PlaylistSelectionCard(
                 )
             }
 
+            if (!playlist.fromBrowser) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { onOldestFirst(!oldestFirst) },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = oldestFirst, onCheckedChange = onOldestFirst)
+                    Text(LocalizationManager.Strings.playlistOldestFirst, fontSize = 12.sp)
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
@@ -148,7 +161,7 @@ fun PlaylistSelectionCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 LazyColumn(modifier = Modifier.heightIn(max = 260.dp)) {
-                    items(playlist.entries, key = { it.index }) { entry ->
+                    itemsIndexed(playlist.entries, key = { _, it -> it.index }) { position, entry ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -160,7 +173,7 @@ fun PlaylistSelectionCard(
                                 checked = entry.isSelected,
                                 onCheckedChange = { onEntryToggled(entry.index, it) })
                             if (!playlist.fromBrowser) Text(
-                                text = "${entry.index + 1}.",
+                                text = "${position + 1}.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(30.dp)
@@ -172,6 +185,24 @@ fun PlaylistSelectionCard(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
+                            if (entry.downloadedBefore) {
+                                Text(
+                                    text = LocalizationManager.Strings.playlistDownloadedBefore,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            }
+                            if (!playlist.fromBrowser && (entry.size > 0L || entry.size == -1L)) {
+                                Text(
+                                    text = if (entry.size > 0L) formatBytes(entry.size) else "…",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            }
                             if (entry.durationSeconds > 0L) {
                                 Text(
                                     text = clock(entry.durationSeconds),

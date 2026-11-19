@@ -449,6 +449,8 @@ internal fun MediaInspectionSection(
     onPlaylistEntryToggled: (Int, Boolean) -> Unit,
     onPlaylistSelectAll: (Boolean) -> Unit,
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit,
+    playlistOldestFirst: Boolean = false,
+    onPlaylistOldestFirst: (Boolean) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit,
     onPlaylistFolderChanged: (String) -> Unit,
     showStartTimePickerState: MutableState<Boolean>,
@@ -573,6 +575,8 @@ internal fun MediaInspectionSection(
                 onEntryToggled = onPlaylistEntryToggled,
                 onSelectAll = onPlaylistSelectAll,
                 onQualityChanged = onPlaylistQualityChanged,
+                oldestFirst = playlistOldestFirst,
+                onOldestFirst = onPlaylistOldestFirst,
                 onFolderChanged = onPlaylistFolderChanged,
                 onUseSingleVideo = if (inputUrl.contains("v=") || inputUrl.contains("youtu.be/")) onPlaylistUseSingleVideo else null
             )

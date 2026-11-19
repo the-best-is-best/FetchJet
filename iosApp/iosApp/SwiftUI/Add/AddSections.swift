@@ -309,6 +309,7 @@ struct AddActions: View {
         if v.hasActiveError { return strings.addInspectionFailed }
         if !v.isUrlValid { return strings.addEnterUrl }
         if linkCount > 0 { return s.scheduleStartMs > 0 ? strings.scheduleLinks(n: linkCount) : strings.downloadLinks(n: linkCount) }
+        if s.needsFileName && s.detectedEngine == .mediaStream { return strings.fileNameNeeded }
         if !v.isInspectionComplete && s.detectedEngine == .mediaStream { return strings.inspectVideoFirst }
         if !v.isInspectionComplete && s.detectedEngine == .bittorrent { return strings.inspectTorrentFirst }
         if !v.isClipRangeValid { return strings.invalidTimeRange }

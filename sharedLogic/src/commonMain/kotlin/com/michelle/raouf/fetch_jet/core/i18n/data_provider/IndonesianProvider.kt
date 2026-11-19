@@ -866,6 +866,11 @@ object IndonesianProvider : AppLocalization {
     override val sysUnknownErrorCapital = "Galat tidak diketahui"
     override fun sysCouldNotSaveFileTo(dir: String) = "Tidak dapat menyimpan file ke $dir"
     override val sysPlaylistFallbackTitle = "Playlist"
+    override val sysPlaylistDoneTitle = "Playlist selesai"
+    override val sysPlaylistDoneCount = "%1: %2 video diunduh"
+    override val sysPlaylistDoneFailed = "%1 gagal"
+    override val playlistOldestFirst = "Terlama dulu"
+    override val playlistDownloadedBefore = "Sudah diunduh"
     override val sysPlaylistQualityBest = "Terbaik"
     override val sysPlaylistQualityAudioOnly = "Hanya audio"
     override val sysToolsReadyYtDlpFfmpeg =

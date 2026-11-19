@@ -428,17 +428,31 @@ struct AddPlaylistCard: View {
                 Text(strings.qualityForAllVideosHint)
                     .font(.fj(10))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                Button {
+                    store.send(DashboardUiEventOnPlaylistOldestFirst(on: !store.state.playlistOldestFirst))
+                } label: {
+                    HStack(spacing: 8) {
+                        AddCheckbox(checked: store.state.playlistOldestFirst)
+                        Text(strings.playlistOldestFirst)
+                            .font(.fj(12))
+                            .foregroundStyle(FJTheme.color.onSurface)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(playlist.entries, id: \.index) { entry in
+                    ForEach(Array(playlist.entries.enumerated()), id: \.element.index) { position, entry in
                         Button {
                             store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
                         } label: {
                             HStack(spacing: 8) {
                                 AddCheckbox(checked: entry.isSelected)
                                 if !playlist.fromBrowser {
-                                    Text("\(entry.index + 1).")
+                                    Text("\(position + 1).")
                                         .font(.fj(11))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 }
@@ -447,6 +461,18 @@ struct AddPlaylistCard: View {
                                     .foregroundStyle(FJTheme.color.onSurface)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
+                                if entry.downloadedBefore {
+                                    Text(strings.playlistDownloadedBefore)
+                                        .font(.fj(10))
+                                        .foregroundStyle(FJTheme.color.primary)
+                                        .lineLimit(1)
+                                }
+                                if !playlist.fromBrowser && (entry.size > 0 || entry.size == -1) {
+                                    Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
+                                        .font(.fj(11))
+                                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                                        .lineLimit(1)
+                                }
                                 if entry.durationSeconds > 0 {
                                     Text(store.addClockText(entry.durationSeconds))
                                         .font(.fj(11))

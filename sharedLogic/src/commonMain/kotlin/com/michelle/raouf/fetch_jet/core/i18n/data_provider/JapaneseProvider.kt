@@ -862,6 +862,11 @@ object JapaneseProvider : AppLocalization {
     override val sysUnknownErrorCapital = "不明なエラー"
     override fun sysCouldNotSaveFileTo(dir: String) = "${dir} にファイルを保存できませんでした"
     override val sysPlaylistFallbackTitle = "プレイリスト"
+    override val sysPlaylistDoneTitle = "プレイリストが完了しました"
+    override val sysPlaylistDoneCount = "%1：%2 本の動画をダウンロードしました"
+    override val sysPlaylistDoneFailed = "%1 本失敗"
+    override val playlistOldestFirst = "古い順"
+    override val playlistDownloadedBefore = "ダウンロード済み"
     override val sysPlaylistQualityBest = "最高"
     override val sysPlaylistQualityAudioOnly = "音声のみ"
     override val sysToolsReadyYtDlpFfmpeg =

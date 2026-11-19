@@ -863,6 +863,11 @@ object PersianProvider : AppLocalization {
     override val sysUnknownErrorCapital = "خطای ناشناخته"
     override fun sysCouldNotSaveFileTo(dir: String) = "ذخیره فایل در $dir ممکن نشد"
     override val sysPlaylistFallbackTitle = "لیست پخش"
+    override val sysPlaylistDoneTitle = "لیست پخش تمام شد"
+    override val sysPlaylistDoneCount = "%1: %2 ویدیو دانلود شد"
+    override val sysPlaylistDoneFailed = "%1 ناموفق"
+    override val playlistOldestFirst = "قدیمی‌ترین اول"
+    override val playlistDownloadedBefore = "قبلاً دانلود شده"
     override val sysPlaylistQualityBest = "بهترین"
     override val sysPlaylistQualityAudioOnly = "فقط صدا"
     override val sysToolsReadyYtDlpFfmpeg =

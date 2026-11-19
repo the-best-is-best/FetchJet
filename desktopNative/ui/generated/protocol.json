@@ -816,6 +816,18 @@
    [
     "selected",
     "Boolean"
+   ],
+   [
+    "size",
+    "String"
+   ],
+   [
+    "sizeBusy",
+    "Boolean"
+   ],
+   [
+    "before",
+    "Boolean"
    ]
   ],
   "ClipChipDto": [
@@ -1025,6 +1037,10 @@
    ],
    [
     "playlistCanUseSingle",
+    "Boolean"
+   ],
+   [
+    "playlistOldestFirst",
     "Boolean"
    ]
   ],
@@ -3643,6 +3659,12 @@
     "Int"
    ]
   ],
+  "SetPlaylistOldestFirst": [
+   [
+    "on",
+    "Boolean"
+   ]
+  ],
   "UseSingleVideo": [],
   "ChoicePrimary": [
    [
@@ -4263,6 +4285,11 @@
   "sysCouldNotStart",
   "sysUnknownErrorCapital",
   "sysPlaylistFallbackTitle",
+  "sysPlaylistDoneTitle",
+  "sysPlaylistDoneCount",
+  "sysPlaylistDoneFailed",
+  "playlistOldestFirst",
+  "playlistDownloadedBefore",
   "sysPlaylistQualityBest",
   "sysPlaylistQualityAudioOnly",
   "sysToolsReadyYtDlpFfmpeg",

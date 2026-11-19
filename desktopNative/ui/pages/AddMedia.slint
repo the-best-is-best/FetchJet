@@ -789,6 +789,20 @@ component PlaylistCard inherits SectionCard {
                 overflow: elide;
             }
         }
+        if !Core.addMedia.playlistFromBrowser: HBox {
+            height: 40px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            CheckBox {
+                checked: Core.addMedia.playlistOldestFirst;
+                label: Tr.playlistOldestFirst;
+                toggled(on) => { Act.setPlaylistOldestFirst(on); }
+            }
+            T {
+                text: Tr.playlistOldestFirst;
+                font-size: 12px;
+            }
+        }
         Gap {
             size: 8px;
         }
@@ -832,6 +846,20 @@ component PlaylistCard inherits SectionCard {
                             text-rtl: entry.titleRtl;
                             behind: Theme.surface;
                             font-size: 12px;
+                        }
+                        if entry.before: T {
+                            width: self.preferred-width + 10px;
+                            text: Tr.playlistDownloadedBefore;
+                            font-size: 10px;
+                            color: Theme.primary;
+                            horizontal-alignment: Dir.end;
+                        }
+                        if entry.size != "" || entry.sizeBusy: T {
+                            width: 72px;
+                            text: entry.size != "" ? entry.size : "…";
+                            font-size: 11px;
+                            color: Theme.on-surface-variant;
+                            horizontal-alignment: Dir.end;
                         }
                         if entry.duration != "": T {
                             width: self.preferred-width + 10px;

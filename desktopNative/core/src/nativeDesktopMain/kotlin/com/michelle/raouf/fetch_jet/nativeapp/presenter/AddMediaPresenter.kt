@@ -124,6 +124,7 @@ private data class MediaSlice(
     val audioFormat: String?,
     val playlist: MediaPlaylist?,
     val playlistQuality: PlaylistQuality,
+    val playlistOldestFirst: Boolean,
     val linkList: List<LinkListEntry>,
 )
 
@@ -149,6 +150,7 @@ private fun DashboardUiState.mediaSlice() = MediaSlice(
     audioFormat = audioConvertFormat,
     playlist = inspectedPlaylist,
     playlistQuality = playlistQuality,
+    playlistOldestFirst = playlistOldestFirst,
     linkList = linkList,
 )
 
@@ -257,15 +259,18 @@ private fun Presenter.publishMedia(s: MediaSlice) {
         addSubtitles.publish(emptyList())
     }
     if (state == MediaStateCode.PLAYLIST && playlist != null) {
-        addPlaylist.publish(playlist.entries.map { entry ->
+        addPlaylist.publish(playlist.entries.mapIndexed { position, entry ->
             val title = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title
             PlaylistRowDto(
                 index = entry.index,
-                number = if (playlist.fromBrowser) "" else "${entry.index + 1}.",
+                number = if (playlist.fromBrowser) "" else "${position + 1}.",
                 title = title,
                 titleRtl = startsRightToLeft(title),
                 duration = if (entry.durationSeconds > 0L) clockText(entry.durationSeconds) else "",
                 selected = entry.isSelected,
+                size = if (entry.size > 0L) formatBytes(entry.size) else "",
+                sizeBusy = !playlist.fromBrowser && entry.size == -1L,
+                before = entry.downloadedBefore,
             )
         })
     } else {
@@ -332,6 +337,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
                 ChoiceDto(it.ordinal, it.label, it == s.playlistQuality)
             },
             playlistCanUseSingle = s.inputUrl.contains("v=") || s.inputUrl.contains("youtu.be/"),
+            playlistOldestFirst = s.playlistOldestFirst,
         )
     )
 }

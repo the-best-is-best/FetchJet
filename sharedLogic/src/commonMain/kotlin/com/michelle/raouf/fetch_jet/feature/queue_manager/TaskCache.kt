@@ -49,7 +49,9 @@ internal data class PersistedTask(
     val subtitles: String = "",
     val embedSubtitles: Boolean = false,
     val subtitleFormat: String = "",
-    val priority: Int = 0
+    val priority: Int = 0,
+    val playlistId: String = "",
+    val playlistTitle: String = ""
 )
 
 internal object TaskCache {
@@ -120,7 +122,9 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     },
     embedSubtitles = embedSubtitles,
     subtitleFormat = if (subtitleFormat == "srt") "" else subtitleFormat,
-    priority = priority
+    priority = priority,
+    playlistId = playlistId,
+    playlistTitle = playlistTitle
 )
 
 internal fun PersistedTask.toTask(
@@ -194,7 +198,9 @@ internal fun PersistedTask.toTask(
         } ?: emptyList(),
         embedSubtitles = embedSubtitles,
         subtitleFormat = subtitleFormat.ifBlank { "srt" },
-        priority = priority
+        priority = priority,
+        playlistId = playlistId,
+        playlistTitle = playlistTitle
     )
 }
 

@@ -101,6 +101,9 @@ class DashboardViewModel(
     internal var probedNameUrl: String = ""
     internal var probedName: String = ""
     internal var inspectMediaJob: Job? = null
+    internal var playlistSizeJob: Job? = null
+    internal val playlistQualities = mutableMapOf<String, List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>>()
+    internal val playlistQualitiesLock = kotlinx.coroutines.sync.Mutex()
     internal var inspectTorrentJob: Job? = null
 
     /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
@@ -262,7 +265,8 @@ class DashboardViewModel(
                 it.copy(
                     detectedEngine = EngineType.MEDIA_STREAM,
                     isInspectingMedia = false,
-                    inspectedPlaylist = playlist,
+                    inspectedPlaylist = markPlaylist(playlist),
+                    playlistOldestFirst = false,
                     inspectedMediaQualities = emptyList(),
                     inspectedMediaTitle = playlist.title,
                     inspectMediaError = null,
@@ -666,7 +670,7 @@ class DashboardViewModel(
     fun onEvent(event: DashboardUiEvent) {
 
         when (event) {
-            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, DashboardUiEvent.OnTestLinkClicked, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnAudioConvertFormatSelected, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnSubtitleToggled, is DashboardUiEvent.OnToggleEmbedSubtitles, is DashboardUiEvent.OnSubtitleFormatSelected, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
+            is DashboardUiEvent.OnEngineSelected, is DashboardUiEvent.OnClipboardLink, DashboardUiEvent.OnClipboardOfferAccepted, DashboardUiEvent.OnClipboardOfferDismissed, is DashboardUiEvent.OnFileNameChanged, is DashboardUiEvent.OnChecksumChanged, DashboardUiEvent.OnTestLinkClicked, is DashboardUiEvent.OnUrlChanged, is DashboardUiEvent.OnDestinationPathChanged, is DashboardUiEvent.OnDisableTorrentUploadToggled, is DashboardUiEvent.OnToggleAddDialog, DashboardUiEvent.OnAddDownloadClicked, DashboardUiEvent.OnInspectTorrentClicked, DashboardUiEvent.OnInspectMediaClicked, is DashboardUiEvent.OnMediaQualitySelectionToggled, is DashboardUiEvent.OnClipStartTimeChanged, is DashboardUiEvent.OnClipEndTimeChanged, is DashboardUiEvent.OnToggleClipFastMode, is DashboardUiEvent.OnAudioConvertFormatSelected, is DashboardUiEvent.OnPlaylistEntryToggled, is DashboardUiEvent.OnLinkListEntryToggled, is DashboardUiEvent.OnLinkListSelectAll, is DashboardUiEvent.OnLinkListFolderChanged, is DashboardUiEvent.OnLinkListTorrentFileToggled, is DashboardUiEvent.OnLinkListTorrentFilePriority, is DashboardUiEvent.OnLinkListTorrentSelectAll, is DashboardUiEvent.OnLinkListQualitySelected, is DashboardUiEvent.OnLinkListRetryInspect, is DashboardUiEvent.OnPlaylistSelectAll, is DashboardUiEvent.OnPlaylistFolderChanged, is DashboardUiEvent.OnPlaylistQualityChanged, DashboardUiEvent.OnPlaylistUseSingleVideo, is DashboardUiEvent.OnPlaylistOldestFirst, is DashboardUiEvent.OnScheduleChanged, is DashboardUiEvent.OnConnectionsChanged, is DashboardUiEvent.OnToggleClipRange, is DashboardUiEvent.OnSelectAllMediaQualitiesToggled, is DashboardUiEvent.OnSubtitleToggled, is DashboardUiEvent.OnToggleEmbedSubtitles, is DashboardUiEvent.OnSubtitleFormatSelected, is DashboardUiEvent.OnTorrentFileSelectionToggled, is DashboardUiEvent.OnTorrentFilePriorityChanged, is DashboardUiEvent.OnSelectAllTorrentFilesToggled -> handleAddDialogEvent(
                 event
             )
 
@@ -844,13 +848,15 @@ class DashboardViewModel(
                     _uiState.update {
                         it.copy(
                             isInspectingMedia = false,
-                            inspectedPlaylist = playlist,
+                            inspectedPlaylist = markPlaylist(playlist),
+                            playlistOldestFirst = false,
                             inspectedMediaQualities = emptyList(),
                             inspectedMediaTitle = playlist.title,
                             inspectMediaError = null,
                             isClipRangeEnabled = false
                         )
                     }
+                    startPlaylistSizes()
                     return@launch
                 }
                 // The link was changed meanwhile: its own inspection takes over.

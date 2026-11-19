@@ -731,6 +731,11 @@ interface AppLocalization : LocalizationProvider {
     val sysUnknownErrorCapital: String
     fun sysCouldNotSaveFileTo(dir: String): String
     val sysPlaylistFallbackTitle: String
+    val sysPlaylistDoneTitle: String
+    val sysPlaylistDoneCount: String
+    val sysPlaylistDoneFailed: String
+    val playlistOldestFirst: String
+    val playlistDownloadedBefore: String
     val sysPlaylistQualityBest: String
     val sysPlaylistQualityAudioOnly: String
     val sysToolsReadyYtDlpFfmpeg: String

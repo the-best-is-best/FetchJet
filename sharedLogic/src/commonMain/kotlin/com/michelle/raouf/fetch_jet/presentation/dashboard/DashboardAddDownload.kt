@@ -379,6 +379,7 @@ internal fun DashboardViewModel.addPlaylist(
         var added = 0
         var failed = 0
         val usedNames = mutableSetOf<String>()
+        val playlistId = "pl_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999)
         val playlistExt =
             if (quality == com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO)
                 state.audioConvertFormat ?: quality.extension
@@ -428,7 +429,9 @@ internal fun DashboardViewModel.addPlaylist(
                 forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
                 scheduledAtMs = state.scheduleStartMs,
                 requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap(),
-                sortByType = folder.isBlank()
+                sortByType = folder.isBlank(),
+                playlistId = if (selected.size > 1) playlistId else "",
+                playlistTitle = playlist.title
             ).onSuccess { added++ }.onFailure { failed++ }
         }
         _uiState.update {

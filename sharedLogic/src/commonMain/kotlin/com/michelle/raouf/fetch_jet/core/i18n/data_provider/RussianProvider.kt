@@ -875,6 +875,11 @@ object RussianProvider : AppLocalization {
     override val sysUnknownErrorCapital = "Неизвестная ошибка"
     override fun sysCouldNotSaveFileTo(dir: String) = "Не удалось сохранить файл в $dir"
     override val sysPlaylistFallbackTitle = "Плейлист"
+    override val sysPlaylistDoneTitle = "Плейлист загружен"
+    override val sysPlaylistDoneCount = "%1: загружено видео: %2"
+    override val sysPlaylistDoneFailed = "не удалось: %1"
+    override val playlistOldestFirst = "Сначала старые"
+    override val playlistDownloadedBefore = "Уже загружено"
     override val sysPlaylistQualityBest = "Лучшее"
     override val sysPlaylistQualityAudioOnly = "Только аудио"
     override val sysToolsReadyYtDlpFfmpeg =

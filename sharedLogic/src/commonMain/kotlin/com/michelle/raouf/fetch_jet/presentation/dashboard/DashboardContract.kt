@@ -202,6 +202,8 @@ data class DashboardUiState(
     val linkListFolder: String = "",
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
+    /** The playlist is shown (and queued) from its oldest video. */
+    val playlistOldestFirst: Boolean = false,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
     val scheduleStartMs: Long = 0L,
     /** Connections for this direct download (0 = app setting / automatic). */
@@ -354,6 +356,7 @@ sealed interface DashboardUiEvent {
 
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
+    data class OnPlaylistOldestFirst(val on: Boolean) : DashboardUiEvent
     data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
     data class OnLinkListFolderChanged(val name: String) : DashboardUiEvent

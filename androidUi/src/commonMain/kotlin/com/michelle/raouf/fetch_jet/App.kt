@@ -682,6 +682,8 @@ fun App(
                     },
                     inspectedPlaylist = state.inspectedPlaylist,
                     playlistQuality = state.playlistQuality,
+                    playlistOldestFirst = state.playlistOldestFirst,
+                    onPlaylistOldestFirst = { viewModel.onEvent(DashboardUiEvent.OnPlaylistOldestFirst(it)) },
                     onPlaylistEntryToggled = { i, sel ->
                         viewModel.onEvent(
                             DashboardUiEvent.OnPlaylistEntryToggled(

@@ -407,6 +407,9 @@ inline PlaylistRowDto parse_PlaylistRowDto(const fj::Json &j) {
     d.titleRtl = fj::flag(j, "titleRtl");
     d.duration = fj::text(j, "duration");
     d.selected = fj::flag(j, "selected");
+    d.size = fj::text(j, "size");
+    d.sizeBusy = fj::flag(j, "sizeBusy");
+    d.before = fj::flag(j, "before");
     return d;
 }
 
@@ -473,6 +476,7 @@ inline AddMediaDto parse_AddMediaDto(const fj::Json &j) {
     d.playlistFromBrowser = fj::flag(j, "playlistFromBrowser");
     d.playlistQualities = fj::struct_model<ChoiceDto>(j, "playlistQualities", parse_ChoiceDto);
     d.playlistCanUseSingle = fj::flag(j, "playlistCanUseSingle");
+    d.playlistOldestFirst = fj::flag(j, "playlistOldestFirst");
     return d;
 }
 
@@ -1801,6 +1805,11 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysCouldNotStart(next());
     tr.set_sysUnknownErrorCapital(next());
     tr.set_sysPlaylistFallbackTitle(next());
+    tr.set_sysPlaylistDoneTitle(next());
+    tr.set_sysPlaylistDoneCount(next());
+    tr.set_sysPlaylistDoneFailed(next());
+    tr.set_playlistOldestFirst(next());
+    tr.set_playlistDownloadedBefore(next());
     tr.set_sysPlaylistQualityBest(next());
     tr.set_sysPlaylistQualityAudioOnly(next());
     tr.set_sysToolsReadyYtDlpFfmpeg(next());
@@ -2197,6 +2206,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_selectAllPlaylist([send](bool selected) { fj::ActionWriter w("SelectAllPlaylist"); w.add("selected", selected); send(w.finish()); });
     act.on_setPlaylistFolder([send](slint::SharedString name) { fj::ActionWriter w("SetPlaylistFolder"); w.add("name", name); send(w.finish()); });
     act.on_setPlaylistQuality([send](int quality) { fj::ActionWriter w("SetPlaylistQuality"); w.add("quality", quality); send(w.finish()); });
+    act.on_setPlaylistOldestFirst([send](bool on) { fj::ActionWriter w("SetPlaylistOldestFirst"); w.add("on", on); send(w.finish()); });
     act.on_useSingleVideo([send]() { fj::ActionWriter w("UseSingleVideo"); send(w.finish()); });
     act.on_choicePrimary([send](int kind) { fj::ActionWriter w("ChoicePrimary"); w.add("kind", kind); send(w.finish()); });
     act.on_choiceSecondary([send](int kind) { fj::ActionWriter w("ChoiceSecondary"); w.add("kind", kind); send(w.finish()); });

@@ -567,6 +567,10 @@ sealed interface UiAction {
     data class SetPlaylistQuality(val quality: Int = 0) : UiAction
 
     @Serializable
+    @SerialName("SetPlaylistOldestFirst")
+    data class SetPlaylistOldestFirst(val on: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("UseSingleVideo")
     data object UseSingleVideo : UiAction
 

@@ -116,19 +116,20 @@ def run():
         core.wait_for("playlist", lambda: media(core).get("state", 0) == STATE["PLAYLIST"], 60)
         m = media(core)
         entries = core.rows("addPlaylist")
-        core.check("four videos, all selected", len(entries) == 4 and all(e.get("selected") for e in entries) and
-                   m.get("playlistAllSelected"), entries)
+        core.check("four videos; the one downloaded above is marked and unticked, the rest ticked",
+                   len(entries) == 4 and entries[0].get("before") and not entries[0].get("selected") and
+                   all(e.get("selected") for e in entries[1:]), entries)
         core.check("title, folder and durations", m.get("playlistTitle") == "Learning Kotlin - full course" and
                    m.get("playlistFolder") == m.get("playlistTitle") and entries[3].get("duration") == "1:06:50", m)
         core.check("an Arabic title is flagged", entries[2].get("titleRtl") is True)
         add = core.snapshot("add")
-        core.check("button counts the videos", "4" in add.get("primaryLabel", "") and add.get("primaryEnabled"), add.get("primaryLabel"))
+        core.check("button counts the videos", "3" in add.get("primaryLabel", "") and add.get("primaryEnabled"), add.get("primaryLabel"))
         core.action("TogglePlaylistEntry", index=1, selected=False)
         core.action("SetPlaylistQuality", quality=5)
         core.pump(0.3)
         m = media(core)
         core.check("audio quality offers the audio format choice", m.get("audioShown") and len(m.get("audioFormats", [])) >= 2, m.get("audioFormats"))
-        core.check("three videos left", "3" in core.snapshot("add").get("primaryLabel", ""))
+        core.check("two videos left", "2" in core.snapshot("add").get("primaryLabel", ""))
         core.action("ShowAddDialog", show=False)
 
         print("a link that fails")

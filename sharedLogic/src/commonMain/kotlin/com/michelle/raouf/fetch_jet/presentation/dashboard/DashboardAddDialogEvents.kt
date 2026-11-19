@@ -313,10 +313,15 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             it.copy(inspectedPlaylist = it.inspectedPlaylist?.copy(folderName = event.name))
         }
 
-        is DashboardUiEvent.OnPlaylistQualityChanged -> _uiState.update {
-            it.copy(
-                playlistQuality = event.quality
-            )
+        is DashboardUiEvent.OnPlaylistQualityChanged -> {
+            _uiState.update { it.copy(playlistQuality = event.quality) }
+            refreshPlaylistSizes()
+        }
+
+        is DashboardUiEvent.OnPlaylistOldestFirst -> _uiState.update { st ->
+            val pl = st.inspectedPlaylist
+            if (pl == null || st.playlistOldestFirst == event.on) st.copy(playlistOldestFirst = event.on)
+            else st.copy(playlistOldestFirst = event.on, inspectedPlaylist = pl.copy(entries = pl.entries.reversed()))
         }
 
         DashboardUiEvent.OnPlaylistUseSingleVideo -> {

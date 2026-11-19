@@ -467,6 +467,7 @@ internal fun AddDialogActions(
     inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist?,
     scheduleStartMs: Long,
     linkCount: Int = 0,
+    needsName: Boolean = false,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
     onAddDownload: () -> Unit,
@@ -552,6 +553,7 @@ internal fun AddDialogActions(
                         linkCount
                     ) else LocalizationManager.Strings.downloadLinks(linkCount)
 
+                    needsName && detectedEngine == EngineType.MEDIA_STREAM -> LocalizationManager.Strings.fileNameNeeded
                     !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> LocalizationManager.Strings.inspectVideoFirst
                     !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> LocalizationManager.Strings.inspectTorrentFirst
                     !isClipRangeValid -> LocalizationManager.Strings.invalidTimeRange

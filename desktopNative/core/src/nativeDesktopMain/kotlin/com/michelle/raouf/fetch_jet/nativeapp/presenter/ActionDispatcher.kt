@@ -278,6 +278,7 @@ internal fun Presenter.dispatch(action: UiAction) {
             vm.onEvent(DashboardUiEvent.OnPlaylistQualityChanged(it))
         }
 
+        is UiAction.SetPlaylistOldestFirst -> vm.onEvent(DashboardUiEvent.OnPlaylistOldestFirst(action.on))
         UiAction.UseSingleVideo -> vm.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo)
         is UiAction.ChoicePrimary -> choicePrimary(action.kind)
         is UiAction.ChoiceSecondary -> choiceSecondary(action.kind)

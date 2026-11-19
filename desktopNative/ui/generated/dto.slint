@@ -116,6 +116,9 @@ export struct PlaylistRowDto {
     titleRtl: bool,
     duration: string,
     selected: bool,
+    size: string,
+    sizeBusy: bool,
+    before: bool,
 }
 
 export struct ClipChipDto {
@@ -176,6 +179,7 @@ export struct AddMediaDto {
     playlistFromBrowser: bool,
     playlistQualities: [ChoiceDto],
     playlistCanUseSingle: bool,
+    playlistOldestFirst: bool,
 }
 
 export struct ClipPickerDto {

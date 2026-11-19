@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
+import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
 import com.michelle.raouf.fetch_jet.core.util.getString
@@ -14,8 +15,57 @@ data class PlaylistEntry(
     val durationSeconds: Long = 0L,
     val isSelected: Boolean = true,
     /** yt-dlp gave the video's name (false: only its id, e.g. SoundCloud's personal lists). */
-    val titled: Boolean = true
+    val titled: Boolean = true,
+    /** Already in the downloads list (finished or not): left unticked. */
+    val downloadedBefore: Boolean = false,
+    /** Bytes for the chosen quality; -1 = not read yet, -2 = could not be read. */
+    val size: Long = -1L
 )
+
+fun playlistDoneText(title: String, done: Int, failed: Int): String {
+    val s = LocalizationManager.Strings
+    val count = s.sysPlaylistDoneCount.replace("%1", title).replace("%2", done.toString())
+    return if (failed > 0) count + " · " + s.sysPlaylistDoneFailed.replace("%1", failed.toString()) else count
+}
+
+private val HEIGHT = Regex("""(\d{3,4})p""")
+
+/**
+ * The size of one video for a playlist quality, from that video's own qualities: the largest
+ * height not above the cap (any height for Best), the biggest file at that height; the
+ * biggest sound-only file for Audio. -2 when nothing fits or no size is known.
+ */
+fun playlistSizeFor(
+    quality: PlaylistQuality,
+    qualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>
+): Long {
+    val known = qualities.filter { it.size > 0 }
+    if (quality == PlaylistQuality.AUDIO) {
+        return known.filter { it.isAudioOnly }.maxOfOrNull { it.size } ?: -2L
+    }
+    val cap = when (quality) {
+        PlaylistQuality.P1080 -> 1080
+        PlaylistQuality.P720 -> 720
+        PlaylistQuality.P480 -> 480
+        PlaylistQuality.P360 -> 360
+        else -> Int.MAX_VALUE
+    }
+    val videos = known.filter { !it.isAudioOnly }
+        .mapNotNull { q -> HEIGHT.find(q.qualityLabel)?.groupValues?.get(1)?.toIntOrNull()?.let { it to q } }
+        .filter { it.first <= cap }
+    val best = videos.maxOfOrNull { it.first } ?: return -2L
+    return videos.filter { it.first == best }.maxOf { it.second.size }
+}
+
+
+/** Marks the videos that are already in the downloads list and leaves them unticked. */
+fun MediaPlaylist.markDownloadedBefore(known: List<String>): MediaPlaylist {
+    val keys = known.map { MediaUrls.canonical(it).lowercase() }.toSet()
+    if (keys.isEmpty()) return this
+    return copy(entries = entries.map { e ->
+        if (MediaUrls.canonical(e.url).lowercase() in keys) e.copy(downloadedBefore = true, isSelected = false) else e
+    })
+}
 
 data class MediaPlaylist(
     val title: String,

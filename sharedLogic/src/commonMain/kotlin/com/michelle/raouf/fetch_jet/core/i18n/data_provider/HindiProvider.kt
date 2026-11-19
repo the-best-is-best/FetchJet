@@ -852,6 +852,11 @@ object HindiProvider : AppLocalization {
     override val sysUnknownErrorCapital = "अज्ञात त्रुटि"
     override fun sysCouldNotSaveFileTo(dir: String) = "फ़ाइल $dir में सेव नहीं हो सकी"
     override val sysPlaylistFallbackTitle = "प्लेलिस्ट"
+    override val sysPlaylistDoneTitle = "प्लेलिस्ट पूरी हुई"
+    override val sysPlaylistDoneCount = "%1: %2 वीडियो डाउनलोड हुए"
+    override val sysPlaylistDoneFailed = "%1 विफल"
+    override val playlistOldestFirst = "सबसे पुराने पहले"
+    override val playlistDownloadedBefore = "पहले डाउनलोड हो चुका"
     override val sysPlaylistQualityBest = "सबसे अच्छी"
     override val sysPlaylistQualityAudioOnly = "सिर्फ़ ऑडियो"
     override val sysToolsReadyYtDlpFfmpeg =

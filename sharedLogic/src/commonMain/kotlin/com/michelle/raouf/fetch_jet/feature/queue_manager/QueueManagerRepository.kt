@@ -419,6 +419,34 @@ class QueueManagerRepository(
 
     private val activeRunningTaskIds = mutableSetOf<String>()
     private val completedNotifiedTaskIds = mutableSetOf<String>()
+    private val runningPlaylists = mutableMapOf<String, String>()
+
+    /**
+     * One notice when every video of a playlist that ran in this session is done (finished or
+     * failed), instead of one per video. A list paused or still waiting is not done yet.
+     */
+    private fun notifyFinishedPlaylists(tasks: List<DownloadTask>) {
+        for (task in tasks) {
+            if (task.playlistId.isNotEmpty() &&
+                (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING)
+            ) runningPlaylists[task.playlistId] = task.playlistTitle
+        }
+        val finished = runningPlaylists.keys.filter { id ->
+            tasks.filter { it.playlistId == id }.all { it.status == DownloadStatus.COMPLETED || it.status == DownloadStatus.ERROR }
+        }
+        for (id in finished) {
+            val title = runningPlaylists.remove(id).orEmpty()
+            val members = tasks.filter { it.playlistId == id }
+            if (members.isEmpty()) continue
+            val done = members.count { it.status == DownloadStatus.COMPLETED }
+            val failed = members.size - done
+            val text = com.michelle.raouf.fetch_jet.feature.media_extractor.playlistDoneText(title, done, failed)
+            println("Playlist done: $title ($done finished, $failed failed)")
+            com.michelle.raouf.fetch_jet.core.notification.SystemNotice.show(
+                "playlist-$id", LocalizationManager.Strings.sysPlaylistDoneTitle, text
+            )
+        }
+    }
 
     init {
         observeTasksForNotifications()
@@ -465,7 +493,11 @@ class QueueManagerRepository(
                             totalBytes = task.totalBytes
                         )
                     } else if (task.status == DownloadStatus.COMPLETED) {
-                        if (activeRunningTaskIds.contains(task.id) && !completedNotifiedTaskIds.contains(
+                        if (task.playlistId.isNotEmpty() && activeRunningTaskIds.contains(task.id)) {
+                            completedNotifiedTaskIds.add(task.id)
+                            activeRunningTaskIds.remove(task.id)
+                            notificationManager.cancelNotification(task.id)
+                        } else if (activeRunningTaskIds.contains(task.id) && !completedNotifiedTaskIds.contains(
                                 task.id
                             )
                         ) {
@@ -488,6 +520,7 @@ class QueueManagerRepository(
                         notificationManager.cancelNotification(task.id)
                     }
                 }
+                notifyFinishedPlaylists(tasks)
             }
         }
     }
@@ -783,6 +816,8 @@ class QueueManagerRepository(
         subtitleTracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
         embedSubtitles: Boolean = false,
         subtitleFormat: String = "srt",
+        playlistId: String = "",
+        playlistTitle: String = "",
         initialStepText: String? = null,
         displayTotalBytes: Long = 0L,
         displayDownloadedBytes: Long = 0L,
@@ -911,7 +946,9 @@ class QueueManagerRepository(
             expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() },
             subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
             embedSubtitles = embedSubtitles,
-            subtitleFormat = subtitleFormat
+            subtitleFormat = subtitleFormat,
+            playlistId = playlistId,
+            playlistTitle = playlistTitle
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump

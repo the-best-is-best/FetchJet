@@ -34,6 +34,9 @@ data class PlaylistRowDto(
     val titleRtl: Boolean = false,
     val duration: String = "",
     val selected: Boolean = false,
+    val size: String = "",
+    val sizeBusy: Boolean = false,
+    val before: Boolean = false,
 )
 
 @Serializable
@@ -97,6 +100,7 @@ data class AddMediaDto(
     val playlistFromBrowser: Boolean = false,
     val playlistQualities: List<ChoiceDto> = emptyList(),
     val playlistCanUseSingle: Boolean = false,
+    val playlistOldestFirst: Boolean = false,
 )
 
 @Serializable
