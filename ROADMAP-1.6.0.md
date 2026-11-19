@@ -135,6 +135,42 @@ After c7a35ff (2026-11-19, Windows + the A56; owner's requests the same evening)
   integrity 32, launch 33, all 0 failed. A56: background reading, playlist row, Check, one notice, Facebook stories /
   reels from Firefox. Not built: iOS (all SwiftUI changes need the Mac).
 
+Mac check of 61b0ca1 (2026-11-19, nothing changed in the code):
+- iOS: `scripts/ios-dev-build.command all` built with no Kotlin / Swift error, no fix needed. iPhone 17 simulator,
+  `SIMCTL_CHILD_FETCHJET_NO_USAGE_PING=1`, the small playlist `PL59FEE129ADFF2B12` (11 videos, 3 unavailable), two
+  videos downloaded at 360p (~8 MB) with English subtitles as a separate SRT file:
+    - Add dialog: unavailable videos say "Not available" and are unticked; subtitle card with the videos' languages; after
+      ticking one, the chips "Embed in video" / "Separate file · SRT" / "Separate file · VTT" (the last one scrolls, like
+      the quality chips). Both `.en.srt` files were written next to the videos.
+    - The list shows one "Test Playlist" row (LIST, "1 of 2 done · 8.3 MB", then "2 of 2 done"); it opens to its two
+      videos, "Check for new videos", "Subtitles: English", "+ Add a subtitle language".
+    - Check reopens the list: the two videos say "Already in this playlist" and cannot be ticked; Select none then Select
+      all leaves them (and the "Downloaded before" ones) unticked.
+    - Details of a playlist video: "Playlist" row with the list link; Copy put
+      `https://www.youtube.com/playlist?list=PL59FEE129ADFF2B12` on the clipboard.
+    - Settings > Downloads > Group downloads by folder: the list became folder rows (Sites, Music, Archives, Documents,
+      Documents/Video ...) with "N files · M of N done · K failed", the playlist stayed its own row; a folder row opens to
+      its downloads with Open folder / Delete all. Switched off again: plain rows.
+    - Seen: the four videos of the c7a35ff test (queued before playlists were saved) sit in the same `Test Playlist`
+      folder, so with grouping on there is a DIR "Test Playlist" row next to the LIST "Test Playlist" row. Old data
+      only; a video added now joins the saved playlist.
+    - Not checked: the iPad, "+ Add a subtitle language", "Embed in video", the Check of a list that really grew.
+- macOS: `linkReleaseSharedMacosArm64` and `make-dmg.sh` built (`FetchJet-1.6.0-arm64.dmg`, 36 MB). corehost:
+  folder_group 23, playlist_group 30, playlist 37, home 41, add 29, links 17, download 29, bridge 37 + 1 skip (Edge not
+  installed), keys 41, integrity 32, all 0 failed. `test_playlist_group` / `test_playlist` first failed on the Mac
+  (grown list, unavailable videos) because `desktopNative/tests/fakes/build/yt-dlp_linux` (used on the Mac too) was
+  built on 2026-11-16; after `bash desktopNative/tests/fakes/build.sh` both passed. Rebuild the fake after a pull that
+  changes `fake_ytdlp.cpp`.
+
+Mac check of 832afcc (2026-11-19): iOS built with no error. iPhone 17: the playlist page's ⋯ menu starts with "Open
+folder" (then Check for new videos, Delete playlist); it opened Files on `Media/Video/Test Playlist` (the 6 videos and 2
+`.srt` files). The DIR "Test Playlist" row is still there with group by folder on: its 4 videos already carry a
+`playlistId` (`pl_1795108020950_1798`, `pl_1795107967570_3144`, from the c7a35ff test) that is in no saved playlist,
+and `adoptLoneVideos` skips every task whose `playlistId` is not empty. Only tasks with no `playlistId` would join.
+Data like that exists only from 1.6.0 development builds (1.5.x saves no `playlistId`).
+After 23cc218 (same day, iOS built with no error, relaunched with group by folder on): the DIR row is gone; the LIST
+"Test Playlist" row says "6 of 6 done · 19.8 MB" and opens to all six videos (the two new ones and the four old ones).
+
 ## 5. YouTube "made for kids" and faster qualities [ ]
 
 Ezoo: videos made for children download now; qualities show up faster.
