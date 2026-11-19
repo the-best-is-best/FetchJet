@@ -685,7 +685,8 @@
     const list = itemsOf(b);
     const usable = list.filter(i => !i.disabled);
     const busy = b.loading || (!usable.length && list.some(i => i.disabled && /Getting/.test(i.label)));
-    b.root.getElementById("label").textContent = usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownload");
+    const protectedOnly = !usable.length && list.some(i => i.kind === "drm");
+    b.root.getElementById("label").textContent = protectedOnly ? fjT("itemDrm") : usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownload");
     b.root.getElementById("main").title = byKind(b.video, "btnTitle");
     b.root.getElementById("close").title = fjT("hideButton");
     b.root.querySelector(".wrap").dir = fjIsRtl() ? "rtl" : "ltr";
@@ -738,7 +739,7 @@
       }
       box.appendChild(row);
     }
-    const pg = pageInAppRow();
+    const pg = protectedOnly ? null : pageInAppRow();
     if (pg) box.appendChild(pg);
     box.appendChild(footRow());
     pressable(box);

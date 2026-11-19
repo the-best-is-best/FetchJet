@@ -184,6 +184,14 @@ internal object NativeApp {
                 presenter.effect(EffectKind.NOTIFY, text = text, title = title)
             }
         }
+        if (config.debug) DesktopOs.getEnv("FJ_TEST_INSTALL_UPDATE")?.takeIf { it.isNotBlank() }?.let { path ->
+            presenter.scope.launch {
+                delay(4000)
+                println("test: installing the update $path")
+                com.michelle.raouf.fetch_jet.core.update.PlatformUpdater.launchInstallerAndExit(path)
+                    .onFailure { println("test: the update failed: ${it.message}") }
+            }
+        }
         if (services != null) HostHooks.storeUpdates = { services.call("storeUpdates") }
         if (services != null) {
             HostHooks.pickFile = { title, filterName, pattern ->
@@ -259,5 +267,9 @@ internal object NativeApp {
         presenter.stop()
         runCatching { createTorrentBackend().shutdown() }
         main.close()
+        HostHooks.afterShutdown?.let { action ->
+            HostHooks.afterShutdown = null
+            runCatching { action() }.onFailure { println("afterShutdown failed: ${it.message}") }
+        }
     }
 }

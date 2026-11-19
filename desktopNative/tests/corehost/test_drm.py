@@ -95,6 +95,15 @@ def run():
         m = inspect(core, BASE + "/plain.m3u8")
         rows = core.rows("addQualities")
         core.check("it is not DRM: its two qualities are listed", m.get("state") == STATE["QUALITIES"] and len(rows) == 2, (m.get("error"), rows))
+        add = core.snapshot("add")
+        core.check("a playlist with no title gets no made-up name: the box is empty and start is off",
+                   add.get("fileNameShown") and add.get("fileName", "") == "" and add.get("fileNameNeeded") and not add.get("primaryEnabled", False),
+                   (add.get("fileName"), add.get("fileNameNeeded"), add.get("primaryEnabled")))
+        core.action("SetFileName", name="my video.mp4")
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("typing a name turns start on", add.get("fileName") == "my video.mp4" and add.get("primaryEnabled"),
+                   (add.get("fileName"), add.get("primaryEnabled")))
 
         core.action("ShowAddDialog", show=False)
         core.pump(0.3)

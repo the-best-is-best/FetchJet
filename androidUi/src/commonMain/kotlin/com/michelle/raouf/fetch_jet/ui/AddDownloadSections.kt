@@ -473,7 +473,9 @@ internal fun AddDialogActions(
     onDismiss: () -> Unit
 ) {
     // Inline Error Notice
-    val activeError = errorMessage ?: inspectError ?: inspectMediaError
+    val activeError = errorMessage
+        ?: inspectError.takeIf { detectedEngine != EngineType.BITTORRENT || linkCount > 0 }
+        ?: inspectMediaError.takeIf { detectedEngine != EngineType.MEDIA_STREAM || linkCount > 0 }
     if (activeError != null) {
         InlineErrorMessage(
             msg = activeError,

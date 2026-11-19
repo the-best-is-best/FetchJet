@@ -29,4 +29,7 @@ object HostHooks {
 
     @Volatile
     var storeUpdates: (() -> String)? = null
+
+    @Volatile
+    var afterShutdown: (() -> Unit)? = null
 }

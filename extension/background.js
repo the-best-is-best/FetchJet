@@ -1203,7 +1203,7 @@ async function itemsForTab(tabId) {
   const drm = await tabState(DRM_KEY, tabId);
   if (drm && !items.some(i => i.kind === "ytdlp")) {
     const keep = items.filter(i => i.kind === "playlist" || i.kind === "course");
-    return { items: [...keep, { label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }], title: pageTitle };
+    return { items: [...keep, { kind: "drm", label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }], title: pageTitle };
   }
   return { items, title: pageTitle };
 }
@@ -1634,7 +1634,7 @@ async function sendDetectedMedia(tabId) {
  * link (feeds), its own file, or the page when neither is known.
  */
 async function resolveVideo(msg, tab) {
-  if (tab && (await tabState(DRM_KEY, tab.id))) return { items: [{ label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }] };
+  if (tab && (await tabState(DRM_KEY, tab.id))) return { items: [{ kind: "drm", label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }] };
   const items = [];
   if (msg.src && /^https?:/i.test(msg.src)) {
     items.push({ kind: "media", label: fjT("itemVideoFile", { name: baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video" }), sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });

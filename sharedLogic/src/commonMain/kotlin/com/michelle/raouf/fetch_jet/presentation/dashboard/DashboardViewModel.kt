@@ -1020,17 +1020,7 @@ class DashboardViewModel(
         if (ftpName.isNotBlank()) return queueRepository.pathResolver.sanitizeFileName(ftpName)
         val cleanUrl = url.substringBefore('?')
         val nameFromUrl = cleanUrl.substringAfterLast('/')
-        // A pasted playlist link: its name is a hash ("aa004d...m3u8"), and the video is saved
-        // as MP4 anyway. Use the site + date so the user sees what to rename.
-        if (com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(url) ||
-            nameFromUrl.endsWith(".mpd", ignoreCase = true)
-        ) {
-            val site = com.michelle.raouf.fetch_jet.core.network.SiteCookieJar.siteOf(url)
-                .substringBefore('.')
-                .replaceFirstChar { it.uppercase() }.ifBlank { "Video" }
-            val stamp = kotlin.time.Clock.System.now().toEpochMilliseconds() / 1000 % 100000
-            return "$site video $stamp.mp4"
-        }
+        if (isStreamPlaylistUrl(url)) return ""
         val isWebScript = nameFromUrl.matches(
             Regex(
                 """.*\.(php|asp|aspx|jsp|html|htm|cgi|do|action)$""",

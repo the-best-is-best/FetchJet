@@ -98,13 +98,38 @@ Ezoo: drag a row to a folder, the desktop or a chat; moved on the same drive, co
 Ctrl copies), as in Explorer.
 To do: native desktop (Windows `SHDoDragDrop`, macOS / Linux their own), Slint host.
 
-## 7. Fewer antivirus warnings [ ]
+## 7. Fewer antivirus warnings [x]
 
 Ezoo: no hidden `reg.exe` / system tools any more (the registry through the Win32 API), every release lists the
 SHA-256 of its files.
 Here: `PlatformUpdater.mingw.kt` starts a hidden `powershell.exe` for the update; releases have `.sig` files but
 no `SHA256SUMS.txt`. To do: replace the hidden PowerShell with direct calls, add `SHA256SUMS.txt` to the release in
 CI.
+
+Done (2026-11-19, Windows):
+- The Windows app starts no hidden `powershell.exe` or `cmd.exe` any more. The Store update check was already done by
+  the host through WinRT (`host/win/store_win.cpp`); the PowerShell fallback in `PlatformUpdater.mingw.kt` is gone.
+- The update installer is started directly (`msiexec.exe /i <msi> /passive /norestart FJ_RELAUNCH=1`, or the
+  Setup.exe itself) at the very end of the app's shutdown (`HostHooks.afterShutdown`, run by `NativeApp.shutdown`),
+  instead of a `fetchjet-update.cmd` with `tasklist` / `timeout`. The MSI starts FetchJet again after the install when
+  `FJ_RELAUNCH=1` (`FjLaunchApp` after `InstallFinalize`, `product.wxs`).
+- CI: the release job writes `SHA256SUMS.txt` (sha256sum format, every file except `.sig` and the notes) from the
+  SHA-256 GitHub keeps for each uploaded file, nothing downloaded again. Dry run on v1.5.0: 14 files.
+- Test: `test_update_install.py` 10 / 0 (fake installer `tests/fakes/fake_installer.cpp`, build with `build.cmd`):
+  not started while the app runs, started after the shutdown, no cmd / powershell, no script left. A test MSI has
+  `FjLaunchApp` after `InstallFinalize` with `FJ_RELAUNCH="1" AND NOT REMOVE~="ALL"`.
+- Portable Windows (owner's request, same day): it used to offer the MSI download in the browser. Now it updates
+  itself: picks `FetchJet-<v>-windows-portable.zip` (signed like the other files), unpacks it into
+  `<folder>\.fetchjet-update`, moves each old file aside as `<name>.fjold` (Windows allows renaming a running exe / dll)
+  and puts the new one in its place (all moves undone if one fails; `data\` is never touched), then starts the new
+  FetchJet after the old one closed, with the same `--home` / `--downloads` / `--bridge-port` / `--no-*` options. The
+  new copy waits for the old process (`FJ_AFTER_UPDATE_PID`), then deletes the `.fjold` files and the unpack folder
+  (`finish_portable_update`, `host/win/platform_win.cpp`). Test `tests/host/test_portable_update.py` 12 / 0 (real
+  app on a hidden desktop; trigger `--debug` + env `FJ_TEST_INSTALL_UPDATE=<zip>`). Portable 1.5.x copies still have
+  the old code: they get this from the first update after it.
+- Not run: a real in-app update from an installed MSI (the first release after this one). Left: `shutdown.exe` for
+  "When downloads finish > Shut down" (a signed Windows tool, not hidden; replacing it cannot be tested without
+  turning the PC off), system `curl` for FTPS, Defender `MpCmdRun` for the scan.
 
 ## 8. Checks [ ]
 
@@ -143,6 +168,16 @@ extension button list and in the Add dialog, 15 languages. Only detect and say i
 it. Test pages: https://bitmovin.com/demos/drm,
 https://reference.dashif.org/dash.js/latest/samples/drm/widevine.html,
 https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd.
+
+Mac check of `aff498a` (2026-11-19, iPhone 17 simulator, macOS native, Safari with Clear Key): all passed; three
+defects found and fixed on Windows after it (not re-checked on the Mac yet):
+- The DRM text showed twice in the Add dialog (card + the line above the buttons): the line now skips an error the
+  torrent / media card already shows (SwiftUI `inlineError`, Compose `AddDialogActions`).
+- An HLS / DASH link with no title got a made-up name ("0 video 1639.mp4", `resolveTargetFileName`): now the box
+  stays empty and Start waits for a typed name (`addNeedsFileName` also for Media + `.m3u8` / `.mpd`), all UIs.
+  `test_drm.py` 6 / 0.
+- Safari on iOS: a DRM page kept "Open this page in FetchJet" in the list and "Download this video" on the button:
+  the item has `kind: "drm"`, the button says "This video is protected (DRM)" and the in-app row is left out.
 
 ## 10. Uninstall removes the startup entry [x]
 

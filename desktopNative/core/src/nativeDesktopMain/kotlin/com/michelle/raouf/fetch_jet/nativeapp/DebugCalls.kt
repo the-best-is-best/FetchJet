@@ -9,6 +9,7 @@ import com.michelle.raouf.fetch_jet.core.update.AppRelease
 import com.michelle.raouf.fetch_jet.core.update.ReleaseAsset
 import com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
+import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
@@ -54,6 +55,7 @@ internal object DebugCalls {
         "testLink" -> testLink()
         "extensionSteps" -> extensionSteps(args)
         "update" -> update(args)
+        "installUpdate" -> PlatformUpdater.launchInstallerAndExit(text(args, "path")).fold({ "ok" }, { "error: " + it.message })
         "devices" -> devices(args)
         "receive" -> receive(args)
         "proxyStart" -> proxyStart(args)

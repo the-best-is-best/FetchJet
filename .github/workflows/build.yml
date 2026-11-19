@@ -877,3 +877,28 @@ jobs:
             gh release upload "$TAG" "release-notes-$lang.md" --repo "$GITHUB_REPOSITORY" --clobber
           done
           echo "Draft ready: https://github.com/$GITHUB_REPOSITORY/releases"
+
+      # SHA256SUMS.txt lists every download of the release (sha256sum format, check with
+      # `sha256sum -c SHA256SUMS.txt --ignore-missing` or `Get-FileHash`). GitHub keeps the
+      # SHA-256 of each uploaded file (asset "digest"), so nothing is downloaded again; a file
+      # without one is downloaded and hashed here.
+      - name: Write SHA256SUMS.txt
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .assets[] | [.name, (.digest // \"\")] | @tsv" > assets.tsv
+          : > SHA256SUMS.txt
+          while IFS=$'\t' read -r name digest; do
+            case "$name" in
+              *.sig|SHA256SUMS.txt|release-notes*.md) continue ;;
+            esac
+            hash="${digest#sha256:}"
+            if [ -z "$digest" ] || [ "$hash" = "$digest" ]; then
+              mkdir -p sums-tmp
+              gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir sums-tmp --clobber
+              hash=$(sha256sum "sums-tmp/$name" | cut -d' ' -f1)
+              rm -f "sums-tmp/$name"
+            fi
+            printf '%s  %s\n' "$hash" "$name" >> SHA256SUMS.txt
+          done < <(sort assets.tsv)
+          cat SHA256SUMS.txt
+          [ -s SHA256SUMS.txt ] || { echo "no files in the release"; exit 1; }
+          gh release upload "$TAG" SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber

@@ -78,6 +78,7 @@ struct AddValidity {
     let isInspecting: Bool
     let hasActiveError: Bool
     let activeError: String?
+    let inlineError: String?
     let fullDurationHhMm: String
     let startSec: Int64
     let endSec: Int64
@@ -100,7 +101,7 @@ struct AddValidity {
         } else if s.detectedEngine == .bittorrent {
             isInspectionComplete = s.inspectedTorrentFiles.contains { $0.isSelected } && s.inspectError == nil
         } else if s.detectedEngine == .mediaStream {
-            isInspectionComplete = s.inspectMediaError == nil && (
+            isInspectionComplete = s.inspectMediaError == nil && !s.needsFileName && (
                 (s.inspectedPlaylist?.entries.contains { $0.isSelected } ?? false)
                 || s.inspectedMediaQualities.contains { $0.isSelected })
         } else {
@@ -108,6 +109,9 @@ struct AddValidity {
         }
         isInspecting = s.isInspectingTorrent || s.isInspectingMedia || listInspecting
         activeError = s.errorMessage ?? s.inspectError ?? s.inspectMediaError
+        let cardShowsTorrentError = !showsLinkList && s.detectedEngine == .bittorrent
+        let cardShowsMediaError = !showsLinkList && s.detectedEngine == .mediaStream
+        inlineError = s.errorMessage ?? (cardShowsTorrentError ? nil : s.inspectError) ?? (cardShowsMediaError ? nil : s.inspectMediaError)
         hasActiveError = activeError != nil
 
         let dur = s.mediaDurationSeconds

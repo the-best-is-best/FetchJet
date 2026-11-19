@@ -164,7 +164,7 @@ private val AddSlice.showsLinkList: Boolean get() = linkCount > 0
 private val AddSlice.isInspectionComplete: Boolean
     get() = if (showsLinkList) linkSelected > 0 && !linkBusy && !linkNeedsRetry else when (detectedEngine) {
         EngineType.BITTORRENT -> torrentFilesReady && torrentFileSelected && inspectError == null
-        EngineType.MEDIA_STREAM -> inspectMediaError == null && (playlistCount > 0 || (qualitiesReady && qualitySelected))
+        EngineType.MEDIA_STREAM -> inspectMediaError == null && !needsFileName && (playlistCount > 0 || (qualitiesReady && qualitySelected))
         EngineType.HTTP_DIRECT -> !needsFileName
     }
 

@@ -122,6 +122,7 @@
                   Execute="deferred" Impersonate="yes" Return="ignore" />
     <InstallExecuteSequence>
       <Custom Action="FjRemoveStartup" Before="RemoveFiles">REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="FjLaunchApp" After="InstallFinalize">FJ_RELAUNCH="1" AND NOT REMOVE~="ALL"</Custom>
     </InstallExecuteSequence>
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />

@@ -252,7 +252,7 @@ struct AddActions: View {
         let strings = store.strings
         let v = validity
         VStack(spacing: 12) {
-            if let err = v.activeError { AddInlineError(message: err) }
+            if let err = v.inlineError { AddInlineError(message: err) }
             HStack(spacing: 10) {
                 Spacer(minLength: 0)
                 Button(action: onDismiss) {

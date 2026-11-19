@@ -139,6 +139,75 @@ namespace fjhost::os {
             RegCloseKey(key);
         }
 
+        bool ends_with(const std::wstring &text, const std::wstring &tail) {
+            return text.size() >= tail.size() && lower(text.substr(text.size() - tail.size())) == tail;
+        }
+
+        void remove_tree(const std::wstring &path) {
+            DWORD attributes = GetFileAttributesW(path.c_str());
+            if (attributes == INVALID_FILE_ATTRIBUTES)
+                return;
+            if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+                WIN32_FIND_DATAW data;
+                HANDLE find = FindFirstFileW((path + L"\\*").c_str(), &data);
+                if (find != INVALID_HANDLE_VALUE) {
+                    do {
+                        std::wstring name = data.cFileName;
+                        if (name != L"." && name != L"..")
+                            remove_tree(path + L"\\" + name);
+                    } while (FindNextFileW(find, &data));
+                    FindClose(find);
+                }
+                RemoveDirectoryW(path.c_str());
+            } else {
+                SetFileAttributesW(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+                DeleteFileW(path.c_str());
+            }
+        }
+
+        void remove_old_files(const std::wstring &dir, int depth) {
+            WIN32_FIND_DATAW data;
+            HANDLE find = FindFirstFileW((dir + L"\\*").c_str(), &data);
+            if (find == INVALID_HANDLE_VALUE)
+                return;
+            do {
+                std::wstring name = data.cFileName;
+                if (name == L"." || name == L"..")
+                    continue;
+                std::wstring path = dir + L"\\" + name;
+                if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    if (depth == 0 && (lower(name) == L"data" || lower(name) == L".fetchjet-update"))
+                        continue;
+                    if (depth < 8)
+                        remove_old_files(path, depth + 1);
+                } else if (ends_with(name, L".fjold")) {
+                    SetFileAttributesW(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+                    DeleteFileW(path.c_str());
+                }
+            } while (FindNextFileW(find, &data));
+            FindClose(find);
+        }
+
+        void finish_portable_update() {
+            wchar_t pid_text[32];
+            DWORD length = GetEnvironmentVariableW(L"FJ_AFTER_UPDATE_PID", pid_text, DWORD(std::size(pid_text)));
+            if (length > 0 && length < std::size(pid_text)) {
+                SetEnvironmentVariableW(L"FJ_AFTER_UPDATE_PID", nullptr);
+                _putenv_s("FJ_AFTER_UPDATE_PID", "");
+                DWORD pid = wcstoul(pid_text, nullptr, 10);
+                if (HANDLE old = OpenProcess(SYNCHRONIZE, FALSE, pid)) {
+                    WaitForSingleObject(old, 30000);
+                    CloseHandle(old);
+                }
+            }
+            std::wstring self = module_path();
+            std::wstring dir = self.substr(0, self.find_last_of(L'\\'));
+            if (GetFileAttributesW((dir + L"\\FetchJet.portable").c_str()) == INVALID_FILE_ATTRIBUTES)
+                return;
+            remove_old_files(dir, 0);
+            remove_tree(dir + L"\\.fetchjet-update");
+        }
+
         void copy_text(wchar_t *target, size_t capacity, const std::wstring &text) {
             size_t length = text.size() < capacity - 1 ? text.size() : capacity - 1;
             std::wmemcpy(target, text.data(), length);
@@ -323,6 +392,7 @@ namespace fjhost::os {
     }
 
     void prepare_process() {
+        finish_portable_update();
         upgrade_old_startup_entry();
         if (!std::getenv("SLINT_BACKEND"))
             _putenv_s("SLINT_BACKEND", "winit-software");
