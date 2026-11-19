@@ -205,7 +205,10 @@ Done 2026-11-19 (parts 1 and 2 of the owner's choice; new languages wait for mor
   falls back to the system face and the ⌕ ☀ ▾ symbols vanish). Fixed after it: `AppFontWeight.value` renamed
   `weightValue` (an exported `value` made Kotlin/Native rename `StateFlow.value` to `value_` and broke Swift);
   navigation-bar titles (large and inline) now use the app font (`FJFont.applyToNavigationBars`, set at start and
-  before the language rebuild).
+  before the language rebuild). Then `.toolbarBackground` removed from Details (SwiftUI's own bar appearance put the
+  system title font back and leaked it to later screens) and the toolbar button labels (All settings, Cancel, Select
+  Folder) set to `.fj` (SwiftUI draws them itself). Mac check of `59c22ae`: every navigation title and bar button in
+  the app font in en / ar / zh / ko, live language switch follows, Details looks the same, picker cancel / select work.
 - [ ] Hindi read by someone who knows it; new languages (bn, mr, te, ta).
 
 
