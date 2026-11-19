@@ -45,6 +45,8 @@ fjAddLanguage("fa", {
   "errNoExtractor": "FetchJet در حال اجرا نیست (یا استخراج‌کننده رسانه ندارد)",
   "errNotRunning": "FetchJet در حال اجرا نیست",
   "errCantGet": "دریافت این ویدیو ممکن نیست",
+  "itemDrm": "این ویدیو محافظت‌شده است (DRM)",
+  "itemDrmSub": "نه با FetchJet و نه با هیچ مدیر دانلود دیگری قابل دانلود نیست.",
   "itemOpenApp": "باز کردن در FetchJet",
   "itemOpenAppSub": "کیفیت را در برنامه انتخاب کنید",
   "itemPlaylist": "دانلود کل فهرست پخش",

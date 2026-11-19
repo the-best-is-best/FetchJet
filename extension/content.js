@@ -451,9 +451,22 @@
   }
   const linkFor = (video) => isVideoPage(location.href) ? location.href : (ownLink(video) || location.href);
 
+  // A player that asks the browser for a decryption key (DRM): nothing on the page can be downloaded.
+  let drmFor = "";
+  function reportDrm() {
+    if (drmFor === location.href) return;
+    drmFor = location.href;
+    try { api.runtime.sendMessage({ action: "drmSeen" }).catch(() => {}); } catch (_) {}
+  }
+  function checkDrm() {
+    for (const v of document.querySelectorAll("video, audio")) if (v.mediaKeys) return reportDrm();
+  }
+  document.addEventListener("encrypted", reportDrm, true);
+
   // Tell the background which video page is being watched, so it asks yt-dlp for the qualities.
   function watchVideos() {
     if (!settings.enabled) return;
+    checkDrm();
     const v = biggestVideo();
     if (!v) return;
     if (isFileAnchor(v) || v === zoomEl || (v.paused && !(v.duration > 3) && !v.currentSrc)) return;

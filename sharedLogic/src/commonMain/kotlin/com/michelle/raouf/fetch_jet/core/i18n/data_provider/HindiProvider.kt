@@ -834,6 +834,7 @@ object HindiProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "वीडियो फ़ॉर्मेट नहीं मिल सके। कृपया URL जांचें या अपना इंटरनेट कनेक्शन देखें।"
+    override val sysDrmProtected = "यह वीडियो सुरक्षित (DRM) है और डाउनलोड नहीं किया जा सकता।"
     override val sysFailedToInspectMediaQualities = "मीडिया क्वालिटी की जांच विफल रही"
     override fun sysTorrentEngineError(message: String) = "BitTorrent इंजन त्रुटि: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

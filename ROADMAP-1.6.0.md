@@ -113,7 +113,25 @@ CI.
 - A window covered by another one, brought back from the tray or after the screen wakes up is drawn whole (Ezoo fixed
   half-empty windows; we fixed the white band at start only).
 
-## 9. Say when a video is DRM-protected [ ]
+## 9. Say when a video is DRM-protected [x]
+
+Done 2026-11-19 (detect and say it only; nothing is downloaded or decrypted):
+- App: `MediaDrm.kt` (HLS `EXT-X-KEY` / `EXT-X-SESSION-KEY` with a method other than NONE / AES-128 or a Widevine /
+  PlayReady / FairPlay key format, also in the first rendition; DASH `ContentProtection`; yt-dlp's "DRM" error).
+  `inspectMediaQualities` checks a `.mpd` link and `inspectHlsVariants` a `.m3u8` before listing; the Add dialog shows
+  `sysDrmProtected` (15 languages) instead of "Unable to fetch video formats". jvmTest `MediaDrmTest` 4 / 0; corehost
+  `test_drm.py` 4 / 0 (local DASH with ContentProtection and HLS with SAMPLE-AES reported as protected, an AES-128 HLS
+  still lists its 2 qualities); the real Shaka Widevine `dash.mpd` reported as protected; test_add 29 / 0,
+  test_subtitles 27 / 0, test_media 31 / 0 (one timing check failed once, then passed twice).
+- Extension: `content.js` reports `drmSeen` when a page's video or audio has `mediaKeys` or fires `encrypted`
+  (works from the isolated world, no MAIN-world script); `background.js` keeps it per tab (`DRM_KEY`, cleared with
+  the tab) and then the list and the page button show only "This video is protected (DRM)" (`itemDrm` /
+  `itemDrmSub`, 15 languages, `check.py` ok). `chrome-check.js` 24 / 0 with 4 new checks (Clear Key page gets media
+  keys, list and button say protected, a normal page does not). Owner-verified 2026-11-19 on the real Bitmovin DRM
+  page in Firefox for Android on the A56 (3.6.0 loaded as a temporary add-on with `web-ext run -t firefox-android`
+  over adb): the list says the video is protected. Not checked: desktop Firefox, Safari.
+- Android built and installed on the A56.
+
 
 Seen 2026-11-19 on https://bitmovin.com/demos/drm (PlayReady / Widevine): the Windows app and the extension in Edge
 answer "Could not get this video, no downloadable formats found"; nothing wrong is offered, but the user is not told

@@ -856,6 +856,7 @@ object ArabicProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "تعذّر جلب صيغ الفيديو. تحقق من الرابط أو من اتصالك بالإنترنت."
+    override val sysDrmProtected = "هذا الفيديو محمي (DRM) ولا يمكن تنزيله."
     override val sysFailedToInspectMediaQualities = "تعذّر فحص جودات الوسائط"
     override fun sysTorrentEngineError(message: String) = "خطأ في محرك BitTorrent: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

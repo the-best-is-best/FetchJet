@@ -944,6 +944,7 @@ async function updateActionBadgeForAll() {
 
 const YT_KEY = "fetchjet_yt_by_tab";
 const RES_KEY = "fetchjet_res_by_tab";
+const DRM_KEY = "fetchjet_drm_by_tab";
 const seenStreams = new Map(); // tabId -> Set(streamKey), memory only (worker may restart)
 
 async function tabState(key, tabId) { return (await sessionGet(key))[tabId] || null; }
@@ -1199,6 +1200,11 @@ async function itemsForTab(tabId) {
   if (list) items.unshift({ kind: "playlist", label: fjT("itemPlaylist"), sub: fjT("itemPlaylistSub"), url: list.url });
   const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;
   if (course) items.unshift({ kind: "course", label: fjT("itemCourse"), sub: fjT("itemCourseSub"), url: course.url });
+  const drm = await tabState(DRM_KEY, tabId);
+  if (drm && !items.some(i => i.kind === "ytdlp")) {
+    const keep = items.filter(i => i.kind === "playlist" || i.kind === "course");
+    return { items: [...keep, { label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }], title: pageTitle };
+  }
   return { items, title: pageTitle };
 }
 
@@ -1311,7 +1317,7 @@ async function pushToTab(tabId) {
 async function clearTab(tabId) {
   seenStreams.delete(tabId);
   videoPages.delete(tabId);
-  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null)]);
+  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null), setTabState(DRM_KEY, tabId, null)]);
   updateBadge(tabId, 0);
   api.tabs.sendMessage(tabId, { action: "fetchjetItems", items: [] }).catch(() => {});
   refreshMenus(tabId).catch(() => {});
@@ -1628,6 +1634,7 @@ async function sendDetectedMedia(tabId) {
  * link (feeds), its own file, or the page when neither is known.
  */
 async function resolveVideo(msg, tab) {
+  if (tab && (await tabState(DRM_KEY, tab.id))) return { items: [{ label: fjT("itemDrm"), sub: fjT("itemDrmSub"), disabled: true }] };
   const items = [];
   if (msg.src && /^https?:/i.test(msg.src)) {
     items.push({ kind: "media", label: fjT("itemVideoFile", { name: baseName((() => { try { return new URL(msg.src).pathname; } catch (_) { return msg.src; } })()) || "video" }), sub: msg.src, url: msg.src, referer: tab && tab.url, fileName: "", ext: extensionOf(msg.src) || "mp4" });
@@ -1739,6 +1746,12 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (ytVideoId(tabUrl)) ensureYoutubeResolved(sender.tab.id, tabUrl);
         else if (ytVideoId(page)) resolvePage(sender.tab.id, `https://www.youtube.com/watch?v=${ytVideoId(page)}`, false, true).catch(() => {});
         else resolvePage(sender.tab.id, page).catch(() => {});
+        return { ok: true };
+      }
+      case "drmSeen": {
+        if (!sender.tab || sender.tab.id == null) return { ok: false };
+        await setTabState(DRM_KEY, sender.tab.id, { page: sender.tab.url || "" });
+        pushToTab(sender.tab.id);
         return { ok: true };
       }
       case "resolveVideo":

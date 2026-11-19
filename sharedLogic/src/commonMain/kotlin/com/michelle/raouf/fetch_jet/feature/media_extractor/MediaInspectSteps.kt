@@ -13,6 +13,10 @@ internal suspend fun MediaStreamDownloader.inspectHlsVariants(
     requestHeaders: Map<String, String>
 ): List<MediaQualityEntry>? {
     try {
+        if (MediaDrm.looksLikeHls(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
+            lastInspectDrm = true
+            return emptyList()
+        }
         val variants = HlsDownloader.listVariants(client, url.trim(), requestHeaders)
         if (variants.isNotEmpty()) {
             // One rendition's playlist gives the duration (same for all); size follows

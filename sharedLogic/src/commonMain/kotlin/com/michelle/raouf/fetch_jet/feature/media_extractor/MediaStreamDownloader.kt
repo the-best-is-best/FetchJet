@@ -52,6 +52,10 @@ class MediaStreamDownloader(
     /** Subtitle tracks the last [inspectMediaQualities] found (yt-dlp sites), for the Add dialog. */
     internal var lastSubtitles: List<SubtitleTrack> = emptyList()
 
+    /** The last [inspectMediaQualities] found a DRM-protected stream (nothing can be downloaded). */
+    var lastInspectDrm: Boolean = false
+        internal set
+
     /** HTTP/1.1-only client for piece downloads (googlevideo rejects ranged requests over h2). */
     private val streamClients =
         NetworkClient { com.michelle.raouf.fetch_jet.core.network.createStreamHttpClient() }
@@ -515,7 +519,12 @@ class MediaStreamDownloader(
         requestHeaders: Map<String, String> = emptyMap()
     ): List<MediaQualityEntry> {
         lastSubtitles = emptyList()
+        lastInspectDrm = false
         if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return emptyList()
+        if (MediaDrm.looksLikeDash(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
+            lastInspectDrm = true
+            return emptyList()
+        }
         // A playlist link (.m3u8): FetchJet's own HLS engine reads the renditions itself. The
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }

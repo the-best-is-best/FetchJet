@@ -4252,6 +4252,7 @@
   "sysFailedToParseTorrentMetadata",
   "sysEnterMediaUrlFirst",
   "sysUnableToFetchFormats",
+  "sysDrmProtected",
   "sysFailedToInspectMediaQualities",
   "sysMediaToolsDownloaded",
   "sysMediaToolsDownloadFailed",

@@ -845,6 +845,7 @@ object PersianProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "دریافت فرمت‌های ویدیو ممکن نشد. لینک یا اتصال اینترنت خود را بررسی کنید."
+    override val sysDrmProtected = "این ویدیو محافظت‌شده (DRM) است و قابل دانلود نیست."
     override val sysFailedToInspectMediaQualities = "بررسی کیفیت‌های رسانه ناموفق بود"
     override fun sysTorrentEngineError(message: String) = "خطای موتور BitTorrent: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

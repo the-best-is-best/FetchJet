@@ -1790,6 +1790,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysFailedToParseTorrentMetadata(next());
     tr.set_sysEnterMediaUrlFirst(next());
     tr.set_sysUnableToFetchFormats(next());
+    tr.set_sysDrmProtected(next());
     tr.set_sysFailedToInspectMediaQualities(next());
     tr.set_sysMediaToolsDownloaded(next());
     tr.set_sysMediaToolsDownloadFailed(next());

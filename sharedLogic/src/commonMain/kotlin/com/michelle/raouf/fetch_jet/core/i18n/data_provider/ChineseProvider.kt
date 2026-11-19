@@ -803,6 +803,7 @@ object ChineseProvider : AppLocalization {
     override val sysEnterMediaUrlFirst = "请先输入媒体网址"
     override fun sysUnableToFetchFormatsWithReason(reason: String) = "无法获取视频格式：${reason}"
     override val sysUnableToFetchFormats = "无法获取视频格式。请检查网址或网络连接。"
+    override val sysDrmProtected = "此视频受保护（DRM），无法下载。"
     override val sysFailedToInspectMediaQualities = "无法解析媒体画质"
     override fun sysTorrentEngineError(message: String) = "BitTorrent 引擎错误：${message}"
     override fun sysTorrentEngineInstallFailed(message: String) =

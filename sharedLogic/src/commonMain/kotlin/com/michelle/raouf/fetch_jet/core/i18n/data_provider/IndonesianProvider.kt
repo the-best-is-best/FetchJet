@@ -848,6 +848,7 @@ object IndonesianProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "Tidak dapat mengambil format video. Periksa URL atau koneksi internet Anda."
+    override val sysDrmProtected = "Video ini dilindungi (DRM) dan tidak bisa diunduh."
     override val sysFailedToInspectMediaQualities = "Gagal memeriksa kualitas media"
     override fun sysTorrentEngineError(message: String) = "Galat mesin BitTorrent: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

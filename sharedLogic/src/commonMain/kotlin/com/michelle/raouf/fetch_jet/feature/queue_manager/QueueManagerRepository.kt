@@ -699,6 +699,13 @@ class QueueManagerRepository(
         }
     }
 
+    /** The last [inspectMediaQualities] gave nothing because the video is DRM-protected. */
+    val lastInspectDrm: Boolean
+        get() = mediaEngine.lastInspectDrm ||
+                com.michelle.raouf.fetch_jet.feature.media_extractor.MediaDrm.errorSaysDrm(
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.lastMediaInspectionError()
+                )
+
     /** Subtitle tracks the last [inspectMediaQualities] found (for the Add dialog). */
     val lastMediaSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>
         get() = mediaEngine.lastSubtitles

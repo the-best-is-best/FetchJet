@@ -843,6 +843,7 @@ object TurkishProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "Video biçimleri alınamadı. Lütfen URL'yi veya internet bağlantınızı kontrol edin."
+    override val sysDrmProtected = "Bu video korumalı (DRM) ve indirilemez."
     override val sysFailedToInspectMediaQualities = "Medya kaliteleri incelenemedi"
     override fun sysTorrentEngineError(message: String) = "BitTorrent motoru hatası: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

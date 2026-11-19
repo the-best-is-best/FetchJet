@@ -855,6 +855,7 @@ object RussianProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "Не удалось получить форматы видео. Проверьте ссылку или подключение к интернету."
+    override val sysDrmProtected = "Это видео защищено (DRM), его нельзя скачать."
     override val sysFailedToInspectMediaQualities = "Не удалось получить варианты качества"
     override fun sysTorrentEngineError(message: String) = "Ошибка движка BitTorrent: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =

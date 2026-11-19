@@ -879,7 +879,8 @@ class DashboardViewModel(
                             inspectedMediaQualities = emptyList(),
                             inspectedSubtitles = emptyList(),
                             inspectedPlaylist = null,
-                            inspectMediaError = com.michelle.raouf.fetch_jet.feature.media_extractor
+                            inspectMediaError = if (queueRepository.lastInspectDrm) LocalizationManager.Strings.sysDrmProtected
+                            else com.michelle.raouf.fetch_jet.feature.media_extractor
                                 .lastMediaInspectionError()
                                 ?.removePrefix("ERROR:")?.trim()
                                 ?.let {

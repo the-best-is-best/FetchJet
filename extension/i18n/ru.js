@@ -45,6 +45,8 @@ fjAddLanguage("ru", {
   "errNoExtractor": "FetchJet не запущен (или в нём нет извлекателя медиа)",
   "errNotRunning": "FetchJet не запущен",
   "errCantGet": "Не удаётся получить это видео",
+  "itemDrm": "Это видео защищено (DRM)",
+  "itemDrmSub": "Его нельзя скачать ни FetchJet, ни другим менеджером загрузок.",
   "itemOpenApp": "Открыть в FetchJet",
   "itemOpenAppSub": "Выберите качество в приложении",
   "itemPlaylist": "Скачать весь плейлист",

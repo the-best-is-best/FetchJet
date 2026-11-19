@@ -842,6 +842,7 @@ object JapaneseProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "動画の形式を取得できません。URL かインターネット接続を確認してください。"
+    override val sysDrmProtected = "この動画は保護されている（DRM）ため、ダウンロードできません。"
     override val sysFailedToInspectMediaQualities = "メディアの画質を解析できませんでした"
     override fun sysTorrentEngineError(message: String) = "BitTorrent エンジンのエラー: ${message}"
     override fun sysTorrentEngineInstallFailed(message: String) =

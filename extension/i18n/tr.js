@@ -45,6 +45,8 @@ fjAddLanguage("tr", {
   "errNoExtractor": "FetchJet çalışmıyor (veya medya çıkarıcısı yok)",
   "errNotRunning": "FetchJet çalışmıyor",
   "errCantGet": "Bu video alınamıyor",
+  "itemDrm": "Bu video korumalı (DRM)",
+  "itemDrmSub": "FetchJet ile de başka bir indirme yöneticisiyle de indirilemez.",
   "itemOpenApp": "FetchJet'te aç",
   "itemOpenAppSub": "Kaliteyi uygulamada seçin",
   "itemPlaylist": "Tüm oynatma listesini indir",

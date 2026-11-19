@@ -794,6 +794,7 @@ object KoreanProvider : AppLocalization {
     override val sysEnterMediaUrlFirst = "먼저 미디어 URL을 입력하세요"
     override fun sysUnableToFetchFormatsWithReason(reason: String) = "동영상 형식을 가져올 수 없습니다: $reason"
     override val sysUnableToFetchFormats = "동영상 형식을 가져올 수 없습니다. URL이나 인터넷 연결을 확인하세요."
+    override val sysDrmProtected = "이 동영상은 보호되어 있어(DRM) 다운로드할 수 없습니다."
     override val sysFailedToInspectMediaQualities = "미디어 화질을 분석하지 못했습니다"
     override fun sysTorrentEngineError(message: String) = "BitTorrent 엔진 오류: $message"
     override fun sysTorrentEngineInstallFailed(message: String) = "BitTorrent 엔진 설치 실패: $message"

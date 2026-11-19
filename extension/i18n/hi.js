@@ -45,6 +45,8 @@ fjAddLanguage("hi", {
   "errNoExtractor": "FetchJet चल नहीं रहा है (या इसमें मीडिया एक्सट्रैक्टर नहीं है)",
   "errNotRunning": "FetchJet चल नहीं रहा है",
   "errCantGet": "यह वीडियो प्राप्त नहीं हो सका",
+  "itemDrm": "यह वीडियो सुरक्षित (DRM) है",
+  "itemDrmSub": "इसे FetchJet या किसी भी दूसरे डाउनलोड मैनेजर से डाउनलोड नहीं किया जा सकता।",
   "itemOpenApp": "FetchJet में खोलें",
   "itemOpenAppSub": "ऐप में क्वालिटी चुनें",
   "itemPlaylist": "पूरी प्लेलिस्ट डाउनलोड करें",

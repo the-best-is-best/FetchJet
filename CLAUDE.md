@@ -53,13 +53,13 @@ The owner wants speed parity and smooth UX.
 Version constants:
 
 - `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "1.6.0"` and
-  `EXTENSION_VERSION = "3.5.0"` (1.5.0 is the last release, tag `v1.5.0`; 1.5.1 is in `master` with no GitHub release,
+  `EXTENSION_VERSION = "3.6.0"` (DRM message, 1.6.0; 1.5.0 is the last release, tag `v1.5.0`; 1.5.1 is in `master` with no GitHub release,
   only a Store MSIX planned; 1.6.0 is next, on `release-v1.6.0`, work list `ROADMAP-1.6.0.md`)
 - `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 1.6.0`,
   `CURRENT_PROJECT_VERSION = 1` (owner's rule, 2026-11-19: always 1, only `MARKETING_VERSION` changes per release)
 - Usage ping (1.5.1): not sent from desktop development builds (`DesktopApp.isDevelopmentBuild`), the Android
   emulator or a debuggable Android build (`UsagePing.jvmAndroid.kt`), or the iOS simulator (`SIMULATOR_*` env).
-- `extension/manifest.json` and `manifest.firefox.json` → `3.5.0` (also `manifest.safari.json`);
+- `extension/manifest.json` and `manifest.firefox.json` → `3.6.0` (also `manifest.safari.json`);
   must equal `EXTENSION_VERSION`
 
 ## Build and run (Windows `E:\tbib\FetchJet`, or the Mac `~/Desktop/KMP/FetchJet`)

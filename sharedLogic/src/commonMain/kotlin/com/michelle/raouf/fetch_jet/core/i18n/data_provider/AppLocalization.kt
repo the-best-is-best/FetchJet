@@ -715,6 +715,7 @@ interface AppLocalization : LocalizationProvider {
     val sysEnterMediaUrlFirst: String
     fun sysUnableToFetchFormatsWithReason(reason: String): String
     val sysUnableToFetchFormats: String
+    val sysDrmProtected: String
     val sysFailedToInspectMediaQualities: String
     fun sysTorrentEngineError(message: String): String
     fun sysTorrentEngineInstallFailed(message: String): String

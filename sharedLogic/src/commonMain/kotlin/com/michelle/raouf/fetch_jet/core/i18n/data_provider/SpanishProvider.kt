@@ -865,6 +865,7 @@ object SpanishProvider : AppLocalization {
 
     override val sysUnableToFetchFormats =
         "No se pudieron obtener los formatos del vídeo. Comprueba la URL o tu conexión a internet."
+    override val sysDrmProtected = "Este vídeo está protegido (DRM) y no se puede descargar."
     override val sysFailedToInspectMediaQualities = "No se pudieron analizar las calidades"
     override fun sysTorrentEngineError(message: String) = "Error del motor BitTorrent: $message"
     override fun sysTorrentEngineInstallFailed(message: String) =
