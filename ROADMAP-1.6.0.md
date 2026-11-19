@@ -199,6 +199,13 @@ Done 2026-11-19 (parts 1 and 2 of the owner's choice; new languages wait for mor
   after copying the new one it is right). Android built and installed on the A56 (screen was locked, not seen). iOS not
   compiled (needs the Mac). Text typed by the user in a CJK script outside the app's own strings falls back to the
   system fonts (Linux needs them).
+- [x] Mac check of `13cad03` (2026-11-19): iOS and macOS built; all 16 fonts bundled, PostScript names match, lldb shows
+  the custom fonts loaded; iPhone 17 in en / ar / hi / zh / ja / ko: every text in its FetchJet Sans family, no missing
+  characters, Arabic RTL; Add subtitles still works; macOS app in zh / hi uses the bundled fonts (without them Hindi
+  falls back to the system face and the ⌕ ☀ ▾ symbols vanish). Fixed after it: `AppFontWeight.value` renamed
+  `weightValue` (an exported `value` made Kotlin/Native rename `StateFlow.value` to `value_` and broke Swift);
+  navigation-bar titles (large and inline) now use the app font (`FJFont.applyToNavigationBars`, set at start and
+  before the language rebuild).
 - [ ] Hindi read by someone who knows it; new languages (bn, mr, te, ta).
 
 

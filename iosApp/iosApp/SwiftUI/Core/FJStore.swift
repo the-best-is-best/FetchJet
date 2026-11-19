@@ -25,11 +25,13 @@ final class FJStore: ObservableObject {
         self.state = host.state
         self.language = host.language
         self.isRtl = host.isRtl
+        FJFont.applyToNavigationBars()
         watchers.append(host.watch(
             onState: { [weak self] s in self?.state = s },
             onEffect: { [weak self] e in self?.handle(e) }
         ))
         watchers.append(host.watchLanguage { [weak self] lang, rtl in
+            FJFont.applyToNavigationBars()
             self?.language = lang
             self?.isRtl = rtl.boolValue
         })

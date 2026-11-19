@@ -12,6 +12,16 @@ enum FJFont {
         }
         return AppFont.shared.current.postScriptName(weight: style)
     }
+
+    static func uiFont(_ size: CGFloat, _ weight: Font.Weight) -> UIFont {
+        UIFont(name: name(weight), size: size) ?? .systemFont(ofSize: size, weight: weight == .bold ? .bold : .semibold)
+    }
+
+    static func applyToNavigationBars() {
+        let bar = UINavigationBar.appearance()
+        bar.largeTitleTextAttributes = [.font: uiFont(34, .bold)]
+        bar.titleTextAttributes = [.font: uiFont(17, .semibold)]
+    }
 }
 
 extension Font {
