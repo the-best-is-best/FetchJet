@@ -54,6 +54,7 @@ fun PlaylistPageHeader(
     onReadLanguages: () -> Unit,
     onAddLanguage: (String) -> Unit,
     onDismissLanguages: () -> Unit,
+    onOpenFolder: (() -> Unit)? = null,
 ) {
     val s = LocalizationManager.Strings
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
@@ -66,7 +67,7 @@ fun PlaylistPageHeader(
                         Text(group.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(group.summaryText, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
-                    PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete)
+                    PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onOpenFolder)
                 }
             } else {
                 Column {
@@ -81,7 +82,7 @@ fun PlaylistPageHeader(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete)
+                        PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onOpenFolder)
                     }
                 }
             }
@@ -145,9 +146,13 @@ private fun PageActions(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onDelete: () -> Unit,
+    onOpenFolder: (() -> Unit)?,
 ) {
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
+    if (onOpenFolder != null) {
+        OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
+    }
     if (group.record.url.isNotBlank()) {
         OutlinedButton(onClick = onCheck, shape = shape) { Text("⟳ " + s.playlistCheckNew, fontSize = 12.sp) }
     }

@@ -850,6 +850,10 @@ struct PlaylistPageBar: View {
                 .buttonStyle(.borderless)
                 Spacer(minLength: 0)
                 Menu {
+                    let resolver = PathResolver()
+                    if resolver.isOpenFolderSupported(), let folder = group.tasks.first?.destinationPath ?? Optional(group.record.folder), !folder.isEmpty {
+                        Button(s.rowMenuOpenFolder) { _ = resolver.openDirectoryInExplorer(path: folder) }
+                    }
                     if !group.record.url.isEmpty {
                         Button(s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
                     }

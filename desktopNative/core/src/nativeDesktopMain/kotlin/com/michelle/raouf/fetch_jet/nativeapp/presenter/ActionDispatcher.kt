@@ -44,9 +44,11 @@ internal fun Presenter.dispatch(action: UiAction) {
             ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupResume(it)) }
         UiAction.PlaylistRemove -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupRemove(it)) }
             ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(it)) }
-        UiAction.GroupOpenFolderOnDisk -> openFolderKey()?.let { key ->
-            val path = folderTasks(vm.uiState.value.allTasks, vm.uiState.value.playlists, key).firstOrNull()?.destinationPath ?: key
-            if (!headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
+        UiAction.GroupOpenFolderOnDisk -> {
+            val state = vm.uiState.value
+            val path = openFolderKey()?.let { key -> folderTasks(state.allTasks, state.playlists, key).firstOrNull()?.destinationPath ?: key }
+                ?: openPlaylistId()?.let { id -> state.allTasks.firstOrNull { it.playlistId == id }?.destinationPath ?: state.playlists[id]?.folder }
+            if (path != null && !headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
         }
         UiAction.PlaylistCheck -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistCheck(it)) }
         UiAction.PlaylistReadLanguages -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(it)) }

@@ -75,14 +75,20 @@ object PlaylistStore {
         }.maxByOrNull { it.createdAtMs }
     }
 
-    /** The saved playlist whose videos are saved in [folder], if any. */
+    /**
+     * The saved playlist whose own folder is [folder]: the same path, and a folder named after the
+     * playlist (a list saved straight into Downloads does not take every file there).
+     */
     fun inFolder(folder: String): PlaylistRecord? {
         load()
         fun key(p: String) = p.replace('\\', '/').trimEnd('/').lowercase()
+        fun plain(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
         val wanted = key(folder)
         if (wanted.isEmpty()) return null
-        return _records.value.values.filter { it.folder.isNotBlank() && key(it.folder) == wanted }
-            .maxByOrNull { it.createdAtMs }
+        val name = plain(wanted.substringAfterLast('/'))
+        return _records.value.values.filter {
+            it.folder.isNotBlank() && key(it.folder) == wanted && name.isNotEmpty() && plain(it.title) == name
+        }.maxByOrNull { it.createdAtMs }
     }
 
     fun put(record: PlaylistRecord) {

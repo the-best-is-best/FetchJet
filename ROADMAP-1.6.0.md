@@ -121,6 +121,10 @@ After c7a35ff (2026-11-19, Windows + the A56; owner's requests the same evening)
 - A video the extension sends from a playlist page (`list=` in the link or the page) of a playlist saved in the app
   goes to that playlist's folder and joins it (`PlaylistStore.forLink`). The details show the playlist's link
   ("Playlist", with Copy) on all three UIs.
+- The playlist page has "Open folder" on all three UIs, with or without group by folder. Downloads saved on their own
+  in a saved playlist's folder become its videos (`adoptLoneVideos`, `QueueManagerRepository.setPlaylist`), on start
+  and whenever a playlist is saved; only when the folder is named after the playlist (`PlaylistStore.inFolder`), so a
+  list saved straight into Downloads does not take every file there. Windows tests rerun after it: all 0 failed.
 - Android: a link that waited in a notification (no "display over other apps") makes the app ask once, when it is
   opened, to allow it (`PopUpAsk`, Allow / Not now; Not now holds until the app restarts).
 - "Same file" with only the query changed is limited to the signing CDNs (fbcdn.net, cdninstagram.com): a first

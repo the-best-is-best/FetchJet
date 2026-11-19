@@ -160,7 +160,7 @@ component PlaylistBar inherits Rectangle {
                 enabled: Core.chrome.playlistCanCheck;
                 clicked => { Act.playlistCheck(); }
             }
-            if Core.chrome.groupIsFolder: OutlinedButton {
+            OutlinedButton {
                 glyph: "📂";
                 text: Tr.rowMenuOpenFolder;
                 height: 34px;

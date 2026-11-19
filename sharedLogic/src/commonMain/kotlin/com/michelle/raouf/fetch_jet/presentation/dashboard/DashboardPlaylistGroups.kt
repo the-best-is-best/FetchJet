@@ -110,11 +110,24 @@ internal fun DashboardViewModel.joiningPlaylist(state: DashboardUiState): Playli
     return record.takeIf { it.url.isNotBlank() && it.url.trim() == link }
 }
 
+/** Downloads saved on their own in a saved playlist's folder (named after it) become its videos. */
+private fun DashboardViewModel.adoptLoneVideos(tasks: List<DownloadTask>) {
+    if (PlaylistStore.records.value.isEmpty()) return
+    for (task in tasks) {
+        if (task.playlistId.isNotEmpty() || task.engineType == com.michelle.raouf.fetch_jet.domain.model.EngineType.BITTORRENT) continue
+        val list = PlaylistStore.inFolder(task.destinationPath) ?: continue
+        queueRepository.setPlaylist(task.id, list.id, list.title)
+    }
+}
+
 /** Keeps the state's playlists in step with the store, and forgets lists left without videos. */
 internal fun DashboardViewModel.watchPlaylists() {
     PlaylistStore.load()
     scope.launch {
-        PlaylistStore.records.collect { records -> _uiState.update { it.copy(playlists = records) } }
+        PlaylistStore.records.collect { records ->
+            _uiState.update { it.copy(playlists = records) }
+            adoptLoneVideos(queueRepository.allTasksFlow.value)
+        }
     }
     scope.launch {
         val seen = HashSet<String>()
@@ -122,6 +135,7 @@ internal fun DashboardViewModel.watchPlaylists() {
             _uiState.value.openFolder?.let { folder ->
                 if (folderTasks(tasks, _uiState.value.playlists, folder).isEmpty()) _uiState.update { it.copy(openFolder = null) }
             }
+            adoptLoneVideos(tasks)
             val present = tasks.mapNotNullTo(HashSet()) { it.playlistId.takeIf { id -> id.isNotEmpty() } }
             val gone = seen.filter { it !in present }
             seen.addAll(present)

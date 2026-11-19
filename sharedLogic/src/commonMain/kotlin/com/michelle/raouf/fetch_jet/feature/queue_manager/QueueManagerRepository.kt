@@ -1217,6 +1217,22 @@ class QueueManagerRepository(
         torrentEngine.updateFilePriority(taskId, fileIndex, priority)
     }
 
+    /** Makes a saved download one of a playlist's videos. */
+    fun setPlaylist(taskId: String, playlistId: String, playlistTitle: String) {
+        val pending = pendingTasks.value[taskId]
+        if (pending != null) {
+            pendingTasks.update { it + (taskId to pending.copy(playlistId = playlistId, playlistTitle = playlistTitle)) }
+            return
+        }
+        val task = getAllCurrentTasks().firstOrNull { it.id == taskId } ?: return
+        val changed = task.copy(playlistId = playlistId, playlistTitle = playlistTitle)
+        when (task.engineType) {
+            EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(changed)
+            EngineType.BITTORRENT -> return
+            EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(changed)
+        }
+    }
+
     /** Task-level queue priority (1 High / 0 Normal / -1 Low): decides which waiting task starts next. */
     fun setTaskPriority(taskId: String, priority: Int) {
         val pending = pendingTasks.value[taskId]

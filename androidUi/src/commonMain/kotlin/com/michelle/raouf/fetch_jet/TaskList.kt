@@ -470,7 +470,9 @@ internal fun TaskListArea(
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(openGroup.id)) },
                 onReadLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(openGroup.id)) },
                 onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
-                onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) }
+                onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
+                onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
+                    ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } }
             )
         } else if (openFolder != null) {
             val firstFile = openFolder.tasks.firstOrNull()
