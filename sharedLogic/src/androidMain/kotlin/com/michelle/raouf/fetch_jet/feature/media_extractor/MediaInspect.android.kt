@@ -172,6 +172,7 @@ actual suspend fun inspectPlatformQualities(
 
         val output = response.out.trim()
         if (output.isBlank()) return@withContext emptyList()
+        if (ytDlpSaysTooManyRequests(output) && output.lineSequence().none { it.startsWith("{") }) throw SiteBusyException(linkHost(url))
 
         // Parse JSON output line-by-line (matching Desktop logic)
         val jsonLine = output.lineSequence().firstOrNull { it.startsWith("{") } ?: output
@@ -190,6 +191,7 @@ actual suspend fun inspectPlatformQualities(
         val parseStarted = System.currentTimeMillis()
         val list = mutableListOf<MediaQualityEntry>()
         val seenKeys = mutableSetOf<String>()
+        val keptCodec = HashMap<String, String>()
 
         for (i in 0 until rawFormats.length()) {
             val f = rawFormats.optJSONObject(i) ?: continue
@@ -337,6 +339,7 @@ actual suspend fun inspectPlatformQualities(
                     it.qualityLabel == label && it.format.equals(ext, ignoreCase = true)
                 }
                 if (existingIndex == -1) {
+                    keptCodec[formatId] = vcodec
                     seenKeys.add(key)
                     list.add(
                         MediaQualityEntry(
@@ -363,7 +366,8 @@ actual suspend fun inspectPlatformQualities(
                                 ignoreCase = true
                             ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
-                    if (existingIsHls) {
+                    if (existingIsHls || playsWiderThan(vcodec, keptCodec[existing.formatId.orEmpty()])) {
+                        keptCodec[formatId] = vcodec
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
                             qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(

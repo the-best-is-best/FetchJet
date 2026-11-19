@@ -92,6 +92,12 @@ struct SettingsDownloadsPage: View {
                 ) { store.send(DashboardUiEventOnGroupByFolderChanged(on: $0)) }
                 SettingsDivider()
                 SettingsSwitchRow(
+                    title: s.videoPlaysEverywhere,
+                    subtitle: st.videoPlaysEverywhere ? s.videoPlaysEverywhereOn : s.videoPlaysEverywhereOff,
+                    isOn: st.videoPlaysEverywhere
+                ) { store.send(DashboardUiEventOnVideoPlaysEverywhereChanged(on: $0)) }
+                SettingsDivider()
+                SettingsSwitchRow(
                     title: s.extractArchives,
                     subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
                     isOn: st.extractArchives

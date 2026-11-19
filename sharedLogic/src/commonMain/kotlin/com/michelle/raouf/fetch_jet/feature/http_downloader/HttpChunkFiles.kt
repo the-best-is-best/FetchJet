@@ -94,10 +94,17 @@ internal fun trimFile(path: okio.Path, keep: Long) {
     }
 }
 
+/** The split of versions that kept no piece map: their parts on disk follow it. */
+internal fun legacyChunkCount(fileSize: Long): Int = when {
+    fileSize > 100L * 1024 * 1024 -> 8
+    fileSize > 20L * 1024 * 1024 -> 6
+    else -> 4
+}
+
 internal fun calculateOptimalChunkCount(fileSize: Long): Int {
     return when {
-        fileSize > 100 * 1024 * 1024 -> 8 // 8 parallel connections for >100MB
-        fileSize > 20 * 1024 * 1024 -> 6  // 6 parallel connections for >20MB
-        else -> 4                          // 4 parallel connections for >2MB
+        fileSize > 16L * 1024 * 1024 -> 32
+        fileSize > 2L * 1024 * 1024 -> 16
+        else -> 4
     }
 }

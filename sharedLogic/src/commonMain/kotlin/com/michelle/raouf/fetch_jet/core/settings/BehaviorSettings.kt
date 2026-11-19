@@ -54,6 +54,19 @@ object BehaviorSettings {
         _groupByFolder.value = on; write("groupByFolder", on.toString())
     }
 
+    private val _videoPlaysEverywhere =
+        MutableStateFlow(read("videoPlaysEverywhere")?.toBooleanStrictOrNull() ?: false)
+
+    /**
+     * Videos in H.264 + AAC, which every player opens. Off (default): the smaller AV1 / VP9 +
+     * Opus of the same quality; either way the other one is used when the first is missing.
+     */
+    val videoPlaysEverywhere: StateFlow<Boolean> = _videoPlaysEverywhere.asStateFlow()
+
+    fun setVideoPlaysEverywhere(on: Boolean) {
+        _videoPlaysEverywhere.value = on; write("videoPlaysEverywhere", on.toString())
+    }
+
     private val _extractArchives =
         MutableStateFlow(read("extractArchives")?.toBooleanStrictOrNull() ?: false)
 

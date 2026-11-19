@@ -84,6 +84,7 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
         }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
         "groupByFolder" -> vm.onEvent(DashboardUiEvent.OnGroupByFolderChanged(on))
+        "videoPlaysEverywhere" -> vm.onEvent(DashboardUiEvent.OnVideoPlaysEverywhereChanged(on))
         "extractArchives" -> vm.onEvent(DashboardUiEvent.OnExtractArchivesChanged(on))
         "deleteToTrash" -> BehaviorSettings.setDeleteToTrash(on)
         "trashArchive" -> BehaviorSettings.setTrashArchiveAfterExtract(on)

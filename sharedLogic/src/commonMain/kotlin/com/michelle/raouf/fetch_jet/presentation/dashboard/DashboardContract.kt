@@ -246,6 +246,7 @@ data class DashboardUiState(
     val playlistLanguages: PlaylistLanguagesUi? = null,
     /** Settings > Downloads: the list shows each destination folder as one row. */
     val groupByFolder: Boolean = false,
+    val videoPlaysEverywhere: Boolean = false,
     /** The folder page that is open (its downloads instead of the whole list); a folder key, null = none. */
     val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
@@ -586,6 +587,7 @@ sealed interface DashboardUiEvent {
     data class OnPlaylistAddLanguage(val playlistId: String, val langCode: String) : DashboardUiEvent
     data object OnPlaylistLanguagesDismiss : DashboardUiEvent
     data class OnGroupByFolderChanged(val on: Boolean) : DashboardUiEvent
+    data class OnVideoPlaysEverywhereChanged(val on: Boolean) : DashboardUiEvent
     data class OnOpenFolderGroup(val folder: String) : DashboardUiEvent
     data object OnCloseFolderGroup : DashboardUiEvent
     data class OnFolderGroupPause(val folder: String) : DashboardUiEvent

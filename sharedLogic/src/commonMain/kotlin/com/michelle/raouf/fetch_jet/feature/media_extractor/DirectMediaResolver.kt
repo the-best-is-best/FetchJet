@@ -34,7 +34,7 @@ object DirectMediaResolver {
     fun selector(formatId: String?, audioOnly: Boolean): String = when {
         formatId.isNullOrBlank() -> "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best"
         audioOnly -> "$formatId/bestaudio/best"
-        else -> "$formatId+bestaudio/$formatId/best"
+        else -> videoWithAudioSelector(formatId)
     }
 
     suspend fun resolve(

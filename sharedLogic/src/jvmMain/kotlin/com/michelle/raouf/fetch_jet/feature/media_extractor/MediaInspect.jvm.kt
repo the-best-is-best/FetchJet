@@ -155,6 +155,7 @@ actual suspend fun inspectPlatformQualities(
     val rawFormats = parsedRoot?.getObjectArray("formats") ?: emptyList()
     val list = mutableListOf<MediaQualityEntry>()
     val seenKeys = mutableSetOf<String>()
+    val keptCodec = HashMap<String, String>()
 
     for (f in rawFormats) {
         val formatId = f["format_id"]?.toString() ?: continue
@@ -308,6 +309,7 @@ actual suspend fun inspectPlatformQualities(
                 )
             }
             if (existingIndex == -1) {
+                keptCodec[formatId] = vcodec
                 seenKeys.add(key)
                 list.add(
                     MediaQualityEntry(
@@ -331,7 +333,8 @@ actual suspend fun inspectPlatformQualities(
                     ".m3u8",
                     ignoreCase = true
                 ) || existing.formatId?.startsWith("hls", ignoreCase = true) == true
-                if (existingIsHls) {
+                if (existingIsHls || playsWiderThan(vcodec, keptCodec[existing.formatId.orEmpty()])) {
+                    keptCodec[formatId] = vcodec
                     list[existingIndex] = MediaQualityEntry(
                         index = 0,
                         qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(

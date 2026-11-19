@@ -749,6 +749,10 @@ interface AppLocalization : LocalizationProvider {
     val popUpAskAllow: String
     val popUpAskLater: String
     val driveNoDownloadError: String
+    val siteBusyRetryLater: String
+    val videoPlaysEverywhere: String
+    val videoPlaysEverywhereOn: String
+    val videoPlaysEverywhereOff: String
     val sysReadingChannelName: String
     val sysReadingVideosCount: String
     val playlistGroupDone: String

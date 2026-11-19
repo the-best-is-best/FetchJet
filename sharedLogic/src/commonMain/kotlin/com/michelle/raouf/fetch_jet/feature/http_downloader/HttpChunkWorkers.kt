@@ -70,7 +70,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
     val initialChunks = resumed ?: run {
         val n =
-            if (AppFileSystem.exists(partPath(0))) calculateOptimalChunkCount(totalLength) else connections
+            if (AppFileSystem.exists(partPath(0))) legacyChunkCount(totalLength) else connections
         val chunkSize = totalLength / n
         (0 until n).map { i ->
             val start = i * chunkSize

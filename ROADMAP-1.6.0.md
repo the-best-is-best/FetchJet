@@ -171,6 +171,24 @@ Data like that exists only from 1.6.0 development builds (1.5.x saves no `playli
 After 23cc218 (same day, iOS built with no error, relaunched with group by folder on): the DIR row is gone; the LIST
 "Test Playlist" row says "6 of 6 done · 19.8 MB" and opens to all six videos (the two new ones and the four old ones).
 
+After 5b4f1fd (2026-11-20, Windows + the A56), from a side-by-side check with EZOO 1.0.12 on this PC:
+- Direct files: 32 connections by default above 16 MB, 16 above 2 MB (was 4 / 6 / 8); parts left by versions without
+  a piece map still resume with the old split (`legacyChunkCount`). 32 MB from GitHub media: EZOO 3.3-3.5 s,
+  FetchJet 7-12 s before, 4.7-4.9 s after (release core, from the first byte on disk). The 429 cap still lowers it
+  per host (`test_hostlimit` 8 / 0).
+- A site answering yt-dlp "HTTP Error 429": the inspect stops at once (no retry without cookies, no fallbacks), says
+  "<site> is limiting requests ... try again in a few minutes" (15 languages) and the site is not asked again for 3
+  minutes (`SiteBusy`, Android and iOS read the 429 from yt-dlp's output). On the A56 a Drive link had run yt-dlp
+  about 18 times in 4 minutes and kept Google's limit on.
+- Settings > Downloads "Videos that play everywhere" (off by default): off keeps AV1 / VP9 + the best sound (smaller),
+  on keeps H.264 + AAC (EZOO's choice; plays on old TVs and players). One quality offered in two codecs keeps the
+  chosen one (`playsWiderThan`, all four inspect parsers); the yt-dlp -f falls back to the other sound kind, the
+  video's own sound, then best (`videoWithAudioSelector`). Not seen on screen; iOS needs the Mac.
+- EZOO notes: its Add URL takes a YouTube link as a web page; its extension sends only the stream being played (one
+  quality); FetchJet lists every quality. EZOO idle 54 MB RAM, FetchJet release 71 MB (not measured the same way).
+- Tests (Windows, release core): jvmTest 240 / 0; corehost media 31, playlist 37, settings 87, add 29, links 17,
+  drm 6, subtitles 27, download 29, robust 15, slowtail 4, hostlimit 8, integrity 32, all 0 failed.
+
 ## 5. YouTube "made for kids" and faster qualities [ ]
 
 Ezoo: videos made for children download now; qualities show up faster.

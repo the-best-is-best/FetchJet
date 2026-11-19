@@ -525,6 +525,14 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
         )
         rows.add(
             switchRow(
+                "videoPlaysEverywhere",
+                s.videoPlaysEverywhere,
+                if (v.videoPlaysEverywhere) s.videoPlaysEverywhereOn else s.videoPlaysEverywhereOff,
+                v.videoPlaysEverywhere,
+            )
+        )
+        rows.add(
+            switchRow(
                 "extractArchives",
                 s.extractArchives,
                 if (v.extractArchives) s.extractArchivesOn else s.extractArchivesOff,

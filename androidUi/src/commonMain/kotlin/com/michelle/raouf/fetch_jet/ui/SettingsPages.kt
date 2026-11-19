@@ -430,6 +430,13 @@ internal fun DownloadsPage(
                 checked = groupByFolder,
                 onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setGroupByFolder(it) }
             )
+            val videoPlaysEverywhere by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.collectAsState()
+            SettingSwitch(
+                title = LocalizationManager.Strings.videoPlaysEverywhere,
+                subtitle = if (videoPlaysEverywhere) LocalizationManager.Strings.videoPlaysEverywhereOn else LocalizationManager.Strings.videoPlaysEverywhereOff,
+                checked = videoPlaysEverywhere,
+                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVideoPlaysEverywhere(it) }
+            )
             SettingSwitch(
                 title = LocalizationManager.Strings.extractArchives,
                 subtitle = if (extractArchives) LocalizationManager.Strings.extractArchivesOn else LocalizationManager.Strings.extractArchivesOff,

@@ -126,6 +126,7 @@ actual suspend fun inspectPlatformQualities(
             val reason = bridge?.lastErrorText()?.lineSequence()
                 ?.map { it.trim() }
                 ?.lastOrNull { it.isNotBlank() }
+            if (reason != null && ytDlpSaysTooManyRequests(reason)) throw SiteBusyException(linkHost(trimmedUrl))
             throw Exception(reason ?: "yt-dlp returned no metadata")
         }
 
@@ -176,6 +177,7 @@ actual suspend fun inspectPlatformQualities(
         val rawFormats = (getValueFromMap(parsedRoot, "formats") as? List<*>) ?: emptyList<Any?>()
         val list = mutableListOf<MediaQualityEntry>()
         val seenKeys = mutableSetOf<String>()
+        val keptCodec = HashMap<String, String>()
 
         for (rawF in rawFormats) {
             val f = rawF as? Map<*, *> ?: continue
@@ -315,6 +317,7 @@ actual suspend fun inspectPlatformQualities(
                     it.qualityLabel == label && it.format.equals(ext, ignoreCase = true)
                 }
                 if (existingIndex == -1) {
+                    keptCodec[formatId] = vcodec
                     seenKeys.add(key)
                     list.add(
                         MediaQualityEntry(
@@ -341,7 +344,8 @@ actual suspend fun inspectPlatformQualities(
                                 ignoreCase = true
                             ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
-                    if (existingIsHls) {
+                    if (existingIsHls || playsWiderThan(vcodec, keptCodec[existing.formatId.orEmpty()])) {
+                        keptCodec[formatId] = vcodec
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
                             qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(

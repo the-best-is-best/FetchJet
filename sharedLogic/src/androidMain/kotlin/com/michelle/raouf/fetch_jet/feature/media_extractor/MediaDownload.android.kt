@@ -96,7 +96,7 @@ actual suspend fun downloadMediaWithPlatformTool(
             if (formatId.contains("+") || formatId.contains("/") || formatId.contains("best")) {
                 request.addOption("-f", formatId)
             } else {
-                request.addOption("-f", "$formatId+bestaudio/$formatId/best")
+                request.addOption("-f", videoWithAudioSelector(formatId))
                 request.addOption("--merge-output-format", "mp4")
             }
         } else {

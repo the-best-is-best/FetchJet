@@ -658,6 +658,9 @@ class DashboardViewModel(
             }
         }
         scope.launch {
+            BehaviorSettings.videoPlaysEverywhere.collect { on -> _uiState.update { it.copy(videoPlaysEverywhere = on) } }
+        }
+        scope.launch {
             BehaviorSettings.groupByFolder.collect { on ->
                 _uiState.update { if (on) it.copy(groupByFolder = true) else it.copy(groupByFolder = false, openFolder = null) }
             }
@@ -750,7 +753,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGroupByFolderChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGroupByFolderChanged, is DashboardUiEvent.OnVideoPlaysEverywhereChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
 

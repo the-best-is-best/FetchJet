@@ -522,6 +522,7 @@ class MediaStreamDownloader(
         lastInspectDrm = false
         if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return emptyList()
         if (FACEBOOK_STORY.containsMatchIn(url)) return emptyList()
+        SiteBusy.check(url)
         if (MediaDrm.looksLikeDash(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
             lastInspectDrm = true
             return emptyList()
@@ -573,6 +574,8 @@ class MediaStreamDownloader(
             } else {
                 inspectWebPage(effectiveUrl, resolvedTitle, list, currentIndex)
             }
+        } catch (e: SiteBusyException) {
+            throw e
         } catch (_: Exception) {
         }
 
