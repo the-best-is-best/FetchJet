@@ -332,7 +332,9 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
     taskId: String,
     initialTask: DownloadTask
 ) {
-    val tracks = initialTask.subtitleTracks.filter { it.isSelected }
+    val tracks = initialTask.subtitleTracks.filter { it.isSelected }.ifEmpty {
+        tracksForWantedLanguages(taskId, initialTask)
+    }
     if (tracks.isEmpty()) return
     val task = tasksState.value[taskId] ?: return
     val destDir = task.destinationPath
@@ -365,6 +367,26 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
     }
     deleteRecursively(tempDir)
     reportPostProcess(taskId, "Subtitles", POST_PROCESS_CLEAR)
+}
+
+/**
+ * A playlist video queued before its tracks were read: reads them now and keeps the wanted
+ * languages it has. A video without them gets none, without an error.
+ */
+private suspend fun MediaStreamDownloader.tracksForWantedLanguages(taskId: String, task: DownloadTask): List<SubtitleTrack> {
+    val wanted = subtitleLanguageList(task.subtitleLanguages)
+    if (wanted.isEmpty()) return emptyList()
+    val page = task.originalUrl?.takeIf { it.isNotBlank() } ?: task.url
+    val tracks = try {
+        inspectMediaQualities(page, task.requestHeaders)
+        subtitlesFoundFor(page).forLanguages(wanted)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        emptyList()
+    }
+    updateTaskState(taskId) { it.copy(subtitleTracks = tracks, subtitleLanguages = "") }
+    return tracks
 }
 
 class SubtitleAddResult(

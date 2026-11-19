@@ -14,6 +14,9 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.RowActionCode
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.update
@@ -25,8 +28,30 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.SetFilter -> {
             val filter = SideFilter.entries.getOrNull(action.filter) ?: return
             local.update { it.copy(sideFilter = filter) }
+            vm.onEvent(DashboardUiEvent.OnClosePlaylist)
+            vm.onEvent(DashboardUiEvent.OnCloseFolderGroup)
             vm.onEvent(DashboardUiEvent.OnTabSelected(DashboardTab.ALL))
         }
+
+        is UiAction.OpenPlaylist -> openPlaylist(action.id)
+        UiAction.ClosePlaylist -> {
+            vm.onEvent(DashboardUiEvent.OnClosePlaylist)
+            vm.onEvent(DashboardUiEvent.OnCloseFolderGroup)
+        }
+        UiAction.PlaylistPauseAll -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupPause(it)) }
+            ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupPause(it)) }
+        UiAction.PlaylistResumeAll -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupResume(it)) }
+            ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupResume(it)) }
+        UiAction.PlaylistRemove -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupRemove(it)) }
+            ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(it)) }
+        UiAction.GroupOpenFolderOnDisk -> openFolderKey()?.let { key ->
+            val path = folderTasks(vm.uiState.value.allTasks, vm.uiState.value.playlists, key).firstOrNull()?.destinationPath ?: key
+            if (!headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
+        }
+        UiAction.PlaylistCheck -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistCheck(it)) }
+        UiAction.PlaylistReadLanguages -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(it)) }
+        is UiAction.PlaylistAddLanguage -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(it, action.code)) }
+        UiAction.PlaylistLanguagesClose -> vm.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss)
 
         UiAction.OpenSettings -> vm.onEvent(DashboardUiEvent.OnTabSelected(DashboardTab.SETTINGS))
         is UiAction.SetSearch -> local.update { it.copy(search = action.text) }
@@ -87,7 +112,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         UiAction.ClearChecks -> local.update { it.copy(checkedIds = emptySet()) }
         UiAction.RemoveChecked -> removeChecked()
         UiAction.ExportChecked -> {
-            val ids = local.value.checkedIds.toList()
+            val ids = expandPlaylistRows(local.value.checkedIds)
             if (ids.isNotEmpty()) vm.onEvent(DashboardUiEvent.OnExportLinksClicked(ids))
         }
 
@@ -288,8 +313,38 @@ internal fun Presenter.dispatch(action: UiAction) {
 
 internal fun Presenter.task(id: String): DownloadTask? = vm.uiState.value.allTasks.firstOrNull { it.id == id }
 
+private fun Presenter.openPlaylistId(): String? = vm.uiState.value.openPlaylistId
+
+private fun Presenter.openFolderKey(): String? = vm.uiState.value.openFolder
+
+private fun Presenter.openFolderGroup(folder: String) {
+    local.update { it.copy(selectedTaskId = null, checkedIds = emptySet(), focusId = null, anchorId = null) }
+    vm.onEvent(DashboardUiEvent.OnOpenFolderGroup(folder))
+}
+
+private fun Presenter.openPlaylist(id: String) {
+    local.update { it.copy(selectedTaskId = null, checkedIds = emptySet(), focusId = null, anchorId = null) }
+    vm.onEvent(DashboardUiEvent.OnOpenPlaylist(id))
+}
+
+/** Checked rows as task ids: a playlist or folder row stands for all its downloads. */
+internal fun Presenter.expandPlaylistRows(ids: Collection<String>): List<String> = ids.flatMap { id ->
+    val state = vm.uiState.value
+    val playlist = playlistIdOfRow(id)
+    val folder = folderOfRow(id)
+    when {
+        playlist != null -> state.allTasks.filter { it.playlistId == playlist }.map { it.id }
+        folder != null -> folderTasks(state.allTasks, state.playlists, folder).map { it.id }
+        else -> listOf(id)
+    }
+}.distinct()
+
 private fun Presenter.rowClick(id: String, control: Boolean, shift: Boolean) {
     val ui = local.value
+    val playlist = playlistIdOfRow(id)
+    if (playlist != null && !control && !shift && ui.checkedIds.isEmpty()) return openPlaylist(playlist)
+    val folder = folderOfRow(id)
+    if (folder != null && !control && !shift && ui.checkedIds.isEmpty()) return openFolderGroup(folder)
     when {
         control -> local.update {
             it.copy(anchorId = id, focusId = null, checkedIds = if (id in it.checkedIds) it.checkedIds - id else it.checkedIds + id)
@@ -314,6 +369,19 @@ private fun Presenter.rowClick(id: String, control: Boolean, shift: Boolean) {
 }
 
 private fun Presenter.rowQuickAction(id: String) {
+    folderOfRow(id)?.let { folder ->
+        val state = vm.uiState.value
+        val tasks = folderTasks(state.allTasks, state.playlists, folder)
+        if (anyPausable(tasks)) vm.onEvent(DashboardUiEvent.OnFolderGroupPause(folder))
+        else if (anyResumable(tasks)) vm.onEvent(DashboardUiEvent.OnFolderGroupResume(folder))
+        return
+    }
+    playlistIdOfRow(id)?.let { playlist ->
+        val tasks = vm.uiState.value.allTasks.filter { it.playlistId == playlist }
+        if (anyPausable(tasks)) vm.onEvent(DashboardUiEvent.OnPlaylistGroupPause(playlist))
+        else if (anyResumable(tasks)) vm.onEvent(DashboardUiEvent.OnPlaylistGroupResume(playlist))
+        return
+    }
     val task = task(id) ?: return
     when (rowActionFor(task)) {
         RowActionCode.PAUSE ->
@@ -338,7 +406,7 @@ internal fun Presenter.openDownloadedFile(fullPath: String, taskId: String) {
 }
 
 private fun Presenter.removeChecked() {
-    val ids = local.value.checkedIds.toList()
+    val ids = expandPlaylistRows(local.value.checkedIds)
     if (ids.isNotEmpty()) vm.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(ids))
 }
 

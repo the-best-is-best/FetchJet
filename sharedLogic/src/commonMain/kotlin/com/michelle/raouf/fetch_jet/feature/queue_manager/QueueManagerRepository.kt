@@ -767,6 +767,13 @@ class QueueManagerRepository(
         return result
     }
 
+    /** Subtitle languages a media task picks up when it downloads (playlist "Add language"). */
+    fun setSubtitleLanguages(taskId: String, languages: String) {
+        val pending = pendingTasks.value[taskId]
+        if (pending != null) pendingTasks.update { it + (taskId to pending.copy(subtitleLanguages = languages)) }
+        else mediaEngine.updateTaskState(taskId) { it.copy(subtitleLanguages = languages) }
+    }
+
     /** The videos of a playlist / channel link (null = not a playlist). */
     suspend fun inspectPlaylist(
         url: String,
@@ -818,6 +825,7 @@ class QueueManagerRepository(
         subtitleFormat: String = "srt",
         playlistId: String = "",
         playlistTitle: String = "",
+        subtitleLanguages: String = "",
         initialStepText: String? = null,
         displayTotalBytes: Long = 0L,
         displayDownloadedBytes: Long = 0L,
@@ -915,6 +923,8 @@ class QueueManagerRepository(
 
         val shownTotal = if (initialTotalBytes > 0L) initialTotalBytes else displayTotalBytes.coerceAtLeast(0L)
         val shownDownloaded = if (shownTotal > 0L) displayDownloadedBytes.coerceIn(0L, shownTotal) else 0L
+        val sameFolderList = if (playlistId.isBlank() && engineType != EngineType.BITTORRENT)
+            com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.inFolder(destDir) else null
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
@@ -947,8 +957,9 @@ class QueueManagerRepository(
             subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
             embedSubtitles = embedSubtitles,
             subtitleFormat = subtitleFormat,
-            playlistId = playlistId,
-            playlistTitle = playlistTitle
+            playlistId = sameFolderList?.id ?: playlistId,
+            playlistTitle = sameFolderList?.title ?: playlistTitle,
+            subtitleLanguages = if (engineType == EngineType.MEDIA_STREAM) subtitleLanguages else ""
         )
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The pump

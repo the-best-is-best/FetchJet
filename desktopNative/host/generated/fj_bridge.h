@@ -161,6 +161,7 @@ namespace SideFilterCode {
 namespace RowKind {
     inline constexpr int Task = 0;
     inline constexpr int Header = 1;
+    inline constexpr int Group = 2;
 }
 
 namespace RowActionCode {
@@ -410,6 +411,8 @@ inline PlaylistRowDto parse_PlaylistRowDto(const fj::Json &j) {
     d.size = fj::text(j, "size");
     d.sizeBusy = fj::flag(j, "sizeBusy");
     d.before = fj::flag(j, "before");
+    d.unavailable = fj::flag(j, "unavailable");
+    d.inPlaylist = fj::flag(j, "inPlaylist");
     return d;
 }
 
@@ -446,6 +449,8 @@ inline AddMediaDto parse_AddMediaDto(const fj::Json &j) {
     d.qualitiesTitleRtl = fj::flag(j, "qualitiesTitleRtl");
     d.qualitiesCount = fj::text(j, "qualitiesCount");
     d.subtitlesShown = fj::flag(j, "subtitlesShown");
+    d.subtitlesNote = fj::text(j, "subtitlesNote");
+    d.subtitlesReading = fj::flag(j, "subtitlesReading");
     d.subtitlesAnySelected = fj::flag(j, "subtitlesAnySelected");
     d.embedSubtitles = fj::flag(j, "embedSubtitles");
     d.subtitleVtt = fj::flag(j, "subtitleVtt");
@@ -477,6 +482,7 @@ inline AddMediaDto parse_AddMediaDto(const fj::Json &j) {
     d.playlistQualities = fj::struct_model<ChoiceDto>(j, "playlistQualities", parse_ChoiceDto);
     d.playlistCanUseSingle = fj::flag(j, "playlistCanUseSingle");
     d.playlistOldestFirst = fj::flag(j, "playlistOldestFirst");
+    d.playlistOldestFirstOffered = fj::flag(j, "playlistOldestFirstOffered");
     return d;
 }
 
@@ -839,6 +845,18 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.focusRow = fj::integer(j, "focusRow");
     d.focusHeads = fj::integer(j, "focusHeads");
     d.focusDone = fj::integer(j, "focusDone");
+    d.playlistOpen = fj::flag(j, "playlistOpen");
+    d.playlistSummary = fj::text(j, "playlistSummary");
+    d.playlistSubtitles = fj::text(j, "playlistSubtitles");
+    d.playlistCanPause = fj::flag(j, "playlistCanPause");
+    d.playlistCanResume = fj::flag(j, "playlistCanResume");
+    d.playlistCanCheck = fj::flag(j, "playlistCanCheck");
+    d.playlistLanguagesShown = fj::flag(j, "playlistLanguagesShown");
+    d.playlistLanguagesBusy = fj::flag(j, "playlistLanguagesBusy");
+    d.playlistLanguagesNote = fj::text(j, "playlistLanguagesNote");
+    d.playlistLanguageChoices = fj::struct_model<TextChoiceDto>(j, "playlistLanguageChoices", parse_TextChoiceDto);
+    d.groupIsFolder = fj::flag(j, "groupIsFolder");
+    d.groupFolderPath = fj::text(j, "groupFolderPath");
     return d;
 }
 
@@ -1661,6 +1679,11 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sortIntoFolders(next());
     tr.set_sortIntoFoldersOn(next());
     tr.set_sortIntoFoldersOff(next());
+    tr.set_groupByFolder(next());
+    tr.set_groupByFolderOn(next());
+    tr.set_groupByFolderOff(next());
+    tr.set_folderGroupFiles(next());
+    tr.set_folderDeleteAll(next());
     tr.set_speedLimitsFooter(next());
     tr.set_speedLimitsFooterIos(next());
     tr.set_speedLimitDownload(next());
@@ -1810,6 +1833,22 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysPlaylistDoneFailed(next());
     tr.set_playlistOldestFirst(next());
     tr.set_playlistDownloadedBefore(next());
+    tr.set_subtitlesReadingCount(next());
+    tr.set_subtitlesNoneInList(next());
+    tr.set_sysReadingChannelName(next());
+    tr.set_sysReadingVideosCount(next());
+    tr.set_playlistGroupDone(next());
+    tr.set_playlistCheckNew(next());
+    tr.set_playlistBack(next());
+    tr.set_playlistDeleteAll(next());
+    tr.set_playlistSubtitlesFor(next());
+    tr.set_playlistNoSubtitles(next());
+    tr.set_playlistAddLanguage(next());
+    tr.set_playlistLanguageAdding(next());
+    tr.set_playlistLanguageAdded(next());
+    tr.set_playlistReadingLanguages(next());
+    tr.set_playlistInIt(next());
+    tr.set_playlistNotAvailable(next());
     tr.set_sysPlaylistQualityBest(next());
     tr.set_sysPlaylistQualityAudioOnly(next());
     tr.set_sysToolsReadyYtDlpFfmpeg(next());
@@ -2084,6 +2123,15 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_rowMenu([send](slint::SharedString id) { fj::ActionWriter w("RowMenu"); w.add("id", id); send(w.finish()); });
     act.on_rowMenuPick([send](int key) { fj::ActionWriter w("RowMenuPick"); w.add("key", key); send(w.finish()); });
     act.on_rowMenuClose([send]() { fj::ActionWriter w("RowMenuClose"); send(w.finish()); });
+    act.on_openPlaylist([send](slint::SharedString id) { fj::ActionWriter w("OpenPlaylist"); w.add("id", id); send(w.finish()); });
+    act.on_closePlaylist([send]() { fj::ActionWriter w("ClosePlaylist"); send(w.finish()); });
+    act.on_playlistPauseAll([send]() { fj::ActionWriter w("PlaylistPauseAll"); send(w.finish()); });
+    act.on_playlistResumeAll([send]() { fj::ActionWriter w("PlaylistResumeAll"); send(w.finish()); });
+    act.on_playlistRemove([send]() { fj::ActionWriter w("PlaylistRemove"); send(w.finish()); });
+    act.on_playlistCheck([send]() { fj::ActionWriter w("PlaylistCheck"); send(w.finish()); });
+    act.on_playlistReadLanguages([send]() { fj::ActionWriter w("PlaylistReadLanguages"); send(w.finish()); });
+    act.on_playlistAddLanguage([send](slint::SharedString code) { fj::ActionWriter w("PlaylistAddLanguage"); w.add("code", code); send(w.finish()); });
+    act.on_playlistLanguagesClose([send]() { fj::ActionWriter w("PlaylistLanguagesClose"); send(w.finish()); });
     act.on_cyclePriority([send](slint::SharedString id) { fj::ActionWriter w("CyclePriority"); w.add("id", id); send(w.finish()); });
     act.on_checkAll([send](bool checked) { fj::ActionWriter w("CheckAll"); w.add("checked", checked); send(w.finish()); });
     act.on_clearChecks([send]() { fj::ActionWriter w("ClearChecks"); send(w.finish()); });
@@ -2206,6 +2254,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_selectAllPlaylist([send](bool selected) { fj::ActionWriter w("SelectAllPlaylist"); w.add("selected", selected); send(w.finish()); });
     act.on_setPlaylistFolder([send](slint::SharedString name) { fj::ActionWriter w("SetPlaylistFolder"); w.add("name", name); send(w.finish()); });
     act.on_setPlaylistQuality([send](int quality) { fj::ActionWriter w("SetPlaylistQuality"); w.add("quality", quality); send(w.finish()); });
+    act.on_groupOpenFolderOnDisk([send]() { fj::ActionWriter w("GroupOpenFolderOnDisk"); send(w.finish()); });
     act.on_setPlaylistOldestFirst([send](bool on) { fj::ActionWriter w("SetPlaylistOldestFirst"); w.add("on", on); send(w.finish()); });
     act.on_useSingleVideo([send]() { fj::ActionWriter w("UseSingleVideo"); send(w.finish()); });
     act.on_choicePrimary([send](int kind) { fj::ActionWriter w("ChoicePrimary"); w.add("kind", kind); send(w.finish()); });

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 enum class SideFilterCode { ALL, DOWNLOADING, WAITING, PAUSED, COMPLETED, FAILED, MEDIA, FILES, TORRENTS }
 
-enum class RowKind { TASK, HEADER }
+enum class RowKind { TASK, HEADER, GROUP }
 
 enum class RowActionCode { PAUSE, RESUME, START_NOW, OPEN, NONE }
 
@@ -69,6 +69,18 @@ data class ChromeDto(
     val focusRow: Int = 0,
     val focusHeads: Int = 0,
     val focusDone: Int = 0,
+    val playlistOpen: Boolean = false,
+    val playlistSummary: String = "",
+    val playlistSubtitles: String = "",
+    val playlistCanPause: Boolean = false,
+    val playlistCanResume: Boolean = false,
+    val playlistCanCheck: Boolean = false,
+    val playlistLanguagesShown: Boolean = false,
+    val playlistLanguagesBusy: Boolean = false,
+    val playlistLanguagesNote: String = "",
+    val playlistLanguageChoices: List<TextChoiceDto> = emptyList(),
+    val groupIsFolder: Boolean = false,
+    val groupFolderPath: String = "",
 )
 
 @Serializable

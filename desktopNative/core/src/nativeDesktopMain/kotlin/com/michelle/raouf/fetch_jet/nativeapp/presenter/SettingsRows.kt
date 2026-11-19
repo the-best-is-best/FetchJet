@@ -517,6 +517,14 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
         )
         rows.add(
             switchRow(
+                "groupByFolder",
+                s.groupByFolder,
+                if (v.groupByFolder) s.groupByFolderOn else s.groupByFolderOff,
+                v.groupByFolder,
+            )
+        )
+        rows.add(
+            switchRow(
                 "extractArchives",
                 s.extractArchives,
                 if (v.extractArchives) s.extractArchivesOn else s.extractArchivesOff,

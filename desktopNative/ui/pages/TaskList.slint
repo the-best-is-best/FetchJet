@@ -7,6 +7,7 @@ import { OptionsMenu } from "../widgets/Menu.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { TaskRow } from "TaskRow.slint";
+import { ChoiceChip, Spinner } from "../widgets/Kit.slint";
 import { Core, ListKeyCode } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
@@ -120,6 +121,156 @@ component ListToolbar inherits Rectangle {
             menu := SortMenu {
                 x: Dir.rtl ? 0 : sort.width - self.width;
                 y: sort.height;
+            }
+        }
+    }
+}
+
+component PlaylistBar inherits Rectangle {
+    VerticalLayout {
+        spacing: 6px;
+        padding-bottom: 8px;
+        HBox {
+            height: 34px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            TextButton {
+                text: (Dir.rtl ? "▶ " : "◀ ") + Tr.playlistBack;
+                height: 34px;
+                pad: 10px;
+                font-size: 12px;
+                font-weight: 600;
+                clicked => { Act.closePlaylist(); }
+            }
+            T {
+                text: Core.chrome.playlistSummary;
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if !Core.chrome.groupIsFolder: OutlinedButton {
+                glyph: "🔄";
+                text: Tr.playlistCheckNew;
+                height: 34px;
+                border-radius: 10px;
+                pad: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                enabled: Core.chrome.playlistCanCheck;
+                clicked => { Act.playlistCheck(); }
+            }
+            if Core.chrome.groupIsFolder: OutlinedButton {
+                glyph: "📂";
+                text: Tr.rowMenuOpenFolder;
+                height: 34px;
+                border-radius: 10px;
+                pad: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                clicked => { Act.groupOpenFolderOnDisk(); }
+            }
+            OutlinedButton {
+                glyph: "⏸";
+                text: Tr.homePauseAll;
+                height: 34px;
+                border-radius: 10px;
+                pad: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                enabled: Core.chrome.playlistCanPause;
+                clicked => { Act.playlistPauseAll(); }
+            }
+            OutlinedButton {
+                glyph: Dir.rtl ? "◀" : "▶";
+                text: Tr.homeResumeAll;
+                height: 34px;
+                border-radius: 10px;
+                pad: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                enabled: Core.chrome.playlistCanResume;
+                clicked => { Act.playlistResumeAll(); }
+            }
+            OutlinedButton {
+                glyph: "🗑";
+                text: Core.chrome.groupIsFolder ? Tr.folderDeleteAll : Tr.playlistDeleteAll;
+                height: 34px;
+                border-radius: 10px;
+                pad: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                clicked => { Act.playlistRemove(); }
+            }
+        }
+        if Core.chrome.groupIsFolder: HBox {
+            height: 26px;
+            cross-axis-alignment: center;
+            T {
+                text: "📁 " + Core.chrome.groupFolderPath;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+        if !Core.chrome.groupIsFolder: HBox {
+            height: 30px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            T {
+                text: "💬 " + Core.chrome.playlistSubtitles;
+                font-size: 12px;
+                overflow: elide;
+            }
+            TextButton {
+                text: "+ " + Tr.playlistAddLanguage;
+                height: 30px;
+                pad: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                enabled: !Core.chrome.playlistLanguagesBusy;
+                clicked => { Act.playlistReadLanguages(); }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+        if Core.chrome.playlistLanguagesShown: HBox {
+            height: 40px;
+            spacing: 6px;
+            cross-axis-alignment: center;
+            if Core.chrome.playlistLanguagesBusy: Spinner {
+                size: 14px;
+            }
+            if Core.chrome.playlistLanguagesNote != "": T {
+                text: Core.chrome.playlistLanguagesNote;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                height: 40px;
+                clip: true;
+                HBox {
+                    spacing: 6px;
+                    alignment: start;
+                    cross-axis-alignment: center;
+                    for choice in Core.chrome.playlistLanguageChoices: ChoiceChip {
+                        label: "+ " + choice.label;
+                        selected: false;
+                        clicked => { Act.playlistAddLanguage(choice.value); }
+                    }
+                }
+            }
+            TextButton {
+                text: "✕";
+                height: 30px;
+                pad: 8px;
+                font-size: 12px;
+                enabled: !Core.chrome.playlistLanguagesBusy;
+                clicked => { Act.playlistLanguagesClose(); }
             }
         }
     }
@@ -463,6 +614,7 @@ export component TaskList inherits Rectangle {
             if Core.chrome.toolsBannerShown: ToolsBanner { }
             if Core.chrome.whenDoneBannerShown: WhenDoneBanner { }
             if Core.chrome.selectionMode: SelectionBar { }
+            if !Core.chrome.selectionMode && Core.chrome.playlistOpen: PlaylistBar { }
             if !Core.chrome.selectionMode && Core.chrome.showToolbar: ListToolbar { }
             if !Core.chrome.listEmpty && root.width >= 720px: ColumnsHeader { }
             Rectangle {

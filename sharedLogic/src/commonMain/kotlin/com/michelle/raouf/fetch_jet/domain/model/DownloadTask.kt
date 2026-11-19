@@ -68,6 +68,8 @@ data class DownloadTask(
     /** Added with a playlist: its id and name, for one notice when the whole list is done. */
     val playlistId: String = "",
     val playlistTitle: String = "",
+    /** Subtitle languages wanted for a playlist video whose tracks were not read yet (comma list). */
+    val subtitleLanguages: String = "",
     val currentStepText: String? = null,
     val clipStart: String? = null,
     val clipEnd: String? = null,

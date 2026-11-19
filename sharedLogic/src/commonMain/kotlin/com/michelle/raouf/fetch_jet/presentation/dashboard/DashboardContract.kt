@@ -65,7 +65,9 @@ data class LinkListEntry(
     val isInspectingMedia: Boolean = false,
     val mediaInspectFailed: Boolean = false,
     val mediaTitle: String? = null,
-    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList()
+    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
+    /** The subtitle tracks this video offers (read with its qualities). */
+    val subtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList()
 ) {
     /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
     val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
@@ -234,11 +236,64 @@ data class DashboardUiState(
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
     val subtitlesPage: SubtitlesUi? = null,
+    /** Saved playlists (shown as one row each in the downloads list). */
+    val playlists: Map<String, com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord> = emptyMap(),
+    /** The playlist page that is open (its videos instead of the whole list); null = none. */
+    val openPlaylistId: String? = null,
+    /** The Add dialog was opened by "Check" of this playlist: new videos join it. */
+    val checkingPlaylistId: String? = null,
+    /** The playlist page's subtitle languages part. */
+    val playlistLanguages: PlaylistLanguagesUi? = null,
+    /** Settings > Downloads: the list shows each destination folder as one row. */
+    val groupByFolder: Boolean = false,
+    /** The folder page that is open (its downloads instead of the whole list); a folder key, null = none. */
+    val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
 ) {
     val subtitlesOffered: Boolean
-        get() = inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()
+        get() = inspectedPlaylist.let { list ->
+            if (linkList.isNotEmpty()) {
+                linkList.any {
+                    it.isSelected && it.engine == EngineType.MEDIA_STREAM &&
+                            (it.isBeingInspected || it.mediaQualities.anyVideoSelected())
+                } && (inspectedSubtitles.isNotEmpty() || subtitlesListReading || subtitlesListRead)
+            } else if (list != null) {
+                !list.fromBrowser && list.entries.any { it.isSelected } &&
+                        playlistQuality != com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO
+            } else inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()
+        }
+
+    /** A playlist / link list whose videos are still being read (their subtitle languages too). */
+    val subtitlesListReading: Boolean
+        get() = if (linkList.isNotEmpty()) linkList.any { it.isSelected && it.isBeingInspected }
+        else inspectedPlaylist?.let { pl -> !pl.fromBrowser && pl.entries.any { !it.unavailable && it.size == -1L } } == true
+
+    private val subtitlesListRead: Boolean
+        get() = linkList.any { it.isSelected && it.engine == EngineType.MEDIA_STREAM && it.mediaQualities.isNotEmpty() }
+
+    /** Under the list's subtitles: "reading N of M" while reading, "none" when no video has any. */
+    val subtitlesListNote: String
+        get() {
+            if (linkList.isEmpty() && inspectedPlaylist == null) return ""
+            val s = com.tbib.kmp_localization.LocalizationManager.Strings
+            if (subtitlesListReading) {
+                val pl = inspectedPlaylist
+                if (linkList.isEmpty() && pl != null) {
+                    val readable = pl.entries.filter { !it.unavailable }
+                    return s.subtitlesReadingCount.replace("%1", readable.count { it.size != -1L }.toString())
+                        .replace("%2", readable.size.toString())
+                }
+                return s.subtitlesReadingCount.replace("%1", linkList.count { it.isSelected && !it.isBeingInspected }.toString())
+                    .replace("%2", linkList.count { it.isSelected }.toString())
+            }
+            return if (inspectedSubtitles.isEmpty()) s.subtitlesNoneInList else ""
+        }
+
+    /** "Oldest first" means that only for a channel's videos, which yt-dlp lists newest first. */
+    val playlistOldestFirstOffered: Boolean
+        get() = inspectedPlaylist?.fromBrowser == false &&
+                com.michelle.raouf.fetch_jet.feature.media_extractor.isChannelVideosUrl(inputUrl)
     val needsFileName: Boolean
         get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
 }
@@ -256,6 +311,21 @@ data class TorrentDetailsUi(
     val stopRatio: Float = 0f,
     /** English code of the last tracker-add failure ("invalid", "refused") or empty. */
     val trackerError: String = ""
+)
+
+/**
+ * The playlist page's "Add a subtitle language": [available] are the languages read from its
+ * videos ([reading] while that runs); [adding] while a new language is fetched for the finished
+ * videos ([done] of [total]).
+ */
+data class PlaylistLanguagesUi(
+    val playlistId: String,
+    val reading: Boolean = false,
+    val available: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val adding: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0,
+    val message: String = "",
 )
 
 data class SubtitlesUi(
@@ -506,6 +576,21 @@ sealed interface DashboardUiEvent {
     data class OnSubtitleTrackToggled(val key: String, val selected: Boolean) : DashboardUiEvent
     data object OnSubtitlesAddClicked : DashboardUiEvent
     data object OnDismissSubtitles : DashboardUiEvent
+    data class OnOpenPlaylist(val playlistId: String) : DashboardUiEvent
+    data object OnClosePlaylist : DashboardUiEvent
+    data class OnPlaylistGroupPause(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistGroupResume(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistGroupRemove(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistCheck(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistReadLanguages(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistAddLanguage(val playlistId: String, val langCode: String) : DashboardUiEvent
+    data object OnPlaylistLanguagesDismiss : DashboardUiEvent
+    data class OnGroupByFolderChanged(val on: Boolean) : DashboardUiEvent
+    data class OnOpenFolderGroup(val folder: String) : DashboardUiEvent
+    data object OnCloseFolderGroup : DashboardUiEvent
+    data class OnFolderGroupPause(val folder: String) : DashboardUiEvent
+    data class OnFolderGroupResume(val folder: String) : DashboardUiEvent
+    data class OnFolderGroupRemove(val folder: String) : DashboardUiEvent
     data class OnExtractTaskClicked(val taskId: String) : DashboardUiEvent
 
     data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent

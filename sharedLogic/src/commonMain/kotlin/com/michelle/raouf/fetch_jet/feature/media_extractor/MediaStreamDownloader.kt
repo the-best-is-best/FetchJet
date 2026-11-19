@@ -367,7 +367,7 @@ class MediaStreamDownloader(
                 throw Exception("Unable to extract direct video stream. The video may be private, age-restricted, or protected.")
             }
 
-            if (initialTask.subtitleTracks.any { it.isSelected } &&
+            if ((initialTask.subtitleTracks.any { it.isSelected } || initialTask.subtitleLanguages.isNotBlank()) &&
                 tasksState.value[taskId]?.status != DownloadStatus.PAUSED
             ) {
                 try {
@@ -521,6 +521,7 @@ class MediaStreamDownloader(
         lastSubtitles = emptyList()
         lastInspectDrm = false
         if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return emptyList()
+        if (FACEBOOK_STORY.containsMatchIn(url)) return emptyList()
         if (MediaDrm.looksLikeDash(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
             lastInspectDrm = true
             return emptyList()
@@ -664,3 +665,6 @@ internal fun parseTimeToSecondsOrNull(t: String): Double? {
         else -> null
     }
 }
+
+/** Facebook story pages: yt-dlp has no extractor for them, the browser's captured video is the way. */
+private val FACEBOOK_STORY = Regex("""^https?://([\w-]+\.)?facebook\.com/stories/""", RegexOption.IGNORE_CASE)

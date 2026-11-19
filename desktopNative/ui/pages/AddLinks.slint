@@ -6,6 +6,7 @@ import { CheckBox } from "../widgets/CheckBox.slint";
 import { Spinner } from "../widgets/Kit.slint";
 import { PickMenu } from "../widgets/Menu.slint";
 import { TorrentFilesCard } from "AddTorrent.slint";
+import { SubtitlesCard } from "AddMedia.slint";
 import { Core, LinkRowDto, LinkLineCode, LinkTagCode } from "../generated/dto.slint";
 import { Tr } from "../generated/tr.slint";
 import { Act } from "../generated/actions.slint";
@@ -284,4 +285,8 @@ export component LinkListSection inherits VerticalLayout {
             }
         }
     }
+    if Core.addMedia.subtitlesShown: Rectangle {
+        height: 12px;
+    }
+    if Core.addMedia.subtitlesShown: SubtitlesCard { }
 }

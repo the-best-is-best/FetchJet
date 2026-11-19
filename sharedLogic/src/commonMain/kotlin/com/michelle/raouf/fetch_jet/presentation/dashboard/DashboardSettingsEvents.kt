@@ -21,6 +21,8 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
             event.on
         )
 
+        is DashboardUiEvent.OnGroupByFolderChanged -> BehaviorSettings.setGroupByFolder(event.on)
+
         is DashboardUiEvent.OnExtractArchivesChanged -> BehaviorSettings.setExtractArchives(
             event.on
         )

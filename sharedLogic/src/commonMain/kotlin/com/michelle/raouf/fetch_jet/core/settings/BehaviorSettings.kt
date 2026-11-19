@@ -44,6 +44,16 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _groupByFolder =
+        MutableStateFlow(read("groupByFolder")?.toBooleanStrictOrNull() ?: false)
+
+    /** The downloads list shows each destination folder as one row (playlists stay their own rows). */
+    val groupByFolder: StateFlow<Boolean> = _groupByFolder.asStateFlow()
+
+    fun setGroupByFolder(on: Boolean) {
+        _groupByFolder.value = on; write("groupByFolder", on.toString())
+    }
+
     private val _extractArchives =
         MutableStateFlow(read("extractArchives")?.toBooleanStrictOrNull() ?: false)
 

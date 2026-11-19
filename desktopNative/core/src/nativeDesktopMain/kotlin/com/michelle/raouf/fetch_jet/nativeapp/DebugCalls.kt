@@ -252,6 +252,8 @@ internal object DebugCalls {
                 put("speed", task.downloadSpeedBytesPerSec)
                 put("progress", task.progress)
                 put("playlistId", task.playlistId)
+                put("subtitleLanguages", task.subtitleLanguages)
+                put("subtitles", task.subtitleTracks.filter { it.isSelected }.joinToString(",") { it.langCode })
                 put("connections", task.connections)
                 put("chunks", task.chunks.size)
                 put("error", task.errorMessage.orEmpty())

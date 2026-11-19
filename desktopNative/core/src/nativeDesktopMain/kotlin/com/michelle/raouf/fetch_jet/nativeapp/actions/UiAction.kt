@@ -79,6 +79,42 @@ sealed interface UiAction {
     data object RowMenuClose : UiAction
 
     @Serializable
+    @SerialName("OpenPlaylist")
+    data class OpenPlaylist(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("ClosePlaylist")
+    data object ClosePlaylist : UiAction
+
+    @Serializable
+    @SerialName("PlaylistPauseAll")
+    data object PlaylistPauseAll : UiAction
+
+    @Serializable
+    @SerialName("PlaylistResumeAll")
+    data object PlaylistResumeAll : UiAction
+
+    @Serializable
+    @SerialName("PlaylistRemove")
+    data object PlaylistRemove : UiAction
+
+    @Serializable
+    @SerialName("PlaylistCheck")
+    data object PlaylistCheck : UiAction
+
+    @Serializable
+    @SerialName("PlaylistReadLanguages")
+    data object PlaylistReadLanguages : UiAction
+
+    @Serializable
+    @SerialName("PlaylistAddLanguage")
+    data class PlaylistAddLanguage(val code: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlaylistLanguagesClose")
+    data object PlaylistLanguagesClose : UiAction
+
+    @Serializable
     @SerialName("CyclePriority")
     data class CyclePriority(val id: String = "") : UiAction
 
@@ -565,6 +601,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("SetPlaylistQuality")
     data class SetPlaylistQuality(val quality: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("GroupOpenFolderOnDisk")
+    data object GroupOpenFolderOnDisk : UiAction
 
     @Serializable
     @SerialName("SetPlaylistOldestFirst")

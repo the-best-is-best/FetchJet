@@ -51,7 +51,8 @@ internal data class PersistedTask(
     val subtitleFormat: String = "",
     val priority: Int = 0,
     val playlistId: String = "",
-    val playlistTitle: String = ""
+    val playlistTitle: String = "",
+    val subtitleLanguages: String = ""
 )
 
 internal object TaskCache {
@@ -124,7 +125,8 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
     subtitleFormat = if (subtitleFormat == "srt") "" else subtitleFormat,
     priority = priority,
     playlistId = playlistId,
-    playlistTitle = playlistTitle
+    playlistTitle = playlistTitle,
+    subtitleLanguages = subtitleLanguages
 )
 
 internal fun PersistedTask.toTask(
@@ -200,7 +202,8 @@ internal fun PersistedTask.toTask(
         subtitleFormat = subtitleFormat.ifBlank { "srt" },
         priority = priority,
         playlistId = playlistId,
-        playlistTitle = playlistTitle
+        playlistTitle = playlistTitle,
+        subtitleLanguages = subtitleLanguages
     )
 }
 

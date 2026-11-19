@@ -340,7 +340,8 @@ private struct TaskDetailsContent: View {
         let s = store.strings
         let page = task.requestHeaders["Referer"] ?? task.originalUrl ?? ""
         var items: [(String, String)] = []
-        for (label, link) in [(s.detailsPage, page)] where !link.isEmpty && !Secrets.shared.isProtected(stored: link) {
+        let playlist = PlaylistGroupsKt.playlistLinkOf(task: task)
+        for (label, link) in [(s.detailsPage, page), (s.detailsPlaylist, playlist)] where !link.isEmpty && !Secrets.shared.isProtected(stored: link) {
             if !items.contains(where: { $0.1 == link }) { items.append((label, link)) }
         }
         return ForEach(items, id: \.1) { label, link in

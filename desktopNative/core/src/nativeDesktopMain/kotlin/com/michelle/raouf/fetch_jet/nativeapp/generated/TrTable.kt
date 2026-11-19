@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 857
+internal const val TR_COUNT = 878
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -461,6 +461,11 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.sortIntoFolders,
     s.sortIntoFoldersOn,
     s.sortIntoFoldersOff,
+    s.groupByFolder,
+    s.groupByFolderOn,
+    s.groupByFolderOff,
+    s.folderGroupFiles,
+    s.folderDeleteAll,
     s.speedLimitsFooter,
     s.speedLimitsFooterIos,
     s.speedLimitDownload,
@@ -610,6 +615,22 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.sysPlaylistDoneFailed,
     s.playlistOldestFirst,
     s.playlistDownloadedBefore,
+    s.subtitlesReadingCount,
+    s.subtitlesNoneInList,
+    s.sysReadingChannelName,
+    s.sysReadingVideosCount,
+    s.playlistGroupDone,
+    s.playlistCheckNew,
+    s.playlistBack,
+    s.playlistDeleteAll,
+    s.playlistSubtitlesFor,
+    s.playlistNoSubtitles,
+    s.playlistAddLanguage,
+    s.playlistLanguageAdding,
+    s.playlistLanguageAdded,
+    s.playlistReadingLanguages,
+    s.playlistInIt,
+    s.playlistNotAvailable,
     s.sysPlaylistQualityBest,
     s.sysPlaylistQualityAudioOnly,
     s.sysToolsReadyYtDlpFfmpeg,

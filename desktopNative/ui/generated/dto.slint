@@ -119,6 +119,8 @@ export struct PlaylistRowDto {
     size: string,
     sizeBusy: bool,
     before: bool,
+    unavailable: bool,
+    inPlaylist: bool,
 }
 
 export struct ClipChipDto {
@@ -149,6 +151,8 @@ export struct AddMediaDto {
     qualitiesTitleRtl: bool,
     qualitiesCount: string,
     subtitlesShown: bool,
+    subtitlesNote: string,
+    subtitlesReading: bool,
     subtitlesAnySelected: bool,
     embedSubtitles: bool,
     subtitleVtt: bool,
@@ -180,6 +184,7 @@ export struct AddMediaDto {
     playlistQualities: [ChoiceDto],
     playlistCanUseSingle: bool,
     playlistOldestFirst: bool,
+    playlistOldestFirstOffered: bool,
 }
 
 export struct ClipPickerDto {
@@ -502,6 +507,18 @@ export struct ChromeDto {
     focusRow: int,
     focusHeads: int,
     focusDone: int,
+    playlistOpen: bool,
+    playlistSummary: string,
+    playlistSubtitles: string,
+    playlistCanPause: bool,
+    playlistCanResume: bool,
+    playlistCanCheck: bool,
+    playlistLanguagesShown: bool,
+    playlistLanguagesBusy: bool,
+    playlistLanguagesNote: string,
+    playlistLanguageChoices: [TextChoiceDto],
+    groupIsFolder: bool,
+    groupFolderPath: string,
 }
 
 export struct StatusDto {
@@ -908,6 +925,7 @@ export global SideFilterCode {
 export global RowKind {
     out property <int> task: 0;
     out property <int> header: 1;
+    out property <int> group: 2;
 }
 
 export global RowActionCode {

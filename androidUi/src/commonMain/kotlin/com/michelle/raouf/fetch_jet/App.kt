@@ -572,6 +572,9 @@ fun App(
                     courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
                     inspectedSubtitles = state.inspectedSubtitles,
+                    subtitlesListShown = state.subtitlesOffered,
+                    subtitlesListNote = state.subtitlesListNote,
+                    subtitlesListReading = state.subtitlesListReading,
                     embedSubtitles = state.embedSubtitles,
                     onSubtitleToggled = { lang, selected ->
                         viewModel.onEvent(DashboardUiEvent.OnSubtitleToggled(lang, selected))
@@ -866,6 +869,25 @@ fun App(
                 com.michelle.raouf.fetch_jet.ui.DeviceReceiveDialog(
                     receiving = receiveState,
                     onClose = { viewModel.onEvent(DashboardUiEvent.OnDismissReceiveClicked) }
+                )
+            }
+
+            val askPopUp by com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.pending.collectAsState()
+            if (askPopUp && !com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration.isPopUpAllowed()) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(false) },
+                    title = { Text(LocalizationManager.Strings.popUpOverBrowser) },
+                    text = { Text(LocalizationManager.Strings.popUpAskText) },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(true) }) {
+                            Text(LocalizationManager.Strings.popUpAskAllow)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(false) }) {
+                            Text(LocalizationManager.Strings.popUpAskLater)
+                        }
+                    }
                 )
             }
 

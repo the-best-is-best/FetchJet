@@ -83,6 +83,7 @@ internal fun Presenter.settingToggle(id: String, on: Boolean) {
             settingsPoke()
         }
         "sortIntoFolders" -> vm.onEvent(DashboardUiEvent.OnSortIntoFoldersChanged(on))
+        "groupByFolder" -> vm.onEvent(DashboardUiEvent.OnGroupByFolderChanged(on))
         "extractArchives" -> vm.onEvent(DashboardUiEvent.OnExtractArchivesChanged(on))
         "deleteToTrash" -> BehaviorSettings.setDeleteToTrash(on)
         "trashArchive" -> BehaviorSettings.setTrashArchiveAfterExtract(on)

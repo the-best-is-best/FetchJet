@@ -4,6 +4,8 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
+import com.michelle.raouf.fetch_jet.feature.media_extractor.forLanguages
+import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitlesFoundFor
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -227,13 +229,11 @@ internal fun DashboardViewModel.addDownload(
             }
             _uiEffect.emit(
                 DashboardUiEffect.ShowToast(
-                    LocalizationManager.Strings.sysStartedDownload(
-                        task.fileName.ifBlank {
-                            com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url)
-                        })
+                    LocalizationManager.Strings.sysStartedDownload(startedName(task.fileName, task.url))
                 )
             )
             _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
+            showGroupOf(task)
         }.onFailure { error ->
             _uiState.update {
                 it.copy(
@@ -369,21 +369,44 @@ internal fun DashboardViewModel.addPlaylist(
                 if (known.any { trimmed.endsWith("/$it") || trimmed.endsWith("\\$it") }) chosenDir else "$trimmed/$sub"
             } ?: chosenDir
         else chosenDir
-    val destDir = if (folder.isBlank()) chosenDir else "${typeDir.trimEnd('/', '\\')}/$folder"
+    val joining = joiningPlaylist(state)
+    val destDir = joining?.folder?.takeIf { it.isNotBlank() }
+        ?: if (folder.isBlank()) chosenDir else "${typeDir.trimEnd('/', '\\')}/$folder"
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
-        if (folder.isNotBlank()) try {
+        if (folder.isNotBlank() || joining != null) try {
             AppFileSystem.createDirectories(destDir.toPath())
         } catch (_: Exception) {
         }
         var added = 0
         var failed = 0
         val usedNames = mutableSetOf<String>()
-        val playlistId = "pl_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999)
+        val playlistId = joining?.id ?: ("pl_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999))
+        val grouped = joining != null || selected.size > 1
+        val chosenLanguages = if (state.subtitlesOffered) state.inspectedSubtitles.filter { it.isSelected }.map { it.langCode } else emptyList()
+        val subtitleLanguages = (joining?.subtitleLanguages.orEmpty() + chosenLanguages).distinct()
+        val embed = if (chosenLanguages.isEmpty() && joining != null) joining.embedSubtitles else state.embedSubtitles
+        val subtitleFormat = if (chosenLanguages.isEmpty() && joining != null) joining.subtitleFormat else state.subtitleFormat
         val playlistExt =
             if (quality == com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO)
                 state.audioConvertFormat ?: quality.extension
             else quality.extension
+        if (grouped) {
+            com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.put(
+                com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord(
+                    id = playlistId,
+                    title = joining?.title ?: playlist.title,
+                    url = joining?.url ?: state.inputUrl.trim(),
+                    folder = destDir,
+                    quality = quality.name,
+                    subtitleLanguages = subtitleLanguages,
+                    embedSubtitles = embed,
+                    subtitleFormat = subtitleFormat,
+                    audioFormat = state.audioConvertFormat.orEmpty(),
+                    createdAtMs = joining?.createdAtMs ?: com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs(),
+                )
+            )
+        }
         for (entry in selected) {
             val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
             var fileName = if (name.endsWith(
@@ -429,11 +452,16 @@ internal fun DashboardViewModel.addPlaylist(
                 forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
                 scheduledAtMs = state.scheduleStartMs,
                 requestHeaders = if (playlist.fromBrowser) headersForLink(entry.url) else emptyMap(),
-                sortByType = folder.isBlank(),
-                playlistId = if (selected.size > 1) playlistId else "",
-                playlistTitle = playlist.title
+                sortByType = folder.isBlank() && joining == null,
+                playlistId = if (grouped) playlistId else "",
+                playlistTitle = playlist.title,
+                subtitleTracks = if (subtitleLanguages.isEmpty() || file) emptyList() else playlistTracksFor(entry.url, subtitleLanguages).orEmpty(),
+                embedSubtitles = embed,
+                subtitleFormat = subtitleFormat,
+                subtitleLanguages = if (subtitleLanguages.isEmpty() || file || playlistTracksFor(entry.url, subtitleLanguages) != null) "" else subtitleLanguages.joinToString(",")
             ).onSuccess { added++ }.onFailure { failed++ }
         }
+        if (grouped && added == 0 && joining == null) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.remove(listOf(playlistId))
         _uiState.update {
             it.copy(
                 inputUrl = "",
@@ -445,6 +473,9 @@ internal fun DashboardViewModel.addPlaylist(
                 isLoading = false,
                 isAddDialogVisible = false,
                 inspectedPlaylist = null,
+                checkingPlaylistId = null,
+                inspectedSubtitles = emptyList(),
+                embedSubtitles = false,
                 inspectedMediaQualities = emptyList(),
                 inspectedMediaTitle = null,
                 scheduleStartMs = 0L,
@@ -512,6 +543,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         val existing = queueRepository.allTasksFlow.value
         var added = 0
         var skipped = 0
+        val subtitleLanguages = if (state.subtitlesOffered) state.inspectedSubtitles.filter { it.isSelected }.map { it.langCode } else emptyList()
         for (entry in selected) {
             val quality = entry.mediaQualities.firstOrNull { it.isSelected }
             val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
@@ -543,7 +575,11 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
                 forcedEngineType = entry.engine,
                 scheduledAtMs = state.scheduleStartMs,
-                sortByType = folder.isBlank()
+                sortByType = folder.isBlank(),
+                subtitleTracks = if (subtitleLanguages.isNotEmpty() && quality != null && !quality.isAudioOnly)
+                    entry.subtitles.forLanguages(subtitleLanguages) else emptyList(),
+                embedSubtitles = state.embedSubtitles,
+                subtitleFormat = state.subtitleFormat
             ).onSuccess { added++ }.onFailure { skipped++ }
         }
         _uiState.update {
@@ -551,6 +587,8 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 inputUrl = "",
                 linkList = emptyList(),
                 linkListFolder = "",
+                inspectedSubtitles = emptyList(),
+                embedSubtitles = false,
                 fileNameOverride = "",
                 suggestedFileName = "",
                 isLoading = false,
@@ -593,13 +631,22 @@ internal fun DashboardViewModel.inspectListedVideos() {
         st.copy(linkList = st.linkList.map { if (it.url == url) change(it) else it })
     }
     urls.forEach { url -> update(url) { it.copy(isInspectingMedia = true, mediaInspectFailed = false) } }
+    val readingKey = "link-list-" + urls.first().hashCode()
     scope.launch {
-        for (url in urls) {
+        com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.begin(readingKey, LocalizationManager.Strings.sysReadingChannelName, readingText(0, urls.size))
+        try {
+        for ((done, url) in urls.withIndex()) {
+            com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.progress(readingKey, readingText(done, urls.size))
             if (_uiState.value.linkList.none { it.url == url }) continue
+            var subtitles = emptyList<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>()
             val qualities = try {
                 withTimeoutOrNull(120_000L) {
-                    queueRepository.inspectMediaQualities(url, headersForLink(url))
+                    queueRepository.inspectMediaQualities(url, headersForLink(url)).also {
+                        subtitles = queueRepository.mediaEngine.subtitlesFoundFor(url)
+                    }
                 } ?: emptyList()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
                 emptyList()
             }
@@ -608,9 +655,14 @@ internal fun DashboardViewModel.inspectListedVideos() {
                     isInspectingMedia = false,
                     mediaInspectFailed = qualities.isEmpty(),
                     mediaTitle = qualities.firstOrNull { q -> !q.videoTitle.isNullOrBlank() }?.videoTitle,
-                    mediaQualities = qualities
+                    mediaQualities = qualities,
+                    subtitles = subtitles
                 )
             }
+            refreshLinkListSubtitles()
+        }
+        } finally {
+            com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.end(readingKey)
         }
     }
 }
@@ -660,3 +712,32 @@ internal fun mediaExt(
         quality.isAudioOnly
     ) audioConvertFormat else native
 }
+
+internal fun startedName(fileName: String, url: String): String {
+    val name = fileName.ifBlank {
+        val clean = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(url).substringBefore('?').substringBefore('#')
+        clean.trimEnd('/').substringAfterLast('/').ifBlank { clean.substringAfter("://").substringBefore('/') }
+    }
+    return if (name.length > 60) name.take(57) + "..." else name
+}
+
+private val SCRIPT_PAGES = setOf("php", "asp", "aspx", "jsp", "cgi", "pl", "py", "do", "action")
+
+/**
+ * Two links to the same file: equal, or on a CDN that signs each request again (Facebook,
+ * Instagram) the same path with only the query changed.
+ */
+internal fun sameFileLink(a: String, b: String): Boolean {
+    if (a.isBlank() || b.isBlank()) return false
+    if (a.trim().equals(b.trim(), ignoreCase = true)) return true
+    fun path(u: String) = u.trim().substringBefore('#').substringBefore('?')
+    val pa = path(a)
+    if (!pa.equals(path(b), ignoreCase = true) || !pa.contains("://")) return false
+    val host = pa.substringAfter("://").substringBefore('/').lowercase()
+    if (SIGNED_CDNS.none { host == it || host.endsWith(".$it") }) return false
+    val last = pa.substringAfter("://").substringAfter('/', "").substringAfterLast('/')
+    val ext = last.substringAfterLast('.', "").lowercase()
+    return ext.isNotEmpty() && ext !in SCRIPT_PAGES && last.length > ext.length + 1
+}
+
+private val SIGNED_CDNS = listOf("fbcdn.net", "cdninstagram.com")

@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.media_extractor.selectableByAll
 import kotlinx.coroutines.flow.update
 
 internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
@@ -107,6 +108,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
                     inspectedMediaQualities = defaultQualities,
                     inspectedPlaylist = null,
+                    inspectedSubtitles = emptyList(),
 
                     inspectedMediaTitle = null,
                     inspectMediaError = null,
@@ -142,7 +144,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleAddDialog -> {
 
-            if (!event.show) _uiState.update { it.copy(linkListFolder = "") }
+            if (!event.show) _uiState.update { it.copy(linkListFolder = "", checkingPlaylistId = null) }
             if (!event.show) clearTestLink()
             if (!event.show) pendingExternalPlaylist = null
             if (!event.show && pendingExternalUrl != null) {
@@ -300,13 +302,15 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnPlaylistEntryToggled -> _uiState.update { st ->
             val pl = st.inspectedPlaylist ?: return@update st
             st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map {
-                if (it.index == event.index) it.copy(isSelected = event.selected) else it
+                if (it.index == event.index && !it.locked) it.copy(isSelected = event.selected) else it
             }))
         }
 
         is DashboardUiEvent.OnPlaylistSelectAll -> _uiState.update { st ->
             val pl = st.inspectedPlaylist ?: return@update st
-            st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map { it.copy(isSelected = event.selected) }))
+            st.copy(inspectedPlaylist = pl.copy(entries = pl.entries.map {
+                it.copy(isSelected = event.selected && (it.isSelected || it.selectableByAll))
+            }))
         }
 
         is DashboardUiEvent.OnPlaylistFolderChanged -> _uiState.update {

@@ -98,6 +98,39 @@ Done (2026-11-19, Windows; all three UIs):
   or failed, one `SystemNotice` says "<list>: N videos downloaded · M failed".
 - Tests: corehost `test_playlist.py` 16 / 0, `test_media` updated (31 / 0). iOS SwiftUI changes need the Mac.
 
+After c7a35ff (2026-11-19, Windows + the A56; owner's requests the same evening):
+- Subtitles for a playlist and for the several-links list: the languages of the ticked videos, shown when at least
+  one ticked video has tracks; "Reading the videos' subtitles… N of M" while reading. Subtitle mode as chips
+  (Embed / Separate file · SRT / VTT) on Compose and SwiftUI.
+- Background reading on Android: a small foreground notification (`BackgroundReading`, `ReadingForegroundService`,
+  dataSync) while a playlist's videos, a link list or the extension's `/inspect` are read; before it Samsung froze the
+  app and killed yt-dlp seconds after the user left it.
+- A playlist is one row in the downloads list, named after the course (`PlaylistStore`, `playlists.json`, `groupDownloads`):
+  open it to see its videos; "Check" reads the list again (videos already downloaded cannot be ticked); its subtitle
+  languages can be changed and a language added later. Select all skips videos downloaded before.
+- Group by folder (Settings > Downloads, off by default): every other download folds into its folder's row; a row goes
+  away when it has no downloads left. Playlists stay their own rows.
+- A download that starts opens its group (its playlist, or its folder when grouping by folder). A single video saved
+  in a saved playlist's folder joins that playlist (`PlaylistStore.inFolder`), with a notice.
+- Extension downloads on Android: a finished download of the same file (same link, or the same path with only the
+  signed query changed, `sameFileLink`) asks "replace / save a copy" instead of downloading again (the owner got the
+  same story 5 times); a link sent while the app's screen was closed is no longer lost (the cleared view model left
+  its bridge handler behind); Facebook story pages are not given to yt-dlp (no extractor, the button spun for a
+  minute); Facebook CDN files with code names are saved as "Facebook story / reel / video <date time>.mp4"; the
+  "Started download" toast shows a short name. Folder picker buttons no longer squashed; selection bar Delete fits.
+- A video the extension sends from a playlist page (`list=` in the link or the page) of a playlist saved in the app
+  goes to that playlist's folder and joins it (`PlaylistStore.forLink`). The details show the playlist's link
+  ("Playlist", with Copy) on all three UIs.
+- Android: a link that waited in a notification (no "display over other apps") makes the app ask once, when it is
+  opened, to allow it (`PopUpAsk`, Allow / Not now; Not now holds until the app restarts).
+- "Same file" with only the query changed is limited to the signing CDNs (fbcdn.net, cdninstagram.com): a first
+  version for every link blocked `test_keys` / `test_integrity` (same path, the query picks the file).
+- Tests (Windows, final build): jvmTest 234 / 0 (new `FacebookFileNameTest`); corehost folder_group 23, playlist_group
+  30, playlist 37, home 41, add 29, addname 14, download 29, links 17, bridge 38 (its fake extension moved to 3.6.0),
+  subtitles 27, media 31, drm 6, settings 87, keys 41, rowmenu 19, foldertype 8, siterules 22, automation 41,
+  integrity 32, launch 33, all 0 failed. A56: background reading, playlist row, Check, one notice, Facebook stories /
+  reels from Firefox. Not built: iOS (all SwiftUI changes need the Mac).
+
 ## 5. YouTube "made for kids" and faster qualities [ ]
 
 Ezoo: videos made for children download now; qualities show up faster.

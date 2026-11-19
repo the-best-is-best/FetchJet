@@ -329,6 +329,7 @@ fun DirectoryPickerDialog(
                 if (subdirectories.isEmpty()) {
                     Box(
                         modifier = Modifier
+                            .weight(1f, fill = false)
                             .fillMaxWidth()
                             .height(140.dp),
                         contentAlignment = Alignment.Center
@@ -343,8 +344,9 @@ fun DirectoryPickerDialog(
                 } else {
                     LazyColumn(
                         modifier = Modifier
+                            .weight(1f, fill = false)
                             .fillMaxWidth()
-                            .heightIn(min = 120.dp, max = 220.dp)
+                            .heightIn(max = 220.dp)
                     ) {
                         items(subdirectories) { folderName ->
                             Surface(

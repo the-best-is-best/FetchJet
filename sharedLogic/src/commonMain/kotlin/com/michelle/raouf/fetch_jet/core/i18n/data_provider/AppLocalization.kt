@@ -552,6 +552,11 @@ interface AppLocalization : LocalizationProvider {
     val sortIntoFolders: String
     val sortIntoFoldersOn: String
     val sortIntoFoldersOff: String
+    val groupByFolder: String
+    val groupByFolderOn: String
+    val groupByFolderOff: String
+    val folderGroupFiles: String
+    val folderDeleteAll: String
 
     val speedLimitsFooter: String
     val speedLimitsFooterIos: String
@@ -736,6 +741,27 @@ interface AppLocalization : LocalizationProvider {
     val sysPlaylistDoneFailed: String
     val playlistOldestFirst: String
     val playlistDownloadedBefore: String
+    val subtitlesReadingCount: String
+    val subtitlesNoneInList: String
+    val playlistVideoJoined: String
+    val detailsPlaylist: String
+    val popUpAskText: String
+    val popUpAskAllow: String
+    val popUpAskLater: String
+    val sysReadingChannelName: String
+    val sysReadingVideosCount: String
+    val playlistGroupDone: String
+    val playlistCheckNew: String
+    val playlistBack: String
+    val playlistDeleteAll: String
+    val playlistSubtitlesFor: String
+    val playlistNoSubtitles: String
+    val playlistAddLanguage: String
+    val playlistLanguageAdding: String
+    val playlistLanguageAdded: String
+    val playlistReadingLanguages: String
+    val playlistInIt: String
+    val playlistNotAvailable: String
     val sysPlaylistQualityBest: String
     val sysPlaylistQualityAudioOnly: String
     val sysToolsReadyYtDlpFfmpeg: String

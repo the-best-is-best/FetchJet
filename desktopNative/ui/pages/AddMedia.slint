@@ -356,7 +356,7 @@ component OptionCard inherits Rectangle {
     }
 }
 
-component SubtitlesCard inherits SectionCard {
+export component SubtitlesCard inherits SectionCard {
     VerticalLayout {
         padding: 12px;
         spacing: 0px;
@@ -372,6 +372,21 @@ component SubtitlesCard inherits SectionCard {
                 text: Tr.subtitlesTitle;
                 font-size: 13px;
                 font-weight: 700;
+                horizontal-stretch: 1;
+            }
+        }
+        if Core.addMedia.subtitlesNote != "": HBox {
+            height: 28px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            if Core.addMedia.subtitlesReading: Spinner {
+                size: 14px;
+            }
+            T {
+                text: Core.addMedia.subtitlesNote;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
                 horizontal-stretch: 1;
             }
         }
@@ -789,7 +804,7 @@ component PlaylistCard inherits SectionCard {
                 overflow: elide;
             }
         }
-        if !Core.addMedia.playlistFromBrowser: HBox {
+        if Core.addMedia.playlistOldestFirstOffered: HBox {
             height: 40px;
             spacing: 8px;
             cross-axis-alignment: center;
@@ -847,9 +862,16 @@ component PlaylistCard inherits SectionCard {
                             behind: Theme.surface;
                             font-size: 12px;
                         }
+                        if entry.unavailable: T {
+                            width: self.preferred-width + 10px;
+                            text: Tr.playlistNotAvailable;
+                            font-size: 10px;
+                            color: Theme.error;
+                            horizontal-alignment: Dir.end;
+                        }
                         if entry.before: T {
                             width: self.preferred-width + 10px;
-                            text: Tr.playlistDownloadedBefore;
+                            text: entry.inPlaylist ? Tr.playlistInIt : Tr.playlistDownloadedBefore;
                             font-size: 10px;
                             color: Theme.primary;
                             horizontal-alignment: Dir.end;
@@ -896,6 +918,10 @@ export component MediaSection inherits VerticalLayout {
     if root.state == MediaStateCode.error: InspectError { }
     if root.state == MediaStateCode.engine-missing: EngineMissing { }
     if root.state == MediaStateCode.playlist: PlaylistCard { }
+    if root.state == MediaStateCode.playlist && Core.addMedia.subtitlesShown: Gap {
+        size: 12px;
+    }
+    if root.state == MediaStateCode.playlist && Core.addMedia.subtitlesShown: SubtitlesCard { }
     if root.state == MediaStateCode.not-inspected: OutlinedButton {
         text: Core.addMedia.inspectIcon + " " + Core.addMedia.inspectLabel;
         border-radius: 10px;

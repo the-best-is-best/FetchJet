@@ -19,6 +19,15 @@ export global Act {
     callback rowMenu(id: string);
     callback rowMenuPick(key: int);
     callback rowMenuClose();
+    callback openPlaylist(id: string);
+    callback closePlaylist();
+    callback playlistPauseAll();
+    callback playlistResumeAll();
+    callback playlistRemove();
+    callback playlistCheck();
+    callback playlistReadLanguages();
+    callback playlistAddLanguage(code: string);
+    callback playlistLanguagesClose();
     callback cyclePriority(id: string);
     callback checkAll(checked: bool);
     callback clearChecks();
@@ -141,6 +150,7 @@ export global Act {
     callback selectAllPlaylist(selected: bool);
     callback setPlaylistFolder(name: string);
     callback setPlaylistQuality(quality: int);
+    callback groupOpenFolderOnDisk();
     callback setPlaylistOldestFirst(on: bool);
     callback useSingleVideo();
     callback choicePrimary(kind: int);

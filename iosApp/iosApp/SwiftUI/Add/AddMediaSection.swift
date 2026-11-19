@@ -24,6 +24,7 @@ struct AddMediaSection: View {
                 engineNotReady(s, strings)
             } else if let playlist = s.inspectedPlaylist {
                 AddPlaylistCard(playlist: playlist)
+                if s.subtitlesOffered { AddSubtitlesCard() }
             } else if s.inspectedMediaQualities.isEmpty {
                 let ext = (s.inputUrl.components(separatedBy: "?").first ?? "").components(separatedBy: ".").last?.lowercased() ?? ""
                 let isAudio = ["mp3", "m4a", "flac", "wav", "aac", "ogg", "opus"].contains(ext)
@@ -144,6 +145,16 @@ struct AddSubtitlesCard: View {
             Text("💬 \(strings.subtitlesTitle)")
                 .font(.fj(13, .bold))
                 .foregroundStyle(FJTheme.color.onSurface)
+            let note = store.state.subtitlesListNote
+            if !note.isEmpty {
+                HStack(spacing: 8) {
+                    if store.state.subtitlesListReading { ProgressView().controlSize(.small) }
+                    Text(note)
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+            }
+            if !subs.isEmpty {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(subs, id: \.langCode) { sub in
@@ -178,19 +189,19 @@ struct AddSubtitlesCard: View {
             }
             .frame(height: min(CGFloat(subs.count) * 34 + 8, 160))
             .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 8))
+            }
             if subs.contains(where: { $0.isSelected }) {
-                HStack(spacing: 8) {
-                    AddOptionCard(selected: store.state.embedSubtitles, title: strings.subtitlesEmbedInVideo) {
+                AddChipRow {
+                    AddChoiceChip(label: strings.subtitlesEmbedInVideo, selected: store.state.embedSubtitles) {
                         store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: true))
                     }
-                    AddOptionCard(selected: !store.state.embedSubtitles && store.state.subtitleFormat != "vtt", title: strings.subtitlesSeparateFile + " (SRT)") {
+                    AddChoiceChip(label: strings.subtitlesSeparateFile + " · SRT", selected: !store.state.embedSubtitles && store.state.subtitleFormat != "vtt") {
                         store.send(DashboardUiEventOnSubtitleFormatSelected(format: "srt"))
                     }
-                    AddOptionCard(selected: !store.state.embedSubtitles && store.state.subtitleFormat == "vtt", title: strings.subtitlesSeparateFile + " (VTT)") {
+                    AddChoiceChip(label: strings.subtitlesSeparateFile + " · VTT", selected: !store.state.embedSubtitles && store.state.subtitleFormat == "vtt") {
                         store.send(DashboardUiEventOnSubtitleFormatSelected(format: "vtt"))
                     }
                 }
-                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
             }
         }
@@ -389,7 +400,7 @@ struct AddPlaylistCard: View {
     var body: some View {
         let strings = store.strings
         let selected = playlist.entries.filter { $0.isSelected }.count
-        let all = selected == playlist.entries.count
+        let all = playlist.allTicked
         let url = store.state.inputUrl
         AddCard {
             HStack {
@@ -428,6 +439,7 @@ struct AddPlaylistCard: View {
                 Text(strings.qualityForAllVideosHint)
                     .font(.fj(10))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                if store.state.playlistOldestFirstOffered {
                 Button {
                     store.send(DashboardUiEventOnPlaylistOldestFirst(on: !store.state.playlistOldestFirst))
                 } label: {
@@ -442,15 +454,19 @@ struct AddPlaylistCard: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                }
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(playlist.entries.enumerated()), id: \.element.index) { position, entry in
                         Button {
-                            store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
+                            if !entry.locked {
+                                store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
+                            }
                         } label: {
                             HStack(spacing: 8) {
-                                AddCheckbox(checked: entry.isSelected)
+                                AddCheckbox(checked: entry.isSelected && !entry.locked)
+                                    .opacity(entry.locked ? 0.4 : 1)
                                 if !playlist.fromBrowser {
                                     Text("\(position + 1).")
                                         .font(.fj(11))
@@ -461,13 +477,23 @@ struct AddPlaylistCard: View {
                                     .foregroundStyle(FJTheme.color.onSurface)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
-                                if entry.downloadedBefore {
+                                if entry.locked {
+                                    Text(strings.playlistInIt)
+                                        .font(.fj(10))
+                                        .foregroundStyle(FJTheme.color.primary)
+                                        .lineLimit(1)
+                                } else if entry.unavailable {
+                                    Text(strings.playlistNotAvailable)
+                                        .font(.fj(10))
+                                        .foregroundStyle(FJTheme.color.error)
+                                        .lineLimit(1)
+                                } else if entry.downloadedBefore {
                                     Text(strings.playlistDownloadedBefore)
                                         .font(.fj(10))
                                         .foregroundStyle(FJTheme.color.primary)
                                         .lineLimit(1)
                                 }
-                                if !playlist.fromBrowser && (entry.size > 0 || entry.size == -1) {
+                                if !playlist.fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
                                     Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
                                         .font(.fj(11))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)

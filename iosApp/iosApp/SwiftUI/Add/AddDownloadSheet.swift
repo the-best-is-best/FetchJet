@@ -16,6 +16,7 @@ struct AddDownloadSheet: View {
                 AddUrlSection()
                 if v.showsLinkList {
                     AddLinkListSection()
+                    if s.subtitlesOffered { AddSubtitlesCard() }
                 } else {
                     AddEngineSelector()
                     if s.detectedEngine == .bittorrent { AddTorrentSection() }

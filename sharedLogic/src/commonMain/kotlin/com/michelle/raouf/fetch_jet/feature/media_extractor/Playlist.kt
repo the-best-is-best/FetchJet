@@ -19,8 +19,19 @@ data class PlaylistEntry(
     /** Already in the downloads list (finished or not): left unticked. */
     val downloadedBefore: Boolean = false,
     /** Bytes for the chosen quality; -1 = not read yet, -2 = could not be read. */
-    val size: Long = -1L
+    val size: Long = -1L,
+    /** A private / deleted video the list still names, or one that gave no quality: left unticked. */
+    val unavailable: Boolean = false,
+    /** "Check" of a saved playlist: this video is already in it and cannot be ticked. */
+    val locked: Boolean = false
 )
+
+/** "Select all" ticks only these: not a video downloaded before, gone, or already in the playlist. */
+val PlaylistEntry.selectableByAll: Boolean get() = !unavailable && !locked && !downloadedBefore
+
+/** Every video "Select all" would tick is ticked (the button then offers "Select none"). */
+val MediaPlaylist.allTicked: Boolean
+    get() = entries.any { it.isSelected } && entries.filter { it.selectableByAll }.all { it.isSelected }
 
 fun playlistDoneText(title: String, done: Int, failed: Int): String {
     val s = LocalizationManager.Strings
@@ -104,6 +115,24 @@ fun normalizePlaylistUrl(url: String): String {
     return if (isChannelRoot) "$path/videos" else u
 }
 
+/**
+ * A YouTube channel's videos (`/@name`, `/channel/`, `/c/`, `/user/`, with or without `/videos`):
+ * yt-dlp lists them newest first. A playlist (`list=`) keeps its own order.
+ */
+fun isChannelVideosUrl(url: String): Boolean {
+    val u = url.trim().lowercase()
+    if (!u.contains("youtube.com") || u.contains("list=")) return false
+    val segments = u.substringBefore('?').substringBefore('#').substringAfter("youtube.com", "")
+        .split('/').filter { it.isNotBlank() }
+    val first = segments.firstOrNull() ?: return false
+    val rest = when {
+        first.startsWith("@") -> segments.drop(1)
+        first in listOf("channel", "c", "user") && segments.size >= 2 -> segments.drop(2)
+        else -> return false
+    }
+    return rest.isEmpty() || rest == listOf("videos")
+}
+
 /** Links that are (or may be) a list of videos rather than one video. */
 fun looksLikePlaylistUrl(url: String): Boolean {
     val u = url.trim().lowercase()
@@ -173,13 +202,18 @@ fun parsePlaylistJson(output: String): MediaPlaylist? {
             )
                 "https://www.youtube.com/watch?v=$id" else null
         if (link.isNullOrBlank()) continue
+        val duration = e.getLong("duration") ?: 0L
+        val youtube = (e.getString("ie_key") ?: "").equals("Youtube", ignoreCase = true) || MediaUrls.youTubeVideoId(link) != null
+        val unavailable = youtube && title.isBlank() && duration <= 0L
         entries.add(
             PlaylistEntry(
                 index = entries.size,
                 title = title.ifBlank { id.ifBlank { "Video ${entries.size + 1}" } },
                 url = link,
-                durationSeconds = e.getLong("duration") ?: 0L,
-                titled = title.isNotBlank()
+                durationSeconds = duration,
+                titled = title.isNotBlank(),
+                isSelected = !unavailable,
+                unavailable = unavailable
             )
         )
     }

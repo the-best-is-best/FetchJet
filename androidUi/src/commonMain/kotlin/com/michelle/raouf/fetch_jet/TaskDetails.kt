@@ -533,7 +533,9 @@ internal fun DownloadTaskItem(
             val clipboard = LocalClipboardManager.current
             listOf(
                 LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
-                    ?: task.originalUrl.orEmpty())
+                    ?: task.originalUrl.orEmpty()),
+                LocalizationManager.Strings.detailsPlaylist to
+                        com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task)
             ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }
                 .distinctBy { (_, link) -> link }
                 .forEach { (label, link) ->

@@ -99,3 +99,21 @@ expect object BrowserIntegration {
     fun isPopUpAllowed(): Boolean
     fun requestPopUpPermission()
 }
+
+/**
+ * A link from the browser arrived while FetchJet could not open by itself (Android without
+ * "display over other apps"): the app asks once, when the user opens it, to allow it.
+ */
+object PopUpAsk {
+    val pending = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var declined = false
+
+    fun linkWaited() {
+        if (!declined) pending.value = true
+    }
+
+    fun answered(allow: Boolean) {
+        pending.value = false
+        if (allow) BrowserIntegration.requestPopUpPermission() else declined = true
+    }
+}

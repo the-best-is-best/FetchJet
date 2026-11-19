@@ -230,6 +230,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
 
     val links = listOf(
         strings.detailsPage to (task.requestHeaders["Referer"] ?: task.originalUrl.orEmpty()),
+        strings.detailsPlaylist to com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task),
     ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }.distinctBy { (_, link) -> link }.map { (label, link) -> LinkDto(label, link) }
 
     val checksumShown = !task.expectedChecksum.isNullOrBlank()

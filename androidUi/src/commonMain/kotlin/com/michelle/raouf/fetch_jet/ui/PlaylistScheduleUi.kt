@@ -47,6 +47,7 @@ import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
+import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.tbib.kmp_localization.LocalizationManager
 
@@ -61,10 +62,11 @@ fun PlaylistSelectionCard(
     onFolderChanged: (String) -> Unit,
     onUseSingleVideo: (() -> Unit)?,
     oldestFirst: Boolean = false,
-    onOldestFirst: (Boolean) -> Unit = {}
+    onOldestFirst: (Boolean) -> Unit = {},
+    oldestFirstOffered: Boolean = false
 ) {
     val selectedCount = playlist.entries.count { it.isSelected }
-    val allSelected = selectedCount == playlist.entries.size
+    val allSelected = playlist.allTicked
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -145,7 +147,7 @@ fun PlaylistSelectionCard(
                 )
             }
 
-            if (!playlist.fromBrowser) {
+            if (oldestFirstOffered) {
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onOldestFirst(!oldestFirst) },
                     verticalAlignment = Alignment.CenterVertically
@@ -165,12 +167,13 @@ fun PlaylistSelectionCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onEntryToggled(entry.index, !entry.isSelected) }
+                                .clickable(enabled = !entry.locked) { onEntryToggled(entry.index, !entry.isSelected) }
                                 .padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = entry.isSelected,
+                                checked = entry.isSelected && !entry.locked,
+                                enabled = !entry.locked,
                                 onCheckedChange = { onEntryToggled(entry.index, it) })
                             if (!playlist.fromBrowser) Text(
                                 text = "${position + 1}.",
@@ -185,7 +188,23 @@ fun PlaylistSelectionCard(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (entry.downloadedBefore) {
+                            if (entry.locked) {
+                                Text(
+                                    text = LocalizationManager.Strings.playlistInIt,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            } else if (entry.unavailable) {
+                                Text(
+                                    text = LocalizationManager.Strings.playlistNotAvailable,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.error,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            } else if (entry.downloadedBefore) {
                                 Text(
                                     text = LocalizationManager.Strings.playlistDownloadedBefore,
                                     fontSize = 10.sp,
@@ -194,7 +213,7 @@ fun PlaylistSelectionCard(
                                     modifier = Modifier.padding(start = 6.dp)
                                 )
                             }
-                            if (!playlist.fromBrowser && (entry.size > 0L || entry.size == -1L)) {
+                            if (!playlist.fromBrowser && !entry.unavailable && (entry.size > 0L || entry.size == -1L)) {
                                 Text(
                                     text = if (entry.size > 0L) formatBytes(entry.size) else "…",
                                     fontSize = 11.sp,
@@ -407,7 +426,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
 }
 
 @Composable
-private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Surface(
         shape = RoundedCornerShape(16.dp),

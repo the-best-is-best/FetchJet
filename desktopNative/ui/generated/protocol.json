@@ -363,7 +363,8 @@
   ],
   "RowKind": [
    "TASK",
-   "HEADER"
+   "HEADER",
+   "GROUP"
   ],
   "RowActionCode": [
    "PAUSE",
@@ -828,6 +829,14 @@
    [
     "before",
     "Boolean"
+   ],
+   [
+    "unavailable",
+    "Boolean"
+   ],
+   [
+    "inPlaylist",
+    "Boolean"
    ]
   ],
   "ClipChipDto": [
@@ -917,6 +926,14 @@
    ],
    [
     "subtitlesShown",
+    "Boolean"
+   ],
+   [
+    "subtitlesNote",
+    "String"
+   ],
+   [
+    "subtitlesReading",
     "Boolean"
    ],
    [
@@ -1041,6 +1058,10 @@
    ],
    [
     "playlistOldestFirst",
+    "Boolean"
+   ],
+   [
+    "playlistOldestFirstOffered",
     "Boolean"
    ]
   ],
@@ -2130,6 +2151,54 @@
    [
     "focusDone",
     "Int"
+   ],
+   [
+    "playlistOpen",
+    "Boolean"
+   ],
+   [
+    "playlistSummary",
+    "String"
+   ],
+   [
+    "playlistSubtitles",
+    "String"
+   ],
+   [
+    "playlistCanPause",
+    "Boolean"
+   ],
+   [
+    "playlistCanResume",
+    "Boolean"
+   ],
+   [
+    "playlistCanCheck",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesShown",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesBusy",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesNote",
+    "String"
+   ],
+   [
+    "playlistLanguageChoices",
+    "List<TextChoiceDto>"
+   ],
+   [
+    "groupIsFolder",
+    "Boolean"
+   ],
+   [
+    "groupFolderPath",
+    "String"
    ]
   ],
   "StatusDto": [
@@ -3036,6 +3105,25 @@
    ]
   ],
   "RowMenuClose": [],
+  "OpenPlaylist": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "ClosePlaylist": [],
+  "PlaylistPauseAll": [],
+  "PlaylistResumeAll": [],
+  "PlaylistRemove": [],
+  "PlaylistCheck": [],
+  "PlaylistReadLanguages": [],
+  "PlaylistAddLanguage": [
+   [
+    "code",
+    "String"
+   ]
+  ],
+  "PlaylistLanguagesClose": [],
   "CyclePriority": [
    [
     "id",
@@ -3659,6 +3747,7 @@
     "Int"
    ]
   ],
+  "GroupOpenFolderOnDisk": [],
   "SetPlaylistOldestFirst": [
    [
     "on",
@@ -4141,6 +4230,11 @@
   "sortIntoFolders",
   "sortIntoFoldersOn",
   "sortIntoFoldersOff",
+  "groupByFolder",
+  "groupByFolderOn",
+  "groupByFolderOff",
+  "folderGroupFiles",
+  "folderDeleteAll",
   "speedLimitsFooter",
   "speedLimitsFooterIos",
   "speedLimitDownload",
@@ -4290,6 +4384,22 @@
   "sysPlaylistDoneFailed",
   "playlistOldestFirst",
   "playlistDownloadedBefore",
+  "subtitlesReadingCount",
+  "subtitlesNoneInList",
+  "sysReadingChannelName",
+  "sysReadingVideosCount",
+  "playlistGroupDone",
+  "playlistCheckNew",
+  "playlistBack",
+  "playlistDeleteAll",
+  "playlistSubtitlesFor",
+  "playlistNoSubtitles",
+  "playlistAddLanguage",
+  "playlistLanguageAdding",
+  "playlistLanguageAdded",
+  "playlistReadingLanguages",
+  "playlistInIt",
+  "playlistNotAvailable",
   "sysPlaylistQualityBest",
   "sysPlaylistQualityAudioOnly",
   "sysToolsReadyYtDlpFfmpeg",

@@ -423,6 +423,13 @@ internal fun DownloadsPage(
                 checked = sortIntoFolders,
                 onChange = onSortIntoFoldersChanged
             )
+            val groupByFolder by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.groupByFolder.collectAsState()
+            SettingSwitch(
+                title = LocalizationManager.Strings.groupByFolder,
+                subtitle = if (groupByFolder) LocalizationManager.Strings.groupByFolderOn else LocalizationManager.Strings.groupByFolderOff,
+                checked = groupByFolder,
+                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setGroupByFolder(it) }
+            )
             SettingSwitch(
                 title = LocalizationManager.Strings.extractArchives,
                 subtitle = if (extractArchives) LocalizationManager.Strings.extractArchivesOn else LocalizationManager.Strings.extractArchivesOff,

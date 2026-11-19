@@ -86,6 +86,12 @@ struct SettingsDownloadsPage: View {
                 ) { store.send(DashboardUiEventOnSortIntoFoldersChanged(on: $0)) }
                 SettingsDivider()
                 SettingsSwitchRow(
+                    title: s.groupByFolder,
+                    subtitle: st.groupByFolder ? s.groupByFolderOn : s.groupByFolderOff,
+                    isOn: st.groupByFolder
+                ) { store.send(DashboardUiEventOnGroupByFolderChanged(on: $0)) }
+                SettingsDivider()
+                SettingsSwitchRow(
                     title: s.extractArchives,
                     subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
                     isOn: st.extractArchives

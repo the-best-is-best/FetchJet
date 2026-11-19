@@ -143,7 +143,7 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
                         .filter { it.fileName == conflict.fileName && it.destinationPath == conflict.destinationPath }
                         .forEach { queueRepository.removeTask(it.id, deleteFile = false) }
                 }
-                if (external != null) startExternalDirectly(external, forceOverwrite = true)
+                if (external != null) startExternalDirectly(external, forceOverwrite = true, overrideFileName = conflict?.fileName)
                 else addDownload(forceOverwrite = true, skipDuplicateCheck = true)
             }
         }

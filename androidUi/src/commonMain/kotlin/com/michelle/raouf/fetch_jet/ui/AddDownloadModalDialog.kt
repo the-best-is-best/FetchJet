@@ -58,6 +58,9 @@ fun AddDownloadModalDialog(
     courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
     inspectedSubtitles: List<SubtitleTrack> = emptyList(),
+    subtitlesListShown: Boolean = false,
+    subtitlesListNote: String = "",
+    subtitlesListReading: Boolean = false,
     embedSubtitles: Boolean = false,
     onSubtitleToggled: (String, Boolean) -> Unit = { _, _ -> },
     onToggleEmbedSubtitles: (Boolean) -> Unit = {},
@@ -362,6 +365,19 @@ fun AddDownloadModalDialog(
                         onQualitySelected = onLinkListQualitySelected,
                         onRetryInspect = onLinkListRetryInspect
                     )
+                    if (subtitlesListShown) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        SubtitlesSelectionCard(
+                            subtitles = inspectedSubtitles,
+                            embedSubtitles = embedSubtitles,
+                            onSubtitleToggled = onSubtitleToggled,
+                            onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                            subtitleFormat = subtitleFormat,
+                            onSubtitleFormat = onSubtitleFormat,
+                            note = subtitlesListNote,
+                            reading = subtitlesListReading
+                        )
+                    }
                     Spacer(modifier = Modifier.height(14.dp))
                 } else {
                 EngineSelector(detectedEngine = detectedEngine, onEngineSelected = onEngineSelected)
@@ -394,6 +410,9 @@ fun AddDownloadModalDialog(
                     onMediaQualitySelectionToggled = onMediaQualitySelectionToggled,
                     onSelectAllMediaQualitiesToggled = onSelectAllMediaQualitiesToggled,
                     inspectedSubtitles = inspectedSubtitles,
+                    subtitlesListShown = subtitlesListShown,
+                    subtitlesListNote = subtitlesListNote,
+                    subtitlesListReading = subtitlesListReading,
                     embedSubtitles = embedSubtitles,
                     onSubtitleToggled = onSubtitleToggled,
                     onToggleEmbedSubtitles = onToggleEmbedSubtitles,

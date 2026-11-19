@@ -42,6 +42,11 @@ class DashboardViewModel(
         viewModelScope.coroutineContext + Dispatchers.IO + SupervisorJob(viewModelScope.coroutineContext[Job])
     )
 
+    private val boundRequestHandler: (com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) -> Unit =
+        { request -> handleExternalRequest(request) }
+    private val boundBatchHandler: (List<com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest>, Boolean) -> Unit =
+        { requests, review -> handleExternalBatch(requests, review) }
+
     internal val _uiState = MutableStateFlow(
 
         DashboardUiState(
@@ -123,6 +128,7 @@ class DashboardViewModel(
 
         observeQueue()
         observeBehaviorSettings()
+        watchPlaylists()
         scope.launch { com.michelle.raouf.fetch_jet.core.telemetry.UsagePing.sendIfDue() }
 
         val savedSettings = settingsRepository.loadSettings()
@@ -183,13 +189,18 @@ class DashboardViewModel(
             }
         }
 
-        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest =
-            { request -> handleExternalRequest(request) }
-        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch =
-            { requests, review -> handleExternalBatch(requests, review) }
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalRequest = boundRequestHandler
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.onExternalBatch = boundBatchHandler
 
         initDeviceSync()
 
+    }
+
+    override fun onCleared() {
+        val bridge = com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
+        if (bridge.onExternalRequest === boundRequestHandler) bridge.onExternalRequest = null
+        if (bridge.onExternalBatch === boundBatchHandler) bridge.onExternalBatch = null
+        super.onCleared()
     }
 
     internal fun persistCurrentSettings() {
@@ -350,7 +361,10 @@ class DashboardViewModel(
     ) {
         scope.launch {
             val state = _uiState.value
-            val destDir = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolderFor(request.url, request.referer)?.folder
+            val ownList = com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.forLink(request.url, request.referer)
+                ?.takeIf { it.folder.isNotBlank() }
+            val destDir = ownList?.folder
+                ?: com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.siteFolderFor(request.url, request.referer)?.folder
                 ?: state.destinationPath.ifBlank { queueRepository.pathResolver.getDownloadsDirectory() }
             val qualities = request.mediaQualities
             val selected = qualities.firstOrNull { it.isSelected } ?: qualities.firstOrNull()
@@ -358,7 +372,10 @@ class DashboardViewModel(
                 val title = selected?.videoTitle
                 if (!title.isNullOrBlank()) "$title.${selected.format.ifBlank { "mp4" }}" else ""
             }
-            val fileName = (overrideFileName ?: rawName).ifBlank { null }
+            val readable = if (overrideFileName == null)
+                com.michelle.raouf.fetch_jet.feature.media_extractor.facebookFileName(request.url, request.referer, rawName)
+            else null
+            val fileName = (overrideFileName ?: readable?.let { getUniqueFileName(destDir, it) } ?: rawName).ifBlank { null }
                 ?.let { queueRepository.pathResolver.sanitizeFileName(it) }
             // The file is already in the folder: ask, like the Add dialog does, instead of
             // quietly saving "name (1).mp4".
@@ -386,11 +403,30 @@ class DashboardViewModel(
             // The same video + quality already downloading or queued (a double click in the
             // popup, the page sending twice): do not start it a second time.
             val wantedFormat = selected?.formatId
-            val same = queueRepository.allTasksFlow.value.firstOrNull { t ->
-                (t.url == request.url || t.originalUrl == request.url) &&
-                        (wantedFormat == null || t.formatId == wantedFormat) &&
-                        t.status != DownloadStatus.COMPLETED &&
-                        t.status != DownloadStatus.ERROR
+            val sameLink = queueRepository.allTasksFlow.value.filter { t ->
+                (sameFileLink(t.url, request.url) || sameFileLink(t.originalUrl.orEmpty(), request.url)) &&
+                        (wantedFormat == null || t.formatId == wantedFormat)
+            }
+            val finished = sameLink.firstOrNull { t ->
+                t.status == DownloadStatus.COMPLETED && t.fileName.isNotBlank() &&
+                        AppFileSystem.exists("${t.destinationPath}/${t.fileName}".toPath())
+            }
+            if (finished != null && !forceOverwrite && overrideFileName == null) {
+                pendingExternalConflict = request
+                _uiState.update {
+                    it.copy(
+                        fileConflictAlert = FileConflictData(
+                            fileName = finished.fileName,
+                            destinationPath = finished.destinationPath,
+                            suggestedNewName = getUniqueFileName(finished.destinationPath, finished.fileName)
+                        )
+                    )
+                }
+                com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
+                return@launch
+            }
+            val same = sameLink.firstOrNull { t ->
+                t.status != DownloadStatus.COMPLETED && t.status != DownloadStatus.ERROR
             }
             if (same != null) {
                 // Paused → continue it; running / queued → just show it. Never a silent no-op.
@@ -427,17 +463,18 @@ class DashboardViewModel(
                 maxUploadSpeedBytesPerSec = state.selectedUploadSpeedLimitBytes,
                 forcedEngineType = engine,
                 requestHeaders = request.toRequestHeaders(),
-                pairedAudioUrl = request.audioUrl.ifBlank { null }
+                pairedAudioUrl = request.audioUrl.ifBlank { null },
+                sortByType = ownList == null,
+                playlistId = ownList?.id.orEmpty(),
+                playlistTitle = ownList?.title.orEmpty()
             ).onSuccess { task ->
                 _uiEffect.emit(
                     DashboardUiEffect.ShowToast(
-                        LocalizationManager.Strings.sysStartedDownload(
-                            task.fileName.ifBlank {
-                                com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(task.url)
-                            })
+                        LocalizationManager.Strings.sysStartedDownload(startedName(task.fileName, task.url))
                     )
                 )
                 _uiState.update { it.copy(scrollToTopSignal = it.scrollToTopSignal + 1) }
+                showGroupOf(task)
             }.onFailure { error ->
                 _uiEffect.emit(
                     DashboardUiEffect.ShowToast(
@@ -591,6 +628,11 @@ class DashboardViewModel(
             }
         }
         scope.launch {
+            BehaviorSettings.groupByFolder.collect { on ->
+                _uiState.update { if (on) it.copy(groupByFolder = true) else it.copy(groupByFolder = false, openFolder = null) }
+            }
+        }
+        scope.launch {
             BehaviorSettings.extractArchives.collect { on ->
                 _uiState.update { it.copy(extractArchives = on) }
             }
@@ -678,7 +720,7 @@ class DashboardViewModel(
                 event
             )
 
-            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
+            is DashboardUiEvent.OnMonitorClipboardChanged, is DashboardUiEvent.OnClipboardVideoPagesChanged, is DashboardUiEvent.OnSortIntoFoldersChanged, is DashboardUiEvent.OnGroupByFolderChanged, is DashboardUiEvent.OnExtractArchivesChanged, is DashboardUiEvent.OnGlobalDownloadSpeedLimitChanged, is DashboardUiEvent.OnGlobalUploadSpeedLimitChanged, is DashboardUiEvent.OnSpeedDisplayUnitChanged, is DashboardUiEvent.OnSpeedPresetChanged, DashboardUiEvent.OnApplySettingsClicked, DashboardUiEvent.OnThemeToggled, is DashboardUiEvent.OnThemeModeChanged, is DashboardUiEvent.OnLanguageChanged, is DashboardUiEvent.OnTabSelected, is DashboardUiEvent.OnSortChanged, is DashboardUiEvent.OnDefaultConnectionsChanged, DashboardUiEvent.OnDownloadYtDlpClicked -> handleSettingsEvent(
                 event
             )
 
@@ -717,6 +759,19 @@ class DashboardViewModel(
             is DashboardUiEvent.OnSubtitleTrackToggled,
             DashboardUiEvent.OnSubtitlesAddClicked,
             DashboardUiEvent.OnDismissSubtitles -> handleSubtitlesEvent(event)
+
+            is DashboardUiEvent.OnOpenPlaylist,
+            DashboardUiEvent.OnClosePlaylist,
+            is DashboardUiEvent.OnPlaylistGroupPause,
+            is DashboardUiEvent.OnPlaylistGroupResume,
+            is DashboardUiEvent.OnPlaylistGroupRemove,
+            is DashboardUiEvent.OnPlaylistCheck,
+            is DashboardUiEvent.OnPlaylistReadLanguages,
+            is DashboardUiEvent.OnPlaylistAddLanguage,
+            DashboardUiEvent.OnPlaylistLanguagesDismiss,
+            is DashboardUiEvent.OnOpenFolderGroup, DashboardUiEvent.OnCloseFolderGroup,
+            is DashboardUiEvent.OnFolderGroupPause, is DashboardUiEvent.OnFolderGroupResume,
+            is DashboardUiEvent.OnFolderGroupRemove -> handlePlaylistGroupEvent(event)
 
             is DashboardUiEvent.OnTorrentDetailsOpened,
             DashboardUiEvent.OnTorrentDetailsClosed,

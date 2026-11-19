@@ -248,9 +248,17 @@ object ExtensionBridgeServer {
         val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
         synchronized(gate) {
             cached()?.let { return it }
-            val fresh = runBlocking {
-                com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
-                    .inspectMediaQualities(url, requestHeaders)
+            val readingKey = "inspect-" + key.hashCode()
+            com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.begin(
+                readingKey, "FetchJet", LocalizationManager.Strings.inspectingVideoQualities
+            )
+            val fresh = try {
+                runBlocking {
+                    com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                        .inspectMediaQualities(url, requestHeaders)
+                }
+            } finally {
+                com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.end(readingKey)
             }
             if (fresh.isNotEmpty()) synchronized(inspectCache) {
                 inspectCache[key] = System.currentTimeMillis() to fresh
@@ -609,6 +617,7 @@ object ExtensionBridgeServer {
                 ).show()
             } else {
                 showOpenNotification(open)
+                if (toast) com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.linkWaited()
             }
         }
     }
