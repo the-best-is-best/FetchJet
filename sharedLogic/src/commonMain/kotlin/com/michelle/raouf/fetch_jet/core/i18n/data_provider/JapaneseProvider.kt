@@ -879,6 +879,7 @@ object JapaneseProvider : AppLocalization {
     override val popUpAskText = "ブラウザーからリンクが届きましたが、FetchJet が自動で開けませんでした。次回すぐ開くように「他のアプリの上に重ねて表示」を許可しますか？"
     override val popUpAskAllow = "許可"
     override val popUpAskLater = "今はしない"
+    override val driveNoDownloadError = "Google ドライブがファイルを送信しませんでした: 所有者がダウンロードを無効にしたか、非公開です"
     override val sysReadingChannelName = "リストの読み込み"
     override val sysReadingVideosCount = "動画を読み込み中… %1 / %2"
     override val playlistGroupDone = "%2 本中 %1 本完了"

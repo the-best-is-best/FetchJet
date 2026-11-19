@@ -24,7 +24,9 @@ data class ExternalDownloadRequest(
     val reading: Pair<Int, Int>? = null,
     val readingFailed: String = "",
     /** Several links of one page ("Download all links"): the page's name, their folder. */
-    val group: String = ""
+    val group: String = "",
+    /** A Google Drive link already checked: Drive sends the file itself. */
+    val driveChecked: Boolean = false
 ) {
     /** Headers worth replaying on the download requests. */
     fun toRequestHeaders(): Map<String, String> = buildMap {

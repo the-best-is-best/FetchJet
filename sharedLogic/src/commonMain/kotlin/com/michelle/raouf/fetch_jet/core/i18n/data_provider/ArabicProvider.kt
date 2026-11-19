@@ -891,6 +891,7 @@ object ArabicProvider : AppLocalization {
     override val popUpAskText = "أرسل المتصفح رابطًا لكن FetchJet لم يستطع أن يفتح وحده. هل تسمح له بـ\"الظهور فوق التطبيقات الأخرى\" ليفتح فورًا في المرة القادمة؟"
     override val popUpAskAllow = "السماح"
     override val popUpAskLater = "ليس الآن"
+    override val driveNoDownloadError = "لم يُرسل Google Drive الملف: مالكه أوقف التنزيل، أو الملف خاص"
     override val sysReadingChannelName = "قراءة القوائم"
     override val sysReadingVideosCount = "جاري قراءة الفيديوهات… %1 من %2"
     override val playlistGroupDone = "اكتمل %1 من %2"

@@ -838,6 +838,7 @@ object ChineseProvider : AppLocalization {
     override val popUpAskText = "浏览器发送了链接，但 FetchJet 无法自行打开。允许“显示在其他应用上层”，以便下次立即打开？"
     override val popUpAskAllow = "允许"
     override val popUpAskLater = "以后再说"
+    override val driveNoDownloadError = "Google 云端硬盘未发送该文件：所有者已关闭下载，或文件为私有"
     override val sysReadingChannelName = "读取列表"
     override val sysReadingVideosCount = "正在读取视频… %1 / %2"
     override val playlistGroupDone = "已完成 %1 / %2"

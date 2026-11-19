@@ -880,6 +880,7 @@ object PersianProvider : AppLocalization {
     override val popUpAskText = "مرورگر پیوندی فرستاد اما FetchJet نتوانست خودش باز شود. اجازهٔ «نمایش روی برنامه‌های دیگر» را می‌دهید تا دفعهٔ بعد فوراً باز شود؟"
     override val popUpAskAllow = "اجازه"
     override val popUpAskLater = "فعلاً نه"
+    override val driveNoDownloadError = "Google Drive فایل را نفرستاد: مالک آن دانلود را خاموش کرده یا فایل خصوصی است"
     override val sysReadingChannelName = "خواندن فهرست‌ها"
     override val sysReadingVideosCount = "در حال خواندن ویدیوها… %1 از %2"
     override val playlistGroupDone = "%1 از %2 تمام شد"

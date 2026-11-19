@@ -748,6 +748,7 @@ interface AppLocalization : LocalizationProvider {
     val popUpAskText: String
     val popUpAskAllow: String
     val popUpAskLater: String
+    val driveNoDownloadError: String
     val sysReadingChannelName: String
     val sysReadingVideosCount: String
     val playlistGroupDone: String

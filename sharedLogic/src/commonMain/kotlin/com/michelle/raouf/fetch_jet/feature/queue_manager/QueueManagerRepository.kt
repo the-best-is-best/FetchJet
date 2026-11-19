@@ -836,6 +836,7 @@ class QueueManagerRepository(
         val trimmedUrl = url.trim().let {
             if (com.michelle.raouf.fetch_jet.feature.torrent_engine.isLocalTorrentPath(it))
                 com.michelle.raouf.fetch_jet.feature.torrent_engine.normalizeLocalTorrentPath(it)
+            else if (forcedEngineType == EngineType.MEDIA_STREAM) it
             else codeHostRawUrl(it)
         }
         if (trimmedUrl.isBlank()) return Result.failure(Exception("URL cannot be empty"))
@@ -1395,6 +1396,7 @@ class QueueManagerRepository(
 internal fun nowEpochMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
 internal fun codeHostRawUrl(url: String): String {
+    com.michelle.raouf.fetch_jet.feature.http_downloader.googleDriveDownloadUrl(url)?.let { return it }
     val github = Regex(
         """^(https?://(?:www\.)?github\.com/[^/]+/[^/]+)/blob/(.+)$""",
         RegexOption.IGNORE_CASE

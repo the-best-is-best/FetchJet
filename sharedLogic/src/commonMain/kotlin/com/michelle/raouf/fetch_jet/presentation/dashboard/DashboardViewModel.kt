@@ -254,6 +254,19 @@ class DashboardViewModel(
             openClipDialog(request)
             return
         }
+        val driveId = com.michelle.raouf.fetch_jet.feature.http_downloader.googleDriveFileId(request.url)
+        if (driveId != null && request.mediaQualities.isEmpty() && request.playlist == null && !request.driveChecked) {
+            scope.launch {
+                val direct = com.michelle.raouf.fetch_jet.feature.http_downloader.googleDriveDownloadUrl(request.url) ?: request.url
+                val probe = com.michelle.raouf.fetch_jet.feature.http_downloader.probeLink(direct, request.toRequestHeaders())
+                val refused = probe is com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult.Failed &&
+                        (probe.code == com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeCode.WEB_PAGE ||
+                                probe.code == com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeCode.ROBOT)
+                if (refused) openDriveVideoPage(driveId, request)
+                else handleExternalRequest(request.copy(driveChecked = true))
+            }
+            return
+        }
         if (request.mediaQualities.isNotEmpty() || request.direct) {
             startExternalDirectly(request)
             return
@@ -348,6 +361,23 @@ class DashboardViewModel(
             )
         }
         refreshSuggestedFileName()
+    }
+
+    /**
+     * A Drive file its owner keeps from being downloaded still plays in the page: its video
+     * page goes to the media engine (with the browser's cookies), like any video site.
+     */
+    private fun openDriveVideoPage(id: String, request: com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest) {
+        val page = "https://drive.google.com/file/d/$id/view"
+        pendingExternalUrl = page
+        pendingExternalHeaders = request.toRequestHeaders()
+        pendingExternalFileName = request.fileName.ifBlank { null }
+        pendingExternalPlaylist = null
+        onEvent(DashboardUiEvent.OnUrlChanged(page))
+        onEvent(DashboardUiEvent.OnToggleAddDialog(true))
+        onEvent(DashboardUiEvent.OnEngineSelected(EngineType.MEDIA_STREAM))
+        onEvent(DashboardUiEvent.OnInspectMediaClicked)
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.showAndFocus()
     }
 
     /**

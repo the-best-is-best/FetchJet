@@ -869,6 +869,7 @@ object HindiProvider : AppLocalization {
     override val popUpAskText = "ब्राउज़र ने लिंक भेजा, पर FetchJet अपने आप नहीं खुल सका। \"दूसरे ऐप्स के ऊपर दिखाएँ\" की अनुमति दें ताकि अगली बार यह तुरंत खुले?"
     override val popUpAskAllow = "अनुमति दें"
     override val popUpAskLater = "अभी नहीं"
+    override val driveNoDownloadError = "Google Drive ने फ़ाइल नहीं भेजी: इसके मालिक ने डाउनलोड बंद कर दिया है, या यह निजी है"
     override val sysReadingChannelName = "सूचियाँ पढ़ना"
     override val sysReadingVideosCount = "वीडियो पढ़े जा रहे हैं… %2 में से %1"
     override val playlistGroupDone = "%2 में से %1 पूरे"

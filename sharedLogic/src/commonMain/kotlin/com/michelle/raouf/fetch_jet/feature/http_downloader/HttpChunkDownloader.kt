@@ -171,6 +171,9 @@ class HttpChunkDownloader(
 
             val contentType = metadata.contentType.lowercase()
             if (contentType.contains("text/html")) {
+                if (isGoogleDriveLink(metadata.finalUrl) || isGoogleDriveLink(initialTask.url)) {
+                    throw Exception(GOOGLE_DRIVE_NO_DOWNLOAD_ERROR)
+                }
                 throw Exception("Protected by Cloudflare/WAF Challenge. Please use 'Open in Browser' to get the direct file link.")
             }
 

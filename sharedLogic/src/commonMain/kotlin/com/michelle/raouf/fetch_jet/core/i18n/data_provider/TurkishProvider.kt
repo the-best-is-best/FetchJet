@@ -878,6 +878,7 @@ object TurkishProvider : AppLocalization {
     override val popUpAskText = "Tarayıcı bir bağlantı gönderdi ama FetchJet kendiliğinden açılamadı. Bir dahaki sefere hemen açılması için \"diğer uygulamaların üzerinde göster\" izni verilsin mi?"
     override val popUpAskAllow = "İzin ver"
     override val popUpAskLater = "Şimdi değil"
+    override val driveNoDownloadError = "Google Drive dosyayı göndermedi: sahibi indirmeyi kapattı ya da dosya özel"
     override val sysReadingChannelName = "Listeler okunuyor"
     override val sysReadingVideosCount = "Videolar okunuyor… %1 / %2"
     override val playlistGroupDone = "%2 videodan %1 tamam"

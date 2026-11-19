@@ -929,6 +929,7 @@ object FrenchProvider : AppLocalization {
     override val popUpAskText = "Le navigateur a envoyé un lien mais FetchJet n'a pas pu s'ouvrir seul. Autoriser « Superposition sur d'autres applis » pour qu'il s'ouvre aussitôt la prochaine fois ?"
     override val popUpAskAllow = "Autoriser"
     override val popUpAskLater = "Plus tard"
+    override val driveNoDownloadError = "Google Drive n'a pas envoyé le fichier : son propriétaire a désactivé le téléchargement, ou il est privé"
     override val sysReadingChannelName = "Lecture des listes"
     override val sysReadingVideosCount = "Lecture des vidéos… %1 sur %2"
     override val playlistGroupDone = "%1 sur %2 terminées"

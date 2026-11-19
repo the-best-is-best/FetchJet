@@ -892,6 +892,7 @@ object RussianProvider : AppLocalization {
     override val popUpAskText = "Браузер отправил ссылку, но FetchJet не смог открыться сам. Разрешить «Показ поверх других приложений», чтобы в следующий раз он открывался сразу?"
     override val popUpAskAllow = "Разрешить"
     override val popUpAskLater = "Не сейчас"
+    override val driveNoDownloadError = "Google Диск не отдал файл: владелец запретил скачивание, или файл закрыт"
     override val sysReadingChannelName = "Чтение списков"
     override val sysReadingVideosCount = "Чтение видео… %1 из %2"
     override val playlistGroupDone = "Готово %1 из %2"

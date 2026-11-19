@@ -883,6 +883,7 @@ object IndonesianProvider : AppLocalization {
     override val popUpAskText = "Browser mengirim tautan tetapi FetchJet tidak bisa terbuka sendiri. Izinkan \"tampilkan di atas aplikasi lain\" agar lain kali langsung terbuka?"
     override val popUpAskAllow = "Izinkan"
     override val popUpAskLater = "Nanti"
+    override val driveNoDownloadError = "Google Drive tidak mengirim file: pemiliknya menonaktifkan unduhan, atau file bersifat pribadi"
     override val sysReadingChannelName = "Membaca daftar"
     override val sysReadingVideosCount = "Membaca video… %1 dari %2"
     override val playlistGroupDone = "%1 dari %2 selesai"

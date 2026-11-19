@@ -827,6 +827,7 @@ object KoreanProvider : AppLocalization {
     override val popUpAskText = "브라우저가 링크를 보냈지만 FetchJet이 스스로 열리지 못했습니다. 다음에 바로 열리도록 \"다른 앱 위에 표시\"를 허용할까요?"
     override val popUpAskAllow = "허용"
     override val popUpAskLater = "나중에"
+    override val driveNoDownloadError = "Google 드라이브가 파일을 보내지 않았습니다: 소유자가 다운로드를 껐거나 비공개 파일입니다"
     override val sysReadingChannelName = "목록 읽기"
     override val sysReadingVideosCount = "동영상 읽는 중… %2개 중 %1개"
     override val playlistGroupDone = "%2개 중 %1개 완료"
