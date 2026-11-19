@@ -81,7 +81,6 @@ fun DirectoryPickerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        ProvideSafeClipboard {
         Surface(
             modifier = Modifier
                 .widthIn(max = 620.dp)
@@ -440,7 +439,6 @@ fun DirectoryPickerDialog(
                     }
                 }
             }
-        }
         }
     }
 }

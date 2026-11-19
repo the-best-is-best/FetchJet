@@ -32,4 +32,16 @@ object MediaUrls {
     /** One spelling per video for caches: YouTube → watch?v=ID, everything else trimmed as is. */
     fun canonical(url: String): String =
         youTubeVideoId(url)?.let { "https://www.youtube.com/watch?v=$it" } ?: url.trim()
+
+    private val pageAssetExts = setOf(
+        "css", "js", "mjs", "html", "htm", "php", "asp", "aspx", "json", "xml", "txt",
+        "svg", "png", "jpg", "jpeg", "gif", "webp", "ico", "avif", "bmp",
+        "woff", "woff2", "ttf", "otf", "eot", "map", "wasm",
+    )
+
+    fun isPageAsset(ext: String?, url: String): Boolean {
+        val e = ext?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+            ?: url.substringBefore('?').substringBefore('#').substringAfterLast('/').substringAfterLast('.', "").lowercase()
+        return e in pageAssetExts
+    }
 }

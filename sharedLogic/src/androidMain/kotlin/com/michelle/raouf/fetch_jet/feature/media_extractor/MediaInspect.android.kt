@@ -387,8 +387,9 @@ actual suspend fun inspectPlatformQualities(
         // If list is empty (e.g. direct mp4 or single stream sites)
         if (list.isEmpty()) {
             val singleUrl = json.optString("url")
-            if (singleUrl.isNotBlank()) {
-                val ext = json.optString("ext", "mp4")
+            val singleExt = json.optString("ext", "mp4")
+            if (singleUrl.isNotBlank() && !MediaUrls.isPageAsset(singleExt, singleUrl)) {
+                val ext = singleExt
                 list.add(
                     MediaQualityEntry(
                         index = 0,

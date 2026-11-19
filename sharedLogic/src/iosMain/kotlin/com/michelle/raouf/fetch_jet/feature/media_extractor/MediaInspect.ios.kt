@@ -363,8 +363,9 @@ actual suspend fun inspectPlatformQualities(
 
         if (list.isEmpty()) {
             val singleUrl = getStringFromMap(parsedRoot, "url") ?: ""
-            if (singleUrl.isNotBlank()) {
-                val ext = getStringFromMap(parsedRoot, "ext") ?: "mp4"
+            val singleExt = getStringFromMap(parsedRoot, "ext") ?: "mp4"
+            if (singleUrl.isNotBlank() && !MediaUrls.isPageAsset(singleExt, singleUrl)) {
+                val ext = singleExt
                 list.add(
                     MediaQualityEntry(
                         index = 0,

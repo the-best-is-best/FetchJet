@@ -303,7 +303,6 @@ fun AddDownloadModalDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        ProvideSafeClipboard {
         Card(
             modifier = Modifier
                 .widthIn(min = 340.dp, max = 660.dp)
@@ -529,7 +528,6 @@ fun AddDownloadModalDialog(
                     AppScrollbar(dialogScroll, Modifier.align(Alignment.CenterEnd))
                 }
             }
-        }
         }
     }
 }
