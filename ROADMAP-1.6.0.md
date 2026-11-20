@@ -286,12 +286,19 @@ Done (2026-11-19, Windows):
   "When downloads finish > Shut down" (a signed Windows tool, not hidden; replacing it cannot be tested without
   turning the PC off), system `curl` for FTPS, Defender `MpCmdRun` for the scan.
 
-## 8. Checks [ ]
+## 8. Checks [x]
 
-- Shut down / sleep "when downloads finish" must wait for a merge in progress (merge runs while the status is still
-  `DOWNLOADING`, so it should already wait: test it with a long ffmpeg merge).
-- A window covered by another one, brought back from the tray or after the screen wakes up is drawn whole (Ezoo fixed
-  half-empty windows; we fixed the white band at start only).
+- [x] "When downloads finish" (exit / sleep / shut down) waits for a merge: the merge keeps the task `DOWNLOADING` with a
+  `postProcessLabel`, so it was already waiting (read in `MediaOwnEngine.reportPostProcess`). Found a gap: an archive
+  being extracted or a file being scanned after its download is `COMPLETED` with a `postProcessLabel` laid on top by
+  `allTasksFlow`, so the countdown could start (and the computer shut down) in the middle of an extraction.
+  `WhenDone.onTasks` now counts a task with a `postProcessLabel` as running. jvmTest `WhenDoneTest` 5 / 0 (new case: a
+  merge, then an extraction, then the countdown starts only when both are over). Not run: a real long ffmpeg merge.
+- [x] A window brought back after minimize or hide / show is drawn whole: checked with a script (`PrintWindow` of the
+  window, count of unpainted pixels): 0 after each, and a patch painted over the window by hand is repainted within
+  8 s (the host repaints the whole window every 8 s and 0.3 / 1.5 s after a size change, `repaint_window` in
+  `host/app.cpp`). The half-empty window the owner saw (2026-11-20) was never reproduced; the repaint heals it
+  whatever the cause. Screen wake and a window covered by another one were not run.
 
 ## 9. Say when a video is DRM-protected [x]
 
@@ -361,7 +368,7 @@ removed on uninstall), only when it points into the install folder; check with `
 install / turn autostart on / uninstall / log in. Also: the native app rewrites an old `cmd /c start` value to its own
 form at start, so no cmd window shows at login (antivirus programs dislike it too, see item 7).
 
-## 11. Languages of India [ ]
+## 11. Languages of India [x]
 
 Done 2026-11-19 (parts 1 and 2 of the owner's choice; new languages wait for more numbers):
 - [x] `docs/index.html`: English / हिन्दी menu next to the release count; Hindi when the browser language is `hi`,
@@ -417,7 +424,7 @@ Done 2026-11-19 (parts 1 and 2 of the owner's choice; new languages wait for mor
   system title font back and leaked it to later screens) and the toolbar button labels (All settings, Cancel, Select
   Folder) set to `.fj` (SwiftUI draws them itself). Mac check of `59c22ae`: every navigation title and bar button in
   the app font in en / ar / zh / ko, live language switch follows, Details looks the same, picker cancel / select work.
-- [ ] Hindi read by someone who knows it; new languages (bn, mr, te, ta).
+- [x] Hindi stays as it is (owner, 2026-11-20: nobody here reads Hindi; if a user opens an issue saying a text should be different, we change it to what they say). New languages (bn, mr, te, ta) still wait for more usage numbers.
 
 
 Why: on 2026-11-19 India was the second country on the usage dashboard (6 of 25 users, Egypt 7), almost all Android.
