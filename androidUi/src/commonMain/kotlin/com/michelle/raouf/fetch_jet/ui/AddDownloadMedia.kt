@@ -321,25 +321,22 @@ internal fun SubtitlesSelectionCard(
 
             if (subtitles.any { it.isSelected }) {
                 Spacer(modifier = Modifier.height(10.dp))
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    ChoiceChip(
-                        label = LocalizationManager.Strings.subtitlesEmbedInVideo,
-                        selected = embedSubtitles,
-                        onClick = { onToggleEmbedSubtitles(true) }
-                    )
-                    ChoiceChip(
-                        label = LocalizationManager.Strings.subtitlesSeparateFile + " · SRT",
-                        selected = !embedSubtitles && subtitleFormat != "vtt",
-                        onClick = { onSubtitleFormat("srt") }
-                    )
-                    ChoiceChip(
-                        label = LocalizationManager.Strings.subtitlesSeparateFile + " · VTT",
-                        selected = !embedSubtitles && subtitleFormat == "vtt",
-                        onClick = { onSubtitleFormat("vtt") }
+                SegmentedChoice(
+                    labels = listOf(
+                        LocalizationManager.Strings.subtitlesEmbedInVideo,
+                        LocalizationManager.Strings.subtitlesSeparateFile
+                    ),
+                    selectedIndex = if (embedSubtitles) 0 else 1,
+                    onSelect = { onToggleEmbedSubtitles(it == 0) }
+                )
+                if (!embedSubtitles) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SegmentedChoice(
+                        labels = listOf("SRT", "VTT"),
+                        selectedIndex = if (subtitleFormat == "vtt") 1 else 0,
+                        onSelect = { onSubtitleFormat(if (it == 1) "vtt" else "srt") },
+                        modifier = Modifier.padding(start = 16.dp).fillMaxWidth(),
+                        small = true
                     )
                 }
             }

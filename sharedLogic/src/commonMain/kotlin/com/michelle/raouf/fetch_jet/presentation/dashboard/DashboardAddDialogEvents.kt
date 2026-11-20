@@ -270,12 +270,12 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { st ->
             st.copy(linkList = st.linkList.mapIndexed { i, entry ->
-                if (i == event.index) entry.copy(isSelected = event.selected) else entry
+                if (i == event.index && !entry.downloadedBefore) entry.copy(isSelected = event.selected) else entry
             })
         }
 
         is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { st ->
-            st.copy(linkList = st.linkList.map { it.copy(isSelected = event.selected) })
+            st.copy(linkList = st.linkList.map { if (it.downloadedBefore) it else it.copy(isSelected = event.selected) })
         }
 
         is DashboardUiEvent.OnLinkListFolderChanged -> _uiState.update { it.copy(linkListFolder = event.name) }

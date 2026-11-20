@@ -121,6 +121,34 @@ struct AddChipRow<Content: View>: View {
     }
 }
 
+struct AddSegmentedRow: View {
+    let labels: [String]
+    let selectedIndex: Int
+    let onSelect: (Int) -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                let selected = index == selectedIndex
+                Button {
+                    onSelect(index)
+                } label: {
+                    Text(label)
+                        .font(.fj(12, selected ? .bold : .medium))
+                        .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurface)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(selected ? FJTheme.color.primary.opacity(0.18) : FJTheme.color.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? FJTheme.color.primary : FJTheme.color.outlineVariant.opacity(0.6), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 struct AddCheckbox: View {
     let checked: Bool
     var body: some View {

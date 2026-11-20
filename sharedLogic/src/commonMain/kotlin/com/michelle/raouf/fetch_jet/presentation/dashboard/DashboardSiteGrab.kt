@@ -39,6 +39,15 @@ fun grabDepthName(depth: Int): String {
     }
 }
 
+fun grabDepthShortName(depth: Int): String {
+    val s = LocalizationManager.Strings
+    return when (depth) {
+        2 -> s.grabDepthShort2
+        3 -> s.grabDepthShort3
+        else -> s.grabDepthShort1
+    }
+}
+
 internal fun DashboardViewModel.handleSiteGrabEvent(event: DashboardUiEvent) {
     when (event) {
         DashboardUiEvent.OnGrabPageClicked -> startPageGrab()
@@ -47,7 +56,7 @@ internal fun DashboardViewModel.handleSiteGrabEvent(event: DashboardUiEvent) {
             _uiState.update { it.copy(siteGrab = it.siteGrab.copy(depth = event.depth.coerceIn(1, 3))) }
 
         is DashboardUiEvent.OnGrabGroupToggled -> _uiState.update { st ->
-            st.copy(linkList = st.linkList.map { if (it.folder == event.folder) it.copy(isSelected = event.selected) else it })
+            st.copy(linkList = st.linkList.map { if (it.folder == event.folder && !it.downloadedBefore) it.copy(isSelected = event.selected) else it })
         }
 
         else -> Unit
@@ -73,8 +82,13 @@ internal fun DashboardViewModel.startPageGrab() {
             val result = SiteGrabber(fetcher).grab(url, GrabOptions(depth = state.siteGrab.depth)) { progress ->
                 _uiState.update { it.copy(siteGrab = it.siteGrab.copy(pagesRead = progress.pagesRead)) }
             }
+            val known = queueRepository.allTasksFlow.value.flatMap { listOfNotNull(it.url, it.originalUrl) }
+                .map { it.trim().lowercase() }.toSet()
             val entries = result.files.map { file ->
+                val before = file.url.trim().lowercase() in known
                 LinkListEntry(
+                    isSelected = !before,
+                    downloadedBefore = before,
                     url = file.url,
                     engine = EngineType.HTTP_DIRECT,
                     fileName = file.name,

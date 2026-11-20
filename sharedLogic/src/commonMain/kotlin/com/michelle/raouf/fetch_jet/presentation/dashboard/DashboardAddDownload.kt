@@ -550,7 +550,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         val fromPage = selected.all { it.folder.isNotBlank() }
         val pageGroup = if (fromPage) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.forLink(pageUrl)
             ?.takeIf { it.quality == com.michelle.raouf.fetch_jet.feature.site_grabber.PAGE_GROUP } else null
-        val pageGrouped = fromPage && (selected.size > 1 || pageGroup != null)
+        val pageGrouped = fromPage
         val pageGroupId = pageGroup?.id ?: ("pg_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999))
         val pageGroupTitle = pageGroup?.title ?: state.siteGrab.title.ifBlank { com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.hostOf(pageUrl).removePrefix("www.") }
         if (pageGrouped) {

@@ -21,6 +21,14 @@ extension AppLocalization {
         default: return grabDepth1
         }
     }
+
+    func grabDepthShortLabel(_ depth: Int32) -> String {
+        switch depth {
+        case 2: return grabDepthShort2
+        case 3: return grabDepthShort3
+        default: return grabDepthShort1
+        }
+    }
 }
 
 struct AddGrabNote: View {
@@ -62,13 +70,17 @@ struct AddGrabCard: View {
                     .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach([Int32(1), Int32(2), Int32(3)], id: \.self) { d in
-                        AddChoiceChip(label: strings.grabDepthLabel(d), selected: grab.depth == d) {
-                            store.send(DashboardUiEventOnGrabDepthChanged(depth: d))
-                        }
-                    }
+                let depths: [Int32] = [1, 2, 3]
+                AddSegmentedRow(
+                    labels: depths.map { strings.grabDepthShortLabel($0) },
+                    selectedIndex: depths.firstIndex(of: grab.depth) ?? 0
+                ) { index in
+                    store.send(DashboardUiEventOnGrabDepthChanged(depth: depths[index]))
                 }
+                Text(strings.grabDepthLabel(grab.depth))
+                    .font(.fj(11))
+                    .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 AddOutlineButton(label: strings.grabFindFiles) { store.send(DashboardUiEventOnGrabPageClicked.shared) }
                 AddGrabNote(note: grab.note)
             }

@@ -191,18 +191,22 @@ struct AddSubtitlesCard: View {
             .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 8))
             }
             if subs.contains(where: { $0.isSelected }) {
-                AddChipRow {
-                    AddChoiceChip(label: strings.subtitlesEmbedInVideo, selected: store.state.embedSubtitles) {
-                        store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: true))
-                    }
-                    AddChoiceChip(label: strings.subtitlesSeparateFile + " · SRT", selected: !store.state.embedSubtitles && store.state.subtitleFormat != "vtt") {
-                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: "srt"))
-                    }
-                    AddChoiceChip(label: strings.subtitlesSeparateFile + " · VTT", selected: !store.state.embedSubtitles && store.state.subtitleFormat == "vtt") {
-                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: "vtt"))
-                    }
+                let embed = store.state.embedSubtitles
+                AddSegmentedRow(
+                    labels: [strings.subtitlesEmbedInVideo, strings.subtitlesSeparateFile],
+                    selectedIndex: embed ? 0 : 1
+                ) { index in
+                    store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: index == 0))
                 }
                 .padding(.top, 2)
+                if !embed {
+                    AddSegmentedRow(
+                        labels: ["SRT", "VTT"],
+                        selectedIndex: store.state.subtitleFormat == "vtt" ? 1 : 0
+                    ) { index in
+                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: index == 1 ? "vtt" : "srt"))
+                    }
+                }
             }
         }
     }

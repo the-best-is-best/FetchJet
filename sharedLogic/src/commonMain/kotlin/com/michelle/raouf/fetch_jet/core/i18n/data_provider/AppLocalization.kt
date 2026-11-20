@@ -502,6 +502,9 @@ interface AppLocalization : LocalizationProvider {
     val grabDepth1: String
     val grabDepth2: String
     val grabDepth3: String
+    val grabDepthShort1: String
+    val grabDepthShort2: String
+    val grabDepthShort3: String
     val grabHow: String
     val grabReading: String
     val grabFound: String

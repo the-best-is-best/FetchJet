@@ -1651,6 +1651,9 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_grabDepth1(next());
     tr.set_grabDepth2(next());
     tr.set_grabDepth3(next());
+    tr.set_grabDepthShort1(next());
+    tr.set_grabDepthShort2(next());
+    tr.set_grabDepthShort3(next());
     tr.set_grabHow(next());
     tr.set_grabReading(next());
     tr.set_grabFound(next());

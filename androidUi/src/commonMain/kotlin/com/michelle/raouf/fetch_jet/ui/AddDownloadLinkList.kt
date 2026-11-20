@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +53,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
 import com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthShortName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
@@ -213,6 +216,38 @@ internal fun GrabNote(note: String, modifier: Modifier = Modifier) {
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun SegmentedChoice(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    small: Boolean = false
+) {
+    androidx.compose.material3.SingleChoiceSegmentedButtonRow(
+        modifier = modifier.fillMaxWidth().height(if (small) 32.dp else 40.dp)
+    ) {
+        labels.forEachIndexed { i, label ->
+            SegmentedButton(
+                selected = i == selectedIndex,
+                onClick = { onSelect(i) },
+                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, labels.size),
+                icon = {},
+                contentPadding = PaddingValues(horizontal = 6.dp),
+                label = {
+                    Text(
+                        label,
+                        fontSize = if (small) 11.sp else 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+        }
+    }
+}
+
 @Composable
 internal fun GrabCard(
     grab: SiteGrabUi,
@@ -255,16 +290,18 @@ internal fun GrabCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    (1..3).forEach { d ->
-                        FilterChip(
-                            selected = grab.depth == d,
-                            onClick = { onDepth(d) },
-                            label = { Text(grabDepthName(d), fontSize = 12.sp) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
+                SegmentedChoice(
+                    labels = (1..3).map { grabDepthShortName(it) },
+                    selectedIndex = grab.depth - 1,
+                    onSelect = { onDepth(it + 1) }
+                )
+                Text(
+                    grabDepthName(grab.depth),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onFind,
                     shape = RoundedCornerShape(10.dp),
@@ -299,6 +336,7 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
         Checkbox(
             checked = link.isSelected,
             onCheckedChange = onToggle,
+            enabled = !link.downloadedBefore,
             modifier = Modifier.size(40.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
@@ -315,6 +353,7 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
             Text(
                 if (grabbed) {
                     listOfNotNull(
+                        LocalizationManager.Strings.playlistDownloadedBefore.takeIf { link.downloadedBefore },
                         formatBytes(link.sizeBytes).takeIf { link.sizeBytes >= 0 },
                         linkHost(link.sourcePage.ifBlank { link.url }).takeIf { it.isNotBlank() }
                     ).joinToString(" · ")

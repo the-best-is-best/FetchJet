@@ -72,7 +72,8 @@ data class LinkListEntry(
     val fileName: String? = null,
     val sizeBytes: Long = -1L,
     val folder: String = "",
-    val sourcePage: String = ""
+    val sourcePage: String = "",
+    val downloadedBefore: Boolean = false
 ) {
     /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
     val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
