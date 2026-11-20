@@ -171,6 +171,29 @@ Data like that exists only from 1.6.0 development builds (1.5.x saves no `playli
 After 23cc218 (same day, iOS built with no error, relaunched with group by folder on): the DIR row is gone; the LIST
 "Test Playlist" row says "6 of 6 done · 19.8 MB" and opens to all six videos (the two new ones and the four old ones).
 
+iPad check of 8320cf1 (2026-11-19, iPad Pro 13" simulator, light theme, its own throw-away data, no code changed): the
+same small playlist; Parisian Love + Cake at 360p, then Google Goggles with English "Embed in video" (~5 MB in all).
+- Playlist row "Test Playlist · 2 of 2 done · 4.0 MB", page header (LIST, title, "N of N done", Check for new videos,
+  "Subtitles: none", "+ Add a subtitle language"); ⋯ menu = Open folder / Check for new videos / Delete playlist; Open
+  folder opened Files on `Media/Test Playlist`.
+- Add a language: "Reading the languages…", then chips (English - CC, English, English (Original)); English gave
+  "Adding subtitles… 1 of 2", then "Subtitles added to 1 of 2 finished videos" and "Subtitles: English"
+  (`Cake.en.auto.srt`; Parisian Love has no English track).
+- Check: the two downloaded videos say "Already in this playlist", are dimmed and do not tick; Select none / Select
+  all leave them unticked.
+- Add sheet at iPad width: quality chips and Embed / Separate file · SRT / Separate file · VTT on one line, no overflow.
+  Embed in video: `Google Goggles.mp4` has a `mov_text` (eng) subtitle stream; the video joined the playlist (3 of 3).
+- Group by folder: DIR rows Media / Documents with "N files · M of N done · K failed", the playlist its own row; a
+  folder page has Open folder (Files opened on Documents), Resume all, Delete all (Delete all not tapped). Off again.
+- Details of a playlist video: "Playlist" row with the list link; Copy put it on the clipboard.
+- Landscape: the playlist page and the folder rows lay out the same (sidebar + list). The main pass ran in portrait,
+  which on this iPad is also the wide layout with the sidebar.
+- Seen, not changed (wording / behaviour for the owner): with no video ticked the start button reads "Inspect Video
+  First" (disabled); one ticked video reads "Download 1 videos"; Check pre-ticks every video not downloaded yet,
+  including the 162 MB "Real Time Search Event"; the "Subtitles added to 1 of 2" box stays after a later download until
+  ✕; before a language is picked that box has an empty line above the chips; tapping All in the sidebar while a
+  playlist page is open keeps the page open (the same on the iPhone tab bar).
+
 After 5b4f1fd (2026-11-20, Windows + the A56), from a side-by-side check with EZOO 1.0.12 on this PC:
 - Direct files: 32 connections by default above 16 MB, 16 above 2 MB (was 4 / 6 / 8); parts left by versions without
   a piece map still resume with the old split (`legacyChunkCount`). 32 MB from GitHub media: EZOO 3.3-3.5 s,
@@ -188,6 +211,35 @@ After 5b4f1fd (2026-11-20, Windows + the A56), from a side-by-side check with EZ
   quality); FetchJet lists every quality. EZOO idle 54 MB RAM, FetchJet release 71 MB (not measured the same way).
 - Tests (Windows, release core): jvmTest 240 / 0; corehost media 31, playlist 37, settings 87, add 29, links 17,
   drm 6, subtitles 27, download 29, robust 15, slowtail 4, hostlimit 8, integrity 32, all 0 failed.
+
+Mac check of 25d1cc9 (2026-11-20, no code changed):
+- iOS: `scripts/ios-dev-build.command all` built with no Kotlin / Swift error. iPhone 17 (dark) and iPad Pro 13" (light):
+  Settings order General, Downloads, Speed limits, Files & folders, Browser extension, Devices, Network, Media tools,
+  BitTorrent, Updates. Downloads = save location, connections (footer "Auto picks by file size (4–32)"), queue.
+  Speed limits = presets + speed schedule (no idle limit on iOS: it is native-desktop only, `UserIdle`). Files &
+  folders = sort by type with its footer under it, group by folder, extract, folders by site (iOS never had Recycle
+  Bin / scan rows). Media tools: "Videos that play everywhere" at the bottom, toggles, `videoPlaysEverywhere=true`
+  in behavior.properties, still on after a relaunch. Nothing duplicated or missing.
+- YouTube `jNQXAC9IVRw` (iOS, default 240p row): switch off 476 KB in 7 s, AV1 (395) + Opus; switch on, the same
+  file on the iPhone (Re-download) and a clean download on the iPad (476 KB, 5 s): still AV1 + Opus. Cause, checked
+  with `yt-dlp -F` on the Mac: the ticked default row is format 229, an m3u8 (HLS) one; `DirectMediaResolver.resolve`
+  rejects it and falls back to `bestvideo[height<=240][protocol^=http]+bestaudio[protocol^=http]`, which ignores the
+  switch, so yt-dlp takes 395 + 251 both times.
+- Seen with it: the quality list has 15 rows of "240p (Low - MP4) · SD" / "144p (Low - MP4) · SD" repeated. In all four
+  inspect parsers (`MediaInspect.ios/jvm/android/nativeDesktop.kt`) the duplicate check compares
+  `it.qualityLabel == label`, but the stored label is `withQualityTag(label)` (" · SD" added), so it never matches:
+  HLS rows are never replaced by the https ones and `playsWiderThan` never runs. Not fixed here (shared code, every
+  platform).
+- macOS: `linkReleaseSharedMacosArm64` + `make-dmg.sh` built (36 MB). corehost settings 101, folder_group 23,
+  idle_limit 13, scan 23, siterules 22, dns 14, all 0 failed.
+- Not checked: the 429 stop (no site answered 429), Google Drive links, 32 connections on a real >16 MB file.
+
+Mac check of 814c7d1 (2026-11-20, no code changed): iOS built with no error. iPhone 17, `jNQXAC9IVRw`: the list now
+has 6 rows (240p MP4, 240p WEBM, 144p MP4, 144p WEBM, two audio), each height once. Switch off: the 240p MP4 row is
+218 KB (395); download 476 KB in about 3 s, AV1 + Opus. Switch on: the same row is 314 KB (134); download 634 KB in
+about 2 s, H.264 (Main) + AAC LC. On picks 134 + 140, not 133 + 140: 134 is the first H.264 240p in the list.
+macOS: `linkReleaseSharedMacosArm64` + `make-dmg.sh` built; corehost download 29 / 0, slowtail 4 / 0 (server
+`--throttle 3000`, 7 s for the file).
 
 ## 5. YouTube "made for kids" and faster qualities [ ]
 
