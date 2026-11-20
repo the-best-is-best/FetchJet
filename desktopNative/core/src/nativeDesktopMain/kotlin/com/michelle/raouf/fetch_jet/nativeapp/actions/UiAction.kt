@@ -355,6 +355,22 @@ sealed interface UiAction {
     data class SelectAllLinks(val selected: Boolean = false) : UiAction
 
     @Serializable
+    @SerialName("GrabPage")
+    data object GrabPage : UiAction
+
+    @Serializable
+    @SerialName("GrabCancel")
+    data object GrabCancel : UiAction
+
+    @Serializable
+    @SerialName("SetGrabDepth")
+    data class SetGrabDepth(val depth: Int = 1) : UiAction
+
+    @Serializable
+    @SerialName("ToggleGrabGroup")
+    data class ToggleGrabGroup(val folder: String = "", val selected: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("SetLinkFolder")
     data class SetLinkFolder(val name: String = "") : UiAction
 

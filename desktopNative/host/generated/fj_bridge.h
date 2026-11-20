@@ -292,6 +292,14 @@ inline ChoiceDto parse_ChoiceDto(const fj::Json &j) {
     return d;
 }
 
+inline GrabGroupDto parse_GrabGroupDto(const fj::Json &j) {
+    GrabGroupDto d{};
+    d.folder = fj::text(j, "folder");
+    d.label = fj::text(j, "label");
+    d.selected = fj::flag(j, "selected");
+    return d;
+}
+
 inline QuickFolderDto parse_QuickFolderDto(const fj::Json &j) {
     QuickFolderDto d{};
     d.icon = fj::text(j, "icon");
@@ -342,6 +350,13 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.linkAllSelected = fj::flag(j, "linkAllSelected");
     d.linkFolder = fj::text(j, "linkFolder");
     d.linkFolderRev = fj::integer(j, "linkFolderRev");
+    d.grabShown = fj::flag(j, "grabShown");
+    d.grabRunning = fj::flag(j, "grabRunning");
+    d.grabReading = fj::text(j, "grabReading");
+    d.grabDepths = fj::struct_model<ChoiceDto>(j, "grabDepths", parse_ChoiceDto);
+    d.grabNote = fj::text(j, "grabNote");
+    d.grabGroups = fj::struct_model<GrabGroupDto>(j, "grabGroups", parse_GrabGroupDto);
+    d.linkGrabbed = fj::flag(j, "linkGrabbed");
     d.leechShown = fj::flag(j, "leechShown");
     d.leech = fj::flag(j, "leech");
     d.error = fj::text(j, "error");
@@ -1631,6 +1646,25 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sectionDownloadsBlurb(next());
     tr.set_sectionFiles(next());
     tr.set_sectionFilesBlurb(next());
+    tr.set_grabFindFiles(next());
+    tr.set_grabDepth1(next());
+    tr.set_grabDepth2(next());
+    tr.set_grabDepth3(next());
+    tr.set_grabHow(next());
+    tr.set_grabReading(next());
+    tr.set_grabFound(next());
+    tr.set_grabNothing(next());
+    tr.set_grabRefused(next());
+    tr.set_grabScript(next());
+    tr.set_grabLimit(next());
+    tr.set_grabStop(next());
+    tr.set_grabGroupVideo(next());
+    tr.set_grabGroupMusic(next());
+    tr.set_grabGroupArchives(next());
+    tr.set_grabGroupDocuments(next());
+    tr.set_grabGroupPrograms(next());
+    tr.set_grabGroupImages(next());
+    tr.set_grabGroupOther(next());
     tr.set_sectionBrowser(next());
     tr.set_sectionBrowserBlurb(next());
     tr.set_sectionSpeed(next());
@@ -2204,6 +2238,10 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_updateLater([send](bool fromScrim) { fj::ActionWriter w("UpdateLater"); w.add("fromScrim", fromScrim); send(w.finish()); });
     act.on_toggleLink([send](int index, bool selected) { fj::ActionWriter w("ToggleLink"); w.add("index", index); w.add("selected", selected); send(w.finish()); });
     act.on_selectAllLinks([send](bool selected) { fj::ActionWriter w("SelectAllLinks"); w.add("selected", selected); send(w.finish()); });
+    act.on_grabPage([send]() { fj::ActionWriter w("GrabPage"); send(w.finish()); });
+    act.on_grabCancel([send]() { fj::ActionWriter w("GrabCancel"); send(w.finish()); });
+    act.on_setGrabDepth([send](int depth) { fj::ActionWriter w("SetGrabDepth"); w.add("depth", depth); send(w.finish()); });
+    act.on_toggleGrabGroup([send](slint::SharedString folder, bool selected) { fj::ActionWriter w("ToggleGrabGroup"); w.add("folder", folder); w.add("selected", selected); send(w.finish()); });
     act.on_setLinkFolder([send](slint::SharedString name) { fj::ActionWriter w("SetLinkFolder"); w.add("name", name); send(w.finish()); });
     act.on_setLinkQuality([send](int index, int quality) { fj::ActionWriter w("SetLinkQuality"); w.add("index", index); w.add("quality", quality); send(w.finish()); });
     act.on_retryLinkInspect([send](int index) { fj::ActionWriter w("RetryLinkInspect"); w.add("index", index); send(w.finish()); });

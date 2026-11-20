@@ -13,6 +13,12 @@ export struct ChoiceDto {
     selected: bool,
 }
 
+export struct GrabGroupDto {
+    folder: string,
+    label: string,
+    selected: bool,
+}
+
 export struct QuickFolderDto {
     icon: string,
     label: string,
@@ -60,6 +66,13 @@ export struct AddDto {
     linkAllSelected: bool,
     linkFolder: string,
     linkFolderRev: int,
+    grabShown: bool,
+    grabRunning: bool,
+    grabReading: string,
+    grabDepths: [ChoiceDto],
+    grabNote: string,
+    grabGroups: [GrabGroupDto],
+    linkGrabbed: bool,
     leechShown: bool,
     leech: bool,
     error: string,

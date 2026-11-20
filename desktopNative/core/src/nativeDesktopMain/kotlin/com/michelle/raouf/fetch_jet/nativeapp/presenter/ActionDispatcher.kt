@@ -289,6 +289,10 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.SelectAllPlaylist -> vm.onEvent(DashboardUiEvent.OnPlaylistSelectAll(action.selected))
         is UiAction.ToggleLink -> vm.onEvent(DashboardUiEvent.OnLinkListEntryToggled(action.index, action.selected))
         is UiAction.SelectAllLinks -> vm.onEvent(DashboardUiEvent.OnLinkListSelectAll(action.selected))
+        UiAction.GrabPage -> vm.onEvent(DashboardUiEvent.OnGrabPageClicked)
+        UiAction.GrabCancel -> vm.onEvent(DashboardUiEvent.OnGrabCancelClicked)
+        is UiAction.SetGrabDepth -> vm.onEvent(DashboardUiEvent.OnGrabDepthChanged(action.depth))
+        is UiAction.ToggleGrabGroup -> vm.onEvent(DashboardUiEvent.OnGrabGroupToggled(action.folder, action.selected))
         is UiAction.SetLinkFolder -> {
             addFields.linkFolder.fromUi(action.name)
             vm.onEvent(DashboardUiEvent.OnLinkListFolderChanged(action.name))

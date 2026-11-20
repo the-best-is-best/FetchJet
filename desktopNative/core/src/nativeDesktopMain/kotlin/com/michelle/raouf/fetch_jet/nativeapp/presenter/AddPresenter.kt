@@ -16,12 +16,16 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.AddDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AddModeCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.EngineChoiceDto
+import com.michelle.raouf.fetch_jet.nativeapp.dto.GrabGroupDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.QuickFolderDto
 import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.canTestLink
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.Dispatchers
@@ -120,6 +124,13 @@ private data class AddSlice(
     val selectedConnections: Int,
     val defaultConnections: Int,
     val clipValid: Boolean,
+    val canGrab: Boolean,
+    val grabDepth: Int,
+    val grabRunning: Boolean,
+    val grabPages: Int,
+    val grabNote: String,
+    val grabGroups: List<GrabGroup>,
+    val grabbed: Boolean,
 )
 
 private fun DashboardUiState.addSlice() = AddSlice(
@@ -157,6 +168,13 @@ private fun DashboardUiState.addSlice() = AddSlice(
     selectedConnections = selectedConnections,
     defaultConnections = defaultConnections,
     clipValid = clipCheck(isClipRangeEnabled, clipStartTime, clipEndTime, mediaDurationSeconds).valid,
+    canGrab = canGrabPage,
+    grabDepth = siteGrab.depth,
+    grabRunning = siteGrab.running,
+    grabPages = siteGrab.pagesRead,
+    grabNote = siteGrab.note,
+    grabGroups = grabGroups,
+    grabbed = linkList.any { it.sourcePage.isNotEmpty() },
 )
 
 private val AddSlice.showsLinkList: Boolean get() = linkCount > 0
@@ -332,6 +350,13 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         linkAllSelected = s.showsLinkList && s.linkSelected == s.linkCount,
         linkFolder = s.linkFolder,
         linkFolderRev = addFields.linkFolder.rev(s.linkFolder),
+        grabShown = s.canGrab,
+        grabRunning = s.canGrab && s.grabRunning,
+        grabReading = strings.grabReading.replace("%1", s.grabPages.toString()),
+        grabDepths = (1..3).map { ChoiceDto(it, grabDepthName(it), s.grabDepth == it) },
+        grabNote = s.grabNote,
+        grabGroups = s.grabGroups.map { GrabGroupDto(it.folder, grabGroupName(it.folder) + "  " + it.count, it.selected) },
+        linkGrabbed = s.grabbed,
         leechShown = s.detectedEngine == EngineType.BITTORRENT,
         leech = s.disableTorrentUpload,
         error = s.errorMessage ?: s.inspectError ?: s.inspectMediaError ?: "",

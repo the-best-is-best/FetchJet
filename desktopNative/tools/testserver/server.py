@@ -294,6 +294,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.simple(200, self.state.content.sha256(self.qi("base"), size) + "\n")
         if route.startswith("/file/"):
             return self.file(route)
+        if route.startswith("/site/"):
+            return self.site(route[len("/site/"):])
         if route.startswith("/hls/"):
             return self.hls(route)
         if route.startswith("/status/"):
@@ -483,6 +485,39 @@ class Handler(BaseHTTPRequestHandler):
                     time.sleep(ahead)
         if chunked:
             self.wfile.write(b"0\r\n\r\n")
+
+    def site(self, name):
+        pages = {
+            "start.html": (
+                '<html><head><title>Start</title><base href="/site/"></head><body>'
+                '<a href="../file/1MB.bin">Data</a>'
+                '<a href="../file/2MB.zip">Archive</a>'
+                '<img src="../file/100KB.jpg">'
+                '<img srcset="../file/50KB.png 1x, ../file/300KB.png 2x">'
+                '<a href="download?id=7">Report</a>'
+                '<a href="page2.html">More</a>'
+                '<a href="http://localhost:%d/site/other.html">Elsewhere</a>'
+                '</body></html>' % self.server.server_address[1]
+            ),
+            "page2.html": '<html><body><a href="../file/3MB.mp3">Song</a><a href="page3.html">Next</a></body></html>',
+            "page3.html": '<html><body><a href="../file/4MB.mkv">Film</a></body></html>',
+            "other.html": '<html><body><a href="/file/7MB.mp4">Other site</a></body></html>',
+            "empty.html": '<html><body><p>Nothing here</p></body></html>',
+        }
+        if name == "big.html":
+            links = "".join('<a href="../file/1KB.jpg?i=%d">p%d</a>' % (i, i) for i in range(3200))
+            return self.simple(200, "<html><body>" + links + "</body></html>", content_type="text/html; charset=utf-8")
+        if name in pages:
+            return self.simple(200, pages[name], content_type="text/html; charset=utf-8")
+        if name == "download":
+            body = (b"report-" + (self.q("id") or "0").encode() + b"-") * 700
+            self.head(200, [("Content-Type", "application/octet-stream"),
+                            ("Content-Disposition", 'attachment; filename="report-%s.pdf"' % (self.q("id") or "0"))], len(body))
+            if self.command != "HEAD":
+                self.wfile.write(body)
+                self.sent += len(body)
+            return
+        return self.simple(404, "not found")
 
     def hls(self, route):
         segments = self.qi("segments", 8)

@@ -98,7 +98,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     testLink = if (it.inputUrl == inputUrl) it.testLink else null,
 
                     detectedEngine = if (linkList.isNotEmpty()) EngineType.HTTP_DIRECT else engine,
-                    linkList = linkList,
+                    linkList = if (it.inputUrl == inputUrl && it.linkList.any { e -> e.folder.isNotBlank() }) it.linkList else linkList,
+                    siteGrab = if (it.inputUrl == inputUrl) it.siteGrab else SiteGrabUi(depth = it.siteGrab.depth),
 
                     errorMessage = null,
 
@@ -144,7 +145,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleAddDialog -> {
 
-            if (!event.show) _uiState.update { it.copy(linkListFolder = "", checkingPlaylistId = null) }
+            if (!event.show) stopPageGrab()
+            if (!event.show) _uiState.update { it.copy(linkListFolder = "", checkingPlaylistId = null, siteGrab = SiteGrabUi(depth = it.siteGrab.depth)) }
             if (!event.show) clearTestLink()
             if (!event.show) pendingExternalPlaylist = null
             if (!event.show && pendingExternalUrl != null) {

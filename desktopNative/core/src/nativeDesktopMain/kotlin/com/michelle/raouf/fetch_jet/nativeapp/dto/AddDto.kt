@@ -22,6 +22,13 @@ data class ChoiceDto(
 )
 
 @Serializable
+data class GrabGroupDto(
+    val folder: String = "",
+    val label: String = "",
+    val selected: Boolean = false,
+)
+
+@Serializable
 data class QuickFolderDto(
     val icon: String = "",
     val label: String = "",
@@ -70,6 +77,13 @@ data class AddDto(
     val linkAllSelected: Boolean = false,
     val linkFolder: String = "",
     val linkFolderRev: Int = 0,
+    val grabShown: Boolean = false,
+    val grabRunning: Boolean = false,
+    val grabReading: String = "",
+    val grabDepths: List<ChoiceDto> = emptyList(),
+    val grabNote: String = "",
+    val grabGroups: List<GrabGroupDto> = emptyList(),
+    val linkGrabbed: Boolean = false,
     val leechShown: Boolean = false,
     val leech: Boolean = false,
     val error: String = "",

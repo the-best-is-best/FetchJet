@@ -1,13 +1,17 @@
 import { Theme, Dir } from "../theme.slint";
 import { HBox, T, Hover } from "../widgets/Base.slint";
-import { TextButton } from "../widgets/Buttons.slint";
+import { TextButton, FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { ThinBar } from "../widgets/Progress.slint";
+import { ChoiceChip } from "../widgets/Kit.slint";
+import { ListView } from "../widgets/Scroll.slint";
 import { TextField } from "../widgets/TextField.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { Spinner } from "../widgets/Kit.slint";
 import { PickMenu } from "../widgets/Menu.slint";
 import { TorrentFilesCard } from "AddTorrent.slint";
 import { SubtitlesCard } from "AddMedia.slint";
-import { Core, LinkRowDto, LinkLineCode, LinkTagCode } from "../generated/dto.slint";
+import { Core, LinkRowDto, LinkLineCode, LinkTagCode, GrabGroupDto } from "../generated/dto.slint";
 import { Tr } from "../generated/tr.slint";
 import { Act } from "../generated/actions.slint";
 
@@ -218,8 +222,245 @@ component LinkRow inherits VerticalLayout {
     }
 }
 
+component GrabRow inherits Rectangle {
+    in property <LinkRowDto> data;
+    private property <color> tag-ink: root.data.tagCode == LinkTagCode.audio ? #FBBF24
+        : root.data.tagCode == LinkTagCode.video ? #E879F9 : #38BDF8;
+    height: 56px;
+    ta := TouchArea {
+        clicked => { Act.toggleLink(root.data.index, !root.data.selected); }
+    }
+    Hover {
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Rectangle {
+        x: Dir.rtl ? parent.width - 44px : 4px;
+        y: 8px;
+        width: 40px;
+        height: 40px;
+        CheckBox {
+            checked: root.data.selected;
+            label: root.data.title;
+            toggled(on) => { Act.toggleLink(root.data.index, on); }
+        }
+    }
+    tag := Rectangle {
+        x: Dir.rtl ? 12px : parent.width - 12px - self.width;
+        y: 13px;
+        width: word.preferred-width + 14px;
+        height: 30px;
+        border-radius: 6px;
+        background: root.tag-ink.with-alpha(0.15);
+        word := Text {
+            text: root.data.tag;
+            color: root.tag-ink;
+            font-family: Theme.font;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: Dir.rtl ? 0px : 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    T {
+        x: Dir.rtl ? 12px + tag.width + 8px : 48px;
+        y: 6px;
+        width: parent.width - 68px - tag.width;
+        text: root.data.title;
+        font-size: 13px;
+        font-weight: 600;
+        overflow: elide;
+    }
+    T {
+        x: Dir.rtl ? 12px + tag.width + 8px : 48px;
+        y: 30px;
+        width: parent.width - 68px - tag.width;
+        text: root.data.host;
+        font-size: 11px;
+        color: Theme.on-surface-variant;
+        overflow: elide;
+    }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.outline-variant.with-alpha(0.35);
+    }
+}
+
+component GrabGroupChip inherits Rectangle {
+    in property <GrabGroupDto> data;
+    height: 32px;
+    width: label.preferred-width + 22px;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: root.data.selected ? Theme.primary : Theme.outline-variant.with-alpha(0.6);
+    background: root.data.selected ? Theme.primary.with-alpha(0.18) : Theme.surface.with-alpha(0.6);
+    accessible-role: button;
+    accessible-label: root.data.label;
+    accessible-checkable: true;
+    accessible-checked: root.data.selected;
+    accessible-action-default => { Act.toggleGrabGroup(root.data.folder, !root.data.selected); }
+    ta := TouchArea {
+        clicked => { Act.toggleGrabGroup(root.data.folder, !root.data.selected); }
+    }
+    label := Text {
+        text: root.data.label;
+        color: root.data.selected ? Theme.primary : Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: root.data.selected ? 700 : 500;
+        letter-spacing: Dir.rtl ? 0px : 0.3px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Hover {
+        border-radius: 16px;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+}
+
+export component GrabNote inherits VerticalLayout {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    Text {
+        text: Core.add.grabNote;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 11px;
+        letter-spacing: Dir.rtl ? 0px : 0.3px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+    }
+}
+
+export component GrabCard inherits Rectangle {
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.6);
+    background: Theme.surface-variant.with-alpha(0.25);
+    height: body.preferred-height;
+    body := VerticalLayout {
+        padding: 14px;
+        spacing: 0px;
+        HBox {
+            height: 28px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            EmojiIcon {
+                glyph: "📥";
+                size: 16px;
+                ink: Theme.primary;
+            }
+            T {
+                horizontal-stretch: 1;
+                text: Tr.grabFindFiles;
+                font-size: 14px;
+                font-weight: 700;
+                overflow: elide;
+            }
+        }
+        if !Core.add.grabRunning: Rectangle {
+            height: 8px;
+        }
+        if !Core.add.grabRunning: T {
+            text: Tr.grabHow;
+            font-size: 11px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+        if !Core.add.grabRunning: Rectangle {
+            height: 4px;
+        }
+        if !Core.add.grabRunning: VerticalLayout {
+            spacing: 6px;
+            for choice in Core.add.grabDepths: HBox {
+                height: 36px;
+                alignment: start;
+                ChoiceChip {
+                    label: choice.label;
+                    selected: choice.selected;
+                    clicked => { Act.setGrabDepth(choice.value); }
+                }
+            }
+        }
+        if !Core.add.grabRunning: Rectangle {
+            height: 12px;
+        }
+        if !Core.add.grabRunning: HBox {
+            height: 40px;
+            alignment: start;
+            FilledButton {
+                text: Tr.grabFindFiles;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 700;
+                clicked => { Act.grabPage(); }
+            }
+        }
+        if Core.add.grabRunning: Rectangle {
+            height: 10px;
+        }
+        if Core.add.grabRunning: HBox {
+            height: 24px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            Spinner {
+                size: 16px;
+            }
+            T {
+                horizontal-stretch: 1;
+                text: Core.add.grabReading;
+                font-size: 12px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+        if Core.add.grabRunning: Rectangle {
+            height: 10px;
+        }
+        if Core.add.grabRunning: ThinBar {
+            indeterminate: true;
+        }
+        if Core.add.grabRunning: Rectangle {
+            height: 12px;
+        }
+        if Core.add.grabRunning: HBox {
+            height: 40px;
+            alignment: start;
+            OutlinedButton {
+                text: Tr.grabStop;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: 600;
+                ink: Theme.on-surface;
+                clicked => { Act.grabCancel(); }
+            }
+        }
+        if Core.add.grabNote != "" && !Core.add.grabRunning: Rectangle {
+            height: 10px;
+        }
+        if Core.add.grabNote != "" && !Core.add.grabRunning: GrabNote { }
+    }
+}
+
 export component LinkListSection inherits VerticalLayout {
     spacing: 0px;
+    if Core.add.linkGrabbed && !Core.add.grabShown && Core.add.grabNote != "": GrabNote { }
+    if Core.add.linkGrabbed && !Core.add.grabShown && Core.add.grabNote != "": Rectangle {
+        height: 6px;
+    }
+    if Core.add.linkGrabbed && Core.add.grabGroups.length > 0: FlexboxLayout {
+        flex-direction: Dir.rtl ? row-reverse : row;
+        flex-wrap: wrap;
+        alignment: start;
+        spacing: 6px;
+        min-height: 32px;
+        for group in Core.add.grabGroups: GrabGroupChip {
+            data: group;
+        }
+    }
     HBox {
         height: 48px;
         spacing: 8px;
@@ -276,7 +517,17 @@ export component LinkListSection inherits VerticalLayout {
         border-color: Theme.outline-variant.with-alpha(0.6);
         background: Theme.surface-variant.with-alpha(0.25);
         clip: true;
-        VerticalLayout {
+        height: Core.add.linkGrabbed ? min(Core.addLinks.length * 56px + 2px, 340px) : self.preferred-height;
+        if Core.add.linkGrabbed: ListView {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 2px;
+            height: parent.height - 2px;
+            for row in Core.addLinks: GrabRow {
+                data: row;
+            }
+        }
+        if !Core.add.linkGrabbed: VerticalLayout {
             padding: 1px;
             spacing: 0px;
             for row[i] in Core.addLinks: LinkRow {

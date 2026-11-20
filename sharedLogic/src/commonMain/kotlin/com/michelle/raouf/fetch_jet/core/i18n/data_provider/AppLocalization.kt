@@ -498,6 +498,25 @@ interface AppLocalization : LocalizationProvider {
     val sectionDownloadsBlurb: String
     val sectionFiles: String
     val sectionFilesBlurb: String
+    val grabFindFiles: String
+    val grabDepth1: String
+    val grabDepth2: String
+    val grabDepth3: String
+    val grabHow: String
+    val grabReading: String
+    val grabFound: String
+    val grabNothing: String
+    val grabRefused: String
+    val grabScript: String
+    val grabLimit: String
+    val grabStop: String
+    val grabGroupVideo: String
+    val grabGroupMusic: String
+    val grabGroupArchives: String
+    val grabGroupDocuments: String
+    val grabGroupPrograms: String
+    val grabGroupImages: String
+    val grabGroupOther: String
     val sectionBrowser: String
     val sectionBrowserBlurb: String
     val sectionSpeed: String

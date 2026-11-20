@@ -469,6 +469,20 @@
     "Boolean"
    ]
   ],
+  "GrabGroupDto": [
+   [
+    "folder",
+    "String"
+   ],
+   [
+    "label",
+    "String"
+   ],
+   [
+    "selected",
+    "Boolean"
+   ]
+  ],
   "QuickFolderDto": [
    [
     "icon",
@@ -643,6 +657,34 @@
    [
     "linkFolderRev",
     "Int"
+   ],
+   [
+    "grabShown",
+    "Boolean"
+   ],
+   [
+    "grabRunning",
+    "Boolean"
+   ],
+   [
+    "grabReading",
+    "String"
+   ],
+   [
+    "grabDepths",
+    "List<ChoiceDto>"
+   ],
+   [
+    "grabNote",
+    "String"
+   ],
+   [
+    "grabGroups",
+    "List<GrabGroupDto>"
+   ],
+   [
+    "linkGrabbed",
+    "Boolean"
    ],
    [
     "leechShown",
@@ -3432,6 +3474,24 @@
     "Boolean"
    ]
   ],
+  "GrabPage": [],
+  "GrabCancel": [],
+  "SetGrabDepth": [
+   [
+    "depth",
+    "Int"
+   ]
+  ],
+  "ToggleGrabGroup": [
+   [
+    "folder",
+    "String"
+   ],
+   [
+    "selected",
+    "Boolean"
+   ]
+  ],
   "SetLinkFolder": [
    [
     "name",
@@ -4182,6 +4242,25 @@
   "sectionDownloadsBlurb",
   "sectionFiles",
   "sectionFilesBlurb",
+  "grabFindFiles",
+  "grabDepth1",
+  "grabDepth2",
+  "grabDepth3",
+  "grabHow",
+  "grabReading",
+  "grabFound",
+  "grabNothing",
+  "grabRefused",
+  "grabScript",
+  "grabLimit",
+  "grabStop",
+  "grabGroupVideo",
+  "grabGroupMusic",
+  "grabGroupArchives",
+  "grabGroupDocuments",
+  "grabGroupPrograms",
+  "grabGroupImages",
+  "grabGroupOther",
   "sectionBrowser",
   "sectionBrowserBlurb",
   "sectionSpeed",

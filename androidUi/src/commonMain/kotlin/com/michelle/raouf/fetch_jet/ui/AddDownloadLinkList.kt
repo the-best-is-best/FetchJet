@@ -3,7 +3,16 @@ package com.michelle.raouf.fetch_jet.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -37,7 +47,11 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
+import com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.tbib.kmp_localization.LocalizationManager
@@ -53,7 +67,10 @@ internal fun LinkListSection(
     onTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
     onQualitySelected: (Int, Int) -> Unit = { _, _ -> },
-    onRetryInspect: (Int) -> Unit = {}
+    onRetryInspect: (Int) -> Unit = {},
+    grabGroups: List<GrabGroup> = emptyList(),
+    grabNote: String = "",
+    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     val selected = links.count { it.isSelected }
     val allSelected = selected == links.size
@@ -85,14 +102,26 @@ internal fun LinkListSection(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
     )
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column {
-            links.forEachIndexed { index, link ->
+    if (grabNote.isNotBlank()) {
+        GrabNote(grabNote, Modifier.padding(bottom = 8.dp))
+    }
+    if (grabGroups.isNotEmpty()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            items(grabGroups, key = { it.folder }) { group ->
+                FilterChip(
+                    selected = group.selected,
+                    onClick = { onGrabGroupToggled(group.folder, !group.selected) },
+                    label = { Text(grabGroupName(group.folder) + " " + group.count, fontSize = 12.sp) }
+                )
+            }
+        }
+    }
+    val lazyRows = links.any { it.folder.isNotBlank() }
+    @Composable
+    fun EntryBlock(index: Int, link: LinkListEntry) {
                 if (index > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 }
@@ -155,6 +184,97 @@ internal fun LinkListSection(
                         }
                     }
                 }
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (lazyRows) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                itemsIndexed(links) { index, link -> EntryBlock(index, link) }
+            }
+        } else {
+            Column {
+                links.forEachIndexed { index, link -> EntryBlock(index, link) }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun GrabNote(note: String, modifier: Modifier = Modifier) {
+    Text(
+        note,
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+internal fun GrabCard(
+    grab: SiteGrabUi,
+    showNote: Boolean,
+    onFind: () -> Unit,
+    onStop: () -> Unit,
+    onDepth: (Int) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                LocalizationManager.Strings.grabFindFiles,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (grab.running) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    LocalizationManager.Strings.grabReading.replace("%1", grab.pagesRead.toString()),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onStop) {
+                        Text(LocalizationManager.Strings.grabStop, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else {
+                Text(
+                    LocalizationManager.Strings.grabHow,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (1..3).forEach { d ->
+                        FilterChip(
+                            selected = grab.depth == d,
+                            onClick = { onDepth(d) },
+                            label = { Text(grabDepthName(d), fontSize = 12.sp) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Button(
+                    onClick = onFind,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(LocalizationManager.Strings.grabFindFiles, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                if (showNote && grab.note.isNotBlank()) {
+                    GrabNote(grab.note, Modifier.padding(top = 8.dp))
+                }
             }
         }
     }
@@ -183,8 +303,9 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
         )
         Spacer(modifier = Modifier.width(4.dp))
         Column(modifier = Modifier.weight(1f)) {
+            val grabbed = link.folder.isNotBlank()
             Text(
-                link.mediaTitle?.let { decodeUnicodeText(it) } ?: linkTitle(link.url),
+                if (grabbed) link.fileName ?: link.url else link.mediaTitle?.let { decodeUnicodeText(it) } ?: linkTitle(link.url),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -192,7 +313,12 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                linkHost(link.url),
+                if (grabbed) {
+                    listOfNotNull(
+                        formatBytes(link.sizeBytes).takeIf { link.sizeBytes >= 0 },
+                        linkHost(link.sourcePage.ifBlank { link.url }).takeIf { it.isNotBlank() }
+                    ).joinToString(" · ")
+                } else linkHost(link.url),
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

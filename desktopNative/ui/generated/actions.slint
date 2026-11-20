@@ -88,6 +88,10 @@ export global Act {
     callback updateLater(fromScrim: bool);
     callback toggleLink(index: int, selected: bool);
     callback selectAllLinks(selected: bool);
+    callback grabPage();
+    callback grabCancel();
+    callback setGrabDepth(depth: int);
+    callback toggleGrabGroup(folder: string, selected: bool);
     callback setLinkFolder(name: string);
     callback setLinkQuality(index: int, quality: int);
     callback retryLinkInspect(index: int);

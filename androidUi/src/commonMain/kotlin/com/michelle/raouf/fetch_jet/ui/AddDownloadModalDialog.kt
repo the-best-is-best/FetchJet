@@ -120,6 +120,13 @@ fun AddDownloadModalDialog(
     onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
     onLinkListQualitySelected: (Int, Int) -> Unit = { _, _ -> },
     onLinkListRetryInspect: (Int) -> Unit = {},
+    canGrabPage: Boolean = false,
+    siteGrab: com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi = com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi(),
+    grabGroups: List<com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup> = emptyList(),
+    onGrabPage: () -> Unit = {},
+    onGrabCancel: () -> Unit = {},
+    onGrabDepth: (Int) -> Unit = {},
+    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> },
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
     selectedConnections: Int = 0,
@@ -352,6 +359,17 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                if (canGrabPage || siteGrab.running) {
+                    GrabCard(
+                        grab = siteGrab,
+                        showNote = true,
+                        onFind = onGrabPage,
+                        onStop = onGrabCancel,
+                        onDepth = onGrabDepth
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
                 if (showsLinkList) {
                     LinkListSection(
                         links = linkList,
@@ -363,7 +381,10 @@ fun AddDownloadModalDialog(
                         onTorrentFilePriority = onLinkListTorrentFilePriority,
                         onTorrentSelectAll = onLinkListTorrentSelectAll,
                         onQualitySelected = onLinkListQualitySelected,
-                        onRetryInspect = onLinkListRetryInspect
+                        onRetryInspect = onLinkListRetryInspect,
+                        grabGroups = grabGroups,
+                        grabNote = if (canGrabPage || siteGrab.running) "" else siteGrab.note,
+                        onGrabGroupToggled = onGrabGroupToggled
                     )
                     if (subtitlesListShown) {
                         Spacer(modifier = Modifier.height(10.dp))

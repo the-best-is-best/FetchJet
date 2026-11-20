@@ -67,7 +67,12 @@ data class LinkListEntry(
     val mediaTitle: String? = null,
     val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     /** The subtitle tracks this video offers (read with its qualities). */
-    val subtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList()
+    val subtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    /** A file found on a web page (Find files on this page): its name, size (-1 = unknown), type folder and the page it came from. */
+    val fileName: String? = null,
+    val sizeBytes: Long = -1L,
+    val folder: String = "",
+    val sourcePage: String = ""
 ) {
     /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
     val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
@@ -75,6 +80,18 @@ data class LinkListEntry(
     /** A video whose qualities could not be read: the user retries it or unchecks it. */
     val needsRetry: Boolean get() = engine == EngineType.MEDIA_STREAM && mediaInspectFailed
 }
+
+/** Find files on this page: how far to read, progress and the note shown after it. */
+data class SiteGrabUi(
+    val depth: Int = 1,
+    val running: Boolean = false,
+    val pagesRead: Int = 0,
+    val note: String = "",
+    val title: String = ""
+)
+
+/** One type of file among the files found on a page (Video, Images...), how many, and whether all of them are checked. */
+data class GrabGroup(val folder: String, val count: Int, val selected: Boolean)
 
 data class FileConflictData(
     val fileName: String,
@@ -202,6 +219,7 @@ data class DashboardUiState(
     val linkList: List<LinkListEntry> = emptyList(),
     /** The folder the list's downloads go into, under the chosen one ("" = none). */
     val linkListFolder: String = "",
+    val siteGrab: SiteGrabUi = SiteGrabUi(),
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** The playlist is shown (and queued) from its oldest video. */
@@ -252,6 +270,20 @@ data class DashboardUiState(
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
 ) {
+    /** The link box holds one web page address (not a file, video or magnet): "Find files on this page" is offered. */
+    val canGrabPage: Boolean
+        get() = isAddDialogVisible && linkList.all { it.folder.isNotBlank() } && inspectedPlaylist == null &&
+                detectedEngine == EngineType.HTTP_DIRECT && inputUrl.trim().let { u ->
+            (u.startsWith("http://", true) || u.startsWith("https://", true)) && u.none { it.isWhitespace() } &&
+                    !com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.isFileUrl(u)
+        }
+
+    /** The files found on the page, grouped by type, in the order of the type chips. */
+    val grabGroups: List<GrabGroup>
+        get() = linkList.filter { it.folder.isNotBlank() }.groupBy { it.folder }.map { (folder, items) ->
+            GrabGroup(folder, items.size, items.all { it.isSelected })
+        }.sortedBy { com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders.indexOf(it.folder).let { i -> if (i < 0) 99 else i } }
+
     val subtitlesOffered: Boolean
         get() = inspectedPlaylist.let { list ->
             if (linkList.isNotEmpty()) {
@@ -431,6 +463,10 @@ sealed interface DashboardUiEvent {
     data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
     data class OnLinkListFolderChanged(val name: String) : DashboardUiEvent
+    data object OnGrabPageClicked : DashboardUiEvent
+    data object OnGrabCancelClicked : DashboardUiEvent
+    data class OnGrabDepthChanged(val depth: Int) : DashboardUiEvent
+    data class OnGrabGroupToggled(val folder: String, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListTorrentFileToggled(
         val linkIndex: Int,
         val fileIndex: Int,

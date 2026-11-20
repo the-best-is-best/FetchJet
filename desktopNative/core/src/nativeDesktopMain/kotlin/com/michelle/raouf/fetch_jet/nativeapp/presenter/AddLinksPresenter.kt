@@ -9,6 +9,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkLineCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkTagCode
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -62,7 +63,26 @@ private fun linkTitle(url: String): String {
     }
 }
 
+private fun grabbedRow(index: Int, link: LinkListEntry): LinkRowDto {
+    val (tag, tagCode) = when (link.folder) {
+        "Video" -> grabGroupName(link.folder) to LinkTagCode.VIDEO
+        "Music" -> grabGroupName(link.folder) to LinkTagCode.AUDIO
+        else -> grabGroupName(link.folder) to LinkTagCode.FILE
+    }
+    val where = linkHost(link.sourcePage)
+    val detail = if (link.sizeBytes >= 0L) formatBytes(link.sizeBytes) + "  ·  " + where else where
+    return LinkRowDto(
+        index = index,
+        title = link.fileName?.takeIf { it.isNotBlank() } ?: linkTitle(link.url),
+        host = detail,
+        tag = tag,
+        tagCode = tagCode.ordinal,
+        selected = link.isSelected,
+    )
+}
+
 private fun linkRow(index: Int, link: LinkListEntry): LinkRowDto {
+    if (link.sourcePage.isNotEmpty()) return grabbedRow(index, link)
     val strings = LocalizationManager.Strings
     val (tag, tagCode) = when (link.engine) {
         EngineType.MEDIA_STREAM ->

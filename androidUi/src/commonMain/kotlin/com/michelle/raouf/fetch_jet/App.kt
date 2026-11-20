@@ -761,6 +761,15 @@ fun App(
                             )
                         )
                     },
+                    canGrabPage = state.canGrabPage,
+                    siteGrab = state.siteGrab,
+                    grabGroups = state.grabGroups,
+                    onGrabPage = { viewModel.onEvent(DashboardUiEvent.OnGrabPageClicked) },
+                    onGrabCancel = { viewModel.onEvent(DashboardUiEvent.OnGrabCancelClicked) },
+                    onGrabDepth = { viewModel.onEvent(DashboardUiEvent.OnGrabDepthChanged(it)) },
+                    onGrabGroupToggled = { folder, on ->
+                        viewModel.onEvent(DashboardUiEvent.OnGrabGroupToggled(folder, on))
+                    },
                     onLinkListTorrentSelectAll = { link, on ->
                         viewModel.onEvent(
                             DashboardUiEvent.OnLinkListTorrentSelectAll(

@@ -241,11 +241,18 @@ about 2 s, H.264 (Main) + AAC LC. On picks 134 + 140, not 133 + 140: 134 is the 
 macOS: `linkReleaseSharedMacosArm64` + `make-dmg.sh` built; corehost download 29 / 0, slowtail 4 / 0 (server
 `--throttle 3000`, 7 s for the file).
 
-## 5. YouTube "made for kids" and faster qualities [ ]
+## 5. YouTube "made for kids" and faster qualities [x]
 
 Ezoo: videos made for children download now; qualities show up faster.
 To do: check a made-for-kids video on desktop, Android and iOS first (it may already work); measure our inspect
 time against theirs on the same link before changing anything.
+Checked 2026-11-20 with CoComelon "Wheels on the Bus" (`e_04ZrNroTo`, made for kids):
+- [x] Desktop yt-dlp (the app's own, 2026.10.26, deno runtime): lists 75 formats up to 1080p, no error. Time of the
+  yt-dlp call alone: 4.4 / 4.8 s (no cache dir), 4.8 s with the app's cache dir.
+- [x] Android (emulator, the app's Python yt-dlp, link shared to the app): title and 32 qualities, 1080p MP4 first.
+- [x] iOS (Mac session, iPhone 17 simulator, 814c7d1): title and 22 rows (4K WEBM first), English subtitles listed; 8-10 s from the link to the list on the first inspect after launch (includes the Python start).
+- [ ] Ezoo's time for the same link: not measured (its app does not take a YouTube link; its extension in a browser
+  would have to be driven).
 
 ## 6. Drag a finished file out of the list [ ]
 

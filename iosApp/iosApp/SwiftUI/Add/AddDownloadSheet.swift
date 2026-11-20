@@ -14,6 +14,7 @@ struct AddDownloadSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 AddHeader { close() }
                 AddUrlSection()
+                if s.canGrabPage { AddGrabCard() }
                 if v.showsLinkList {
                     AddLinkListSection()
                     if s.subtitlesOffered { AddSubtitlesCard() }

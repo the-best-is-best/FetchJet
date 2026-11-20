@@ -202,6 +202,7 @@ internal fun DashboardViewModel.addDownload(
                 it.copy(
                     inputUrl = "",
                     linkList = emptyList(),
+                    siteGrab = SiteGrabUi(depth = it.siteGrab.depth),
 
                     fileNameOverride = "",
                     checksumInput = "",
@@ -304,6 +305,7 @@ internal fun DashboardViewModel.addSeveralQualities(
             it.copy(
                 inputUrl = "",
                 linkList = emptyList(),
+                siteGrab = SiteGrabUi(depth = it.siteGrab.depth),
 
                 fileNameOverride = "",
 
@@ -466,6 +468,7 @@ internal fun DashboardViewModel.addPlaylist(
             it.copy(
                 inputUrl = "",
                 linkList = emptyList(),
+                siteGrab = SiteGrabUi(depth = it.siteGrab.depth),
 
                 fileNameOverride = "",
 
@@ -543,6 +546,25 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
         val existing = queueRepository.allTasksFlow.value
         var added = 0
         var skipped = 0
+        val pageUrl = state.inputUrl.trim()
+        val fromPage = selected.all { it.folder.isNotBlank() }
+        val pageGroup = if (fromPage) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.forLink(pageUrl)
+            ?.takeIf { it.quality == com.michelle.raouf.fetch_jet.feature.site_grabber.PAGE_GROUP } else null
+        val pageGrouped = fromPage && (selected.size > 1 || pageGroup != null)
+        val pageGroupId = pageGroup?.id ?: ("pg_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999))
+        val pageGroupTitle = pageGroup?.title ?: state.siteGrab.title.ifBlank { com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.hostOf(pageUrl).removePrefix("www.") }
+        if (pageGrouped) {
+            com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.put(
+                com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord(
+                    id = pageGroupId,
+                    title = pageGroupTitle,
+                    url = pageUrl,
+                    folder = destDir,
+                    quality = com.michelle.raouf.fetch_jet.feature.site_grabber.PAGE_GROUP,
+                    createdAtMs = pageGroup?.createdAtMs ?: com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs()
+                )
+            )
+        }
         val subtitleLanguages = if (state.subtitlesOffered) state.inspectedSubtitles.filter { it.isSelected }.map { it.langCode } else emptyList()
         for (entry in selected) {
             val quality = entry.mediaQualities.firstOrNull { it.isSelected }
@@ -564,7 +586,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
             queueRepository.enqueueTask(
                 url = entry.url,
                 customDestinationPath = destDir,
-                customFileName = videoName,
+                customFileName = videoName ?: entry.fileName,
                 mediaQualities = entry.mediaQualities,
                 requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
                 disableUpload = state.disableTorrentUpload,
@@ -576,16 +598,20 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 forcedEngineType = entry.engine,
                 scheduledAtMs = state.scheduleStartMs,
                 sortByType = folder.isBlank(),
+                playlistId = if (pageGrouped) pageGroupId else "",
+                playlistTitle = if (pageGrouped) pageGroupTitle else "",
                 subtitleTracks = if (subtitleLanguages.isNotEmpty() && quality != null && !quality.isAudioOnly)
                     entry.subtitles.forLanguages(subtitleLanguages) else emptyList(),
                 embedSubtitles = state.embedSubtitles,
                 subtitleFormat = state.subtitleFormat
             ).onSuccess { added++ }.onFailure { skipped++ }
         }
+        if (pageGrouped && added == 0 && pageGroup == null) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.remove(listOf(pageGroupId))
         _uiState.update {
             it.copy(
                 inputUrl = "",
                 linkList = emptyList(),
+                siteGrab = SiteGrabUi(depth = it.siteGrab.depth),
                 linkListFolder = "",
                 inspectedSubtitles = emptyList(),
                 embedSubtitles = false,

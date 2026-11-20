@@ -125,6 +125,8 @@ struct AddLinkListSection: View {
                 Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
                     .font(.fj(12, .semibold))
             }
+            AddGrabNote(note: store.state.siteGrab.note)
+            AddGrabGroupRow()
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(
                 get: { store.state.linkListFolder },
@@ -133,7 +135,7 @@ struct AddLinkListSection: View {
             Text(strings.playlistFolderHint)
                 .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 ForEach(Array(links.enumerated()), id: \.offset) { i, link in
                     if i > 0 { Divider().overlay(FJTheme.color.outlineVariant.opacity(0.35)) }
                     linkRow(link, Int32(i))
@@ -163,11 +165,11 @@ struct AddLinkListSection: View {
             HStack(spacing: 8) {
                 AddCheckbox(checked: link.isSelected)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
+                    Text(link.fileName ?? link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
                         .font(.fj(12, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(1)
-                    Text(AddLinkText.host(link.url))
+                    Text(secondLine(link))
                         .font(.fj(10))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .lineLimit(1)
@@ -186,6 +188,14 @@ struct AddLinkListSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func secondLine(_ link: LinkListEntry) -> String {
+        guard !link.folder.isEmpty else { return AddLinkText.host(link.url) }
+        var parts: [String] = []
+        if link.sizeBytes >= 0 { parts.append(store.host.formatBytes(bytes: link.sizeBytes)) }
+        parts.append(AddLinkText.host(link.sourcePage.isEmpty ? link.url : link.sourcePage))
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder

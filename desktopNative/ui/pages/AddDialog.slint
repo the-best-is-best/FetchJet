@@ -6,7 +6,7 @@ import { ScrollArea } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { SectionLabel, Gap, ChoiceChip, Spinner } from "../widgets/Kit.slint";
 import { MediaSection, AudioConvertSection } from "AddMedia.slint";
-import { LinkListSection } from "AddLinks.slint";
+import { LinkListSection, GrabCard } from "AddLinks.slint";
 import { TorrentSection } from "AddTorrent.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { Core, ChoiceDto, EngineChoiceDto, QuickFolderDto, MediaStateCode, AddModeCode, TorrentStateCode } from "../generated/dto.slint";
@@ -568,6 +568,10 @@ component AddBody inherits VerticalLayout {
         size: 16px;
     }
     UrlSection { }
+    if Core.add.grabShown: Gap {
+        size: 10px;
+    }
+    if Core.add.grabShown: GrabCard { }
     Gap { }
     if root.links: LinkListSection { }
     if !root.links: SectionLabel {
