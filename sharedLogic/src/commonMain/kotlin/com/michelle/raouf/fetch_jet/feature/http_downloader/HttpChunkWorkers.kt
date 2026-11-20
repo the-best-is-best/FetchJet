@@ -356,7 +356,8 @@ internal suspend fun pumpPiece(
         }
         sink.flush()
         val runMs = runStart.elapsedNow().inWholeMilliseconds
-        if (runMs >= 200 && piece.downloaded - runFrom >= 64 * 1024) layout.noteSpeed((piece.downloaded - runFrom) * 1000 / runMs)
+        val got = piece.downloaded - runFrom
+        if ((runMs >= 200 && got >= 64 * 1024) || (runMs >= 20 && got >= 256 * 1024)) layout.noteSpeed(got * 1000 / runMs)
     } finally {
         sink.close()
     }

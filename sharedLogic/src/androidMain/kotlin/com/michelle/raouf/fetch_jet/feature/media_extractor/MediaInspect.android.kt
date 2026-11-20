@@ -336,7 +336,7 @@ actual suspend fun inspectPlatformQualities(
                     ))
 
                 val existingIndex = list.indexOfFirst {
-                    it.qualityLabel == label && it.format.equals(ext, ignoreCase = true)
+                    it.qualityLabel == com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label) && it.format.equals(ext, ignoreCase = true)
                 }
                 if (existingIndex == -1) {
                     keptCodec[formatId] = vcodec

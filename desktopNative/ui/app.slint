@@ -91,9 +91,11 @@ export component AppWindow inherits Window {
         list.scroll-to-top();
     }
     private property <int> resize-stamp: 0;
+    callback resized();
+    public function repaint() { root.resize-stamp += 1; }
     init => { Screen.height = root.height; }
-    changed height => { Screen.height = root.height; root.resize-stamp += 1; }
-    changed width => { root.resize-stamp += 1; }
+    changed height => { Screen.height = root.height; root.resize-stamp += 1; root.resized(); }
+    changed width => { root.resize-stamp += 1; root.resized(); }
     preferred-width: 1100px;
     preferred-height: 750px;
     min-width: 680px;

@@ -276,7 +276,7 @@ actual suspend fun inspectPlatformQualities(
             ))
 
             val existingIndex = list.indexOfFirst {
-                it.qualityLabel == label && it.format.equals(
+                it.qualityLabel == com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label) && it.format.equals(
                     ext,
                     ignoreCase = true
                 )

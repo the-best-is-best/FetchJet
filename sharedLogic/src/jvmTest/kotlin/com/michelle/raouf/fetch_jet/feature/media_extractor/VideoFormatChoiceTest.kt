@@ -13,5 +13,7 @@ class VideoFormatChoiceTest {
         assertFalse(playsWiderThan("avc1.4D400C", "av01.0.00M.08"))
         assertFalse(playsWiderThan("av01.0.00M.08", "vp9"))
         assertEquals("133+bestaudio/133+bestaudio[ext=m4a]/133/best", videoWithAudioSelector("133"))
+        assertEquals("bestvideo[height<=240][protocol^=http]+bestaudio[protocol^=http]/best[height<=240][protocol^=http]", httpsFallbackSelector(240, false))
+        assertEquals("240p (Low - MP4) · SD", com.michelle.raouf.fetch_jet.domain.model.withQualityTag("240p (Low - MP4)"))
     }
 }

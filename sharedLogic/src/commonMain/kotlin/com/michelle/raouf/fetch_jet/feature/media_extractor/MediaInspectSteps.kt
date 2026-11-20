@@ -276,3 +276,12 @@ fun videoWithAudioSelector(formatId: String): String =
     if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.value)
         "$formatId+bestaudio[ext=m4a]/$formatId+bestaudio/$formatId/best"
     else "$formatId+bestaudio/$formatId+bestaudio[ext=m4a]/$formatId/best"
+
+fun httpsFallbackSelector(height: Int, audioOnly: Boolean): String {
+    if (audioOnly) return "bestaudio[protocol^=http]/best[protocol^=http]"
+    val size = if (height > 0) "[height<=$height]" else ""
+    val any = "bestvideo$size[protocol^=http]+bestaudio[protocol^=http]/best$size[protocol^=http]"
+    return if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.value)
+        "bestvideo$size[protocol^=http][vcodec^=avc1]+bestaudio[protocol^=http][ext=m4a]/$any"
+    else any
+}

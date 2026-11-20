@@ -296,6 +296,18 @@ namespace fjhost {
         os::bring_to_front(focus && g_can_focus);
     }
 
+    slint::Timer g_repaint_timer;
+
+    void repaint_window() {
+        if (g_shown && g_ui && ui().window().is_visible())
+            ui().invoke_repaint();
+    }
+
+    void repaint_soon() {
+        for (int at : {300, 1500})
+            slint::Timer::single_shot(std::chrono::milliseconds(at), [] { repaint_window(); });
+    }
+
     void quit_app() {
         os::remove_tray();
         slint::quit_event_loop();
@@ -358,6 +370,8 @@ namespace fjhost {
         register_fonts();
         window.global<Emoji>().on_icon([](slint::SharedString glyph, int size, int) { return emoji_icon(glyph, size); });
         window.global<Emoji>().set_ready(true);
+        window.on_resized([] { repaint_soon(); });
+        g_repaint_timer.start(slint::TimerMode::Repeated, std::chrono::seconds(8), [] { repaint_window(); });
         fjgen::bind_models(window.global<Core>(), g_models);
         fjgen::bind_actions(window.global<Act>(), [](const std::string &json) { send_action(json); });
         window.window().on_close_requested([] {
