@@ -2239,6 +2239,10 @@
     "Boolean"
    ],
    [
+    "groupIsPage",
+    "Boolean"
+   ],
+   [
     "groupFolderPath",
     "String"
    ]
@@ -4254,6 +4258,7 @@
   "grabScript",
   "grabLimit",
   "grabStop",
+  "grabCheckNew",
   "grabGroupVideo",
   "grabGroupMusic",
   "grabGroupArchives",

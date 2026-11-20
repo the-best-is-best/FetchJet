@@ -80,6 +80,7 @@ data class ChromeDto(
     val playlistLanguagesNote: String = "",
     val playlistLanguageChoices: List<TextChoiceDto> = emptyList(),
     val groupIsFolder: Boolean = false,
+    val groupIsPage: Boolean = false,
     val groupFolderPath: String = "",
 )
 

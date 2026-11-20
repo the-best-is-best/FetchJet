@@ -151,7 +151,7 @@ component PlaylistBar inherits Rectangle {
             }
             if !Core.chrome.groupIsFolder: OutlinedButton {
                 glyph: "🔄";
-                text: Tr.playlistCheckNew;
+                text: Core.chrome.groupIsPage ? Tr.grabCheckNew : Tr.playlistCheckNew;
                 height: 34px;
                 border-radius: 10px;
                 pad: 12px;
@@ -194,7 +194,7 @@ component PlaylistBar inherits Rectangle {
             }
             OutlinedButton {
                 glyph: "🗑";
-                text: Core.chrome.groupIsFolder ? Tr.folderDeleteAll : Tr.playlistDeleteAll;
+                text: (Core.chrome.groupIsFolder || Core.chrome.groupIsPage) ? Tr.folderDeleteAll : Tr.playlistDeleteAll;
                 height: 34px;
                 border-radius: 10px;
                 pad: 12px;
@@ -214,7 +214,7 @@ component PlaylistBar inherits Rectangle {
                 horizontal-stretch: 1;
             }
         }
-        if !Core.chrome.groupIsFolder: HBox {
+        if !Core.chrome.groupIsFolder && !Core.chrome.groupIsPage: HBox {
             height: 30px;
             spacing: 8px;
             cross-axis-alignment: center;

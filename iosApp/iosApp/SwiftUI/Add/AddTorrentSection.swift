@@ -125,7 +125,9 @@ struct AddLinkListSection: View {
                 Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
                     .font(.fj(12, .semibold))
             }
-            AddGrabNote(note: store.state.siteGrab.note)
+            if !store.state.canGrabPage {
+                AddGrabNote(note: store.state.siteGrab.note)
+            }
             AddGrabGroupRow()
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(

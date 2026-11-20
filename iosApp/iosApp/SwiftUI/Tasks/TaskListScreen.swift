@@ -264,10 +264,10 @@ struct TaskListScreen: View {
                     Button(s.resume) { store.send(DashboardUiEventOnPlaylistGroupResume(playlistId: group.id)) }
                 }
                 if !group.record.url.isEmpty {
-                    Button(s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
+                    Button(group.isPage ? s.grabCheckNew : s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
                 }
                 Divider()
-                Button(s.playlistDeleteAll, role: .destructive) {
+                Button(group.isPage ? s.folderDeleteAll : s.playlistDeleteAll, role: .destructive) {
                     store.send(DashboardUiEventOnPlaylistGroupRemove(playlistId: group.id))
                 }
             }
@@ -278,7 +278,7 @@ struct TaskListScreen: View {
                 Button(role: .destructive) {
                     store.send(DashboardUiEventOnPlaylistGroupRemove(playlistId: group.id))
                 } label: {
-                    Label(s.playlistDeleteAll, systemImage: "trash")
+                    Label(group.isPage ? s.folderDeleteAll : s.playlistDeleteAll, systemImage: "trash")
                 }
             }
     }
@@ -855,7 +855,7 @@ struct PlaylistPageBar: View {
                         Button(s.rowMenuOpenFolder) { _ = resolver.openDirectoryInExplorer(path: folder) }
                     }
                     if !group.record.url.isEmpty {
-                        Button(s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
+                        Button(group.isPage ? s.grabCheckNew : s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
                     }
                     if group.canPause {
                         Button(s.homePauseAll) { store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id)) }
@@ -864,7 +864,7 @@ struct PlaylistPageBar: View {
                         Button(s.homeResumeAll) { store.send(DashboardUiEventOnPlaylistGroupResume(playlistId: group.id)) }
                     }
                     Divider()
-                    Button(s.playlistDeleteAll, role: .destructive) {
+                    Button(group.isPage ? s.folderDeleteAll : s.playlistDeleteAll, role: .destructive) {
                         store.send(DashboardUiEventOnPlaylistGroupRemove(playlistId: group.id))
                     }
                 } label: {
@@ -891,7 +891,7 @@ struct PlaylistPageBar: View {
                 Button {
                     store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id))
                 } label: {
-                    Label(s.playlistCheckNew, systemImage: "arrow.triangle.2.circlepath")
+                    Label(group.isPage ? s.grabCheckNew : s.playlistCheckNew, systemImage: "arrow.triangle.2.circlepath")
                         .font(.fj(13, .semibold))
                         .foregroundStyle(FJTheme.color.primary)
                         .frame(maxWidth: .infinity)
@@ -901,6 +901,7 @@ struct PlaylistPageBar: View {
                 }
                 .buttonStyle(.borderless)
             }
+            if !group.isPage {
             HStack(spacing: 8) {
                 Text("💬 " + subtitlesLine)
                     .font(.fj(12))
@@ -950,6 +951,7 @@ struct PlaylistPageBar: View {
                 }
                 .padding(10)
                 .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 10))
+            }
             }
         }
         .padding(12)

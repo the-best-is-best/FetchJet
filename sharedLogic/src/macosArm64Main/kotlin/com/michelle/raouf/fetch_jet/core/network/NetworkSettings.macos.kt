@@ -13,7 +13,7 @@ internal actual fun applyProxyLogin(config: HttpClientEngineConfig, proxy: Proxy
     if (config !is DarwinClientEngineConfig) return
     config.proxy = null
     config.configureSession {
-        setHTTPMaximumConnectionsPerHost(32)
+        setHTTPMaximumConnectionsPerHost(64)
         if (proxy.isOn) connectionProxyDictionary = if (proxy.kind == ProxyKind.SOCKS5) buildMap<Any?, Any?> {
             put("SOCKSEnable", 1)
             put("SOCKSProxy", proxy.host)

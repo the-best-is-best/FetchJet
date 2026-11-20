@@ -510,6 +510,7 @@ interface AppLocalization : LocalizationProvider {
     val grabScript: String
     val grabLimit: String
     val grabStop: String
+    val grabCheckNew: String
     val grabGroupVideo: String
     val grabGroupMusic: String
     val grabGroupArchives: String

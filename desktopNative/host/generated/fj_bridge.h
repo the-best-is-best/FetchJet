@@ -871,6 +871,7 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.playlistLanguagesNote = fj::text(j, "playlistLanguagesNote");
     d.playlistLanguageChoices = fj::struct_model<TextChoiceDto>(j, "playlistLanguageChoices", parse_TextChoiceDto);
     d.groupIsFolder = fj::flag(j, "groupIsFolder");
+    d.groupIsPage = fj::flag(j, "groupIsPage");
     d.groupFolderPath = fj::text(j, "groupFolderPath");
     return d;
 }
@@ -1658,6 +1659,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_grabScript(next());
     tr.set_grabLimit(next());
     tr.set_grabStop(next());
+    tr.set_grabCheckNew(next());
     tr.set_grabGroupVideo(next());
     tr.set_grabGroupMusic(next());
     tr.set_grabGroupArchives(next());

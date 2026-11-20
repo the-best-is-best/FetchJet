@@ -79,8 +79,11 @@ def run():
         core.check("size and the page host under a name the server told", "1.0 MB" in by_name["1MB.bin"].get("host", "") and
                    "127.0.0.1:18200" in by_name["1MB.bin"].get("host", "") and "6.1 KB" in by_name["report-7.pdf"].get("host", ""),
                    (by_name["1MB.bin"].get("host"), by_name["report-7.pdf"].get("host")))
-        core.check("no size for a file the page named itself: only the host", by_name["2MB.zip"].get("host") == "127.0.0.1:18200",
-                   by_name["2MB.zip"].get("host"))
+        core.pump(1.5)
+        sized = {r["title"]: r for r in links(core)}
+        core.check("the size of a file the page named itself is filled in after the list shows",
+                   "2.0 MB" in sized["2MB.zip"].get("host", "") and "127.0.0.1:18200" in sized["2MB.zip"].get("host", ""),
+                   sized["2MB.zip"].get("host"))
         core.check("the tag is the type", by_name["2MB.zip"].get("tag") == strings["grabGroupArchives"] and
                    by_name["300KB.png"].get("tag") == strings["grabGroupImages"] and by_name["1MB.bin"].get("tag") == strings["grabGroupOther"],
                    [r.get("tag") for r in listed])
@@ -155,6 +158,18 @@ def run():
         core.check("the three files belong to one group named after the page", len(ids) == 1 and "" not in ids and next(iter(ids)).startswith("pg_"), ids)
         core.pump(0.5)
         core.check("the dialog closed and the list is cleared", not core.snapshot("add").get("visible", False) and len(links(core)) == 0)
+        page_id = next(iter(ids))
+        core.action("RowClick", id="pl:" + page_id, control=False, shift=False)
+        core.pump(0.6)
+        chrome = core.snapshot("chrome")
+        core.check("the group page is open and is a page group", chrome.get("playlistOpen") and chrome.get("groupIsPage") and not chrome.get("groupIsFolder"),
+                   (chrome.get("playlistOpen"), chrome.get("groupIsPage"), chrome.get("groupIsFolder")))
+        core.check("the check button is offered and no subtitle language row is shown", chrome.get("playlistCanCheck") and
+                   not chrome.get("playlistLanguagesShown", False), (chrome.get("playlistCanCheck"), chrome.get("playlistLanguagesShown")))
+        core.check("the new texts exist", bool(strings.get("grabCheckNew")) and strings["grabCheckNew"] != strings.get("playlistCheckNew"),
+                   strings.get("grabCheckNew"))
+        core.action("ClosePlaylist")
+        core.pump(0.4)
 
         print("nothing found")
         core.action("ShowAddDialog", show=True)

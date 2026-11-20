@@ -607,6 +607,8 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
             ).onSuccess { added++ }.onFailure { skipped++ }
         }
         if (pageGrouped && added == 0 && pageGroup == null) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.remove(listOf(pageGroupId))
+        pendingExternalUrl = null
+        pendingExternalHeaders = emptyMap()
         _uiState.update {
             it.copy(
                 inputUrl = "",

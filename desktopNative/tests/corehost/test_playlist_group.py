@@ -70,6 +70,7 @@ def run():
         core.pump(0.6)
         chrome = core.snapshot("chrome")
         core.check("the playlist page is open with its title", chrome.get("playlistOpen") and chrome.get("title") == TITLE, chrome.get("title"))
+        core.check("a normal playlist is not a page group", not chrome.get("groupIsPage", False))
         video_rows = rows(core, "TASK")
         core.check("three video rows, no playlist row", len(video_rows) == 3 and not rows(core, "GROUP"), [r.get("name") for r in video_rows])
 

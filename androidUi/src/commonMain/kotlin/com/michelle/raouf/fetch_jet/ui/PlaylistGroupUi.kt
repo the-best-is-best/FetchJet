@@ -87,6 +87,7 @@ fun PlaylistPageHeader(
                 }
             }
         }
+        if (group.isPage) return@Column
         val record = group.record
         val subtitlesLine = if (record.subtitleLanguages.isEmpty()) s.playlistNoSubtitles
         else s.playlistSubtitlesFor.replace("%1", record.subtitleLanguages.joinToString(", ") { languageName(it, group.tasks) })
@@ -154,7 +155,7 @@ private fun PageActions(
         OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
     }
     if (group.record.url.isNotBlank()) {
-        OutlinedButton(onClick = onCheck, shape = shape) { Text("⟳ " + s.playlistCheckNew, fontSize = 12.sp) }
+        OutlinedButton(onClick = onCheck, shape = shape) { Text("⟳ " + (if (group.isPage) s.grabCheckNew else s.playlistCheckNew), fontSize = 12.sp) }
     }
     OutlinedButton(onClick = onPauseAll, enabled = group.canPause, shape = shape) { Text("⏸ " + s.homePauseAll, fontSize = 12.sp) }
     OutlinedButton(onClick = onResumeAll, enabled = group.canResume, shape = shape) { Text("▶ " + s.homeResumeAll, fontSize = 12.sp) }
@@ -162,7 +163,7 @@ private fun PageActions(
         onClick = onDelete,
         shape = shape,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-    ) { Text("🗑 " + s.playlistDeleteAll, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+    ) { Text("🗑 " + (if (group.isPage) s.folderDeleteAll else s.playlistDeleteAll), fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
 }
 
 

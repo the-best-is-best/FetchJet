@@ -484,7 +484,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             playlistCanPause = (openGroup ?: openFolderGroup)?.canPause == true,
             playlistCanResume = (openGroup ?: openFolderGroup)?.canResume == true,
             playlistCanCheck = openGroup?.record?.url?.isNotBlank() == true,
-            playlistLanguagesShown = openGroup != null && slice.playlistLanguages?.playlistId == openGroup.id,
+            playlistLanguagesShown = openGroup != null && !openGroup.isPage && slice.playlistLanguages?.playlistId == openGroup.id,
             playlistLanguagesBusy = slice.playlistLanguages?.let { it.reading || it.adding } == true,
             playlistLanguagesNote = slice.playlistLanguages?.let { page ->
                 when {
@@ -497,6 +497,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
                 TextChoiceDto(it.langCode, it.langName.ifBlank { it.langCode }, false)
             },
             groupIsFolder = openFolderGroup != null,
+            groupIsPage = openGroup?.isPage == true,
             groupFolderPath = openFolderGroup?.path.orEmpty(),
         )
     )

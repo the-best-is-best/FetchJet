@@ -10,7 +10,12 @@ import com.michelle.raouf.fetch_jet.feature.site_grabber.HttpPageFetcher
 import com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks
 import com.michelle.raouf.fetch_jet.feature.site_grabber.SiteGrabber
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 fun grabGroupName(folder: String): String {
     val s = LocalizationManager.Strings
@@ -87,6 +92,7 @@ internal fun DashboardViewModel.startPageGrab() {
                     siteGrab = it.siteGrab.copy(running = false, pagesRead = result.pagesRead, note = grabNote(result), title = result.title)
                 )
             }
+            fillSizes(fetcher, url, entries.filter { it.sizeBytes < 0 }.take(SIZE_PROBES))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -94,6 +100,26 @@ internal fun DashboardViewModel.startPageGrab() {
                 it.copy(siteGrab = it.siteGrab.copy(running = false, note = e.message ?: strings.grabNothing))
             }
         }
+    }
+}
+
+private const val SIZE_PROBES = 150
+
+private suspend fun DashboardViewModel.fillSizes(fetcher: HttpPageFetcher, pageUrl: String, wanted: List<LinkListEntry>) {
+    if (wanted.isEmpty()) return
+    val gate = Semaphore(6)
+    coroutineScope {
+        wanted.map { entry ->
+            async {
+                gate.withPermit {
+                    val size = runCatching { fetcher.probe(entry.url) }.getOrNull()?.size ?: -1L
+                    if (size >= 0) _uiState.update { st ->
+                        if (st.inputUrl.trim() != pageUrl) st
+                        else st.copy(linkList = st.linkList.map { if (it.url == entry.url) it.copy(sizeBytes = size) else it })
+                    }
+                }
+            }
+        }.awaitAll()
     }
 }
 

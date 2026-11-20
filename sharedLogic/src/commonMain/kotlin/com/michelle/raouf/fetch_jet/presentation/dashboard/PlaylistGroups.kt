@@ -57,6 +57,7 @@ data class PlaylistGroup(
 ) : TaskGroupStats {
     val id: String get() = record.id
     val title: String get() = record.title
+    val isPage: Boolean get() = record.quality == com.michelle.raouf.fetch_jet.feature.site_grabber.PAGE_GROUP
 
     /** "12 of 41 done · 2 failed" */
     val summaryText: String get() = doneText
