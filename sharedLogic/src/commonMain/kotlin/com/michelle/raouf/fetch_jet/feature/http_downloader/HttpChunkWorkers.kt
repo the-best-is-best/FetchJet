@@ -4,6 +4,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.feature.http_downloader.ChunkLayout.Companion.STALL_FAIL_MS
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import com.michelle.raouf.fetch_jet.core.network.downloadChannel
@@ -271,6 +272,8 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
 }
 
 /** Downloads one piece into its part file, stopping at the piece's (possibly shrinking) end. */
+internal const val PIECE_STALL_MS = 20_000L
+
 internal suspend fun HttpChunkDownloader.downloadPiece(
     taskId: String,
     url: String,
@@ -295,6 +298,10 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
         val to = piece.end
 
         client.prepareGet(url) {
+            timeout {
+                connectTimeoutMillis = PIECE_STALL_MS
+                socketTimeoutMillis = PIECE_STALL_MS
+            }
             applyDownloadHeaders(url, taskHeaders(taskId, url))
             header(HttpHeaders.Range, "bytes=$from-$to")
             if (ifRange.value.isNotEmpty()) header(HttpHeaders.IfRange, ifRange.value)
