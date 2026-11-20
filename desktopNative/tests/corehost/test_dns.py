@@ -93,7 +93,7 @@ def run():
     try:
         core.pump(0.5)
         core.action("OpenSettings")
-        core.action("SetSettingsSection", index=4)
+        core.action("SetSettingsSection", index=6)
         core.pump(0.5)
         print("system DNS does not know the test name")
         task = fetch(core, "dns-0", "sys.bin")

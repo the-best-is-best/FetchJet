@@ -568,6 +568,8 @@ object IndonesianProvider : AppLocalization {
     override val sectionGeneralBlurb = "Tampilan aplikasi dan cara memulainya"
     override val sectionDownloads = "Unduhan"
     override val sectionDownloadsBlurb = "Lokasi file dan berapa yang berjalan bersamaan"
+    override val sectionFiles = "File & folder"
+    override val sectionFilesBlurb = "Cara file yang selesai diurutkan, ditampilkan, dibuka, dan dihapus"
     override val sectionBrowser = "Ekstensi browser"
     override val sectionBrowserBlurb = "Kirim tautan dan video dari browser ke FetchJet"
     override val sectionSpeed = "Batas kecepatan"
@@ -624,7 +626,7 @@ object IndonesianProvider : AppLocalization {
     override val settingsUseDownloads = "Gunakan Unduhan"
     override val settingsConnectionsGroup = "Koneksi"
     override val connectionsFooter =
-        "Jumlah bagian untuk memecah unduhan langsung. Tiap bagian adalah satu koneksi; saat satu selesai, ia mengambil separuh dari bagian tersisa yang terbesar, jadi tidak ada yang menganggur. Otomatis memilih berdasarkan ukuran file (4–8). Beberapa server membatasi koneksi per klien."
+        "Jumlah bagian untuk memecah unduhan langsung. Tiap bagian adalah satu koneksi; saat satu selesai, ia mengambil separuh dari bagian tersisa yang terbesar, jadi tidak ada yang menganggur. Otomatis memilih berdasarkan ukuran file (4–32). Beberapa server membatasi koneksi per klien."
     override val settingsConnectionsPerDownload = "Koneksi per unduhan"
     override val settingsConnectionsAuto = "Otomatis"
     override val organizeGroup = "Atur"

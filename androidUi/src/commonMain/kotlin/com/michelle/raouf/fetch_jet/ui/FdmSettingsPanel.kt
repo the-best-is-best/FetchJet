@@ -46,12 +46,15 @@ import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.getPlatform
 import com.michelle.raouf.fetch_jet.theme.StatusCompleted
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
+import com.michelle.raouf.fetch_jet.utils.formatSpeed
 import com.tbib.kmp_localization.LocalizationManager
 
 /** The pages of Settings, in the order of the side list. */
 internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
+    SPEED("◷"),
+    FILES("▤"),
     BROWSER("⧉"),
     DEVICES("⇄"),
     NETWORK("◎"),
@@ -64,6 +67,8 @@ internal enum class SettingsSection(val glyph: String) {
         get() = when (this) {
             GENERAL -> LocalizationManager.Strings.sectionGeneral
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloads
+            SPEED -> LocalizationManager.Strings.sectionSpeed
+            FILES -> LocalizationManager.Strings.sectionFiles
             BROWSER -> LocalizationManager.Strings.sectionBrowser
             DEVICES -> LocalizationManager.Strings.sectionDevices
             NETWORK -> LocalizationManager.Strings.sectionNetwork
@@ -77,6 +82,8 @@ internal enum class SettingsSection(val glyph: String) {
         get() = when (this) {
             GENERAL -> LocalizationManager.Strings.sectionGeneralBlurb
             DOWNLOADS -> LocalizationManager.Strings.sectionDownloadsBlurb
+            SPEED -> LocalizationManager.Strings.sectionSpeedBlurb
+            FILES -> LocalizationManager.Strings.sectionFilesBlurb
             BROWSER -> LocalizationManager.Strings.sectionBrowserBlurb
             DEVICES -> LocalizationManager.Strings.sectionDevicesBlurb
             NETWORK -> LocalizationManager.Strings.sectionNetworkBlurb
@@ -156,9 +163,16 @@ fun FdmSettingsPanel(
         .visibleToDevices.collectAsState()
     val netProxy by NetworkSettings.proxy.collectAsState()
     val netLogins by NetworkSettings.logins.collectAsState()
+    val groupByFolder by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+        .groupByFolder.collectAsState()
+    val videoPlaysEverywhere by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+        .videoPlaysEverywhere.collectAsState()
+    val scheduleOn by com.michelle.raouf.fetch_jet.core.power.SpeedSchedule.enabled.collectAsState()
+    val scheduleCap by com.michelle.raouf.fetch_jet.core.power.SpeedSchedule.activeCap.collectAsState()
+    val showMediaTools = isJvm || (isIos && AppFeatures.mediaExtractor)
     val sections = SettingsSection.entries.filter {
         when (it) {
-            SettingsSection.MEDIA -> isJvm || (isIos && AppFeatures.mediaExtractor)
+            SettingsSection.MEDIA -> showMediaTools || !isIos
             SettingsSection.TORRENT -> AppFeatures.torrent
             SettingsSection.UPDATES -> updateState.supported
             SettingsSection.REPORT -> com.michelle.raouf.fetch_jet.feature.report.DownloadReport.ENABLED
@@ -180,10 +194,24 @@ fun FdmSettingsPanel(
                     maxAtOnce
                 )) to null
 
+        SettingsSection.SPEED -> when {
+            globalDownloadSpeedLimitBytes > 0 -> formatSpeed(globalDownloadSpeedLimitBytes, unitKey) to StatusPaused
+            scheduleOn && scheduleCap != null -> LocalizationManager.Strings.speedScheduleActive to StatusCompleted
+            scheduleOn -> LocalizationManager.Strings.speedScheduleTitle to null
+            else -> LocalizationManager.Strings.summaryNoSpeedLimit to null
+        }
+
+        SettingsSection.FILES -> listOfNotNull(
+            LocalizationManager.Strings.sortIntoFolders.takeIf { sortIntoFolders },
+            LocalizationManager.Strings.groupByFolder.takeIf { groupByFolder },
+            LocalizationManager.Strings.extractArchives.takeIf { extractArchives }
+        ).joinToString(" · ").ifEmpty { LocalizationManager.Strings.organizeGroup + " · " + LocalizationManager.Strings.settingOff } to null
+
         SettingsSection.NETWORK -> networkSummary(netProxy, netLogins.size) to
                 (if (netProxy.isOn) StatusCompleted else null)
 
-        SettingsSection.MEDIA -> if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
+        SettingsSection.MEDIA -> if (!showMediaTools) (if (videoPlaysEverywhere) "H.264 + AAC" else "AV1 / VP9 + Opus") to null
+        else if (toolsReady) LocalizationManager.Strings.settingsReady to StatusCompleted else LocalizationManager.Strings.summarySetupNeeded to StatusPaused
         SettingsSection.TORRENT -> (if (disableTorrentUpload) LocalizationManager.Strings.summaryUploadingOff else LocalizationManager.Strings.summaryUploadingOn) to null
         SettingsSection.BROWSER -> (when {
             isJvm -> "Edge · Firefox · Chrome"
@@ -229,14 +257,13 @@ fun FdmSettingsPanel(
 
             SettingsSection.DOWNLOADS -> DownloadsPage(
                 destinationPath,
-                sortIntoFolders,
-                extractArchives,
                 defaultConnections,
                 pathResolver,
                 onDestinationPathChanged,
-                onSortIntoFoldersChanged,
-                onExtractArchivesChanged,
-                onDefaultConnectionsChanged,
+                onDefaultConnectionsChanged
+            )
+
+            SettingsSection.SPEED -> SpeedPage(
                 speedPresetLowBytes, speedPresetLowUnit,
                 speedPresetMediumBytes, speedPresetMediumUnit,
                 speedPresetFastBytes, speedPresetFastUnit,
@@ -244,12 +271,19 @@ fun FdmSettingsPanel(
                 onSpeedPresetChanged
             )
 
+            SettingsSection.FILES -> FilesPage(
+                sortIntoFolders,
+                extractArchives,
+                onSortIntoFoldersChanged,
+                onExtractArchivesChanged
+            )
+
             SettingsSection.NETWORK -> NetworkPage(isIos)
 
             SettingsSection.MEDIA -> MediaToolsPage(
                 ytDlpStatus, isYtDlpInstalled, isFfmpegInstalled, jsRuntimeName, isJsRuntimeReady,
                 if (isIos) "" else toolsDirectoryPath, isDownloadingYtDlp, toolDownloadName, toolDownloadFraction,
-                pathResolver, onDownloadYtDlpClicked
+                pathResolver, onDownloadYtDlpClicked, showTools = showMediaTools
             )
 
             SettingsSection.TORRENT -> TorrentPage(

@@ -45,6 +45,8 @@ internal const val DEVICE_SYNC_READY = true
 internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
+    SPEED("⚡"),
+    FILES("☰"),
     BROWSER("⧉"),
     DEVICES("⇄"),
     NETWORK("◎"),
@@ -59,6 +61,8 @@ internal fun SettingsSection.title(): String {
     return when (this) {
         SettingsSection.GENERAL -> s.sectionGeneral
         SettingsSection.DOWNLOADS -> s.sectionDownloads
+        SettingsSection.SPEED -> s.sectionSpeed
+        SettingsSection.FILES -> s.sectionFiles
         SettingsSection.BROWSER -> s.sectionBrowser
         SettingsSection.DEVICES -> s.sectionDevices
         SettingsSection.NETWORK -> s.sectionNetwork
@@ -74,6 +78,8 @@ internal fun SettingsSection.blurb(): String {
     return when (this) {
         SettingsSection.GENERAL -> s.sectionGeneralBlurb
         SettingsSection.DOWNLOADS -> s.sectionDownloadsBlurb
+        SettingsSection.SPEED -> s.sectionSpeedBlurb
+        SettingsSection.FILES -> s.sectionFilesBlurb
         SettingsSection.BROWSER -> s.sectionBrowserBlurb
         SettingsSection.DEVICES -> s.sectionDevicesBlurb
         SettingsSection.NETWORK -> s.sectionNetworkBlurb
@@ -185,6 +191,7 @@ internal data class SettingsSlice(
     val videoPlaysEverywhere: Boolean,
     val extractArchives: Boolean,
     val defaultConnections: Int,
+    val downloadLimit: Long,
     val lowBytes: Long,
     val lowUnit: String,
     val mediumBytes: Long,
@@ -228,6 +235,7 @@ internal fun DashboardUiState.settingsSlice() = SettingsSlice(
     videoPlaysEverywhere = videoPlaysEverywhere,
     extractArchives = extractArchives,
     defaultConnections = defaultConnections,
+    downloadLimit = globalDownloadSpeedLimitBytes,
     lowBytes = speedPresetLowBytes,
     lowUnit = speedPresetLowUnit,
     mediumBytes = speedPresetMediumBytes,
@@ -281,6 +289,29 @@ private fun networkSummary(proxy: ProxySettings, logins: Int): String {
     return if (logins == 0) text else text + " · " + LocalizationManager.Strings.netLoginsCount(logins)
 }
 
+private fun speedSummary(v: SettingsSlice): String {
+    val s = LocalizationManager.Strings
+    val limit = v.downloadLimit
+    val text = when {
+        limit <= 0L -> s.summaryNoSpeedLimit
+        limit == v.fastBytes -> s.speedPresetFast + " · " + speedPresetShortLabel(limit)
+        limit == v.mediumBytes -> s.speedPresetMedium + " · " + speedPresetShortLabel(limit)
+        limit == v.lowBytes -> s.speedPresetLow + " · " + speedPresetShortLabel(limit)
+        else -> speedPresetShortLabel(limit)
+    }
+    return if (SpeedSchedule.enabled.value) text + " · " + s.speedScheduleTitle else text
+}
+
+private fun filesSummary(v: SettingsSlice): String {
+    val s = LocalizationManager.Strings
+    return when {
+        v.sortIntoFolders && v.groupByFolder -> s.sortIntoFolders + " · " + s.groupByFolder
+        v.sortIntoFolders -> s.sortIntoFolders
+        v.groupByFolder -> s.groupByFolder
+        else -> s.settingOff
+    }
+}
+
 private fun Presenter.sectionHint(section: SettingsSection, v: SettingsSlice): Pair<String, ToneCode> {
     val s = LocalizationManager.Strings
     return when (section) {
@@ -289,6 +320,12 @@ private fun Presenter.sectionHint(section: SettingsSection, v: SettingsSlice): P
             val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
             folderName(v.destinationPath) + " · " + (if (max <= 0) s.summaryNoQueueLimit else s.summaryAtATime(max)) to ToneCode.MUTED
         }
+
+        SettingsSection.SPEED ->
+            speedSummary(v) to (if (v.downloadLimit > 0L || SpeedSchedule.activeCap.value != null) ToneCode.COMPLETED else ToneCode.MUTED)
+
+        SettingsSection.FILES ->
+            filesSummary(v) to (if (v.sortIntoFolders || v.groupByFolder) ToneCode.COMPLETED else ToneCode.MUTED)
 
         SettingsSection.NETWORK -> {
             val proxy = NetworkSettings.proxy.value

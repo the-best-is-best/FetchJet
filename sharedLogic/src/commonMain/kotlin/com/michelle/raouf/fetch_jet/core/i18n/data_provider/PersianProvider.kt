@@ -567,6 +567,8 @@ object PersianProvider : AppLocalization {
     override val sectionGeneralBlurb = "ظاهر برنامه و نحوه اجرای آن"
     override val sectionDownloads = "دانلودها"
     override val sectionDownloadsBlurb = "محل ذخیره فایل‌ها و تعداد دانلودهای همزمان"
+    override val sectionFiles = "فایل‌ها و پوشه‌ها"
+    override val sectionFilesBlurb = "فایل‌های تمام‌شده چطور مرتب، نمایش، باز و حذف شوند"
     override val sectionBrowser = "افزونه مرورگر"
     override val sectionBrowserBlurb = "ارسال لینک‌ها و ویدیوها از مرورگر به FetchJet"
     override val sectionSpeed = "محدودیت سرعت"
@@ -623,7 +625,7 @@ object PersianProvider : AppLocalization {
     override val settingsUseDownloads = "استفاده از دانلودها"
     override val settingsConnectionsGroup = "اتصال‌ها"
     override val connectionsFooter =
-        "یک دانلود مستقیم به چند قطعه تقسیم می‌شود. هر قطعه یک اتصال است؛ وقتی یکی تمام شد، نصف بزرگ‌ترین قطعه باقی‌مانده را برمی‌دارد تا هیچ‌کدام بیکار نماند. حالت خودکار بر اساس حجم فایل انتخاب می‌کند (4–8). بعضی سرورها تعداد اتصال هر کاربر را محدود می‌کنند."
+        "یک دانلود مستقیم به چند قطعه تقسیم می‌شود. هر قطعه یک اتصال است؛ وقتی یکی تمام شد، نصف بزرگ‌ترین قطعه باقی‌مانده را برمی‌دارد تا هیچ‌کدام بیکار نماند. حالت خودکار بر اساس حجم فایل انتخاب می‌کند (4–32). بعضی سرورها تعداد اتصال هر کاربر را محدود می‌کنند."
     override val settingsConnectionsPerDownload = "اتصال برای هر دانلود"
     override val settingsConnectionsAuto = "خودکار"
     override val organizeGroup = "مرتب‌سازی"

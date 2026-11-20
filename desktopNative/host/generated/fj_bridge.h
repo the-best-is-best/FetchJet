@@ -1629,6 +1629,8 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sectionGeneralBlurb(next());
     tr.set_sectionDownloads(next());
     tr.set_sectionDownloadsBlurb(next());
+    tr.set_sectionFiles(next());
+    tr.set_sectionFilesBlurb(next());
     tr.set_sectionBrowser(next());
     tr.set_sectionBrowserBlurb(next());
     tr.set_sectionSpeed(next());
@@ -1835,6 +1837,16 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_playlistDownloadedBefore(next());
     tr.set_subtitlesReadingCount(next());
     tr.set_subtitlesNoneInList(next());
+    tr.set_playlistVideoJoined(next());
+    tr.set_detailsPlaylist(next());
+    tr.set_popUpAskText(next());
+    tr.set_popUpAskAllow(next());
+    tr.set_popUpAskLater(next());
+    tr.set_driveNoDownloadError(next());
+    tr.set_siteBusyRetryLater(next());
+    tr.set_videoPlaysEverywhere(next());
+    tr.set_videoPlaysEverywhereOn(next());
+    tr.set_videoPlaysEverywhereOff(next());
     tr.set_sysReadingChannelName(next());
     tr.set_sysReadingVideosCount(next());
     tr.set_playlistGroupDone(next());

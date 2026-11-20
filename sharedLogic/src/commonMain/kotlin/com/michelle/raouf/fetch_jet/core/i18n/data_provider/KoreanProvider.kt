@@ -542,6 +542,8 @@ object KoreanProvider : AppLocalization {
     override val sectionGeneralBlurb = "앱 모양과 시작 방식"
     override val sectionDownloads = "다운로드"
     override val sectionDownloadsBlurb = "저장 위치와 동시 다운로드 수"
+    override val sectionFiles = "파일 및 폴더"
+    override val sectionFilesBlurb = "완료된 파일을 정리하고 표시하고 열고 지우는 방법"
     override val sectionBrowser = "브라우저 확장 프로그램"
     override val sectionBrowserBlurb = "브라우저의 링크와 동영상을 FetchJet으로 보내기"
     override val sectionSpeed = "속도 제한"
@@ -592,7 +594,7 @@ object KoreanProvider : AppLocalization {
     override val settingsUseDownloads = "다운로드 폴더 사용"
     override val settingsConnectionsGroup = "연결"
     override val connectionsFooter =
-        "일반 다운로드를 몇 조각으로 나눌지 정합니다. 조각마다 연결이 하나씩이며, 하나가 끝나면 남은 가장 큰 조각의 절반을 가져가므로 노는 연결이 없습니다. 자동은 파일 크기에 따라 정합니다(4–8). 일부 서버는 클라이언트당 연결 수를 제한합니다."
+        "일반 다운로드를 몇 조각으로 나눌지 정합니다. 조각마다 연결이 하나씩이며, 하나가 끝나면 남은 가장 큰 조각의 절반을 가져가므로 노는 연결이 없습니다. 자동은 파일 크기에 따라 정합니다(4–32). 일부 서버는 클라이언트당 연결 수를 제한합니다."
     override val settingsConnectionsPerDownload = "다운로드당 연결 수"
     override val settingsConnectionsAuto = "자동"
     override val organizeGroup = "정리"

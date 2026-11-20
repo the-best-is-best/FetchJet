@@ -565,6 +565,8 @@ object TurkishProvider : AppLocalization {
     override val sectionGeneralBlurb = "Uygulamanın görünümü ve nasıl başladığı"
     override val sectionDownloads = "İndirmeler"
     override val sectionDownloadsBlurb = "Dosyaların nereye gittiği ve kaçının aynı anda çalıştığı"
+    override val sectionFiles = "Dosyalar ve klasörler"
+    override val sectionFilesBlurb = "Biten dosyaların nasıl sıralandığı, gösterildiği, açıldığı ve silindiği"
     override val sectionBrowser = "Tarayıcı eklentisi"
     override val sectionBrowserBlurb = "Tarayıcınızdan FetchJet'e bağlantı ve video gönderin"
     override val sectionSpeed = "Hız sınırları"
@@ -621,7 +623,7 @@ object TurkishProvider : AppLocalization {
     override val settingsUseDownloads = "İndirilenler'i kullan"
     override val settingsConnectionsGroup = "Bağlantılar"
     override val connectionsFooter =
-        "Doğrudan bir indirmenin kaç parçaya bölüneceği. Her parça bir bağlantıdır; biri bitince kalan en büyük parçanın yarısını alır, böylece hiçbiri boşta kalmaz. Otomatik, dosya boyutuna göre seçer (4–8). Bazı sunucular istemci başına bağlantı sayısını sınırlar."
+        "Doğrudan bir indirmenin kaç parçaya bölüneceği. Her parça bir bağlantıdır; biri bitince kalan en büyük parçanın yarısını alır, böylece hiçbiri boşta kalmaz. Otomatik, dosya boyutuna göre seçer (4–32). Bazı sunucular istemci başına bağlantı sayısını sınırlar."
     override val settingsConnectionsPerDownload = "İndirme başına bağlantı"
     override val settingsConnectionsAuto = "Otomatik"
     override val organizeGroup = "Düzenle"

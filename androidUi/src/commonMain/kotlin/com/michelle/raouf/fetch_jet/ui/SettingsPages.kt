@@ -248,23 +248,10 @@ private fun DeviceListGroup(
 @Composable
 internal fun DownloadsPage(
     destinationPath: String,
-    sortIntoFolders: Boolean,
-    extractArchives: Boolean,
     defaultConnections: Int,
     pathResolver: PathResolver,
     onDestinationPathChanged: (String) -> Unit,
-    onSortIntoFoldersChanged: (Boolean) -> Unit,
-    onExtractArchivesChanged: (Boolean) -> Unit,
-    onDefaultConnectionsChanged: (Int) -> Unit,
-    lowBytes: Long = 256L * 1024,
-    lowUnit: String = "KB/s",
-    mediumBytes: Long = 2L * 1024 * 1024,
-    mediumUnit: String = "MB/s",
-    fastBytes: Long = 3L * 1024 * 1024,
-    fastUnit: String = "MB/s",
-    highBytes: Long = 20L * 1024 * 1024,
-    highUnit: String = "MB/s",
-    onPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> }
+    onDefaultConnectionsChanged: (Int) -> Unit
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     var showDirectoryPicker by remember { mutableStateOf(false) }
@@ -346,6 +333,23 @@ internal fun DownloadsPage(
                 }
             }
         }
+        QueueSettingsCard()
+    }
+}
+
+@Composable
+internal fun SpeedPage(
+    lowBytes: Long = 256L * 1024,
+    lowUnit: String = "KB/s",
+    mediumBytes: Long = 2L * 1024 * 1024,
+    mediumUnit: String = "MB/s",
+    fastBytes: Long = 3L * 1024 * 1024,
+    fastUnit: String = "MB/s",
+    highBytes: Long = 20L * 1024 * 1024,
+    highUnit: String = "MB/s",
+    onPresetChanged: (com.michelle.raouf.fetch_jet.presentation.dashboard.SpeedPreset, Long, String) -> Unit = { _, _, _ -> }
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(
             title = LocalizationManager.Strings.speedPresetsTitle,
             footer = LocalizationManager.Strings.speedPresetsFooter
@@ -413,9 +417,19 @@ internal fun DownloadsPage(
             }
         }
         SpeedScheduleCard()
+    }
+}
+
+@Composable
+internal fun FilesPage(
+    sortIntoFolders: Boolean,
+    extractArchives: Boolean,
+    onSortIntoFoldersChanged: (Boolean) -> Unit,
+    onExtractArchivesChanged: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         SettingsGroup(
-            title = LocalizationManager.Strings.organizeGroup,
-            footer = LocalizationManager.Strings.organizeFooter
+            title = LocalizationManager.Strings.organizeGroup
         ) {
             SettingSwitch(
                 title = LocalizationManager.Strings.sortIntoFolders,
@@ -423,6 +437,13 @@ internal fun DownloadsPage(
                 checked = sortIntoFolders,
                 onChange = onSortIntoFoldersChanged
             )
+            Text(
+                LocalizationManager.Strings.organizeFooter,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            )
+            SettingDivider()
             val groupByFolder by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.groupByFolder.collectAsState()
             SettingSwitch(
                 title = LocalizationManager.Strings.groupByFolder,
@@ -430,13 +451,7 @@ internal fun DownloadsPage(
                 checked = groupByFolder,
                 onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setGroupByFolder(it) }
             )
-            val videoPlaysEverywhere by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.collectAsState()
-            SettingSwitch(
-                title = LocalizationManager.Strings.videoPlaysEverywhere,
-                subtitle = if (videoPlaysEverywhere) LocalizationManager.Strings.videoPlaysEverywhereOn else LocalizationManager.Strings.videoPlaysEverywhereOff,
-                checked = videoPlaysEverywhere,
-                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVideoPlaysEverywhere(it) }
-            )
+            SettingDivider()
             SettingSwitch(
                 title = LocalizationManager.Strings.extractArchives,
                 subtitle = if (extractArchives) LocalizationManager.Strings.extractArchivesOn else LocalizationManager.Strings.extractArchivesOff,
@@ -445,7 +460,6 @@ internal fun DownloadsPage(
             )
         }
         SiteFoldersCard()
-        QueueSettingsCard()
     }
 }
 

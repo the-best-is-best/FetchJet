@@ -10,7 +10,7 @@ WORD = re.compile(r"[A-Za-z]{4,}")
 ALLOWED = {"FetchJet", "Edge", "Firefox", "Chrome", "Brave", "Safari", "Opera", "Vivaldi", "yt-dlp", "ffmpeg", "libtorrent", "BitTorrent",
            "Windows", "Android", "macOS", "Linux", "iPhone", "HTTP", "HTTPS", "SOCKS", "magnet", "torrent", "Mbps", "Kbps", "WARP",
            "deno", "node", "QuickJS", "YouTube", "Facebook", "Vimeo", "TikTok", "SoundCloud", "Python", "curl", "sha256", "MB/s", "KB/s", "PDF", "ZIP", "https", "http", "apk"}
-SECTIONS = 8
+SECTIONS = 10
 
 
 def latin_words(text):

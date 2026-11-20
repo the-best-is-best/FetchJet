@@ -591,6 +591,8 @@ object FrenchProvider : AppLocalization {
     override val sectionDownloads = "Téléchargements"
     override val sectionDownloadsBlurb =
         "Emplacement des fichiers et nombre de téléchargements simultanés"
+    override val sectionFiles = "Fichiers et dossiers"
+    override val sectionFilesBlurb = "Comment les fichiers terminés sont rangés, affichés, ouverts et supprimés"
     override val sectionBrowser = "Extension de navigateur"
     override val sectionBrowserBlurb = "Envoyez liens et vidéos de votre navigateur vers FetchJet"
     override val sectionSpeed = "Limites de vitesse"
@@ -648,7 +650,7 @@ object FrenchProvider : AppLocalization {
     override val settingsUseDownloads = "Utiliser Téléchargements"
     override val settingsConnectionsGroup = "Connexions"
     override val connectionsFooter =
-        "Nombre de morceaux d'un téléchargement direct. Chaque morceau est une connexion ; quand l'un se termine, il reprend la moitié du plus gros morceau restant, aucun ne reste inactif. Auto choisit selon la taille du fichier (4–8). Certains serveurs limitent les connexions par client."
+        "Nombre de morceaux d'un téléchargement direct. Chaque morceau est une connexion ; quand l'un se termine, il reprend la moitié du plus gros morceau restant, aucun ne reste inactif. Auto choisit selon la taille du fichier (4–32). Certains serveurs limitent les connexions par client."
     override val settingsConnectionsPerDownload = "Connexions par téléchargement"
     override val settingsConnectionsAuto = "Auto"
     override val organizeGroup = "Organisation"

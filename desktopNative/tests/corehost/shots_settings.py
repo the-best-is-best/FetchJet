@@ -6,7 +6,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from corehost import Core, CheckFailed, ENUMS, SERVER, install_fake_ytdlp
 from shots import shot
 
-GENERAL, DOWNLOADS, BROWSER, NETWORK, MEDIA, UPDATES = range(6)
+GENERAL, DOWNLOADS, SPEED, FILES, BROWSER, NETWORK, MEDIA, UPDATES = (
+    "sectionGeneral", "sectionDownloads", "sectionSpeed", "sectionFiles", "sectionBrowser", "sectionNetwork", "sectionMedia", "sectionUpdates")
+DEVICES, TORRENT = "sectionDevices", "sectionTorrent"
 ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
 LINE = {name: index for index, name in enumerate(ENUMS["LinkLineCode"])}
 
@@ -23,8 +25,10 @@ def run(only=None):
         if not shot(core, name, **kwargs):
             failed += 1
 
-    def page(index):
-        core.action("SetSettingsSection", index=index)
+    def page(key):
+        title = core.strings().get(key)
+        titles = [s.get("title") for s in (core.snapshot("settingsNav") or {}).get("sections", [])]
+        core.action("SetSettingsSection", index=titles.index(title))
         core.pump(0.6)
 
     try:
@@ -126,12 +130,20 @@ def run(only=None):
         take("settings-general-dark-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-600", "--wait", "400"])
         page(DOWNLOADS)
         take("settings-downloads-dark", width=1200, height=900)
+        take("settings-downloads-dark-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-600", "--wait", "400"])
+        page(SPEED)
+        take("settings-speed-dark", width=1200, height=900)
         core.action("SettingToggle", id="schedule", on=True)
         core.action("SettingClick", id="addWindow")
-        take("settings-downloads-dark-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-560", "--wait", "400"])
-        take("settings-downloads-dark-3", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-1300", "--wait", "400"])
+        take("settings-speed-dark-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-600", "--wait", "400"])
         core.action("SettingClick", id="window.0.remove")
         core.action("SettingToggle", id="schedule", on=False)
+        page(FILES)
+        core.action("SettingToggle", id="extractArchives", on=True)
+        take("settings-files-dark", width=1200, height=900)
+        take("settings-files-dark-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-700", "--wait", "400"])
+        take("settings-files-dark-3", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-1600", "--wait", "400"])
+        core.action("SettingToggle", id="extractArchives", on=False)
         page(BROWSER)
         take("settings-browser-dark", width=1200, height=760)
         page(NETWORK)
@@ -165,12 +177,12 @@ def run(only=None):
         core.action("AlertDismiss", kind=ALERT["EXTENSION_STEPS"], fromScrim=False)
         core.debug("sections", {"all": "true"})
         core.pump(0.5)
-        page(6)
+        page(TORRENT)
         core.action("SettingPick", id="uploadLimit", index=5)
         take("settings-torrent-dark", width=1200, height=760)
         take("settings-torrent-narrow-dark", width=700, height=700)
         core.action("SettingPick", id="uploadLimit", index=0)
-        page(3)
+        page(DEVICES)
         take("settings-devices-dark", width=1200, height=760)
         core.debug("sections", {"all": "false"})
         core.pump(0.5)
@@ -185,11 +197,30 @@ def run(only=None):
         take("settings-general-light", width=1200, height=900)
         page(DOWNLOADS)
         take("settings-downloads-light", width=1200, height=900)
+        page(SPEED)
+        take("settings-speed-light", width=1200, height=900)
+        page(FILES)
+        take("settings-files-light", width=1200, height=900)
+        take("settings-files-light-2", width=1200, height=900, extra=["--wait", "200", "--scroll", "800,500,0,-700", "--wait", "400"])
+        page(BROWSER)
+        take("settings-browser-light", width=1200, height=760)
+        page(DEVICES)
+        take("settings-devices-light", width=1200, height=760)
+        page(NETWORK)
+        take("settings-network-light", width=1200, height=900)
+        page(MEDIA)
+        take("settings-media-light", width=1200, height=760)
+        page(UPDATES)
+        take("settings-updates-light", width=1200, height=760)
         core.action("SettingPick", id="language", index=2)
         core.pump(1.0)
         take("settings-general-light-ar", width=1200, height=900)
         page(DOWNLOADS)
         take("settings-downloads-light-ar", width=1200, height=900)
+        page(SPEED)
+        take("settings-speed-light-ar", width=1200, height=900)
+        page(FILES)
+        take("settings-files-light-ar", width=1200, height=900)
         page(NETWORK)
         core.action("SettingPick", id="proxyKind", index=2)
         take("settings-network-light-ar", width=1200, height=900)

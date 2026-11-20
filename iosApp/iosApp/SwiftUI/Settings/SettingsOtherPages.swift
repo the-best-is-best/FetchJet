@@ -57,6 +57,13 @@ struct SettingsMediaPage: View {
                     .font(FJTheme.font.caption)
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
+            SettingsGroupBox {
+                SettingsSwitchRow(
+                    title: s.videoPlaysEverywhere,
+                    subtitle: st.videoPlaysEverywhere ? s.videoPlaysEverywhereOn : s.videoPlaysEverywhereOff,
+                    isOn: st.videoPlaysEverywhere
+                ) { store.send(DashboardUiEventOnVideoPlaysEverywhereChanged(on: $0)) }
+            }
         }
     }
 

@@ -551,6 +551,8 @@ object ChineseProvider : AppLocalization {
     override val sectionGeneralBlurb = "应用外观和启动方式"
     override val sectionDownloads = "下载"
     override val sectionDownloadsBlurb = "文件保存位置和同时下载数"
+    override val sectionFiles = "文件和文件夹"
+    override val sectionFilesBlurb = "已完成文件的分类、显示、打开和删除方式"
     override val sectionBrowser = "浏览器扩展"
     override val sectionBrowserBlurb = "将浏览器中的链接和视频发送到 FetchJet"
     override val sectionSpeed = "限速"
@@ -601,7 +603,7 @@ object ChineseProvider : AppLocalization {
     override val settingsUseDownloads = "使用“下载”文件夹"
     override val settingsConnectionsGroup = "连接"
     override val connectionsFooter =
-        "直链下载分成的块数。每块是一个连接；一块完成后会接手剩余最大块的一半，因此没有连接闲置。“自动”按文件大小选择（4–8）。部分服务器会限制每个客户端的连接数。"
+        "直链下载分成的块数。每块是一个连接；一块完成后会接手剩余最大块的一半，因此没有连接闲置。“自动”按文件大小选择（4–32）。部分服务器会限制每个客户端的连接数。"
     override val settingsConnectionsPerDownload = "每个下载的连接数"
     override val settingsConnectionsAuto = "自动"
     override val organizeGroup = "整理"

@@ -583,6 +583,8 @@ object ArabicProvider : AppLocalization {
     override val sectionGeneralBlurb = "مظهر التطبيق وطريقة تشغيله"
     override val sectionDownloads = "التنزيلات"
     override val sectionDownloadsBlurb = "مكان حفظ الملفات وعدد التنزيلات المتزامنة"
+    override val sectionFiles = "الملفات والمجلدات"
+    override val sectionFilesBlurb = "كيف تُرتَّب الملفات المكتملة وتُعرض وتُفتح وتُحذف"
     override val sectionBrowser = "إضافة المتصفح"
     override val sectionBrowserBlurb = "أرسل الروابط والفيديوهات من متصفحك إلى FetchJet"
     override val sectionSpeed = "حدود السرعة"
@@ -637,7 +639,7 @@ object ArabicProvider : AppLocalization {
     override val settingsUseDownloads = "استخدام مجلد التنزيلات"
     override val settingsConnectionsGroup = "الاتصالات"
     override val connectionsFooter =
-        "عدد الأجزاء التي يُقسَّم إليها التنزيل المباشر. كل جزء اتصال، وعندما ينتهي أحدها يأخذ نصف أكبر جزء متبقٍ، فلا يبقى أي اتصال بلا عمل. الوضع التلقائي يختار حسب حجم الملف (4–8). بعض الخوادم تحدّ عدد الاتصالات لكل مستخدم."
+        "عدد الأجزاء التي يُقسَّم إليها التنزيل المباشر. كل جزء اتصال، وعندما ينتهي أحدها يأخذ نصف أكبر جزء متبقٍ، فلا يبقى أي اتصال بلا عمل. الوضع التلقائي يختار حسب حجم الملف (4–32). بعض الخوادم تحدّ عدد الاتصالات لكل مستخدم."
     override val settingsConnectionsPerDownload = "عدد الاتصالات لكل تنزيل"
     override val settingsConnectionsAuto = "تلقائي"
     override val organizeGroup = "التنظيم"

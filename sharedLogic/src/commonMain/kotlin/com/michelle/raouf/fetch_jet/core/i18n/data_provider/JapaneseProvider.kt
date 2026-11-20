@@ -564,6 +564,8 @@ object JapaneseProvider : AppLocalization {
     override val sectionGeneralBlurb = "アプリの見た目と起動のしかた"
     override val sectionDownloads = "ダウンロード"
     override val sectionDownloadsBlurb = "保存先と同時ダウンロード数"
+    override val sectionFiles = "ファイルとフォルダー"
+    override val sectionFilesBlurb = "完了したファイルの整理・表示・展開・削除の方法"
     override val sectionBrowser = "ブラウザー拡張機能"
     override val sectionBrowserBlurb = "ブラウザーからリンクや動画を FetchJet に送る"
     override val sectionSpeed = "速度制限"
@@ -620,7 +622,7 @@ object JapaneseProvider : AppLocalization {
     override val settingsUseDownloads = "「ダウンロード」を使う"
     override val settingsConnectionsGroup = "接続"
     override val connectionsFooter =
-        "直接ダウンロードを何個のピースに分けるか。各ピースが 1 つの接続です。1 つ終わると残りの最大ピースの半分を引き継ぐので、空く接続はありません。「自動」はファイルサイズで決めます（4–8）。クライアントごとの接続数を制限するサーバーもあります。"
+        "直接ダウンロードを何個のピースに分けるか。各ピースが 1 つの接続です。1 つ終わると残りの最大ピースの半分を引き継ぐので、空く接続はありません。「自動」はファイルサイズで決めます（4–32）。クライアントごとの接続数を制限するサーバーもあります。"
     override val settingsConnectionsPerDownload = "ダウンロードごとの接続数"
     override val settingsConnectionsAuto = "自動"
     override val organizeGroup = "整理"

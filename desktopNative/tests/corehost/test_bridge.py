@@ -215,7 +215,7 @@ def run():
 
         print("the app knows the browser")
         core.action("OpenSettings")
-        core.action("SetSettingsSection", index=2)
+        core.action("SetSettingsSection", index=4)
         core.wait_for("the browsers", lambda: len(core.rows("settingsRows")) > 0, 15)
         core.pump(0.5)
         edge = [r for r in core.rows("settingsRows") if r.get("title") == "Microsoft Edge"]

@@ -62,48 +62,6 @@ struct SettingsDownloadsPage: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            SettingsGroupBox(title: s.speedPresetsTitle, footer: s.speedPresetsFooter) {
-                HStack {
-                    Text(s.speedPresetHigh).font(FJTheme.font.headline)
-                    Spacer()
-                    Text(s.speedLimitUnlimited).font(Font.fj(12, .bold))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                }
-                .padding(16)
-                SettingsDivider()
-                presetRow(s.speedPresetFast, st.speedPresetFastBytes, st.speedPresetFastUnit, .fast)
-                SettingsDivider()
-                presetRow(s.speedPresetMedium, st.speedPresetMediumBytes, st.speedPresetMediumUnit, .medium)
-                SettingsDivider()
-                presetRow(s.speedPresetLow, st.speedPresetLowBytes, st.speedPresetLowUnit, .low)
-            }
-            SettingsScheduleCard(live: live)
-            SettingsGroupBox(title: s.organizeGroup, footer: s.organizeFooter) {
-                SettingsSwitchRow(
-                    title: s.sortIntoFolders,
-                    subtitle: st.sortIntoFolders ? s.sortIntoFoldersOn : s.sortIntoFoldersOff,
-                    isOn: st.sortIntoFolders
-                ) { store.send(DashboardUiEventOnSortIntoFoldersChanged(on: $0)) }
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title: s.groupByFolder,
-                    subtitle: st.groupByFolder ? s.groupByFolderOn : s.groupByFolderOff,
-                    isOn: st.groupByFolder
-                ) { store.send(DashboardUiEventOnGroupByFolderChanged(on: $0)) }
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title: s.videoPlaysEverywhere,
-                    subtitle: st.videoPlaysEverywhere ? s.videoPlaysEverywhereOn : s.videoPlaysEverywhereOff,
-                    isOn: st.videoPlaysEverywhere
-                ) { store.send(DashboardUiEventOnVideoPlaysEverywhereChanged(on: $0)) }
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title: s.extractArchives,
-                    subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
-                    isOn: st.extractArchives
-                ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
-            }
-            SettingsSiteFoldersCard()
             SettingsGroupBox(title: s.homeQueueTitle, footer: s.homeQueueFooter) {
                 SettingsRow(
                     title: s.homeDownloadsAtSameTime,
@@ -131,11 +89,72 @@ struct SettingsDownloadsPage: View {
         }
     }
 
+}
+
+struct SettingsSpeedPage: View {
+    @EnvironmentObject var store: FJStore
+    @ObservedObject var live: SettingsLive
+
+    var body: some View {
+        let s = store.strings
+        let st = store.state
+        VStack(alignment: .leading, spacing: 24) {
+            SettingsGroupBox(title: s.speedPresetsTitle, footer: s.speedPresetsFooter) {
+                HStack {
+                    Text(s.speedPresetHigh).font(FJTheme.font.headline)
+                    Spacer()
+                    Text(s.speedLimitUnlimited).font(Font.fj(12, .bold))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+                .padding(16)
+                SettingsDivider()
+                presetRow(s.speedPresetFast, st.speedPresetFastBytes, st.speedPresetFastUnit, .fast)
+                SettingsDivider()
+                presetRow(s.speedPresetMedium, st.speedPresetMediumBytes, st.speedPresetMediumUnit, .medium)
+                SettingsDivider()
+                presetRow(s.speedPresetLow, st.speedPresetLowBytes, st.speedPresetLowUnit, .low)
+            }
+            SettingsScheduleCard(live: live)
+        }
+    }
+
     private func presetRow(_ name: String, _ bytes: Int64, _ unit: String, _ preset: SpeedPreset) -> some View {
         SettingsSpeedPresetRow(name: name, bytes: bytes, unit: unit, placeholder: store.strings.speedLimitValue) { b, u in
             store.send(DashboardUiEventOnSpeedPresetChanged(preset: preset, bytes: b, unit: u))
         }
         .padding(16)
+    }
+}
+
+struct SettingsFilesPage: View {
+    @EnvironmentObject var store: FJStore
+
+    var body: some View {
+        let s = store.strings
+        let st = store.state
+        VStack(alignment: .leading, spacing: 24) {
+            SettingsGroupBox(title: s.organizeGroup, footer: s.organizeFooter) {
+                SettingsSwitchRow(
+                    title: s.sortIntoFolders,
+                    subtitle: st.sortIntoFolders ? s.sortIntoFoldersOn : s.sortIntoFoldersOff,
+                    isOn: st.sortIntoFolders
+                ) { store.send(DashboardUiEventOnSortIntoFoldersChanged(on: $0)) }
+            }
+            SettingsGroupBox {
+                SettingsSwitchRow(
+                    title: s.groupByFolder,
+                    subtitle: st.groupByFolder ? s.groupByFolderOn : s.groupByFolderOff,
+                    isOn: st.groupByFolder
+                ) { store.send(DashboardUiEventOnGroupByFolderChanged(on: $0)) }
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title: s.extractArchives,
+                    subtitle: st.extractArchives ? s.extractArchivesOn : s.extractArchivesOff,
+                    isOn: st.extractArchives
+                ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
+            }
+            SettingsSiteFoldersCard()
+        }
     }
 }
 

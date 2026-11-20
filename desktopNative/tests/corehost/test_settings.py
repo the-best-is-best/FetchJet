@@ -9,7 +9,7 @@ from corehost import Core, CheckFailed, ENUMS, install_fake_ytdlp
 KIND = {name: index for index, name in enumerate(ENUMS["SettingKind"])}
 TONE = {name: index for index, name in enumerate(ENUMS["ToneCode"])}
 ALERT = {name: index for index, name in enumerate(ENUMS["AlertKind"])}
-GENERAL, DOWNLOADS, BROWSER, DEVICES, NETWORK, MEDIA, UPDATES = range(7)
+GENERAL, DOWNLOADS, SPEED, FILES, BROWSER, DEVICES, NETWORK, MEDIA, UPDATES = range(9)
 
 
 UPDATE_ASSET = "fetchjet_9.9.0_amd64.deb" if sys.platform.startswith("linux") else "FetchJet-9.9.0-arm64.dmg" if sys.platform == "darwin" else "FetchJet-9.9.0.msi"
@@ -63,9 +63,14 @@ def run():
         core.action("OpenSettings")
         core.pump(0.6)
         sections = nav(core).get("sections", [])
-        core.check("seven pages (no torrents yet, the report is hidden)", [s.get("title") for s in sections] == [
-            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionDevices"], strings["sectionNetwork"],
-            strings["sectionMedia"], strings["sectionUpdates"]], [s.get("title") for s in sections])
+        core.check("nine pages (no torrents yet, the report is hidden)", [s.get("title") for s in sections] == [
+            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionSpeed"], strings["sectionFiles"], strings["sectionBrowser"],
+            strings["sectionDevices"], strings["sectionNetwork"], strings["sectionMedia"], strings["sectionUpdates"]], [s.get("title") for s in sections])
+        core.check("speed page says no limit", sections[SPEED].get("hint") == strings["summaryNoSpeedLimit"] and
+                   sections[SPEED].get("hintTone") == TONE["MUTED"], sections[SPEED])
+        core.check("files page names what is on", sections[FILES].get("hint") in (
+            strings["sortIntoFolders"], strings["groupByFolder"], strings["sortIntoFolders"] + " · " + strings["groupByFolder"],
+            strings["settingOff"]), sections[FILES])
         core.check("the first page is shown, the list is still the start", nav(core).get("current", 0) == 0 and
                    not nav(core).get("pageOpen", False) and sections[0].get("selected") and nav(core).get("title") == strings["sectionGeneral"])
         core.check("the home screen knows", core.snapshot("chrome").get("settingsOpen"))
@@ -130,11 +135,26 @@ def run():
         core.check("back to Downloads, the field is told to take it", os.path.normcase(field(core, "destination").get("value", "")) ==
                    os.path.normcase(os.path.normpath(core.downloads)) and field(core, "destination").get("rev", 0) > folder.get("rev", 0))
 
-        print("downloads: connections, presets, queue")
+        print("downloads: connections, queue")
+        core.check("downloads page holds only folder, connections and queue",
+                   row(core, "connections").get("footer") == strings["connectionsFooter"] and row(core, "queue") and
+                   not row(core, "preset.fast") and not row(core, "schedule") and not row(core, "sortIntoFolders") and
+                   not row(core, "videoPlaysEverywhere") and not row(core, "ruleSite") and not row(core, "scanFiles"))
         core.action("SettingPick", id="connections", index=3)
         core.pump(0.4)
         core.check("8 connections picked", row(core, "connections").get("pick") == 4)
         core.action("SettingPick", id="connections", index=0)
+        core.action("SettingPick", id="queue", index=0)
+        core.pump(0.4)
+        core.check("one download at a time", row(core, "queue").get("pick") == 1 and "1" in row(core, "queue").get("subtitle", ""),
+                   row(core, "queue").get("subtitle"))
+        core.check("the summary follows", "1" in hint(core, DOWNLOADS).get("hint", ""), hint(core, DOWNLOADS))
+        core.action("SettingPick", id="queue", index=2)
+
+        print("speed limits: presets")
+        open_page(core, SPEED)
+        core.check("speed page title and blurb", nav(core).get("title") == strings["sectionSpeed"] and nav(core).get("blurb") == strings["sectionSpeedBlurb"])
+        core.check("speed page has no download rows", not row(core, "connections") and not row(core, "queue") and not row(core, "sortIntoFolders"))
         fast = row(core, "preset.fast")
         core.check("fast preset row", fast.get("kind") == KIND["PRESET"] and fast.get("one", {}).get("value") != "" and
                    fast.get("options") == ["KB/s", "MB/s", "Kbps", "Mbps"], fast)
@@ -155,20 +175,8 @@ def run():
         core.action("SettingText", id="preset.fast", text=first_value)
         core.pump(0.4)
         core.check("preset restored", row(core, "preset.fast").get("side") == first_value + " MB/s", row(core, "preset.fast").get("side"))
-        core.action("SettingPick", id="queue", index=0)
-        core.pump(0.4)
-        core.check("one download at a time", row(core, "queue").get("pick") == 1 and "1" in row(core, "queue").get("subtitle", ""),
-                   row(core, "queue").get("subtitle"))
-        core.check("the summary follows", "1" in hint(core, DOWNLOADS).get("hint", ""), hint(core, DOWNLOADS))
-        core.action("SettingPick", id="queue", index=2)
-        was = row(core, "sortIntoFolders").get("checked", False)
-        core.action("SettingToggle", id="sortIntoFolders", on=not was)
-        core.pump(0.4)
-        core.check("sort into folders toggles and its text follows", row(core, "sortIntoFolders").get("checked", False) != was and
-                   row(core, "sortIntoFolders").get("subtitle") == (strings["sortIntoFoldersOff"] if was else strings["sortIntoFoldersOn"]))
-        core.action("SettingToggle", id="sortIntoFolders", on=was)
 
-        print("downloads: speed schedule")
+        print("speed limits: schedule")
         core.check("schedule is off: only the switch", not row(core, "schedule").get("checked", False) and not button(core, "addWindow"))
         core.action("SettingToggle", id="schedule", on=True)
         core.pump(0.4)
@@ -201,7 +209,32 @@ def run():
         core.action("SettingClick", id="window.0.remove")
         core.pump(0.4)
         core.check("removed", not row(core, "window.0.from") and button(core, "addWindow"))
+        core.check("the speed summary names the schedule", hint(core, SPEED).get("hint") == strings["summaryNoSpeedLimit"] + " · " + strings["speedScheduleTitle"],
+                   hint(core, SPEED))
         core.action("SettingToggle", id="schedule", on=False)
+        core.pump(0.3)
+        core.check("schedule off: the summary is back", hint(core, SPEED).get("hint") == strings["summaryNoSpeedLimit"], hint(core, SPEED))
+
+        print("files and folders")
+        open_page(core, FILES)
+        core.check("files page title and blurb", nav(core).get("title") == strings["sectionFiles"] and nav(core).get("blurb") == strings["sectionFilesBlurb"])
+        sort = row(core, "sortIntoFolders")
+        core.check("organize footer sits right under the sort switch", sort.get("first") and sort.get("last") and
+                   sort.get("caption") == strings["organizeGroup"].upper() and sort.get("footer") == strings["organizeFooter"], sort)
+        core.check("files page rows", row(core, "groupByFolder") and row(core, "extractArchives") and row(core, "scanFiles") and
+                   row(core, "ruleSite") and not row(core, "videoPlaysEverywhere") and not row(core, "preset.fast") and not row(core, "queue"))
+        core.check("group by folder starts its own group", row(core, "groupByFolder").get("first") and not row(core, "groupByFolder").get("footer"))
+        was = sort.get("checked", False)
+        group_on = row(core, "groupByFolder").get("checked", False)
+        core.action("SettingToggle", id="sortIntoFolders", on=not was)
+        core.pump(0.4)
+        core.check("sort into folders toggles and its text follows", row(core, "sortIntoFolders").get("checked", False) != was and
+                   row(core, "sortIntoFolders").get("subtitle") == (strings["sortIntoFoldersOff"] if was else strings["sortIntoFoldersOn"]))
+        sort_now = not was
+        expected = (strings["sortIntoFolders"] + " · " + strings["groupByFolder"] if sort_now and group_on else
+                    strings["sortIntoFolders"] if sort_now else strings["groupByFolder"] if group_on else strings["settingOff"])
+        core.check("the files summary follows", hint(core, FILES).get("hint") == expected, hint(core, FILES))
+        core.action("SettingToggle", id="sortIntoFolders", on=was)
         core.pump(0.3)
 
         print("network: proxy")
@@ -270,6 +303,18 @@ def run():
         core.check("it stands outside the card", any(r.get("bare") and r.get("kind") == KIND["BUTTONS"] for r in listed))
         core.check("the tools folder row opens the folder", row(core, "toolsFolder").get("clickable") and
                    os.path.normcase(row(core, "toolsFolder").get("subtitle", "")).startswith(os.path.normcase(os.path.normpath(core.home))))
+        plays = row(core, "videoPlaysEverywhere")
+        core.check("the 'videos that play everywhere' switch is on the media page", plays.get("kind") == KIND["SWITCH"] and
+                   plays.get("title") == strings["videoPlaysEverywhere"] and
+                   plays.get("subtitle") == (strings["videoPlaysEverywhereOn"] if plays.get("checked") else strings["videoPlaysEverywhereOff"]), plays)
+        was = plays.get("checked", False)
+        core.action("SettingToggle", id="videoPlaysEverywhere", on=not was)
+        core.pump(0.4)
+        core.check("it toggles and its text follows", row(core, "videoPlaysEverywhere").get("checked", False) != was and
+                   row(core, "videoPlaysEverywhere").get("subtitle") == (strings["videoPlaysEverywhereOff"] if was else strings["videoPlaysEverywhereOn"]),
+                   row(core, "videoPlaysEverywhere"))
+        core.action("SettingToggle", id="videoPlaysEverywhere", on=was)
+        core.pump(0.3)
 
         print("updates")
         open_page(core, UPDATES)
@@ -338,8 +383,8 @@ def run():
         core.pump(0.5)
         titles = [s.get("title") for s in nav(core).get("sections", [])]
         core.check("all nine pages in the desktop order (hidden ones shown for tests)", titles == [
-            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionBrowser"], strings["sectionDevices"],
-            strings["sectionNetwork"], strings["sectionMedia"], strings["sectionTorrent"], strings["sectionReport"], strings["sectionUpdates"]], titles)
+            strings["sectionGeneral"], strings["sectionDownloads"], strings["sectionSpeed"], strings["sectionFiles"], strings["sectionBrowser"],
+            strings["sectionDevices"], strings["sectionNetwork"], strings["sectionMedia"], strings["sectionTorrent"], strings["sectionReport"], strings["sectionUpdates"]], titles)
         open_page(core, titles.index(strings["sectionTorrent"]))
         chips = row(core, "uploadLimit")
         core.check("upload limit: six choices, no limit picked", len(chips.get("options", [])) == 6 and chips.get("pick") == 1 and

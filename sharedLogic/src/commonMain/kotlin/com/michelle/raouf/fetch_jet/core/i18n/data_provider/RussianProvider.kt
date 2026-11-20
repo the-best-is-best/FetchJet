@@ -575,6 +575,8 @@ object RussianProvider : AppLocalization {
     override val sectionGeneralBlurb = "Внешний вид приложения и запуск"
     override val sectionDownloads = "Загрузки"
     override val sectionDownloadsBlurb = "Куда сохранять файлы и сколько качать одновременно"
+    override val sectionFiles = "Файлы и папки"
+    override val sectionFilesBlurb = "Как готовые файлы сортируются, показываются, открываются и удаляются"
     override val sectionBrowser = "Расширение браузера"
     override val sectionBrowserBlurb = "Отправляйте ссылки и видео из браузера в FetchJet"
     override val sectionSpeed = "Ограничение скорости"
@@ -631,7 +633,7 @@ object RussianProvider : AppLocalization {
     override val settingsUseDownloads = "Использовать «Загрузки»"
     override val settingsConnectionsGroup = "Соединения"
     override val connectionsFooter =
-        "На сколько частей делится прямая загрузка. Каждая часть — отдельное соединение; когда одна завершается, она берёт половину самой большой оставшейся части, чтобы ни одна не простаивала. «Авто» выбирает по размеру файла (4–8). Некоторые серверы ограничивают число соединений на клиента."
+        "На сколько частей делится прямая загрузка. Каждая часть — отдельное соединение; когда одна завершается, она берёт половину самой большой оставшейся части, чтобы ни одна не простаивала. «Авто» выбирает по размеру файла (4–32). Некоторые серверы ограничивают число соединений на клиента."
     override val settingsConnectionsPerDownload = "Соединений на загрузку"
     override val settingsConnectionsAuto = "Авто"
     override val organizeGroup = "Сортировка"

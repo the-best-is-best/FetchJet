@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,115 +41,127 @@ internal fun MediaToolsPage(
     toolDownloadName: String?,
     toolDownloadFraction: Float?,
     pathResolver: PathResolver,
-    onDownloadYtDlpClicked: () -> Unit
+    onDownloadYtDlpClicked: () -> Unit,
+    showTools: Boolean = true
 ) {
     val ready = isYtDlpInstalled && isFfmpegInstalled
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        SettingsGroup(title = LocalizationManager.Strings.mediaToolsGroup) {
-            SettingRow("yt-dlp", LocalizationManager.Strings.ytDlpHint) {
-                if (isYtDlpInstalled) StatusLabel(
-                    LocalizationManager.Strings.settingsReady,
-                    StatusCompleted
-                )
-                else StatusLabel(
-                    LocalizationManager.Strings.settingsMissing,
-                    MaterialTheme.colorScheme.error
-                )
-            }
-            SettingDivider()
-            SettingRow("FFmpeg", LocalizationManager.Strings.ffmpegHint) {
-                if (isFfmpegInstalled) StatusLabel(
-                    LocalizationManager.Strings.settingsReady,
-                    StatusCompleted
-                )
-                else StatusLabel(LocalizationManager.Strings.ffmpegMissing, StatusPaused)
-            }
-            if (jsRuntimeName.isNotBlank()) {
-                SettingDivider()
-                SettingRow(
-                    LocalizationManager.Strings.jsRuntimeTitle(jsRuntimeName),
-                    LocalizationManager.Strings.jsRuntimeHint
-                ) {
-                    if (isJsRuntimeReady) StatusLabel(
+        val videoPlaysEverywhere by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.collectAsState()
+        SettingsGroup {
+            SettingSwitch(
+                title = LocalizationManager.Strings.videoPlaysEverywhere,
+                subtitle = if (videoPlaysEverywhere) LocalizationManager.Strings.videoPlaysEverywhereOn else LocalizationManager.Strings.videoPlaysEverywhereOff,
+                checked = videoPlaysEverywhere,
+                onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVideoPlaysEverywhere(it) }
+            )
+        }
+        if (showTools) {
+            SettingsGroup(title = LocalizationManager.Strings.mediaToolsGroup) {
+                SettingRow("yt-dlp", LocalizationManager.Strings.ytDlpHint) {
+                    if (isYtDlpInstalled) StatusLabel(
                         LocalizationManager.Strings.settingsReady,
                         StatusCompleted
                     )
                     else StatusLabel(
-                        LocalizationManager.Strings.missingPress(if (isYtDlpInstalled && isFfmpegInstalled) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools),
-                        StatusPaused
+                        LocalizationManager.Strings.settingsMissing,
+                        MaterialTheme.colorScheme.error
                     )
                 }
-            }
-            if (toolsDirectoryPath.isNotBlank()) {
                 SettingDivider()
-                SettingRow(
-                    title = LocalizationManager.Strings.mediaToolsFolder,
-                    subtitle = toolsDirectoryPath,
-                    onClick = { pathResolver.openDirectoryInExplorer(toolsDirectoryPath) }
-                ) {
-                    Text(
-                        LocalizationManager.Strings.open,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
+                SettingRow("FFmpeg", LocalizationManager.Strings.ffmpegHint) {
+                    if (isFfmpegInstalled) StatusLabel(
+                        LocalizationManager.Strings.settingsReady,
+                        StatusCompleted
                     )
+                    else StatusLabel(LocalizationManager.Strings.ffmpegMissing, StatusPaused)
+                }
+                if (jsRuntimeName.isNotBlank()) {
+                    SettingDivider()
+                    SettingRow(
+                        LocalizationManager.Strings.jsRuntimeTitle(jsRuntimeName),
+                        LocalizationManager.Strings.jsRuntimeHint
+                    ) {
+                        if (isJsRuntimeReady) StatusLabel(
+                            LocalizationManager.Strings.settingsReady,
+                            StatusCompleted
+                        )
+                        else StatusLabel(
+                            LocalizationManager.Strings.missingPress(if (isYtDlpInstalled && isFfmpegInstalled) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools),
+                            StatusPaused
+                        )
+                    }
+                }
+                if (toolsDirectoryPath.isNotBlank()) {
+                    SettingDivider()
+                    SettingRow(
+                        title = LocalizationManager.Strings.mediaToolsFolder,
+                        subtitle = toolsDirectoryPath,
+                        onClick = { pathResolver.openDirectoryInExplorer(toolsDirectoryPath) }
+                    ) {
+                        Text(
+                            LocalizationManager.Strings.open,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val content: @Composable () -> Unit = {
-                if (isDownloadingYtDlp) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        when {
-                            toolDownloadName == null -> if (ready) LocalizationManager.Strings.mediaUpdatingTools else LocalizationManager.Strings.mediaDownloadingTools
-                            toolDownloadFraction == null -> LocalizationManager.Strings.mediaDownloadingTool(
-                                toolDownloadName
-                            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val content: @Composable () -> Unit = {
+                    if (isDownloadingYtDlp) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            when {
+                                toolDownloadName == null -> if (ready) LocalizationManager.Strings.mediaUpdatingTools else LocalizationManager.Strings.mediaDownloadingTools
+                                toolDownloadFraction == null -> LocalizationManager.Strings.mediaDownloadingTool(
+                                    toolDownloadName
+                                )
 
-                            else -> LocalizationManager.Strings.mediaDownloadingToolPercent(
-                                toolDownloadName,
-                                (toolDownloadFraction * 100).toInt()
-                            )
-                        }
+                                else -> LocalizationManager.Strings.mediaDownloadingToolPercent(
+                                    toolDownloadName,
+                                    (toolDownloadFraction * 100).toInt()
+                                )
+                            }
+                        )
+                    } else {
+                        Text(
+                            if (ready) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                if (ready) {
+                    OutlinedButton(
+                        onClick = onDownloadYtDlpClicked,
+                        enabled = !isDownloadingYtDlp,
+                        shape = RoundedCornerShape(10.dp)
+                    ) { content() }
+                } else {
+                    Button(
+                        onClick = onDownloadYtDlpClicked,
+                        enabled = !isDownloadingYtDlp,
+                        shape = RoundedCornerShape(10.dp)
+                    ) { content() }
+                }
+            }
+            if (isDownloadingYtDlp && toolDownloadName != null) {
+                if (toolDownloadFraction != null) {
+                    LinearProgressIndicator(
+                        progress = { toolDownloadFraction },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    Text(
-                        if (ready) LocalizationManager.Strings.mediaUpdateTools else LocalizationManager.Strings.mediaDownloadTheTools,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
-            if (ready) {
-                OutlinedButton(
-                    onClick = onDownloadYtDlpClicked,
-                    enabled = !isDownloadingYtDlp,
-                    shape = RoundedCornerShape(10.dp)
-                ) { content() }
-            } else {
-                Button(
-                    onClick = onDownloadYtDlpClicked,
-                    enabled = !isDownloadingYtDlp,
-                    shape = RoundedCornerShape(10.dp)
-                ) { content() }
-            }
-        }
-        if (isDownloadingYtDlp && toolDownloadName != null) {
-            if (toolDownloadFraction != null) {
-                LinearProgressIndicator(
-                    progress = { toolDownloadFraction },
-                    modifier = Modifier.fillMaxWidth()
+            if (ytDlpStatus.isNotBlank()) {
+                Text(
+                    localizeStep(ytDlpStatus),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
-        }
-        if (ytDlpStatus.isNotBlank()) {
-            Text(
-                localizeStep(ytDlpStatus),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

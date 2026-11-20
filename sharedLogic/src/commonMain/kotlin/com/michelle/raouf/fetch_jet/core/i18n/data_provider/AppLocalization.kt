@@ -496,6 +496,8 @@ interface AppLocalization : LocalizationProvider {
     val sectionGeneralBlurb: String
     val sectionDownloads: String
     val sectionDownloadsBlurb: String
+    val sectionFiles: String
+    val sectionFilesBlurb: String
     val sectionBrowser: String
     val sectionBrowserBlurb: String
     val sectionSpeed: String

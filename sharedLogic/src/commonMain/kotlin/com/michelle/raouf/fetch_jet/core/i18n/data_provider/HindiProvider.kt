@@ -560,6 +560,8 @@ object HindiProvider : AppLocalization {
     override val sectionGeneralBlurb = "ऐप का रूप और यह कैसे शुरू होता है"
     override val sectionDownloads = "डाउनलोड"
     override val sectionDownloadsBlurb = "फ़ाइलें कहां जाएं और कितने एक साथ चलें"
+    override val sectionFiles = "फ़ाइलें और फ़ोल्डर"
+    override val sectionFilesBlurb = "पूरी हुई फ़ाइलें कैसे छाँटी, दिखाई, खोली और हटाई जाती हैं"
     override val sectionBrowser = "ब्राउज़र एक्सटेंशन"
     override val sectionBrowserBlurb = "अपने ब्राउज़र से लिंक और वीडियो FetchJet पर भेजें"
     override val sectionSpeed = "स्पीड सीमा"
@@ -616,7 +618,7 @@ object HindiProvider : AppLocalization {
     override val settingsUseDownloads = "डाउनलोड फ़ोल्डर इस्तेमाल करें"
     override val settingsConnectionsGroup = "कनेक्शन"
     override val connectionsFooter =
-        "एक डायरेक्ट डाउनलोड कितने हिस्सों में बंटे। हर हिस्सा एक कनेक्शन है; एक पूरा होते ही वह बचे हुए सबसे बड़े हिस्से का आधा ले लेता है, ताकि कोई खाली न बैठे। ऑटो फ़ाइल साइज़ के हिसाब से चुनता है (4–8)। कुछ सर्वर हर क्लाइंट के कनेक्शन सीमित करते हैं।"
+        "एक डायरेक्ट डाउनलोड कितने हिस्सों में बंटे। हर हिस्सा एक कनेक्शन है; एक पूरा होते ही वह बचे हुए सबसे बड़े हिस्से का आधा ले लेता है, ताकि कोई खाली न बैठे। ऑटो फ़ाइल साइज़ के हिसाब से चुनता है (4–32)। कुछ सर्वर हर क्लाइंट के कनेक्शन सीमित करते हैं।"
     override val settingsConnectionsPerDownload = "हर डाउनलोड के कनेक्शन"
     override val settingsConnectionsAuto = "ऑटो"
     override val organizeGroup = "व्यवस्थित करें"
