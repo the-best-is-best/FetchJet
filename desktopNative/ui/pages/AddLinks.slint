@@ -97,11 +97,26 @@ component LinkRow inherits VerticalLayout {
             x: Dir.rtl ? parent.width - 44px : 4px;
             width: 40px;
             height: 40px;
-            CheckBox {
-                enabled: !root.data.rowLocked;
+            if !root.data.rowLocked: CheckBox {
                 checked: root.data.selected;
                 label: root.data.title;
                 toggled(on) => { Act.toggleLink(root.data.index, on); }
+            }
+            if root.data.rowLocked: Rectangle {
+                width: 20px;
+                height: 20px;
+                border-radius: 2px;
+                background: Theme.on-surface.with-alpha(0.14);
+                Path {
+                    width: 20px;
+                    height: 20px;
+                    viewbox-width: 20;
+                    viewbox-height: 20;
+                    commands: "M 4 10 L 8 14 L 16 6";
+                    stroke: Theme.on-surface.with-alpha(0.45);
+                    stroke-width: 2px;
+                    fill: transparent;
+                }
             }
         }
         tag := Rectangle {
@@ -231,21 +246,38 @@ component GrabRow inherits Rectangle {
         : root.data.tagCode == LinkTagCode.video ? #E879F9 : #38BDF8;
     height: 56px;
     ta := TouchArea {
+        enabled: !root.data.rowLocked;
         clicked => { Act.toggleLink(root.data.index, !root.data.selected); }
     }
     Hover {
-        hovered: ta.has-hover;
-        pressed: ta.pressed;
+        hovered: ta.has-hover && !root.data.rowLocked;
+        pressed: ta.pressed && !root.data.rowLocked;
     }
     Rectangle {
         x: Dir.rtl ? parent.width - 44px : 4px;
         y: 8px;
         width: 40px;
         height: 40px;
-        CheckBox {
+        if !root.data.rowLocked: CheckBox {
             checked: root.data.selected;
             label: root.data.title;
             toggled(on) => { Act.toggleLink(root.data.index, on); }
+        }
+        if root.data.rowLocked: Rectangle {
+            width: 20px;
+            height: 20px;
+            border-radius: 2px;
+            background: Theme.on-surface.with-alpha(0.14);
+            Path {
+                width: 20px;
+                height: 20px;
+                viewbox-width: 20;
+                viewbox-height: 20;
+                commands: "M 4 10 L 8 14 L 16 6";
+                stroke: Theme.on-surface.with-alpha(0.45);
+                stroke-width: 2px;
+                fill: transparent;
+            }
         }
     }
     tag := Rectangle {
@@ -273,6 +305,7 @@ component GrabRow inherits Rectangle {
         text: root.data.title;
         font-size: 13px;
         font-weight: 600;
+        color: root.data.rowLocked ? Theme.on-surface-variant : Theme.on-surface;
         overflow: elide;
     }
     T {

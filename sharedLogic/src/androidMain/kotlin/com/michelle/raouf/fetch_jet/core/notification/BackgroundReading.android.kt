@@ -61,16 +61,19 @@ class ReadingForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val (title, text) = BackgroundReading.current() ?: run {
-            stopSelf()
-            return START_NOT_STICKY
-        }
+        val (title, text) = BackgroundReading.current() ?: ("FetchJet" to "")
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
         try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, build(this, title, text), type)
         } catch (_: Exception) {
+            starting = false
             stopSelf()
             return START_NOT_STICKY
+        }
+        starting = false
+        if (stopWanted || BackgroundReading.current() == null) {
+            stopWanted = false
+            stopSelf()
         }
         return START_NOT_STICKY
     }
@@ -79,12 +82,21 @@ class ReadingForegroundService : Service() {
         private const val CHANNEL_ID = "fetchjet_reading"
         private const val NOTIFICATION_ID = 7303
 
+        @Volatile
+        private var starting = false
+
+        @Volatile
+        private var stopWanted = false
+
         fun start(context: Context) {
+            stopWanted = false
+            starting = true
             try {
                 androidx.core.content.ContextCompat.startForegroundService(
                     context, Intent(context, ReadingForegroundService::class.java)
                 )
             } catch (_: Exception) {
+                starting = false
             }
         }
 
@@ -98,6 +110,10 @@ class ReadingForegroundService : Service() {
         }
 
         fun stop(context: Context) {
+            if (starting) {
+                stopWanted = true
+                return
+            }
             try {
                 context.stopService(Intent(context, ReadingForegroundService::class.java))
             } catch (_: Exception) {
