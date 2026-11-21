@@ -289,7 +289,7 @@ component GrabRow inherits Rectangle {
         text: root.data.title;
         font-size: 13px;
         font-weight: 600;
-        color: root.data.rowLocked ? Theme.on-surface-variant : Theme.on-surface;
+        color: root.data.rowLocked ? Theme.on-surface.with-alpha(0.5) : Theme.on-surface;
         overflow: elide;
     }
     T {
@@ -382,27 +382,27 @@ export component GrabCard inherits Rectangle {
                 overflow: elide;
             }
         }
-        if !Core.add.grabRunning: Rectangle {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: Rectangle {
             height: 8px;
         }
-        if !Core.add.grabRunning: T {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: T {
             text: Tr.grabHow;
             font-size: 11px;
             color: Theme.on-surface-variant;
             overflow: elide;
         }
-        if !Core.add.grabRunning: Rectangle {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: Rectangle {
             height: 4px;
         }
-        if !Core.add.grabRunning: SegChoice {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: SegChoice {
             options: [Tr.grabDepthShort1, Tr.grabDepthShort2, Tr.grabDepthShort3];
             pick: root.depth-pick;
             picked(i) => { Act.setGrabDepth(i + 1); }
         }
-        if !Core.add.grabRunning: Rectangle {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: Rectangle {
             height: 6px;
         }
-        if !Core.add.grabRunning: T {
+        if !Core.add.grabRunning && !Core.add.grabDepthHidden: T {
             text: root.depth-pick == 0 ? Tr.grabDepth1 : root.depth-pick == 1 ? Tr.grabDepth2 : Tr.grabDepth3;
             font-size: 11px;
             color: Theme.on-surface-variant;
@@ -495,7 +495,7 @@ export component LinkListSection inherits VerticalLayout {
             font-weight: 600;
             overflow: elide;
         }
-        TextButton {
+        if Core.add.linkPickable: TextButton {
             text: Core.add.linkAllSelected ? Tr.selectNone : Tr.selectAll;
             font-size: 12px;
             font-weight: 600;

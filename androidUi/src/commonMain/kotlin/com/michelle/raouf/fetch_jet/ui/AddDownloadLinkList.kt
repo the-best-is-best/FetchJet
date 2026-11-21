@@ -73,22 +73,24 @@ internal fun LinkListSection(
     onRetryInspect: (Int) -> Unit = {},
     grabGroups: List<GrabGroup> = emptyList(),
     grabNote: String = "",
-    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> }
+    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> },
+    hiddenKinds: Set<String> = emptySet()
 ) {
-    val selected = links.count { it.isSelected }
-    val pickable = links.count { !it.downloadedBefore }
+    val shown = links.withIndex().filter { !(it.value.folder.isNotBlank() && it.value.folder in hiddenKinds) }
+    val selected = shown.count { it.value.isSelected }
+    val pickable = shown.count { !it.value.downloadedBefore }
     val allSelected = pickable > 0 && selected == pickable
-    val before = links.count { it.downloadedBefore }
+    val before = shown.count { it.value.downloadedBefore }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            LocalizationManager.Strings.selectedOfLinks(selected, links.size) +
+            LocalizationManager.Strings.selectedOfLinks(selected, shown.size) +
                     if (before > 0) " · " + LocalizationManager.Strings.grabDownloadedCount.replace("%1", before.toString()) else "",
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = { onSelectAll(!allSelected) }) {
+        if (pickable > 0) TextButton(onClick = { onSelectAll(!allSelected) }) {
             Text(
                 if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
@@ -127,8 +129,8 @@ internal fun LinkListSection(
     }
     val lazyRows = links.any { it.folder.isNotBlank() }
     @Composable
-    fun EntryBlock(index: Int, link: LinkListEntry) {
-                if (index > 0) {
+    fun EntryBlock(position: Int, index: Int, link: LinkListEntry) {
+                if (position > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 }
                 LinkRow(link) { onToggled(index, it) }
@@ -199,11 +201,11 @@ internal fun LinkListSection(
     ) {
         if (lazyRows) {
             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                itemsIndexed(links) { index, link -> EntryBlock(index, link) }
+                itemsIndexed(shown) { position, row -> EntryBlock(position, row.index, row.value) }
             }
         } else {
             Column {
-                links.forEachIndexed { index, link -> EntryBlock(index, link) }
+                shown.forEachIndexed { position, row -> EntryBlock(position, row.index, row.value) }
             }
         }
     }
@@ -257,7 +259,8 @@ internal fun GrabCard(
     showNote: Boolean,
     onFind: () -> Unit,
     onStop: () -> Unit,
-    onDepth: (Int) -> Unit
+    onDepth: (Int) -> Unit,
+    showDepth: Boolean = true
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -287,6 +290,7 @@ internal fun GrabCard(
                     }
                 }
             } else {
+                if (showDepth) {
                 Text(
                     LocalizationManager.Strings.grabHow,
                     fontSize = 11.sp,
@@ -304,6 +308,7 @@ internal fun GrabCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                 )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onFind,
@@ -322,7 +327,14 @@ internal fun GrabCard(
 
 @Composable
 private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
-    val (tag, tagColor) = when (link.engine) {
+    val (tag, tagColor) = if (link.folder.isNotBlank()) {
+        com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagOf(link.fileName ?: link.url, link.folder) to
+                when (com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagKindOf(link.folder)) {
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.VIDEO -> Color(0xFFE879F9)
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.AUDIO -> Color(0xFFFBBF24)
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.OTHER -> Color(0xFF38BDF8)
+                }
+    } else when (link.engine) {
         EngineType.MEDIA_STREAM -> if (link.mediaQualities.isAllAudio())
             LocalizationManager.Strings.linkTagAudio to Color(0xFFFBBF24)
         else LocalizationManager.Strings.linkTagVideo to Color(0xFFE879F9)
@@ -351,7 +363,7 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = if (link.downloadedBefore) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                color = if (link.downloadedBefore) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 if (grabbed) {

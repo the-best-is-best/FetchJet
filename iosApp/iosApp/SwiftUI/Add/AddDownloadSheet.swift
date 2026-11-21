@@ -14,12 +14,17 @@ struct AddDownloadSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 AddHeader { close() }
                 AddUrlSection()
+                if s.checkingLink {
+                    Text(strings.addCheckingLink)
+                        .font(.fj(12, .regular))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
                 if s.canGrabPage { AddGrabCard() }
                 if v.showsLinkList {
                     AddLinkListSection()
                     if s.subtitlesOffered { AddSubtitlesCard() }
                 } else {
-                    AddEngineSelector()
+                    if s.engineChoiceShown { AddEngineSelector() }
                     if s.detectedEngine == .bittorrent { AddTorrentSection() }
                     if s.detectedEngine == .mediaStream { AddMediaSection(validity: v) }
                 }

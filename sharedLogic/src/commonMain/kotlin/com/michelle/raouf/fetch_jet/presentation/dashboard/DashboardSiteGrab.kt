@@ -55,18 +55,33 @@ internal fun DashboardViewModel.handleSiteGrabEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnGrabDepthChanged ->
             _uiState.update { it.copy(siteGrab = it.siteGrab.copy(depth = event.depth.coerceIn(1, 3))) }
 
-        is DashboardUiEvent.OnGrabGroupToggled -> _uiState.update { st ->
-            st.copy(linkList = st.linkList.map { if (it.folder == event.folder && !it.downloadedBefore) it.copy(isSelected = event.selected) else it })
-        }
+        is DashboardUiEvent.OnGrabGroupToggled -> _uiState.update { it.withKindShown(event.folder, event.selected) }
 
         else -> Unit
     }
 }
 
-internal fun DashboardViewModel.stopPageGrab() {
+internal fun DashboardViewModel.cancelPageGrab() {
     siteGrabJob?.cancel()
     siteGrabJob = null
-    _uiState.update { it.copy(siteGrab = it.siteGrab.copy(running = false)) }
+}
+
+internal fun DashboardViewModel.stopPageGrab() {
+    val wasRunning = _uiState.value.siteGrab.running
+    cancelPageGrab()
+    if (!wasRunning) return
+    val url = _uiState.value.inputUrl.trim()
+    _uiState.update { st ->
+        val count = st.linkList.count { it.folder.isNotBlank() }
+        st.copy(
+            siteGrab = st.siteGrab.copy(
+                running = false,
+                note = if (count > 0) LocalizationManager.Strings.grabStopped.replace("%1", count.toString()) else ""
+            )
+        )
+    }
+    val wanted = _uiState.value.linkList.filter { it.folder.isNotBlank() && it.sizeBytes < 0 }.take(SIZE_PROBES)
+    if (wanted.isNotEmpty()) siteGrabJob = scope.launch { fillSizes(HttpPageFetcher(headersForLink(url)), url, wanted) }
 }
 
 internal fun DashboardViewModel.startPageGrab() {
@@ -74,39 +89,69 @@ internal fun DashboardViewModel.startPageGrab() {
     val url = state.inputUrl.trim()
     if (!state.canGrabPage || state.siteGrab.running) return
     siteGrabJob?.cancel()
-    _uiState.update { it.copy(siteGrab = it.siteGrab.copy(running = true, pagesRead = 0, note = ""), errorMessage = null) }
+    val known = queueRepository.allTasksFlow.value.flatMap { listOfNotNull(it.url, it.originalUrl) }
+        .map { it.trim().lowercase() }.toSet()
+    _uiState.update {
+        it.copy(
+            linkList = emptyList(),
+            linkListFolder = "",
+            siteGrab = it.siteGrab.copy(running = true, pagesRead = 0, note = "", title = "", hiddenKinds = emptySet()),
+            errorMessage = null
+        )
+    }
     siteGrabJob = scope.launch {
         val strings = LocalizationManager.Strings
         try {
             val fetcher = HttpPageFetcher(headersForLink(url))
-            val result = SiteGrabber(fetcher).grab(url, GrabOptions(depth = state.siteGrab.depth)) { progress ->
-                _uiState.update { it.copy(siteGrab = it.siteGrab.copy(pagesRead = progress.pagesRead)) }
-            }
-            val known = queueRepository.allTasksFlow.value.flatMap { listOfNotNull(it.url, it.originalUrl) }
-                .map { it.trim().lowercase() }.toSet()
-            val entries = result.files.map { file ->
-                val before = file.url.trim().lowercase() in known
-                LinkListEntry(
-                    isSelected = !before,
-                    downloadedBefore = before,
-                    url = file.url,
-                    engine = EngineType.HTTP_DIRECT,
-                    fileName = file.name,
-                    sizeBytes = file.size,
-                    folder = file.folder,
-                    sourcePage = file.page
-                )
-            }
-            val host = PageLinks.nameOf(url, result.title)
+            val result = SiteGrabber(fetcher).grab(
+                url,
+                GrabOptions(depth = state.siteGrab.depth),
+                onProgress = { progress ->
+                    _uiState.update { st ->
+                        if (!st.siteGrab.running || st.inputUrl.trim() != url) st
+                        else {
+                            val title = progress.title.ifBlank { st.siteGrab.title }
+                            st.copy(
+                                siteGrab = st.siteGrab.copy(pagesRead = progress.pagesRead, title = title),
+                                linkListFolder = if (st.linkList.isEmpty()) "" else PageLinks.nameOf(url, title)
+                            )
+                        }
+                    }
+                },
+                onFiles = { batch ->
+                    val entries = batch.map { file ->
+                        val before = file.url.trim().lowercase() in known
+                        LinkListEntry(
+                            isSelected = !before,
+                            downloadedBefore = before,
+                            url = file.url,
+                            engine = EngineType.HTTP_DIRECT,
+                            fileName = file.name,
+                            sizeBytes = file.size,
+                            folder = file.folder,
+                            sourcePage = file.page
+                        )
+                    }
+                    _uiState.update { st ->
+                        if (!st.siteGrab.running || st.inputUrl.trim() != url) st
+                        else {
+                            val have = st.linkList.mapTo(HashSet()) { it.url }
+                            val added = entries.filter { it.url !in have }
+                            if (added.isEmpty()) st
+                            else st.withGrabbedFiles(added).copy(linkListFolder = PageLinks.nameOf(url, st.siteGrab.title))
+                        }
+                    }
+                }
+            )
             _uiState.update {
                 if (it.inputUrl.trim() != url) it.copy(siteGrab = it.siteGrab.copy(running = false))
                 else it.copy(
-                    linkList = entries,
-                    linkListFolder = if (entries.isEmpty()) "" else host,
+                    linkListFolder = if (it.linkList.isEmpty()) "" else PageLinks.nameOf(url, result.title),
                     siteGrab = it.siteGrab.copy(running = false, pagesRead = result.pagesRead, note = grabNote(result), title = result.title)
                 )
             }
-            fillSizes(fetcher, url, entries.filter { it.sizeBytes < 0 }.take(SIZE_PROBES))
+            val wanted = _uiState.value.linkList.filter { it.folder.isNotBlank() && it.sizeBytes < 0 }.take(SIZE_PROBES)
+            fillSizes(fetcher, url, wanted)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

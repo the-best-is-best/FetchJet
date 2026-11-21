@@ -1,6 +1,11 @@
 package com.michelle.raouf.fetch_jet.feature.site_grabber
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -158,6 +163,7 @@ class SiteGrabberTest {
         assertEquals("the-best-is-best", PageLinks.nameOf("https://github.com/the-best-is-best", "GitHub - the-best-is-best"))
         assertEquals("hello", PageLinks.nameOf("https://ftp.gnu.org/gnu/hello/", "Index of /gnu/hello"))
         assertEquals("example.com", PageLinks.nameOf("https://example.com/", ""))
+        assertEquals("page3", PageLinks.nameOf("http://127.0.0.1:18200/site/page3.html", ""))
     }
 
     @Test
@@ -167,5 +173,121 @@ class SiteGrabberTest {
         assertEquals("", PageLinks.titleOf("<html></html>"))
         val result = SiteGrabber(Fake(mapOf(start to "<title>My files</title><a href='a.zip'>a</a>"))).grab(start)
         assertEquals("My files", result.title)
+    }
+
+    private class Scripted(val handler: (String) -> FetchedPage?, val probes: Map<String, FileProbe> = emptyMap(), val hold: CompletableDeferred<Unit>? = null) : PageFetcher {
+        val asked = ArrayList<String>()
+        override suspend fun page(url: String): FetchedPage {
+            asked.add(url)
+            return handler(url) ?: FetchedPage(404, url, "text/html", "")
+        }
+
+        override suspend fun probe(url: String): FileProbe? {
+            hold?.await()
+            return probes[url]
+        }
+    }
+
+    private val repo = "https://github.com/the-best-is-best/FetchJet"
+    private val fragment = GITHUB_RELEASE_FRAGMENT + "<a href=\"/the-best-is-best/FetchJet/issues\">Issues</a><a href=\"/the-best-is-best/FetchJet/releases/tag/v1.4.1\">Older</a>"
+
+    @Test
+    fun aGitHubReleasePageReadsOnlyItsAssetsFragment() = runBlocking {
+        val fake = Scripted({ url -> if (url == "$repo/releases/expanded_assets/v1.5.0") FetchedPage(200, url, "text/html", fragment) else null })
+        val result = SiteGrabber(fake).grab("$repo/releases/tag/v1.5.0", GrabOptions(depth = 3))
+        assertEquals(listOf("$repo/releases/expanded_assets/v1.5.0"), fake.asked)
+        val byName = result.files.associateBy { it.name }
+        assertEquals(
+            setOf("FetchJet-1.5.0-arm64.dmg", "FetchJet-1.5.0-arm64.dmg.sig", "FetchJet-1.5.0-setup.exe", "FetchJet-1.5.0.zip", "FetchJet-1.5.0.tar.gz"),
+            byName.keys
+        )
+        assertEquals("$repo/releases/download/v1.5.0/FetchJet-1.5.0-arm64.dmg", byName.getValue("FetchJet-1.5.0-arm64.dmg").url)
+        assertEquals("$repo/archive/refs/tags/v1.5.0.zip", byName.getValue("FetchJet-1.5.0.zip").url)
+        assertEquals((28.5 * 1024 * 1024).toLong(), byName.getValue("FetchJet-1.5.0-arm64.dmg").size)
+        assertEquals(96L, byName.getValue("FetchJet-1.5.0-arm64.dmg.sig").size)
+        assertEquals(-1L, byName.getValue("FetchJet-1.5.0.zip").size)
+        assertEquals("Programs", byName.getValue("FetchJet-1.5.0-setup.exe").folder)
+        assertEquals("FetchJet v1.5.0", result.title)
+        assertEquals(1, result.pagesRead)
+    }
+
+    @Test
+    fun latestResolvesTheTagFromTheRedirect() = runBlocking {
+        val fake = Scripted({ url ->
+            when (url) {
+                "$repo/releases/latest" -> FetchedPage(200, "$repo/releases/tag/v1.5.0", "text/html", "<a href='/the-best-is-best/FetchJet/issues'>x</a>")
+                "$repo/releases/expanded_assets/v1.5.0" -> FetchedPage(200, url, "text/html", fragment)
+                else -> null
+            }
+        })
+        val result = SiteGrabber(fake).grab("$repo/releases/latest")
+        assertEquals(listOf("$repo/releases/latest", "$repo/releases/expanded_assets/v1.5.0"), fake.asked)
+        assertEquals(5, result.files.size)
+    }
+
+    @Test
+    fun theReleaseListReadsAtMostTenReleases() = runBlocking {
+        val tags = (1..14).map { "v1.$it" }
+        val list = tags.joinToString("") { "<a href=\"/the-best-is-best/FetchJet/releases/tag/$it\">$it</a>" } + "<a href=\"/the-best-is-best/FetchJet/issues\">i</a>"
+        val fake = Scripted({ url ->
+            when {
+                url == "$repo/releases" -> FetchedPage(200, url, "text/html", list)
+                url.startsWith("$repo/releases/expanded_assets/") -> {
+                    val tag = url.substringAfterLast('/')
+                    FetchedPage(200, url, "text/html", "<a href=\"/the-best-is-best/FetchJet/releases/download/$tag/app-$tag.apk\">x</a>")
+                }
+                else -> null
+            }
+        })
+        val result = SiteGrabber(fake).grab("$repo/releases")
+        assertEquals(11, fake.asked.size)
+        assertEquals(10, result.files.size)
+        assertTrue(result.reachedLimit)
+        assertEquals("app-v1.1.apk", result.files.first().name)
+    }
+
+    @Test
+    fun aBareGitHubRepoPageIsNotAnAdapterPage() {
+        assertTrue(GitHubReleasesAdapter.matches("$repo/releases"))
+        assertTrue(GitHubReleasesAdapter.matches("$repo/releases/"))
+        assertTrue(GitHubReleasesAdapter.matches("$repo/releases/latest"))
+        assertTrue(GitHubReleasesAdapter.matches("$repo/releases/tag/v1.5.0?expanded=true"))
+        assertFalse(GitHubReleasesAdapter.matches(repo))
+        assertFalse(GitHubReleasesAdapter.matches("$repo/issues"))
+        assertFalse(GitHubReleasesAdapter.matches("https://example.com/a/b/releases"))
+    }
+
+    @Test
+    fun filesAreDeliveredWhileTheCrawlIsStillRunning() = runBlocking {
+        val hold = CompletableDeferred<Unit>()
+        val fake = Scripted(
+            { url -> if (url == start) FetchedPage(200, url, "text/html", "<a href='a.zip'>a</a><a href='/download.php?id=5'>g</a>") else null },
+            probes = mapOf("https://example.com/download.php?id=5" to FileProbe("late.pdf", 5L, "application/pdf")),
+            hold = hold
+        )
+        val delivered = ArrayList<String>()
+        val job = async { SiteGrabber(fake).grab(start, onFiles = { batch -> synchronized(delivered) { delivered.addAll(batch.map { it.name }) } }) }
+        withTimeout(5000) { while (synchronized(delivered) { delivered.isEmpty() }) yield() }
+        assertFalse(job.isCompleted)
+        assertEquals(listOf("a.zip"), synchronized(delivered) { delivered.toList() })
+        hold.complete(Unit)
+        val result = job.await()
+        assertEquals(listOf("a.zip", "late.pdf"), synchronized(delivered) { delivered.toList() })
+        assertEquals(setOf("a.zip", "late.pdf"), result.files.map { it.name }.toSet())
+    }
+
+    @Test
+    fun stoppingKeepsTheFilesFoundSoFar() = runBlocking {
+        val hold = CompletableDeferred<Unit>()
+        val fake = Scripted(
+            { url -> if (url == start) FetchedPage(200, url, "text/html", "<a href='a.zip'>a</a><a href='b.pdf'>b</a><a href='/download.php?id=5'>g</a>") else null },
+            hold = hold
+        )
+        val kept = ArrayList<GrabbedFile>()
+        val job = async { SiteGrabber(fake).grab(start, onFiles = { batch -> synchronized(kept) { kept.addAll(batch) } }) }
+        withTimeout(5000) { while (synchronized(kept) { kept.isEmpty() }) yield() }
+        job.cancelAndJoin()
+        assertTrue(job.isCancelled)
+        assertEquals(listOf("a.zip", "b.pdf"), synchronized(kept) { kept.map { it.name } })
     }
 }

@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.feature.site_grabber.LinkKind
+
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
@@ -88,10 +90,11 @@ data class SiteGrabUi(
     val running: Boolean = false,
     val pagesRead: Int = 0,
     val note: String = "",
-    val title: String = ""
+    val title: String = "",
+    val hiddenKinds: Set<String> = emptySet()
 )
 
-/** One type of file among the files found on a page (Video, Images...), how many, and whether all of them are checked. */
+/** One type of file among the files found on a page (Video, Images...), how many, and whether its type filter is on (its rows are listed). */
 data class GrabGroup(val folder: String, val count: Int, val selected: Boolean)
 
 data class FileConflictData(
@@ -221,6 +224,8 @@ data class DashboardUiState(
     /** The folder the list's downloads go into, under the chosen one ("" = none). */
     val linkListFolder: String = "",
     val siteGrab: SiteGrabUi = SiteGrabUi(),
+    val linkKind: LinkKind = LinkKind.UNKNOWN,
+    val linkProbeUrl: String = "",
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
     /** The playlist is shown (and queued) from its oldest video. */
@@ -271,19 +276,74 @@ data class DashboardUiState(
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
 ) {
-    /** The link box holds one web page address (not a file, video or magnet): "Find files on this page" is offered. */
-    val canGrabPage: Boolean
+    /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
+    val grabShape: Boolean
         get() = isAddDialogVisible && linkList.all { it.folder.isNotBlank() } && inspectedPlaylist == null &&
                 detectedEngine == EngineType.HTTP_DIRECT && inputUrl.trim().let { u ->
             (u.startsWith("http://", true) || u.startsWith("https://", true)) && u.none { it.isWhitespace() } &&
                     !com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.isFileUrl(u)
         }
 
+    /** What the probe of the link in the box found; [LinkKind.UNKNOWN] while it has not answered for this exact link. */
+    val probedAs: LinkKind
+        get() = if (linkProbeUrl.isNotEmpty() && linkProbeUrl == inputUrl.trim()) linkKind else LinkKind.UNKNOWN
+
+    /** The link looks like a web page and its probe is still running: neither the scan card nor a wrong state is shown yet. */
+    val checkingLink: Boolean
+        get() = grabShape && probedAs == LinkKind.UNKNOWN && siteGrab.running.not() && linkList.isEmpty()
+
+    /** The link box holds a web page (the probe says so): "Find files on this page" is offered. */
+    val canGrabPage: Boolean
+        get() = grabShape && probedAs.let { it == LinkKind.PAGE || it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
+
+    /** The files found on a page are being read or listed: the Direct / Media choice has nothing to say there. */
+    val showsEngineChoice: Boolean
+        get() = !siteGrab.running && !(linkList.isNotEmpty() && linkList.all { it.folder.isNotBlank() })
+
+    /**
+     * The engine is picked from the link itself; the Direct / Media choice (never Torrent) is asked only when the
+     * link is a web page that may hold a video, or the check could not tell what it is.
+     */
+    val engineChoiceShown: Boolean
+        get() = showsEngineChoice && linkList.isEmpty() && detectedEngine != EngineType.BITTORRENT &&
+                com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor &&
+                probedAs.let { it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
+
+    /** Reading depth is a choice only for pages crawled link by link (a release page of a known site is read directly). */
+    val grabDepthShown: Boolean
+        get() = com.michelle.raouf.fetch_jet.feature.site_grabber.SiteAdapters.forUrl(inputUrl) == null
+
     /** The files found on the page, grouped by type, in the order of the type chips. */
     val grabGroups: List<GrabGroup>
         get() = linkList.filter { it.folder.isNotBlank() }.groupBy { it.folder }.map { (folder, items) ->
-            GrabGroup(folder, items.size, items.all { it.isSelected })
+            GrabGroup(folder, items.size, folder !in siteGrab.hiddenKinds)
         }.sortedBy { com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders.indexOf(it.folder).let { i -> if (i < 0) 99 else i } }
+
+    /** The listed rows with their place in [linkList]: the rows of a type the user turned off are left out. */
+    val visibleLinks: List<IndexedValue<LinkListEntry>>
+        get() = linkList.withIndex().filter { !isKindHidden(it.value) }
+
+    fun isKindHidden(entry: LinkListEntry): Boolean = entry.folder.isNotBlank() && entry.folder in siteGrab.hiddenKinds
+
+    /** A type chip: off hides its rows and unchecks them, on lists them again, checked except the ones downloaded before. */
+    fun withKindShown(folder: String, shown: Boolean): DashboardUiState = copy(
+        siteGrab = siteGrab.copy(hiddenKinds = if (shown) siteGrab.hiddenKinds - folder else siteGrab.hiddenKinds + folder),
+        linkList = linkList.map { if (it.folder == folder) it.copy(isSelected = shown && !it.downloadedBefore) else it }
+    )
+
+    fun withLinkChecked(index: Int, checked: Boolean): DashboardUiState = copy(
+        linkList = linkList.mapIndexed { i, entry ->
+            if (i == index && !entry.downloadedBefore && !isKindHidden(entry)) entry.copy(isSelected = checked) else entry
+        }
+    )
+
+    fun withAllLinksChecked(checked: Boolean): DashboardUiState = copy(
+        linkList = linkList.map { if (it.downloadedBefore || isKindHidden(it)) it else it.copy(isSelected = checked) }
+    )
+
+    /** Files found while the page is still being read: a file of a type that is turned off arrives hidden and unchecked. */
+    fun withGrabbedFiles(added: List<LinkListEntry>): DashboardUiState =
+        copy(linkList = linkList + added.map { if (isKindHidden(it)) it.copy(isSelected = false) else it })
 
     val subtitlesOffered: Boolean
         get() = inspectedPlaylist.let { list ->

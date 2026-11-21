@@ -651,6 +651,10 @@
     "Boolean"
    ],
    [
+    "linkPickable",
+    "Boolean"
+   ],
+   [
     "linkFolder",
     "String"
    ],
@@ -660,6 +664,18 @@
    ],
    [
     "grabShown",
+    "Boolean"
+   ],
+   [
+    "grabDepthHidden",
+    "Boolean"
+   ],
+   [
+    "engineHidden",
+    "Boolean"
+   ],
+   [
+    "checkingLink",
     "Boolean"
    ],
    [
@@ -4033,6 +4049,7 @@
   "engineTorrent",
   "addFileNameLabel",
   "findingName",
+  "addCheckingLink",
   "saveDestination",
   "quickFolderDownloads",
   "quickFolderDocuments",
@@ -4265,6 +4282,7 @@
   "grabScript",
   "grabLimit",
   "grabStop",
+  "grabStopped",
   "grabCheckNew",
   "grabDownloadedCount",
   "grabGroupVideo",

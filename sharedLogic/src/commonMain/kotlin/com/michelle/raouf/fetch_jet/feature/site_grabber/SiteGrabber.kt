@@ -4,7 +4,9 @@ import com.michelle.raouf.fetch_jet.core.settings.FileCategory
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 
 data class FetchedPage(val status: Int, val finalUrl: String, val contentType: String, val html: String)
@@ -32,7 +34,7 @@ data class GrabOptions(
     val parallel: Int = 4
 )
 
-data class GrabProgress(val pagesRead: Int, val pagesLeft: Int, val files: Int)
+data class GrabProgress(val pagesRead: Int, val pagesLeft: Int, val files: Int, val title: String = "")
 
 data class GrabResult(
     val files: List<GrabbedFile>,
@@ -45,13 +47,18 @@ data class GrabResult(
 
 const val PAGE_GROUP = "PAGE"
 
-class SiteGrabber(private val fetcher: PageFetcher) {
+class SiteGrabber(
+    private val fetcher: PageFetcher,
+    private val adapters: List<SiteAdapter> = SiteAdapters.all
+) {
 
     suspend fun grab(
         startUrl: String,
         options: GrabOptions = GrabOptions(),
-        onProgress: (GrabProgress) -> Unit = {}
+        onProgress: (GrabProgress) -> Unit = {},
+        onFiles: (List<GrabbedFile>) -> Unit = {}
     ): GrabResult {
+        adapters.firstOrNull { it.matches(startUrl) }?.let { return it.grab(startUrl, fetcher, onProgress, onFiles) }
         val depth = options.depth.coerceIn(1, 4)
         val found = LinkedHashMap<String, GrabbedFile>()
         val toProbe = LinkedHashMap<String, String>()
@@ -63,7 +70,23 @@ class SiteGrabber(private val fetcher: PageFetcher) {
         var needScript = 0
         var reachedLimit = false
         var title = ""
-        val gate = Semaphore(options.parallel.coerceIn(1, 8))
+        val parallel = options.parallel.coerceIn(1, 8)
+        val gate = Semaphore(parallel)
+        val fresh = ArrayList<GrabbedFile>()
+        val lock = Mutex()
+
+        fun record(key: String, file: GrabbedFile) {
+            if (key in found) return
+            found[key] = file
+            fresh.add(file)
+        }
+
+        fun flush() {
+            if (fresh.isEmpty()) return
+            val batch = fresh.toList()
+            fresh.clear()
+            onFiles(batch)
+        }
 
         var current = 1
         while (current <= depth && level.isNotEmpty()) {
@@ -76,73 +99,79 @@ class SiteGrabber(private val fetcher: PageFetcher) {
                 reachedLimit = true
                 level.take(room)
             } else level
-            val fetched = coroutineScope {
-                batch.map { url ->
-                    async {
-                        gate.withPermit {
-                            val page = runCatching { fetcher.page(url) }.getOrNull()
-                            url to page
+            val next = ArrayList<String>()
+            for (chunk in batch.chunked(parallel)) {
+                val fetched = coroutineScope {
+                    chunk.map { url ->
+                        async {
+                            gate.withPermit {
+                                val page = runCatching { fetcher.page(url) }.getOrNull()
+                                url to page
+                            }
+                        }
+                    }.awaitAll()
+                }
+                for ((url, page) in fetched) {
+                    if (page == null || page.status !in 200..299 || isChallenge(page)) {
+                        refused++
+                        continue
+                    }
+                    pagesRead++
+                    val type = page.contentType.lowercase()
+                    if (type.isNotBlank() && !type.contains("html") && !type.contains("xml") && !type.contains("text")) {
+                        val name = PageLinks.fileNameOf(page.finalUrl).ifBlank { "file" }
+                        record(page.finalUrl, GrabbedFile(page.finalUrl, name, FileCategory.categoryFor(name), -1L, url))
+                        continue
+                    }
+                    val scan = PageLinks.scan(page.html, page.finalUrl)
+                    if (title.isEmpty() && url == startUrl) title = PageLinks.titleOf(page.html)
+                    if (scan.needsScript) needScript++
+                    for (file in scan.files) {
+                        if (found.size >= options.maxFiles) {
+                            reachedLimit = true
+                            break
+                        }
+                        val name = PageLinks.fileNameOf(file)
+                        if (name.isBlank() || !hasExtension(name)) {
+                            toProbe.addOnce(file, page.finalUrl)
+                        } else {
+                            record(file, GrabbedFile(file, name, FileCategory.categoryFor(name), -1L, page.finalUrl))
                         }
                     }
-                }.awaitAll()
+                    for (file in scan.maybeFiles) toProbe.addOnce(file, page.finalUrl)
+                    if (current < depth) {
+                        for (link in scan.pages) {
+                            if (PageLinks.sameSite(startUrl, link) && visited.add(link)) next.add(link)
+                        }
+                    }
+                }
+                flush()
+                onProgress(GrabProgress(pagesRead, next.size, found.size + toProbe.size, title))
             }
-            val next = ArrayList<String>()
-            for ((url, page) in fetched) {
-                if (page == null || page.status !in 200..299 || isChallenge(page)) {
-                    refused++
-                    continue
-                }
-                pagesRead++
-                val type = page.contentType.lowercase()
-                if (type.isNotBlank() && !type.contains("html") && !type.contains("xml") && !type.contains("text")) {
-                    val name = PageLinks.fileNameOf(page.finalUrl).ifBlank { "file" }
-                    found.addOnce(page.finalUrl, GrabbedFile(page.finalUrl, name, FileCategory.categoryFor(name), -1L, url))
-                    continue
-                }
-                val scan = PageLinks.scan(page.html, page.finalUrl)
-                if (title.isEmpty() && url == startUrl) title = PageLinks.titleOf(page.html)
-                if (scan.needsScript) needScript++
-                for (file in scan.files) {
-                    if (found.size >= options.maxFiles) {
-                        reachedLimit = true
-                        break
-                    }
-                    val name = PageLinks.fileNameOf(file)
-                    if (name.isBlank() || !hasExtension(name)) {
-                        toProbe.addOnce(file, page.finalUrl)
-                    } else {
-                        found.addOnce(file, GrabbedFile(file, name, FileCategory.categoryFor(name), -1L, page.finalUrl))
-                    }
-                }
-                for (file in scan.maybeFiles) toProbe.addOnce(file, page.finalUrl)
-                if (current < depth) {
-                    for (link in scan.pages) {
-                        if (PageLinks.sameSite(startUrl, link) && visited.add(link)) next.add(link)
-                    }
-                }
-            }
-            onProgress(GrabProgress(pagesRead, next.size, found.size + toProbe.size))
             level = next
             current++
         }
 
         val probes = toProbe.entries.filter { it.key !in found }.take(options.probeLimit)
         if (probes.size < toProbe.size) reachedLimit = true
-        val probed = coroutineScope {
+        coroutineScope {
             probes.map { entry ->
                 async {
-                    gate.withPermit { entry to runCatching { fetcher.probe(entry.key) }.getOrNull() }
+                    val probe = gate.withPermit { runCatching { fetcher.probe(entry.key) }.getOrNull() }
+                    if (probe != null) {
+                        val type = probe.contentType.lowercase()
+                        if (!type.contains("text/html") && !type.contains("application/xhtml")) {
+                            val name = probe.name?.takeIf { it.isNotBlank() } ?: PageLinks.fileNameOf(entry.key).ifBlank { "file" }
+                            lock.withLock {
+                                record(entry.key, GrabbedFile(entry.key, name, FileCategory.categoryFor(name), probe.size, entry.value))
+                                flush()
+                            }
+                        }
+                    }
                 }
             }.awaitAll()
         }
-        for ((entry, probe) in probed) {
-            if (probe == null) continue
-            val type = probe.contentType.lowercase()
-            if (type.contains("text/html") || type.contains("application/xhtml")) continue
-            val name = probe.name?.takeIf { it.isNotBlank() } ?: PageLinks.fileNameOf(entry.key).ifBlank { "file" }
-            found.addOnce(entry.key, GrabbedFile(entry.key, name, FileCategory.categoryFor(name), probe.size, entry.value))
-        }
-        onProgress(GrabProgress(pagesRead, 0, found.size))
+        onProgress(GrabProgress(pagesRead, 0, found.size, title))
         return GrabResult(found.values.toList(), pagesRead, refused, needScript, reachedLimit, title)
     }
 

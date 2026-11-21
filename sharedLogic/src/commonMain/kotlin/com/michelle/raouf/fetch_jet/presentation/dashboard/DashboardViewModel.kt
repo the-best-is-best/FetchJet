@@ -103,6 +103,9 @@ class DashboardViewModel(
     internal var toolStatusPollJob: Job? = null
     internal var testLinkJob: Job? = null
     internal var siteGrabJob: Job? = null
+    internal var linkProbeJob: Job? = null
+    internal val linkProbeCache = HashMap<String, com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult>()
+    internal val linkProbeFlights = HashMap<String, kotlinx.coroutines.CompletableDeferred<com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult>>()
     internal var nameProbeJob: Job? = null
     internal var probedNameUrl: String = ""
     internal var probedName: String = ""

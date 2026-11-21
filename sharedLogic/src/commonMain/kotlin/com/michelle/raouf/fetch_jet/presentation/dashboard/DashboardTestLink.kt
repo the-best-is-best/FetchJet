@@ -5,7 +5,6 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeCode
 import com.michelle.raouf.fetch_jet.feature.http_downloader.LinkProbeResult
 import com.michelle.raouf.fetch_jet.feature.http_downloader.canProbeLink
-import com.michelle.raouf.fetch_jet.feature.http_downloader.probeLink
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,7 +28,7 @@ internal fun DashboardViewModel.testLink() {
     testLinkJob?.cancel()
     _uiState.update { it.copy(testLink = TestLinkUi(url = url)) }
     testLinkJob = scope.launch {
-        val probed = probeLink(url, headersForLink(shown))
+        val probed = probedLink(shown)
         val result = if (probed is LinkProbeResult.Ok && probed.fileName.isNotBlank()) {
             probed.copy(fileName = queueRepository.pathResolver.sanitizeFileName(probed.fileName))
         } else probed
@@ -54,7 +53,7 @@ internal fun DashboardViewModel.startNameProbe(url: String) {
     if (state.detectedEngine != EngineType.HTTP_DIRECT || state.linkList.isNotEmpty() || !canProbeLink(url) || probedNameUrl == url) return
     nameProbeJob = scope.launch {
         kotlinx.coroutines.delay(700)
-        val probed = probeLink(com.michelle.raouf.fetch_jet.feature.queue_manager.codeHostRawUrl(url), headersForLink(url))
+        val probed = probedLink(url)
         val name = (probed as? LinkProbeResult.Ok)?.fileName.orEmpty()
         if (name.isBlank() || _uiState.value.inputUrl.trim() != url) return@launch
         probedNameUrl = url

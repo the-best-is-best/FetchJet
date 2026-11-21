@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
@@ -121,6 +122,9 @@ fun AddDownloadModalDialog(
     onLinkListQualitySelected: (Int, Int) -> Unit = { _, _ -> },
     onLinkListRetryInspect: (Int) -> Unit = {},
     canGrabPage: Boolean = false,
+    engineChoiceShown: Boolean = false,
+    checkingLink: Boolean = false,
+    grabDepthShown: Boolean = true,
     siteGrab: com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi = com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi(),
     grabGroups: List<com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup> = emptyList(),
     onGrabPage: () -> Unit = {},
@@ -359,13 +363,23 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                if (checkingLink) {
+                    androidx.compose.material3.Text(
+                        text = LocalizationManager.Strings.addCheckingLink,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
                 if (canGrabPage || siteGrab.running) {
                     GrabCard(
                         grab = siteGrab,
                         showNote = true,
                         onFind = onGrabPage,
                         onStop = onGrabCancel,
-                        onDepth = onGrabDepth
+                        onDepth = onGrabDepth,
+                        showDepth = grabDepthShown
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                 }
@@ -384,7 +398,8 @@ fun AddDownloadModalDialog(
                         onRetryInspect = onLinkListRetryInspect,
                         grabGroups = grabGroups,
                         grabNote = if (canGrabPage || siteGrab.running) "" else siteGrab.note,
-                        onGrabGroupToggled = onGrabGroupToggled
+                        onGrabGroupToggled = onGrabGroupToggled,
+                        hiddenKinds = siteGrab.hiddenKinds
                     )
                     if (subtitlesListShown) {
                         Spacer(modifier = Modifier.height(10.dp))
@@ -401,7 +416,10 @@ fun AddDownloadModalDialog(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                 } else {
-                EngineSelector(detectedEngine = detectedEngine, onEngineSelected = onEngineSelected)
+                if (engineChoiceShown) EngineSelector(
+                    detectedEngine = detectedEngine,
+                    onEngineSelected = onEngineSelected
+                )
 
                 TorrentInspectionSection(
                     detectedEngine = detectedEngine,
@@ -465,7 +483,7 @@ fun AddDownloadModalDialog(
                     isStartExceedingVideo = isStartExceedingVideo,
                     clipValidationErrorMessage = clipValidationErrorMessage
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                if (engineChoiceShown || detectedEngine != EngineType.HTTP_DIRECT) Spacer(modifier = Modifier.height(14.dp))
                 }
 
                 // When to start: now, in a while, or at a time of day

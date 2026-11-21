@@ -66,21 +66,23 @@ struct AddGrabCard: View {
                         .foregroundStyle(FJTheme.color.error)
                 }
             } else {
-                Text(strings.grabHow)
-                    .font(.fj(11))
-                    .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                let depths: [Int32] = [1, 2, 3]
-                AddSegmentedRow(
-                    labels: depths.map { strings.grabDepthShortLabel($0) },
-                    selectedIndex: depths.firstIndex(of: grab.depth) ?? 0
-                ) { index in
-                    store.send(DashboardUiEventOnGrabDepthChanged(depth: depths[index]))
+                if store.state.grabDepthShown {
+                    Text(strings.grabHow)
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    let depths: [Int32] = [1, 2, 3]
+                    AddSegmentedRow(
+                        labels: depths.map { strings.grabDepthShortLabel($0) },
+                        selectedIndex: depths.firstIndex(of: grab.depth) ?? 0
+                    ) { index in
+                        store.send(DashboardUiEventOnGrabDepthChanged(depth: depths[index]))
+                    }
+                    Text(strings.grabDepthLabel(grab.depth))
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text(strings.grabDepthLabel(grab.depth))
-                    .font(.fj(11))
-                    .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 AddOutlineButton(label: strings.grabFindFiles) { store.send(DashboardUiEventOnGrabPageClicked.shared) }
                 AddGrabNote(note: grab.note)
             }

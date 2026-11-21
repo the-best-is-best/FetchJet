@@ -100,7 +100,7 @@ def run():
         core.pump(0.3)
         add = core.snapshot("add")
         engines = [e.get("engine", 0) for e in add.get("engines", [])]
-        core.check("the Add dialog offers the torrent engine", ENGINE["BITTORRENT"] in engines, engines)
+        core.check("the Add dialog never offers the torrent engine as a choice", ENGINE["BITTORRENT"] not in engines, engines)
         core.check("Open .torrent follows the host's file picker (none when headless)",
                    add.get("canOpenTorrent", False) == add.get("canImportTxt", False), (add.get("canOpenTorrent"), add.get("canImportTxt")))
         core.action("ShowAddDialog", show=False)
@@ -115,7 +115,8 @@ def run():
         core.action("ShowAddDialog", show=True)
         core.pump(0.3)
         add = core.snapshot("add")
-        core.check("a .torrent path selects the torrent engine", add.get("engine", -1) == ENGINE["BITTORRENT"], add.get("engine"))
+        core.check("a .torrent path selects the torrent engine, with no engine choice", add.get("engine", -1) == ENGINE["BITTORRENT"] and
+                   add.get("engineHidden", False), (add.get("engine"), add.get("engineHidden")))
         wait_files(core, 30)
         info = core.snapshot("addTorrent") or {}
         rows = core.rows("addTorrentFiles")
@@ -147,7 +148,8 @@ def run():
         core.action("ShowAddDialog", show=True)
         core.pump(0.3)
         add = core.snapshot("add")
-        core.check("a magnet selects the torrent engine", add.get("engine", -1) == ENGINE["BITTORRENT"], add.get("engine"))
+        core.check("a magnet selects the torrent engine, with no engine choice", add.get("engine", -1) == ENGINE["BITTORRENT"] and
+                   add.get("engineHidden", False) and not add.get("grabShown", False), (add.get("engine"), add.get("engineHidden")))
         started = time.time()
         wait_files(core, 70)
         info = core.snapshot("addTorrent") or {}

@@ -28,7 +28,8 @@ def run():
         core.action("SetUrl", text=VIDEO)
         core.action("ShowAddDialog", show=True)
         core.pump(0.2)
-        core.check("media engine picked for the link", core.snapshot("add").get("engine", 0) == ENGINE["MEDIA_STREAM"])
+        core.check("media engine picked for the link, no engine choice", core.snapshot("add").get("engine", 0) == ENGINE["MEDIA_STREAM"] and
+                   core.snapshot("add").get("engineHidden", False) and not core.snapshot("add").get("grabShown", False))
         core.wait_for("qualities", lambda: media(core).get("state", 0) == STATE["QUALITIES"], 60)
         m = media(core)
         rows = core.rows("addQualities")

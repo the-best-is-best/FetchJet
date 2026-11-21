@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 914
+internal const val TR_COUNT = 916
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -196,6 +196,7 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.engineTorrent,
     s.addFileNameLabel,
     s.findingName,
+    s.addCheckingLink,
     s.saveDestination,
     s.quickFolderDownloads,
     s.quickFolderDocuments,
@@ -428,6 +429,7 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.grabScript,
     s.grabLimit,
     s.grabStop,
+    s.grabStopped,
     s.grabCheckNew,
     s.grabDownloadedCount,
     s.grabGroupVideo,

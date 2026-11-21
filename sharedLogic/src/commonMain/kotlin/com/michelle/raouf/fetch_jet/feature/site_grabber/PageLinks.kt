@@ -96,7 +96,10 @@ object PageLinks {
             .split('/').filter { it.isNotEmpty() }.map {
                 runCatching { com.michelle.raouf.fetch_jet.feature.http_downloader.percentDecode(it) }.getOrDefault(it)
             }
-        val fromPath = segments.lastOrNull { !it.contains('.') || it.length > 12 }?.takeIf { it.isNotBlank() }
+        val fromPath = segments.lastOrNull()?.let { last ->
+            val page = Regex("""^(.+)\.(html?|php|aspx?|jsp)$""", RegexOption.IGNORE_CASE).find(last)?.groupValues?.get(1)
+            page ?: last.takeIf { !it.contains('.') || it.length > 12 }
+        } ?: segments.lastOrNull { !it.contains('.') }
         return (fromTitle ?: fromPath ?: host).take(50).trim()
     }
 

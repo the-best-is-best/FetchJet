@@ -448,6 +448,21 @@ To do:
   boxes), and the Android / iOS apps.
 - Digits stay Latin (as Arabic does now) unless a reader says otherwise.
 
+## 12. What's new video, shown when the new version first opens [ ]
+
+Idea (owner, 2026-11-21): this release changes how the app works (it decides for the user: engine by link, link check before
+the options, page scan with live results and type filter, a group named after the page, files downloaded before marked and
+locked, GitHub release shortcut), so it may be numbered 2.0.0 instead of 1.6.0 (decide at release time: `AppVersion.kt`,
+`MARKETING_VERSION`, the branch, `release-notes/`, `ROADMAP`; `CURRENT_PROJECT_VERSION` stays 1).
+The explanation is a short silent screen recording of someone using the app (a phone cut and a desktop cut), with the
+explaining texts shown over it at timed moments and written per language (the 15 app languages), never baked into the video.
+The Slint desktop app has no video widget, so the plan is one web page on the project site (`docs/`, GitHub Pages: the
+`<video>` plus timed caption cues read from the page's i18n, following the app's language), opened from a small dialog
+that shows once after an update ("New in 2.0 - watch"); the same behaviour on all five platforms. The video streams only
+when someone watches it. Later, optionally, an in-app player on Android / iOS only.
+To do: the recording (owner), the list of steps and the caption cues (start, end, key, 15 languages), the page, the
+once-per-version dialog in Compose, Slint and SwiftUI (the last shown version in the settings), the version number.
+
 ## Order (proposal)
 
 1, 2, 10, 11, 9, 7, 4, 3, 5, 6, 8.

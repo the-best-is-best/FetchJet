@@ -91,8 +91,7 @@ struct AddEngineSelector: View {
             AddLabel(text: strings.addDownloadEngine)
             HStack(spacing: 8) {
                 chip("⚡ \(strings.engineDirect)", engine == .httpDirect, .httpDirect)
-                if store.host.mediaEnabled { chip("🎬 \(strings.engineMedia)", engine == .mediaStream, .mediaStream) }
-                if store.host.torrentEnabled { chip("🧲 \(strings.engineTorrent)", engine == .bittorrent, .bittorrent) }
+                chip("🎬 \(strings.engineMedia)", engine == .mediaStream, .mediaStream)
             }
         }
     }

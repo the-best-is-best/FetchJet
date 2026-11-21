@@ -26,8 +26,18 @@ def reset_url(core, url):
     core.pump(0.3)
 
 
+def wait_card(core, timeout=15):
+    core.wait_for("the page card", lambda: core.snapshot("add").get("grabShown", False), timeout)
+
+
+def wait_probe(core, timeout=15):
+    core.wait_for("the link check", lambda: not core.snapshot("add").get("checkingLink", False), timeout)
+    core.pump(0.2)
+
+
 def grab(core, depth, url=START, wait_rows=True):
     reset_url(core, url)
+    wait_card(core)
     core.action("SetGrabDepth", depth=depth)
     core.pump(0.2)
     core.action("GrabPage")
@@ -52,7 +62,13 @@ def run():
         core.pump(0.3)
         core.check("a video link: no card", not core.snapshot("add").get("grabShown", False))
         core.action("SetUrl", text=START)
-        core.pump(0.3)
+        core.pump(0.1)
+        add = core.snapshot("add")
+        core.check("a page link: while it is checked there is no card, no engine choice and the checking line shows",
+                   not add.get("grabShown", False) and add.get("checkingLink", False) and
+                   add.get("engineHidden", False), (add.get("grabShown"), add.get("checkingLink"), add.get("engineHidden")))
+        wait_card(core)
+        wait_probe(core)
         add = core.snapshot("add")
         core.check("a page link: card with three depths, the first chosen", add.get("grabShown") and not add.get("grabRunning", False) and
                    [d.get("value") for d in add.get("grabDepths", [])] == [1, 2, 3] and
@@ -64,6 +80,42 @@ def run():
         core.action("SetGrabDepth", depth=2)
         core.pump(0.2)
         core.check("another depth can be chosen", [d.get("selected", False) for d in core.snapshot("add").get("grabDepths", [])] == [False, True, False])
+
+        core.check("a plain page: the card and no engine choice", add.get("grabShown", False) and add.get("engineHidden", False),
+                   (add.get("grabShown"), add.get("engineHidden")))
+
+        print("what the link turns out to be")
+        for label, url, card, picker in (
+            ("a file with no extension in its link", SERVER + "/site/bundle", False, False),
+            ("a file sent as an attachment", SERVER + "/site/download?id=7", False, False),
+            ("a page with a video in it", SERVER + "/site/video.html", True, True),
+            ("a page", SERVER + "/site/empty.html", True, False),
+            ("a page that answers 404", SERVER + "/site/nothing.html", True, True),
+        ):
+            reset_url(core, url)
+            wait_probe(core)
+            add = core.snapshot("add")
+            core.check(label + ": card " + str(card) + ", engine choice " + str(picker),
+                       add.get("grabShown", False) == card and (not add.get("engineHidden", False)) == picker,
+                       (add.get("grabShown"), add.get("engineHidden")))
+            if picker:
+                names = [e.get("engine", 0) for e in add.get("engines", [])]
+                core.check(label + ": the choice is Direct and Media only",
+                           names == [ENUMS["EngineCode"].index("HTTP_DIRECT"), ENUMS["EngineCode"].index("MEDIA_STREAM")], names)
+        reset_url(core, SERVER + "/site/video.html")
+        wait_probe(core)
+        core.action("SetEngine", engine=ENUMS["EngineCode"].index("MEDIA_STREAM"))
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("the Media engine on a video page: no card, the choice stays, Media is selected",
+                   not add.get("grabShown", False) and not add.get("engineHidden", False) and
+                   add.get("engine", 0) == ENUMS["EngineCode"].index("MEDIA_STREAM"),
+                   (add.get("grabShown"), add.get("engineHidden"), add.get("engine")))
+        core.action("SetEngine", engine=ENUMS["EngineCode"].index("HTTP_DIRECT"))
+        core.pump(0.3)
+        core.check("back to Direct: the card returns", core.snapshot("add").get("grabShown", False))
+        reset_url(core, START)
+        wait_card(core)
 
         print("depth 1")
         grab(core, 1)
@@ -85,8 +137,8 @@ def run():
         core.check("the size of a file the page named itself is filled in after the list shows",
                    "2.0 MB" in sized["2MB.zip"].get("host", "") and "127.0.0.1:18200" in sized["2MB.zip"].get("host", ""),
                    sized["2MB.zip"].get("host"))
-        core.check("the tag is the type", by_name["2MB.zip"].get("tag") == strings["grabGroupArchives"] and
-                   by_name["300KB.png"].get("tag") == strings["grabGroupImages"] and by_name["1MB.bin"].get("tag") == strings["grabGroupOther"],
+        core.check("the tag is the file type", by_name["2MB.zip"].get("tag") == "ZIP" and
+                   by_name["300KB.png"].get("tag") == "PNG" and by_name["1MB.bin"].get("tag") == "BIN",
                    [r.get("tag") for r in listed])
         core.check("all selected", all(r.get("selected") for r in listed) and add.get("linkAllSelected") and "5" in add.get("linkSummary", ""))
         groups = add.get("grabGroups", [])
@@ -102,21 +154,35 @@ def run():
         core.pump(0.4)
         add = core.snapshot("add")
         by_name = {r["title"]: r for r in links(core)}
-        core.check("the two images are unchecked, the others stay",
-                   not by_name["100KB.jpg"].get("selected", False) and not by_name["300KB.png"].get("selected", False) and
-                   by_name["2MB.zip"].get("selected") and by_name["1MB.bin"].get("selected") and by_name["report-7.pdf"].get("selected"),
+        core.check("the two images leave the list, the others stay checked",
+                   sorted(by_name) == ["1MB.bin", "2MB.zip", "report-7.pdf"] and all(r.get("selected") for r in by_name.values()),
                    [(r["title"], r.get("selected")) for r in links(core)])
-        core.check("the chip shows it, the others still checked, the summary follows",
+        core.check("the chip is off, the others on, the summary counts only the listed files",
                    [g.get("selected", False) for g in add.get("grabGroups", [])] == [True, True, False, True] and
-                   "3" in add.get("linkSummary", "") and not add.get("linkAllSelected", False), add.get("grabGroups"))
-        core.action("ToggleLink", index=by_name["100KB.jpg"]["index"], selected=True)
+                   "3" in add.get("linkSummary", "") and "5" not in add.get("linkSummary", ""),
+                   (add.get("grabGroups"), add.get("linkSummary")))
+        core.check("all listed are checked and start counts three", add.get("linkAllSelected") and "3" in add.get("primaryLabel", ""), add.get("primaryLabel"))
+        core.action("SelectAllLinks", selected=False)
         core.pump(0.3)
-        core.check("one image back: its chip is still not fully checked",
-                   [g.get("selected", False) for g in core.snapshot("add").get("grabGroups", [])][2] is False)
+        core.action("SelectAllLinks", selected=True)
+        core.pump(0.3)
+        core.check("select all does not bring the hidden images back", sorted(r["title"] for r in links(core)) == ["1MB.bin", "2MB.zip", "report-7.pdf"] and
+                   "3" in core.snapshot("add").get("primaryLabel", ""), core.snapshot("add").get("primaryLabel"))
         core.action("ToggleGrabGroup", folder="Images", selected=True)
         core.pump(0.3)
-        core.check("the chip checks both again", all(r.get("selected") for r in links(core)) and
-                   all(g.get("selected") for g in core.snapshot("add").get("grabGroups", [])))
+        core.check("the chip brings both images back checked", titles(core) == ["100KB.jpg", "1MB.bin", "2MB.zip", "300KB.png", "report-7.pdf"] and
+                   all(r.get("selected") for r in links(core)) and all(g.get("selected") for g in core.snapshot("add").get("grabGroups", [])))
+        for kind in ("Archives", "Documents", "Images", "Other"):
+            core.action("ToggleGrabGroup", folder=kind, selected=False)
+        core.pump(0.4)
+        add = core.snapshot("add")
+        core.check("every chip off: no rows, the chips stay, nothing to start",
+                   len(links(core)) == 0 and len(add.get("grabGroups", [])) == 4 and not any(g.get("selected", False) for g in add.get("grabGroups", [])) and
+                   not add.get("primaryEnabled", False) and not add.get("linkPickable", False), (add.get("grabGroups"), add.get("primaryEnabled")))
+        for kind in ("Archives", "Documents", "Images", "Other"):
+            core.action("ToggleGrabGroup", folder=kind, selected=True)
+        core.pump(0.4)
+        core.check("all chips on again: all five rows are back and checked", len(links(core)) == 5 and all(r.get("selected") for r in links(core)))
 
         print("depth 2 and 3")
         grab(core, 2)
@@ -125,7 +191,7 @@ def run():
         add = core.snapshot("add")
         by_name = {r["title"]: r for r in links(core)}
         core.check("the song is a Music file from the second page",
-                   by_name["3MB.mp3"].get("tag") == strings["grabGroupMusic"] and by_name["3MB.mp3"].get("tagCode") == TAG["AUDIO"] and
+                   by_name["3MB.mp3"].get("tag") == "MP3" and by_name["3MB.mp3"].get("tagCode") == TAG["AUDIO"] and
                    add.get("grabNote") == strings["grabFound"].replace("%1", "6").replace("%2", "2") and
                    [g.get("folder") for g in add.get("grabGroups", [])] == ["Music", "Archives", "Documents", "Images", "Other"],
                    (add.get("grabNote"), [g.get("folder") for g in add.get("grabGroups", [])]))
@@ -185,6 +251,40 @@ def run():
         core.pump(0.3)
         core.check("a tap on a locked row changes nothing",
                    not {r["title"]: r for r in links(core)}["2MB.zip"].get("selected", False))
+        core.check("the tags show the file types", {r["title"]: r.get("tag") for r in links(core)} ==
+                   {"100KB.jpg": "JPG", "1MB.bin": "BIN", "2MB.zip": "ZIP", "300KB.png": "PNG", "report-7.pdf": "PDF", "3MB.mp3": "MP3"},
+                   {r["title"]: r.get("tag") for r in links(core)})
+        core.check("the colour follows the kind, not the type", all(r.get("tagCode", 0) == (TAG["AUDIO"] if r["title"].endswith(".mp3") else TAG["FILE"]) for r in links(core)))
+        core.check("the engine choice is gone once files are listed", core.snapshot("add").get("engineHidden", False))
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+
+        print("live rows, stop keeps them")
+        core.action("ShowAddDialog", show=True)
+        reset_url(core, SERVER + "/site/slow.html")
+        wait_card(core)
+        wait_probe(core)
+        core.check("a plain page before the scan: the card, no engine choice", core.snapshot("add").get("grabShown", False) and
+                   core.snapshot("add").get("engineHidden", False))
+        core.action("SetGrabDepth", depth=2)
+        core.pump(0.2)
+        core.action("GrabPage")
+        core.wait_for("rows while the crawl runs", lambda: len(links(core)) >= 2, 6)
+        add = core.snapshot("add")
+        core.check("the rows are there and the crawl is still reading", add.get("grabRunning") and len(links(core)) == 2 and
+                   sorted(r["title"] for r in links(core)) == ["1MB.zip", "3MB.mp3"], (add.get("grabRunning"), titles(core)))
+        core.check("the tags: ZIP, MP3 (audio colour)", {r["title"]: (r.get("tag"), r.get("tagCode", 0)) for r in links(core)} ==
+                   {"1MB.zip": ("ZIP", 0), "3MB.mp3": ("MP3", TAG["AUDIO"])},
+                   {r["title"]: (r.get("tag"), r.get("tagCode", 0)) for r in links(core)})
+        core.check("no engine choice while reading", add.get("engineHidden", False))
+        core.check("Download works while the crawl runs", add.get("primaryEnabled", False), add.get("primaryLabel"))
+        core.action("GrabCancel")
+        core.pump(0.5)
+        add = core.snapshot("add")
+        core.check("stopped: the rows stay and the note says so", not add.get("grabRunning", False) and len(links(core)) == 2 and
+                   add.get("grabNote") == strings["grabStopped"].replace("%1", "2"), (add.get("grabNote"), len(links(core))))
+        core.pump(7.5)
+        core.check("the late page does not add its file", len(links(core)) == 2, titles(core))
         core.action("ShowAddDialog", show=False)
         core.pump(0.3)
 
@@ -197,6 +297,7 @@ def run():
 
         print("stop while reading")
         reset_url(core, START + "?delay=8000")
+        wait_card(core)
         core.action("GrabPage")
         core.pump(0.6)
         add = core.snapshot("add")

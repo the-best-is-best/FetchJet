@@ -762,6 +762,9 @@ fun App(
                         )
                     },
                     canGrabPage = state.canGrabPage,
+                    engineChoiceShown = state.engineChoiceShown,
+                    checkingLink = state.checkingLink,
+                    grabDepthShown = state.grabDepthShown,
                     siteGrab = state.siteGrab,
                     grabGroups = state.grabGroups,
                     onGrabPage = { viewModel.onEvent(DashboardUiEvent.OnGrabPageClicked) },

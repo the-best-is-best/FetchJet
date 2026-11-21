@@ -46,9 +46,13 @@ struct AddTorrentFilesCard: View {
                     .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
-                Spacer()
+                    .truncationMode(.tail)
+                Spacer(minLength: 8)
                 Button(all ? strings.addDeselectAll : strings.addSelectAll) { onSelectAll(!all) }
                     .font(.fj(11, .semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
             }
             ScrollView {
                 LazyVStack(spacing: 2) {
@@ -112,7 +116,8 @@ struct AddLinkListSection: View {
     @EnvironmentObject var store: FJStore
 
     var body: some View {
-        let links = store.state.linkList
+        let rows = store.state.visibleLinks
+        let links = rows.map { $0.value }
         let strings = store.strings
         let selected = links.filter { $0.isSelected }.count
         let pickable = links.filter { !$0.downloadedBefore }.count
@@ -123,8 +128,10 @@ struct AddLinkListSection: View {
                     .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Spacer()
-                Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
-                    .font(.fj(12, .semibold))
+                if pickable > 0 {
+                    Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
+                        .font(.fj(12, .semibold))
+                }
             }
             if !store.state.canGrabPage {
                 AddGrabNote(note: store.state.siteGrab.note)
@@ -139,11 +146,13 @@ struct AddLinkListSection: View {
                 .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
             LazyVStack(spacing: 0) {
-                ForEach(Array(links.enumerated()), id: \.offset) { i, link in
-                    if i > 0 { Divider().overlay(FJTheme.color.outlineVariant.opacity(0.35)) }
-                    linkRow(link, Int32(i))
-                    if link.engine == .mediaStream && link.isSelected { qualityLine(link, Int32(i), strings) }
-                    if link.engine == .bittorrent && link.isSelected { torrentPart(link, Int32(i), strings) }
+                ForEach(Array(rows.enumerated()), id: \.element.index) { position, row in
+                    let link = row.value
+                    let i = Int32(row.index)
+                    if position > 0 { Divider().overlay(FJTheme.color.outlineVariant.opacity(0.35)) }
+                    linkRow(link, i)
+                    if link.engine == .mediaStream && link.isSelected { qualityLine(link, i, strings) }
+                    if link.engine == .bittorrent && link.isSelected { torrentPart(link, i, strings) }
                 }
             }
             .background(FJTheme.color.surfaceVariant.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
@@ -154,6 +163,14 @@ struct AddLinkListSection: View {
     private func linkRow(_ link: LinkListEntry, _ index: Int32) -> some View {
         let strings = store.strings
         let (tag, color): (String, Color) = {
+            if !link.folder.isEmpty {
+                let name = GrabTagKt.grabTagOf(fileName: link.fileName ?? link.url, folder: link.folder)
+                switch GrabTagKt.grabTagKindOf(folder: link.folder) {
+                case .video: return (name, FJTheme.hex(0xE879F9))
+                case .audio: return (name, FJTheme.hex(0xFBBF24))
+                default: return (name, FJTheme.hex(0x38BDF8))
+                }
+            }
             switch link.engine {
             case .mediaStream:
                 return MediaQualityEntryKt.isAllAudio(link.mediaQualities)
@@ -171,7 +188,7 @@ struct AddLinkListSection: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(link.fileName ?? link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
                         .font(.fj(12, .semibold))
-                        .foregroundStyle(link.downloadedBefore ? FJTheme.color.onSurfaceVariant : FJTheme.color.onSurface)
+                        .foregroundStyle(FJTheme.color.onSurface.opacity(link.downloadedBefore ? 0.5 : 1))
                         .lineLimit(1)
                     Text(secondLine(link))
                         .font(.fj(10))

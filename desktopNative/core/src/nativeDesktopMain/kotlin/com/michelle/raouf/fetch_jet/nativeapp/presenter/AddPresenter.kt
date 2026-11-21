@@ -118,6 +118,7 @@ private data class AddSlice(
     val linkSelected: Int,
     val linkDownloaded: Int,
     val linkCount: Int,
+    val linkShown: Int,
     val linkBusy: Boolean,
     val linkNeedsRetry: Boolean,
     val linkFolder: String,
@@ -126,6 +127,9 @@ private data class AddSlice(
     val defaultConnections: Int,
     val clipValid: Boolean,
     val canGrab: Boolean,
+    val engineShown: Boolean,
+    val checkingLink: Boolean,
+    val grabDepthShown: Boolean,
     val grabDepth: Int,
     val grabRunning: Boolean,
     val grabPages: Int,
@@ -160,9 +164,10 @@ private fun DashboardUiState.addSlice() = AddSlice(
     checksumInput = checksumInput,
     canTestLink = canTestLink(),
     testLink = testLink,
-    linkSelected = linkList.count { it.isSelected },
-    linkDownloaded = linkList.count { it.downloadedBefore },
+    linkSelected = visibleLinks.count { it.value.isSelected },
+    linkDownloaded = visibleLinks.count { it.value.downloadedBefore },
     linkCount = linkList.size,
+    linkShown = visibleLinks.size,
     linkBusy = linkList.any { it.isSelected && it.isBeingInspected },
     linkNeedsRetry = linkList.any { it.isSelected && it.needsRetry },
     linkFolder = linkListFolder,
@@ -171,6 +176,9 @@ private fun DashboardUiState.addSlice() = AddSlice(
     defaultConnections = defaultConnections,
     clipValid = clipCheck(isClipRangeEnabled, clipStartTime, clipEndTime, mediaDurationSeconds).valid,
     canGrab = canGrabPage,
+    engineShown = engineChoiceShown,
+    checkingLink = checkingLink,
+    grabDepthShown = grabDepthShown,
     grabDepth = siteGrab.depth,
     grabRunning = siteGrab.running,
     grabPages = siteGrab.pagesRead,
@@ -261,9 +269,6 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         if (AppFeatures.mediaExtractor) {
             add(EngineChoiceDto(EngineType.MEDIA_STREAM.ordinal, "🎬", strings.engineMedia, s.detectedEngine == EngineType.MEDIA_STREAM))
         }
-        if (AppFeatures.torrent) {
-            add(EngineChoiceDto(EngineType.BITTORRENT.ordinal, "🧲", strings.engineTorrent, s.detectedEngine == EngineType.BITTORRENT))
-        }
     }
     val fileNameShown = !s.showsLinkList && !s.hasPlaylist && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
     val fileName = if (inspecting && s.fileNameOverride.isEmpty()) strings.findingName else s.fileNameOverride.ifEmpty { s.suggestedFileName }
@@ -348,11 +353,15 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             QuickFolderDto("📄", strings.quickFolderDocuments, documents),
             QuickFolderDto("💻", strings.quickFolderDesktop, desktop),
         ),
-        linkSummary = if (s.showsLinkList) strings.selectedOfLinks(s.linkSelected, s.linkCount) + (if (s.linkDownloaded > 0) " · " + strings.grabDownloadedCount.replace("%1", s.linkDownloaded.toString()) else "") else "",
-        linkAllSelected = s.showsLinkList && s.linkCount > s.linkDownloaded && s.linkSelected == s.linkCount - s.linkDownloaded,
+        linkSummary = if (s.showsLinkList) strings.selectedOfLinks(s.linkSelected, s.linkShown) +(if (s.linkDownloaded > 0) " · " + strings.grabDownloadedCount.replace("%1", s.linkDownloaded.toString()) else "") else "",
+        linkPickable = s.showsLinkList && s.linkShown > s.linkDownloaded,
+        linkAllSelected = s.showsLinkList && s.linkShown > s.linkDownloaded && s.linkSelected == s.linkShown - s.linkDownloaded,
         linkFolder = s.linkFolder,
         linkFolderRev = addFields.linkFolder.rev(s.linkFolder),
         grabShown = s.canGrab,
+        grabDepthHidden = !s.grabDepthShown,
+        engineHidden = !s.engineShown,
+        checkingLink = s.checkingLink,
         grabRunning = s.canGrab && s.grabRunning,
         grabReading = strings.grabReading.replace("%1", s.grabPages.toString()),
         grabDepths = (1..3).map { ChoiceDto(it, grabDepthName(it), s.grabDepth == it) },

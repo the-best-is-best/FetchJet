@@ -205,7 +205,8 @@ internal fun TorrentFilesSelectionCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
                 TextButton(
                     onClick = {
@@ -217,6 +218,8 @@ internal fun TorrentFilesSelectionCard(
                     Text(
                         if (files.all { it.isSelected }) LocalizationManager.Strings.addDeselectAll else LocalizationManager.Strings.addSelectAll,
                         fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }

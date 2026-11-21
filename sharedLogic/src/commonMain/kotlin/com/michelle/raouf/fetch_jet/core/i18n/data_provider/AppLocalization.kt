@@ -224,6 +224,7 @@ interface AppLocalization : LocalizationProvider {
     val engineTorrent: String
     val addFileNameLabel: String
     val findingName: String
+    val addCheckingLink: String
     val saveDestination: String
     val quickFolderDownloads: String
     val quickFolderDocuments: String
@@ -513,6 +514,7 @@ interface AppLocalization : LocalizationProvider {
     val grabScript: String
     val grabLimit: String
     val grabStop: String
+    val grabStopped: String
     val grabCheckNew: String
     val grabDownloadedCount: String
     val grabGroupVideo: String

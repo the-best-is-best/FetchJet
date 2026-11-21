@@ -90,6 +90,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     )
                 } else emptyList()
 
+            if (_uiState.value.inputUrl != inputUrl) cancelPageGrab()
             _uiState.update {
 
                 it.copy(
@@ -131,6 +132,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             refreshSuggestedFileName()
             if (linkList.any { it.engine == EngineType.BITTORRENT }) inspectListedTorrents()
             if (linkList.any { it.engine == EngineType.MEDIA_STREAM }) inspectListedVideos()
+            scheduleLinkProbe()
         }
 
         is DashboardUiEvent.OnDestinationPathChanged -> setDestinationFolder(event.path)
@@ -145,7 +147,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnToggleAddDialog -> {
 
-            if (!event.show) stopPageGrab()
+            if (!event.show) cancelPageGrab()
+            if (!event.show) cancelLinkProbe()
             if (!event.show) _uiState.update { it.copy(linkListFolder = "", checkingPlaylistId = null, siteGrab = SiteGrabUi(depth = it.siteGrab.depth)) }
             if (!event.show) clearTestLink()
             if (!event.show) pendingExternalPlaylist = null
@@ -215,6 +218,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
             }
             if (event.show && !installed) pollToolStatusWhileNotReady()
+            if (event.show) scheduleLinkProbe()
 
         }
 
@@ -268,15 +272,9 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             refreshSuggestedFileName()
         }
 
-        is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { st ->
-            st.copy(linkList = st.linkList.mapIndexed { i, entry ->
-                if (i == event.index && !entry.downloadedBefore) entry.copy(isSelected = event.selected) else entry
-            })
-        }
+        is DashboardUiEvent.OnLinkListEntryToggled -> _uiState.update { it.withLinkChecked(event.index, event.selected) }
 
-        is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { st ->
-            st.copy(linkList = st.linkList.map { if (it.downloadedBefore) it else it.copy(isSelected = event.selected) })
-        }
+        is DashboardUiEvent.OnLinkListSelectAll -> _uiState.update { it.withAllLinksChecked(event.selected) }
 
         is DashboardUiEvent.OnLinkListFolderChanged -> _uiState.update { it.copy(linkListFolder = event.name) }
 

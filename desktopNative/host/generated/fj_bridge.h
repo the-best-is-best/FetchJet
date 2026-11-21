@@ -348,9 +348,13 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.quickFolders = fj::struct_model<QuickFolderDto>(j, "quickFolders", parse_QuickFolderDto);
     d.linkSummary = fj::text(j, "linkSummary");
     d.linkAllSelected = fj::flag(j, "linkAllSelected");
+    d.linkPickable = fj::flag(j, "linkPickable");
     d.linkFolder = fj::text(j, "linkFolder");
     d.linkFolderRev = fj::integer(j, "linkFolderRev");
     d.grabShown = fj::flag(j, "grabShown");
+    d.grabDepthHidden = fj::flag(j, "grabDepthHidden");
+    d.engineHidden = fj::flag(j, "engineHidden");
+    d.checkingLink = fj::flag(j, "checkingLink");
     d.grabRunning = fj::flag(j, "grabRunning");
     d.grabReading = fj::text(j, "grabReading");
     d.grabDepths = fj::struct_model<ChoiceDto>(j, "grabDepths", parse_ChoiceDto);
@@ -1431,6 +1435,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_engineTorrent(next());
     tr.set_addFileNameLabel(next());
     tr.set_findingName(next());
+    tr.set_addCheckingLink(next());
     tr.set_saveDestination(next());
     tr.set_quickFolderDownloads(next());
     tr.set_quickFolderDocuments(next());
@@ -1663,6 +1668,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_grabScript(next());
     tr.set_grabLimit(next());
     tr.set_grabStop(next());
+    tr.set_grabStopped(next());
     tr.set_grabCheckNew(next());
     tr.set_grabDownloadedCount(next());
     tr.set_grabGroupVideo(next());

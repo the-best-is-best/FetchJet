@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -250,8 +251,10 @@ internal fun UrlInputSection(
 }
 
 @Composable
-internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (EngineType) -> Unit) {
-    // Engine Selector
+internal fun EngineSelector(
+    detectedEngine: EngineType,
+    onEngineSelected: (EngineType) -> Unit
+) {
     Text(
         text = LocalizationManager.Strings.addDownloadEngine,
         fontSize = 12.sp,
@@ -269,22 +272,12 @@ internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (Engin
             onClick = { onEngineSelected(EngineType.HTTP_DIRECT) },
             modifier = Modifier.weight(1f)
         )
-        if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) {
-            EngineChoiceChip(
-                label = "🎬 ${LocalizationManager.Strings.engineMedia}",
-                isSelected = detectedEngine == EngineType.MEDIA_STREAM,
-                onClick = { onEngineSelected(EngineType.MEDIA_STREAM) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) {
-            EngineChoiceChip(
-                label = "🧲 ${LocalizationManager.Strings.engineTorrent}",
-                isSelected = detectedEngine == EngineType.BITTORRENT,
-                onClick = { onEngineSelected(EngineType.BITTORRENT) },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        EngineChoiceChip(
+            label = "🎬 ${LocalizationManager.Strings.engineMedia}",
+            isSelected = detectedEngine == EngineType.MEDIA_STREAM,
+            onClick = { onEngineSelected(EngineType.MEDIA_STREAM) },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

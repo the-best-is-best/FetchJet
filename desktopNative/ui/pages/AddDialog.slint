@@ -571,16 +571,24 @@ component AddBody inherits VerticalLayout {
     if Core.add.grabShown: Gap {
         size: 10px;
     }
+    if Core.add.checkingLink: Text {
+        text: Tr.addCheckingLink;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        vertical-alignment: center;
+        height: 24px;
+    }
     if Core.add.grabShown: GrabCard { }
     Gap { }
     if root.links: LinkListSection { }
-    if !root.links: SectionLabel {
+    if !root.links && !Core.add.engineHidden: SectionLabel {
         text: Tr.addDownloadEngine;
     }
-    if !root.links: Gap {
+    if !root.links && !Core.add.engineHidden: Gap {
         size: 6px;
     }
-    if !root.links: HBox {
+    if !root.links && !Core.add.engineHidden: HBox {
         height: 48px;
         spacing: 8px;
         cross-axis-alignment: center;
@@ -590,7 +598,7 @@ component AddBody inherits VerticalLayout {
     }
     if !root.links && Core.addTorrent.state != TorrentStateCode.hidden: TorrentSection { }
     if !root.links && Core.addMedia.state != MediaStateCode.hidden: MediaSection { }
-    Gap { }
+    if root.links || !Core.add.engineHidden || Core.addTorrent.state != TorrentStateCode.hidden || Core.addMedia.state != MediaStateCode.hidden: Gap { }
     ScheduleSection { }
     Gap { }
     if Core.add.connectionsShown: SectionLabel {

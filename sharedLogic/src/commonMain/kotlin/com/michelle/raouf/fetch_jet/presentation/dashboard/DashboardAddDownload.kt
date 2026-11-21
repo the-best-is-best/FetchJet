@@ -527,6 +527,7 @@ internal fun DashboardViewModel.engineForListedLink(url: String): EngineType {
 internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
     val selected = state.linkList.filter { it.isSelected }
     if (selected.any { it.isBeingInspected || it.needsRetry }) return
+    cancelPageGrab()
     if (selected.isEmpty()) {
         _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysSelectAtLeastOneLink) }
         return

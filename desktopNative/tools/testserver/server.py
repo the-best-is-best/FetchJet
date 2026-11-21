@@ -502,6 +502,9 @@ class Handler(BaseHTTPRequestHandler):
             "page2.html": '<html><body><a href="../file/3MB.mp3">Song</a><a href="page3.html">Next</a></body></html>',
             "page3.html": '<html><body><a href="../file/4MB.mkv">Film</a></body></html>',
             "other.html": '<html><body><a href="/file/7MB.mp4">Other site</a></body></html>',
+            "slow.html": '<html><head><title>Slow</title><base href="/site/"></head><body><a href="../file/1MB.bin">A</a><a href="../file/3MB.mp3">B</a><a href="../file/1MB.zip">C</a><a href="slowpage.html?delay=7000">More</a></body></html>',
+            "slowpage.html": '<html><body><a href="../file/4MB.mkv">Late</a></body></html>',
+            "video.html": '<html><head><title>Clip</title><meta property="og:video" content="http://localhost/clip.mp4"></head><body><p>Watch</p></body></html>',
             "empty.html": '<html><body><p>Nothing here</p></body></html>',
         }
         if name == "big.html":
@@ -509,6 +512,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.simple(200, "<html><body>" + links + "</body></html>", content_type="text/html; charset=utf-8")
         if name in pages:
             return self.simple(200, pages[name], content_type="text/html; charset=utf-8")
+        if name == "bundle":
+            body = b"PK" * 3000
+            self.head(200, [("Content-Type", "application/zip")], len(body))
+            if self.command != "HEAD":
+                self.wfile.write(body)
+                self.sent += len(body)
+            return
         if name == "download":
             body = (b"report-" + (self.q("id") or "0").encode() + b"-") * 700
             self.head(200, [("Content-Type", "application/octet-stream"),

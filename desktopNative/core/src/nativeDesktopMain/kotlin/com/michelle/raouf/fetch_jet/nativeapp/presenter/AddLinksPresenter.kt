@@ -8,7 +8,10 @@ import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkLineCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkTagCode
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagKindOf
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagOf
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.combine
@@ -64,10 +67,11 @@ private fun linkTitle(url: String): String {
 }
 
 private fun grabbedRow(index: Int, link: LinkListEntry): LinkRowDto {
-    val (tag, tagCode) = when (link.folder) {
-        "Video" -> grabGroupName(link.folder) to LinkTagCode.VIDEO
-        "Music" -> grabGroupName(link.folder) to LinkTagCode.AUDIO
-        else -> grabGroupName(link.folder) to LinkTagCode.FILE
+    val tag = grabTagOf(link.fileName ?: link.url, link.folder)
+    val tagCode = when (grabTagKindOf(link.folder)) {
+        GrabTagKind.VIDEO -> LinkTagCode.VIDEO
+        GrabTagKind.AUDIO -> LinkTagCode.AUDIO
+        GrabTagKind.OTHER -> LinkTagCode.FILE
     }
     val where = linkHost(link.sourcePage)
     val base = if (link.sizeBytes >= 0L) formatBytes(link.sizeBytes) + "  ·  " + where else where
@@ -155,8 +159,8 @@ private fun linkRow(index: Int, link: LinkListEntry): LinkRowDto {
 
 internal fun Presenter.startAddLinks() {
     scope.launch {
-        combine(vm.uiState.map { it.linkList }.distinctUntilChanged(), AppLanguage.current) { links, _ ->
-            links.mapIndexed { index, link -> linkRow(index, link) }
+        combine(vm.uiState.map { it.visibleLinks }.distinctUntilChanged(), AppLanguage.current) { links, _ ->
+            links.map { linkRow(it.index, it.value) }
         }.collect { addLinks.publish(it) }
     }
 }
