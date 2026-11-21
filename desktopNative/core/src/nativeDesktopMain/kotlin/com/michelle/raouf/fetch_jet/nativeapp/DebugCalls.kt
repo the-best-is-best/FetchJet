@@ -16,6 +16,7 @@ import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
 import com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.presentation.dashboard.onDeviceReceive
+import com.michelle.raouf.fetch_jet.presentation.dashboard.loopbackDeviceSend
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.BrowserDialog
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.DeviceDebug
@@ -58,6 +59,7 @@ internal object DebugCalls {
         "installUpdate" -> PlatformUpdater.launchInstallerAndExit(text(args, "path")).fold({ "ok" }, { "error: " + it.message })
         "devices" -> devices(args)
         "receive" -> receive(args)
+        "loopbackSend" -> if (NativeApp.presenter.vm.loopbackDeviceSend(text(args, "id"))) "ok" else "refused"
         "proxyStart" -> proxyStart(args)
         "proxyStop" -> proxyStop()
         "mainSetup" -> {

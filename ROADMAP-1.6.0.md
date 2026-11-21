@@ -6,7 +6,7 @@ Each item says what Ezoo does, so we know what "done" has to cover. FetchJet alr
 unpacked yt-dlp folder build, a zip unpacker that checks names and CRC, a file name box in the Add dialog.
 Legend: [x] done and tested as said, [ ] not done or not tested yet.
 
-## 1. Subtitles: one at a time, and added to a finished video [ ]
+## 1. Subtitles: one at a time, and added to a finished video [x]
 
 Owner's decision (2026-11-19): no "subtitles only" download. Instead: the video downloads with its subtitles as before
 (one language at a time now), and the details of a finished video have "Add subtitles": the page is read again (fresh
@@ -47,7 +47,10 @@ Done 2026-11-19 (Windows):
   `ios-dev-build.command all` built with no change; iPhone 17 simulator, YouTube `jNQXAC9IVRw` (en + de): card hidden
   for Audio Only, 3 cards; VTT download `.en.vtt`; Add German -> `.de.vtt`, "Added: German"; long-press menu entry;
   embed: `ffmpeg -i` shows mov_text eng then ger; no Source row, no `fjenc1:`; Arabic arrows ↖ on both places.
-- [ ] Not tested: a real YouTube 429 (the server side was faked in the unit test), embedding into a real downloaded video.
+- [x] webm embed (2026-11-21, the A56 driven over adb, YouTube `jNQXAC9IVRw`, 240p WEBM, 286 KB): English embedded at download = video vp9 + audio opus + one webvtt stream (eng); 'Add subtitles' from the details added German: the file now has two webvtt streams (eng, then ger), no temp files left. The app log shows two `ffmpeg (local join) exit 234: Stream map '' matches no streams` lines (`0:s:0`, `0:s:1`): a first attempt failing and a fallback that works; if you want it clean, look at the 'local join' subtitle map for webm.
+- [ ] Not tested: a real YouTube 429 (it cannot be made on demand; the server side was faked in the unit test; check it when a user reports it), mkv.
+- [x] Found on the A56 (2026-11-21): 'Add subtitles' of an old row said 'This video has no subtitles' because its link was still `fjenc1:` (encrypted with a Keystore key that a reinstall lost: Android restored `tasks_cache.json` from its backup, the key is never in a backup). Now: a link that cannot be read makes the dialog say 'Could not read the subtitles' (`inspectSubtitlesOf`), `canSendToDevice()` is false for an unfinished task with such a link, and `settings/tasks_cache.json` is excluded from Android cloud backup, device transfer and the Android 6-11 backup (`backup_rules.xml`, `data_extraction_rules.xml`): a restore starts with an empty list instead of a broken one (the files stay in the folder). Old rows with a lost key stay unreadable: delete and download again.
+- [x] Send to device keeps the subtitles (2026-11-22): a finished media video sent to another device stays a media video there (`SendPayload.sourceEngine`, `subtitleTracks`, `embedSubtitles`, `subtitleFormat`, `sideFiles`; `DownloadTask.subtitlesFromPage`): 'Add subtitles' is offered, the languages already in or beside the file are marked, the side `.srt` / `.vtt` files travel with it (renamed to the receiver's file name). Old receivers ignore the new fields. jvmTest 286 / 0 (`ReceivedVideoSubtitlesTest`), corehost `test_subtitles` 39 / 0 (loopback send), `test_devices` 43 / 0. Not tested: a real two-device send, embedded (not side-file) subtitles end to end, the Mac.
 
 Ezoo's version, for reference:
 
@@ -71,13 +74,20 @@ Ezoo: the Add window says a file of that name is already in the folder and offer
 Here: always `name (1).ext` without asking. To do: the same three choices in Compose, Slint and SwiftUI; replace
 only after the new file is complete.
 
-## 3. Site Grabber in the app [ ]
+## 3. Site Grabber in the app [x]
 
 Ezoo: paste a page link, the app lists the page's files: `srcset` pictures, links without quotes, `data-*`,
 `base href`, `og:` tags; links with no file name are asked from the server (real name + size); pages the site
 refused are counted; a page that builds its links with JavaScript is named, with a hint to use the extension.
 Here: "Download all links on this page" from the extension only. To do: read the page in the app and fill the
 existing link list (`linkList`, `extractLinks`), HEAD for the nameless links, the same hints.
+
+
+Done 2026-11-20 / 21 (all platforms; owner decided: a crawler with depth, filters and cookies, the extension covers pages built by JavaScript):
+- [x] Core: `PageLinks` (attributes, srcset largest, og: tags, base href, plain text addresses, titles), `SiteGrabber` (levels 1-3, same site, 60 pages, 3000 files, probes for nameless links, refused / challenge pages counted, JavaScript pages named), `HttpPageFetcher` (the app's NetworkClient, browser headers, `SiteCookieJar`), live results (`onFiles`), Stop keeps the files, GitHub release pages through `releases/expanded_assets` (`SiteAdapter`).
+- [x] Add dialog on Compose, Slint and SwiftUI: one card with the depth choice in one row and a hint line; files appear while reading; the type chips are a filter (an off type is hidden and not downloaded); each row shows its type (ZIP, MP3, PNG...); folder and group named after the page (`PageLinks.nameOf`), saved like a playlist group (`PAGE_GROUP`); files already in the list are marked `downloadedBefore` and locked, with 'N downloaded before'; the engine is chosen from the link and the Direct / Media choice shows only for a page with a video or a link that could not be checked (`engineChoiceShown`, `LinkKinds`, the Test the link probe shared).
+- [x] Tests: jvmTest 280 / 0 (SiteGrabberTest, LinkKindsTest, EngineChoiceTest, GrabKindFilterTest, AddDialogRulesTest); corehost on Windows, Linux (WSL) and the Mac: test_grab 74, test_add 31, test_media 31, test_home 41, test_playlist_group 31, test_playlist 38, test_typing 6, test_torrent 20, 0 failed. The A56 driven over adb by deep links (`fetchjet://download?url=`): scan of ftp.gnu.org/gnu/hello (55 files, 25 pages), GitHub release page (42 files, one request), downloaded-before, Arabic, no crash. iPhone 17 / iPad / macOS window checked by the Mac session.
+- [ ] Not tested: GitHub release pages on iOS (needs internet), a real Cloudflare-protected page, a login-protected page with the browser's cookies.
 
 ## 4. Playlists [x]
 
@@ -254,11 +264,13 @@ Checked 2026-11-20 with CoComelon "Wheels on the Bus" (`e_04ZrNroTo`, made for k
 - [ ] Ezoo's time for the same link: not measured (its app does not take a YouTube link; its extension in a browser
   would have to be driven).
 
-## 6. Drag a finished file out of the list [ ]
+## 6. Drag a finished file out of the list [x] (dropped)
 
 Ezoo: drag a row to a folder, the desktop or a chat; moved on the same drive, copied to another (Shift moves,
 Ctrl copies), as in Explorer.
 To do: native desktop (Windows `SHDoDragDrop`, macOS / Linux their own), Slint host.
+
+Dropped (owner, 2026-11-21): not worth it. A copy would double the disk space of a big file, a move leaves the task without its file, and the file is one click away in its folder (the row's open-folder / open actions). Nothing was implemented.
 
 ## 7. Fewer antivirus warnings [x]
 
@@ -448,7 +460,7 @@ To do:
   boxes), and the Android / iOS apps.
 - Digits stay Latin (as Arabic does now) unless a reader says otherwise.
 
-## 12. What's new video, shown when the new version first opens [ ]
+## 12. What's new video, shown when the new version first opens [x] (dropped)
 
 Idea (owner, 2026-11-21): this release changes how the app works (it decides for the user: engine by link, link check before
 the options, page scan with live results and type filter, a group named after the page, files downloaded before marked and
@@ -462,6 +474,8 @@ that shows once after an update ("New in 2.0 - watch"); the same behaviour on al
 when someone watches it. Later, optionally, an in-app player on Android / iOS only.
 To do: the recording (owner), the list of steps and the caption cues (start, end, key, 15 languages), the page, the
 once-per-version dialog in Compose, Slint and SwiftUI (the last shown version in the settings), the version number.
+
+Dropped (owner, 2026-11-21): the idea was cancelled after a first Android recording and a page prototype were made; nothing of it is in the repo.
 
 ## Order (proposal)
 

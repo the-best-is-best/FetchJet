@@ -46,8 +46,23 @@ data class SendPayload(
     val clipEnd: String = "",
     val clipByCutting: Boolean = false,
     val totalBytes: Long = 0L,
-    val downloadedBytes: Long = 0L
+    val downloadedBytes: Long = 0L,
+    val sourceEngine: String = "",
+    val subtitleTracks: List<SubtitleTrackWire> = emptyList(),
+    val embedSubtitles: Boolean = false,
+    val subtitleFormat: String = "",
+    val sideFiles: List<String> = emptyList()
 )
+
+@Serializable
+data class SubtitleTrackWire(
+    val langCode: String,
+    val langName: String = "",
+    val ext: String = "",
+    val isAuto: Boolean = false
+)
+
+const val SOURCE_ENGINE_MEDIA = "MEDIA_STREAM"
 
 /**
  * A file name that came over the wire, reduced to a bare name inside the receive folder: a paired

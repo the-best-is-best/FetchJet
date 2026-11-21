@@ -137,6 +137,39 @@ def run():
         core.action("SubtitlesDismiss")
         core.wait_for("the page to close after the menu", lambda: not page(core).get("open", False), 10)
 
+        print("send the finished video to another device: it stays a video there")
+        ext = os.path.splitext(task["fileName"])[1]
+        copy_name = base + " (1)" + ext
+        sent = core.debug("loopbackSend", {"id": task["id"]})
+        core.check("the loopback send was accepted", sent == "ok", sent)
+        got = core.wait_task("COMPLETED", timeout=40, file_name=copy_name)
+        core.pump(0.5)
+        core.check("the received copy sits in the same folder", got["destinationPath"] == folder, got)
+        core.check("the subtitle files arrived with it, named after the copy",
+                   os.path.isfile(os.path.join(folder, base + " (1).en.vtt")) and os.path.isfile(os.path.join(folder, base + " (1).ar.vtt")),
+                   os.listdir(folder))
+        core.check("the original's subtitle files stayed", os.path.isfile(os.path.join(folder, base + ".en.vtt")), os.listdir(folder))
+        core.action("RowClick", id=got["id"], control=False, shift=False)
+        core.pump(0.6)
+        core.check("the received video offers adding subtitles", details(core).get("canSubtitles") is True, details(core))
+        open_page(core)
+        keys = [r.get("key") for r in page(core).get("rows", [])]
+        core.check("the received video lists the three tracks of the page", sorted(keys) == ["ar", "en", "fr.auto"], keys)
+        core.check("English and Arabic are marked as already there",
+                   row(core, "en").get("present") is True and row(core, "ar").get("present") is True and not row(core, "fr.auto").get("present"),
+                   page(core).get("rows"))
+        core.check("English cannot be added twice", not row(core, "en").get("enabled"), row(core, "en"))
+        core.action("SubtitlesToggle", key="fr.auto", selected=True)
+        core.pump(0.3)
+        core.action("SubtitlesAdd")
+        core.wait_for("adding on the received video to end", lambda: not page(core).get("running", False) and page(core).get("added", "") != "", 60)
+        core.check("the French file was added next to the received video",
+                   os.path.isfile(os.path.join(folder, base + " (1).fr.auto.vtt")) or os.path.isfile(os.path.join(folder, base + " (1).fr.auto.srt")),
+                   os.listdir(folder))
+        core.check("the received video is still one row", len([t for t in core.tasks() if t["fileName"] == copy_name]) == 1, core.tasks())
+        core.action("SubtitlesDismiss")
+        core.wait_for("the page to close after the received video", lambda: not page(core).get("open", False), 10)
+
         print("a file that is not a video")
         core.debug("addDirect", {"url": "http://127.0.0.1:18200/file/1MB.bin?key=subs-plain", "fileName": "plain.bin"})
         plain = core.wait_task("COMPLETED", timeout=40, file_name="plain.bin")

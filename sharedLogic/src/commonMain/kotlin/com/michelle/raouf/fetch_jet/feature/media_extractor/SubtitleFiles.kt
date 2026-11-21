@@ -192,21 +192,26 @@ fun placeSubtitleFilesBeside(videoPath: Path, files: List<Pair<SubtitleTrack, Pa
 fun subtitleTempDir(destDir: String, key: String): Path = "${destDir.trimEnd('/', '\\')}/.fjsubs_$key".toPath()
 
 fun com.michelle.raouf.fetch_jet.domain.model.DownloadTask.canAddSubtitles(): Boolean =
-    engineType == com.michelle.raouf.fetch_jet.domain.model.EngineType.MEDIA_STREAM &&
+    (engineType == com.michelle.raouf.fetch_jet.domain.model.EngineType.MEDIA_STREAM ||
+            (subtitlesFromPage && !originalUrl.isNullOrBlank())) &&
             status == com.michelle.raouf.fetch_jet.domain.model.DownloadStatus.COMPLETED &&
             fileName.substringAfterLast('.', "").lowercase() in SUBTITLE_VIDEO_EXTENSIONS
 
-fun com.michelle.raouf.fetch_jet.domain.model.DownloadTask.subtitleKeysPresent(): Set<String> {
-    val keys = subtitleTracks.filter { it.isSelected }.map { subtitleFileKey(it) }.toMutableSet()
+fun com.michelle.raouf.fetch_jet.domain.model.DownloadTask.subtitleSideFiles(): List<Path> {
     val dir = destinationPath.trimEnd('/', '\\')
     val base = fileName.substringBeforeLast('.', fileName)
-    runCatching {
-        AppFileSystem.list(dir.toPath()).forEach { p ->
+    return runCatching {
+        AppFileSystem.list(dir.toPath()).filter { p ->
             val n = p.name
-            if (n.startsWith("$base.") && (n.endsWith(".srt", ignoreCase = true) || n.endsWith(".vtt", ignoreCase = true))) {
-                keys.add(n.removePrefix("$base.").dropLast(4))
-            }
+            n.startsWith("$base.") && n.length > base.length + 5 &&
+                    (n.endsWith(".srt", ignoreCase = true) || n.endsWith(".vtt", ignoreCase = true))
         }
-    }
+    }.getOrDefault(emptyList())
+}
+
+fun com.michelle.raouf.fetch_jet.domain.model.DownloadTask.subtitleKeysPresent(): Set<String> {
+    val keys = subtitleTracks.filter { it.isSelected }.map { subtitleFileKey(it) }.toMutableSet()
+    val base = fileName.substringBeforeLast('.', fileName)
+    subtitleSideFiles().forEach { keys.add(it.name.removePrefix("$base.").dropLast(4)) }
     return keys
 }

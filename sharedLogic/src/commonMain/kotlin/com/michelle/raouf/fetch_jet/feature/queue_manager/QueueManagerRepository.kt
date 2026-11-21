@@ -746,6 +746,7 @@ class QueueManagerRepository(
     /** The subtitle tracks the page of a finished video offers now (fresh links). */
     suspend fun inspectSubtitlesOf(task: DownloadTask): List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> {
         val page = task.originalUrl?.takeIf { it.isNotBlank() } ?: task.url
+        if (page.startsWith("fjenc1:")) throw IllegalStateException("The link of this download cannot be read on this device")
         inspectMediaQualities(page, task.requestHeaders)
         return mediaEngine.lastSubtitles
     }
@@ -762,7 +763,12 @@ class QueueManagerRepository(
             val addedKeys = result.added.map { it.langCode to it.isAuto }.toSet()
             val merged = current.subtitleTracks.filter { (it.langCode to it.isAuto) !in addedKeys } +
                     result.added.map { it.copy(isSelected = true) }
-            mediaEngine.enqueueTask(current.copy(subtitleTracks = merged))
+            val changed = current.copy(subtitleTracks = merged)
+            when (current.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(changed)
+                EngineType.BITTORRENT -> Unit
+                EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(changed)
+            }
         }
         return result
     }
@@ -830,7 +836,10 @@ class QueueManagerRepository(
         displayTotalBytes: Long = 0L,
         displayDownloadedBytes: Long = 0L,
         /** Never reuse the name of a file already in the folder or of another task there. */
-        keepExistingFiles: Boolean = false
+        keepExistingFiles: Boolean = false,
+        /** A finished video taken from another device as a plain file: [pageUrl] still offers its subtitles. */
+        subtitlesFromPage: Boolean = false,
+        pageUrl: String = ""
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -943,7 +952,8 @@ class QueueManagerRepository(
             maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
             maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
             formatId = formatId,
-            originalUrl = originalMediaUrl,
+            originalUrl = originalMediaUrl ?: pageUrl.takeIf { subtitlesFromPage && it.isNotBlank() },
+            subtitlesFromPage = subtitlesFromPage && pageUrl.isNotBlank(),
             pairedAudioUrl = pairedAudioUrl?.takeIf { it.isNotBlank() },
             clipStart = clipStart,
             clipEnd = clipEnd,
@@ -955,7 +965,7 @@ class QueueManagerRepository(
             scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
             maxConnections = maxConnections.coerceIn(0, 32),
             expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() },
-            subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
+            subtitleTracks = if (engineType == EngineType.MEDIA_STREAM || (subtitlesFromPage && pageUrl.isNotBlank())) subtitleTracks.filter { it.isSelected } else emptyList(),
             embedSubtitles = embedSubtitles,
             subtitleFormat = subtitleFormat,
             playlistId = sameFolderList?.id ?: playlistId,

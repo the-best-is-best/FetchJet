@@ -113,7 +113,8 @@ internal class SyncSender(private val engine: DeviceSyncEngine) {
             listOf(
                 OutgoingFile("$base.chunks", null, manifest, files),
                 OutgoingFile("$base.part0", finished, null, files)
-            )
+            ) + request.extraFiles.filter { files.size(it) != null }
+                .map { OutgoingFile(files.name(it), it, null, files) }
         }
 
         else -> emptyList()

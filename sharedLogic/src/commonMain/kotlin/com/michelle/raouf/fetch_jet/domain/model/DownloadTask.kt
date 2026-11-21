@@ -65,6 +65,8 @@ data class DownloadTask(
     val subtitleTracks: List<SubtitleTrack> = emptyList(),
     val embedSubtitles: Boolean = false,
     val subtitleFormat: String = "srt",
+    /** A finished video that came from another device as a plain file: its page link still offers subtitles. */
+    val subtitlesFromPage: Boolean = false,
     /** Added with a playlist: its id and name, for one notice when the whole list is done. */
     val playlistId: String = "",
     val playlistTitle: String = "",
@@ -133,7 +135,7 @@ fun DownloadTask.canResume(): Boolean? = when (engineType) {
 /** "Send to device": never a torrent; otherwise a finished download or one that keeps its bytes. */
 fun DownloadTask.canSendToDevice(): Boolean =
     engineType != EngineType.BITTORRENT &&
-            (status == DownloadStatus.COMPLETED || canResume() != false)
+            (status == DownloadStatus.COMPLETED || (canResume() != false && !url.startsWith("fjenc1:")))
 
 /** The finished file, or the bytes fetched so far, can travel and the other device continues. */
 fun DownloadTask.canTransferToDevice(): Boolean =
