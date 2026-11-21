@@ -98,6 +98,10 @@ def run():
             core.check(label + ": card " + str(card) + ", engine choice " + str(picker),
                        add.get("grabShown", False) == card and (not add.get("engineHidden", False)) == picker,
                        (add.get("grabShown"), add.get("engineHidden")))
+            if card:
+                core.check(label + ": no File name box and Start is not held back by a name",
+                           not add.get("fileNameShown", False) and not add.get("fileNameNeeded", False),
+                           (add.get("fileNameShown"), add.get("fileNameNeeded")))
             if picker:
                 names = [e.get("engine", 0) for e in add.get("engines", [])]
                 core.check(label + ": the choice is Direct and Media only",
@@ -246,7 +250,11 @@ def run():
                    all(by_name[n].get("rowLocked", False) and not by_name[n].get("selected", False) for n in ("2MB.zip", "report-7.pdf", "3MB.mp3")) and
                    not any(by_name[n].get("rowLocked", False) for n in ("100KB.jpg", "1MB.bin", "300KB.png")),
                    [(r["title"], r.get("rowLocked", False), r.get("selected", False)) for r in links(core)])
-        core.check("the counter says 3 downloaded before", strings["grabDownloadedCount"].replace("%1", "3") in core.snapshot("add").get("linkSummary", ""), core.snapshot("add").get("linkSummary"))
+        core.check("the count line is the plain count and the 3 downloaded before is its own line",
+                   strings["grabDownloadedCount"].replace("%1", "3") == core.snapshot("add").get("linkBefore", "") and
+                   "3" in core.snapshot("add").get("linkSummary", "") and
+                   strings["grabDownloadedCount"].replace("%1", "3") not in core.snapshot("add").get("linkSummary", ""),
+                   (core.snapshot("add").get("linkSummary"), core.snapshot("add").get("linkBefore")))
         core.action("ToggleLink", index=by_name["2MB.zip"].get("index", 0), selected=True)
         core.pump(0.3)
         core.check("a tap on a locked row changes nothing",

@@ -54,7 +54,9 @@ def run():
         core.action("SetUrl", text=SERVER + "/download")
         core.pump(2.5)
         add = core.snapshot("add")
-        core.check("a link the server does not name stays empty", add.get("fileName", "") == "" and not add.get("primaryEnabled", False), (add.get("fileName"), add.get("primaryEnabled")))
+        core.check("a link the server does not name is a page: no name box and the start is not held back by a name",
+                   not add.get("fileNameShown", False) and not add.get("fileNameNeeded", False) and add.get("primaryEnabled", False),
+                   (add.get("fileNameShown"), add.get("fileNameNeeded"), add.get("primaryEnabled")))
 
         print("engine switch while a magnet is inspected")
         core.action("SetUrl", text=MAGNET)

@@ -31,7 +31,10 @@ struct AddField: View {
     var keyboard: UIKeyboardType = .default
     var trailing: AnyView? = nil
     var hasError = false
+    var ltr = false
+    var focusTrigger = 0
     @FocusState private var focused: Bool
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HStack(alignment: multiline ? .top : .center, spacing: 8) {
@@ -43,6 +46,8 @@ struct AddField: View {
                     TextField(placeholder, text: $text)
                 }
             }
+            .environment(\.layoutDirection, ltr ? .leftToRight : layoutDirection)
+            .onChange(of: focusTrigger) { _, _ in focused = true }
             .font(FJTheme.font.callout)
             .foregroundStyle(FJTheme.color.onSurface)
             .keyboardType(keyboard)

@@ -300,7 +300,8 @@ fun AddDownloadModalDialog(
 
     val isUrlValid = inputUrl.isNotBlank()
     val showsLinkList = linkList.isNotEmpty()
-    val needsFileName = com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName(
+    val pageScanShown = canGrabPage || siteGrab.running
+    val needsFileName = !pageScanShown && com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName(
         detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || inspectedPlaylist != null
     )
     val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isBeingInspected }
@@ -527,7 +528,7 @@ fun AddDownloadModalDialog(
                     onSelected = onAudioConvertFormatSelected
                 )
 
-                if (!showsLinkList && inspectedPlaylist == null) FileNameSection(
+                if (!showsLinkList && inspectedPlaylist == null && !pageScanShown) FileNameSection(
                     suggestedFileName = suggestedFileName,
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,

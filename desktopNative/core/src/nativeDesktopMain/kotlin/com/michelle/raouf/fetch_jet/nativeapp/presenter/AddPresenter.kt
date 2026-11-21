@@ -24,6 +24,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.canTestLink
+import com.michelle.raouf.fetch_jet.presentation.dashboard.linkCountLines
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
@@ -197,7 +198,7 @@ private val AddSlice.isInspectionComplete: Boolean
     }
 
 private val AddSlice.needsFileName: Boolean
-    get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || hasPlaylist)
+    get() = !(canGrab || grabRunning) && addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || hasPlaylist)
 
 private val AddSlice.isInspecting: Boolean get() = isInspectingTorrent || isInspectingMedia || (showsLinkList && linkBusy)
 
@@ -270,7 +271,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             add(EngineChoiceDto(EngineType.MEDIA_STREAM.ordinal, "🎬", strings.engineMedia, s.detectedEngine == EngineType.MEDIA_STREAM))
         }
     }
-    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
+    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && !s.canGrab && !s.grabRunning && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
     val fileName = if (inspecting && s.fileNameOverride.isEmpty()) strings.findingName else s.fileNameOverride.ifEmpty { s.suggestedFileName }
     val downloads = pathResolver.getDownloadsDirectory()
     val documents = pathResolver.getDocumentsDirectory()
@@ -353,7 +354,8 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             QuickFolderDto("📄", strings.quickFolderDocuments, documents),
             QuickFolderDto("💻", strings.quickFolderDesktop, desktop),
         ),
-        linkSummary = if (s.showsLinkList) strings.selectedOfLinks(s.linkSelected, s.linkShown) +(if (s.linkDownloaded > 0) " · " + strings.grabDownloadedCount.replace("%1", s.linkDownloaded.toString()) else "") else "",
+        linkSummary = if (s.showsLinkList) linkCountLines(s.linkSelected, s.linkShown, s.linkDownloaded).count else "",
+        linkBefore = if (s.showsLinkList) linkCountLines(s.linkSelected, s.linkShown, s.linkDownloaded).before else "",
         linkPickable = s.showsLinkList && s.linkShown > s.linkDownloaded,
         linkAllSelected = s.showsLinkList && s.linkShown > s.linkDownloaded && s.linkSelected == s.linkShown - s.linkDownloaded,
         linkFolder = s.linkFolder,

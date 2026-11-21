@@ -27,6 +27,7 @@ struct AddHeader: View {
 
 struct AddUrlSection: View {
     @EnvironmentObject var store: FJStore
+    @State private var clearTick = 0
     var body: some View {
         let strings = store.strings
         let url = Binding(
@@ -64,14 +65,19 @@ struct AddUrlSection: View {
                 text: url,
                 multiline: true,
                 keyboard: .URL,
-                trailing: AnyView(trailing)
+                trailing: AnyView(trailing),
+                ltr: true,
+                focusTrigger: clearTick
             )
         }
     }
 
     @ViewBuilder private var trailing: some View {
         if !store.state.inputUrl.trimmingCharacters(in: .whitespaces).isEmpty {
-            AddFieldIcon(symbol: "✕") { store.send(DashboardUiEventOnUrlChanged(url: "")) }
+            AddFieldIcon(symbol: "✕") {
+                store.send(DashboardUiEventOnUrlChanged(url: ""))
+                clearTick += 1
+            }
         } else {
             AddFieldChip(label: "📋 \(store.strings.addPaste)") {
                 if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
@@ -177,7 +183,8 @@ struct AddDestinationSection: View {
             AddField(
                 icon: "📁",
                 text: Binding(get: { store.state.destinationPath }, set: { store.send(DashboardUiEventOnDestinationPathChanged(path: $0)) }),
-                trailing: AnyView(AddFieldIcon(symbol: "📂") { showFolderPicker = true })
+                trailing: AnyView(AddFieldIcon(symbol: "📂") { showFolderPicker = true }),
+                ltr: true
             )
             if !store.state.addFolderRuleSite.isEmpty {
                 Text(strings.addFolderFromRule + " " + store.state.addFolderRuleSite)

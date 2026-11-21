@@ -488,12 +488,23 @@ export component LinkListSection inherits VerticalLayout {
         height: 48px;
         spacing: 8px;
         cross-axis-alignment: center;
-        T {
+        VerticalLayout {
             horizontal-stretch: 1;
-            text: Core.add.linkSummary;
-            font-size: 13px;
-            font-weight: 600;
-            overflow: elide;
+            min-width: 0;
+            alignment: center;
+            spacing: 0px;
+            T {
+                text: Core.add.linkSummary;
+                font-size: 13px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            if Core.add.linkBefore != "": T {
+                text: Core.add.linkBefore;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
         }
         if Core.add.linkPickable: TextButton {
             text: Core.add.linkAllSelected ? Tr.selectNone : Tr.selectAll;

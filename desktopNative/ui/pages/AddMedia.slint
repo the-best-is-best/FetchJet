@@ -729,8 +729,14 @@ component PlaylistCard inherits SectionCard {
                     color: Theme.on-surface-variant;
                     overflow: elide;
                 }
+                if Core.addMedia.playlistBefore != "": T {
+                    text: Core.addMedia.playlistBefore;
+                    font-size: 11px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
             }
-            TextButton {
+            if Core.addMedia.playlistPickable: TextButton {
                 text: Core.addMedia.playlistAllSelected ? Tr.selectNone : Tr.selectAll;
                 font-size: 12px;
                 font-weight: 500;
@@ -849,25 +855,32 @@ component PlaylistCard inherits SectionCard {
                             font-size: 11px;
                             color: Theme.on-surface-variant;
                         }
-                        ElideText {
-                            text: entry.title;
-                            text-rtl: entry.titleRtl;
-                            behind: Theme.surface;
-                            font-size: 12px;
-                        }
-                        if entry.unavailable: T {
-                            width: self.preferred-width + 10px;
-                            text: Tr.playlistNotAvailable;
-                            font-size: 10px;
-                            color: Theme.error;
-                            horizontal-alignment: Dir.end;
-                        }
-                        if entry.before: T {
-                            width: self.preferred-width + 10px;
-                            text: entry.inPlaylist ? Tr.playlistInIt : Tr.playlistDownloadedBefore;
-                            font-size: 10px;
-                            color: Theme.primary;
-                            horizontal-alignment: Dir.end;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            min-width: 0;
+                            alignment: center;
+                            spacing: 0px;
+                            ElideText {
+                                text: entry.title;
+                                text-rtl: entry.titleRtl;
+                                behind: Theme.surface;
+                                font-size: 12px;
+                                line: 20px;
+                            }
+                            if entry.unavailable: ElideText {
+                                text: Tr.playlistNotAvailable;
+                                ink: Theme.error;
+                                behind: Theme.surface;
+                                font-size: 10px;
+                                line: 14px;
+                            }
+                            if entry.before && !entry.unavailable: ElideText {
+                                text: entry.inPlaylist ? Tr.playlistInIt : Tr.playlistDownloadedBefore;
+                                ink: Theme.primary;
+                                behind: Theme.surface;
+                                font-size: 10px;
+                                line: 14px;
+                            }
                         }
                         if entry.size != "" || entry.sizeBusy: T {
                             width: 72px;

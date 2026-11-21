@@ -92,6 +92,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
             val urlChanged = _uiState.value.inputUrl != inputUrl
             if (urlChanged) {
+                urlSettleMs = if (kotlin.math.abs(inputUrl.length - _uiState.value.inputUrl.length) > URL_PASTE_JUMP) URL_SETTLE_PASTE_MS else URL_SETTLE_TYPED_MS
+                urlChangedAtMs = com.michelle.raouf.fetch_jet.core.util.currentEpochMs()
                 cancelPageGrab()
                 inspectMediaJob?.cancel()
                 inspectTorrentJob?.cancel()

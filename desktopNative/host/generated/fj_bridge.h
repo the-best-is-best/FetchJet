@@ -347,6 +347,7 @@ inline AddDto parse_AddDto(const fj::Json &j) {
     d.folderRule = fj::text(j, "folderRule");
     d.quickFolders = fj::struct_model<QuickFolderDto>(j, "quickFolders", parse_QuickFolderDto);
     d.linkSummary = fj::text(j, "linkSummary");
+    d.linkBefore = fj::text(j, "linkBefore");
     d.linkAllSelected = fj::flag(j, "linkAllSelected");
     d.linkPickable = fj::flag(j, "linkPickable");
     d.linkFolder = fj::text(j, "linkFolder");
@@ -495,6 +496,8 @@ inline AddMediaDto parse_AddMediaDto(const fj::Json &j) {
     d.playlistTitle = fj::text(j, "playlistTitle");
     d.playlistTitleRtl = fj::flag(j, "playlistTitleRtl");
     d.playlistSummary = fj::text(j, "playlistSummary");
+    d.playlistBefore = fj::text(j, "playlistBefore");
+    d.playlistPickable = fj::flag(j, "playlistPickable");
     d.playlistAllSelected = fj::flag(j, "playlistAllSelected");
     d.playlistFolder = fj::text(j, "playlistFolder");
     d.playlistFolderRev = fj::integer(j, "playlistFolderRev");

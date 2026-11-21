@@ -207,6 +207,7 @@ component UrlSection inherits VerticalLayout {
         size: 6px;
     }
     field := TextArea {
+        ltr: true;
         placeholder: Tr.urlPlaceholder;
         leading-emoji: "🔗";
         has-trailing: true;
@@ -219,6 +220,7 @@ component UrlSection inherits VerticalLayout {
             clicked => {
                 field.set-text("");
                 Act.setUrl("");
+                field.focus-field();
             }
             glyph: "✕";
             label: Tr.addClearSelection;
@@ -673,6 +675,7 @@ component AddBody inherits VerticalLayout {
         size: 6px;
     }
     TextField {
+        ltr: true;
         leading-emoji: "📁";
         has-trailing: true;
         value: Core.add.destination;

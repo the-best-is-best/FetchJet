@@ -55,6 +55,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthShortName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.linkCountLines
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.tbib.kmp_localization.LocalizationManager
@@ -81,15 +82,25 @@ internal fun LinkListSection(
     val pickable = shown.count { !it.value.downloadedBefore }
     val allSelected = pickable > 0 && selected == pickable
     val before = shown.count { it.value.downloadedBefore }
+    val counts = linkCountLines(selected, shown.size, before)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            LocalizationManager.Strings.selectedOfLinks(selected, shown.size) +
-                    if (before > 0) " · " + LocalizationManager.Strings.grabDownloadedCount.replace("%1", before.toString()) else "",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                counts.count,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (counts.before.isNotEmpty()) Text(
+                counts.before,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         if (pickable > 0) TextButton(onClick = { onSelectAll(!allSelected) }) {
             Text(
                 if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
@@ -365,14 +376,31 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 color = if (link.downloadedBefore) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                if (grabbed) {
-                    listOfNotNull(
-                        LocalizationManager.Strings.playlistDownloadedBefore.takeIf { link.downloadedBefore },
-                        formatBytes(link.sizeBytes).takeIf { link.sizeBytes >= 0 },
-                        linkHost(link.sourcePage.ifBlank { link.url }).takeIf { it.isNotBlank() }
-                    ).joinToString(" · ")
-                } else linkHost(link.url),
+            if (grabbed) {
+                val lead = listOfNotNull(
+                    LocalizationManager.Strings.playlistDownloadedBefore.takeIf { link.downloadedBefore },
+                    formatBytes(link.sizeBytes).takeIf { link.sizeBytes >= 0 }
+                ).joinToString(" · ")
+                val host = linkHost(link.sourcePage.ifBlank { link.url })
+                Row {
+                    if (lead.isNotEmpty()) Text(
+                        lead,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (host.isNotBlank()) Text(
+                        (if (lead.isNotEmpty()) " · " else "") + host,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+            } else Text(
+                linkHost(link.url),
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

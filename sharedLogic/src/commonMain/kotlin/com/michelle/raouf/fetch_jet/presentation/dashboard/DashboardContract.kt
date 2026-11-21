@@ -388,8 +388,15 @@ data class DashboardUiState(
     val playlistOldestFirstOffered: Boolean
         get() = inspectedPlaylist?.fromBrowser == false &&
                 com.michelle.raouf.fetch_jet.feature.media_extractor.isChannelVideosUrl(inputUrl)
+    val pageScanShown: Boolean
+        get() = canGrabPage || siteGrab.running
+
     val needsFileName: Boolean
-        get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
+        get() = !pageScanShown && addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
+
+    val fileNameShown: Boolean
+        get() = linkList.isEmpty() && inspectedPlaylist == null && !pageScanShown &&
+                (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank() || needsFileName)
 }
 
 /** The torrent tab of a task's details: refreshed every 2 s while it is open. */

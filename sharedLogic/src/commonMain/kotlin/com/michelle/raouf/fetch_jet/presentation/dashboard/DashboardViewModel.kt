@@ -114,6 +114,13 @@ class DashboardViewModel(
     internal val playlistQualities = mutableMapOf<String, List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry>>()
     internal val playlistQualitiesLock = kotlinx.coroutines.sync.Mutex()
     internal var inspectTorrentJob: Job? = null
+    internal var urlChangedAtMs: Long = 0L
+    internal var urlSettleMs: Long = URL_SETTLE_TYPED_MS
+
+    internal suspend fun awaitUrlSettled() {
+        val wait = urlSettleMs - (com.michelle.raouf.fetch_jet.core.util.currentEpochMs() - urlChangedAtMs)
+        if (wait > 0) kotlinx.coroutines.delay(wait)
+    }
 
     /** A send waiting for a first-time pairing to finish (set by OnSendToDeviceClicked). */
     internal var pendingDeviceSend: com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest? =
@@ -840,6 +847,7 @@ class DashboardViewModel(
         inspectTorrentJob = scope.launch {
 
             _uiState.update { it.copy(isInspectingTorrent = true, inspectError = null) }
+            awaitUrlSettled()
 
             val parsedResult = queueRepository.torrentEngine.fetchAndParseTorrent(url)
             ensureActive()
@@ -903,6 +911,7 @@ class DashboardViewModel(
         inspectMediaJob?.cancel()
         inspectMediaJob = scope.launch {
             _uiState.update { it.copy(isInspectingMedia = true, inspectMediaError = null) }
+            awaitUrlSettled()
             // A playlist / channel link: list its videos (unless the user chose "only this video").
             if (_uiState.value.courseReading != null && pendingExternalUrl == url) return@launch
             val readByBrowser = pendingExternalPlaylist?.takeIf { pendingExternalUrl == url }

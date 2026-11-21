@@ -31,7 +31,7 @@ struct AddDownloadSheet: View {
                 AddScheduleSection()
                 if s.detectedEngine == .httpDirect && !v.showsLinkList { AddConnectionsSection() }
                 AddAudioConvertSection(showsLinkList: v.showsLinkList)
-                if !v.showsLinkList && s.inspectedPlaylist == nil { AddFileNameSection() }
+                if !v.showsLinkList && s.inspectedPlaylist == nil && !s.pageScanShown { AddFileNameSection() }
                 if !v.showsLinkList && s.inspectedPlaylist == nil && s.detectedEngine == .httpDirect { AddChecksumSection() }
                 AddDestinationSection(showFolderPicker: $showFolderPicker)
                 if s.detectedEngine == .bittorrent { AddLeechToggle() }

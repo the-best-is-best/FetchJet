@@ -110,6 +110,18 @@ internal fun UrlInputSection(
 ) {
     var urlTextFieldValue by urlField
     val coroutineScope = rememberCoroutineScope()
+    val urlFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    var clearTick by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(clearTick) {
+        if (clearTick > 0) {
+            try {
+                urlFocus.requestFocus()
+            } catch (_: Exception) {
+            }
+            keyboard?.show()
+        }
+    }
     // URL Input Field
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -185,6 +197,7 @@ internal fun UrlInputSection(
                 FieldIconButton("✕", onClick = {
                     urlTextFieldValue = TextFieldValue("", TextRange.Zero)
                     onUrlChanged("")
+                    clearTick++
                 })
             } else {
                 FieldChipButton("📋 ${LocalizationManager.Strings.addPaste}", onClick = {
@@ -200,6 +213,8 @@ internal fun UrlInputSection(
         },
         singleLine = false,
         maxLines = 3,
+        ltr = true,
+        focusRequester = urlFocus,
         modifier = Modifier.fillMaxWidth()
     )
     if (testLinkShown) {
@@ -381,6 +396,7 @@ internal fun DestinationSection(
             }
         },
         modifier = Modifier.fillMaxWidth(),
+        ltr = true,
         leading = { Text("📁", fontSize = 16.sp) },
         trailing = { FieldIconButton("📂", onClick = { showDirectoryPicker = true }) }
     )

@@ -35,7 +35,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -140,37 +145,45 @@ internal fun FetchJetTextField(
     shape: Shape = RoundedCornerShape(12.dp),
     textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    ltr: Boolean = false,
+    focusRequester: FocusRequester? = null
 ) {
     val interaction = remember { MutableInteractionSource() }
     FieldFrame(label, error, enabled, interaction, shape, modifier) { style, cursor, focused ->
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            enabled = enabled,
-            singleLine = singleLine,
-            maxLines = maxLines,
-            textStyle = textStyle.merge(style),
-            cursorBrush = cursor,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            interactionSource = interaction,
-            modifier = Modifier.fillMaxWidth(),
-            decorationBox = { inner ->
-                FieldBody(
-                    value.text.isEmpty(),
-                    placeholder,
-                    leading,
-                    trailing,
-                    singleLine,
-                    height,
-                    false,
-                    focused,
-                    textStyle,
-                    inner
-                )
-            }
-        )
+        val fieldModifier = if (focusRequester != null) Modifier.fillMaxWidth().focusRequester(focusRequester) else Modifier.fillMaxWidth()
+        val field = @Composable {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                enabled = enabled,
+                singleLine = singleLine,
+                maxLines = maxLines,
+                textStyle = textStyle.merge(style),
+                cursorBrush = cursor,
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                interactionSource = interaction,
+                modifier = fieldModifier,
+                decorationBox = { inner ->
+                    FieldBody(
+                        value.text.isEmpty(),
+                        placeholder,
+                        leading,
+                        trailing,
+                        singleLine,
+                        height,
+                        false,
+                        focused,
+                        textStyle,
+                        inner
+                    )
+                }
+            )
+        }
+        if (ltr) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { field() }
+        } else field()
     }
 }
 

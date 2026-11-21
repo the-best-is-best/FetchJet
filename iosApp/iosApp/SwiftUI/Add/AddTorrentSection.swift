@@ -130,10 +130,20 @@ struct AddLinkListSection: View {
         let pickable = links.filter { !$0.downloadedBefore }.count
         let all = pickable > 0 && selected == pickable
         VStack(alignment: .leading, spacing: 8) {
+            let counts = AddCountLinesKt.linkCountLines(selected: Int32(selected), total: Int32(links.count), before: Int32(links.filter { $0.downloadedBefore }.count))
             HStack {
-                Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)) + downloadedPart(links, strings))
-                    .font(.fj(13, .bold))
-                    .foregroundStyle(FJTheme.color.onSurface)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(counts.count)
+                        .font(.fj(13, .bold))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                        .lineLimit(1)
+                    if !counts.before.isEmpty {
+                        Text(counts.before)
+                            .font(.fj(11))
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
                 if pickable > 0 {
                     Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
@@ -197,10 +207,23 @@ struct AddLinkListSection: View {
                         .font(.fj(12, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface.opacity(link.downloadedBefore ? 0.5 : 1))
                         .lineLimit(1)
-                    Text(secondLine(link))
-                        .font(.fj(10))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                        .lineLimit(1)
+                    HStack(spacing: 0) {
+                        let lead = secondLead(link)
+                        if !lead.isEmpty {
+                            Text(lead)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .layoutPriority(1)
+                        }
+                        let host = secondHost(link)
+                        if !host.isEmpty {
+                            Text((lead.isEmpty ? "" : " · ") + host)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    .font(.fj(10))
+                    .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
                 Spacer(minLength: 0)
                 Text(tag)
@@ -218,18 +241,17 @@ struct AddLinkListSection: View {
         .buttonStyle(.plain)
     }
 
-    private func downloadedPart(_ links: [LinkListEntry], _ strings: AppLocalization) -> String {
-        let before = links.filter { $0.downloadedBefore }.count
-        return before > 0 ? " · " + strings.grabDownloadedCount.replacingOccurrences(of: "%1", with: String(before)) : ""
-    }
-
-    private func secondLine(_ link: LinkListEntry) -> String {
-        guard !link.folder.isEmpty else { return AddLinkText.host(link.url) }
+    private func secondLead(_ link: LinkListEntry) -> String {
+        guard !link.folder.isEmpty else { return "" }
         var parts: [String] = []
         if link.downloadedBefore { parts.append(store.strings.playlistDownloadedBefore) }
         if link.sizeBytes >= 0 { parts.append(store.host.formatBytes(bytes: link.sizeBytes)) }
-        parts.append(AddLinkText.host(link.sourcePage.isEmpty ? link.url : link.sourcePage))
         return parts.joined(separator: " · ")
+    }
+
+    private func secondHost(_ link: LinkListEntry) -> String {
+        guard !link.folder.isEmpty else { return AddLinkText.host(link.url) }
+        return AddLinkText.host(link.sourcePage.isEmpty ? link.url : link.sourcePage)
     }
 
     @ViewBuilder

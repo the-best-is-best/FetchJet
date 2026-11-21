@@ -647,6 +647,10 @@
     "String"
    ],
    [
+    "linkBefore",
+    "String"
+   ],
+   [
     "linkAllSelected",
     "Boolean"
    ],
@@ -1093,6 +1097,14 @@
    [
     "playlistSummary",
     "String"
+   ],
+   [
+    "playlistBefore",
+    "String"
+   ],
+   [
+    "playlistPickable",
+    "Boolean"
    ],
    [
     "playlistAllSelected",

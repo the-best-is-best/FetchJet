@@ -121,6 +121,10 @@ def run():
         core.check("Select all leaves the downloaded-before videos unticked",
                    ticked.get("04 Classes") is False and ticked.get("01 Introduction") is False and ticked.get("02 Variables and types") is True, ticked)
         core.check("and the button then offers Select none", media(core).get("playlistAllSelected") is True)
+        core.check("Select all is offered while a video can still be ticked and the count line does not carry the downloaded part",
+                   media(core).get("playlistPickable") is True and strings["grabDownloadedCount"].replace("%1", "2") == media(core).get("playlistBefore") and
+                   strings["grabDownloadedCount"].replace("%1", "2") not in media(core).get("playlistSummary", ""),
+                   (media(core).get("playlistPickable"), media(core).get("playlistBefore"), media(core).get("playlistSummary")))
         core.check("the subtitle choice was cleared after queueing", not any(r.get("selected") for r in core.rows("addSubtitles")))
 
         print("download the other two now: one notice when both are done")

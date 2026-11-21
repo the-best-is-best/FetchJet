@@ -401,15 +401,11 @@ struct AddPlaylistCard: View {
     @EnvironmentObject var store: FJStore
     let playlist: MediaPlaylist
 
-    private func playlistBeforePart(_ playlist: MediaPlaylist, _ strings: AppLocalization) -> String {
-        let before = playlist.entries.filter { $0.downloadedBefore }.count
-        return before > 0 ? " · " + strings.grabDownloadedCount.replacingOccurrences(of: "%1", with: String(before)) : ""
-    }
-
     var body: some View {
         let strings = store.strings
-        let selected = playlist.entries.filter { $0.isSelected }.count
-        let all = playlist.allTicked
+        let counts = AddCountLinesKt.playlistCountLines(playlist: playlist)
+        let all = AddCountLinesKt.playlistAllTicked(playlist: playlist)
+        let pickable = AddCountLinesKt.playlistAnySelectable(playlist: playlist)
         let url = store.state.inputUrl
         AddCard {
             HStack {
@@ -418,15 +414,24 @@ struct AddPlaylistCard: View {
                         .font(.fj(13, .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(2)
-                    Text(strings.playlistSummary(videos: Int32(playlist.entries.count), selected: Int32(selected)) + playlistBeforePart(playlist, strings))
+                    Text(counts.count)
                         .font(FJTheme.font.small)
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .lineLimit(1)
+                    if !counts.before.isEmpty {
+                        Text(counts.before)
+                            .font(FJTheme.font.small)
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
-                Button(all ? strings.selectNone : strings.selectAll) {
-                    store.send(DashboardUiEventOnPlaylistSelectAll(selected: !all))
+                if pickable {
+                    Button(all ? strings.selectNone : strings.selectAll) {
+                        store.send(DashboardUiEventOnPlaylistSelectAll(selected: !all))
+                    }
+                    .font(.fj(12, .semibold))
                 }
-                .font(.fj(12, .semibold))
             }
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(
@@ -481,27 +486,29 @@ struct AddPlaylistCard: View {
                                         .font(.fj(11))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 }
-                                Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
-                                    .font(.fj(12))
-                                    .foregroundStyle(FJTheme.color.onSurface)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                if entry.locked {
-                                    Text(strings.playlistInIt)
-                                        .font(.fj(10))
-                                        .foregroundStyle(FJTheme.color.primary)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
+                                        .font(.fj(12))
+                                        .foregroundStyle(FJTheme.color.onSurface)
                                         .lineLimit(1)
-                                } else if entry.unavailable {
-                                    Text(strings.playlistNotAvailable)
-                                        .font(.fj(10))
-                                        .foregroundStyle(FJTheme.color.error)
-                                        .lineLimit(1)
-                                } else if entry.downloadedBefore {
-                                    Text(strings.playlistDownloadedBefore)
-                                        .font(.fj(10))
-                                        .foregroundStyle(FJTheme.color.primary)
-                                        .lineLimit(1)
+                                    if entry.locked {
+                                        Text(strings.playlistInIt)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.primary)
+                                            .lineLimit(1)
+                                    } else if entry.unavailable {
+                                        Text(strings.playlistNotAvailable)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.error)
+                                            .lineLimit(1)
+                                    } else if entry.downloadedBefore {
+                                        Text(strings.playlistDownloadedBefore)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.primary)
+                                            .lineLimit(1)
+                                    }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 if !playlist.fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
                                     Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
                                         .font(.fj(11))
@@ -522,7 +529,7 @@ struct AddPlaylistCard: View {
                     }
                 }
             }
-            .frame(height: min(CGFloat(playlist.entries.count) * 34 + 4, 280))
+            .frame(height: min(CGFloat(playlist.entries.count) * 40 + 4, 280))
             .background(FJTheme.color.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
             if url.contains("v=") || url.contains("youtu.be/") {
                 HStack {

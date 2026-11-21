@@ -98,6 +98,8 @@ data class AddMediaDto(
     val playlistTitle: String = "",
     val playlistTitleRtl: Boolean = false,
     val playlistSummary: String = "",
+    val playlistBefore: String = "",
+    val playlistPickable: Boolean = false,
     val playlistAllSelected: Boolean = false,
     val playlistFolder: String = "",
     val playlistFolderRev: Int = 0,

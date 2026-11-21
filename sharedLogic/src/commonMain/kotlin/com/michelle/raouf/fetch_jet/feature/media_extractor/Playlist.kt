@@ -33,6 +33,9 @@ val PlaylistEntry.selectableByAll: Boolean get() = !unavailable && !locked && !d
 val MediaPlaylist.allTicked: Boolean
     get() = entries.any { it.isSelected } && entries.filter { it.selectableByAll }.all { it.isSelected }
 
+val MediaPlaylist.anySelectable: Boolean
+    get() = entries.any { it.selectableByAll }
+
 fun playlistDoneText(title: String, done: Int, failed: Int): String {
     val s = LocalizationManager.Strings
     val count = s.sysPlaylistDoneCount.replace("%1", title).replace("%2", done.toString())

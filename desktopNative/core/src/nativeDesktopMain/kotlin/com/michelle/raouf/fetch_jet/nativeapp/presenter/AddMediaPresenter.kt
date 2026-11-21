@@ -12,6 +12,8 @@ import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMATS
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
+import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AddMediaDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDto
@@ -357,7 +359,9 @@ private fun Presenter.publishMedia(s: MediaSlice) {
             audioFormats = audioFormats,
             playlistTitle = playlist?.title.orEmpty(),
             playlistTitleRtl = startsRightToLeft(playlist?.title.orEmpty()),
-            playlistSummary = if (playlist != null) strings.playlistSummary(playlist.entries.size, selectedCount) + playlist.entries.count { it.downloadedBefore }.let { n -> if (n > 0) " · " + strings.grabDownloadedCount.replace("%1", n.toString()) else "" } else "",
+            playlistSummary = if (playlist != null) playlistCountLines(playlist).count else "",
+            playlistBefore = if (playlist != null) playlistCountLines(playlist).before else "",
+            playlistPickable = playlist != null && playlist.anySelectable,
             playlistAllSelected = playlist != null && playlist.allTicked,
             playlistFolder = playlistFolder,
             playlistFolderRev = addFields.playlistFolder.rev(playlistFolder),

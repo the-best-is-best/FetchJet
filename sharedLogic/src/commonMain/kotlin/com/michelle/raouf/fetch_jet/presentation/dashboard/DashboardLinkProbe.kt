@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal const val LINK_PROBE_SETTLE_MS = 500L
+internal const val URL_SETTLE_TYPED_MS = 700L
+internal const val URL_SETTLE_PASTE_MS = 150L
+internal const val URL_PASTE_JUMP = 8
 
 internal suspend fun DashboardViewModel.probedLink(shown: String): LinkProbeResult {
     val key = shown.trim()

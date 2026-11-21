@@ -48,6 +48,8 @@ import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
+import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.tbib.kmp_localization.LocalizationManager
 
@@ -65,7 +67,7 @@ fun PlaylistSelectionCard(
     onOldestFirst: (Boolean) -> Unit = {},
     oldestFirstOffered: Boolean = false
 ) {
-    val selectedCount = playlist.entries.count { it.isSelected }
+    val counts = playlistCountLines(playlist)
     val allSelected = playlist.allTicked
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -90,17 +92,21 @@ fun PlaylistSelectionCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = LocalizationManager.Strings.playlistSummary(
-                            playlist.entries.size,
-                            selectedCount
-                        ) + playlist.entries.count { it.downloadedBefore }.let { n ->
-                            if (n > 0) " · " + LocalizationManager.Strings.grabDownloadedCount.replace("%1", n.toString()) else ""
-                        },
+                        text = counts.count,
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (counts.before.isNotEmpty()) Text(
+                        text = counts.before,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                TextButton(onClick = { onSelectAll(!allSelected) }) {
+                if (playlist.anySelectable) TextButton(onClick = { onSelectAll(!allSelected) }) {
                     Text(
                         if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                         fontSize = 12.sp
@@ -183,37 +189,38 @@ fun PlaylistSelectionCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(30.dp)
                             )
-                            Text(
-                                text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (entry.locked) {
+                            Column(modifier = Modifier.weight(1f).padding(vertical = 2.dp)) {
                                 Text(
-                                    text = LocalizationManager.Strings.playlistInIt,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
+                                    fontSize = 12.sp,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(start = 6.dp)
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                            } else if (entry.unavailable) {
-                                Text(
-                                    text = LocalizationManager.Strings.playlistNotAvailable,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.error,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(start = 6.dp)
-                                )
-                            } else if (entry.downloadedBefore) {
-                                Text(
-                                    text = LocalizationManager.Strings.playlistDownloadedBefore,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(start = 6.dp)
-                                )
+                                if (entry.locked) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistInIt,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else if (entry.unavailable) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistNotAvailable,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else if (entry.downloadedBefore) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistDownloadedBefore,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                             if (!playlist.fromBrowser && !entry.unavailable && (entry.size > 0L || entry.size == -1L)) {
                                 Text(
