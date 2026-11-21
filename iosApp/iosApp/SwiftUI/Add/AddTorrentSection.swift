@@ -37,6 +37,11 @@ struct AddTorrentFilesCard: View {
     let onPriority: (Int32, Int32) -> Void
     let onSelectAll: (Bool) -> Void
 
+    private func torrentFolderPart(_ path: String) -> String {
+        let parts = path.split(separator: "/")
+        return parts.count > 1 ? " · " + parts.dropLast().joined(separator: "/") : ""
+    }
+
     var body: some View {
         let strings = store.strings
         let all = files.allSatisfy { $0.isSelected }
@@ -78,14 +83,16 @@ struct AddTorrentFilesCard: View {
                 HStack(spacing: 8) {
                     AddCheckbox(checked: file.isSelected)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(file.path)
+                        Text(String(file.path.split(separator: "/").last ?? Substring(file.path)))
                             .font(.fj(12, .semibold))
                             .foregroundStyle(FJTheme.color.onSurface)
                             .lineLimit(1)
-                            .truncationMode(.middle)
-                        Text(store.host.formatBytes(bytes: file.size))
+                            .truncationMode(.tail)
+                        Text(store.host.formatBytes(bytes: file.size) + torrentFolderPart(file.path))
                             .font(.fj(10))
                             .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     Spacer(minLength: 0)
                 }
@@ -116,7 +123,7 @@ struct AddLinkListSection: View {
     @EnvironmentObject var store: FJStore
 
     var body: some View {
-        let rows = store.state.visibleLinks
+        let rows = store.state.visibleLinks.compactMap { row in row.value.map { (index: row.index, value: $0) } }
         let links = rows.map { $0.value }
         let strings = store.strings
         let selected = links.filter { $0.isSelected }.count

@@ -90,7 +90,12 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     )
                 } else emptyList()
 
-            if (_uiState.value.inputUrl != inputUrl) cancelPageGrab()
+            val urlChanged = _uiState.value.inputUrl != inputUrl
+            if (urlChanged) {
+                cancelPageGrab()
+                inspectMediaJob?.cancel()
+                inspectTorrentJob?.cancel()
+            }
             _uiState.update {
 
                 it.copy(
@@ -105,6 +110,8 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     errorMessage = null,
 
                     inspectedTorrentFiles = emptyList(),
+                    isInspectingMedia = if (urlChanged) false else it.isInspectingMedia,
+                    isInspectingTorrent = if (urlChanged) false else it.isInspectingTorrent,
 
                     inspectedTorrentName = null,
 
@@ -149,6 +156,11 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
 
             if (!event.show) cancelPageGrab()
             if (!event.show) cancelLinkProbe()
+            if (!event.show) {
+                inspectMediaJob?.cancel()
+                inspectTorrentJob?.cancel()
+                _uiState.update { it.copy(isInspectingMedia = false, isInspectingTorrent = false) }
+            }
             if (!event.show) _uiState.update { it.copy(linkListFolder = "", checkingPlaylistId = null, siteGrab = SiteGrabUi(depth = it.siteGrab.depth)) }
             if (!event.show) clearTestLink()
             if (!event.show) pendingExternalPlaylist = null

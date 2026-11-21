@@ -27,6 +27,7 @@ def run(dark=True):
         core.action("ShowAddDialog", show=True)
         reset_url(core, START)
         core.action("SetGrabDepth", depth=3)
+        core.wait_for("the page card", lambda: core.snapshot("add").get("grabShown", False), 20)
         core.action("GrabPage")
         core.wait_for("rows", lambda: len(core.rows("addLinks")) > 0 and not core.snapshot("add").get("grabRunning", False), 30)
         core.pump(0.8)
@@ -38,6 +39,7 @@ def run(dark=True):
         core.action("ShowAddDialog", show=True)
         reset_url(core, SLOW)
         core.action("SetGrabDepth", depth=2)
+        core.wait_for("the page card", lambda: core.snapshot("add").get("grabShown", False), 20)
         core.action("GrabPage")
         core.wait_for("live rows", lambda: len(core.rows("addLinks")) >= 3, 8)
         core.pump(0.5)
@@ -55,4 +57,4 @@ def run(dark=True):
 
 
 if __name__ == "__main__":
-    run(not (len(sys.argv) > 1 and sys.argv[1] == "light"))
+    run(not any(a in ("light", "--light") for a in sys.argv[1:]))

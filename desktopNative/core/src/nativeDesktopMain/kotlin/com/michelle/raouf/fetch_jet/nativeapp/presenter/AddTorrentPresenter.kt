@@ -37,8 +37,8 @@ internal fun torrentFileRow(file: TorrentFileEntry): TorrentFileRowDto {
     val strings = LocalizationManager.Strings
     return TorrentFileRowDto(
         index = file.index,
-        path = file.path,
-        size = formatBytes(file.size),
+        path = file.path.substringAfterLast('/'),
+        size = formatBytes(file.size) + file.path.substringBeforeLast('/', "").let { if (it.isEmpty()) "" else "  ·  $it" },
         selected = file.isSelected,
         priority = file.priority,
         priorityLabel = when (file.priority) {

@@ -26,6 +26,7 @@ internal fun DashboardViewModel.testLink() {
     val shown = state.inputUrl
     val url = com.michelle.raouf.fetch_jet.feature.queue_manager.codeHostRawUrl(shown.trim())
     testLinkJob?.cancel()
+    linkProbeCache.remove(shown.trim())
     _uiState.update { it.copy(testLink = TestLinkUi(url = url)) }
     testLinkJob = scope.launch {
         val probed = probedLink(shown)
