@@ -217,11 +217,12 @@ struct AddLinkListSection: View {
                         }
                         let host = secondHost(link)
                         if !host.isEmpty {
-                            Text((lead.isEmpty ? "" : " · ") + host)
+                            Text((lead.isEmpty ? "" : " · ") + "\u{2066}" + host + "\u{2069}")
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
                     }
+                    .environment(\.layoutDirection, .leftToRight)
                     .font(.fj(10))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
