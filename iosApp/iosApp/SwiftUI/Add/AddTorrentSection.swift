@@ -115,7 +115,8 @@ struct AddLinkListSection: View {
         let links = store.state.linkList
         let strings = store.strings
         let selected = links.filter { $0.isSelected }.count
-        let all = selected == links.count
+        let pickable = links.filter { !$0.downloadedBefore }.count
+        let all = pickable > 0 && selected == pickable
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)) + downloadedPart(links, strings))
@@ -170,7 +171,7 @@ struct AddLinkListSection: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(link.fileName ?? link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
                         .font(.fj(12, .semibold))
-                        .foregroundStyle(FJTheme.color.onSurface)
+                        .foregroundStyle(link.downloadedBefore ? FJTheme.color.onSurfaceVariant : FJTheme.color.onSurface)
                         .lineLimit(1)
                     Text(secondLine(link))
                         .font(.fj(10))

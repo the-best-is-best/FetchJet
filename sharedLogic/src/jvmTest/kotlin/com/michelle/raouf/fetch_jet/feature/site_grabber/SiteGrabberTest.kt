@@ -153,6 +153,14 @@ class SiteGrabberTest {
     }
 
     @Test
+    fun aPageIsNamedByItsTitleOrItsPathNotItsHost() {
+        assertEquals("Release 1.5.0", PageLinks.nameOf("https://github.com/the-best-is-best/FetchJet/releases/tag/v1.5.0", "Release 1.5.0 · the-best-is-best/FetchJet"))
+        assertEquals("the-best-is-best", PageLinks.nameOf("https://github.com/the-best-is-best", "GitHub - the-best-is-best"))
+        assertEquals("hello", PageLinks.nameOf("https://ftp.gnu.org/gnu/hello/", "Index of /gnu/hello"))
+        assertEquals("example.com", PageLinks.nameOf("https://example.com/", ""))
+    }
+
+    @Test
     fun theTitleOfThePageNamesTheGroup() = runBlocking {
         assertEquals("Index of /gnu/hello", PageLinks.titleOf("<html><head><TITLE>  Index of /gnu/hello  </TITLE></head></html>"))
         assertEquals("A & B", PageLinks.titleOf("<title>A &amp; B</title>"))

@@ -349,7 +349,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             QuickFolderDto("💻", strings.quickFolderDesktop, desktop),
         ),
         linkSummary = if (s.showsLinkList) strings.selectedOfLinks(s.linkSelected, s.linkCount) + (if (s.linkDownloaded > 0) " · " + strings.grabDownloadedCount.replace("%1", s.linkDownloaded.toString()) else "") else "",
-        linkAllSelected = s.showsLinkList && s.linkSelected == s.linkCount,
+        linkAllSelected = s.showsLinkList && s.linkCount > s.linkDownloaded && s.linkSelected == s.linkCount - s.linkDownloaded,
         linkFolder = s.linkFolder,
         linkFolderRev = addFields.linkFolder.rev(s.linkFolder),
         grabShown = s.canGrab,

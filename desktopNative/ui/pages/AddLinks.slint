@@ -106,17 +106,9 @@ component LinkRow inherits VerticalLayout {
                 width: 20px;
                 height: 20px;
                 border-radius: 2px;
-                background: Theme.on-surface.with-alpha(0.14);
-                Path {
-                    width: 20px;
-                    height: 20px;
-                    viewbox-width: 20;
-                    viewbox-height: 20;
-                    commands: "M 4 10 L 8 14 L 16 6";
-                    stroke: Theme.on-surface.with-alpha(0.45);
-                    stroke-width: 2px;
-                    fill: transparent;
-                }
+                border-width: 2px;
+                border-color: Theme.on-surface.with-alpha(0.26);
+                background: transparent;
             }
         }
         tag := Rectangle {
@@ -267,17 +259,9 @@ component GrabRow inherits Rectangle {
             width: 20px;
             height: 20px;
             border-radius: 2px;
-            background: Theme.on-surface.with-alpha(0.14);
-            Path {
-                width: 20px;
-                height: 20px;
-                viewbox-width: 20;
-                viewbox-height: 20;
-                commands: "M 4 10 L 8 14 L 16 6";
-                stroke: Theme.on-surface.with-alpha(0.45);
-                stroke-width: 2px;
-                fill: transparent;
-            }
+            border-width: 2px;
+            border-color: Theme.on-surface.with-alpha(0.26);
+            background: transparent;
         }
     }
     tag := Rectangle {

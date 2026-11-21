@@ -84,6 +84,22 @@ object PageLinks {
         return decode(raw).replace(Regex("""\s+"""), " ").trim().take(80)
     }
 
+    fun nameOf(url: String, title: String): String {
+        val host = hostOf(url).removePrefix("www.")
+        val brand = host.split('.').let { if (it.size >= 2) it[it.size - 2] else host }.lowercase()
+        val parts = title.split(Regex("""\s+[·|\-–—]\s+""")).map { it.trim() }.filter { it.isNotEmpty() }
+        val fromTitle = parts.firstOrNull { part ->
+            val low = part.lowercase()
+            low != brand && low != host && !low.startsWith("index of")
+        }
+        val segments = url.substringBefore('#').substringBefore('?').substringAfter("://").substringAfter('/', "")
+            .split('/').filter { it.isNotEmpty() }.map {
+                runCatching { com.michelle.raouf.fetch_jet.feature.http_downloader.percentDecode(it) }.getOrDefault(it)
+            }
+        val fromPath = segments.lastOrNull { !it.contains('.') || it.length > 12 }?.takeIf { it.isNotBlank() }
+        return (fromTitle ?: fromPath ?: host).take(50).trim()
+    }
+
     fun isFileUrl(url: String): Boolean {
         val name = fileNameOf(url)
         return FileCategory.folderFor(name) != null

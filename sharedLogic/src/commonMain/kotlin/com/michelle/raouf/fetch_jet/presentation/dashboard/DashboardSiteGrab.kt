@@ -97,7 +97,7 @@ internal fun DashboardViewModel.startPageGrab() {
                     sourcePage = file.page
                 )
             }
-            val host = PageLinks.hostOf(url).removePrefix("www.")
+            val host = PageLinks.nameOf(url, result.title)
             _uiState.update {
                 if (it.inputUrl.trim() != url) it.copy(siteGrab = it.siteGrab.copy(running = false))
                 else it.copy(

@@ -73,7 +73,7 @@ def run():
         core.check("the dialog shows a link list of the 5 files of the page", add.get("mode") == MODE["LINK_LIST"] and
                    titles(core) == ["100KB.jpg", "1MB.bin", "2MB.zip", "300KB.png", "report-7.pdf"], titles(core))
         core.check("the card stays for another search, the list is marked as found files", add.get("grabShown") and add.get("linkGrabbed"))
-        core.check("the folder is named after the site", add.get("linkFolder") == "127.0.0.1", add.get("linkFolder"))
+        core.check("the folder is named after the page title", add.get("linkFolder") == "Start", add.get("linkFolder"))
         core.check("the note counts files and pages", add.get("grabNote") == strings["grabFound"].replace("%1", "5").replace("%2", "1"),
                    add.get("grabNote"))
         by_name = {r["title"]: r for r in listed}
@@ -147,8 +147,8 @@ def run():
         song = core.wait_task(["COMPLETED", "ERROR"], timeout=60, file_name="3MB.mp3")
         core.check("all three completed", zipped["status"] == "COMPLETED" and pdf["status"] == "COMPLETED" and song["status"] == "COMPLETED",
                    (zipped["status"], pdf["status"], song["status"]))
-        core.check("they went into the folder named after the site",
-                   all(os.path.basename(os.path.normpath(t["destinationPath"])) == "127.0.0.1" for t in (zipped, pdf, song)),
+        core.check("they went into the folder named after the page",
+                   all(os.path.basename(os.path.normpath(t["destinationPath"])) == "Start" for t in (zipped, pdf, song)),
                    [t["destinationPath"] for t in (zipped, pdf, song)])
         paths = [os.path.join(t["destinationPath"], t["fileName"]) for t in (zipped, pdf, song)]
         core.check("sizes are right", [os.path.getsize(p) if os.path.isfile(p) else -1 for p in paths] == [2 * 1024 * 1024, 6300, 3 * 1024 * 1024],

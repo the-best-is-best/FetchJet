@@ -76,7 +76,8 @@ internal fun LinkListSection(
     onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     val selected = links.count { it.isSelected }
-    val allSelected = selected == links.size
+    val pickable = links.count { !it.downloadedBefore }
+    val allSelected = pickable > 0 && selected == pickable
     val before = links.count { it.downloadedBefore }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -350,7 +351,7 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (link.downloadedBefore) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 if (grabbed) {
