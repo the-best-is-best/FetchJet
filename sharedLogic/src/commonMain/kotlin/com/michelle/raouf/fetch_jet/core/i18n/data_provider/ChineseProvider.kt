@@ -569,6 +569,7 @@ object ChineseProvider : AppLocalization {
     override val grabLimit = "已达上限（60 个页面，3000 个文件）"
     override val grabStop = "停止读取"
     override val grabCheckNew = "检查新文件"
+    override val grabDownloadedCount = "%1 个已下载过"
     override val grabGroupVideo = "视频"
     override val grabGroupMusic = "音乐"
     override val grabGroupArchives = "压缩包"

@@ -3,7 +3,7 @@ import { HBox, T, Hover } from "../widgets/Base.slint";
 import { TextButton, FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { ThinBar } from "../widgets/Progress.slint";
-import { ChoiceChip } from "../widgets/Kit.slint";
+import { ChoiceChip, SegChoice } from "../widgets/Kit.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { TextField } from "../widgets/TextField.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
@@ -84,18 +84,21 @@ component LinkRow inherits VerticalLayout {
     }
     Rectangle {
         height: 60px;
+        opacity: root.data.rowLocked ? 0.55 : 1.0;
         ta := TouchArea {
+            enabled: !root.data.rowLocked;
             clicked => { Act.toggleLink(root.data.index, !root.data.selected); }
         }
         Hover {
-            hovered: ta.has-hover;
-            pressed: ta.pressed;
+            hovered: ta.has-hover && !root.data.rowLocked;
+            pressed: ta.pressed && !root.data.rowLocked;
         }
         Rectangle {
             x: Dir.rtl ? parent.width - 44px : 4px;
             width: 40px;
             height: 40px;
             CheckBox {
+                enabled: !root.data.rowLocked;
                 checked: root.data.selected;
                 label: root.data.title;
                 toggled(on) => { Act.toggleLink(root.data.index, on); }
@@ -336,6 +339,7 @@ export component GrabNote inherits VerticalLayout {
 }
 
 export component GrabCard inherits Rectangle {
+    private property <int> depth-pick: Core.add.grabDepths[1].selected ? 1 : Core.add.grabDepths[2].selected ? 2 : 0;
     border-radius: 12px;
     border-width: 1px;
     border-color: Theme.outline-variant.with-alpha(0.6);
@@ -373,17 +377,19 @@ export component GrabCard inherits Rectangle {
         if !Core.add.grabRunning: Rectangle {
             height: 4px;
         }
-        if !Core.add.grabRunning: VerticalLayout {
-            spacing: 6px;
-            for choice in Core.add.grabDepths: HBox {
-                height: 36px;
-                alignment: start;
-                ChoiceChip {
-                    label: choice.label;
-                    selected: choice.selected;
-                    clicked => { Act.setGrabDepth(choice.value); }
-                }
-            }
+        if !Core.add.grabRunning: SegChoice {
+            options: [Tr.grabDepthShort1, Tr.grabDepthShort2, Tr.grabDepthShort3];
+            pick: root.depth-pick;
+            picked(i) => { Act.setGrabDepth(i + 1); }
+        }
+        if !Core.add.grabRunning: Rectangle {
+            height: 6px;
+        }
+        if !Core.add.grabRunning: T {
+            text: root.depth-pick == 0 ? Tr.grabDepth1 : root.depth-pick == 1 ? Tr.grabDepth2 : Tr.grabDepth3;
+            font-size: 11px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
         }
         if !Core.add.grabRunning: Rectangle {
             height: 12px;

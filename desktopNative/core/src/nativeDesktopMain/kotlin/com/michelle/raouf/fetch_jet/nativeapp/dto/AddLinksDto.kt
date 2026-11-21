@@ -22,4 +22,5 @@ data class LinkRowDto(
     val files: List<TorrentFileRowDto> = emptyList(),
     val filesName: String = "",
     val filesAllSelected: Boolean = false,
+    val rowLocked: Boolean = false,
 )

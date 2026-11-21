@@ -118,7 +118,7 @@ struct AddLinkListSection: View {
         let all = selected == links.count
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)))
+                Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)) + downloadedPart(links, strings))
                     .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Spacer()
@@ -166,6 +166,7 @@ struct AddLinkListSection: View {
         } label: {
             HStack(spacing: 8) {
                 AddCheckbox(checked: link.isSelected)
+                    .opacity(link.downloadedBefore ? 0.35 : 1)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(link.fileName ?? link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
                         .font(.fj(12, .semibold))
@@ -192,9 +193,15 @@ struct AddLinkListSection: View {
         .buttonStyle(.plain)
     }
 
+    private func downloadedPart(_ links: [LinkListEntry], _ strings: AppLocalization) -> String {
+        let before = links.filter { $0.downloadedBefore }.count
+        return before > 0 ? " · " + strings.grabDownloadedCount.replacingOccurrences(of: "%1", with: String(before)) : ""
+    }
+
     private func secondLine(_ link: LinkListEntry) -> String {
         guard !link.folder.isEmpty else { return AddLinkText.host(link.url) }
         var parts: [String] = []
+        if link.downloadedBefore { parts.append(store.strings.playlistDownloadedBefore) }
         if link.sizeBytes >= 0 { parts.append(store.host.formatBytes(bytes: link.sizeBytes)) }
         parts.append(AddLinkText.host(link.sourcePage.isEmpty ? link.url : link.sourcePage))
         return parts.joined(separator: " · ")

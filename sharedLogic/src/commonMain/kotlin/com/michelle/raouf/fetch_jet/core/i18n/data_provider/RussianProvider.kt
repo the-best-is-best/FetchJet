@@ -593,6 +593,7 @@ object RussianProvider : AppLocalization {
     override val grabLimit = "Остановлено на пределе (60 страниц, 3000 файлов)"
     override val grabStop = "Остановить чтение"
     override val grabCheckNew = "Проверить новые файлы"
+    override val grabDownloadedCount = "%1 уже скачано"
     override val grabGroupVideo = "Видео"
     override val grabGroupMusic = "Музыка"
     override val grabGroupArchives = "Архивы"

@@ -57,7 +57,8 @@ def run():
         core.check("a page link: card with three depths, the first chosen", add.get("grabShown") and not add.get("grabRunning", False) and
                    [d.get("value") for d in add.get("grabDepths", [])] == [1, 2, 3] and
                    [d.get("selected", False) for d in add.get("grabDepths", [])] == [True, False, False] and
-                   add["grabDepths"][0].get("label") == strings["grabDepth1"] and add["grabDepths"][2].get("label") == strings["grabDepth3"],
+                   add["grabDepths"][0].get("label") == strings["grabDepth1"] and add["grabDepths"][2].get("label") == strings["grabDepth3"] and
+                   all(strings.get("grabDepthShort" + str(n)) for n in (1, 2, 3)),
                    add.get("grabDepths"))
         core.check("no list yet", add.get("mode") != MODE["LINK_LIST"] and not add.get("linkGrabbed", False))
         core.action("SetGrabDepth", depth=2)
@@ -170,6 +171,22 @@ def run():
                    strings.get("grabCheckNew"))
         core.action("ClosePlaylist")
         core.pump(0.4)
+
+        print("files already downloaded are locked")
+        core.action("ShowAddDialog", show=True)
+        grab(core, 2)
+        by_name = {r["title"]: r for r in links(core)}
+        core.check("the three downloaded files are locked and unchecked, the others are free",
+                   all(by_name[n].get("rowLocked", False) and not by_name[n].get("selected", False) for n in ("2MB.zip", "report-7.pdf", "3MB.mp3")) and
+                   not any(by_name[n].get("rowLocked", False) for n in ("100KB.jpg", "1MB.bin", "300KB.png")),
+                   [(r["title"], r.get("rowLocked", False), r.get("selected", False)) for r in links(core)])
+        core.check("the counter says 3 downloaded before", strings["grabDownloadedCount"].replace("%1", "3") in core.snapshot("add").get("linkSummary", ""), core.snapshot("add").get("linkSummary"))
+        core.action("ToggleLink", index=by_name["2MB.zip"].get("index", 0), selected=True)
+        core.pump(0.3)
+        core.check("a tap on a locked row changes nothing",
+                   not {r["title"]: r for r in links(core)}["2MB.zip"].get("selected", False))
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
 
         print("nothing found")
         core.action("ShowAddDialog", show=True)

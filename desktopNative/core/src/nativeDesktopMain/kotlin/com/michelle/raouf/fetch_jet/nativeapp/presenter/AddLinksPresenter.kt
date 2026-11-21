@@ -70,7 +70,8 @@ private fun grabbedRow(index: Int, link: LinkListEntry): LinkRowDto {
         else -> grabGroupName(link.folder) to LinkTagCode.FILE
     }
     val where = linkHost(link.sourcePage)
-    val detail = if (link.sizeBytes >= 0L) formatBytes(link.sizeBytes) + "  ·  " + where else where
+    val base = if (link.sizeBytes >= 0L) formatBytes(link.sizeBytes) + "  ·  " + where else where
+    val detail = if (link.downloadedBefore) LocalizationManager.Strings.playlistDownloadedBefore + "  ·  " + base else base
     return LinkRowDto(
         index = index,
         title = link.fileName?.takeIf { it.isNotBlank() } ?: linkTitle(link.url),
@@ -78,6 +79,7 @@ private fun grabbedRow(index: Int, link: LinkListEntry): LinkRowDto {
         tag = tag,
         tagCode = tagCode.ordinal,
         selected = link.isSelected,
+        rowLocked = link.downloadedBefore,
     )
 }
 

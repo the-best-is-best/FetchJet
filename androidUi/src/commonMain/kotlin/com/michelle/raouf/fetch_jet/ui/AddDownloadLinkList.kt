@@ -77,9 +77,11 @@ internal fun LinkListSection(
 ) {
     val selected = links.count { it.isSelected }
     val allSelected = selected == links.size
+    val before = links.count { it.downloadedBefore }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            LocalizationManager.Strings.selectedOfLinks(selected, links.size),
+            LocalizationManager.Strings.selectedOfLinks(selected, links.size) +
+                    if (before > 0) " · " + LocalizationManager.Strings.grabDownloadedCount.replace("%1", before.toString()) else "",
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,

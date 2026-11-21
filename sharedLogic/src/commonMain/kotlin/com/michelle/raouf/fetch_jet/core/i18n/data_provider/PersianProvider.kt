@@ -585,6 +585,7 @@ object PersianProvider : AppLocalization {
     override val grabLimit = "در حد مجاز متوقف شد (60 صفحه، 3000 فایل)"
     override val grabStop = "توقف خواندن"
     override val grabCheckNew = "بررسی فایل‌های جدید"
+    override val grabDownloadedCount = "%1 مورد قبلاً دانلود شده"
     override val grabGroupVideo = "ویدیو"
     override val grabGroupMusic = "موسیقی"
     override val grabGroupArchives = "بایگانی"

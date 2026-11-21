@@ -560,6 +560,7 @@ object KoreanProvider : AppLocalization {
     override val grabLimit = "한도에서 멈춤(60페이지, 3000파일)"
     override val grabStop = "읽기 중지"
     override val grabCheckNew = "새 파일 확인"
+    override val grabDownloadedCount = "%1개는 이전에 다운로드함"
     override val grabGroupVideo = "동영상"
     override val grabGroupMusic = "음악"
     override val grabGroupArchives = "압축 파일"

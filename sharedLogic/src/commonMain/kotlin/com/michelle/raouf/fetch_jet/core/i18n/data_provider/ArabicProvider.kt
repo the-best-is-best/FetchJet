@@ -601,6 +601,7 @@ object ArabicProvider : AppLocalization {
     override val grabLimit = "توقفنا عند الحد (60 صفحة، 3000 ملف)"
     override val grabStop = "إيقاف القراءة"
     override val grabCheckNew = "ابحث عن ملفات جديدة"
+    override val grabDownloadedCount = "%1 نُزّلت من قبل"
     override val grabGroupVideo = "فيديو"
     override val grabGroupMusic = "موسيقى"
     override val grabGroupArchives = "أرشيفات"

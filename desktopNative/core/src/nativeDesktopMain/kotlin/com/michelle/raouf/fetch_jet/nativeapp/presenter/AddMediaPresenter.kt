@@ -357,7 +357,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
             audioFormats = audioFormats,
             playlistTitle = playlist?.title.orEmpty(),
             playlistTitleRtl = startsRightToLeft(playlist?.title.orEmpty()),
-            playlistSummary = if (playlist != null) strings.playlistSummary(playlist.entries.size, selectedCount) else "",
+            playlistSummary = if (playlist != null) strings.playlistSummary(playlist.entries.size, selectedCount) + playlist.entries.count { it.downloadedBefore }.let { n -> if (n > 0) " · " + strings.grabDownloadedCount.replace("%1", n.toString()) else "" } else "",
             playlistAllSelected = playlist != null && playlist.allTicked,
             playlistFolder = playlistFolder,
             playlistFolderRev = addFields.playlistFolder.rev(playlistFolder),

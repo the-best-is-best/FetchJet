@@ -586,6 +586,7 @@ object IndonesianProvider : AppLocalization {
     override val grabLimit = "Berhenti di batas (60 halaman, 3000 file)"
     override val grabStop = "Hentikan pembacaan"
     override val grabCheckNew = "Periksa file baru"
+    override val grabDownloadedCount = "%1 sudah diunduh sebelumnya"
     override val grabGroupVideo = "Video"
     override val grabGroupMusic = "Musik"
     override val grabGroupArchives = "Arsip"

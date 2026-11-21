@@ -583,6 +583,7 @@ object EnglishProvider : AppLocalization {
     override val grabLimit = "Stopped at the limit (60 pages, 3000 files)"
     override val grabStop = "Stop reading"
     override val grabCheckNew = "Check for new files"
+    override val grabDownloadedCount = "%1 downloaded before"
     override val grabGroupVideo = "Video"
     override val grabGroupMusic = "Music"
     override val grabGroupArchives = "Archives"

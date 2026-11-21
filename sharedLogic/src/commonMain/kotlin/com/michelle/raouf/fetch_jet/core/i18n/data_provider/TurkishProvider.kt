@@ -583,6 +583,7 @@ object TurkishProvider : AppLocalization {
     override val grabLimit = "Sınırda durdu (60 sayfa, 3000 dosya)"
     override val grabStop = "Okumayı durdur"
     override val grabCheckNew = "Yeni dosyaları denetle"
+    override val grabDownloadedCount = "%1 daha önce indirildi"
     override val grabGroupVideo = "Video"
     override val grabGroupMusic = "Müzik"
     override val grabGroupArchives = "Arşivler"

@@ -401,6 +401,11 @@ struct AddPlaylistCard: View {
     @EnvironmentObject var store: FJStore
     let playlist: MediaPlaylist
 
+    private func playlistBeforePart(_ playlist: MediaPlaylist, _ strings: AppLocalization) -> String {
+        let before = playlist.entries.filter { $0.downloadedBefore }.count
+        return before > 0 ? " · " + strings.grabDownloadedCount.replacingOccurrences(of: "%1", with: String(before)) : ""
+    }
+
     var body: some View {
         let strings = store.strings
         let selected = playlist.entries.filter { $0.isSelected }.count
@@ -413,7 +418,7 @@ struct AddPlaylistCard: View {
                         .font(.fj(13, .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(2)
-                    Text(strings.playlistSummary(videos: Int32(playlist.entries.count), selected: Int32(selected)))
+                    Text(strings.playlistSummary(videos: Int32(playlist.entries.count), selected: Int32(selected)) + playlistBeforePart(playlist, strings))
                         .font(FJTheme.font.small)
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }

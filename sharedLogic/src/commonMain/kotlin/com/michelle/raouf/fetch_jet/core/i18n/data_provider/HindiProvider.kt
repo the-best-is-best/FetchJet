@@ -578,6 +578,7 @@ object HindiProvider : AppLocalization {
     override val grabLimit = "सीमा पर रुक गया (60 पेज, 3000 फ़ाइलें)"
     override val grabStop = "पढ़ना रोकें"
     override val grabCheckNew = "नई फ़ाइलें जाँचें"
+    override val grabDownloadedCount = "%1 पहले डाउनलोड हो चुकी"
     override val grabGroupVideo = "वीडियो"
     override val grabGroupMusic = "संगीत"
     override val grabGroupArchives = "आर्काइव"

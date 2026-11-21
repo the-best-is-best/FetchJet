@@ -6,7 +6,7 @@ import { CheckBox } from "../widgets/CheckBox.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { ElideText } from "../widgets/ElideText.slint";
-import { SectionLabel, Gap, ChoiceChip, SmallChip, Spinner, Switch, RadioMark } from "../widgets/Kit.slint";
+import { SectionLabel, Gap, ChoiceChip, SmallChip, Spinner, Switch, RadioMark, SegChoice } from "../widgets/Kit.slint";
 import { Core, MediaStateCode, QualityRowDto, SubtitleRowDto, PlaylistRowDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
@@ -437,28 +437,21 @@ export component SubtitlesCard inherits SectionCard {
         if Core.addMedia.subtitlesAnySelected: Gap {
             size: 10px;
         }
-        if Core.addMedia.subtitlesAnySelected: GridLayout {
-            spacing: 8px;
-            OptionCard {
-                row: 0;
-                col: Dir.rtl ? 2 : 0;
-                selected: Core.addMedia.embedSubtitles;
-                title: Tr.subtitlesEmbedInVideo;
-                clicked => { Act.setEmbedSubtitles(true); }
-            }
-            OptionCard {
-                row: 0;
-                col: 1;
-                selected: !Core.addMedia.embedSubtitles && !Core.addMedia.subtitleVtt;
-                title: Tr.subtitlesSeparateFile + " (SRT)";
-                clicked => { Act.setSubtitleFormat("srt"); }
-            }
-            OptionCard {
-                row: 0;
-                col: Dir.rtl ? 0 : 2;
-                selected: !Core.addMedia.embedSubtitles && Core.addMedia.subtitleVtt;
-                title: Tr.subtitlesSeparateFile + " (VTT)";
-                clicked => { Act.setSubtitleFormat("vtt"); }
+        if Core.addMedia.subtitlesAnySelected: SegChoice {
+            options: [Tr.subtitlesEmbedInVideo, Tr.subtitlesSeparateFile];
+            pick: Core.addMedia.embedSubtitles ? 0 : 1;
+            picked(i) => { Act.setEmbedSubtitles(i == 0); }
+        }
+        if Core.addMedia.subtitlesAnySelected && !Core.addMedia.embedSubtitles: Gap {
+            size: 6px;
+        }
+        if Core.addMedia.subtitlesAnySelected && !Core.addMedia.embedSubtitles: HBox {
+            height: 32px;
+            SegChoice {
+                small: true;
+                options: ["SRT", "VTT"];
+                pick: Core.addMedia.subtitleVtt ? 1 : 0;
+                picked(i) => { Act.setSubtitleFormat(i == 0 ? "srt" : "vtt"); }
             }
         }
     }

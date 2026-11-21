@@ -797,6 +797,10 @@
    [
     "filesAllSelected",
     "Boolean"
+   ],
+   [
+    "rowLocked",
+    "Boolean"
    ]
   ],
   "QualityRowDto": [
@@ -4262,6 +4266,7 @@
   "grabLimit",
   "grabStop",
   "grabCheckNew",
+  "grabDownloadedCount",
   "grabGroupVideo",
   "grabGroupMusic",
   "grabGroupArchives",

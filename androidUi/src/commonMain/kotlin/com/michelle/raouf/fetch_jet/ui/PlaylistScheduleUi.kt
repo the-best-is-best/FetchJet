@@ -93,7 +93,9 @@ fun PlaylistSelectionCard(
                         text = LocalizationManager.Strings.playlistSummary(
                             playlist.entries.size,
                             selectedCount
-                        ),
+                        ) + playlist.entries.count { it.downloadedBefore }.let { n ->
+                            if (n > 0) " · " + LocalizationManager.Strings.grabDownloadedCount.replace("%1", n.toString()) else ""
+                        },
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -582,6 +582,7 @@ object JapaneseProvider : AppLocalization {
     override val grabLimit = "上限で停止しました（60ページ、3000ファイル）"
     override val grabStop = "読み込みを停止"
     override val grabCheckNew = "新しいファイルを確認"
+    override val grabDownloadedCount = "%1 件は以前にダウンロード済み"
     override val grabGroupVideo = "動画"
     override val grabGroupMusic = "音楽"
     override val grabGroupArchives = "アーカイブ"

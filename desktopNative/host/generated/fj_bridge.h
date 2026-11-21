@@ -394,6 +394,7 @@ inline LinkRowDto parse_LinkRowDto(const fj::Json &j) {
     d.files = fj::struct_model<TorrentFileRowDto>(j, "files", parse_TorrentFileRowDto);
     d.filesName = fj::text(j, "filesName");
     d.filesAllSelected = fj::flag(j, "filesAllSelected");
+    d.rowLocked = fj::flag(j, "rowLocked");
     return d;
 }
 
@@ -1663,6 +1664,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_grabLimit(next());
     tr.set_grabStop(next());
     tr.set_grabCheckNew(next());
+    tr.set_grabDownloadedCount(next());
     tr.set_grabGroupVideo(next());
     tr.set_grabGroupMusic(next());
     tr.set_grabGroupArchives(next());

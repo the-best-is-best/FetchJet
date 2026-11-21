@@ -160,3 +160,54 @@ export component RadioMark inherits Text {
     font-size: 14px;
     vertical-alignment: center;
 }
+
+export component SegChoice inherits Rectangle {
+    in property <[string]> options;
+    in property <int> pick;
+    in property <bool> small: false;
+    callback picked(index: int);
+    height: root.small ? 32px : 36px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.6);
+    background: Theme.surface.with-alpha(0.6);
+    clip: true;
+    HorizontalLayout {
+        padding: 2px;
+        spacing: 2px;
+        for unused[slot] in root.options: seg := Rectangle {
+            property <int> i: Dir.rtl ? root.options.length - 1 - slot : slot;
+            property <bool> selected: self.i == root.pick;
+            horizontal-stretch: 1;
+            min-width: 0px;
+            border-radius: 6px;
+            background: seg.selected ? Theme.primary.with-alpha(0.22) : transparent;
+            accessible-role: button;
+            accessible-label: root.options[seg.i];
+            accessible-checkable: true;
+            accessible-checked: seg.selected;
+            accessible-action-default => { root.picked(seg.i); }
+            ta := TouchArea {
+                clicked => { root.picked(seg.i); }
+            }
+            Text {
+                x: 6px;
+                width: parent.width - 12px;
+                text: root.options[seg.i];
+                color: seg.selected ? Theme.primary : Theme.on-surface;
+                font-family: Theme.font;
+                font-size: root.small ? 11px : 12px;
+                font-weight: seg.selected ? 700 : 500;
+                letter-spacing: Dir.rtl ? 0px : 0.3px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            Hover {
+                border-radius: 6px;
+                hovered: ta.has-hover;
+                pressed: ta.pressed;
+            }
+        }
+    }
+}

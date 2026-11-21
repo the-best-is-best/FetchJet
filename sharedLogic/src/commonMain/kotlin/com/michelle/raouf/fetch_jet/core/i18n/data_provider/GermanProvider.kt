@@ -601,6 +601,7 @@ object GermanProvider : AppLocalization {
     override val grabLimit = "Beim Limit gestoppt (60 Seiten, 3000 Dateien)"
     override val grabStop = "Lesen stoppen"
     override val grabCheckNew = "Nach neuen Dateien suchen"
+    override val grabDownloadedCount = "%1 bereits heruntergeladen"
     override val grabGroupVideo = "Video"
     override val grabGroupMusic = "Musik"
     override val grabGroupArchives = "Archive"

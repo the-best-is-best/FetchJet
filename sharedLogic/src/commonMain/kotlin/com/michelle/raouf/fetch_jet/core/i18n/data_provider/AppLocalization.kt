@@ -514,6 +514,7 @@ interface AppLocalization : LocalizationProvider {
     val grabLimit: String
     val grabStop: String
     val grabCheckNew: String
+    val grabDownloadedCount: String
     val grabGroupVideo: String
     val grabGroupMusic: String
     val grabGroupArchives: String

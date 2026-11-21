@@ -49,7 +49,13 @@ def run():
         core.check("a 360p row exists", len(low) == 1, rows)
         core.action("SelectAllQualities", selected=False)
         core.action("ToggleQuality", index=low[0]["index"], selected=True)
+        core.pump(0.2)
+        core.check("no language ticked: the choices are not offered", not media(core).get("subtitlesAnySelected", False), media(core))
         core.action("ToggleSubtitle", code="en", selected=True)
+        core.pump(0.2)
+        core.check("a language ticked: step one is offered, the format follows only a separate file",
+                   media(core).get("subtitlesAnySelected") is True and bool(strings.get("subtitlesEmbedInVideo")) and
+                   bool(strings.get("subtitlesSeparateFile")), media(core))
         core.action("SetSubtitleFormat", format="vtt")
         core.pump(0.3)
         core.check("VTT picked: separate file, VTT", not media(core).get("embedSubtitles", False) and media(core).get("subtitleVtt") is True,
