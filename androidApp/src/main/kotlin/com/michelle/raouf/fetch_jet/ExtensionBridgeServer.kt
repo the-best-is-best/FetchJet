@@ -57,18 +57,25 @@ object ExtensionBridgeServer {
         started = true
         appContext = context.applicationContext
         Thread({
-            try {
-                ServerSocket().use { server ->
-                    server.reuseAddress = true
-                    server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT))
-                    while (true) {
-                        val socket = server.accept()
-                        pool.execute { handle(socket) }
+            while (true) {
+                try {
+                    ServerSocket().use { server ->
+                        server.reuseAddress = true
+                        server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT))
+                        println("ExtensionBridgeServer: listening on 127.0.0.1:$PORT")
+                        while (true) {
+                            val socket = server.accept()
+                            pool.execute { handle(socket) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("ExtensionBridgeServer: not listening (${e.message}), another FetchJet copy may hold the port; trying again in 5 s")
+                    try {
+                        Thread.sleep(5_000)
+                    } catch (_: InterruptedException) {
+                        return@Thread
                     }
                 }
-            } catch (e: Exception) {
-                println("ExtensionBridgeServer: stopped (${e.message})")
-                started = false
             }
         }, "fetchjet-bridge-accept").apply { isDaemon = true }.start()
     }

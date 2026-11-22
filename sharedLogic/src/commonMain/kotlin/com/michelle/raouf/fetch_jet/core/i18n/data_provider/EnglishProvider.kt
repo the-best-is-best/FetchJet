@@ -755,7 +755,7 @@ object EnglishProvider : AppLocalization {
     override val updateSkipThisVersion = "Skip this version"
     override val updateLater = "Later"
     override fun versionIsAvailable(version: String) = "Version $version is available"
-    override val youHaveLatest = "You have the version installed here"
+    override val youHaveLatest = "You have the latest version"
     override val updateSeeWhatsNew = "See what's new"
     override val updateChecking = "Checking…"
     override val updateCheckNow = "Check now"

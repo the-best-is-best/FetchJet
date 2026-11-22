@@ -116,29 +116,33 @@ internal suspend fun HttpChunkDownloader.checkAssembledFile(
 }
 
 internal suspend fun assemblePieces(pieces: List<ChunkLayout.Piece>, partPath: (Int) -> Path, target: Path) {
-    val sink = AppFileSystem.sink(target).buffer()
+    val out = AppFileSystem.openReadWrite(target)
     try {
-        val block = ByteArray(256 * 1024)
+        out.resize(0)
+        val block = ByteArray(IO_BLOCK)
+        var written = 0L
         for (piece in pieces) {
             val part = partPath(piece.index)
             if (!AppFileSystem.exists(part)) throw Exception("Piece ${piece.index} is missing")
-            val source = AppFileSystem.source(part).buffer()
+            val source = AppFileSystem.openReadOnly(part)
             try {
                 var left = piece.length
+                var from = 0L
                 while (left > 0) {
                     currentCoroutineContext().ensureActive()
-                    val read = source.read(block, 0, min(block.size.toLong(), left).toInt())
+                    val read = source.read(from, block, 0, min(block.size.toLong(), left).toInt())
                     if (read <= 0) break
-                    sink.write(block, 0, read)
+                    out.write(written, block, 0, read)
+                    written += read
+                    from += read
                     left -= read
                 }
             } finally {
                 source.close()
             }
         }
-        sink.flush()
     } finally {
-        sink.close()
+        out.close()
     }
 }
 

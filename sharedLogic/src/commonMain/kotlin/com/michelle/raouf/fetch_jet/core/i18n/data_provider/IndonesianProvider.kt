@@ -764,7 +764,7 @@ object IndonesianProvider : AppLocalization {
     override val updateSkipThisVersion = "Lewati versi ini"
     override val updateLater = "Nanti"
     override fun versionIsAvailable(version: String) = "Versi $version tersedia"
-    override val youHaveLatest = "Anda memakai versi yang terpasang di sini"
+    override val youHaveLatest = "Anda memakai versi terbaru"
     override val updateSeeWhatsNew = "Lihat yang baru"
     override val updateChecking = "Memeriksa…"
     override val updateCheckNow = "Periksa sekarang"

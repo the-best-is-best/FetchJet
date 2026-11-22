@@ -461,6 +461,25 @@ class QueueManagerRepository(
                 if (pendingTasks.value.isNotEmpty() || resumeQueue.value.isNotEmpty()) pumpQueue()
             }
         }
+        scope.launch {
+            combine(
+                httpEngine.getAllTasksFlow(),
+                torrentEngine.getAllTasksFlow(),
+                mediaEngine.getAllTasksFlow()
+            ) { http, torrent, media ->
+                var running = 0
+                for (map in arrayOf(http, torrent, media)) {
+                    for (t in map.values) {
+                        if (t.status == DownloadStatus.DOWNLOADING || t.status == DownloadStatus.CONNECTING ||
+                            t.status == DownloadStatus.QUEUED
+                        ) running++
+                    }
+                }
+                running
+            }.distinctUntilChanged().collect {
+                if ((pendingTasks.value.isNotEmpty() || resumeQueue.value.isNotEmpty()) && hasFreeSlot()) pumpQueue()
+            }
+        }
     }
 
     private fun observeTasksForNotifications() {
