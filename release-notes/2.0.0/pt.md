@@ -1,4 +1,4 @@
-## Novidades da 1.6.0
+## Novidades da 2.0.0
 
 **Uma janela de adicionar mais inteligente**
 - **O FetchJet escolhe o mecanismo pelo link:** um arquivo, um link magnet ou um site de vídeo conhecido vai sozinho para Direct, Torrent ou Media. Ele verifica o link uma vez primeiro ("Verificando o link…"), e a escolha entre Direct e Media só aparece para uma página com vídeo ou para um link que não pôde ser verificado.

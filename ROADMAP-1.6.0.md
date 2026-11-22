@@ -1,5 +1,7 @@
 # FetchJet 1.6.0: work list
 
+(Decided 2026-11-22: this release ships as 2.0.0; the file and the branch keep the 1.6.0 name. Release notes: `release-notes/2.0.0/`.)
+
 Written 2026-11-19 after a look at Ezoo Download 1.0.12 (released 2026-11-19, Rust + Slint, Windows + Firefox only;
 read from its commits and its "what's new" texts in `crates/app/lang/rs/*.json`, the app itself was not run).
 Each item says what Ezoo does, so we know what "done" has to cover. FetchJet already has, from the same list: the

@@ -1,4 +1,4 @@
-## What's new in 1.6.0
+## What's new in 2.0.0
 
 **A smarter Add dialog**
 - **FetchJet picks the engine from the link:** a file, a magnet or a known video site goes to Direct, Torrent or Media by itself. It checks the link once first ("Checking the link…"), and the Direct / Media choice shows only for a page with a video, or a link that could not be checked.

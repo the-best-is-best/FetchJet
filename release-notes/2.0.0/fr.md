@@ -1,4 +1,4 @@
-## Nouveautés de la 1.6.0
+## Nouveautés de la 2.0.0
 
 **Une boîte d'ajout plus intelligente**
 - **FetchJet choisit le moteur d'après le lien :** un fichier, un lien magnet ou un site vidéo connu part tout seul vers Direct, Torrent ou Media. Il vérifie d'abord le lien une fois (« Vérification du lien… »), et le choix Direct / Media n'apparaît que pour une page avec une vidéo, ou un lien qu'il n'a pas pu vérifier.

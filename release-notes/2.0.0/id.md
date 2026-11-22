@@ -1,4 +1,4 @@
-## Yang baru di 1.6.0
+## Yang baru di 2.0.0
 
 **Dialog tambah yang lebih cerdas**
 - **FetchJet memilih mesin dari tautan:** file, tautan magnet, atau situs video yang dikenal langsung diarahkan ke Direct, Torrent, atau Media. Tautan diperiksa satu kali dulu ("Memeriksa tautan…"), dan pilihan Direct / Media hanya muncul untuk halaman yang berisi video atau tautan yang tidak bisa diperiksa.

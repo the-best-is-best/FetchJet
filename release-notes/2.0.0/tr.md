@@ -1,4 +1,4 @@
-## 1.6.0'daki yenilikler
+## 2.0.0'daki yenilikler
 
 **Daha akıllı Ekle penceresi**
 - **FetchJet motoru bağlantıdan seçer:** bir dosya, bir magnet bağlantısı veya bilinen bir video sitesi kendiliğinden Direct, Torrent ya da Media'ya gider. Önce bağlantıyı bir kez denetler ("Bağlantı denetleniyor…"); Direct / Media seçimi yalnızca videolu bir sayfa ya da denetlenemeyen bir bağlantı için görünür.

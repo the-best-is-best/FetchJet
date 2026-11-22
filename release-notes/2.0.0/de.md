@@ -1,4 +1,4 @@
-## Neu in 1.6.0
+## Neu in 2.0.0
 
 **Ein klügerer Hinzufügen-Dialog**
 - **FetchJet wählt die Engine anhand des Links:** Eine Datei, ein Magnet-Link oder eine bekannte Videoseite landet von selbst bei Direct, Torrent oder Media. Der Link wird zuerst einmal geprüft („Link wird geprüft…“); die Auswahl zwischen Direct und Media erscheint nur bei einer Seite mit Video oder bei einem Link, der sich nicht prüfen ließ.
