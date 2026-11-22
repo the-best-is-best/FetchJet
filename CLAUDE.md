@@ -54,7 +54,7 @@ Version constants:
 
 - `sharedLogic/.../core/update/AppVersion.kt` → `APP_VERSION = "2.0.0"` and
   `EXTENSION_VERSION = "3.6.0"` (DRM message, 1.6.0; 1.5.0 is the last release, tag `v1.5.0`; 1.5.1 is in `master` with no GitHub release,
-  only a Store MSIX planned; 2.0.0 is next (it was planned as 1.6.0: the branch is still `release-v1.6.0` and the work list `ROADMAP-1.6.0.md`; release notes in `release-notes/2.0.0/`))
+  only a Store MSIX planned; 2.0.0 is next (it was planned as 1.6.0: the branch is `release-v2.0.0` (renamed 2026-11-22) and the work list `ROADMAP-1.6.0.md`; release notes in `release-notes/2.0.0/`))
 - `iosApp/Configuration/Config.xcconfig` → `MARKETING_VERSION = 2.0.0`,
   `CURRENT_PROJECT_VERSION = 1` (owner's rule, 2026-11-19: always 1, only `MARKETING_VERSION` changes per release)
 - Usage ping (1.5.1): not sent from desktop development builds (`DesktopApp.isDevelopmentBuild`), the Android
