@@ -595,6 +595,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 url = entry.url,
                 customDestinationPath = destDir,
                 customFileName = listedName ?: videoName ?: entry.fileName,
+                keepExistingFiles = true,
                 mediaQualities = entry.mediaQualities,
                 requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
                 disableUpload = state.disableTorrentUpload,

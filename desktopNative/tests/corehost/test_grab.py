@@ -81,7 +81,7 @@ def run():
         core.pump(0.2)
         core.check("another depth can be chosen", [d.get("selected", False) for d in core.snapshot("add").get("grabDepths", [])] == [False, True, False])
 
-        core.check("a plain page: the card and no engine choice", add.get("grabShown", False) and add.get("engineHidden", False),
+        core.check("a plain page: the card and the engine choice", add.get("grabShown", False) and not add.get("engineHidden", False),
                    (add.get("grabShown"), add.get("engineHidden")))
 
         print("what the link turns out to be")
@@ -89,7 +89,7 @@ def run():
             ("a file with no extension in its link", SERVER + "/site/bundle", False, False),
             ("a file sent as an attachment", SERVER + "/site/download?id=7", False, False),
             ("a page with a video in it", SERVER + "/site/video.html", True, True),
-            ("a page", SERVER + "/site/empty.html", True, False),
+            ("a page", SERVER + "/site/empty.html", True, True),
             ("a page that answers 404", SERVER + "/site/nothing.html", True, True),
         ):
             reset_url(core, url)
@@ -272,8 +272,8 @@ def run():
         reset_url(core, SERVER + "/site/slow.html")
         wait_card(core)
         wait_probe(core)
-        core.check("a plain page before the scan: the card, no engine choice", core.snapshot("add").get("grabShown", False) and
-                   core.snapshot("add").get("engineHidden", False))
+        core.check("a plain page before the scan: the card and the engine choice", core.snapshot("add").get("grabShown", False) and
+                   not core.snapshot("add").get("engineHidden", False))
         core.action("SetGrabDepth", depth=2)
         core.pump(0.2)
         core.action("GrabPage")

@@ -792,7 +792,7 @@ enum EmbeddedPython {
         var pythonPath = [stdlib.path, dynload.path]
         // python-packages/ = curl_cffi + cffi from tfourj/SwiftCurlCffi-iOS (installed by the
         // "Install Python Runtime" build phase; its .so modules were turned into frameworks).
-        // yt-dlp uses it for browser impersonation, which the PornHub extractor and other
+        // yt-dlp uses it for browser impersonation, which some extractors and other
         // Cloudflare-fronted sites require (HTTP 403 without it).
         let nativePackages = bundle.bundleURL.appendingPathComponent("python-packages")
         if FileManager.default.fileExists(atPath: nativePackages.path) {

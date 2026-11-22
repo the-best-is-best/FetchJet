@@ -87,7 +87,7 @@ class IosBackgroundHttpEngine(
         NSURLSession.sessionWithConfiguration(
             config,
             delegate = Delegate(),
-            delegateQueue = NSOperationQueue()
+            delegateQueue = NSOperationQueue().apply { maxConcurrentOperationCount = 1 }
         )
             .also { reattachRunningTasks(it) }
     }

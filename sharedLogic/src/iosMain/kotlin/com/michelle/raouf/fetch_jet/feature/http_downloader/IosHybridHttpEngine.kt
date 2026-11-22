@@ -3,16 +3,15 @@ package com.michelle.raouf.fetch_jet.feature.http_downloader
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import okio.FileSystem
 import okio.Path.Companion.toPath
 
@@ -50,11 +49,8 @@ class IosHybridHttpEngine(
 
     private val owners = mutableMapOf<String, Owner>()
 
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-
     private val merged: StateFlow<Map<String, DownloadTask>> =
-        combine(foreground.getAllTasksFlow(), background.getAllTasksFlow()) { fg, bg -> bg + fg }
-            .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+        MergedTasks(foreground.getAllTasksFlow(), background.getAllTasksFlow())
 
     override fun observeTask(taskId: String): Flow<DownloadTask> =
         merged.map { it[taskId] }.filterNotNull()
@@ -112,5 +108,22 @@ class IosHybridHttpEngine(
             .substringAfterLast('@').substringBefore(':')
         return host.isNotEmpty() &&
                 com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null
+    }
+}
+
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+private class MergedTasks(
+    private val foreground: StateFlow<Map<String, DownloadTask>>,
+    private val background: StateFlow<Map<String, DownloadTask>>
+) : StateFlow<Map<String, DownloadTask>> {
+    override val value: Map<String, DownloadTask>
+        get() = background.value + foreground.value
+
+    override val replayCache: List<Map<String, DownloadTask>>
+        get() = listOf(value)
+
+    override suspend fun collect(collector: FlowCollector<Map<String, DownloadTask>>): Nothing {
+        combine(foreground, background) { _, _ -> value }.distinctUntilChanged().collect(collector)
+        awaitCancellation()
     }
 }

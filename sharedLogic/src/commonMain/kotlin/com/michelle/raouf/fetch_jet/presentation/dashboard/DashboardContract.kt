@@ -294,7 +294,7 @@ data class DashboardUiState(
 
     /** The link box holds a web page (the probe says so): "Find files on this page" is offered. */
     val canGrabPage: Boolean
-        get() = grabShape && probedAs.let { it == LinkKind.PAGE || it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
+        get() = grabShape && detectedEngine == EngineType.HTTP_DIRECT && probedAs.let { it == LinkKind.PAGE || it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
 
     /** The files found on a page are being read or listed: the Direct / Media choice has nothing to say there. */
     val showsEngineChoice: Boolean

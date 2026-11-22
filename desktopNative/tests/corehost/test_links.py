@@ -88,6 +88,27 @@ def run():
         core.check("only two downloads were made", len(core.tasks()) == 2, [t["fileName"] for t in core.tasks()])
         core.pump(0.5)
         core.check("the dialog closed and the list is cleared", not core.snapshot("add").get("visible", False) and len(links(core)) == 0)
+
+        print("three links with the same name, into a folder that already has it")
+        folder = one["destinationPath"]
+        dups = [SERVER + "/file/1MB.bin?key=dup-%d" % i for i in range(1, 4)]
+        core.action("ShowAddDialog", show=True)
+        core.action("SetUrl", text="\n".join(dups))
+        core.pump(0.5)
+        core.check("the dialog lists three links", len(links(core)) == 3, len(links(core)))
+        for i in range(3):
+            core.action("ToggleLink", index=i, selected=True)
+        core.action("SetLinkFolder", name="batch one")
+        core.pump(0.4)
+        core.action("StartDownload")
+        done = [core.wait_task(["COMPLETED", "ERROR"], timeout=60, url_part="dup-%d" % i) for i in range(1, 4)]
+        names = sorted(t["fileName"] for t in done)
+        core.check("all three completed", all(t["status"] == "COMPLETED" for t in done), [t["status"] for t in done])
+        core.check("each got its own name", names == ["1MB (1).bin", "1MB (2).bin", "1MB (3).bin"], names)
+        on_disk = sorted(n for n in os.listdir(folder) if n.startswith("1MB"))
+        core.check("the first file is kept and the three new ones are next to it",
+                   on_disk == ["1MB (1).bin", "1MB (2).bin", "1MB (3).bin", "1MB.bin"], on_disk)
+        core.check("every copy is whole", all(sha256_of_file(os.path.join(folder, n)) == server_sha256("1MB.bin") for n in on_disk))
     except CheckFailed as failure:
         core.check(str(failure), False)
         print(core.log_text()[-2500:])

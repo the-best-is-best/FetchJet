@@ -595,6 +595,7 @@ class DashboardViewModel(
                     url = req.url,
                     customDestinationPath = reqDir,
                     customFileName = name,
+                    keepExistingFiles = true,
                     disableUpload = _uiState.value.disableTorrentUpload,
                     maxDownloadSpeedBytesPerSec = _uiState.value.selectedDownloadSpeedLimitBytes,
                     maxUploadSpeedBytesPerSec = _uiState.value.selectedUploadSpeedLimitBytes,

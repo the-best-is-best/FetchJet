@@ -42,7 +42,7 @@ REMOVED: they embed Python 3.10 and yt-dlp now requires >= 3.11.
       returns $SSL_CERT_FILE), charset_normalizer 3.4.3, idna 3.10, websockets 15.0.1, mutagen
       1.47.0. Taken from the projects' GitHub tags (PyPI not reachable from the agent). Still
       missing vs desktop: brotli, pycryptodomex.
-   - curl_cffi (browser impersonation, added 2026-10-28 late - first build pending): the PornHub
+   - curl_cffi (browser impersonation, added 2026-10-28 late - first build pending): some yt-dlp
      extractor (and other Cloudflare-fronted sites) calls every page with `impersonate=True`;
      without curl_cffi yt-dlp only warns and then gets HTTP 403 / "Unable to download webpage",
      which is why that site worked on desktop (official yt-dlp builds bundle curl_cffi) but not

@@ -193,7 +193,7 @@ class HttpChunkDownloader(
             } else {
                 initialTask.fileName
             }
-            val targetFileName = claimFileName(taskId, pathResolver.sanitizeFileName(rawFileName))
+            val targetFileName = claimFileName(taskId, pathResolver.sanitizeFileName(rawFileName), keepFiles = initialTask.fileName.isBlank())
 
             updateTaskState(taskId) {
                 // Resume needs byte ranges and a known length (see downloadSingleStream).

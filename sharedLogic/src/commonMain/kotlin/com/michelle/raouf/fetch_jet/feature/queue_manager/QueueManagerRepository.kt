@@ -816,7 +816,8 @@ class QueueManagerRepository(
 
     private fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
-        val others = allTasksFlow.value.filter { it.destinationPath.trimEnd('/', '\\') == dir }
+        val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
+            .filter { it.destinationPath.trimEnd('/', '\\') == dir }
         return firstFreeFileName(fileName) { name ->
             AppFileSystem.exists("$dir/$name".toPath()) || others.any { it.fileName.equals(name, ignoreCase = true) }
         }
@@ -959,7 +960,9 @@ class QueueManagerRepository(
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
-            fileName = safeFileName?.let { if (keepExistingFiles) freeNameIn(destDir, it) else it }
+            fileName = safeFileName?.let {
+                if (keepExistingFiles && engineType != EngineType.BITTORRENT) freeNameIn(destDir, it) else it
+            }
                 ?: torrentName ?: "",
             destinationPath = destDir,
             engineType = engineType,
