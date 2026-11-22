@@ -226,7 +226,7 @@ fun App(
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                             onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
-                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
+                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else LocalizationManager.Strings.homeDownloads
                         )
 
                         Box(
@@ -236,11 +236,7 @@ fun App(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             if (state.selectedTab == DashboardTab.SETTINGS) {
-                                SettingsContentView(
-                                    state = state,
-                                    viewModel = viewModel,
-                                    pathResolver = pathResolver
-                                )
+                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
                             } else {
                                 TaskListArea(
                                     tasks = state.filteredTasks,
@@ -341,7 +337,7 @@ fun App(
                                 FjTopBar(
                                     showSearch = state.selectedTab != DashboardTab.SETTINGS,
                                     compact = isMedium,
-                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else sideFilter.label,
+                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else sideFilter.label,
                                     searchQuery = searchQuery,
                                     onSearchChange = { searchQuery = it },
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
@@ -370,11 +366,7 @@ fun App(
                                 )
 
                                 if (state.selectedTab == DashboardTab.SETTINGS) {
-                                    SettingsContentView(
-                                        state = state,
-                                        viewModel = viewModel,
-                                        pathResolver = pathResolver
-                                    )
+                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
                                 } else {
                                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         TaskListArea(

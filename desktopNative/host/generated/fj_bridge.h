@@ -272,7 +272,8 @@ namespace Channel {
     inline constexpr int TorrentDetails = 28;
     inline constexpr int RowMenu = 29;
     inline constexpr int SubtitlesPage = 30;
-    inline constexpr int Count = 31;
+    inline constexpr int MoreRows = 31;
+    inline constexpr int Count = 32;
 }
 
 inline EngineChoiceDto parse_EngineChoiceDto(const fj::Json &j) {
@@ -957,6 +958,7 @@ inline SettingsNavDto parse_SettingsNavDto(const fj::Json &j) {
     d.current = fj::integer(j, "current");
     d.title = fj::text(j, "title");
     d.blurb = fj::text(j, "blurb");
+    d.inSettings = fj::flag(j, "inSettings");
     return d;
 }
 
@@ -1183,6 +1185,7 @@ struct Models {
     std::shared_ptr<slint::VectorModel<DeviceRowDto>> deviceRows = std::make_shared<slint::VectorModel<DeviceRowDto>>();
     std::shared_ptr<slint::VectorModel<TorrentFileRowDto>> addTorrentFiles = std::make_shared<slint::VectorModel<TorrentFileRowDto>>();
     std::shared_ptr<slint::VectorModel<RowMenuItemDto>> rowMenu = std::make_shared<slint::VectorModel<RowMenuItemDto>>();
+    std::shared_ptr<slint::VectorModel<SettingRowDto>> moreRows = std::make_shared<slint::VectorModel<SettingRowDto>>();
 };
 
 inline void bind_models(const Core &core, const Models &models) {
@@ -1200,6 +1203,7 @@ inline void bind_models(const Core &core, const Models &models) {
     core.set_deviceRows(models.deviceRows);
     core.set_addTorrentFiles(models.addTorrentFiles);
     core.set_rowMenu(models.rowMenu);
+    core.set_moreRows(models.moreRows);
 }
 
 inline bool apply_channel(const Core &core, Models &models, int channel, const fj::Json &j) {
@@ -1233,6 +1237,7 @@ inline bool apply_channel(const Core &core, Models &models, int channel, const f
         case 28: core.set_torrentDetails(parse_TorrentDetailsDto(j)); return true;
         case 29: fj::apply_rows<RowMenuItemDto>(*models.rowMenu, j, parse_RowMenuItemDto); return true;
         case 30: core.set_subtitlesPage(parse_SubtitlesPageDto(j)); return true;
+        case 31: fj::apply_rows<SettingRowDto>(*models.moreRows, j, parse_SettingRowDto); return true;
         default: return false;
     }
 }
@@ -1273,6 +1278,16 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_languageHint(next());
     tr.set_systemLanguage(next());
     tr.set_homeSettings(next());
+    tr.set_moreTitle(next());
+    tr.set_moreSettingsHint(next());
+    tr.set_moreEverywhereTitle(next());
+    tr.set_moreShare(next());
+    tr.set_moreCommunityTitle(next());
+    tr.set_moreFacebook(next());
+    tr.set_moreIssues(next());
+    tr.set_moreSource(next());
+    tr.set_morePrivacy(next());
+    tr.set_moreStats(next());
     tr.set_homeDownloads(next());
     tr.set_homeTabAll(next());
     tr.set_homeTabActive(next());
@@ -2245,6 +2260,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_alertText([send](int kind, slint::SharedString text) { fj::ActionWriter w("AlertText"); w.add("kind", kind); w.add("text", text); send(w.finish()); });
     act.on_alertExtra([send](int kind) { fj::ActionWriter w("AlertExtra"); w.add("kind", kind); send(w.finish()); });
     act.on_setSettingsSection([send](int index) { fj::ActionWriter w("SetSettingsSection"); w.add("index", index); send(w.finish()); });
+    act.on_openMore([send]() { fj::ActionWriter w("OpenMore"); send(w.finish()); });
     act.on_settingToggle([send](slint::SharedString id, bool on) { fj::ActionWriter w("SettingToggle"); w.add("id", id); w.add("on", on); send(w.finish()); });
     act.on_settingPick([send](slint::SharedString id, int index) { fj::ActionWriter w("SettingPick"); w.add("id", id); w.add("index", index); send(w.finish()); });
     act.on_settingText([send](slint::SharedString id, slint::SharedString text) { fj::ActionWriter w("SettingText"); w.add("id", id); w.add("text", text); send(w.finish()); });

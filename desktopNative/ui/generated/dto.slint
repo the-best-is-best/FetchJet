@@ -607,6 +607,7 @@ export struct SettingsNavDto {
     current: int,
     title: string,
     blurb: string,
+    inSettings: bool,
 }
 
 export struct SettingFieldDto {
@@ -1056,4 +1057,5 @@ export global Core {
     in property <TorrentDetailsDto> torrentDetails;
     in property <[RowMenuItemDto]> rowMenu;
     in property <SubtitlesPageDto> subtitlesPage;
+    in property <[SettingRowDto]> moreRows;
 }

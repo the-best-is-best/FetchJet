@@ -31,7 +31,7 @@ extension FJStore {
             items.append(FJTabItem(tab: .media, label: s.homeTabMedia, icon: "film", selectedIcon: "film.fill",
                                    count: tasks.filter { $0.engineType == .mediaStream }.count))
         }
-        items.append(FJTabItem(tab: .settings, label: s.homeSettings, icon: "gearshape", selectedIcon: "gearshape.fill", count: 0))
+        items.append(FJTabItem(tab: .settings, label: s.moreTitle, icon: "ellipsis.circle", selectedIcon: "ellipsis.circle.fill", count: 0))
         return items
     }
 
@@ -104,7 +104,7 @@ struct FJListPage: View {
         ZStack {
             FJTheme.color.background.ignoresSafeArea()
             if store.state.selectedTab == .settings {
-                SettingsScreen()
+                MoreScreen()
             } else {
                 TaskListScreen()
                     .overlay(alignment: .bottomTrailing) { FJAddButton().padding(16) }

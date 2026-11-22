@@ -41,7 +41,7 @@ internal val QUEUE_COUNTS = listOf(1, 2, 3, 4, 5, 8, 0)
 
 internal fun languageCodes(): List<String> = listOf(AppLanguage.SYSTEM) + appLanguages.map { it.localeCode }
 
-private class Rows {
+internal class Rows {
     val list = ArrayList<SettingRowDto>()
     private var dividerNext = false
 
@@ -80,7 +80,7 @@ private fun switchRow(id: String, title: String, subtitle: String?, checked: Boo
     clickable = enabled,
 )
 
-private fun infoRow(
+internal fun infoRow(
     title: String,
     subtitle: String? = null,
     id: String = "",
@@ -127,7 +127,7 @@ private fun pickerRow(
     bottom = if (!below) 0 else if (title.isEmpty()) 16 else 14,
 )
 
-private fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0, large: Boolean = false) = SettingRowDto(
+internal fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0, large: Boolean = false) = SettingRowDto(
     kind = SettingKind.NOTE.ordinal,
     title = text,
     tone = tone.ordinal,
@@ -136,7 +136,7 @@ private fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0,
     large = large,
 )
 
-private fun button(
+internal fun button(
     id: String,
     label: String,
     filled: Boolean = false,

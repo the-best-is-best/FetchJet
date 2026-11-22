@@ -46,6 +46,8 @@ object Channels {
 
     val SUBTITLES_PAGE = ChannelSpec(30, "subtitlesPage", ChannelKind.STRUCT, "SubtitlesPageDto")
 
-    const val COUNT = 31
+    val MORE_ROWS = ChannelSpec(31, "moreRows", ChannelKind.LIST, "SettingRowDto")
+
+    const val COUNT = 32
     const val FULL_FLAG = 0x100
 }

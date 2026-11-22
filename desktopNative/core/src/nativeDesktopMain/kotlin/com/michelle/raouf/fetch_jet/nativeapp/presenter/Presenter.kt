@@ -100,6 +100,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val choices = ListChannel(Channels.CHOICES.id, Channels.CHOICES.name, ChoiceDialogDto.serializer(), notifier)
     val settingsNav = StructChannel(Channels.SETTINGS_NAV.id, Channels.SETTINGS_NAV.name, SettingsNavDto.serializer(), notifier)
     val settingsRows = ListChannel(Channels.SETTINGS_ROWS.id, Channels.SETTINGS_ROWS.name, SettingRowDto.serializer(), notifier)
+    val moreRows = ListChannel(Channels.MORE_ROWS.id, Channels.MORE_ROWS.name, SettingRowDto.serializer(), notifier)
     val settingsLocal = MutableStateFlow(SettingsLocal())
     val settingsEcho = EchoFields()
     val updateDialog = StructChannel(Channels.UPDATE_DIALOG.id, Channels.UPDATE_DIALOG.name, UpdateDialogDto.serializer(), notifier)
@@ -134,11 +135,13 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
     val rowMenuTask = MutableStateFlow<String?>(null)
     val torrentLocal = MutableStateFlow(TorrentLocal())
     val debugSections = MutableStateFlow(false)
+    val openedLinks = MutableStateFlow<List<String>>(emptyList())
+    val sharedTexts = MutableStateFlow<List<String>>(emptyList())
     val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
 
     val channels: List<UiChannel> = listOf(
         tr, shell, chrome, status, tasks, effects, details, detailPieces, detailConnections, detailFiles, alerts, add,
-        addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, updateDialog, addLinks, deviceSheet,
+        addMedia, addQualities, addSubtitles, addPlaylist, clipPickerChannel, choices, settingsNav, settingsRows, moreRows, updateDialog, addLinks, deviceSheet,
         deviceRows, devicePairing, addTorrent, addTorrentFiles, audioCompress, torrentDetails, rowMenu, subtitlesPage,
     )
 

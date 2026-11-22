@@ -158,6 +158,7 @@ internal data class SettingsLocal(
     val section: SettingsSection? = null,
     val generation: Int = 0,
     val poke: Int = 0,
+    val inSettings: Boolean = false,
     val page: SettingsPage = SettingsPage(),
     val browserDialog: BrowserDialog? = null,
 )
@@ -376,7 +377,13 @@ internal fun Presenter.startSettings() {
     val open = slices.map { it.open }.distinctUntilChanged()
     scope.launch {
         combine(open, AppLanguage.current) { _, _ -> Unit }.drop(1).collect {
-            settingsLocal.update { SettingsLocal(generation = it.generation + 1, poke = it.poke + 1) }
+            settingsLocal.update {
+                SettingsLocal(
+                    generation = it.generation + 1,
+                    poke = it.poke + 1,
+                    inSettings = it.inSettings && vm.uiState.value.selectedTab == DashboardTab.SETTINGS,
+                )
+            }
         }
     }
     scope.launch {
@@ -474,6 +481,7 @@ private fun Presenter.publishSettings() {
     if (!v.open) {
         settingsNav.publish(SettingsNavDto())
         settingsRows.publish(emptyList())
+        moreRows.publish(emptyList())
         return
     }
     val ui = settingsLocal.value
@@ -496,7 +504,9 @@ private fun Presenter.publishSettings() {
             current = sections.indexOf(current),
             title = current.title(),
             blurb = current.blurb(),
+            inSettings = ui.inSettings,
         )
     )
+    moreRows.publish(buildMoreRows())
     settingsRows.publish(buildSettingsRows(current, v, ui.page))
 }

@@ -29,6 +29,16 @@ interface AppLocalization : LocalizationProvider {
     val languageHint: String
     val systemLanguage: String
     val homeSettings: String
+    val moreTitle: String
+    val moreSettingsHint: String
+    val moreEverywhereTitle: String
+    val moreShare: String
+    val moreCommunityTitle: String
+    val moreFacebook: String
+    val moreIssues: String
+    val moreSource: String
+    val morePrivacy: String
+    val moreStats: String
     val homeDownloads: String
 
     val homeTabAll: String

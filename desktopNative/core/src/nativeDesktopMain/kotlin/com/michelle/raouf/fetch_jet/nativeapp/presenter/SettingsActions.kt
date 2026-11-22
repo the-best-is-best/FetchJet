@@ -38,12 +38,13 @@ private const val EDGE_STORE_PAGE = "https://microsoftedge.microsoft.com/addons/
 internal fun Presenter.settingsOpenSection(index: Int) {
     val target = if (index < 0) null else (visibleSettingsSections().getOrNull(index) ?: return)
     settingsLocal.update {
-        if (it.section == target) it
-        else SettingsLocal(section = target, generation = it.generation + 1, poke = it.poke + 1)
+        if (it.section == target) it.copy(inSettings = true)
+        else SettingsLocal(section = target, generation = it.generation + 1, poke = it.poke + 1, inSettings = true)
     }
 }
 
 internal fun Presenter.openExternal(target: String) {
+    openedLinks.update { (it + target).takeLast(20) }
     if (headless) return
     scope.launch(Dispatchers.IO) { DesktopOs.openExternal(target) }
 }
@@ -491,6 +492,7 @@ internal fun Presenter.browserDialogExtra() {
 
 internal fun Presenter.settingClick(id: String) {
     if (reportClick(id)) return
+    if (moreClick(id)) return
     when {
         id == "chooseFolder" -> chooseSaveFolder()
         id == "ruleChoose" -> chooseRuleFolder()

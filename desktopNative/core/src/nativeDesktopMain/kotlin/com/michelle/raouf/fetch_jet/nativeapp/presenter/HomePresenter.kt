@@ -433,7 +433,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
     chrome.publish(
         ChromeDto(
             settingsOpen = settings,
-            title = if (settings) strings.homeSettings else openGroup?.title ?: openFolderGroup?.label ?: ui.sideFilter.label,
+            title = if (settings) strings.moreTitle else openGroup?.title ?: openFolderGroup?.label ?: ui.sideFilter.label,
             navState = stateFilters.map { navEntry(it, it.label, all, ui, settings) },
             navType = typeFilters.map { navEntry(it, it.label, all, ui, settings) },
             navRail = listOf(

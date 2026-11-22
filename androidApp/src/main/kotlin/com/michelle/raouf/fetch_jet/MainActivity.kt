@@ -58,6 +58,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         PathResolver.appContext = applicationContext
+        com.michelle.raouf.fetch_jet.core.more.MoreLinks.systemShare = { text ->
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            startActivity(Intent.createChooser(send, null))
+            true
+        }
         DownloadNotificationManager.setContext(applicationContext)
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
         // Debug / verbose builds only: a log file and the "Save log" button. Release builds

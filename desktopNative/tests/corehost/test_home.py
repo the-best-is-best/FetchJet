@@ -155,7 +155,7 @@ def run():
         core.action("OpenSettings")
         core.pump(0.2)
         chrome = core.snapshot("chrome")
-        core.check("settings open", chrome.get("settingsOpen") and chrome.get("title") == strings["homeSettings"] and
+        core.check("settings open", chrome.get("settingsOpen") and chrome.get("title") == strings["moreTitle"] and
                    not chrome.get("detailsOpen", False), chrome.get("title"))
         core.action("SetFilter", filter=FILTER["ALL"])
 

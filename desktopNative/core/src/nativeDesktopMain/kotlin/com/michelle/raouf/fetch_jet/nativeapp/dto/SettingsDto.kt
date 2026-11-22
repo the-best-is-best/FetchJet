@@ -20,6 +20,7 @@ data class SettingsNavDto(
     val current: Int = 0,
     val title: String = "",
     val blurb: String = "",
+    val inSettings: Boolean = false,
 )
 
 @Serializable

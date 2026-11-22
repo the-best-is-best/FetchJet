@@ -57,6 +57,7 @@ struct SettingsScreen: View {
     @EnvironmentObject var store: FJStore
     @StateObject private var live = SettingsLive()
     @State private var open: SettingsSection?
+    var onBack: (() -> Void)? = nil
 
     var body: some View {
         let s = store.strings
@@ -113,6 +114,18 @@ struct SettingsScreen: View {
         .background(FJTheme.color.background.ignoresSafeArea())
         .navigationTitle(s.homeSettings)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if let onBack {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onBack) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.backward").font(.fj(15, .semibold))
+                            Text(s.moreTitle).font(.fj(17))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var sections: [SettingsSection] {

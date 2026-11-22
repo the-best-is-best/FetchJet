@@ -319,6 +319,10 @@ sealed interface UiAction {
     data class SetSettingsSection(val index: Int = 0) : UiAction
 
     @Serializable
+    @SerialName("OpenMore")
+    data object OpenMore : UiAction
+
+    @Serializable
     @SerialName("SettingToggle")
     data class SettingToggle(val id: String = "", val on: Boolean = false) : UiAction
 

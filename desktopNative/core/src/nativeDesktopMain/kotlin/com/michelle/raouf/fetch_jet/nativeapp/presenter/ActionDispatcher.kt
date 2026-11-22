@@ -195,6 +195,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.AlertText -> alertText(action.kind, action.text)
         is UiAction.AlertExtra -> alertExtra(action.kind)
         is UiAction.SetSettingsSection -> settingsOpenSection(action.index)
+        UiAction.OpenMore -> settingsLocal.update { it.copy(inSettings = false) }
         is UiAction.SettingToggle -> settingToggle(action.id, action.on)
         is UiAction.SettingPick -> settingPick(action.id, action.index)
         is UiAction.SettingText -> settingText(action.id, action.text)

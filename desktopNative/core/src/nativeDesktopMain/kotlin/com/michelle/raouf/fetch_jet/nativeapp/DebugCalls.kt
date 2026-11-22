@@ -95,6 +95,10 @@ internal object DebugCalls {
             put("on", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.wakeForSchedule.value)
             put("armedAtMs", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.armedAtMs.value)
         }.toString()
+        "opened" -> buildJsonObject {
+            putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
+            putJsonArray("shared") { for (text in NativeApp.presenter.sharedTexts.value) add(kotlinx.serialization.json.JsonPrimitive(text)) }
+        }.toString()
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
             "ok"
