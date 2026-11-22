@@ -54,6 +54,19 @@ def run():
         core.check("only the link stays and the field is told to take it", add.get("url") == url and add.get("urlRev", 0) > first_rev,
                    (add.get("url"), add.get("urlRev")))
 
+        print("closing the dialog empties it")
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        core.action("ShowAddDialog", show=True)
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("reopened: the link is gone", add.get("url", "") == "", add.get("url"))
+        core.check("reopened: no file name and the button asks for a link", not add.get("fileNameShown", False) and not add.get("primaryEnabled", False),
+                   (add.get("fileNameShown"), add.get("primaryEnabled")))
+        core.action("SetUrl", text=url)
+        core.pump(0.3)
+        add = core.snapshot("add")
+
         print("file name")
         name_rev = add.get("fileNameRev", 0)
         core.action("SetFileName", name="my file.bin")

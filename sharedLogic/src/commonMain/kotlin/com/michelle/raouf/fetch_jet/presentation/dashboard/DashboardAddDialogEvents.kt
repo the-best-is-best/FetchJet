@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.site_grabber.LinkKind
 import com.michelle.raouf.fetch_jet.feature.media_extractor.selectableByAll
 import kotlinx.coroutines.flow.update
 
@@ -201,6 +202,21 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                     isAddDialogVisible = event.show,
 
                     errorMessage = null,
+
+                    inputUrl = if (event.show) state.inputUrl else "",
+                    detectedEngine = if (event.show) state.detectedEngine else EngineType.HTTP_DIRECT,
+                    fileNameOverride = if (event.show) state.fileNameOverride else "",
+                    suggestedFileName = if (event.show) state.suggestedFileName else "",
+                    checksumInput = if (event.show) state.checksumInput else "",
+                    inspectedSubtitles = if (event.show) state.inspectedSubtitles else emptyList(),
+                    embedSubtitles = if (event.show) state.embedSubtitles else false,
+                    clipStartTime = if (event.show) state.clipStartTime else "",
+                    clipEndTime = if (event.show) state.clipEndTime else "",
+                    isClipRangeEnabled = if (event.show) state.isClipRangeEnabled else false,
+                    clipFastMode = if (event.show) state.clipFastMode else false,
+                    linkKind = if (event.show) state.linkKind else LinkKind.UNKNOWN,
+                    linkProbeUrl = if (event.show) state.linkProbeUrl else "",
+                    testLink = if (event.show) state.testLink else null,
 
                     inspectedTorrentFiles = emptyList(),
 
