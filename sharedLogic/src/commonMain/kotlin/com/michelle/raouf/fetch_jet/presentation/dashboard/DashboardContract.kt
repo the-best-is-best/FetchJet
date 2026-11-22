@@ -279,7 +279,7 @@ data class DashboardUiState(
     /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
     val grabShape: Boolean
         get() = isAddDialogVisible && linkList.all { it.folder.isNotBlank() } && inspectedPlaylist == null &&
-                detectedEngine == EngineType.HTTP_DIRECT && inputUrl.trim().let { u ->
+                (detectedEngine == EngineType.HTTP_DIRECT || (detectedEngine == EngineType.MEDIA_STREAM && com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.knows(com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.hostOf(inputUrl)))) && inputUrl.trim().let { u ->
             (u.startsWith("http://", true) || u.startsWith("https://", true)) && u.none { it.isWhitespace() } &&
                     !com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.isFileUrl(u)
         }
@@ -307,7 +307,7 @@ data class DashboardUiState(
     val engineChoiceShown: Boolean
         get() = showsEngineChoice && linkList.isEmpty() && detectedEngine != EngineType.BITTORRENT &&
                 com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor &&
-                probedAs.let { it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
+                probedAs.let { it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE || it == LinkKind.PAGE }
 
     /** Reading depth is a choice only for pages crawled link by link (a release page of a known site is read directly). */
     val grabDepthShown: Boolean

@@ -12,6 +12,8 @@ import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.platform.desktop.runProcess
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.head
+import io.ktor.client.request.prepareGet
+import io.ktor.http.contentType
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentLength
@@ -37,6 +39,25 @@ private fun safeEncodeUrl(rawUrl: String): String {
     return sb.toString()
 }
 
+private suspend fun probeRangeTotal(safe: String): Long = try {
+    AppHttp.client.prepareGet(safe) {
+        timeout {
+            connectTimeoutMillis = 4000
+            socketTimeoutMillis = 4000
+            requestTimeoutMillis = 8000
+        }
+        header(HttpHeaders.UserAgent, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+        header(HttpHeaders.Range, "bytes=0-0")
+    }.execute { response ->
+        val total = com.michelle.raouf.fetch_jet.domain.model.totalFromContentRange(response.headers[HttpHeaders.ContentRange])
+        if (response.status.value == 206 && total > 4096L) total else -1L
+    }
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    -1L
+}
+
 suspend fun probeContentLength(url: String): Long {
     val safe = safeEncodeUrl(url)
     return try {
@@ -49,7 +70,8 @@ suspend fun probeContentLength(url: String): Long {
             header(HttpHeaders.UserAgent, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
         }
         val length = response.contentLength() ?: -1L
-        if (length > 0L) length else -1L
+        if (length > 4096L && !com.michelle.raouf.fetch_jet.domain.model.looksLikeNotMedia(response.contentType()?.toString())) length
+        else probeRangeTotal(safe)
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
@@ -133,6 +155,7 @@ actual suspend fun inspectPlatformQualities(
     val list = mutableListOf<MediaQualityEntry>()
     val seenKeys = mutableSetOf<String>()
     val keptCodec = HashMap<String, String>()
+    val hlsEstimates = HashMap<String, Long>()
 
     for (f in rawFormats) {
         val formatId = f["format_id"]?.toString() ?: continue
@@ -173,7 +196,7 @@ actual suspend fun inspectPlatformQualities(
                 directUrl.contains(".m3u8", ignoreCase = true)
         val filesize = when {
             explicitFilesize > 0 -> explicitFilesize
-            isHlsFormat -> -1L
+            isHlsFormat -> com.michelle.raouf.fetch_jet.domain.model.estimateStreamBytes(bitrateBps, videoDuration)
             else -> getCachedContentLength(directUrl.ifBlank { url })
         }
         val isAudioOnly = (vcodec.equals("none", ignoreCase = true) || resolution.contains(
@@ -274,6 +297,8 @@ actual suspend fun inspectPlatformQualities(
                 ".mp4",
                 ignoreCase = true
             ))
+
+            if (isHlsFormat && filesize > 0L) hlsEstimates.getOrPut(com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label)) { filesize }
 
             val existingIndex = list.indexOfFirst {
                 it.qualityLabel == com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label) && it.format.equals(
@@ -386,6 +411,7 @@ actual suspend fun inspectPlatformQualities(
             }
         }
     }
+    com.michelle.raouf.fetch_jet.domain.model.fillSizeEstimates(list, hlsEstimates)
     list.sortByDescending { entry ->
         when {
             entry.qualityLabel.contains("4K") -> 2160

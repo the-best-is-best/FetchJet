@@ -49,6 +49,8 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
 import com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi
@@ -493,7 +495,7 @@ private fun VideoQualityLine(link: LinkListEntry, onRetry: () -> Unit, onSelecte
 }
 
 private fun qualityText(q: MediaQualityEntry): String =
-    q.qualityLabel + if (q.size > 0L) " · " + formatBytes(q.size) else ""
+    q.qualityLabel + if (q.hasShownSize) " · " + q.sizeMark + formatBytes(q.size) else ""
 
 private fun linkTitle(url: String): String {
     if (url.startsWith("magnet:", ignoreCase = true)) {

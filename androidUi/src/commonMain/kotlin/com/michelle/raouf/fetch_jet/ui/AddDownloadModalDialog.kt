@@ -373,6 +373,11 @@ fun AddDownloadModalDialog(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
+                if (engineChoiceShown && !showsLinkList) EngineSelector(
+                    detectedEngine = detectedEngine,
+                    onEngineSelected = onEngineSelected
+                )
+
                 if (canGrabPage || siteGrab.running) {
                     GrabCard(
                         grab = siteGrab,
@@ -417,11 +422,6 @@ fun AddDownloadModalDialog(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                 } else {
-                if (engineChoiceShown) EngineSelector(
-                    detectedEngine = detectedEngine,
-                    onEngineSelected = onEngineSelected
-                )
-
                 TorrentInspectionSection(
                     detectedEngine = detectedEngine,
                     inputUrl = inputUrl,

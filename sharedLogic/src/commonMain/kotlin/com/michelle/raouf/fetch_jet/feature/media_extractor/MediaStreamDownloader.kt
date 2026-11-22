@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -80,7 +81,7 @@ class MediaStreamDownloader(
 
     internal val tasksState = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
 
-    internal val activeJobs = mutableMapOf<String, Job>()
+    internal val activeJobs = MutableStateFlow<Map<String, Job>>(emptyMap())
 
     internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -106,7 +107,7 @@ class MediaStreamDownloader(
         return try {
             // Wait for a previous run to really stop (yt-dlp/ffmpeg killed, files closed)
             // before touching its files.
-            activeJobs.remove(task.id)?.let { it.cancel(); withTimeoutOrNull(3000L) { it.join() } }
+            activeJobs.getAndUpdate { it - task.id }[task.id]?.let { it.cancel(); withTimeoutOrNull(3000L) { it.join() } }
 
             // Only the section mode cannot resume; a cut-afterwards clip resumes like any video.
             val isClip =
@@ -131,7 +132,7 @@ class MediaStreamDownloader(
             val job = scope.launch {
                 executeMediaDownload(task.id)
             }
-            activeJobs[task.id] = job
+            activeJobs.update { it + (task.id to job) }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -145,7 +146,7 @@ class MediaStreamDownloader(
                 downloadSpeedBytesPerSec = 0L
             )
         }
-        val currentJob = activeJobs.remove(taskId)
+        val currentJob = activeJobs.getAndUpdate { it - taskId }[taskId]
         currentJob?.cancel()
         // Wait (briefly) until yt-dlp/ffmpeg is really gone, so an immediate Resume never works
         // on files the old process is still writing. Capped: on iOS the in-app engine cannot
@@ -161,7 +162,7 @@ class MediaStreamDownloader(
     }
 
     override suspend fun cancel(taskId: String): Result<Unit> {
-        val currentJob = activeJobs.remove(taskId)
+        val currentJob = activeJobs.getAndUpdate { it - taskId }[taskId]
         currentJob?.cancel()
         currentJob?.let { withTimeoutOrNull(3000L) { it.join() } } // capped: see pause()
         tasksState.update { current -> current - taskId }

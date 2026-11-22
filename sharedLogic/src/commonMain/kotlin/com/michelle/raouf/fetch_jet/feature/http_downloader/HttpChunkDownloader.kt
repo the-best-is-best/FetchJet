@@ -23,7 +23,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import okio.Path.Companion.toPath
@@ -51,7 +53,9 @@ class HttpChunkDownloader(
     internal val client: HttpClient get() = clients.current
 
     internal val tasksState = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
-    private val activeJobs = mutableMapOf<String, Job>()
+    private val activeJobs = MutableStateFlow<Map<String, Job>>(emptyMap())
+    internal val nameClaimLock = kotlinx.coroutines.sync.Mutex()
+    internal val nameClaims = mutableSetOf<String>()
     internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun observeTask(taskId: String): Flow<DownloadTask> {
@@ -67,11 +71,11 @@ class HttpChunkDownloader(
         return try {
             enqueueTask(task)
             // A double resume would run two writers on the same files.
-            activeJobs.remove(task.id)?.cancel()
+            activeJobs.getAndUpdate { it - task.id }[task.id]?.cancel()
             val job = scope.launch {
                 executeDownload(task.id)
             }
-            activeJobs[task.id] = job
+            activeJobs.update { it + (task.id to job) }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -79,8 +83,7 @@ class HttpChunkDownloader(
     }
 
     override suspend fun pause(taskId: String): Result<Unit> {
-        activeJobs[taskId]?.cancel()
-        activeJobs.remove(taskId)
+        activeJobs.getAndUpdate { it - taskId }[taskId]?.cancel()
         updateTaskState(taskId) {
             it.copy(
                 status = DownloadStatus.PAUSED,
@@ -97,7 +100,7 @@ class HttpChunkDownloader(
     }
 
     override suspend fun cancel(taskId: String): Result<Unit> {
-        val job = activeJobs.remove(taskId)
+        val job = activeJobs.getAndUpdate { it - taskId }[taskId]
         job?.cancel()
         // Give the chunk writers a moment to close their files before we delete them, but never
         // wait forever: if the job is stuck in a slow blocking call, Delete must not hang.
@@ -108,6 +111,7 @@ class HttpChunkDownloader(
         }
         // Whole scratch folder: .partN files, the single-stream .part, anything left behind.
         try { deleteTaskScratchDir(taskId) } catch (_: Exception) {}
+        nameClaimLock.withLock { nameClaims.remove(taskId) }
         tasksState.update { current -> current - taskId }
         return Result.success(Unit)
     }
@@ -189,7 +193,7 @@ class HttpChunkDownloader(
             } else {
                 initialTask.fileName
             }
-            val targetFileName = pathResolver.sanitizeFileName(rawFileName)
+            val targetFileName = claimFileName(taskId, pathResolver.sanitizeFileName(rawFileName))
 
             updateTaskState(taskId) {
                 // Resume needs byte ranges and a known length (see downloadSingleStream).

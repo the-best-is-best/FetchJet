@@ -62,10 +62,10 @@ class EngineChoiceTest {
     }
 
     @Test
-    fun aPlainPageShowsTheCardOnly() {
+    fun aPlainPageShowsTheCardAndTheEngineChoice() {
         val s = state("https://example.com/site/start.html", LinkKind.PAGE)
         assertTrue(s.canGrabPage)
-        assertFalse(s.engineChoiceShown)
+        assertTrue(s.engineChoiceShown)
     }
 
     @Test

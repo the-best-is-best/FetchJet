@@ -326,7 +326,8 @@ struct AddLinkListSection: View {
     }
 
     private func qualityText(_ q: MediaQualityEntry) -> String {
-        q.qualityLabel + (q.size > 0 ? " · " + store.host.formatBytes(bytes: q.size) : "")
+        let approx = (q.formatId?.lowercased().hasPrefix("hls") ?? false) || q.sizeApprox || q.directUrl.lowercased().contains(".m3u8") ? "~" : ""
+        return q.qualityLabel + (q.size > 4096 ? " · " + approx + store.host.formatBytes(bytes: q.size) : "")
     }
 }
 

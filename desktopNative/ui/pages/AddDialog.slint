@@ -581,9 +581,9 @@ component AddBody inherits VerticalLayout {
         vertical-alignment: center;
         height: 24px;
     }
-    if Core.add.grabShown: GrabCard { }
-    Gap { }
-    if root.links: LinkListSection { }
+    if !root.links && !Core.add.engineHidden: Gap {
+        size: 12px;
+    }
     if !root.links && !Core.add.engineHidden: SectionLabel {
         text: Tr.addDownloadEngine;
     }
@@ -598,6 +598,12 @@ component AddBody inherits VerticalLayout {
             data: choice;
         }
     }
+    if !root.links && !Core.add.engineHidden && Core.add.grabShown: Gap {
+        size: 10px;
+    }
+    if Core.add.grabShown: GrabCard { }
+    Gap { }
+    if root.links: LinkListSection { }
     if !root.links && Core.addTorrent.state != TorrentStateCode.hidden: TorrentSection { }
     if !root.links && Core.addMedia.state != MediaStateCode.hidden: MediaSection { }
     if root.links || !Core.add.engineHidden || Core.addTorrent.state != TorrentStateCode.hidden || Core.addMedia.state != MediaStateCode.hidden: Gap { }

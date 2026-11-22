@@ -567,6 +567,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
             )
         }
         val subtitleLanguages = if (state.subtitlesOffered) state.inspectedSubtitles.filter { it.isSelected }.map { it.langCode } else emptyList()
+        val usedNames = mutableSetOf<String>()
         for (entry in selected) {
             val quality = entry.mediaQualities.firstOrNull { it.isSelected }
             val videoName = if (quality != null && !entry.mediaTitle.isNullOrBlank())
@@ -584,10 +585,16 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 skipped++
                 continue
             }
+            val listedName = (videoName ?: entry.fileName)?.takeIf { it.isNotBlank() }?.let { wanted ->
+                val clean = if (entry.torrentFiles.isNotEmpty() || entry.engine == EngineType.BITTORRENT) wanted
+                else queueRepository.pathResolver.sanitizeFileName(wanted)
+                com.michelle.raouf.fetch_jet.feature.queue_manager.firstFreeFileName(clean) { it.lowercase() in usedNames }
+                    .also { usedNames.add(it.lowercase()) }
+            }
             queueRepository.enqueueTask(
                 url = entry.url,
                 customDestinationPath = destDir,
-                customFileName = videoName ?: entry.fileName,
+                customFileName = listedName ?: videoName ?: entry.fileName,
                 mediaQualities = entry.mediaQualities,
                 requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
                 disableUpload = state.disableTorrentUpload,

@@ -42,6 +42,6 @@ class DetectLinkTypeUseCase {
         // HTTP download (chunked, resumable) - except on media hosts, where yt-dlp knows better.
         val playlistExtensions = listOf(".m3u8", ".mpd")
         val isPlaylist = playlistExtensions.any { cleanUrl.endsWith(it) }
-        return isMediaHost || isPlaylist
+        return isMediaHost || isPlaylist || LearnedMediaHosts.knows(host)
     }
 }

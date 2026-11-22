@@ -119,7 +119,8 @@ struct AddQualitiesCard: View {
                     Text(q.qualityLabel)
                         .font(.fj(12, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
-                    let size = q.size > 0 ? " • \(store.host.formatSizeDisplay(bytes: q.size))" : ""
+                    let approx = (q.formatId?.lowercased().hasPrefix("hls") ?? false) || q.sizeApprox || q.directUrl.lowercased().contains(".m3u8") ? "~" : ""
+                    let size = q.size > 4096 ? " • \(approx)\(store.host.formatSizeDisplay(bytes: q.size))" : ""
                     let dur = q.durationSeconds > 0 ? " • ⏱️ \(store.host.formatSecondsToDisplayFriendly(totalSeconds: q.durationSeconds))" : ""
                     Text(strings.qualityFormatLine(format: q.format.uppercased(), details: size + dur))
                         .font(.fj(10))

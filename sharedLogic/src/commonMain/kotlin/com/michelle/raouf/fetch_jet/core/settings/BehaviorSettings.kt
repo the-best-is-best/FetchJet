@@ -440,7 +440,7 @@ object ClipboardLinks {
         if (videoPages) {
             val host = path.substringBefore('/').lowercase().removePrefix("www.").removePrefix("m.")
             // a video page, not the site's front page
-            if (videoHosts.any { host == it || host.endsWith(".$it") } && path.substringAfter('/').length > 3) return t
+            if ((videoHosts.any { host == it || host.endsWith(".$it") } || com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.knows(host)) && path.substringAfter('/').length > 3) return t
         }
         return null
     }

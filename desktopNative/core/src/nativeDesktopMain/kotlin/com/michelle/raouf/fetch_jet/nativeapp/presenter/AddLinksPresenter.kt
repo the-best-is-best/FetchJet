@@ -5,6 +5,8 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkLineCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkTagCode
@@ -20,7 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private fun qualityText(quality: MediaQualityEntry): String =
-    quality.qualityLabel + if (quality.size > 0L) " · " + formatBytes(quality.size) else ""
+    quality.qualityLabel + if (quality.hasShownSize) " · " + quality.sizeMark + formatBytes(quality.size) else ""
 
 private fun percentDecode(text: String): String {
     if ('%' !in text) return text

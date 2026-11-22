@@ -7,6 +7,8 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMATS
@@ -268,7 +270,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
 
     if (state == MediaStateCode.QUALITIES) {
         addQualities.publish(s.qualities.map { quality ->
-            val sizeText = if (quality.size > 0) " • ${formatSizeDisplay(quality.size)}" else ""
+            val sizeText = if (quality.hasShownSize) " • ${quality.sizeMark}${formatSizeDisplay(quality.size)}" else ""
             val durText = if (quality.durationSeconds > 0) " • ⏱ ${formatSecondsToDisplayFriendly(quality.durationSeconds)}" else ""
             QualityRowDto(
                 index = quality.index,

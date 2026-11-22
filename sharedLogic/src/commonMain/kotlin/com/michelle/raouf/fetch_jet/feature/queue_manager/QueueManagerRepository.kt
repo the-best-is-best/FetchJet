@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -158,12 +159,12 @@ class QueueManagerRepository(
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var taskSequence = 0L
+    private val taskSequence = MutableStateFlow(0L)
 
     private fun generateUniqueTaskId(): String {
-        taskSequence++
+        val sequence = taskSequence.updateAndGet { it + 1 }
         val randomNum = kotlin.random.Random.nextLong(100000L, 999999L)
-        return "task_${taskSequence}_$randomNum"
+        return "task_${sequence}_$randomNum"
     }
 
     // ---- Queue & schedule ------------------------------------------------------------------
@@ -748,6 +749,7 @@ class QueueManagerRepository(
             com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                 "Inspect: end in ${started.elapsedNow().inWholeMilliseconds}ms, ${list.size} qualities"
             }
+            if (list.isNotEmpty() && list.any { it.directUrl != url.trim() }) LearnedMediaHosts.learn(url)
         }
     }
 
@@ -992,27 +994,29 @@ class QueueManagerRepository(
             subtitleLanguages = if (engineType == EngineType.MEDIA_STREAM) subtitleLanguages else ""
         )
 
-        // Later (scheduled), others already waiting, or no free slot: join the queue. The pump
-        // (under its lock) starts it, so a new add never jumps ahead of waiting ones.
-        if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
-            pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
-            pumpQueue()
-            return Result.success(task)
-        }
-
-        return try {
-            // An engine that refuses (e.g. BitTorrent not available on this build) must not be
-            // reported as "Started download".
-            // QUEUED (= starting) right away, so the next add already counts this one as running.
-            val starting = task.copy(status = DownloadStatus.QUEUED)
-            when (engineType) {
-                EngineType.HTTP_DIRECT -> httpEngine.start(starting)
-                EngineType.BITTORRENT -> torrentEngine.start(starting)
-                EngineType.MEDIA_STREAM -> mediaEngine.start(starting)
-            }.getOrThrow()
-            Result.success(task)
-        } catch (e: Exception) {
-            Result.failure(e)
+        // Later (scheduled), others already waiting, or no free slot: join the queue. The check
+        // and the start happen under the pump's lock, and a started task is in its engine (counted
+        // as running) before the lock opens, so adds made in a tight loop never exceed the limit.
+        return pumpLock.withLock {
+            if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
+                pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
+                pumpQueue()
+                return@withLock Result.success(task)
+            }
+            try {
+                // An engine that refuses (e.g. BitTorrent not available on this build) must not be
+                // reported as "Started download".
+                // QUEUED (= starting) right away, so the next add already counts this one as running.
+                val starting = task.copy(status = DownloadStatus.QUEUED)
+                when (engineType) {
+                    EngineType.HTTP_DIRECT -> httpEngine.start(starting)
+                    EngineType.BITTORRENT -> torrentEngine.start(starting)
+                    EngineType.MEDIA_STREAM -> mediaEngine.start(starting)
+                }.getOrThrow()
+                Result.success(task)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
