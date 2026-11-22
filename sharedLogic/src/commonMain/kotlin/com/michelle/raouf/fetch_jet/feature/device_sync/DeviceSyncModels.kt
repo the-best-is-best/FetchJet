@@ -64,6 +64,9 @@ data class SubtitleTrackWire(
 
 const val SOURCE_ENGINE_MEDIA = "MEDIA_STREAM"
 
+fun SendPayload.wantedSubtitleLanguages(): String =
+    subtitleTracks.map { it.langCode }.filter { it.isNotBlank() }.distinct().joinToString(",")
+
 /**
  * A file name that came over the wire, reduced to a bare name inside the receive folder: a paired
  * peer must not be able to write outside it with `../` or an absolute path. Null = refuse it.

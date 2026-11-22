@@ -8,6 +8,8 @@ import com.michelle.raouf.fetch_jet.feature.device_sync.SOURCE_ENGINE_MEDIA
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.feature.device_sync.SubtitleTrackWire
 import com.michelle.raouf.fetch_jet.feature.device_sync.syncJson
+import com.michelle.raouf.fetch_jet.feature.device_sync.wantedSubtitleLanguages
+import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.feature.queue_manager.TaskCache
 import com.michelle.raouf.fetch_jet.feature.queue_manager.toPersisted
 import com.michelle.raouf.fetch_jet.feature.queue_manager.toTask
@@ -96,5 +98,22 @@ class ReceivedVideoSubtitlesTest {
         val old = TaskCache.decode("""[{"id":"t9","url":"https://a/b.mp4","fileName":"b.mp4","engineType":"HTTP_DIRECT"}]""").single().toTask("/d")
         assertFalse(old.subtitlesFromPage)
         assertEquals(false, received(dir, from = false).toPersisted().subtitlesFromPage)
+    }
+
+    @Test
+    fun anUnfinishedDownloadWithAnUnreadableLinkIsNotOfferedButAFinishedOneIs() {
+        val locked = received("/d").copy(url = "fjenc1:abcdef", status = DownloadStatus.PAUSED, engineType = EngineType.MEDIA_STREAM)
+        assertFalse(locked.canSendToDevice())
+        assertTrue(locked.copy(status = DownloadStatus.COMPLETED).canSendToDevice())
+    }
+
+    @Test
+    fun theWantedLanguagesOfAnUnfinishedVideoAreTheTrackCodes() {
+        val payload = SendPayload(
+            url = "u", engineType = "MEDIA_STREAM",
+            subtitleTracks = listOf(SubtitleTrackWire("en"), SubtitleTrackWire("fr", isAuto = true), SubtitleTrackWire("en"), SubtitleTrackWire(""))
+        )
+        assertEquals("en,fr", payload.wantedSubtitleLanguages())
+        assertEquals("", SendPayload(url = "u").wantedSubtitleLanguages())
     }
 }
