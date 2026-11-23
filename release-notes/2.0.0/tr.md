@@ -40,3 +40,11 @@
 - macOS uygulaması macOS 12 ve sonrasında çalışacak şekilde derlenir.
 - **Android: yeniden kurulum ya da yeni telefon sonrası bozuk liste yok:** indirme listesi artık yedekten geri yüklenmiyor, çünkü bağlantıları telefona kilitli ve başka yerde okunamıyordu. İndirdiğiniz dosyalar klasörünüzde kalır.
 - **Daha net altyazı mesajı:** eski bir indirmenin bağlantısı okunamadığında "Altyazı ekle", videoda altyazı olmadığını söylemek yerine altyazıların okunamadığını söyler.
+- **Daha hızlı kuyruk:** bekleyen sıradaki indirme, bir yer boşalır boşalmaz başlar (50 küçük dosya: 16 sn'den 1 sn'nin altına) ve bir dosyanın parçalarını birleştirme daha hızlıdır.
+- **Bir Daha fazla sayfası** gezinmede Ayarlar'ın yerini alır: sürüm ve güncelleme, Ayarlar, her cihazda FetchJet, FetchJet'i paylaş, Topluluk ve yardım.
+- **Aynı dosya adı:** bir klasörde aynı adla biten iki indirme artık "ad (1).uzantı" olarak kaydedilir ve bir indirme uzun bir kuyruktan kaybolamaz.
+- **Her dil için tek yazı tipi**, tüm platformlarda (uygulama yaklaşık 7 MB büyüdü).
+- **Video siteleri hatırlanır:** Media denetiminin kaliteler bulduğu bir site bir sonraki sefer video sitesi sayılır; HLS kalitelerinin boyutları tahmin edilir ve ~ ile gösterilir.
+- **Ekleme penceresi** kapatıldıktan sonra boş açılır.
+- **Windows:** konsol pencereleri artık yanıp sönmez, her sürümde SHA256SUMS.txt vardır ve taşınabilir sürüm kendini günceller.
+- **1.5.1'den de:** Microsoft Store güncelleme denetimi, Mac'te yapılmış ZIP dosyalarındaki Arapça dosya adları ve iOS'ta proxy üzerinden torrent.

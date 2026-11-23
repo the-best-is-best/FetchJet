@@ -40,3 +40,11 @@
 - L'app per macOS è compilata per funzionare da macOS 12 in poi.
 - **Android: niente elenco rotto dopo una reinstallazione o un nuovo telefono:** l'elenco dei download non viene più ripristinato da un backup, perché i suoi link sono legati al telefono e non potevano essere letti altrove. I file scaricati restano nella tua cartella.
 - **Messaggio più chiaro sui sottotitoli:** quando il link di un vecchio download non può essere letto, «Aggiungi sottotitoli» dice che non ha potuto leggere i sottotitoli invece di dire che il video non ne ha.
+- **Coda più veloce:** il download successivo in attesa parte appena si libera un posto (50 file piccoli: da 16 s a meno di 1 s), e l'unione delle parti di un file è più rapida.
+- **Una pagina Altro** sostituisce Impostazioni nella navigazione: versione e aggiornamento, Impostazioni, FetchJet su ogni dispositivo, Condividi FetchJet, e Community e assistenza.
+- **Stesso nome file:** due download che finiscono con lo stesso nome in una cartella ora vengono salvati come «nome (1).ext», e un download non può più sparire da una coda lunga.
+- **Un font per lingua** su tutte le piattaforme (l'app pesa circa 7 MB in più).
+- **Siti video ricordati:** un sito in cui un controllo Media ha trovato delle qualità viene trattato come sito video la volta dopo, e le dimensioni delle qualità HLS sono stimate e mostrate con ~.
+- **La finestra di aggiunta riparte vuota** dopo la chiusura.
+- **Windows:** niente più finestre di console che lampeggiano, ogni versione ha SHA256SUMS.txt e la versione portatile si aggiorna da sola.
+- **Anche dalla 1.5.1:** il controllo degli aggiornamenti del Microsoft Store, i nomi di file arabi negli ZIP creati su un Mac e i torrent su iOS tramite proxy.

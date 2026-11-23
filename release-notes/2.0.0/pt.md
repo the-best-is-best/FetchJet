@@ -40,3 +40,11 @@
 - O app para macOS é compilado para funcionar no macOS 12 e posteriores.
 - **Android: sem lista quebrada após reinstalar ou trocar de celular:** a lista de downloads não é mais restaurada de um backup, porque seus links ficam presos ao celular e não podiam ser lidos em outro. Os arquivos que você baixou continuam na sua pasta.
 - **Mensagem de legendas mais clara:** quando o link de um download antigo não pode ser lido, "Adicionar legendas" diz que não conseguiu ler as legendas em vez de dizer que o vídeo não tem.
+- **Fila mais rápida:** o próximo download em espera começa assim que uma vaga é liberada (50 arquivos pequenos: de 16 s para menos de 1 s), e juntar as partes de um arquivo é mais rápido.
+- **Uma página Mais** substitui Configurações na navegação: versão e atualização, Configurações, FetchJet em todos os dispositivos, Compartilhar o FetchJet, e Comunidade e ajuda.
+- **Mesmo nome de arquivo:** dois downloads que terminam com o mesmo nome em uma pasta agora são salvos como "nome (1).ext", e um download não some mais de uma fila longa.
+- **Uma fonte por idioma** em todas as plataformas (o app ficou cerca de 7 MB maior).
+- **Sites de vídeo lembrados:** um site em que uma verificação Media encontrou qualidades passa a ser tratado como site de vídeo na próxima vez, e os tamanhos das qualidades HLS são estimados e exibidos com ~.
+- **A janela de adicionar começa vazia** depois de fechada.
+- **Windows:** nada de janelas de console piscando, cada versão traz o SHA256SUMS.txt e a versão portátil se atualiza sozinha.
+- **Também da 1.5.1:** a verificação de atualização da Microsoft Store, nomes de arquivo em árabe em ZIPs feitos em um Mac e torrents no iOS por proxy.

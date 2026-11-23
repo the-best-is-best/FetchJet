@@ -40,3 +40,11 @@
 - Die macOS-App ist so gebaut, dass sie ab macOS 12 läuft.
 - **Android: keine kaputte Liste nach Neuinstallation oder neuem Handy:** Die Download-Liste wird nicht mehr aus einer Sicherung wiederhergestellt, weil ihre Links an das Handy gebunden sind und dort nicht gelesen werden konnten. Die heruntergeladenen Dateien bleiben in Ihrem Ordner.
 - **Klarere Untertitel-Meldung:** Wenn der Link eines alten Downloads nicht gelesen werden kann, sagt „Untertitel hinzufügen“, dass die Untertitel nicht gelesen werden konnten, statt zu sagen, das Video habe keine.
+- **Schnellere Warteschlange:** Der nächste wartende Download startet, sobald ein Platz frei wird (50 kleine Dateien: von 16 s auf unter 1 s), und das Zusammenfügen der Dateiteile ist schneller.
+- **Eine Seite „Mehr“** ersetzt die Einstellungen in der Navigation: Version und Update, Einstellungen, FetchJet auf allen Geräten, FetchJet teilen sowie Community und Hilfe.
+- **Gleicher Dateiname:** Zwei Downloads mit demselben Namen im selben Ordner werden jetzt als „Name (1).ext“ gespeichert, und ein Download kann nicht mehr aus einer langen Warteschlange verschwinden.
+- **Eine Schrift pro Sprache** auf allen Plattformen (die App ist etwa 7 MB größer).
+- **Videoseiten werden gemerkt:** Eine Seite, auf der eine Media-Prüfung Qualitäten gefunden hat, gilt beim nächsten Mal als Videoseite, und die Größen von HLS-Qualitäten werden geschätzt und mit ~ angezeigt.
+- **Das Hinzufügen-Fenster startet leer**, nachdem du es geschlossen hast.
+- **Windows:** Keine aufblitzenden Konsolenfenster mehr, jede Version enthält SHA256SUMS.txt, und die portable Version aktualisiert sich selbst.
+- **Auch aus 1.5.1:** die Update-Prüfung im Microsoft Store, arabische Dateinamen in ZIP-Dateien von einem Mac und Torrents unter iOS über einen Proxy.

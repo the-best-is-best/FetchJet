@@ -40,3 +40,11 @@
 - Aplikasi macOS dibuat agar berjalan di macOS 12 dan yang lebih baru.
 - **Android: tidak ada daftar rusak setelah instal ulang atau ganti ponsel:** daftar unduhan tidak lagi dipulihkan dari cadangan, karena tautannya terkunci pada ponsel dan tidak bisa dibaca di ponsel lain. File yang sudah Anda unduh tetap ada di folder Anda.
 - **Pesan subtitle yang lebih jelas:** saat tautan unduhan lama tidak bisa dibaca, "Tambah subtitle" menyatakan tidak bisa membaca subtitle, bukan menyatakan video tidak punya subtitle.
+- **Antrean lebih cepat:** unduhan berikutnya yang menunggu langsung mulai begitu ada slot kosong (50 file kecil: dari 16 dtk menjadi di bawah 1 dtk), dan penggabungan bagian file lebih cepat.
+- **Halaman Lainnya** menggantikan Pengaturan di navigasi: versi dan pembaruan, Pengaturan, FetchJet di semua perangkat, Bagikan FetchJet, serta Komunitas dan bantuan.
+- **Nama file sama:** dua unduhan yang berakhir dengan nama sama di satu folder kini disimpan sebagai "nama (1).ext", dan unduhan tidak bisa lagi hilang dari antrean panjang.
+- **Satu font per bahasa** di semua platform (aplikasi sekitar 7 MB lebih besar).
+- **Situs video diingat:** situs yang pemeriksaan Media-nya menemukan kualitas akan dianggap situs video lain kali, dan ukuran kualitas HLS diperkirakan dan ditampilkan dengan ~.
+- **Jendela tambah dimulai kosong** setelah ditutup.
+- **Windows:** tidak ada lagi jendela konsol yang berkedip, setiap rilis memiliki SHA256SUMS.txt, dan versi portabel memperbarui dirinya sendiri.
+- **Juga dari 1.5.1:** pemeriksaan pembaruan Microsoft Store, nama file Arab di ZIP buatan Mac, dan torrent di iOS lewat proxy.

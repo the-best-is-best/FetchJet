@@ -40,3 +40,11 @@
 - L'application macOS est compilée pour fonctionner sous macOS 12 et versions ultérieures.
 - **Android : plus de liste cassée après une réinstallation ou un nouveau téléphone :** la liste des téléchargements n'est plus restaurée depuis une sauvegarde, car ses liens sont liés au téléphone et ne pouvaient pas y être lus. Les fichiers téléchargés restent dans votre dossier.
 - **Message plus clair pour les sous-titres :** quand le lien d'un ancien téléchargement ne peut pas être lu, « Ajouter des sous-titres » indique qu'il n'a pas pu lire les sous-titres au lieu de dire que la vidéo n'en a pas.
+- **File d'attente plus rapide :** le téléchargement suivant démarre dès qu'une place se libère (50 petits fichiers : de 16 s à moins d'1 s), et l'assemblage des parties d'un fichier est plus rapide.
+- **Une page Plus** remplace Réglages dans la navigation : version et mise à jour, Réglages, FetchJet sur tous vos appareils, Partager FetchJet, et Communauté et aide.
+- **Même nom de fichier :** deux téléchargements qui finissent avec le même nom dans un dossier s'enregistrent maintenant sous « nom (1).ext », et un téléchargement ne peut plus disparaître d'une longue file.
+- **Une police par langue** sur toutes les plateformes (l'application pèse environ 7 Mo de plus).
+- **Sites vidéo mémorisés :** un site où une analyse Media a trouvé des qualités est traité comme un site vidéo la fois suivante, et les tailles des qualités HLS sont estimées et affichées avec ~.
+- **La fenêtre d'ajout redémarre vide** après sa fermeture.
+- **Windows :** plus de fenêtres de console qui clignotent, chaque version a un fichier SHA256SUMS.txt, et la version portable se met à jour toute seule.
+- **Aussi de la 1.5.1 :** la vérification des mises à jour du Microsoft Store, les noms de fichiers arabes dans les ZIP créés sur un Mac, et les torrents sur iOS via un proxy.

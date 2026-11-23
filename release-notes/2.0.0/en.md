@@ -40,3 +40,11 @@
 - The macOS app is built to run on macOS 12 and newer.
 - **Android: no broken list after a reinstall or a new phone:** the downloads list is no longer restored from a backup, because its links are locked to the phone and could not be read there. The files you downloaded stay in your folder.
 - **Clearer subtitles message:** when the link of an old download cannot be read, "Add subtitles" says it could not read the subtitles instead of saying the video has none.
+- **Faster queue:** the next waiting download starts the moment a slot frees up (50 small files: 16 s to under 1 s), and joining a file's parts is faster.
+- **A More page** replaces Settings in the navigation: version and update, Settings, FetchJet on every device, Share FetchJet, and Community and help.
+- **Same file name:** two downloads that end on the same name in one folder now save as "name (1).ext", and a download can no longer vanish from a long queue.
+- **One font per language** on every platform (the app is about 7 MB larger).
+- **Video sites remembered:** a site where a Media check found qualities is treated as a video site next time, and the sizes of HLS qualities are estimated and shown with ~.
+- **The Add dialog starts empty** after you close it.
+- **Windows:** no console windows flash on screen, every release has SHA256SUMS.txt, and the portable version updates itself.
+- **Also from 1.5.1:** the Microsoft Store update check, Arabic file names in ZIP files made on a Mac, and torrents on iOS through a proxy.
