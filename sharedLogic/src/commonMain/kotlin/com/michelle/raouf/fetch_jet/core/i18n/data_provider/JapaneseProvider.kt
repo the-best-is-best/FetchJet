@@ -82,6 +82,7 @@ object JapaneseProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "端末のロックで確認できませんでした。"
     override val hiddenNoticeResetDone = "PINを変更しました。"
     override val hiddenNoticeResetExpired = "時間切れです。PINをリセットするには、もう一度確認してください。"
+    override val hiddenNoticeNeedFileAccess = "すべてのファイルへのアクセスを許可してから、もう一度お試しください。一部のファイルは別の FetchJet で保存されています。"
     override val backupExport = "ダウンロードをバックアップ"
     override val backupRestore = "バックアップから復元"
     override val backupExportHint = "ダウンロード一覧、フォルダ、設定をファイルに保存します。ダウンロード済みのファイルとパスワードは含まれません。 リンクは平文で保存されるため、ファイルは非公開に保ってください。"

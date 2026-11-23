@@ -82,6 +82,7 @@ object PortugueseProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Não foi possível confirmar com o bloqueio do dispositivo."
     override val hiddenNoticeResetDone = "PIN alterado."
     override val hiddenNoticeResetExpired = "O tempo acabou. Confirme de novo para redefinir o PIN."
+    override val hiddenNoticeNeedFileAccess = "Permita o acesso a todos os arquivos e tente de novo: alguns arquivos foram salvos por outra instalação do FetchJet."
     override val backupExport = "Fazer backup dos downloads"
     override val backupRestore = "Restaurar de um backup"
     override val backupExportHint = "Salve a lista de downloads, pastas e configurações em um arquivo. Os arquivos baixados e as senhas não são incluídos. Os links são salvos em texto simples, então mantenha o arquivo privado."

@@ -82,6 +82,7 @@ object RussianProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Не удалось подтвердить блокировкой устройства."
     override val hiddenNoticeResetDone = "PIN изменён."
     override val hiddenNoticeResetExpired = "Время истекло. Подтвердите снова, чтобы сбросить PIN."
+    override val hiddenNoticeNeedFileAccess = "Разрешите доступ ко всем файлам и повторите попытку: некоторые файлы сохранены другой установкой FetchJet."
     override val backupExport = "Резервная копия загрузок"
     override val backupRestore = "Восстановить из копии"
     override val backupExportHint = "Сохраните список загрузок, папки и настройки в файл. Сами файлы и пароли в копию не входят. Ссылки хранятся открытым текстом, поэтому не показывайте файл посторонним."

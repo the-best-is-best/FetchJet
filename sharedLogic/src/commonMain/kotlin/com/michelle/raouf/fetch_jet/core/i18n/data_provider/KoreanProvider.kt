@@ -82,6 +82,7 @@ object KoreanProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "기기 잠금으로 확인할 수 없습니다."
     override val hiddenNoticeResetDone = "PIN이 변경되었습니다."
     override val hiddenNoticeResetExpired = "시간이 지났습니다. PIN을 재설정하려면 다시 확인하세요."
+    override val hiddenNoticeNeedFileAccess = "모든 파일에 대한 접근을 허용한 뒤 다시 시도하세요. 일부 파일은 다른 FetchJet 설치에서 저장되었습니다."
     override val backupExport = "다운로드 백업"
     override val backupRestore = "백업에서 복원"
     override val backupExportHint = "다운로드 목록, 폴더, 설정을 파일로 저장합니다. 내려받은 파일과 비밀번호는 포함되지 않습니다. 링크는 일반 텍스트로 저장되므로 파일을 비공개로 보관하세요."

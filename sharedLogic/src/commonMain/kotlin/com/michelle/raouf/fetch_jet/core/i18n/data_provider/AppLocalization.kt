@@ -84,6 +84,7 @@ interface AppLocalization : LocalizationProvider {
     val hiddenNoticeAuthFailed: String
     val hiddenNoticeResetDone: String
     val hiddenNoticeResetExpired: String
+    val hiddenNoticeNeedFileAccess: String
     val backupExport: String
     val backupRestore: String
     val backupExportHint: String

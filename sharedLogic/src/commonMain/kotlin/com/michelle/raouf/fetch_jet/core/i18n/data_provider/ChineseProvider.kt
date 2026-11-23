@@ -82,6 +82,7 @@ object ChineseProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "无法通过设备锁屏验证。"
     override val hiddenNoticeResetDone = "PIN 已更改。"
     override val hiddenNoticeResetExpired = "已超时。请重新验证以重置 PIN。"
+    override val hiddenNoticeNeedFileAccess = "请允许访问所有文件后重试：部分文件由另一个 FetchJet 安装保存。"
     override val backupExport = "备份下载列表"
     override val backupRestore = "从备份还原"
     override val backupExportHint = "将下载列表、文件夹和设置保存为一个文件。不包含已下载的文件和密码。 链接以明文保存，请妥善保管此文件。"

@@ -82,6 +82,7 @@ object PersianProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "تأیید با قفل دستگاه انجام نشد."
     override val hiddenNoticeResetDone = "پین تغییر کرد."
     override val hiddenNoticeResetExpired = "زمان تمام شد. برای بازنشانی پین دوباره تأیید کنید."
+    override val hiddenNoticeNeedFileAccess = "دسترسی به همه فایل‌ها را مجاز کنید و دوباره امتحان کنید: برخی فایل‌ها را نصب دیگری از FetchJet ذخیره کرده است."
     override val backupExport = "پشتیبان‌گیری از دانلودها"
     override val backupRestore = "بازیابی از پشتیبان"
     override val backupExportHint = "فهرست دانلودها، پوشه‌ها و تنظیمات خود را در یک فایل ذخیره کنید. فایل‌های دانلودشده و گذرواژه‌ها شامل نمی‌شوند. پیوندها به صورت متن ساده ذخیره می‌شوند، پس فایل را خصوصی نگه دارید."

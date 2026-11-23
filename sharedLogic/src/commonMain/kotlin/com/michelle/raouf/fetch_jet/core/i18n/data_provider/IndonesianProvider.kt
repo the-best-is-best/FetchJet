@@ -82,6 +82,7 @@ object IndonesianProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Tidak dapat mengonfirmasi dengan kunci perangkat."
     override val hiddenNoticeResetDone = "PIN diubah."
     override val hiddenNoticeResetExpired = "Waktu habis. Konfirmasi lagi untuk mengatur ulang PIN."
+    override val hiddenNoticeNeedFileAccess = "Izinkan akses ke semua file, lalu coba lagi: beberapa file disimpan oleh instalasi FetchJet lain."
     override val backupExport = "Cadangkan unduhan"
     override val backupRestore = "Pulihkan dari cadangan"
     override val backupExportHint = "Simpan daftar unduhan, folder, dan pengaturan Anda ke sebuah file. File yang diunduh dan kata sandi tidak disertakan. Tautan disimpan sebagai teks biasa, jadi jaga kerahasiaan file ini."

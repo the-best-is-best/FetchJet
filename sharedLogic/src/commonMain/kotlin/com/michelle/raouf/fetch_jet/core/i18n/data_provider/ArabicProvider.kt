@@ -82,6 +82,7 @@ object ArabicProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "تعذر التأكيد بقفل الجهاز."
     override val hiddenNoticeResetDone = "تم تغيير الرقم السري."
     override val hiddenNoticeResetExpired = "انتهى الوقت. أكّد مرة أخرى لإعادة تعيين الرقم السري."
+    override val hiddenNoticeNeedFileAccess = "اسمح بالوصول إلى كل الملفات ثم حاول مرة أخرى: بعض الملفات حفظتها نسخة أخرى من FetchJet."
     override val backupExport = "نسخ احتياطي للتنزيلات"
     override val backupRestore = "استعادة من نسخة احتياطية"
     override val backupExportHint = "احفظ قائمة تنزيلاتك ومجلداتك وإعداداتك في ملف. الملفات المنزّلة وكلمات المرور غير مشمولة. تُحفظ الروابط كنص عادي، فاحتفظ بالملف خاصًا."

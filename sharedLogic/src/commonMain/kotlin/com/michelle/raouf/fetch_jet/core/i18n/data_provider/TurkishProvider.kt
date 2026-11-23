@@ -82,6 +82,7 @@ object TurkishProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Cihaz kilidiyle doğrulanamadı."
     override val hiddenNoticeResetDone = "PIN değiştirildi."
     override val hiddenNoticeResetExpired = "Süre doldu. PIN'i sıfırlamak için yeniden doğrulayın."
+    override val hiddenNoticeNeedFileAccess = "Tüm dosyalara erişime izin verip yeniden deneyin: bazı dosyalar başka bir FetchJet kurulumu tarafından kaydedildi."
     override val backupExport = "İndirmeleri yedekle"
     override val backupRestore = "Yedekten geri yükle"
     override val backupExportHint = "İndirme listenizi, klasörlerinizi ve ayarlarınızı bir dosyaya kaydedin. İndirilen dosyalar ve parolalar dahil değildir. Bağlantılar düz metin olarak kaydedilir, bu yüzden dosyayı gizli tutun."

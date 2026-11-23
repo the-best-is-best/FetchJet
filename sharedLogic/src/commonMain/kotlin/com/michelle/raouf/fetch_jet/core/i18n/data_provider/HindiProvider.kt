@@ -82,6 +82,7 @@ object HindiProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "डिवाइस लॉक से पुष्टि नहीं हो सकी।"
     override val hiddenNoticeResetDone = "PIN बदल दिया गया।"
     override val hiddenNoticeResetExpired = "समय समाप्त। PIN रीसेट करने के लिए फिर से पुष्टि करें।"
+    override val hiddenNoticeNeedFileAccess = "सभी फ़ाइलों तक पहुँच की अनुमति दें, फिर दोबारा कोशिश करें: कुछ फ़ाइलें FetchJet के किसी दूसरे इंस्टॉल ने सहेजी थीं।"
     override val backupExport = "डाउनलोड का बैकअप लें"
     override val backupRestore = "बैकअप से रिस्टोर करें"
     override val backupExportHint = "अपने डाउनलोड, फ़ोल्डर और सेटिंग्स की सूची एक फ़ाइल में सहेजें। डाउनलोड की गई फ़ाइलें और पासवर्ड शामिल नहीं हैं। लिंक सादे टेक्स्ट में सहेजे जाते हैं, इसलिए फ़ाइल को निजी रखें।"

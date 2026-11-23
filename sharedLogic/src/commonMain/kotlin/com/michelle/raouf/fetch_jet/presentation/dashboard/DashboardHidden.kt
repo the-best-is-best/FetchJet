@@ -1,6 +1,9 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.filesystem.AllFilesAccess
+import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
+import okio.Path.Companion.toPath
 import com.michelle.raouf.fetch_jet.core.security.DeviceAuth
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenCheck
@@ -29,7 +32,7 @@ enum class HiddenError { WRONG_PIN, LOCKED, INVALID_PIN }
 enum class HiddenNotice {
     COPY_LEFT, MOVE_FAILED, OPEN_FAILED, HIDDEN_DONE,
     RESTORE_DONE, RESTORE_WRONG_CODE, RESTORE_NOTHING, RECOVERY_UNAVAILABLE,
-    AUTH_FAILED, RESET_DONE, RESET_EXPIRED
+    AUTH_FAILED, RESET_DONE, RESET_EXPIRED, NEED_FILE_ACCESS
 }
 
 data class HiddenUiState(
@@ -99,11 +102,13 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnUnhideTasks -> {
             if (!_uiState.value.hidden.unlocked) return
+            if (unhideNeedsFileAccess(event.taskIds)) return
             scope.launch { reportHiddenMove(queueRepository.unhideTasks(event.taskIds)) }
         }
 
         DashboardUiEvent.OnUnhideAll -> {
             if (!_uiState.value.hidden.unlocked) return
+            if (unhideNeedsFileAccess(queueRepository.allTasksFlow.value.filter { it.hidden }.map { it.id })) return
             scope.launch { reportHiddenMove(queueRepository.unhideEverything()) }
         }
 
@@ -288,8 +293,36 @@ internal fun OnHideTargets.steps(): List<HideStep> =
             playlistIds.distinct().map { HideStep(HideStep.Kind.PLAYLIST, it) } +
             folders.distinct().map { HideStep(HideStep.Kind.FOLDER, it) }
 
+internal fun DashboardViewModel.askFileAccess(): Boolean {
+    AllFilesAccess.openSettings()
+    _uiState.update { it.copy(hidden = it.hidden.copy(notice = HiddenNotice.NEED_FILE_ACCESS)) }
+    return true
+}
+
+internal fun DashboardViewModel.hideNeedsFileAccess(event: OnHideTargets): Boolean {
+    if (!AllFilesAccess.needed()) return false
+    val state = _uiState.value
+    val all = queueRepository.allTasksFlow.value
+    val tasks = all.filter { it.id in event.taskIds || (it.playlistId.isNotEmpty() && it.playlistId in event.playlistIds) } +
+            event.folders.flatMap { folderTasks(queueRepository.visibleTasksFlow.value, state.playlists, it) }
+    val blocked = tasks.any { task ->
+        val name = task.fileName
+        if (name.isBlank()) return@any false
+        val path = task.destinationPath.trimEnd('/', '\\') + "/" + name
+        AppFileSystem.exists(path.toPath()) && !AllFilesAccess.canRead(path)
+    }
+    return blocked && askFileAccess()
+}
+
+internal fun DashboardViewModel.unhideNeedsFileAccess(ids: Collection<String>): Boolean {
+    if (!AllFilesAccess.needed()) return false
+    val folders = ids.mapNotNull { HiddenStore.originOf(it) }.distinct()
+    return folders.any { !AllFilesAccess.canWriteInto(it) } && askFileAccess()
+}
+
 private fun DashboardViewModel.hideTargets(event: OnHideTargets) {
     if (!HiddenStore.hasLock()) return
+    if (hideNeedsFileAccess(event)) return
     val needsNotice = event.playlistIds.isNotEmpty() || event.folders.isNotEmpty() ||
             HiddenMedia.noticeRequired(queueRepository.allTasksFlow.value, event.taskIds, HiddenStore.noticeAccepted())
     if (noticeBlocks(needsNotice)) {

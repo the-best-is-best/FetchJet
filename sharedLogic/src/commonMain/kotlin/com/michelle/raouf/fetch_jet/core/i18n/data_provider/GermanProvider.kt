@@ -82,6 +82,7 @@ object GermanProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Bestätigung mit der Gerätesperre nicht möglich."
     override val hiddenNoticeResetDone = "PIN geändert."
     override val hiddenNoticeResetExpired = "Die Zeit ist abgelaufen. Bestätige erneut, um die PIN zurückzusetzen."
+    override val hiddenNoticeNeedFileAccess = "Erlaube den Zugriff auf alle Dateien und versuche es erneut: Einige Dateien wurden von einer anderen FetchJet-Installation gespeichert."
     override val backupExport = "Downloads sichern"
     override val backupRestore = "Aus Sicherung wiederherstellen"
     override val backupExportHint = "Speichere die Liste deiner Downloads, Ordner und Einstellungen in einer Datei. Die heruntergeladenen Dateien und Passwörter sind nicht enthalten. Links werden als Klartext gespeichert, halte die Datei daher privat."

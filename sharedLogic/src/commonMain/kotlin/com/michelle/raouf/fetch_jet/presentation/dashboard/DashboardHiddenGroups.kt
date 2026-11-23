@@ -74,6 +74,7 @@ internal fun DashboardViewModel.handleHiddenGroupEvent(event: DashboardUiEvent) 
         is DashboardUiEvent.OnUnhideGroup -> {
             val ids = state.hiddenGroupTasks(event.playlistId, event.folder).map { it.id }
             if (ids.isEmpty()) return
+            if (unhideNeedsFileAccess(ids)) return
             scope.launch { reportHiddenMove(queueRepository.unhideTasks(ids)) }
         }
 

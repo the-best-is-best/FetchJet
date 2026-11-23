@@ -35,4 +35,5 @@ fun hiddenNoticeText(notice: HiddenNotice): String = when (notice) {
     HiddenNotice.AUTH_FAILED -> LocalizationManager.Strings.hiddenNoticeAuthFailed
     HiddenNotice.RESET_DONE -> LocalizationManager.Strings.hiddenNoticeResetDone
     HiddenNotice.RESET_EXPIRED -> LocalizationManager.Strings.hiddenNoticeResetExpired
+    HiddenNotice.NEED_FILE_ACCESS -> LocalizationManager.Strings.hiddenNoticeNeedFileAccess
 }

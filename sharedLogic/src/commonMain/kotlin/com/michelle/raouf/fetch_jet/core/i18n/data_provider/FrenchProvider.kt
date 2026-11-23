@@ -82,6 +82,7 @@ object FrenchProvider : AppLocalization {
     override val hiddenNoticeAuthFailed = "Impossible de confirmer avec le verrouillage de l'appareil."
     override val hiddenNoticeResetDone = "PIN modifié."
     override val hiddenNoticeResetExpired = "Temps écoulé. Confirmez à nouveau pour réinitialiser le PIN."
+    override val hiddenNoticeNeedFileAccess = "Autorisez l'accès à tous les fichiers, puis réessayez : certains fichiers ont été enregistrés par une autre installation de FetchJet."
     override val backupExport = "Sauvegarder les téléchargements"
     override val backupRestore = "Restaurer une sauvegarde"
     override val backupExportHint = "Enregistrez la liste de vos téléchargements, dossiers et réglages dans un fichier. Les fichiers téléchargés et les mots de passe n'y sont pas inclus. Les liens sont enregistrés en clair : gardez ce fichier privé."
