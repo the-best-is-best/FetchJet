@@ -1458,7 +1458,7 @@ async function downloadItem(item, tab) {
   // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
   // (the lecture / video title), not after the playlist's hash.
   let fileName = item.fileName || "";
-  if (item.kind === "media" && /\.(m3u8|mpd)$/i.test(fileName)) {
+  if (item.kind === "media" && (item.stream || /\.(m3u8|mpd)$/i.test(fileName))) {
     // The app lists the playlist's renditions and the user picks one there: no quality in the name.
     fileName = `${clean}.mp4`;
   }
