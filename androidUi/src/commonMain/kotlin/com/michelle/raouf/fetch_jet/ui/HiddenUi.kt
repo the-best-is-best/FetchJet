@@ -62,6 +62,7 @@ import com.michelle.raouf.fetch_jet.SelectionBar
 import com.michelle.raouf.fetch_jet.TaskDetailsPane
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenOpening
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions
@@ -69,6 +70,8 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
 import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenError
+import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenLockTexts
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskListItem
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenItems
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockedText
@@ -133,20 +136,30 @@ internal fun DashboardViewModel.hiddenResult(): PinResult {
     return PinResult(h.error, h.triesLeft, h.lockedSeconds)
 }
 
-private fun pinText(error: HiddenError, triesLeft: Int, lockedSeconds: Int): String {
-    val s = LocalizationManager.Strings
-    return when (error) {
+private fun pinText(error: HiddenError, triesLeft: Int, lockedSeconds: Int, invalid: String): String =
+    when (error) {
         HiddenError.WRONG_PIN -> hiddenWrongPinText(triesLeft)
         HiddenError.LOCKED -> hiddenLockedText(lockedSeconds)
-        HiddenError.INVALID_PIN -> s.hiddenInvalidPin
+        HiddenError.INVALID_PIN -> invalid
     }
+
+internal class SecretField(val label: String, val type: HiddenLockType)
+
+private fun HiddenLockType.other(): HiddenLockType =
+    if (this == HiddenLockType.PIN) HiddenLockType.PATTERN else HiddenLockType.PIN
+
+private fun DashboardUiState.storedLockType(): HiddenLockType = hidden.lockType ?: HiddenLockType.PIN
+
+@Composable
+private fun LockTypeSwitch(type: HiddenLockType, onChange: (HiddenLockType) -> Unit) {
+    TextButton(onClick = { onChange(type.other()) }) { Text(hiddenLockTexts(type).switchTo) }
 }
 
 @Composable
 internal fun PinDialog(
     title: String,
     hint: String? = null,
-    labels: List<String>,
+    fields: List<SecretField>,
     confirmLabel: String,
     checkLocal: (List<String>) -> String? = { null },
     submit: (List<String>) -> PinResult,
@@ -155,11 +168,15 @@ internal fun PinDialog(
     footer: @Composable () -> Unit = {}
 ) {
     val s = LocalizationManager.Strings
-    val values = remember { mutableStateListOf<String>().also { list -> repeat(labels.size) { list.add("") } } }
-    var message by remember { mutableStateOf<String?>(null) }
+    val types = fields.map { it.type }
+    val values = remember(types) { mutableStateListOf<String>().also { list -> repeat(fields.size) { list.add("") } } }
+    var message by remember(types) { mutableStateOf<String?>(null) }
     var lockLeft by remember { mutableIntStateOf(0) }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val firstPin = types.indexOf(HiddenLockType.PIN)
+    val hasPin = firstPin >= 0
+    val invalidText = hiddenLockTexts(types.last()).invalid
+    LaunchedEffect(types) { if (firstPin == 0) runCatching { focus.requestFocus() } }
     LaunchedEffect(lockLeft > 0) {
         while (lockLeft > 0) {
             delay(1000)
@@ -171,6 +188,7 @@ internal fun PinDialog(
         val local = checkLocal(values.toList())
         if (local != null) {
             message = local
+            for (i in values.indices) if (types[i] == HiddenLockType.PATTERN) values[i] = ""
             return@send
         }
         val result = submit(values.toList())
@@ -180,14 +198,15 @@ internal fun PinDialog(
             return@send
         }
         for (i in values.indices) values[i] = ""
-        runCatching { focus.requestFocus() }
+        if (firstPin == 0) runCatching { focus.requestFocus() }
         if (error == HiddenError.LOCKED) {
             lockLeft = result.lockedSeconds.coerceAtLeast(1)
             message = null
         } else {
-            message = pinText(error, result.triesLeft, result.lockedSeconds)
+            message = pinText(error, result.triesLeft, result.lockedSeconds, invalidText)
         }
     }
+    val padIndex = types.indices.firstOrNull { types[it] == HiddenLockType.PATTERN && values[it].isEmpty() }
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn),
@@ -200,24 +219,41 @@ internal fun PinDialog(
                 if (hint != null) {
                     Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                labels.forEachIndexed { index, label ->
-                    val last = index == labels.lastIndex
-                    FetchJetTextField(
-                        value = values[index],
-                        onValueChange = { raw -> values[index] = raw.filter { it in '0'..'9' }.take(HiddenStore.PIN_MAX) },
-                        label = label,
-                        enabled = lockLeft == 0,
-                        centered = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.NumberPassword,
-                            imeAction = if (last) ImeAction.Done else ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(onDone = { send() }),
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier
-                    )
+                fields.forEachIndexed { index, field ->
+                    if (field.type == HiddenLockType.PIN) {
+                        val last = index == types.lastIndexOf(HiddenLockType.PIN)
+                        FetchJetTextField(
+                            value = values[index],
+                            onValueChange = { raw -> values[index] = raw.filter { it in '0'..'9' }.take(HiddenStore.PIN_MAX) },
+                            label = field.label,
+                            enabled = lockLeft == 0,
+                            centered = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.NumberPassword,
+                                imeAction = if (last) ImeAction.Done else ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { send() }),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = if (index == firstPin) Modifier.focusRequester(focus) else Modifier
+                        )
+                    } else if (index == padIndex) {
+                        Text(field.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        PatternPad(
+                            enabled = lockLeft == 0,
+                            onDone = { drawn ->
+                                if (drawn.length < HiddenStore.PATTERN_MIN) {
+                                    message = hiddenLockTexts(HiddenLockType.PATTERN).invalid
+                                } else {
+                                    message = null
+                                    values[index] = drawn
+                                    if (values.none { it.isEmpty() }) send()
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
                 }
-                val shown = if (lockLeft > 0) pinText(HiddenError.LOCKED, 0, lockLeft) else message
+                val shown = if (lockLeft > 0) pinText(HiddenError.LOCKED, 0, lockLeft, invalidText) else message
                 if (shown != null) {
                     Text(shown, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
@@ -225,7 +261,9 @@ internal fun PinDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { send() }, enabled = lockLeft == 0 && values.none { it.isEmpty() }) { Text(confirmLabel) }
+            if (hasPin) {
+                Button(onClick = { send() }, enabled = lockLeft == 0 && values.none { it.isEmpty() }) { Text(confirmLabel) }
+            }
         },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text(s.cancel) } }
     )
@@ -233,33 +271,68 @@ internal fun PinDialog(
 
 @Composable
 private fun NewPinDialog(
-    title: String,
+    title: (HiddenLockTexts) -> String,
+    initialType: HiddenLockType,
     viewModel: DashboardViewModel,
-    event: (String) -> DashboardUiEvent,
+    event: (String, HiddenLockType) -> DashboardUiEvent,
     onDismiss: () -> Unit,
     onDone: () -> Unit,
     footer: @Composable () -> Unit = {}
 ) {
-    val s = LocalizationManager.Strings
+    var type by remember { mutableStateOf(initialType) }
+    val texts = hiddenLockTexts(type)
     PinDialog(
-        title = title,
-        hint = s.hiddenSetPinHint,
-        labels = listOf(s.hiddenEnterPin, s.hiddenConfirmPin),
-        confirmLabel = title,
+        title = title(texts),
+        hint = texts.setHint,
+        fields = listOf(SecretField(texts.enter, type), SecretField(texts.confirm, type)),
+        confirmLabel = title(texts),
         checkLocal = { v ->
             when {
-                !HiddenStore.isValidPin(v[0]) -> s.hiddenInvalidPin
-                v[0] != v[1] -> s.hiddenPinMismatch
+                !HiddenStore.isValidSecret(type, v[0]) -> texts.invalid
+                v[0] != v[1] -> texts.mismatch
                 else -> null
             }
         },
         submit = { v ->
-            viewModel.onEvent(event(v[0]))
+            viewModel.onEvent(event(v[0], type))
             viewModel.hiddenResult()
         },
         onDismiss = onDismiss,
         onDone = onDone,
-        footer = footer
+        footer = {
+            LockTypeSwitch(type) { type = it }
+            footer()
+        }
+    )
+}
+
+@Composable
+private fun ChangeLockDialog(viewModel: DashboardViewModel, oldType: HiddenLockType, onClose: () -> Unit) {
+    var newType by remember { mutableStateOf(oldType) }
+    val oldTexts = hiddenLockTexts(oldType)
+    val newTexts = hiddenLockTexts(newType)
+    PinDialog(
+        title = oldTexts.change,
+        fields = listOf(
+            SecretField(oldTexts.oldLabel, oldType),
+            SecretField(newTexts.newLabel, newType),
+            SecretField(newTexts.confirm, newType)
+        ),
+        confirmLabel = oldTexts.change,
+        checkLocal = { v ->
+            when {
+                !HiddenStore.isValidSecret(newType, v[1]) -> newTexts.invalid
+                v[1] != v[2] -> newTexts.mismatch
+                else -> null
+            }
+        },
+        submit = { v ->
+            viewModel.onEvent(DashboardUiEvent.OnHiddenChangePin(v[0], v[1], newType))
+            viewModel.hiddenResult()
+        },
+        onDismiss = onClose,
+        onDone = onClose,
+        footer = { LockTypeSwitch(newType) { newType = it } }
     )
 }
 
@@ -272,9 +345,10 @@ internal fun SetPinDialog(
     val s = LocalizationManager.Strings
     var restoring by remember { mutableStateOf(false) }
     NewPinDialog(
-        title = s.hiddenSetPinTitle,
+        title = { it.setTitle },
+        initialType = HiddenLockType.PIN,
         viewModel = viewModel,
-        event = { DashboardUiEvent.OnHiddenSetPin(it) },
+        event = { pin, type -> DashboardUiEvent.OnHiddenSetPin(pin, type) },
         onDismiss = onDismiss,
         onDone = onDone,
         footer = {
@@ -292,19 +366,22 @@ internal fun UnlockPinDialog(viewModel: DashboardViewModel, onDismiss: () -> Uni
         if (viewModel.uiState.value.hidden.pinResetAllowed) viewModel.onEvent(DashboardUiEvent.OnHiddenResetCancel)
         onDismiss()
     }
+    val storedType = state.storedLockType()
     if (state.hidden.pinResetAllowed) {
         NewPinDialog(
-            title = s.hiddenResetPinTitle,
+            title = { it.resetTitle },
+            initialType = storedType,
             viewModel = viewModel,
-            event = { DashboardUiEvent.OnHiddenResetPin(it) },
+            event = { pin, type -> DashboardUiEvent.OnHiddenResetPin(pin, type) },
             onDismiss = dismiss,
             onDone = {}
         )
         return
     }
+    val texts = hiddenLockTexts(storedType)
     PinDialog(
         title = s.hiddenTitle,
-        labels = listOf(s.hiddenEnterPin),
+        fields = listOf(SecretField(texts.enter, storedType)),
         confirmLabel = s.hiddenTitle,
         submit = { v ->
             viewModel.onEvent(DashboardUiEvent.OnHiddenUnlock(v[0]))
@@ -314,7 +391,7 @@ internal fun UnlockPinDialog(viewModel: DashboardViewModel, onDismiss: () -> Uni
         onDone = {},
         footer = {
             if (state.hidden.canResetPin) {
-                TextButton(onClick = { viewModel.onEvent(DashboardUiEvent.OnHiddenForgotPin) }) { Text(s.hiddenForgotPin) }
+                TextButton(onClick = { viewModel.onEvent(DashboardUiEvent.OnHiddenForgotPin) }) { Text(texts.forgot) }
             }
         }
     )
@@ -428,6 +505,8 @@ internal fun HiddenScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var menuTaskId by remember { mutableStateOf<String?>(null) }
     var dialog by remember { mutableStateOf(HiddenDialog.NONE) }
+    val lockType = state.storedLockType()
+    val lockTexts = hiddenLockTexts(lockType)
     SecureWindowEffect(true)
     DisposableEffect(Unit) { onDispose { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
     LaunchedEffect(rowKeys) {
@@ -509,14 +588,14 @@ internal fun HiddenScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(s.hiddenChangePin) },
+                            text = { Text(lockTexts.change) },
                             onClick = {
                                 menuOpen = false
                                 dialog = HiddenDialog.CHANGE
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(s.hiddenRemovePin, color = MaterialTheme.colorScheme.error) },
+                            text = { Text(lockTexts.remove, color = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 menuOpen = false
                                 dialog = HiddenDialog.REMOVE
@@ -674,30 +753,13 @@ internal fun HiddenScreen(
         }
     }
     when (dialog) {
-        HiddenDialog.CHANGE -> PinDialog(
-            title = s.hiddenChangePin,
-            labels = listOf(s.hiddenOldPin, s.hiddenNewPin, s.hiddenConfirmPin),
-            confirmLabel = s.hiddenChangePin,
-            checkLocal = { v ->
-                when {
-                    !HiddenStore.isValidPin(v[1]) -> s.hiddenInvalidPin
-                    v[1] != v[2] -> s.hiddenPinMismatch
-                    else -> null
-                }
-            },
-            submit = { v ->
-                viewModel.onEvent(DashboardUiEvent.OnHiddenChangePin(v[0], v[1]))
-                viewModel.hiddenResult()
-            },
-            onDismiss = { dialog = HiddenDialog.NONE },
-            onDone = { dialog = HiddenDialog.NONE }
-        )
+        HiddenDialog.CHANGE -> ChangeLockDialog(viewModel, lockType, onClose = { dialog = HiddenDialog.NONE })
 
         HiddenDialog.REMOVE -> PinDialog(
-            title = s.hiddenRemovePin,
-            hint = s.hiddenRemoveWarn,
-            labels = listOf(s.hiddenEnterPin),
-            confirmLabel = s.hiddenRemovePin,
+            title = lockTexts.remove,
+            hint = lockTexts.removeWarn,
+            fields = listOf(SecretField(lockTexts.enter, lockType)),
+            confirmLabel = lockTexts.remove,
             submit = { v ->
                 viewModel.onEvent(DashboardUiEvent.OnHiddenRemoveLock(v[0]))
                 viewModel.hiddenResult()

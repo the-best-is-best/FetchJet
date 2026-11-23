@@ -148,8 +148,9 @@ struct HiddenScreen: View {
                     }
                     Button { store.send(DashboardUiEventOnHiddenShowRecoveryCode.shared) } label: { Text(s.hiddenRecoveryTitle) }
                     Button { sheet = .restore } label: { Text(s.hiddenRecoveryRestoreTitle) }
-                    Button { sheet = .change } label: { Text(s.hiddenChangePin) }
-                    Button(role: .destructive) { sheet = .remove } label: { Text(s.hiddenRemovePin) }
+                    let lockTexts = HiddenTextsKt.hiddenLockTexts(type: store.state.hidden.lockType ?? .pin)
+                    Button { sheet = .change } label: { Text(lockTexts.change) }
+                    Button(role: .destructive) { sheet = .remove } label: { Text(lockTexts.remove) }
                     Button(action: onBack) { Label(s.hiddenLock, systemImage: "lock") }
                 } label: {
                     Image(systemName: "ellipsis.circle")

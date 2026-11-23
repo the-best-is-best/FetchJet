@@ -47,7 +47,7 @@ final class LockCountdown: ObservableObject {
         locked ? HiddenTextsKt.hiddenLockedText(seconds: Int32(left)) : error
     }
 
-    func reject(_ h: HiddenUiState, _ s: AppLocalization) -> HiddenPinReject? {
+    func reject(_ h: HiddenUiState, invalid: String) -> HiddenPinReject? {
         if h.error == .wrongPin {
             return HiddenPinReject(message: HiddenTextsKt.hiddenWrongPinText(triesLeft: h.triesLeft), clearsPin: true)
         }
@@ -56,7 +56,7 @@ final class LockCountdown: ObservableObject {
             return HiddenPinReject(message: nil, clearsPin: true)
         }
         if h.error == .invalidPin {
-            return HiddenPinReject(message: s.hiddenInvalidPin, clearsPin: false)
+            return HiddenPinReject(message: invalid, clearsPin: false)
         }
         return nil
     }
@@ -111,6 +111,132 @@ struct HiddenPinField: View {
     }
 }
 
+struct PatternPad: View {
+    @EnvironmentObject var store: FJStore
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    var disabled = false
+    let onDone: (String) -> Void
+    @State private var path: [Int] = []
+    @State private var finger: CGPoint?
+
+    var body: some View {
+        VStack(spacing: 10) {
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                let cell = side / 3
+                let origin = CGPoint(x: (geo.size.width - side) / 2, y: (geo.size.height - side) / 2)
+                let center: (Int) -> CGPoint = { i in
+                    CGPoint(x: origin.x + cell * (CGFloat(i % 3) + 0.5), y: origin.y + cell * (CGFloat(i / 3) + 0.5))
+                }
+                ZStack {
+                    Path { p in
+                        guard let first = path.first else { return }
+                        p.move(to: center(first))
+                        for i in path.dropFirst() { p.addLine(to: center(i)) }
+                        if let finger { p.addLine(to: finger) }
+                    }
+                    .stroke(FJTheme.color.primary.opacity(0.7), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                    ForEach(0..<9, id: \.self) { i in
+                        let on = path.contains(i)
+                        Circle()
+                            .fill(on ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant.opacity(0.45))
+                            .frame(width: on ? 22 : 16, height: on ? 22 : 16)
+                            .overlay(Circle().stroke(FJTheme.color.primary.opacity(on ? 0.35 : 0), lineWidth: 8))
+                            .frame(width: cell, height: cell)
+                            .contentShape(Rectangle())
+                            .position(center(i))
+                            .accessibilityElement()
+                            .accessibilityLabel("\(i + 1)")
+                            .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                            .accessibilityAction { add(i) }
+                    }
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { drag in
+                            finger = drag.location
+                            for i in 0..<9 where !path.contains(i) {
+                                let c = center(i)
+                                if hypot(c.x - drag.location.x, c.y - drag.location.y) < cell * 0.35 { add(i) }
+                            }
+                        }
+                        .onEnded { _ in finish() }
+                )
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: 280)
+            if voiceOver {
+                HStack(spacing: 8) {
+                    FJDialogButton(title: store.strings.cancel, kind: .outlined, enabled: !path.isEmpty) { path = [] }
+                    FJDialogButton(title: store.strings.ok, enabled: !path.isEmpty) { finish() }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .environment(\.layoutDirection, .leftToRight)
+        .disabled(disabled)
+        .opacity(disabled ? 0.5 : 1)
+    }
+
+    private func add(_ i: Int) {
+        guard !disabled, !path.contains(i) else { return }
+        if let last = path.last {
+            let r = last / 3 + i / 3
+            let c = last % 3 + i % 3
+            if r % 2 == 0 && c % 2 == 0 {
+                let middle = (r / 2) * 3 + c / 2
+                if !path.contains(middle) { path.append(middle) }
+            }
+        }
+        path.append(i)
+    }
+
+    private func finish() {
+        let digits = path.map { String($0 + 1) }.joined()
+        path = []
+        finger = nil
+        if !digits.isEmpty { onDone(digits) }
+    }
+}
+
+struct HiddenSecretField: View {
+    let type: HiddenLockType
+    let label: String
+    @Binding var text: String
+    var disabled = false
+    var onDrawn: () -> Void = {}
+
+    var body: some View {
+        if type == .pattern {
+            if text.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(label)
+                        .font(FJTheme.font.caption)
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                    PatternPad(disabled: disabled) { digits in
+                        text = digits
+                        onDrawn()
+                    }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    Text(label)
+                        .font(FJTheme.font.body)
+                        .foregroundStyle(FJTheme.color.onSurface)
+                    Spacer(minLength: 0)
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(FJTheme.color.primary)
+                        .accessibilityHidden(true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        } else {
+            HiddenPinField(label: label, text: $text, disabled: disabled)
+        }
+    }
+}
+
 struct HiddenSheetBody<Content: View>: View {
     @EnvironmentObject var store: FJStore
     let title: String
@@ -160,20 +286,34 @@ struct HiddenSetPinSheet: View {
     @State private var again = ""
     @State private var error: String?
     @State private var showRestore = false
+    @State private var chosen: HiddenLockType?
 
-    private var valid: Bool { pin.count >= 4 && pin.count <= 6 }
+    private var type: HiddenLockType { chosen ?? (resetsPin ? store.state.hidden.lockType ?? .pin : .pin) }
+    private var texts: HiddenLockTexts { HiddenTextsKt.hiddenLockTexts(type: type) }
+    private var valid: Bool { HiddenStore.shared.isValidSecret(type: type, secret: pin) }
 
     var body: some View {
         let s = store.strings
-        let title = resetsPin ? s.hiddenResetPinTitle : s.hiddenSetPinTitle
+        let t = texts
+        let title = resetsPin ? t.resetTitle : t.setTitle
         HiddenSheetBody(title: title, onCancel: { dismiss() }) {
-            Text(s.hiddenSetPinHint)
+            Text(t.setHint)
                 .font(FJTheme.font.caption)
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
-            HiddenPinField(label: s.hiddenEnterPin, text: $pin)
-            HiddenPinField(label: s.hiddenConfirmPin, text: $again)
+            HiddenSecretField(type: type, label: t.enter, text: $pin, onDrawn: checkFirst)
+            if type == .pin || !pin.isEmpty {
+                HiddenSecretField(type: type, label: t.confirm, text: $again, onDrawn: submit)
+            }
             if let error { HiddenErrorText(text: error) }
-            FJDialogButton(title: title, enabled: valid && !again.isEmpty, fill: true) { submit() }
+            if type == .pin {
+                FJDialogButton(title: title, enabled: valid && !again.isEmpty, fill: true) { submit() }
+            }
+            FJDialogButton(title: t.switchTo, kind: .text, fill: true) {
+                chosen = type == .pin ? .pattern : .pin
+                pin = ""
+                again = ""
+                error = nil
+            }
             if !resetsPin {
                 FJDialogButton(title: s.hiddenRecoveryRestoreTitle, kind: .text, fill: true) { showRestore = true }
             }
@@ -181,31 +321,49 @@ struct HiddenSetPinSheet: View {
         .sheet(isPresented: $showRestore) { HiddenRestoreSheet().environmentObject(store) }
     }
 
+    private func checkFirst() {
+        error = nil
+        if !valid {
+            error = texts.invalid
+            pin = ""
+        }
+    }
+
     private func submit() {
-        let s = store.strings
+        let t = texts
         if pin != again {
-            error = s.hiddenPinMismatch
+            error = t.mismatch
+            clearPattern()
             return
         }
         if resetsPin {
-            store.send(DashboardUiEventOnHiddenResetPin(pin: pin))
+            store.send(DashboardUiEventOnHiddenResetPin(pin: pin, lockType: type))
             let h = store.liveHidden
             if h.error == .invalidPin {
-                error = s.hiddenInvalidPin
+                error = t.invalid
+                clearPattern()
                 return
             }
             if h.unlocked { onSet() }
             dismiss()
             return
         }
-        store.send(DashboardUiEventOnHiddenSetPin(pin: pin))
+        store.send(DashboardUiEventOnHiddenSetPin(pin: pin, lockType: type))
         let h = store.liveHidden
         if h.lockType == nil || h.error == .invalidPin {
-            error = s.hiddenInvalidPin
+            error = t.invalid
+            clearPattern()
             return
         }
         onSet()
         dismiss()
+    }
+
+    private func clearPattern() {
+        if type == .pattern {
+            pin = ""
+            again = ""
+        }
     }
 }
 
@@ -217,19 +375,24 @@ struct HiddenUnlockSheet: View {
     @State private var pin = ""
     @State private var error: String?
 
+    private var type: HiddenLockType { store.state.hidden.lockType ?? .pin }
+
     var body: some View {
         let s = store.strings
         let h = store.state.hidden
+        let t = HiddenTextsKt.hiddenLockTexts(type: type)
         Group {
             if h.pinResetAllowed {
                 HiddenSetPinSheet(resetsPin: true, onSet: onUnlocked)
             } else {
                 HiddenSheetBody(title: s.hiddenTitle, onCancel: { dismiss() }) {
-                    HiddenPinField(label: s.hiddenEnterPin, text: $pin, disabled: lock.locked)
+                    HiddenSecretField(type: type, label: t.enter, text: $pin, disabled: lock.locked, onDrawn: submit)
                     if let message = lock.message(error) { HiddenErrorText(text: message) }
-                    FJDialogButton(title: s.ok, enabled: pin.count >= 4 && !lock.locked, fill: true) { submit() }
+                    if type == .pin {
+                        FJDialogButton(title: s.ok, enabled: pin.count >= 4 && !lock.locked, fill: true) { submit() }
+                    }
                     if h.canResetPin {
-                        FJDialogButton(title: s.hiddenForgotPin, kind: .text, fill: true) {
+                        FJDialogButton(title: t.forgot, kind: .text, fill: true) {
                             store.send(DashboardUiEventOnHiddenForgotPin.shared)
                         }
                     }
@@ -242,6 +405,12 @@ struct HiddenUnlockSheet: View {
     }
 
     private func submit() {
+        let t = HiddenTextsKt.hiddenLockTexts(type: type)
+        if !HiddenStore.shared.isValidSecret(type: type, secret: pin) {
+            pin = ""
+            error = t.invalid
+            return
+        }
         store.send(DashboardUiEventOnHiddenUnlock(pin: pin))
         let h = store.liveHidden
         if h.unlocked {
@@ -250,7 +419,7 @@ struct HiddenUnlockSheet: View {
             return
         }
         pin = ""
-        error = lock.reject(h, store.strings)?.message
+        error = lock.reject(h, invalid: t.invalid)?.message
     }
 }
 
@@ -262,28 +431,67 @@ struct HiddenChangePinSheet: View {
     @State private var new = ""
     @State private var again = ""
     @State private var error: String?
+    @State private var chosen: HiddenLockType?
+
+    private var oldType: HiddenLockType { store.state.hidden.lockType ?? .pin }
+    private var newType: HiddenLockType { chosen ?? oldType }
 
     var body: some View {
-        let s = store.strings
-        HiddenSheetBody(title: s.hiddenChangePin, onCancel: { dismiss() }) {
-            HiddenPinField(label: s.hiddenOldPin, text: $old, disabled: lock.locked)
-            HiddenPinField(label: s.hiddenNewPin, text: $new, disabled: lock.locked)
-            HiddenPinField(label: s.hiddenConfirmPin, text: $again, disabled: lock.locked)
+        let oldTexts = HiddenTextsKt.hiddenLockTexts(type: oldType)
+        let newTexts = HiddenTextsKt.hiddenLockTexts(type: newType)
+        HiddenSheetBody(title: oldTexts.change, onCancel: { dismiss() }) {
+            HiddenSecretField(type: oldType, label: oldTexts.oldLabel, text: $old, disabled: lock.locked, onDrawn: checkOld)
+            if oldType == .pin || !old.isEmpty {
+                HiddenSecretField(type: newType, label: newTexts.newLabel, text: $new, disabled: lock.locked, onDrawn: checkNew)
+                if newType == .pin || !new.isEmpty {
+                    HiddenSecretField(type: newType, label: newTexts.confirm, text: $again, disabled: lock.locked, onDrawn: submit)
+                }
+            }
             if let message = lock.message(error) { HiddenErrorText(text: message) }
-            FJDialogButton(title: s.hiddenChangePin, enabled: old.count >= 4 && new.count >= 4 && !again.isEmpty && !lock.locked, fill: true) { submit() }
+            FJDialogButton(title: oldTexts.change, enabled: old.count >= 4 && new.count >= 4 && !again.isEmpty && !lock.locked, fill: true) { submit() }
+            FJDialogButton(title: newTexts.switchTo, kind: .text, fill: true) {
+                chosen = newType == .pin ? .pattern : .pin
+                new = ""
+                again = ""
+                error = nil
+            }
+        }
+    }
+
+    private func checkOld() {
+        error = nil
+        if !HiddenStore.shared.isValidSecret(type: oldType, secret: old) {
+            error = HiddenTextsKt.hiddenLockTexts(type: oldType).invalid
+            old = ""
+        }
+    }
+
+    private func checkNew() {
+        error = nil
+        if !HiddenStore.shared.isValidSecret(type: newType, secret: new) {
+            error = HiddenTextsKt.hiddenLockTexts(type: newType).invalid
+            new = ""
         }
     }
 
     private func submit() {
-        let s = store.strings
+        let t = HiddenTextsKt.hiddenLockTexts(type: newType)
         if new != again {
-            error = s.hiddenPinMismatch
+            error = t.mismatch
+            if newType == .pattern {
+                new = ""
+                again = ""
+            }
             return
         }
-        store.send(DashboardUiEventOnHiddenChangePin(oldPin: old, newPin: new))
-        if let reject = lock.reject(store.liveHidden, s) {
+        store.send(DashboardUiEventOnHiddenChangePin(oldPin: old, newPin: new, newLockType: newType))
+        if let reject = lock.reject(store.liveHidden, invalid: t.invalid) {
             error = reject.message
-            if reject.clearsPin { old = "" }
+            if reject.clearsPin || oldType == .pattern { old = "" }
+            if newType == .pattern {
+                new = ""
+                again = ""
+            }
         } else {
             dismiss()
         }
@@ -297,23 +505,33 @@ struct HiddenRemovePinSheet: View {
     @State private var pin = ""
     @State private var error: String?
 
+    private var type: HiddenLockType { store.state.hidden.lockType ?? .pin }
+
     var body: some View {
-        let s = store.strings
-        HiddenSheetBody(title: s.hiddenRemovePin, onCancel: { dismiss() }) {
-            Text(s.hiddenRemoveWarn)
+        let t = HiddenTextsKt.hiddenLockTexts(type: type)
+        HiddenSheetBody(title: t.remove, onCancel: { dismiss() }) {
+            Text(t.removeWarn)
                 .font(FJTheme.font.body)
                 .foregroundStyle(FJTheme.color.onSurface)
-            HiddenPinField(label: s.hiddenEnterPin, text: $pin, disabled: lock.locked)
+            HiddenSecretField(type: type, label: t.enter, text: $pin, disabled: lock.locked, onDrawn: submit)
             if let message = lock.message(error) { HiddenErrorText(text: message) }
-            FJDialogButton(title: s.hiddenRemovePin, kind: .danger, enabled: pin.count >= 4 && !lock.locked, fill: true) { submit() }
+            if type == .pin {
+                FJDialogButton(title: t.remove, kind: .danger, enabled: pin.count >= 4 && !lock.locked, fill: true) { submit() }
+            }
         }
     }
 
     private func submit() {
+        let t = HiddenTextsKt.hiddenLockTexts(type: type)
+        if !HiddenStore.shared.isValidSecret(type: type, secret: pin) {
+            pin = ""
+            error = t.invalid
+            return
+        }
         store.send(DashboardUiEventOnHiddenRemoveLock(pin: pin))
-        if let reject = lock.reject(store.liveHidden, store.strings) {
+        if let reject = lock.reject(store.liveHidden, invalid: t.invalid) {
             error = reject.message
-            if reject.clearsPin { pin = "" }
+            if reject.clearsPin || type == .pattern { pin = "" }
         } else {
             dismiss()
         }

@@ -608,7 +608,7 @@ class TorrentDownloader(
                 }
             }
             if (!fileOk) {
-                println("TorrentDownloader: web seed failed for '${f.path}': $lastError - falling back to peers")
+                println("TorrentDownloader: web seed failed for file ${f.index}: $lastError - falling back to peers")
                 return false
             }
             doneBytes += f.size

@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import subprocess
@@ -116,6 +117,11 @@ def open_hidden(core, pin):
         return None
     type_pin(core, pin)
     return pin_alert(core)
+
+
+def played_copy(core):
+    found = glob.glob(os.path.join(core.home, "**", "hidden_play", "*", "*"), recursive=True)
+    return max(found, key=os.path.getmtime) if found else ""
 
 
 def server_up():
@@ -455,15 +461,15 @@ def run():
         core.check("the mp4 is in the hidden screen", "clip.mp4" in visible_names(core), visible_names(core))
         core.action("RowQuickAction", id=clip["id"])
         core.wait_for("the opened path", lambda: (core.debug("opened") or {}).get("hidden"), 30)
-        path = core.debug("opened")["hidden"][-1]
+        path = played_copy(core)
         same = os.path.isfile(path) and open(path, "rb").read() == clip_bytes
-        core.check("open hands the OS a decrypted copy named like the file", path.replace("\\", "/").endswith("/clip.mp4") and same, path)
+        core.check("open hands the OS a decrypted copy named like the file, the debug call names no path", path.replace("\\", "/").endswith("/clip.mp4") and same and core.debug("opened")["hidden"] == ["hidden"], (path, core.debug("opened")["hidden"]))
         core.action("CloseDetails")
         core.pump(0.8)
         core.check("closing removes the copy", not os.path.exists(path), path)
         core.action("RowQuickAction", id=clip["id"])
         core.wait_for("the second open", lambda: len((core.debug("opened") or {}).get("hidden", [])) >= 2, 30)
-        path = core.debug("opened")["hidden"][-1]
+        path = played_copy(core)
         core.action("HiddenLock")
         core.pump(1.0)
         core.check("locking removes the copy", not os.path.exists(path), path)

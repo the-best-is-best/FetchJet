@@ -8,6 +8,7 @@ import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.tbib.kmp_localization.LocalizationManager
 
 
@@ -725,10 +726,14 @@ sealed interface DashboardUiEvent {
     data class OnUnhideGroup(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
     data class OnHiddenGroupPause(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
     data class OnHiddenGroupResume(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
-    data class OnHiddenSetPin(val pin: String) : DashboardUiEvent
+    data class OnHiddenSetPin(val pin: String, val lockType: HiddenLockType) : DashboardUiEvent {
+        constructor(pin: String) : this(pin, HiddenLockType.PIN)
+    }
     data class OnHiddenUnlock(val pin: String) : DashboardUiEvent
     data object OnHiddenLock : DashboardUiEvent
-    data class OnHiddenChangePin(val oldPin: String, val newPin: String) : DashboardUiEvent
+    data class OnHiddenChangePin(val oldPin: String, val newPin: String, val newLockType: HiddenLockType) : DashboardUiEvent {
+        constructor(oldPin: String, newPin: String) : this(oldPin, newPin, HiddenLockType.PIN)
+    }
     data class OnHiddenRemoveLock(val pin: String) : DashboardUiEvent
     data class OnHiddenOpenFile(val taskId: String) : DashboardUiEvent
     data object OnHiddenClosePlayer : DashboardUiEvent
@@ -738,7 +743,9 @@ sealed interface DashboardUiEvent {
     data object OnHiddenRecoveryCodeShown : DashboardUiEvent
     data class OnHiddenRestoreWithCode(val code: String) : DashboardUiEvent
     data object OnHiddenForgotPin : DashboardUiEvent
-    data class OnHiddenResetPin(val pin: String) : DashboardUiEvent
+    data class OnHiddenResetPin(val pin: String, val lockType: HiddenLockType) : DashboardUiEvent {
+        constructor(pin: String) : this(pin, HiddenLockType.PIN)
+    }
     data object OnHiddenResetCancel : DashboardUiEvent
     data object OnBackupExportRequested : DashboardUiEvent
     data object OnBackupWritten : DashboardUiEvent

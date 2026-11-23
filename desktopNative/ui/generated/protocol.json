@@ -1427,6 +1427,10 @@
     "Boolean"
    ],
    [
+    "inputPattern",
+    "Boolean"
+   ],
+   [
     "inputRev",
     "Int"
    ],
@@ -2310,6 +2314,14 @@
    ],
    [
     "hiddenNote",
+    "String"
+   ],
+   [
+    "hiddenChangeLabel",
+    "String"
+   ],
+   [
+    "hiddenRemoveLabel",
     "String"
    ],
    [
@@ -4017,6 +4029,26 @@
   "hiddenNoticeAuthFailed",
   "hiddenNoticeResetDone",
   "hiddenNoticeResetExpired",
+  "hiddenNoticeNeedFileAccess",
+  "hiddenLockTypeTitle",
+  "hiddenLockTypePin",
+  "hiddenLockTypePattern",
+  "hiddenPatternDraw",
+  "hiddenPatternEnter",
+  "hiddenPatternAgain",
+  "hiddenPatternTooShort",
+  "hiddenPatternMismatch",
+  "hiddenWrongPattern",
+  "hiddenUsePin",
+  "hiddenUsePattern",
+  "hiddenOldPattern",
+  "hiddenNewPattern",
+  "hiddenChangePattern",
+  "hiddenRemovePattern",
+  "hiddenRemovePatternWarn",
+  "hiddenForgotPattern",
+  "hiddenNoticePatternChanged",
+  "hiddenDownloadName",
   "backupExport",
   "backupRestore",
   "backupExportHint",

@@ -7,6 +7,7 @@ import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.getClipboardText
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AlertDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AlertKind
@@ -17,6 +18,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenError
 import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenNotice
 import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockedText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenNoticeText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWrongPinText
@@ -59,7 +61,19 @@ internal data class HiddenLocal(
     val rev: Int = 0,
     val pending: HiddenTarget? = null,
     val lockedUntilMs: Long = 0L,
+    val type: HiddenLockType = HiddenLockType.PIN,
 )
+
+private fun storedLockType(): HiddenLockType = HiddenStore.state.value.lockType ?: HiddenLockType.PIN
+
+private fun HiddenStep.asksStored(): Boolean = this == HiddenStep.UNLOCK || this == HiddenStep.CHANGE_OLD || this == HiddenStep.REMOVE
+
+private fun HiddenStep.offersSwitch(): Boolean = this == HiddenStep.SET_FIRST || this == HiddenStep.RESET_FIRST || this == HiddenStep.CHANGE_NEW
+
+private fun HiddenLocal.shownType(step: HiddenStep): HiddenLockType = if (step.asksStored()) storedLockType() else type
+
+private fun freshHidden(step: HiddenStep, rev: Int, pending: HiddenTarget? = null): HiddenLocal =
+    HiddenLocal(step = step, rev = rev + 1, pending = pending, type = storedLockType())
 
 internal fun DashboardUiState.findTask(id: String): DownloadTask? =
     allTasks.firstOrNull { it.id == id } ?: hidden.tasks.firstOrNull { it.id == id }
@@ -104,7 +118,7 @@ internal fun Presenter.startHidden() {
             val step = hiddenLocal.value.step
             if (allowed && step == HiddenStep.UNLOCK) {
                 clearTyped(AlertKind.HIDDEN_PIN.ordinal)
-                hiddenLocal.update { HiddenLocal(step = HiddenStep.RESET_FIRST, rev = it.rev + 1) }
+                hiddenLocal.update { freshHidden(HiddenStep.RESET_FIRST, it.rev) }
             } else if (!allowed && (step == HiddenStep.RESET_FIRST || step == HiddenStep.RESET_CONFIRM)) {
                 hiddenDismiss()
             }
@@ -131,23 +145,27 @@ private fun buildHiddenAlert(s: HiddenLocal, now: Long): AlertDto? {
     val st = LocalizationManager.Strings
     val locked = s.lockedUntilMs > now
     val message = if (locked) hiddenLockedText(((s.lockedUntilMs - now + 999) / 1000).toInt()) else s.message
+    val type = s.shownType(step)
+    val t = hiddenLockTexts(type)
+    val stored = hiddenLockTexts(storedLockType())
+    val pattern = type == HiddenLockType.PATTERN && step != HiddenStep.RESTORE_CODE
     val title: String
     val text: String
     val label: String
     when (step) {
-        HiddenStep.SET_FIRST -> { title = st.hiddenSetPinTitle; text = st.hiddenSetPinHint; label = st.hiddenEnterPin }
-        HiddenStep.SET_CONFIRM -> { title = st.hiddenSetPinTitle; text = ""; label = st.hiddenConfirmPin }
-        HiddenStep.UNLOCK -> { title = st.hiddenTitle; text = ""; label = st.hiddenEnterPin }
-        HiddenStep.CHANGE_OLD -> { title = st.hiddenChangePin; text = ""; label = st.hiddenOldPin }
-        HiddenStep.CHANGE_NEW -> { title = st.hiddenChangePin; text = ""; label = st.hiddenNewPin }
-        HiddenStep.CHANGE_CONFIRM -> { title = st.hiddenChangePin; text = ""; label = st.hiddenConfirmPin }
-        HiddenStep.REMOVE -> { title = st.hiddenRemovePin; text = st.hiddenRemoveWarn; label = st.hiddenEnterPin }
+        HiddenStep.SET_FIRST -> { title = t.setTitle; text = t.setHint; label = t.enter }
+        HiddenStep.SET_CONFIRM -> { title = t.setTitle; text = ""; label = t.confirm }
+        HiddenStep.UNLOCK -> { title = st.hiddenTitle; text = ""; label = t.enter }
+        HiddenStep.CHANGE_OLD -> { title = stored.change; text = ""; label = t.oldLabel }
+        HiddenStep.CHANGE_NEW -> { title = stored.change; text = ""; label = t.newLabel }
+        HiddenStep.CHANGE_CONFIRM -> { title = stored.change; text = ""; label = t.confirm }
+        HiddenStep.REMOVE -> { title = t.remove; text = t.removeWarn; label = t.enter }
         HiddenStep.RESTORE_CODE -> { title = st.hiddenRecoveryRestoreTitle; text = st.hiddenRecoveryRestoreHint; label = st.hiddenRecoveryEnter }
-        HiddenStep.RESET_FIRST -> { title = st.hiddenResetPinTitle; text = st.hiddenSetPinHint; label = st.hiddenEnterPin }
-        HiddenStep.RESET_CONFIRM -> { title = st.hiddenResetPinTitle; text = ""; label = st.hiddenConfirmPin }
+        HiddenStep.RESET_FIRST -> { title = t.resetTitle; text = t.setHint; label = t.enter }
+        HiddenStep.RESET_CONFIRM -> { title = t.resetTitle; text = ""; label = t.confirm }
     }
     val link = when (step) {
-        HiddenStep.UNLOCK -> if (DeviceAuth.available()) st.hiddenForgotPin else ""
+        HiddenStep.UNLOCK -> if (DeviceAuth.available()) t.forgot else ""
         HiddenStep.SET_FIRST -> if (!HiddenStore.hasLock()) st.hiddenRecoveryRestoreTitle else ""
         else -> ""
     }
@@ -159,10 +177,12 @@ private fun buildHiddenAlert(s: HiddenLocal, now: Long): AlertDto? {
         hint = message,
         hintError = message.isNotEmpty(),
         inputLabel = label,
-        inputSecret = step != HiddenStep.RESTORE_CODE,
+        inputSecret = step != HiddenStep.RESTORE_CODE && !pattern,
+        inputPattern = pattern,
         inputRev = s.rev,
         inputDisabled = locked,
-        confirmLabel = if (step == HiddenStep.REMOVE) st.hiddenRemovePin else st.ok,
+        extraLabel = if (step.offersSwitch()) t.switchTo else "",
+        confirmLabel = if (step == HiddenStep.REMOVE) t.remove else st.ok,
         confirmDanger = step == HiddenStep.REMOVE,
         dismissLabel = st.cancel,
         linkLabel = link,
@@ -179,7 +199,6 @@ private fun Presenter.hiddenCloseDialog() {
 }
 
 private fun Presenter.hiddenFail(h: HiddenUiState, step: HiddenStep, first: String = "", old: String = "") {
-    val st = LocalizationManager.Strings
     when (h.error) {
         HiddenError.WRONG_PIN ->
             hiddenGo(step, first, old, hiddenWrongPinText(h.triesLeft))
@@ -191,7 +210,7 @@ private fun Presenter.hiddenFail(h: HiddenUiState, step: HiddenStep, first: Stri
             )
         }
 
-        HiddenError.INVALID_PIN -> hiddenGo(step, first, old, st.hiddenInvalidPin)
+        HiddenError.INVALID_PIN -> hiddenGo(step, first, old, hiddenLockTexts(hiddenLocal.value.shownType(step)).invalid)
         null -> hiddenCloseDialog()
     }
 }
@@ -204,16 +223,16 @@ internal fun Presenter.hiddenConfirm(raw: String) {
         return
     }
     if (s.lockedUntilMs > currentEpochMs()) return
-    val st = LocalizationManager.Strings
+    val t = hiddenLockTexts(s.type)
     val pin = normalizePin(raw)
     if (pin.isEmpty()) return
     when (step) {
         HiddenStep.SET_FIRST ->
-            if (!HiddenStore.isValidPin(pin)) hiddenGo(HiddenStep.SET_FIRST, message = st.hiddenInvalidPin)
+            if (!HiddenStore.isValidSecret(s.type, pin)) hiddenGo(HiddenStep.SET_FIRST, message = t.invalid)
             else hiddenGo(HiddenStep.SET_CONFIRM, first = pin)
 
         HiddenStep.SET_CONFIRM ->
-            if (pin != s.first) hiddenGo(HiddenStep.SET_FIRST, message = st.hiddenPinMismatch)
+            if (pin != s.first) hiddenGo(HiddenStep.SET_FIRST, message = t.mismatch)
             else hiddenFinishSet(pin, s)
 
         HiddenStep.UNLOCK -> {
@@ -233,13 +252,13 @@ internal fun Presenter.hiddenConfirm(raw: String) {
         }
 
         HiddenStep.CHANGE_NEW ->
-            if (!HiddenStore.isValidPin(pin)) hiddenGo(HiddenStep.CHANGE_NEW, old = s.old, message = st.hiddenInvalidPin)
+            if (!HiddenStore.isValidSecret(s.type, pin)) hiddenGo(HiddenStep.CHANGE_NEW, old = s.old, message = t.invalid)
             else hiddenGo(HiddenStep.CHANGE_CONFIRM, first = pin, old = s.old)
 
         HiddenStep.CHANGE_CONFIRM ->
-            if (pin != s.first) hiddenGo(HiddenStep.CHANGE_NEW, old = s.old, message = st.hiddenPinMismatch)
+            if (pin != s.first) hiddenGo(HiddenStep.CHANGE_NEW, old = s.old, message = t.mismatch)
             else {
-                vm.onEvent(DashboardUiEvent.OnHiddenChangePin(s.old, pin))
+                vm.onEvent(DashboardUiEvent.OnHiddenChangePin(s.old, pin, s.type))
                 val h = vm.uiState.value.hidden
                 if (h.error == null) hiddenCloseDialog() else hiddenFail(h, HiddenStep.CHANGE_OLD)
             }
@@ -247,18 +266,18 @@ internal fun Presenter.hiddenConfirm(raw: String) {
         HiddenStep.RESTORE_CODE -> Unit
 
         HiddenStep.RESET_FIRST ->
-            if (!HiddenStore.isValidPin(pin)) hiddenGo(HiddenStep.RESET_FIRST, message = st.hiddenInvalidPin)
+            if (!HiddenStore.isValidSecret(s.type, pin)) hiddenGo(HiddenStep.RESET_FIRST, message = t.invalid)
             else hiddenGo(HiddenStep.RESET_CONFIRM, first = pin)
 
         HiddenStep.RESET_CONFIRM ->
-            if (pin != s.first) hiddenGo(HiddenStep.RESET_FIRST, message = st.hiddenPinMismatch)
+            if (pin != s.first) hiddenGo(HiddenStep.RESET_FIRST, message = t.mismatch)
             else {
-                vm.onEvent(DashboardUiEvent.OnHiddenResetPin(pin))
+                vm.onEvent(DashboardUiEvent.OnHiddenResetPin(pin, s.type))
                 val h = vm.uiState.value.hidden
                 if (h.unlocked && h.error == null && !h.pinResetAllowed) {
                     hiddenCloseDialog()
                     openHiddenScreen()
-                } else if (h.error == HiddenError.INVALID_PIN) hiddenGo(HiddenStep.RESET_FIRST, message = st.hiddenInvalidPin)
+                } else if (h.error == HiddenError.INVALID_PIN) hiddenGo(HiddenStep.RESET_FIRST, message = t.invalid)
                 else hiddenDismiss()
             }
 
@@ -274,9 +293,9 @@ internal fun Presenter.hiddenConfirm(raw: String) {
 }
 
 private fun Presenter.hiddenFinishSet(pin: String, s: HiddenLocal) {
-    vm.onEvent(DashboardUiEvent.OnHiddenSetPin(pin))
+    vm.onEvent(DashboardUiEvent.OnHiddenSetPin(pin, s.type))
     if (!HiddenStore.hasLock()) {
-        hiddenGo(HiddenStep.SET_FIRST, message = LocalizationManager.Strings.hiddenInvalidPin)
+        hiddenGo(HiddenStep.SET_FIRST, message = hiddenLockTexts(s.type).invalid)
         return
     }
     val pending = s.pending
@@ -297,24 +316,33 @@ internal fun Presenter.hiddenDismiss() {
 
 internal fun Presenter.hiddenEntry() {
     if (!HiddenStore.hasLock()) {
-        hiddenLocal.update { HiddenLocal(step = HiddenStep.SET_FIRST, rev = it.rev + 1) }
+        hiddenLocal.update { freshHidden(HiddenStep.SET_FIRST, it.rev) }
     } else if (vm.uiState.value.hidden.unlocked) {
         openHiddenScreen()
     } else if (vm.uiState.value.hidden.pinResetAllowed) {
-        hiddenLocal.update { HiddenLocal(step = HiddenStep.RESET_FIRST, rev = it.rev + 1) }
+        hiddenLocal.update { freshHidden(HiddenStep.RESET_FIRST, it.rev) }
     } else {
-        hiddenLocal.update { HiddenLocal(step = HiddenStep.UNLOCK, rev = it.rev + 1) }
+        hiddenLocal.update { freshHidden(HiddenStep.UNLOCK, it.rev) }
     }
+}
+
+internal fun Presenter.hiddenSwitchType() {
+    val s = hiddenLocal.value
+    val step = s.step?.takeIf { it.offersSwitch() } ?: return
+    if (s.lockedUntilMs > currentEpochMs()) return
+    clearTyped(AlertKind.HIDDEN_PIN.ordinal)
+    val next = if (s.type == HiddenLockType.PIN) HiddenLockType.PATTERN else HiddenLockType.PIN
+    hiddenLocal.update { it.copy(step = step, type = next, first = "", message = "", rev = it.rev + 1) }
 }
 
 internal fun Presenter.hiddenStartChange() {
     if (!local.value.hiddenOpen) return
-    hiddenLocal.update { HiddenLocal(step = HiddenStep.CHANGE_OLD, rev = it.rev + 1) }
+    hiddenLocal.update { freshHidden(HiddenStep.CHANGE_OLD, it.rev) }
 }
 
 internal fun Presenter.hiddenStartRemove() {
     if (!local.value.hiddenOpen) return
-    hiddenLocal.update { HiddenLocal(step = HiddenStep.REMOVE, rev = it.rev + 1) }
+    hiddenLocal.update { freshHidden(HiddenStep.REMOVE, it.rev) }
 }
 
 private fun Presenter.openHiddenScreen() {
@@ -367,7 +395,7 @@ internal fun Presenter.hiddenTargetOf(rows: Collection<String>): HiddenTarget {
 internal fun Presenter.hideTargets(target: HiddenTarget) {
     if (target.isEmpty) return
     if (!HiddenStore.hasLock()) {
-        hiddenLocal.update { HiddenLocal(step = HiddenStep.SET_FIRST, pending = target, rev = it.rev + 1) }
+        hiddenLocal.update { freshHidden(HiddenStep.SET_FIRST, it.rev, target) }
         return
     }
     applyHide(target)

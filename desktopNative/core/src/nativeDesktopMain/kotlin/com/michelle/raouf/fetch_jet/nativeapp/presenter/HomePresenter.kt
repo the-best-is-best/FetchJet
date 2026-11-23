@@ -24,6 +24,8 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.RowActionCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.TextChoiceDto
 import com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PLAYLIST_ROW_PREFIX
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWorkingText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
@@ -305,6 +307,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
     val strings = LocalizationManager.Strings
     val settings = slice.selectedTab == DashboardTab.SETTINGS
     val hiddenScreen = ui.hiddenOpen && slice.hidden.unlocked && !settings
+    val lockTexts = hiddenLockTexts(slice.hidden.lockType ?: HiddenLockType.PIN)
     val records = slice.playlists
     val pool = if (hiddenScreen) slice.hidden.tasks else slice.allTasks
     val openGroup = (if (hiddenScreen) slice.hidden.openPlaylistId else slice.openPlaylistId)?.let { id ->
@@ -519,6 +522,8 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             groupFolderPath = openFolderGroup?.path.orEmpty(),
             hiddenOpen = hiddenScreen,
             hiddenNote = if (hiddenScreen) strings.hiddenNoteEncrypted else "",
+            hiddenChangeLabel = if (hiddenScreen) lockTexts.change else "",
+            hiddenRemoveLabel = if (hiddenScreen) lockTexts.remove else "",
         )
     )
 

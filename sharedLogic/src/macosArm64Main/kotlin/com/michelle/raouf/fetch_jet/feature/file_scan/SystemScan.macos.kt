@@ -20,7 +20,7 @@ internal actual fun systemMarkFromInternet(path: String, sourceUrl: String, page
     webUrl(sourceUrl)?.let { properties["LSQuarantineDataURL"] = it }
     pageUrl?.let { webUrl(it) }?.let { properties["LSQuarantineOriginURL"] = it }
     val ok = NSURL.fileURLWithPath(path).setResourceValue(properties, NSURLQuarantinePropertiesKey, null)
-    if (!ok) println("quarantine: could not mark $path")
+    if (!ok) println("quarantine: could not mark a file")
     markWhereFrom(path, listOfNotNull(webUrl(sourceUrl)?.absoluteString, pageUrl?.let { webUrl(it) }?.absoluteString))
 }
 
@@ -30,7 +30,7 @@ private fun markWhereFrom(path: String, sources: List<String>) {
     val data = NSPropertyListSerialization.dataWithPropertyList(sources, NSPropertyListBinaryFormat_v1_0, 0u, null) ?: return
     val attributes = mapOf<Any?, Any?>("NSFileExtendedAttributes" to mapOf("com.apple.metadata:kMDItemWhereFroms" to data))
     if (!NSFileManager.defaultManager.setAttributes(attributes, path, null)) {
-        println("quarantine: could not write where from $path")
+        println("quarantine: could not write where from on a file")
     }
 }
 

@@ -61,9 +61,9 @@ data class HiddenUiState(
 internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
     when (event) {
         is DashboardUiEvent.OnHiddenSetPin -> {
-            if (!HiddenStore.isValidPin(event.pin)) {
+            if (!HiddenStore.isValidSecret(event.lockType, event.pin)) {
                 _uiState.update { it.copy(hidden = it.hidden.copy(error = HiddenError.INVALID_PIN)) }
-            } else if (HiddenStore.setPin(event.pin)) {
+            } else if (HiddenStore.setPin(event.pin, event.lockType)) {
                 _uiState.update { it.copy(hidden = it.hidden.copy(lockType = HiddenStore.state.value.lockType, unlocked = true, error = null)) }
                 refreshHiddenTasks()
             } else _uiState.update { it.copy(hidden = it.hidden.copy(notice = HiddenNotice.MOVE_FAILED)) }
@@ -71,7 +71,7 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnHiddenUnlock -> applyHiddenCheck(HiddenStore.verify(event.pin), unlockOnOk = true)
         DashboardUiEvent.OnHiddenLock -> lockHidden()
-        is DashboardUiEvent.OnHiddenChangePin -> applyHiddenCheck(HiddenStore.changePin(event.oldPin, event.newPin), unlockOnOk = false)
+        is DashboardUiEvent.OnHiddenChangePin -> applyHiddenCheck(HiddenStore.changePin(event.oldPin, event.newPin, event.newLockType), unlockOnOk = false)
         is DashboardUiEvent.OnHiddenRemoveLock -> {
             val check = HiddenStore.verify(event.pin)
             if (check != HiddenCheck.Ok) {
@@ -194,7 +194,7 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
         }
 
         is DashboardUiEvent.OnHiddenResetPin -> {
-            val outcome = HiddenStore.resetPin(event.pin)
+            val outcome = HiddenStore.resetPin(event.pin, event.lockType)
             if (outcome != PinReset.INVALID) HiddenStore.cancelPinReset()
             when (outcome) {
                 PinReset.OK -> {
@@ -388,8 +388,15 @@ internal fun DashboardViewModel.applyHiddenCheck(check: HiddenCheck, unlockOnOk:
 internal fun DashboardViewModel.lockHidden() {
     HiddenStore.cancelPinReset()
     HiddenMedia.cleanup(queueRepository.pathResolver)
+    val hiddenIds = queueRepository.allTasksFlow.value.filter { it.hidden }.mapTo(HashSet()) { it.id }
     _uiState.update {
-        it.copy(hidden = HiddenUiState(
+        it.copy(
+            torrentDetails = it.torrentDetails?.takeIf { d -> d.taskId !in hiddenIds },
+            archivePassword = it.archivePassword?.takeIf { a -> a.taskId !in hiddenIds },
+            removeConfirmationTaskId = it.removeConfirmationTaskId?.takeIf { id -> id !in hiddenIds },
+            removeConfirmationTaskIds = it.removeConfirmationTaskIds.filter { id -> id !in hiddenIds },
+            deviceShareTaskId = it.deviceShareTaskId?.takeIf { id -> id !in hiddenIds },
+            hidden = HiddenUiState(
                 lockType = HiddenStore.state.value.lockType,
                 notice = it.hidden.notice,
                 recoveryCode = it.hidden.recoveryCode,

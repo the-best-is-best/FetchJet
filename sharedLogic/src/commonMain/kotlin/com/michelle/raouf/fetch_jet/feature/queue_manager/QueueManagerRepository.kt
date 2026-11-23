@@ -7,6 +7,8 @@ import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManage
 import com.michelle.raouf.fetch_jet.core.util.verifyFileChecksum
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenFiles
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
+import com.michelle.raouf.fetch_jet.feature.hidden.logName
+import com.michelle.raouf.fetch_jet.feature.hidden.shownName
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -608,8 +610,8 @@ class QueueManagerRepository(
                     runCatching {
                         com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(
                             task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName,
-                            task.url,
-                            task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+                            if (task.hidden) "" else task.url,
+                            if (task.hidden) null else task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
                         )
                     }
                     val scan = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanFiles.value &&
@@ -651,9 +653,11 @@ class QueueManagerRepository(
                     com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED, e.message ?: "error"
                 )
             }
-            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.fileName}: ${result.outcome.code} ${result.detail}" }
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.logName()}: ${result.outcome.code} ${if (task.hidden) "" else result.detail}" }
             scanResults.update { it + (task.id to result.outcome.code) }
-            _scanEvents.emit(com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.fileName, result.outcome, result.detail))
+            _scanEvents.emit(
+                com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.shownName(), result.outcome, if (task.hidden) "" else result.detail)
+            )
             return result.outcome
         } finally {
             scanState.update { it - task.id }
@@ -688,7 +692,7 @@ class QueueManagerRepository(
         try {
             val path = (task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName).toPath()
             if (!quietIfIncomplete) {
-                _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, 0, null, started = true))
+                _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.shownName(), 0, null, started = true))
             }
             val event = try {
                 val result = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.extract(
@@ -700,18 +704,22 @@ class QueueManagerRepository(
                     }
                 }
                 result.items.forEach { markExtracted(task, it) }
-                if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.trashArchiveAfterExtract.value &&
+                if (!task.hidden && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.trashArchiveAfterExtract.value &&
                     com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported
                 ) {
                     com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path.toString())
                 }
-                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, result.files, null, destination = result.destination)
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.shownName(), result.files, null, destination = result.destination)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.fileName}: ${e.message}" }
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.logName()}: ${if (task.hidden) e::class.simpleName else e.message}" }
                 com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(
-                    task.fileName, 0, e.message ?: "error", taskId = task.id,
+                    task.shownName(), 0,
+                    (e.message ?: "error").let {
+                        if (task.hidden && it != com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.MISSING_PART) "error" else it
+                    },
+                    taskId = task.id,
                     needsPassword = e is com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException,
                     wrongPassword = (e as? com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException)?.wrong == true,
                 )
@@ -731,16 +739,17 @@ class QueueManagerRepository(
     }
 
     private fun markExtracted(task: DownloadTask, destination: String) {
-        val page = task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val page = if (task.hidden) null else task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val source = if (task.hidden) "" else task.url
         val top = destination.toPath()
-        runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(top.toString(), task.url, page) }
+        runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(top.toString(), source, page) }
         val isFolder = runCatching {
             com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.metadataOrNull(top)?.isDirectory == true
         }.getOrDefault(false)
         if (!isFolder) return
         runCatching {
             com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.listRecursively(top).forEach { path ->
-                runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), task.url, page) }
+                runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), source, page) }
             }
         }
     }

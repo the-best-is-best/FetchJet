@@ -4,6 +4,7 @@ import { FilledButton, OutlinedButton, TextButton } from "../widgets/Buttons.sli
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { TextField } from "../widgets/TextField.slint";
+import { PatternPad } from "../widgets/PatternPad.slint";
 import { Core, AlertDto, AlertKind } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 
@@ -135,7 +136,31 @@ component AlertOverlay inherits Rectangle {
             if root.data.inputLabel != "": Rectangle {
                 height: 12px;
             }
-            if root.data.inputLabel != "": TextField {
+            if root.data.inputPattern: BodyText {
+                text: root.data.inputLabel;
+            }
+            if root.data.inputPattern: Rectangle {
+                height: 8px;
+            }
+            if root.data.inputPattern: HBox {
+                alignment: center;
+                PatternPad {
+                    label: root.data.inputLabel;
+                    rev: root.data.inputRev;
+                    enabled: !root.data.inputDisabled;
+                    init => { self.focus-pad(); }
+                    escaped => {
+                        if !root.data.locked {
+                            Act.alertDismiss(root.data.kind, true);
+                        }
+                    }
+                    done(digits) => {
+                        Act.alertText(root.data.kind, digits);
+                        Act.alertConfirm(root.data.kind, root.checked);
+                    }
+                }
+            }
+            if root.data.inputLabel != "" && !root.data.inputPattern: TextField {
                 placeholder: root.data.inputLabel;
                 rev: root.data.inputRev;
                 value: "";

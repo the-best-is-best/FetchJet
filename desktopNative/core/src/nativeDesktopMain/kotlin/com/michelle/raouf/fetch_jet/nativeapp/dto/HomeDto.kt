@@ -84,6 +84,8 @@ data class ChromeDto(
     val groupFolderPath: String = "",
     val hiddenOpen: Boolean = false,
     val hiddenNote: String = "",
+    val hiddenChangeLabel: String = "",
+    val hiddenRemoveLabel: String = "",
     val hiddenWorkShown: Boolean = false,
     val hiddenWorkText: String = "",
     val hiddenWorkFraction: Float = 0f,

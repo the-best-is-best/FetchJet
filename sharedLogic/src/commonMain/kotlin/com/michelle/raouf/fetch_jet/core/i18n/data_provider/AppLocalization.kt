@@ -85,6 +85,25 @@ interface AppLocalization : LocalizationProvider {
     val hiddenNoticeResetDone: String
     val hiddenNoticeResetExpired: String
     val hiddenNoticeNeedFileAccess: String
+    val hiddenLockTypeTitle: String
+    val hiddenLockTypePin: String
+    val hiddenLockTypePattern: String
+    val hiddenPatternDraw: String
+    val hiddenPatternEnter: String
+    val hiddenPatternAgain: String
+    val hiddenPatternTooShort: String
+    val hiddenPatternMismatch: String
+    val hiddenWrongPattern: String
+    val hiddenUsePin: String
+    val hiddenUsePattern: String
+    val hiddenOldPattern: String
+    val hiddenNewPattern: String
+    val hiddenChangePattern: String
+    val hiddenRemovePattern: String
+    val hiddenRemovePatternWarn: String
+    val hiddenForgotPattern: String
+    val hiddenNoticePatternChanged: String
+    val hiddenDownloadName: String
     val backupExport: String
     val backupRestore: String
     val backupExportHint: String

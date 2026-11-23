@@ -1,0 +1,131 @@
+import { Theme } from "../theme.slint";
+
+export component PatternPad inherits Rectangle {
+    in property <int> rev;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback done(string);
+    callback escaped();
+    private property <string> pattern;
+    private property <int> used;
+    private property <string> trail;
+    private property <bool> drawing;
+    private property <length> pointer-x;
+    private property <length> pointer-y;
+    private property <length> cell: self.width / 3;
+    width: 216px;
+    height: 216px;
+    accessible-role: groupbox;
+    accessible-label: root.label;
+    public function focus-pad() { keys.focus(); }
+    changed rev => { root.clear(); }
+    changed enabled => { root.clear(); }
+
+    function clear() {
+        root.pattern = "";
+        root.used = 0;
+        root.trail = "";
+        root.drawing = false;
+    }
+
+    pure function is-used(c: int) -> bool {
+        return Math.mod(Math.floor(root.used / Math.pow(2, c)), 2) == 1;
+    }
+
+    pure function hit(px: length, py: length) -> int {
+        return px < 0 || py < 0 || px >= root.cell * 3 || py >= root.cell * 3 ? 0
+            : Math.pow((px - (Math.floor(px / root.cell) + 0.5) * root.cell) / 1px, 2) + Math.pow((py - (Math.floor(py / root.cell) + 0.5) * root.cell) / 1px, 2) > Math.pow(root.cell * 0.36 / 1px, 2) ? 0
+            : Math.floor(py / root.cell) * 3 + Math.floor(px / root.cell) + 1;
+    }
+
+    function add(c: int) {
+        if c >= 1 && c <= 9 && !root.is-used(c) {
+            root.trail += (root.pattern == "" ? "M " : " L ") + (Math.mod(c - 1, 3) + 0.5) + " " + (Math.floor((c - 1) / 3) + 0.5);
+            root.pattern += c;
+            root.used += Math.round(Math.pow(2, c));
+        }
+    }
+
+    function submit() {
+        if root.pattern != "" {
+            root.done(root.pattern);
+        }
+        root.clear();
+    }
+
+    Rectangle {
+        border-radius: 16px;
+        background: Theme.surface-variant;
+        border-width: keys.has-focus ? 2px : 1px;
+        border-color: keys.has-focus ? Theme.primary : Theme.outline-variant;
+    }
+    if root.trail != "": Path {
+        x: 0;
+        y: 0;
+        width: root.cell * 3;
+        height: root.cell * 3;
+        viewbox-width: 3;
+        viewbox-height: 3;
+        commands: root.trail + (root.drawing ? " L " + (root.pointer-x / root.cell) + " " + (root.pointer-y / root.cell) : "");
+        stroke: Theme.primary;
+        stroke-width: 4px;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: transparent;
+    }
+    for i in 9: Rectangle {
+        width: root.is-used(i + 1) ? 18px : 12px;
+        height: self.width;
+        x: (Math.mod(i, 3) + 0.5) * root.cell - self.width / 2;
+        y: (Math.floor(i / 3) + 0.5) * root.cell - self.height / 2;
+        border-radius: self.width / 2;
+        background: root.is-used(i + 1) ? Theme.primary : Theme.on-surface-variant.with-alpha(root.enabled ? 0.7 : 0.3);
+    }
+    keys := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                root.escaped();
+                return accept;
+            }
+            if e.text == Key.Return {
+                root.submit();
+                return accept;
+            }
+            if e.text == Key.Backspace {
+                root.clear();
+                return accept;
+            }
+            if !root.drawing && !e.modifiers.control && !e.modifiers.alt && !e.modifiers.meta && e.text.character-count == 1 && e.text.is-float() {
+                root.add(Math.round(e.text.to-float()));
+                return accept;
+            }
+            reject
+        }
+    }
+    TouchArea {
+        enabled: root.enabled;
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.cancel {
+                root.clear();
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.clear();
+                root.drawing = true;
+                root.pointer-x = self.mouse-x;
+                root.pointer-y = self.mouse-y;
+                root.add(root.hit(self.mouse-x, self.mouse-y));
+                keys.focus();
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up && root.drawing {
+                root.drawing = false;
+                root.submit();
+            }
+        }
+        moved => {
+            if root.drawing {
+                root.pointer-x = self.mouse-x;
+                root.pointer-y = self.mouse-y;
+                root.add(root.hit(self.mouse-x, self.mouse-y));
+            }
+        }
+    }
+}

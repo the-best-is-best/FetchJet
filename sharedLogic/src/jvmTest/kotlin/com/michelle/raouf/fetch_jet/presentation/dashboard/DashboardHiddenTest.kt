@@ -1,10 +1,13 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.start
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenFiles
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenCheck
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
 import com.michelle.raouf.fetch_jet.feature.queue_manager.HiddenMoveReport
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
@@ -279,6 +282,26 @@ class DashboardHiddenTest {
         assertEquals(HiddenNotice.MOVE_FAILED, vm.uiState.value.hidden.notice)
         assertFalse(HiddenStore.hasLock())
         assertFalse(vm.uiState.value.hidden.unlocked)
+    }
+
+    @Test
+    fun aPatternIsSetUnlockedAndChangedBackToAPin() {
+        HiddenStore.resetForTest(File(home, "hidden-pattern.json").absolutePath)
+        vm.onEvent(DashboardUiEvent.OnHiddenSetPin("12", HiddenLockType.PATTERN))
+        assertEquals(HiddenError.INVALID_PIN, vm.uiState.value.hidden.error)
+        assertFalse(HiddenStore.hasLock())
+        vm.onEvent(DashboardUiEvent.OnHiddenSetPin("15963", HiddenLockType.PATTERN))
+        assertEquals(HiddenLockType.PATTERN, vm.uiState.value.hidden.lockType)
+        assertTrue(vm.uiState.value.hidden.unlocked)
+        vm.onEvent(DashboardUiEvent.OnHiddenLock)
+        vm.onEvent(DashboardUiEvent.OnHiddenUnlock("36951"))
+        assertEquals(HiddenError.WRONG_PIN, vm.uiState.value.hidden.error)
+        assertEquals(LocalizationManager.Strings.hiddenWrongPattern.replace("{n}", "4"), hiddenWrongPinText(vm.uiState.value.hidden.triesLeft))
+        vm.onEvent(DashboardUiEvent.OnHiddenUnlock("15963"))
+        assertTrue(vm.uiState.value.hidden.unlocked)
+        vm.onEvent(DashboardUiEvent.OnHiddenChangePin("15963", "2468"))
+        assertEquals(HiddenLockType.PIN, vm.uiState.value.hidden.lockType)
+        assertEquals(HiddenCheck.Ok, HiddenStore.verify("2468"))
     }
 
     @Test

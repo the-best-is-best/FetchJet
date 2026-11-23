@@ -11,6 +11,9 @@ import com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -83,7 +86,7 @@ internal fun DashboardViewModel.handlePlaylistGroupEvent(event: DashboardUiEvent
  * a video that joined a playlist by its folder says so.
  */
 internal suspend fun DashboardViewModel.showGroupOf(task: DownloadTask, askedList: String = "") {
-    if (task.id in com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore.state.value.ids) return
+    if (task.hidden || com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore.state.value.hides(task)) return
     val id = task.playlistId
     if (id.isNotEmpty() && PlaylistStore.get(id) != null) {
         _uiState.update { it.copy(openPlaylistId = id, openFolder = null, playlistLanguages = null) }
@@ -98,10 +101,18 @@ internal suspend fun DashboardViewModel.showGroupOf(task: DownloadTask, askedLis
 }
 
 internal fun DashboardViewModel.folderGroupTasks(folder: String): List<DownloadTask> =
-    folderTasks(queueRepository.allTasksFlow.value, _uiState.value.playlists, folder)
+    folderTasks(queueRepository.visibleTasksFlow.value, _uiState.value.playlists, folder)
 
 internal fun DashboardViewModel.groupTasks(playlistId: String): List<DownloadTask> =
-    queueRepository.allTasksFlow.value.filter { it.playlistId == playlistId }
+    queueRepository.visibleTasksFlow.value.filter { it.playlistId == playlistId }
+
+internal fun shownPlaylists(records: Map<String, PlaylistRecord>, tasks: List<DownloadTask>, unlocked: Boolean): Map<String, PlaylistRecord> {
+    if (unlocked) return records
+    val hiddenOnly = tasks.filter { it.hidden && it.playlistId.isNotEmpty() }.mapTo(HashSet()) { it.playlistId }
+    if (hiddenOnly.isEmpty()) return records
+    tasks.forEach { if (!it.hidden) hiddenOnly.remove(it.playlistId) }
+    return if (hiddenOnly.isEmpty()) records else records.filterKeys { it !in hiddenOnly }
+}
 
 /** The saved playlist new videos join: only while "Check" of it is open on its own link. */
 internal fun DashboardViewModel.joiningPlaylist(state: DashboardUiState): PlaylistRecord? {
@@ -126,10 +137,16 @@ private fun DashboardViewModel.adoptLoneVideos(tasks: List<DownloadTask>) {
 internal fun DashboardViewModel.watchPlaylists() {
     PlaylistStore.load()
     scope.launch {
-        PlaylistStore.records.collect { records ->
-            _uiState.update { it.copy(playlists = records) }
-            adoptLoneVideos(queueRepository.allTasksFlow.value)
-        }
+        PlaylistStore.records.collect { adoptLoneVideos(queueRepository.allTasksFlow.value) }
+    }
+    scope.launch {
+        combine(
+            PlaylistStore.records,
+            queueRepository.allTasksFlow,
+            _uiState.map { it.hidden.unlocked }.distinctUntilChanged()
+        ) { records, tasks, unlocked -> shownPlaylists(records, tasks, unlocked) }
+            .distinctUntilChanged()
+            .collect { shown -> _uiState.update { it.copy(playlists = shown) } }
     }
     scope.launch {
         val seen = HashSet<String>()

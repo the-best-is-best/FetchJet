@@ -97,7 +97,7 @@ internal object DebugCalls {
         }.toString()
         "opened" -> buildJsonObject {
             putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
-            putJsonArray("hidden") { for (path in NativeApp.presenter.openedHidden.value) add(kotlinx.serialization.json.JsonPrimitive(path)) }
+            putJsonArray("hidden") { repeat(NativeApp.presenter.openedHidden.value.size) { add(kotlinx.serialization.json.JsonPrimitive("hidden")) } }
             putJsonArray("shared") { for (text in NativeApp.presenter.sharedTexts.value) add(kotlinx.serialization.json.JsonPrimitive(text)) }
             put("secretCopies", NativeApp.presenter.secretCopies.value)
         }.toString()

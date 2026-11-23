@@ -250,7 +250,11 @@ internal fun Presenter.alertText(kind: Int, text: String) {
 }
 
 internal fun Presenter.alertExtra(kind: Int) {
-    if (AlertKind.entries.getOrNull(kind) == AlertKind.EXTENSION_STEPS) browserDialogExtra()
+    when (AlertKind.entries.getOrNull(kind)) {
+        AlertKind.EXTENSION_STEPS -> browserDialogExtra()
+        AlertKind.HIDDEN_PIN -> hiddenSwitchType()
+        else -> Unit
+    }
 }
 
 internal fun Presenter.alertLink(kind: Int) {

@@ -18,7 +18,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 import okio.Path
 import okio.Path.Companion.toPath
 
-enum class HiddenLockType { PIN }
+enum class HiddenLockType { PIN, PATTERN }
 
 data class HiddenState(
     val ids: Set<String> = emptySet(),
@@ -75,6 +75,8 @@ private data class HiddenFile(
 object HiddenStore {
     const val PIN_MIN = 4
     const val PIN_MAX = 6
+    const val PATTERN_MIN = 4
+    const val PATTERN_MAX = 9
     private const val FREE_TRIES = 5
     private const val ROUNDS = 20_000
     const val PIN_RESET_WINDOW_MS = 120_000L
@@ -158,7 +160,7 @@ object HiddenStore {
             ids = data.ids.toSet(),
             playlists = data.playlists.toSet(),
             folders = data.folders.toSet(),
-            lockType = if (data.hash.isNotEmpty() && data.lockType == "pin") HiddenLockType.PIN else null,
+            lockType = if (data.hash.isNotEmpty()) lockTypeOf(data.lockType) else null,
             noticeAccepted = data.noticeAccepted
         )
     }
@@ -195,7 +197,28 @@ object HiddenStore {
         return false
     }
 
-    fun isValidPin(pin: String): Boolean = pin.length in PIN_MIN..PIN_MAX && pin.all { it in '0'..'9' }
+    fun isValidPin(pin: String): Boolean = isValidSecret(HiddenLockType.PIN, pin)
+
+    fun isValidSecret(type: HiddenLockType, secret: String): Boolean = when (type) {
+        HiddenLockType.PIN -> secret.length in PIN_MIN..PIN_MAX && secret.all { it in '0'..'9' }
+        HiddenLockType.PATTERN -> secret.length in PATTERN_MIN..PATTERN_MAX && secret.all { it in '1'..'9' } && secret.toSet().size == secret.length
+    }
+
+    private fun lockTypeOf(text: String): HiddenLockType? = when (text) {
+        "", "pin" -> HiddenLockType.PIN
+        "pattern" -> HiddenLockType.PATTERN
+        else -> null
+    }
+
+    private fun lockTypeText(type: HiddenLockType): String = when (type) {
+        HiddenLockType.PIN -> "pin"
+        HiddenLockType.PATTERN -> "pattern"
+    }
+
+    private fun withSecret(d: HiddenFile, type: HiddenLockType, secret: String): HiddenFile {
+        val salt = Secrets.randomHex(16)
+        return d.copy(lockType = lockTypeText(type), salt = salt, hash = hashOf(salt, secret), fails = 0, lockedUntilMs = 0L)
+    }
 
     private fun hashOf(salt: String, pin: String): String {
         var bytes = (salt + ":" + pin).encodeUtf8()
@@ -208,19 +231,18 @@ object HiddenStore {
         _state.value.hasLock
     }
 
-    fun setPin(pin: String): Boolean = lock.withLock {
+    fun setPin(secret: String, type: HiddenLockType = HiddenLockType.PIN): Boolean = lock.withLock {
         ensureLoaded()
-        if (_state.value.hasLock || !isValidPin(pin)) return@withLock false
-        val salt = Secrets.randomHex(16)
-        commit(data.copy(lockType = "pin", salt = salt, hash = hashOf(salt, pin), fails = 0, lockedUntilMs = 0L))
+        if (_state.value.hasLock || !isValidSecret(type, secret)) return@withLock false
+        commit(withSecret(data, type, secret))
     }
 
-    fun verify(pin: String): HiddenCheck = lock.withLock {
+    fun verify(secret: String): HiddenCheck = lock.withLock {
         ensureLoaded()
-        if (!_state.value.hasLock) return@withLock HiddenCheck.NoLock
+        val type = _state.value.lockType ?: return@withLock HiddenCheck.NoLock
         val t = now()
         if (data.lockedUntilMs > t) return@withLock HiddenCheck.Locked(((data.lockedUntilMs - t + 999) / 1000).toInt())
-        if (isValidPin(pin) && hashOf(data.salt, pin) == data.hash) {
+        if (isValidSecret(type, secret) && hashOf(data.salt, secret) == data.hash) {
             if (data.fails != 0 || data.lockedUntilMs != 0L) {
                 data = data.copy(fails = 0, lockedUntilMs = 0L)
                 save()
@@ -240,16 +262,15 @@ object HiddenStore {
         HiddenCheck.Wrong(FREE_TRIES - fails)
     }
 
-    fun changePin(old: String, new: String): HiddenCheck = lock.withLock {
-        if (!isValidPin(new)) return@withLock HiddenCheck.Invalid
+    fun changePin(old: String, new: String, newType: HiddenLockType = HiddenLockType.PIN): HiddenCheck = lock.withLock {
+        if (!isValidSecret(newType, new)) return@withLock HiddenCheck.Invalid
         val check = verify(old)
         if (check != HiddenCheck.Ok) return@withLock check
-        val salt = Secrets.randomHex(16)
-        if (commit(data.copy(salt = salt, hash = hashOf(salt, new)))) HiddenCheck.Ok else HiddenCheck.SaveFailed
+        if (commit(withSecret(data, newType, new))) HiddenCheck.Ok else HiddenCheck.SaveFailed
     }
 
-    fun removeLock(pin: String): HiddenCheck = lock.withLock {
-        val check = verify(pin)
+    fun removeLock(secret: String): HiddenCheck = lock.withLock {
+        val check = verify(secret)
         if (check != HiddenCheck.Ok) return@withLock check
         if (commit(HiddenFile(enc = data.enc, noticeAccepted = data.noticeAccepted, rk = data.rk, rec = data.rec))) HiddenCheck.Ok else HiddenCheck.SaveFailed
     }
@@ -396,13 +417,12 @@ object HiddenStore {
         resetUntilMs = 0L
     }
 
-    fun resetPin(pin: String): PinReset = lock.withLock {
+    fun resetPin(secret: String, type: HiddenLockType = HiddenLockType.PIN): PinReset = lock.withLock {
         ensureLoaded()
         if (!_state.value.hasLock) return@withLock PinReset.NO_LOCK
         if (!pinResetAllowed()) return@withLock PinReset.EXPIRED
-        if (!isValidPin(pin)) return@withLock PinReset.INVALID
-        val salt = Secrets.randomHex(16)
-        if (!commit(data.copy(salt = salt, hash = hashOf(salt, pin), fails = 0, lockedUntilMs = 0L))) return@withLock PinReset.SAVE_FAILED
+        if (!isValidSecret(type, secret)) return@withLock PinReset.INVALID
+        if (!commit(withSecret(data, type, secret))) return@withLock PinReset.SAVE_FAILED
         resetUntilMs = 0L
         PinReset.OK
     }

@@ -44,6 +44,7 @@ data class AlertDto(
     val round: Boolean = false,
     val inputLabel: String = "",
     val inputSecret: Boolean = false,
+    val inputPattern: Boolean = false,
     val inputRev: Int = 0,
     val inputDisabled: Boolean = false,
     val hintError: Boolean = false,
