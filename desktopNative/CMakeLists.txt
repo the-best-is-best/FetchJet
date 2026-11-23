@@ -61,7 +61,8 @@ elseif (APPLE)
     add_executable(fetchjet_native MACOSX_BUNDLE host/app.cpp host/mac/platform_mac.mm "${FJ_MAC_ICON}" "${FJ_MAC_TRAY_ICON}")
     target_link_libraries(fetchjet_native PRIVATE Slint::Slint ${CMAKE_DL_LIBS}
             "-framework AppKit" "-framework Foundation" "-framework UniformTypeIdentifiers")
-    target_compile_options(fetchjet_native PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+    target_compile_options(fetchjet_native PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc> "-mmacosx-version-min=${FJ_MAC_MIN_OS}")
+    target_link_options(fetchjet_native PRIVATE "-mmacosx-version-min=${FJ_MAC_MIN_OS}")
     set_target_properties(fetchjet_native PROPERTIES BUILD_RPATH "@executable_path" INSTALL_RPATH "@executable_path"
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/generated/Info.plist")
 else ()

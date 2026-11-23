@@ -5,10 +5,16 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkLineCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkTagCode
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagKindOf
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagOf
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -16,7 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private fun qualityText(quality: MediaQualityEntry): String =
-    quality.qualityLabel + if (quality.size > 0L) " · " + formatBytes(quality.size) else ""
+    quality.qualityLabel + if (quality.hasShownSize) " · " + quality.sizeMark + formatBytes(quality.size) else ""
 
 private fun percentDecode(text: String): String {
     if ('%' !in text) return text
@@ -62,7 +68,29 @@ private fun linkTitle(url: String): String {
     }
 }
 
+private fun grabbedRow(index: Int, link: LinkListEntry): LinkRowDto {
+    val tag = grabTagOf(link.fileName ?: link.url, link.folder)
+    val tagCode = when (grabTagKindOf(link.folder)) {
+        GrabTagKind.VIDEO -> LinkTagCode.VIDEO
+        GrabTagKind.AUDIO -> LinkTagCode.AUDIO
+        GrabTagKind.OTHER -> LinkTagCode.FILE
+    }
+    val where = linkHost(link.sourcePage)
+    val base = if (link.sizeBytes >= 0L) formatBytes(link.sizeBytes) + "  ·  " + where else where
+    val detail = if (link.downloadedBefore) LocalizationManager.Strings.playlistDownloadedBefore + "  ·  " + base else base
+    return LinkRowDto(
+        index = index,
+        title = link.fileName?.takeIf { it.isNotBlank() } ?: linkTitle(link.url),
+        host = detail,
+        tag = tag,
+        tagCode = tagCode.ordinal,
+        selected = link.isSelected,
+        rowLocked = link.downloadedBefore,
+    )
+}
+
 private fun linkRow(index: Int, link: LinkListEntry): LinkRowDto {
+    if (link.sourcePage.isNotEmpty()) return grabbedRow(index, link)
     val strings = LocalizationManager.Strings
     val (tag, tagCode) = when (link.engine) {
         EngineType.MEDIA_STREAM ->
@@ -133,8 +161,8 @@ private fun linkRow(index: Int, link: LinkListEntry): LinkRowDto {
 
 internal fun Presenter.startAddLinks() {
     scope.launch {
-        combine(vm.uiState.map { it.linkList }.distinctUntilChanged(), AppLanguage.current) { links, _ ->
-            links.mapIndexed { index, link -> linkRow(index, link) }
+        combine(vm.uiState.map { it.visibleLinks }.distinctUntilChanged(), AppLanguage.current) { links, _ ->
+            links.map { linkRow(it.index, it.value) }
         }.collect { addLinks.publish(it) }
     }
 }

@@ -10,7 +10,7 @@ os.environ["FETCHJET_TORRENT_LOCAL_ONLY"] = "1"
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, ENUMS, sha256_of_file
+from corehost import Core, CheckFailed, ENUMS, SERVER, sha256_of_file
 
 ENGINE = {name: index for index, name in enumerate(ENUMS["EngineCode"])}
 TSTATE = {name: index for index, name in enumerate(ENUMS["TorrentStateCode"])}
@@ -100,7 +100,7 @@ def run():
         core.pump(0.3)
         add = core.snapshot("add")
         engines = [e.get("engine", 0) for e in add.get("engines", [])]
-        core.check("the Add dialog offers the torrent engine", ENGINE["BITTORRENT"] in engines, engines)
+        core.check("the Add dialog never offers the torrent engine as a choice", ENGINE["BITTORRENT"] not in engines, engines)
         core.check("Open .torrent follows the host's file picker (none when headless)",
                    add.get("canOpenTorrent", False) == add.get("canImportTxt", False), (add.get("canOpenTorrent"), add.get("canImportTxt")))
         core.action("ShowAddDialog", show=False)
@@ -115,13 +115,14 @@ def run():
         core.action("ShowAddDialog", show=True)
         core.pump(0.3)
         add = core.snapshot("add")
-        core.check("a .torrent path selects the torrent engine", add.get("engine", -1) == ENGINE["BITTORRENT"], add.get("engine"))
+        core.check("a .torrent path selects the torrent engine, with no engine choice", add.get("engine", -1) == ENGINE["BITTORRENT"] and
+                   add.get("engineHidden", False), (add.get("engine"), add.get("engineHidden")))
         wait_files(core, 30)
         info = core.snapshot("addTorrent") or {}
         rows = core.rows("addTorrentFiles")
         paths = [r.get("path") for r in rows]
         core.check("the file list is read from the .torrent", info.get("state") == TSTATE["FILES"] and info.get("name") == "pack" and
-                   sorted(paths) == ["pack/a.bin", "pack/c.txt", "pack/sub/b.bin"], (info, paths))
+                   sorted(paths) == ["a.bin", "b.bin", "c.txt"] and any("pack/sub" in r.get("size", "") for r in rows), (info, paths))
         c_index = next((r.get("index") for r in rows if r.get("path", "").endswith("c.txt")), -1)
         core.action("ToggleTorrentFile", index=c_index, selected=False)
         core.pump(0.3)
@@ -147,13 +148,14 @@ def run():
         core.action("ShowAddDialog", show=True)
         core.pump(0.3)
         add = core.snapshot("add")
-        core.check("a magnet selects the torrent engine", add.get("engine", -1) == ENGINE["BITTORRENT"], add.get("engine"))
+        core.check("a magnet selects the torrent engine, with no engine choice", add.get("engine", -1) == ENGINE["BITTORRENT"] and
+                   add.get("engineHidden", False) and not add.get("grabShown", False), (add.get("engine"), add.get("engineHidden")))
         started = time.time()
         wait_files(core, 70)
         info = core.snapshot("addTorrent") or {}
         paths = sorted(r.get("path") for r in core.rows("addTorrentFiles"))
         core.check("the magnet's metadata comes from the local seeder", info.get("state") == TSTATE["FILES"] and
-                   paths == ["mag/m1.bin", "mag/m2.bin"], (info, paths))
+                   paths == ["m1.bin", "m2.bin"], (info, paths))
         print("    metadata in %.1f s" % (time.time() - started))
         core.action("StartDownload")
         task = core.wait_task("COMPLETED", timeout=90, url_part=ready_two["hash"])
@@ -161,6 +163,28 @@ def run():
         core.check("the magnet download matches the seeder's bytes", not bad, bad)
         announced = [line for line in two.lines if line.startswith("ANNOUNCE")]
         core.check("the app announced to the magnet's tr= tracker", any(ready_two["hash"] in line for line in announced), announced[:3])
+
+        print("a magnet that never resolves, then a plain link in the same dialog")
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        core.action("SetUrl", text="magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=nobody")
+        core.action("ShowAddDialog", show=True)
+        core.pump(1.0)
+        add = core.snapshot("add")
+        core.check("the dead magnet keeps inspecting", add.get("engine", -1) == ENGINE["BITTORRENT"] and not add.get("primaryEnabled", False), add.get("primaryLabel"))
+        core.action("SetUrl", text=SERVER + "/file/1MB.zip?key=tor-after-magnet")
+        core.pump(1.5)
+        add = core.snapshot("add")
+        core.check("a plain link after the magnet: direct engine, start on, not inspecting",
+                   add.get("engine", 0) == ENGINE["HTTP_DIRECT"] and add.get("primaryEnabled", False) and
+                   add.get("primaryLabel") == strings["addStartDownload"], (add.get("engine"), add.get("primaryLabel"), add.get("fileName")))
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        core.action("ShowAddDialog", show=True)
+        core.pump(0.5)
+        add = core.snapshot("add")
+        core.check("after closing and reopening nothing is stuck", add.get("primaryLabel") != strings["addInspecting"], add.get("primaryLabel"))
+        core.action("ShowAddDialog", show=False)
 
         print("shutdown")
         started = time.time()

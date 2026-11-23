@@ -65,9 +65,6 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.utils.formatSpeed
 import com.tbib.kmp_localization.LocalizationManager
-import fetchjet.androidui.generated.resources.Res
-import fetchjet.androidui.generated.resources.ic_fetchjet_logo
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 internal fun FdmBottomNavigation(
@@ -131,8 +128,8 @@ internal fun FdmBottomNavigation(
                     ) else null,
                     Triple(
                         DashboardTab.SETTINGS,
-                        LocalizationManager.Strings.homeSettings,
-                        "⚙️" to 0
+                        LocalizationManager.Strings.moreTitle,
+                        "⋯" to 0
                     )
                 )
 
@@ -160,6 +157,11 @@ internal fun FdmBottomNavigation(
                                 }) {
                                     Text(icon, fontSize = 18.sp)
                                 }
+                            } else if (tab == DashboardTab.SETTINGS) {
+                                MoreDotsIcon(
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             } else {
                                 Text(icon, fontSize = 18.sp)
                             }
@@ -212,7 +214,7 @@ internal fun FjSidebar(
                 modifier = Modifier.padding(start = 6.dp, bottom = 18.dp)
             ) {
                 Image(
-                    painter = painterResource(Res.drawable.ic_fetchjet_logo),
+                    painter = com.michelle.raouf.fetch_jet.theme.appLogoPainter(),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp))
                 )
@@ -263,7 +265,7 @@ internal fun FjSidebar(
             }
             Spacer(modifier = Modifier.weight(1f))
             FjSidebarItem(
-                LocalizationManager.Strings.homeSettings,
+                LocalizationManager.Strings.moreTitle,
                 null,
                 settingsSelected,
                 onSettings
@@ -712,7 +714,7 @@ internal fun FjRail(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Image(
-                painter = painterResource(Res.drawable.ic_fetchjet_logo),
+                painter = com.michelle.raouf.fetch_jet.theme.appLogoPainter(),
                 contentDescription = null,
                 modifier = Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
             )
@@ -732,10 +734,10 @@ internal fun FjRail(
             }
             Spacer(modifier = Modifier.weight(1f))
             FjRailItem(
-                LocalizationManager.Strings.homeSettings,
+                LocalizationManager.Strings.moreTitle,
                 null,
                 settingsSelected,
-                glyph = "⚙",
+                glyph = "⋯",
                 onClick = onSettings
             )
         }
@@ -785,5 +787,18 @@ internal fun FjRailItem(
             color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+internal fun MoreDotsIcon(color: Color) {
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 22.dp, height = 22.dp)) {
+        val radius = 2.2.dp.toPx()
+        val gap = 6.dp.toPx()
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        for (i in -1..1) {
+            drawCircle(color, radius, androidx.compose.ui.geometry.Offset(cx + i * gap, cy))
+        }
     }
 }

@@ -34,7 +34,7 @@ struct AudioCompressRowButton: View {
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
         } label: {
             Image(systemName: "arrow.down.right.and.arrow.up.left")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.fj(15, .semibold))
                 .foregroundStyle(FJTheme.color.primary)
                 .frame(width: 44, height: 44)
                 .background(FJTheme.color.primary.opacity(0.10), in: Circle())
@@ -160,7 +160,7 @@ struct AudioCompressSheet: View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(s.audioCompressTitle)
-                    .font(.title2.weight(.bold))
+                    .font(.fj(22, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(store.host.decodeUnicodeText(input: page.fileName))
                     .font(FJTheme.font.callout)
@@ -173,7 +173,7 @@ struct AudioCompressSheet: View {
                 store.send(DashboardUiEventOnDismissAudioCompress.shared)
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
@@ -194,7 +194,7 @@ struct AudioCompressSheet: View {
                     .lineLimit(1)
                     .accessibilityLabel(s.audioCompressOriginalSize + " " + store.host.formatBytes(bytes: page.originalBytes))
                 Image(systemName: "arrow.forward")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.fj(13, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .accessibilityHidden(true)
                 if page.reading {
@@ -205,7 +205,7 @@ struct AudioCompressSheet: View {
                         .minimumScaleFactor(0.7)
                 } else {
                     Text(page.estimatedBytes > 0 ? store.host.formatBytes(bytes: page.estimatedBytes) : "—")
-                        .font(.system(size: 28, weight: .bold).monospacedDigit())
+                        .font(.fj(28, .bold).monospacedDigit())
                         .foregroundStyle(FJTheme.color.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -214,7 +214,7 @@ struct AudioCompressSheet: View {
                 Spacer(minLength: 4)
                 if hasEstimate {
                     Text("−\(savingPercent)%")
-                        .font(FJTheme.font.callout.weight(.semibold).monospacedDigit())
+                        .font(Font.fj(14, .semibold).monospacedDigit())
                         .foregroundStyle(FJTheme.color.statusCompleted)
                         .lineLimit(1)
                         .padding(.horizontal, 10)
@@ -249,7 +249,7 @@ struct AudioCompressSheet: View {
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 Spacer(minLength: 4)
                 Text(levelText)
-                    .font(FJTheme.font.callout.weight(.semibold).monospacedDigit())
+                    .font(Font.fj(14, .semibold).monospacedDigit())
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
             }
@@ -312,13 +312,13 @@ struct AudioCompressSheet: View {
                     .minimumScaleFactor(0.7)
                 HStack(spacing: 4) {
                     Text(current)
-                        .font(FJTheme.font.body.weight(.semibold))
+                        .font(Font.fj(15, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Spacer(minLength: 2)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.fj(11, .semibold))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .accessibilityHidden(true)
                 }
@@ -352,7 +352,7 @@ struct AudioCompressSheet: View {
     private func copiesSection(_ s: AppLocalization) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(s.audioCompressCopies)
-                .font(FJTheme.font.callout.weight(.semibold))
+                .font(Font.fj(14, .semibold))
                 .foregroundStyle(FJTheme.color.onSurface)
             ForEach(page.copies, id: \.path) { copy in
                 HStack(spacing: 8) {
@@ -371,7 +371,7 @@ struct AudioCompressSheet: View {
                         store.send(DashboardUiEventOnAudioCompressDeleteCopy(path: copy.path))
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.fj(16, .medium))
                             .foregroundStyle(FJTheme.color.error)
                             .frame(minWidth: 44, minHeight: 44)
                             .contentShape(Rectangle())

@@ -110,6 +110,7 @@ def run(only=None):
         core.action("ShowAddDialog", show=True)
         core.wait_for("playlist", lambda: (core.snapshot("addMedia") or {}).get("state", 0) == MEDIA["PLAYLIST"], 60)
         core.action("SetPlaylistQuality", quality=5)
+        core.wait_for("playlist sizes", lambda: all(r.get("size") for r in core.rows("addPlaylist")), 60)
         take("media-playlist-dark", width=1100, height=820)
         take("media-playlist-dark-2", width=1100, height=820, extra=["--scroll", "550,400,0,-700"])
         core.action("ShowAddDialog", show=False)

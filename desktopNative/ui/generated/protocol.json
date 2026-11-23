@@ -209,6 +209,20 @@
    "name": "rowMenu",
    "kind": "LIST",
    "dto": "RowMenuItemDto"
+  },
+  {
+   "const": "SUBTITLES_PAGE",
+   "id": 30,
+   "name": "subtitlesPage",
+   "kind": "STRUCT",
+   "dto": "SubtitlesPageDto"
+  },
+  {
+   "const": "MORE_ROWS",
+   "id": 31,
+   "name": "moreRows",
+   "kind": "LIST",
+   "dto": "SettingRowDto"
   }
  ],
  "enums": {
@@ -356,7 +370,8 @@
   ],
   "RowKind": [
    "TASK",
-   "HEADER"
+   "HEADER",
+   "GROUP"
   ],
   "RowActionCode": [
    "PAUSE",
@@ -451,6 +466,20 @@
    [
     "value",
     "Int"
+   ],
+   [
+    "label",
+    "String"
+   ],
+   [
+    "selected",
+    "Boolean"
+   ]
+  ],
+  "GrabGroupDto": [
+   [
+    "folder",
+    "String"
    ],
    [
     "label",
@@ -625,7 +654,15 @@
     "String"
    ],
    [
+    "linkBefore",
+    "String"
+   ],
+   [
     "linkAllSelected",
+    "Boolean"
+   ],
+   [
+    "linkPickable",
     "Boolean"
    ],
    [
@@ -635,6 +672,46 @@
    [
     "linkFolderRev",
     "Int"
+   ],
+   [
+    "grabShown",
+    "Boolean"
+   ],
+   [
+    "grabDepthHidden",
+    "Boolean"
+   ],
+   [
+    "engineHidden",
+    "Boolean"
+   ],
+   [
+    "checkingLink",
+    "Boolean"
+   ],
+   [
+    "grabRunning",
+    "Boolean"
+   ],
+   [
+    "grabReading",
+    "String"
+   ],
+   [
+    "grabDepths",
+    "List<ChoiceDto>"
+   ],
+   [
+    "grabNote",
+    "String"
+   ],
+   [
+    "grabGroups",
+    "List<GrabGroupDto>"
+   ],
+   [
+    "linkGrabbed",
+    "Boolean"
    ],
    [
     "leechShown",
@@ -747,6 +824,10 @@
    [
     "filesAllSelected",
     "Boolean"
+   ],
+   [
+    "rowLocked",
+    "Boolean"
    ]
   ],
   "QualityRowDto": [
@@ -808,6 +889,26 @@
    ],
    [
     "selected",
+    "Boolean"
+   ],
+   [
+    "size",
+    "String"
+   ],
+   [
+    "sizeBusy",
+    "Boolean"
+   ],
+   [
+    "before",
+    "Boolean"
+   ],
+   [
+    "unavailable",
+    "Boolean"
+   ],
+   [
+    "inPlaylist",
     "Boolean"
    ]
   ],
@@ -901,11 +1002,23 @@
     "Boolean"
    ],
    [
+    "subtitlesNote",
+    "String"
+   ],
+   [
+    "subtitlesReading",
+    "Boolean"
+   ],
+   [
     "subtitlesAnySelected",
     "Boolean"
    ],
    [
     "embedSubtitles",
+    "Boolean"
+   ],
+   [
+    "subtitleVtt",
     "Boolean"
    ],
    [
@@ -993,6 +1106,14 @@
     "String"
    ],
    [
+    "playlistBefore",
+    "String"
+   ],
+   [
+    "playlistPickable",
+    "Boolean"
+   ],
+   [
     "playlistAllSelected",
     "Boolean"
    ],
@@ -1014,6 +1135,14 @@
    ],
    [
     "playlistCanUseSingle",
+    "Boolean"
+   ],
+   [
+    "playlistOldestFirst",
+    "Boolean"
+   ],
+   [
+    "playlistOldestFirstOffered",
     "Boolean"
    ]
   ],
@@ -1665,6 +1794,10 @@
     "Boolean"
    ],
    [
+    "canSubtitles",
+    "Boolean"
+   ],
+   [
     "compressLabel",
     "String"
    ],
@@ -2099,6 +2232,58 @@
    [
     "focusDone",
     "Int"
+   ],
+   [
+    "playlistOpen",
+    "Boolean"
+   ],
+   [
+    "playlistSummary",
+    "String"
+   ],
+   [
+    "playlistSubtitles",
+    "String"
+   ],
+   [
+    "playlistCanPause",
+    "Boolean"
+   ],
+   [
+    "playlistCanResume",
+    "Boolean"
+   ],
+   [
+    "playlistCanCheck",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesShown",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesBusy",
+    "Boolean"
+   ],
+   [
+    "playlistLanguagesNote",
+    "String"
+   ],
+   [
+    "playlistLanguageChoices",
+    "List<TextChoiceDto>"
+   ],
+   [
+    "groupIsFolder",
+    "Boolean"
+   ],
+   [
+    "groupIsPage",
+    "Boolean"
+   ],
+   [
+    "groupFolderPath",
+    "String"
    ]
   ],
   "StatusDto": [
@@ -2313,6 +2498,10 @@
    [
     "blurb",
     "String"
+   ],
+   [
+    "inSettings",
+    "Boolean"
    ]
   ],
   "SettingFieldDto": [
@@ -2653,6 +2842,86 @@
     "Boolean"
    ]
   ],
+  "SubtitlePageRowDto": [
+   [
+    "key",
+    "String"
+   ],
+   [
+    "name",
+    "String"
+   ],
+   [
+    "checked",
+    "Boolean"
+   ],
+   [
+    "present",
+    "Boolean"
+   ],
+   [
+    "enabled",
+    "Boolean"
+   ]
+  ],
+  "SubtitlesPageDto": [
+   [
+    "open",
+    "Boolean"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "reading",
+    "Boolean"
+   ],
+   [
+    "message",
+    "String"
+   ],
+   [
+    "messageError",
+    "Boolean"
+   ],
+   [
+    "note",
+    "String"
+   ],
+   [
+    "rows",
+    "List<SubtitlePageRowDto>"
+   ],
+   [
+    "running",
+    "Boolean"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "progressText",
+    "String"
+   ],
+   [
+    "added",
+    "String"
+   ],
+   [
+    "refused",
+    "String"
+   ],
+   [
+    "failed",
+    "String"
+   ],
+   [
+    "canAdd",
+    "Boolean"
+   ]
+  ],
   "TorrentTrackerDto": [
    [
     "name",
@@ -2925,6 +3194,25 @@
    ]
   ],
   "RowMenuClose": [],
+  "OpenPlaylist": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "ClosePlaylist": [],
+  "PlaylistPauseAll": [],
+  "PlaylistResumeAll": [],
+  "PlaylistRemove": [],
+  "PlaylistCheck": [],
+  "PlaylistReadLanguages": [],
+  "PlaylistAddLanguage": [
+   [
+    "code",
+    "String"
+   ]
+  ],
+  "PlaylistLanguagesClose": [],
   "CyclePriority": [
    [
     "id",
@@ -3082,6 +3370,19 @@
    ]
   ],
   "AudioCompressDismiss": [],
+  "DetailsSubtitles": [],
+  "SubtitlesToggle": [
+   [
+    "key",
+    "String"
+   ],
+   [
+    "selected",
+    "Boolean"
+   ]
+  ],
+  "SubtitlesAdd": [],
+  "SubtitlesDismiss": [],
   "ToggleDetailFile": [
    [
     "index",
@@ -3160,6 +3461,7 @@
     "Int"
    ]
   ],
+  "OpenMore": [],
   "SettingToggle": [
    [
     "id",
@@ -3215,6 +3517,24 @@
    ]
   ],
   "SelectAllLinks": [
+   [
+    "selected",
+    "Boolean"
+   ]
+  ],
+  "GrabPage": [],
+  "GrabCancel": [],
+  "SetGrabDepth": [
+   [
+    "depth",
+    "Int"
+   ]
+  ],
+  "ToggleGrabGroup": [
+   [
+    "folder",
+    "String"
+   ],
    [
     "selected",
     "Boolean"
@@ -3439,6 +3759,12 @@
     "Boolean"
    ]
   ],
+  "SetSubtitleFormat": [
+   [
+    "format",
+    "String"
+   ]
+  ],
   "SetClipEnabled": [
    [
     "on",
@@ -3529,6 +3855,13 @@
     "Int"
    ]
   ],
+  "GroupOpenFolderOnDisk": [],
+  "SetPlaylistOldestFirst": [
+   [
+    "on",
+    "Boolean"
+   ]
+  ],
   "UseSingleVideo": [],
   "ChoicePrimary": [
    [
@@ -3575,6 +3908,16 @@
   "languageHint",
   "systemLanguage",
   "homeSettings",
+  "moreTitle",
+  "moreSettingsHint",
+  "moreEverywhereTitle",
+  "moreShare",
+  "moreCommunityTitle",
+  "moreFacebook",
+  "moreIssues",
+  "moreSource",
+  "morePrivacy",
+  "moreStats",
   "homeDownloads",
   "homeTabAll",
   "homeTabActive",
@@ -3740,6 +4083,7 @@
   "engineTorrent",
   "addFileNameLabel",
   "findingName",
+  "addCheckingLink",
   "saveDestination",
   "quickFolderDownloads",
   "quickFolderDocuments",
@@ -3761,6 +4105,18 @@
   "subtitlesAuto",
   "subtitlesEmbedInVideo",
   "subtitlesSeparateFile",
+  "subtitlesAddButton",
+  "subtitlesReading",
+  "subtitlesNone",
+  "subtitlesReadFailed",
+  "subtitlesAlreadyThere",
+  "subtitlesGoInside",
+  "subtitlesGoBeside",
+  "subtitlesAddSelected",
+  "subtitlesAddingProgress",
+  "subtitlesAddedList",
+  "subtitlesRefusedList",
+  "subtitlesFailedList",
   "addSelectAll",
   "addClearSelection",
   "inspectingVideoQualities",
@@ -3943,6 +4299,33 @@
   "sectionGeneralBlurb",
   "sectionDownloads",
   "sectionDownloadsBlurb",
+  "sectionFiles",
+  "sectionFilesBlurb",
+  "grabFindFiles",
+  "grabDepth1",
+  "grabDepth2",
+  "grabDepth3",
+  "grabDepthShort1",
+  "grabDepthShort2",
+  "grabDepthShort3",
+  "grabHow",
+  "grabReading",
+  "grabFound",
+  "grabNothing",
+  "grabRefused",
+  "grabScript",
+  "grabLimit",
+  "grabStop",
+  "grabStopped",
+  "grabCheckNew",
+  "grabDownloadedCount",
+  "grabGroupVideo",
+  "grabGroupMusic",
+  "grabGroupArchives",
+  "grabGroupDocuments",
+  "grabGroupPrograms",
+  "grabGroupImages",
+  "grabGroupOther",
   "sectionBrowser",
   "sectionBrowserBlurb",
   "sectionSpeed",
@@ -3993,6 +4376,11 @@
   "sortIntoFolders",
   "sortIntoFoldersOn",
   "sortIntoFoldersOff",
+  "groupByFolder",
+  "groupByFolderOn",
+  "groupByFolderOff",
+  "folderGroupFiles",
+  "folderDeleteAll",
   "speedLimitsFooter",
   "speedLimitsFooterIos",
   "speedLimitDownload",
@@ -4126,6 +4514,7 @@
   "sysFailedToParseTorrentMetadata",
   "sysEnterMediaUrlFirst",
   "sysUnableToFetchFormats",
+  "sysDrmProtected",
   "sysFailedToInspectMediaQualities",
   "sysMediaToolsDownloaded",
   "sysMediaToolsDownloadFailed",
@@ -4136,6 +4525,37 @@
   "sysCouldNotStart",
   "sysUnknownErrorCapital",
   "sysPlaylistFallbackTitle",
+  "sysPlaylistDoneTitle",
+  "sysPlaylistDoneCount",
+  "sysPlaylistDoneFailed",
+  "playlistOldestFirst",
+  "playlistDownloadedBefore",
+  "subtitlesReadingCount",
+  "subtitlesNoneInList",
+  "playlistVideoJoined",
+  "detailsPlaylist",
+  "popUpAskText",
+  "popUpAskAllow",
+  "popUpAskLater",
+  "driveNoDownloadError",
+  "siteBusyRetryLater",
+  "videoPlaysEverywhere",
+  "videoPlaysEverywhereOn",
+  "videoPlaysEverywhereOff",
+  "sysReadingChannelName",
+  "sysReadingVideosCount",
+  "playlistGroupDone",
+  "playlistCheckNew",
+  "playlistBack",
+  "playlistDeleteAll",
+  "playlistSubtitlesFor",
+  "playlistNoSubtitles",
+  "playlistAddLanguage",
+  "playlistLanguageAdding",
+  "playlistLanguageAdded",
+  "playlistReadingLanguages",
+  "playlistInIt",
+  "playlistNotAvailable",
   "sysPlaylistQualityBest",
   "sysPlaylistQualityAudioOnly",
   "sysToolsReadyYtDlpFfmpeg",

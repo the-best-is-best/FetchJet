@@ -125,7 +125,7 @@ struct SettingsLoginsCard: View {
                         NetworkSettings.shared.removeLogin(site: login.site)
                         live.refresh()
                     }
-                    .font(FJTheme.font.callout.weight(.semibold))
+                    .font(Font.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.error)
                     .buttonStyle(.plain)
                 }

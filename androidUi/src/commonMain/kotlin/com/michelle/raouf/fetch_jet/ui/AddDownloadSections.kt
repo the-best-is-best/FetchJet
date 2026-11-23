@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,6 +110,18 @@ internal fun UrlInputSection(
 ) {
     var urlTextFieldValue by urlField
     val coroutineScope = rememberCoroutineScope()
+    val urlFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    var clearTick by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(clearTick) {
+        if (clearTick > 0) {
+            try {
+                urlFocus.requestFocus()
+            } catch (_: Exception) {
+            }
+            keyboard?.show()
+        }
+    }
     // URL Input Field
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -184,6 +197,7 @@ internal fun UrlInputSection(
                 FieldIconButton("✕", onClick = {
                     urlTextFieldValue = TextFieldValue("", TextRange.Zero)
                     onUrlChanged("")
+                    clearTick++
                 })
             } else {
                 FieldChipButton("📋 ${LocalizationManager.Strings.addPaste}", onClick = {
@@ -199,6 +213,8 @@ internal fun UrlInputSection(
         },
         singleLine = false,
         maxLines = 3,
+        ltr = true,
+        focusRequester = urlFocus,
         modifier = Modifier.fillMaxWidth()
     )
     if (testLinkShown) {
@@ -250,8 +266,10 @@ internal fun UrlInputSection(
 }
 
 @Composable
-internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (EngineType) -> Unit) {
-    // Engine Selector
+internal fun EngineSelector(
+    detectedEngine: EngineType,
+    onEngineSelected: (EngineType) -> Unit
+) {
     Text(
         text = LocalizationManager.Strings.addDownloadEngine,
         fontSize = 12.sp,
@@ -269,22 +287,12 @@ internal fun EngineSelector(detectedEngine: EngineType, onEngineSelected: (Engin
             onClick = { onEngineSelected(EngineType.HTTP_DIRECT) },
             modifier = Modifier.weight(1f)
         )
-        if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor) {
-            EngineChoiceChip(
-                label = "🎬 ${LocalizationManager.Strings.engineMedia}",
-                isSelected = detectedEngine == EngineType.MEDIA_STREAM,
-                onClick = { onEngineSelected(EngineType.MEDIA_STREAM) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        if (com.michelle.raouf.fetch_jet.core.edition.AppFeatures.torrent) {
-            EngineChoiceChip(
-                label = "🧲 ${LocalizationManager.Strings.engineTorrent}",
-                isSelected = detectedEngine == EngineType.BITTORRENT,
-                onClick = { onEngineSelected(EngineType.BITTORRENT) },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        EngineChoiceChip(
+            label = "🎬 ${LocalizationManager.Strings.engineMedia}",
+            isSelected = detectedEngine == EngineType.MEDIA_STREAM,
+            onClick = { onEngineSelected(EngineType.MEDIA_STREAM) },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -388,6 +396,7 @@ internal fun DestinationSection(
             }
         },
         modifier = Modifier.fillMaxWidth(),
+        ltr = true,
         leading = { Text("📁", fontSize = 16.sp) },
         trailing = { FieldIconButton("📂", onClick = { showDirectoryPicker = true }) }
     )
@@ -467,13 +476,16 @@ internal fun AddDialogActions(
     inspectedPlaylist: com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist?,
     scheduleStartMs: Long,
     linkCount: Int = 0,
+    needsName: Boolean = false,
     onInspectTorrent: () -> Unit,
     onInspectMedia: () -> Unit,
     onAddDownload: () -> Unit,
     onDismiss: () -> Unit
 ) {
     // Inline Error Notice
-    val activeError = errorMessage ?: inspectError ?: inspectMediaError
+    val activeError = errorMessage
+        ?: inspectError.takeIf { detectedEngine != EngineType.BITTORRENT || linkCount > 0 }
+        ?: inspectMediaError.takeIf { detectedEngine != EngineType.MEDIA_STREAM || linkCount > 0 }
     if (activeError != null) {
         InlineErrorMessage(
             msg = activeError,
@@ -550,6 +562,7 @@ internal fun AddDialogActions(
                         linkCount
                     ) else LocalizationManager.Strings.downloadLinks(linkCount)
 
+                    needsName && detectedEngine == EngineType.MEDIA_STREAM -> LocalizationManager.Strings.fileNameNeeded
                     !isInspectionComplete && detectedEngine == EngineType.MEDIA_STREAM -> LocalizationManager.Strings.inspectVideoFirst
                     !isInspectionComplete && detectedEngine == EngineType.BITTORRENT -> LocalizationManager.Strings.inspectTorrentFirst
                     !isClipRangeValid -> LocalizationManager.Strings.invalidTimeRange

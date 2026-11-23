@@ -16,12 +16,17 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.AddDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AddModeCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.EngineChoiceDto
+import com.michelle.raouf.fetch_jet.nativeapp.dto.GrabGroupDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.QuickFolderDto
 import com.michelle.raouf.fetch_jet.platform.desktop.HostHooks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.canTestLink
+import com.michelle.raouf.fetch_jet.presentation.dashboard.linkCountLines
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
 import com.tbib.kmp_localization.LocalizationManager
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.Dispatchers
@@ -112,7 +117,9 @@ private data class AddSlice(
     val canTestLink: Boolean,
     val testLink: com.michelle.raouf.fetch_jet.presentation.dashboard.TestLinkUi?,
     val linkSelected: Int,
+    val linkDownloaded: Int,
     val linkCount: Int,
+    val linkShown: Int,
     val linkBusy: Boolean,
     val linkNeedsRetry: Boolean,
     val linkFolder: String,
@@ -120,6 +127,16 @@ private data class AddSlice(
     val selectedConnections: Int,
     val defaultConnections: Int,
     val clipValid: Boolean,
+    val canGrab: Boolean,
+    val engineShown: Boolean,
+    val checkingLink: Boolean,
+    val grabDepthShown: Boolean,
+    val grabDepth: Int,
+    val grabRunning: Boolean,
+    val grabPages: Int,
+    val grabNote: String,
+    val grabGroups: List<GrabGroup>,
+    val grabbed: Boolean,
 )
 
 private fun DashboardUiState.addSlice() = AddSlice(
@@ -148,8 +165,10 @@ private fun DashboardUiState.addSlice() = AddSlice(
     checksumInput = checksumInput,
     canTestLink = canTestLink(),
     testLink = testLink,
-    linkSelected = linkList.count { it.isSelected },
+    linkSelected = visibleLinks.count { it.value.isSelected },
+    linkDownloaded = visibleLinks.count { it.value.downloadedBefore },
     linkCount = linkList.size,
+    linkShown = visibleLinks.size,
     linkBusy = linkList.any { it.isSelected && it.isBeingInspected },
     linkNeedsRetry = linkList.any { it.isSelected && it.needsRetry },
     linkFolder = linkListFolder,
@@ -157,6 +176,16 @@ private fun DashboardUiState.addSlice() = AddSlice(
     selectedConnections = selectedConnections,
     defaultConnections = defaultConnections,
     clipValid = clipCheck(isClipRangeEnabled, clipStartTime, clipEndTime, mediaDurationSeconds).valid,
+    canGrab = canGrabPage,
+    engineShown = engineChoiceShown,
+    checkingLink = checkingLink,
+    grabDepthShown = grabDepthShown,
+    grabDepth = siteGrab.depth,
+    grabRunning = siteGrab.running,
+    grabPages = siteGrab.pagesRead,
+    grabNote = siteGrab.note,
+    grabGroups = grabGroups,
+    grabbed = linkList.any { it.sourcePage.isNotEmpty() },
 )
 
 private val AddSlice.showsLinkList: Boolean get() = linkCount > 0
@@ -164,12 +193,12 @@ private val AddSlice.showsLinkList: Boolean get() = linkCount > 0
 private val AddSlice.isInspectionComplete: Boolean
     get() = if (showsLinkList) linkSelected > 0 && !linkBusy && !linkNeedsRetry else when (detectedEngine) {
         EngineType.BITTORRENT -> torrentFilesReady && torrentFileSelected && inspectError == null
-        EngineType.MEDIA_STREAM -> inspectMediaError == null && (playlistCount > 0 || (qualitiesReady && qualitySelected))
+        EngineType.MEDIA_STREAM -> inspectMediaError == null && !needsFileName && (playlistCount > 0 || (qualitiesReady && qualitySelected))
         EngineType.HTTP_DIRECT -> !needsFileName
     }
 
 private val AddSlice.needsFileName: Boolean
-    get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || hasPlaylist)
+    get() = !(canGrab || grabRunning) && addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || hasPlaylist)
 
 private val AddSlice.isInspecting: Boolean get() = isInspectingTorrent || isInspectingMedia || (showsLinkList && linkBusy)
 
@@ -241,11 +270,8 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         if (AppFeatures.mediaExtractor) {
             add(EngineChoiceDto(EngineType.MEDIA_STREAM.ordinal, "🎬", strings.engineMedia, s.detectedEngine == EngineType.MEDIA_STREAM))
         }
-        if (AppFeatures.torrent) {
-            add(EngineChoiceDto(EngineType.BITTORRENT.ordinal, "🧲", strings.engineTorrent, s.detectedEngine == EngineType.BITTORRENT))
-        }
     }
-    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
+    val fileNameShown = !s.showsLinkList && !s.hasPlaylist && !s.canGrab && !s.grabRunning && (s.suggestedFileName.isNotBlank() || s.fileNameOverride.isNotBlank() || s.needsFileName)
     val fileName = if (inspecting && s.fileNameOverride.isEmpty()) strings.findingName else s.fileNameOverride.ifEmpty { s.suggestedFileName }
     val downloads = pathResolver.getDownloadsDirectory()
     val documents = pathResolver.getDocumentsDirectory()
@@ -258,6 +284,7 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
         s.showsLinkList && s.linkSelected > 0 ->
             if (s.scheduleStartMs > 0L) strings.scheduleLinks(s.linkSelected) else strings.downloadLinks(s.linkSelected)
 
+        s.needsFileName && s.detectedEngine == EngineType.MEDIA_STREAM -> strings.fileNameNeeded
         !complete && s.detectedEngine == EngineType.MEDIA_STREAM -> strings.inspectVideoFirst
         !complete && s.detectedEngine == EngineType.BITTORRENT -> strings.inspectTorrentFirst
         !s.clipValid -> strings.invalidTimeRange
@@ -327,10 +354,22 @@ private fun Presenter.buildAdd(s: AddSlice, ui: AddLocal): AddDto {
             QuickFolderDto("📄", strings.quickFolderDocuments, documents),
             QuickFolderDto("💻", strings.quickFolderDesktop, desktop),
         ),
-        linkSummary = if (s.showsLinkList) strings.selectedOfLinks(s.linkSelected, s.linkCount) else "",
-        linkAllSelected = s.showsLinkList && s.linkSelected == s.linkCount,
+        linkSummary = if (s.showsLinkList) linkCountLines(s.linkSelected, s.linkShown, s.linkDownloaded).count else "",
+        linkBefore = if (s.showsLinkList) linkCountLines(s.linkSelected, s.linkShown, s.linkDownloaded).before else "",
+        linkPickable = s.showsLinkList && s.linkShown > s.linkDownloaded,
+        linkAllSelected = s.showsLinkList && s.linkShown > s.linkDownloaded && s.linkSelected == s.linkShown - s.linkDownloaded,
         linkFolder = s.linkFolder,
         linkFolderRev = addFields.linkFolder.rev(s.linkFolder),
+        grabShown = s.canGrab,
+        grabDepthHidden = !s.grabDepthShown,
+        engineHidden = !s.engineShown,
+        checkingLink = s.checkingLink,
+        grabRunning = s.canGrab && s.grabRunning,
+        grabReading = strings.grabReading.replace("%1", s.grabPages.toString()),
+        grabDepths = (1..3).map { ChoiceDto(it, grabDepthName(it), s.grabDepth == it) },
+        grabNote = s.grabNote,
+        grabGroups = s.grabGroups.map { GrabGroupDto(it.folder, grabGroupName(it.folder) + "  " + it.count, it.selected) },
+        linkGrabbed = s.grabbed,
         leechShown = s.detectedEngine == EngineType.BITTORRENT,
         leech = s.disableTorrentUpload,
         error = s.errorMessage ?: s.inspectError ?: s.inspectMediaError ?: "",

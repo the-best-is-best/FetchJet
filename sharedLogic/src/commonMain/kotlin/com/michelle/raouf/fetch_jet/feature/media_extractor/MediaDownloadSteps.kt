@@ -285,33 +285,56 @@ internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
     return downloadedRealFile
 }
 
-/**
- * After the video is on disk: fetches each selected subtitle track, converts it to SRT with
- * ffmpeg when needed, then either muxes the tracks into the video (embed) or writes them next
- * to it as `name.<lang>.srt`. Best-effort: any failure leaves the video untouched.
- */
-private val iso639_1to2 = mapOf(
-    "en" to "eng", "de" to "ger", "ar" to "ara", "fr" to "fre", "es" to "spa",
-    "pt" to "por", "it" to "ita", "ru" to "rus", "tr" to "tur", "id" to "ind",
-    "zh" to "chi", "ja" to "jpn", "ko" to "kor", "hi" to "hin", "fa" to "per",
-    "nl" to "dut", "pl" to "pol", "sv" to "swe", "no" to "nor", "da" to "dan",
-    "fi" to "fin", "cs" to "cze", "el" to "gre", "he" to "heb", "th" to "tha",
-    "vi" to "vie", "uk" to "ukr", "ro" to "rum", "hu" to "hun", "bg" to "bul",
-    "hr" to "hrv", "sr" to "srp", "sk" to "slo", "ms" to "may", "bn" to "ben",
-    "ta" to "tam", "te" to "tel", "ur" to "urd", "fil" to "fil", "ca" to "cat"
-)
-
-/** yt-dlp gives 2-letter codes; mov_text in MP4 needs ISO 639-2 (3-letter), else no language. */
-private fun iso639_2(langCode: String): String {
-    val base = langCode.substringBefore('-').lowercase()
-    return iso639_1to2[base] ?: base.take(3).ifBlank { "und" }
+internal suspend fun MediaStreamDownloader.fetchSubtitleAnswer(
+    track: SubtitleTrack,
+    requestHeaders: Map<String, String>
+): SubtitleAnswer {
+    val response = client.get(track.url) {
+        header(HttpHeaders.UserAgent, desktopUserAgent)
+        requestHeaders.forEach { (k, v) ->
+            if (k.isNotBlank() && v.isNotBlank()) header(k, v)
+        }
+    }
+    return when {
+        response.status.value == 429 -> SubtitleAnswer.TooManyRequests
+        response.status.isSuccess() -> SubtitleAnswer.Text(response.bodyAsText())
+        else -> SubtitleAnswer.Failed
+    }
 }
 
+internal suspend fun MediaStreamDownloader.fetchSubtitlesInto(
+    tracks: List<SubtitleTrack>,
+    tempDir: Path,
+    requestHeaders: Map<String, String>,
+    format: String = "srt",
+    onTrackDone: (Int) -> Unit = {}
+): SubtitleFetchResult {
+    try {
+        AppFileSystem.createDirectories(tempDir)
+    } catch (_: Exception) {
+    }
+    return fetchSubtitleFiles(
+        tracks = tracks,
+        tempDir = tempDir,
+        fetch = { fetchSubtitleAnswer(it, requestHeaders) },
+        convert = { from, to -> runLocalFfmpeg(listOf("-y", "-i", from.toString(), to.toString())) },
+        format = format,
+        onTrackDone = onTrackDone
+    )
+}
+
+/**
+ * After the video is on disk: fetches the selected subtitle tracks one at a time, then muxes them
+ * into the video (embed) or writes them next to it as `name.<lang>.srt`. Best-effort: any failure
+ * leaves the video untouched. The task keeps only the tracks that reached the file.
+ */
 internal suspend fun MediaStreamDownloader.processSubtitles(
     taskId: String,
     initialTask: DownloadTask
 ) {
-    val tracks = initialTask.subtitleTracks.filter { it.isSelected }
+    val tracks = initialTask.subtitleTracks.filter { it.isSelected }.ifEmpty {
+        tracksForWantedLanguages(taskId, initialTask)
+    }
     if (tracks.isEmpty()) return
     val task = tasksState.value[taskId] ?: return
     val destDir = task.destinationPath
@@ -319,107 +342,79 @@ internal suspend fun MediaStreamDownloader.processSubtitles(
     if (videoName.isBlank()) return
     val videoPath = "$destDir/$videoName".toPath()
     if (!AppFileSystem.exists(videoPath)) return
-    val baseName = videoName.substringBeforeLast('.', videoName)
-    val videoExt = videoName.substringAfterLast('.', "mp4").lowercase()
 
     reportPostProcess(taskId, "Subtitles", -1f)
-
-    val tempDir = "$destDir/.fjsubs_$taskId"
+    val tempDir = subtitleTempDir(destDir, taskId)
     try {
-        AppFileSystem.createDirectories(tempDir.toPath())
+        val result = fetchSubtitlesInto(tracks, tempDir, initialTask.requestHeaders, if (initialTask.embedSubtitles) "srt" else initialTask.subtitleFormat)
+        if (result.files.isNotEmpty()) {
+            val embedded = initialTask.embedSubtitles && embedSubtitleFiles(videoPath, result.files, tempDir)
+            val reached = if (embedded) result.files.map { it.first } else placeSubtitleFilesBeside(videoPath, result.files)
+            val kept = reached.map { it.langCode to it.isAuto }.toSet()
+            updateTaskState(taskId) { t ->
+                t.copy(
+                    embedSubtitles = embedded,
+                    subtitleTracks = t.subtitleTracks.filter { (it.langCode to it.isAuto) in kept }
+                )
+            }
+        } else {
+            updateTaskState(taskId) { it.copy(subtitleTracks = emptyList()) }
+        }
+    } catch (e: CancellationException) {
+        deleteRecursively(tempDir)
+        throw e
     } catch (_: Exception) {
     }
-
-    val srtFiles = mutableListOf<Pair<SubtitleTrack, Path>>()
-    for (track in tracks) {
-        try {
-            val raw = client.get(track.url) {
-                header(HttpHeaders.UserAgent, desktopUserAgent)
-                initialTask.requestHeaders.forEach { (k, v) ->
-                    if (k.isNotBlank() && v.isNotBlank()) header(k, v)
-                }
-            }.let { if (it.status.isSuccess()) it.bodyAsText() else null } ?: continue
-            if (raw.isBlank()) continue
-            val rawExt = track.ext.ifBlank { "vtt" }.lowercase()
-            val rawPath = "$tempDir/${track.langCode}.$rawExt".toPath()
-            AppFileSystem.write(rawPath) { writeUtf8(raw) }
-            if (rawExt == "srt") {
-                srtFiles.add(track to rawPath)
-            } else {
-                val srtPath = "$tempDir/${track.langCode}.srt".toPath()
-                val ok = runLocalFfmpeg(listOf("-y", "-i", rawPath.toString(), srtPath.toString()))
-                srtFiles.add(track to if (ok && AppFileSystem.exists(srtPath)) srtPath else rawPath)
-            }
-        } catch (e: CancellationException) {
-            deleteRecursively(tempDir.toPath())
-            throw e
-        } catch (_: Exception) {
-        }
-    }
-
-    if (srtFiles.isEmpty()) {
-        deleteRecursively(tempDir.toPath())
-        reportPostProcess(taskId, "Subtitles", POST_PROCESS_CLEAR)
-        return
-    }
-
-    var embedded = false
-    if (initialTask.embedSubtitles && videoExt in listOf("mp4", "mkv", "webm", "mov", "m4v")) {
-        val subCodec = when (videoExt) {
-            "webm" -> "webvtt"
-            "mkv" -> "srt"
-            else -> "mov_text"
-        }
-        val muxedPath = "$tempDir/muxed.$videoExt".toPath()
-        val args = mutableListOf("-y", "-i", videoPath.toString())
-        srtFiles.forEach { (_, p) -> args.add("-i"); args.add(p.toString()) }
-        args.add("-map"); args.add("0")
-        srtFiles.indices.forEach { i -> args.add("-map"); args.add("${i + 1}") }
-        args.add("-c"); args.add("copy")
-        args.add("-c:s"); args.add(subCodec)
-        srtFiles.forEachIndexed { i, (track, _) ->
-            args.add("-metadata:s:s:$i")
-            args.add("language=${iso639_2(track.langCode)}")
-            args.add("-metadata:s:s:$i")
-            args.add("title=${track.langName}")
-        }
-        args.add(muxedPath.toString())
-        val ok = try {
-            runLocalFfmpeg(args)
-        } catch (_: Exception) {
-            false
-        }
-        val muxedSize = if (ok && AppFileSystem.exists(muxedPath)) {
-            try {
-                AppFileSystem.metadata(muxedPath).size ?: 0L
-            } catch (_: Exception) {
-                0L
-            }
-        } else 0L
-        if (muxedSize > 1024L) {
-            try {
-                AppFileSystem.delete(videoPath)
-                AppFileSystem.copy(muxedPath, videoPath)
-                embedded = true
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    if (!embedded) {
-        for ((track, p) in srtFiles) {
-            try {
-                val outName = "$baseName.${track.langCode}${if (track.isAuto) ".auto" else ""}.srt"
-                val outPath = "$destDir/$outName".toPath()
-                if (AppFileSystem.exists(outPath)) AppFileSystem.delete(outPath)
-                AppFileSystem.copy(p, outPath)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    deleteRecursively(tempDir.toPath())
+    deleteRecursively(tempDir)
     reportPostProcess(taskId, "Subtitles", POST_PROCESS_CLEAR)
+}
+
+/**
+ * A playlist video queued before its tracks were read: reads them now and keeps the wanted
+ * languages it has. A video without them gets none, without an error.
+ */
+private suspend fun MediaStreamDownloader.tracksForWantedLanguages(taskId: String, task: DownloadTask): List<SubtitleTrack> {
+    val wanted = subtitleLanguageList(task.subtitleLanguages)
+    if (wanted.isEmpty()) return emptyList()
+    val page = task.originalUrl?.takeIf { it.isNotBlank() } ?: task.url
+    val tracks = try {
+        inspectMediaQualities(page, task.requestHeaders)
+        subtitlesFoundFor(page).forLanguages(wanted)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        emptyList()
+    }
+    updateTaskState(taskId) { it.copy(subtitleTracks = tracks, subtitleLanguages = "") }
+    return tracks
+}
+
+class SubtitleAddResult(
+    val added: List<SubtitleTrack>,
+    val refused: List<SubtitleTrack>,
+    val failed: List<SubtitleTrack>,
+    val embedded: Boolean,
+)
+
+/** Adds subtitle tracks to a finished video: into the file when the task embeds them, else next to it. */
+suspend fun MediaStreamDownloader.addSubtitlesToFinished(
+    task: DownloadTask,
+    tracks: List<SubtitleTrack>,
+    onTrackDone: (Int) -> Unit = {}
+): SubtitleAddResult {
+    val videoPath = "${task.destinationPath.trimEnd('/', '\\')}/${task.fileName}".toPath()
+    if (tracks.isEmpty() || !AppFileSystem.exists(videoPath)) return SubtitleAddResult(emptyList(), emptyList(), tracks, false)
+    val tempDir = subtitleTempDir(task.destinationPath, "${task.id}_add")
+    try {
+        val result = fetchSubtitlesInto(tracks, tempDir, task.requestHeaders, if (task.embedSubtitles) "srt" else task.subtitleFormat, onTrackDone)
+        if (result.files.isEmpty()) return SubtitleAddResult(emptyList(), result.refused, result.failed, task.embedSubtitles)
+        val embedded = task.embedSubtitles && embedSubtitleFiles(videoPath, result.files, tempDir)
+        val added = if (embedded) result.files.map { it.first } else placeSubtitleFilesBeside(videoPath, result.files)
+        val notPlaced = result.files.map { it.first }.filter { it !in added }
+        return SubtitleAddResult(added, result.refused, result.failed + notPlaced, embedded)
+    } finally {
+        deleteRecursively(tempDir)
+    }
 }
 
 internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(

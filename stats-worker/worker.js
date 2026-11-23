@@ -27,8 +27,13 @@ section{background:var(--card);border:1px solid var(--line);border-radius:14px;p
 h2{font-size:16px;margin:0 0 4px}
 .hint{color:var(--muted);font-size:12px;margin:0 0 14px}
 .chart{display:flex;align-items:flex-end;gap:2px;height:140px;direction:ltr}
-.chart div{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;opacity:.9}
-.chart div.zero{background:var(--bar);opacity:1}
+.chart .col{flex:1;height:100%;display:flex;flex-direction:column-reverse}
+.chart .col div{width:100%;min-height:2px}
+.chart .col .rt{background:var(--accent2)}
+.chart .col .nw{background:var(--accent);border-radius:3px 3px 0 0}
+.chart .col .zero{background:var(--bar);height:2px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:0 0 10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;vertical-align:middle}
 .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px;direction:ltr}
 .row{display:grid;grid-template-columns:minmax(110px,170px) 1fr 74px;gap:10px;align-items:center;padding:6px 0}
 .row .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -77,7 +82,7 @@ var s = el("section");
 s.appendChild(el("h2", "", title));
 s.appendChild(el("p", "hint", hint));
 if (!list.length) { s.appendChild(el("div", "empty", "لسه مفيش بيانات")); return s; }
-var max = list[0].users || 1;
+var max = Math.max.apply(null, list.map(function (x) { return x.users; })) || 1;
 list.forEach(function (it) {
 var r = el("div", "row");
 r.appendChild(el("div", "n", label(it.key)));
@@ -95,20 +100,42 @@ function chart(perDay) {
 var s = el("section");
 s.appendChild(el("h2", "", "المستخدمين كل يوم"));
 s.appendChild(el("p", "hint", "كل عمود = عدد الأجهزة اللي فتحت التطبيق في اليوم ده"));
+var lg = el("div", "legend");
+[["nw", "var(--accent)", "جدد"], ["rt", "var(--accent2)", "راجعين"]].forEach(function (x) {
+var item = el("span");
+var sw = el("i");
+sw.style.background = x[1];
+item.appendChild(sw);
+item.appendChild(document.createTextNode(x[2]));
+lg.appendChild(item);
+});
+s.appendChild(lg);
 var map = {};
-perDay.forEach(function (d) { map[d.day] = d.users; });
+perDay.forEach(function (d) { map[d.day] = d; });
 var list = [];
 for (var i = days - 1; i >= 0; i--) {
 var d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-list.push({day: d, users: map[d] || 0});
+var m = map[d] || {users: 0, new: 0, returning: 0};
+list.push({day: d, users: m.users || 0, nw: m.new || 0, rt: m.returning || 0});
 }
 var max = Math.max.apply(null, list.map(function (x) { return x.users; })) || 1;
 var box = el("div", "chart");
 list.forEach(function (x) {
-var b = el("div", x.users ? "" : "zero");
-b.style.height = x.users ? Math.max(4, Math.round(x.users / max * 100)) + "%" : "2px";
-b.title = x.day + ": " + x.users;
-box.appendChild(b);
+var col = el("div", "col");
+if (!x.users) {
+col.appendChild(el("div", "zero"));
+} else {
+var rt = el("div", "rt");
+rt.style.height = Math.round(x.rt / max * 100) + "%";
+if (!x.rt) rt.style.display = "none";
+var nw = el("div", "nw");
+nw.style.height = Math.round(x.nw / max * 100) + "%";
+if (!x.nw) nw.style.display = "none";
+col.appendChild(rt);
+col.appendChild(nw);
+}
+col.title = x.day + ": " + x.users + " (جدد " + x.nw + " / راجعين " + x.rt + ")";
+box.appendChild(col);
 });
 s.appendChild(box);
 var ax = el("div", "axis");
@@ -116,6 +143,25 @@ ax.appendChild(el("span", "", list[0].day));
 ax.appendChild(el("span", "", "أعلى يوم: " + max));
 ax.appendChild(el("span", "", list[list.length - 1].day));
 s.appendChild(ax);
+return s;
+}
+function pct(v) { return v === null || v === undefined ? "—" : fmt(v) + "%"; }
+function cohorts(list) {
+var s = el("section");
+s.appendChild(el("h2", "", "الاحتفاظ بعد يوم لكل يوم تسجيل"));
+s.appendChild(el("p", "hint", "الأجهزة اللي بدأت في اليوم ده، كام منهم رجع تاني تاني يوم. الأيام اللي أقل من 5 أجهزة مخفية."));
+if (!list.length) { s.appendChild(el("div", "empty", "لسه مفيش بيانات")); return s; }
+list.forEach(function (c) {
+var r = el("div", "row");
+r.appendChild(el("div", "n", c.day + " · " + c.size));
+var t = el("div", "t");
+var i = el("i");
+i.style.width = c.d1 === null ? "0%" : Math.max(3, Math.round(c.d1 / c.size * 100)) + "%";
+t.appendChild(i);
+r.appendChild(t);
+r.appendChild(el("div", "c", c.d1 === null ? "—" : c.d1 + " (" + Math.round(c.d1 / c.size * 100) + "%)"));
+s.appendChild(r);
+});
 return s;
 }
 function render(d) {
@@ -143,13 +189,21 @@ cards.appendChild(card("عدد الدول", fmt(countryCount)));
 cards.appendChild(top ? card("أكتر دولة", countryName(top.key), top.users + " مستخدم") : card("أكتر دولة", "—", "الدول الصغيرة مخفية"));
 cards.appendChild(card("أكتر منصة", NAMES[plat.key] || plat.key, plat.users + " مستخدم"));
 app.appendChild(cards);
+var ret = d.retention || {};
+var stick = d.stickiness;
+var more = el("div", "cards");
+more.appendChild(card("الاحتفاظ بعد يوم", ret.d1 ? pct(ret.d1.rate) : "—", ret.d1 ? ret.d1.returned + " من " + ret.d1.size + " جهاز جديد" : "لسه مفيش بيانات كفاية"));
+more.appendChild(card("الاحتفاظ بعد 7 أيام", ret.d7 ? pct(ret.d7.rate) : "—", ret.d7 ? ret.d7.returned + " من " + ret.d7.size + " جهاز جديد" : "محتاج 7 أيام من البيانات"));
+more.appendChild(card("النشاط اليومي ÷ الأسبوعي", stick && stick.rate !== null ? pct(stick.rate) : "—", stick ? stick.dau + " من " + stick.wau + " في آخر 7 أيام (آخر يوم كامل " + stick.day + ")" : ""));
+app.appendChild(more);
 app.appendChild(chart(d.perDay));
+if (d.cohorts) app.appendChild(cohorts(d.cohorts));
 app.appendChild(bars("الدول", "حسب عدد الأجهزة النشطة", d.byCountry, d.users, countryName));
 var two = el("div", "two");
 two.appendChild(bars("المنصات", "ويندوز وماك وأندرويد وغيرهم", d.byPlatform, d.users, function (k) { return NAMES[k] || k; }));
-two.appendChild(bars("الإصدارات", "مين لسه على إصدار قديم", d.byVersion, d.users, function (k) { return "الإصدار " + k; }));
+two.appendChild(bars("انتشار الإصدار", "آخر إصدار فتحه كل جهاز في آخر 7 أيام، الأحدث فوق", d.versionAdoption || d.byVersion, d.users7 || d.users, function (k) { return "الإصدار " + k; }));
 app.appendChild(two);
-var noteText = "الجهاز بيتحسب مرة واحدة في اليوم مهما فتح التطبيق. مفيش أسماء ولا عناوين IP بتتخزن.";
+var noteText = "الجهاز بيتحسب مرة واحدة في اليوم مهما فتح التطبيق. مفيش أسماء ولا عناوين IP بتتخزن. اليوم الحالي ناقص فمش بيتحسب في الاحتفاظ والنشاط.";
 if (d.hiddenCountries) noteText += " الدول اللي أقل من 5 مستخدمين مخفية (" + d.hiddenCountries + ").";
 app.appendChild(el("p", "note", noteText));
 }
@@ -205,8 +259,36 @@ async function ping(request, env) {
   return json({ ok: true });
 }
 
-async function aggregate(env, days) {
-  const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+const DAY_MS = 86400000;
+const FIRST_SEEN = "SELECT install_id, MIN(day) AS first FROM pings GROUP BY install_id";
+
+function dayString(back) {
+  return new Date(Date.now() - back * DAY_MS).toISOString().slice(0, 10);
+}
+
+function versionParts(v) {
+  return String(v).split(/[^0-9]+/).filter(Boolean).map(Number);
+}
+
+function newestFirst(a, b) {
+  const x = versionParts(a.key);
+  const y = versionParts(b.key);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (y[i] || 0) - (x[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
+function pooled(list, field) {
+  const size = list.reduce((n, c) => n + c.size, 0);
+  if (!size) return null;
+  const returned = list.reduce((n, c) => n + c[field], 0);
+  return { rate: Math.round((returned / size) * 1000) / 10, returned, size, cohorts: list.length };
+}
+
+async function aggregate(env, days, publicView) {
+  const since = dayString(days - 1);
   const group = async (column) =>
     (
       await env.DB.prepare(
@@ -220,13 +302,64 @@ async function aggregate(env, days) {
   )
     .bind(since)
     .first();
-  const perDay = (
+  const perDayRows = (
     await env.DB.prepare(
-      "SELECT day, COUNT(*) AS users FROM pings WHERE day >= ? GROUP BY day ORDER BY day"
+      `SELECT p.day AS day, COUNT(*) AS users, SUM(CASE WHEN f.first = p.day THEN 1 ELSE 0 END) AS new FROM pings p JOIN (${FIRST_SEEN}) f ON f.install_id = p.install_id WHERE p.day >= ? GROUP BY p.day ORDER BY p.day`
     )
       .bind(since)
       .all()
   ).results;
+  const perDay = perDayRows.map((r) => ({ day: r.day, users: r.users, new: r.new, returning: r.users - r.new }));
+
+  const cohortSince = dayString(Math.max(days, 30) - 1);
+  const yesterday = dayString(1);
+  const weekAgo = dayString(7);
+  const cohortRows = (
+    await env.DB.prepare(
+      `SELECT f.first AS day, COUNT(*) AS size,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+1 day')) THEN 1 ELSE 0 END) AS d1,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS d7
+       FROM (${FIRST_SEEN}) f WHERE f.first >= ? GROUP BY f.first ORDER BY f.first`
+    )
+      .bind(cohortSince)
+      .all()
+  ).results;
+  const cohortList = cohortRows.map((c) => ({
+    day: c.day,
+    size: c.size,
+    d1: c.day <= yesterday ? c.d1 : null,
+    d7: c.day <= weekAgo ? c.d7 : null,
+  }));
+  const retention = {
+    d1: pooled(cohortList.filter((c) => c.d1 !== null), "d1"),
+    d7: pooled(cohortList.filter((c) => c.d7 !== null), "d7"),
+  };
+  let shownCohorts = cohortList;
+  if (publicView) shownCohorts = shownCohorts.filter((c) => c.size >= MIN_COUNTRY);
+  shownCohorts = shownCohorts.slice(-10);
+
+  const active = await env.DB.prepare(
+    "SELECT COUNT(DISTINCT CASE WHEN day = ? THEN install_id END) AS dau, COUNT(DISTINCT install_id) AS wau FROM pings WHERE day >= ? AND day <= ?"
+  )
+    .bind(yesterday, dayString(7), yesterday)
+    .first();
+  const stickiness = {
+    day: yesterday,
+    dau: active.dau,
+    wau: active.wau,
+    rate: active.wau ? Math.round((active.dau / active.wau) * 1000) / 10 : null,
+  };
+
+  const recent = dayString(6);
+  const versionAdoption = (
+    await env.DB.prepare(
+      "SELECT p.version AS key, COUNT(*) AS users FROM pings p JOIN (SELECT install_id, MAX(day) AS last FROM pings WHERE day >= ? GROUP BY install_id) m ON m.install_id = p.install_id AND m.last = p.day GROUP BY p.version"
+    )
+      .bind(recent)
+      .all()
+  ).results.sort(newestFirst);
+  const users7 = versionAdoption.reduce((n, v) => n + v.users, 0);
+
   return {
     days,
     users: total.users,
@@ -234,6 +367,11 @@ async function aggregate(env, days) {
     byPlatform: await group("platform"),
     byVersion: await group("version"),
     perDay,
+    retention,
+    cohorts: shownCohorts,
+    stickiness,
+    versionAdoption,
+    users7,
   };
 }
 
@@ -242,11 +380,11 @@ async function stats(request, env) {
   if (!env.STATS_TOKEN || url.searchParams.get("token") !== env.STATS_TOKEN) {
     return json({ error: "unauthorized" }, 401);
   }
-  return json(await aggregate(env, parseDays(url)));
+  return json(await aggregate(env, parseDays(url), false));
 }
 
 async function publicStats(request, env) {
-  const data = await aggregate(env, parseDays(new URL(request.url)));
+  const data = await aggregate(env, parseDays(new URL(request.url)), true);
   data.countryCount = data.byCountry.filter((c) => c.key !== "XX").length;
   const shown = data.byCountry.filter((c) => c.users >= MIN_COUNTRY);
   data.hiddenCountries = data.byCountry.length - shown.length;

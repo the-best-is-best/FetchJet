@@ -5,6 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 val FetchJetDarkColorScheme: ColorScheme = darkColorScheme(
     primary = NeonCyan,
@@ -72,8 +74,11 @@ fun FetchJetTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (isDarkMode) FetchJetDarkColorScheme else FetchJetLightColorScheme
+    val language by com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.current.collectAsState()
+    val family = appFontFamily(com.michelle.raouf.fetch_jet.core.i18n.start.AppFont.familyFor(language))
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = androidx.compose.material3.Typography().withFamily(family),
         content = content
     )
 }

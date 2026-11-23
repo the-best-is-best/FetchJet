@@ -94,7 +94,7 @@ actual suspend fun downloadMediaWithPlatformTool(
             if (isAudio) {
                 command.add("$formatId/bestaudio/best")
             } else {
-                command.add("$formatId+bestaudio/$formatId/best")
+                command.add(videoWithAudioSelector(formatId))
                 command.add("--merge-output-format")
                 command.add("mp4")
             }

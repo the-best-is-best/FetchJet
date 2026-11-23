@@ -44,6 +44,29 @@ object BehaviorSettings {
         _sortIntoFolders.value = on; write("sortIntoFolders", on.toString())
     }
 
+    private val _groupByFolder =
+        MutableStateFlow(read("groupByFolder")?.toBooleanStrictOrNull() ?: false)
+
+    /** The downloads list shows each destination folder as one row (playlists stay their own rows). */
+    val groupByFolder: StateFlow<Boolean> = _groupByFolder.asStateFlow()
+
+    fun setGroupByFolder(on: Boolean) {
+        _groupByFolder.value = on; write("groupByFolder", on.toString())
+    }
+
+    private val _videoPlaysEverywhere =
+        MutableStateFlow(read("videoPlaysEverywhere")?.toBooleanStrictOrNull() ?: false)
+
+    /**
+     * Videos in H.264 + AAC, which every player opens. Off (default): the smaller AV1 / VP9 +
+     * Opus of the same quality; either way the other one is used when the first is missing.
+     */
+    val videoPlaysEverywhere: StateFlow<Boolean> = _videoPlaysEverywhere.asStateFlow()
+
+    fun setVideoPlaysEverywhere(on: Boolean) {
+        _videoPlaysEverywhere.value = on; write("videoPlaysEverywhere", on.toString())
+    }
+
     private val _extractArchives =
         MutableStateFlow(read("extractArchives")?.toBooleanStrictOrNull() ?: false)
 
@@ -417,7 +440,7 @@ object ClipboardLinks {
         if (videoPages) {
             val host = path.substringBefore('/').lowercase().removePrefix("www.").removePrefix("m.")
             // a video page, not the site's front page
-            if (videoHosts.any { host == it || host.endsWith(".$it") } && path.substringAfter('/').length > 3) return t
+            if ((videoHosts.any { host == it || host.endsWith(".$it") } || com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.knows(host)) && path.substringAfter('/').length > 3) return t
         }
         return null
     }

@@ -23,9 +23,10 @@ def run():
         core.check("dialog opens", add.get("visible"))
         core.check("no link: the button asks for one and is off", add.get("primaryLabel") == strings["addEnterUrl"] and
                    not add.get("primaryEnabled", False), add.get("primaryLabel"))
-        core.check("engines: direct and media, no torrent yet",
+        core.check("engines: direct and media, never torrent",
                    [e.get("engine", 0) for e in add.get("engines", [])] == [ENGINE["HTTP_DIRECT"], ENGINE["MEDIA_STREAM"]],
                    add.get("engines"))
+        core.check("no link: no engine choice", add.get("engineHidden", False), add.get("engineHidden"))
         core.check("start now is the default", add.get("scheduleNow") and not add.get("scheduleAtTime", False))
         core.check("three quick folders", len(add.get("quickFolders", [])) == 3)
         core.check("destination is the downloads folder",
@@ -40,6 +41,8 @@ def run():
         core.check("typed text is not echoed back", add.get("urlRev", 0) == first_rev and add.get("url") == url, add.get("urlRev"))
         core.check("direct engine, connections and checksum shown", add.get("engine", 0) == ENGINE["HTTP_DIRECT"] and
                    add.get("connectionsShown") and add.get("checksumShown"))
+        core.check("a file link: no engine choice, no page card", add.get("engineHidden", False) and not add.get("grabShown", False),
+                   (add.get("engineHidden"), add.get("grabShown")))
         core.check("file name suggested", add.get("fileNameShown") and add.get("fileName") == "6MB.bin", add.get("fileName"))
         core.check("button says start and is on", add.get("primaryLabel") == strings["addStartDownload"] and add.get("primaryEnabled"),
                    add.get("primaryLabel"))
@@ -50,6 +53,19 @@ def run():
         add = core.snapshot("add")
         core.check("only the link stays and the field is told to take it", add.get("url") == url and add.get("urlRev", 0) > first_rev,
                    (add.get("url"), add.get("urlRev")))
+
+        print("closing the dialog empties it")
+        core.action("ShowAddDialog", show=False)
+        core.pump(0.3)
+        core.action("ShowAddDialog", show=True)
+        core.pump(0.3)
+        add = core.snapshot("add")
+        core.check("reopened: the link is gone", add.get("url", "") == "", add.get("url"))
+        core.check("reopened: no file name and the button asks for a link", not add.get("fileNameShown", False) and not add.get("primaryEnabled", False),
+                   (add.get("fileNameShown"), add.get("primaryEnabled")))
+        core.action("SetUrl", text=url)
+        core.pump(0.3)
+        add = core.snapshot("add")
 
         print("file name")
         name_rev = add.get("fileNameRev", 0)

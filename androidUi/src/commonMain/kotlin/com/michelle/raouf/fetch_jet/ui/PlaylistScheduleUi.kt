@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.michelle.raouf.fetch_jet.utils.formatBytes
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,6 +47,9 @@ import com.michelle.raouf.fetch_jet.core.util.formatLocalSchedule
 import com.michelle.raouf.fetch_jet.core.util.localTimeOnDayEpochMs
 import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
+import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
+import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.tbib.kmp_localization.LocalizationManager
 
@@ -57,10 +62,13 @@ fun PlaylistSelectionCard(
     onSelectAll: (Boolean) -> Unit,
     onQualityChanged: (PlaylistQuality) -> Unit,
     onFolderChanged: (String) -> Unit,
-    onUseSingleVideo: (() -> Unit)?
+    onUseSingleVideo: (() -> Unit)?,
+    oldestFirst: Boolean = false,
+    onOldestFirst: (Boolean) -> Unit = {},
+    oldestFirstOffered: Boolean = false
 ) {
-    val selectedCount = playlist.entries.count { it.isSelected }
-    val allSelected = selectedCount == playlist.entries.size
+    val counts = playlistCountLines(playlist)
+    val allSelected = playlist.allTicked
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -84,15 +92,21 @@ fun PlaylistSelectionCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = LocalizationManager.Strings.playlistSummary(
-                            playlist.entries.size,
-                            selectedCount
-                        ),
+                        text = counts.count,
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (counts.before.isNotEmpty()) Text(
+                        text = counts.before,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                TextButton(onClick = { onSelectAll(!allSelected) }) {
+                if (playlist.anySelectable) TextButton(onClick = { onSelectAll(!allSelected) }) {
                     Text(
                         if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                         fontSize = 12.sp
@@ -141,6 +155,15 @@ fun PlaylistSelectionCard(
                 )
             }
 
+            if (oldestFirstOffered) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { onOldestFirst(!oldestFirst) },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = oldestFirst, onCheckedChange = onOldestFirst)
+                    Text(LocalizationManager.Strings.playlistOldestFirst, fontSize = 12.sp)
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
@@ -148,30 +171,66 @@ fun PlaylistSelectionCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 LazyColumn(modifier = Modifier.heightIn(max = 260.dp)) {
-                    items(playlist.entries, key = { it.index }) { entry ->
+                    itemsIndexed(playlist.entries, key = { _, it -> it.index }) { position, entry ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onEntryToggled(entry.index, !entry.isSelected) }
+                                .clickable(enabled = !entry.locked) { onEntryToggled(entry.index, !entry.isSelected) }
                                 .padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = entry.isSelected,
+                                checked = entry.isSelected && !entry.locked,
+                                enabled = !entry.locked,
                                 onCheckedChange = { onEntryToggled(entry.index, it) })
                             if (!playlist.fromBrowser) Text(
-                                text = "${entry.index + 1}.",
+                                text = "${position + 1}.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(30.dp)
                             )
-                            Text(
-                                text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f).padding(vertical = 2.dp)) {
+                                Text(
+                                    text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (entry.locked) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistInIt,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else if (entry.unavailable) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistNotAvailable,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else if (entry.downloadedBefore) {
+                                    Text(
+                                        text = LocalizationManager.Strings.playlistDownloadedBefore,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            if (!playlist.fromBrowser && !entry.unavailable && (entry.size > 0L || entry.size == -1L)) {
+                                Text(
+                                    text = if (entry.size > 0L) formatBytes(entry.size) else "…",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            }
                             if (entry.durationSeconds > 0L) {
                                 Text(
                                     text = clock(entry.durationSeconds),
@@ -376,7 +435,7 @@ fun ScheduleStartSection(scheduleStartMs: Long, onScheduleChanged: (Long) -> Uni
 }
 
 @Composable
-private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     Surface(
         shape = RoundedCornerShape(16.dp),

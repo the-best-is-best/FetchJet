@@ -63,7 +63,7 @@ struct SettingsGroupBox<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             if let title, !title.isEmpty {
                 Text(title.uppercased())
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .padding(.horizontal, 4)
             }
@@ -96,7 +96,7 @@ struct SettingsRow<Trailing: View>: View {
     var body: some View {
         let row = HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(FJTheme.font.body.weight(.medium)).foregroundStyle(FJTheme.color.onSurface)
+                Text(title).font(Font.fj(15, .medium)).foregroundStyle(FJTheme.color.onSurface)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle).font(FJTheme.font.caption).foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
@@ -152,7 +152,7 @@ struct SettingsSegments<T: Hashable>: View {
                     let on = o == selected
                     Button { onSelect(o) } label: {
                         Text(label(o))
-                            .font(.system(size: 13, weight: on ? .bold : .medium))
+                            .font(.fj(13, on ? .bold : .medium))
                             .foregroundStyle(on ? FJTheme.color.onPrimaryContainer : FJTheme.color.onSurfaceVariant)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
@@ -174,7 +174,7 @@ struct SettingsStatusLabel: View {
     var body: some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 7, height: 7)
-            Text(text).font(FJTheme.font.caption.weight(.semibold)).foregroundStyle(color)
+            Text(text).font(Font.fj(12, .semibold)).foregroundStyle(color)
         }
     }
 }
@@ -187,7 +187,7 @@ struct SettingsButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let tint = danger ? FJTheme.color.error : FJTheme.color.primary
         configuration.label
-            .font(FJTheme.font.callout.weight(.semibold))
+            .font(Font.fj(14, .semibold))
             .foregroundStyle(filled ? FJTheme.color.onPrimary : tint)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -207,7 +207,7 @@ struct SettingsField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let label, !label.isEmpty {
-                Text(label).font(FJTheme.font.small.weight(.semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
+                Text(label).font(Font.fj(11, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
             Group {
                 if secure {
@@ -274,7 +274,7 @@ struct SettingsUnitPicker: View {
                 let on = u == selected
                 Button { onSelect(u) } label: {
                     Text(u)
-                        .font(.system(size: 12, weight: on ? .bold : .medium))
+                        .font(.fj(12, on ? .bold : .medium))
                         .foregroundStyle(on ? FJTheme.color.onPrimaryContainer : FJTheme.color.onSurfaceVariant)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 8)
@@ -305,7 +305,7 @@ struct SettingsSpeedPresetRow: View {
                 if !name.isEmpty { Text(name).font(FJTheme.font.headline) }
                 Spacer()
                 Text(SettingsSpeed.shortLabel(bytes))
-                    .font(FJTheme.font.caption.weight(.bold))
+                    .font(Font.fj(12, .bold))
                     .foregroundStyle(FJTheme.color.primary)
             }
             ViewThatFits(in: .horizontal) {
@@ -323,7 +323,7 @@ struct SettingsSpeedPresetRow: View {
 
     private var field: some View {
         HStack(spacing: 6) {
-            Text("⚡").font(.system(size: 14))
+            Text("⚡").font(.fj(14))
             TextField(placeholder, text: Binding(get: { text }, set: { v in
                 let clean = v.filter { $0.isNumber || $0 == "." }
                 text = clean
@@ -351,8 +351,8 @@ struct SettingsChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                if selected { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)) }
-                Text(label).font(.system(size: 13, weight: .medium))
+                if selected { Image(systemName: "checkmark").font(.fj(11, .bold)) }
+                Text(label).font(.fj(13, .medium))
             }
             .foregroundStyle(selected ? FJTheme.color.onSecondaryContainer : FJTheme.color.onSurfaceVariant)
             .padding(.horizontal, 12)

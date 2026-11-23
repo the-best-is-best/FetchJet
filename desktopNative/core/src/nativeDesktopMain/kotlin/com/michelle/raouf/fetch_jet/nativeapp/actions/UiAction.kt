@@ -79,6 +79,42 @@ sealed interface UiAction {
     data object RowMenuClose : UiAction
 
     @Serializable
+    @SerialName("OpenPlaylist")
+    data class OpenPlaylist(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("ClosePlaylist")
+    data object ClosePlaylist : UiAction
+
+    @Serializable
+    @SerialName("PlaylistPauseAll")
+    data object PlaylistPauseAll : UiAction
+
+    @Serializable
+    @SerialName("PlaylistResumeAll")
+    data object PlaylistResumeAll : UiAction
+
+    @Serializable
+    @SerialName("PlaylistRemove")
+    data object PlaylistRemove : UiAction
+
+    @Serializable
+    @SerialName("PlaylistCheck")
+    data object PlaylistCheck : UiAction
+
+    @Serializable
+    @SerialName("PlaylistReadLanguages")
+    data object PlaylistReadLanguages : UiAction
+
+    @Serializable
+    @SerialName("PlaylistAddLanguage")
+    data class PlaylistAddLanguage(val code: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlaylistLanguagesClose")
+    data object PlaylistLanguagesClose : UiAction
+
+    @Serializable
     @SerialName("CyclePriority")
     data class CyclePriority(val id: String = "") : UiAction
 
@@ -219,6 +255,22 @@ sealed interface UiAction {
     data object AudioCompressDismiss : UiAction
 
     @Serializable
+    @SerialName("DetailsSubtitles")
+    data object DetailsSubtitles : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesToggle")
+    data class SubtitlesToggle(val key: String = "", val selected: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesAdd")
+    data object SubtitlesAdd : UiAction
+
+    @Serializable
+    @SerialName("SubtitlesDismiss")
+    data object SubtitlesDismiss : UiAction
+
+    @Serializable
     @SerialName("ToggleDetailFile")
     data class ToggleDetailFile(val index: Int = 0, val selected: Boolean = false) : UiAction
 
@@ -267,6 +319,10 @@ sealed interface UiAction {
     data class SetSettingsSection(val index: Int = 0) : UiAction
 
     @Serializable
+    @SerialName("OpenMore")
+    data object OpenMore : UiAction
+
+    @Serializable
     @SerialName("SettingToggle")
     data class SettingToggle(val id: String = "", val on: Boolean = false) : UiAction
 
@@ -301,6 +357,22 @@ sealed interface UiAction {
     @Serializable
     @SerialName("SelectAllLinks")
     data class SelectAllLinks(val selected: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("GrabPage")
+    data object GrabPage : UiAction
+
+    @Serializable
+    @SerialName("GrabCancel")
+    data object GrabCancel : UiAction
+
+    @Serializable
+    @SerialName("SetGrabDepth")
+    data class SetGrabDepth(val depth: Int = 1) : UiAction
+
+    @Serializable
+    @SerialName("ToggleGrabGroup")
+    data class ToggleGrabGroup(val folder: String = "", val selected: Boolean = false) : UiAction
 
     @Serializable
     @SerialName("SetLinkFolder")
@@ -491,6 +563,10 @@ sealed interface UiAction {
     data class SetEmbedSubtitles(val embed: Boolean = false) : UiAction
 
     @Serializable
+    @SerialName("SetSubtitleFormat")
+    data class SetSubtitleFormat(val format: String = "srt") : UiAction
+
+    @Serializable
     @SerialName("SetClipEnabled")
     data class SetClipEnabled(val on: Boolean = false) : UiAction
 
@@ -545,6 +621,14 @@ sealed interface UiAction {
     @Serializable
     @SerialName("SetPlaylistQuality")
     data class SetPlaylistQuality(val quality: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("GroupOpenFolderOnDisk")
+    data object GroupOpenFolderOnDisk : UiAction
+
+    @Serializable
+    @SerialName("SetPlaylistOldestFirst")
+    data class SetPlaylistOldestFirst(val on: Boolean = false) : UiAction
 
     @Serializable
     @SerialName("UseSingleVideo")

@@ -52,6 +52,9 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.utils.formatBytes
@@ -186,7 +189,7 @@ internal fun MediaQualitiesSelectionCard(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 val sizeText =
-                                    if (quality.size > 0) " • ${formatSizeDisplay(quality.size)}" else ""
+                                    if (quality.hasShownSize) " • ${quality.sizeMark}${formatSizeDisplay(quality.size)}" else ""
                                 val durText = if (quality.durationSeconds > 0) " • ⏱️ ${
                                     formatSecondsToDisplayFriendly(quality.durationSeconds)
                                 }" else ""
@@ -212,7 +215,11 @@ internal fun SubtitlesSelectionCard(
     subtitles: List<SubtitleTrack>,
     embedSubtitles: Boolean,
     onSubtitleToggled: (String, Boolean) -> Unit,
-    onToggleEmbedSubtitles: (Boolean) -> Unit
+    onToggleEmbedSubtitles: (Boolean) -> Unit,
+    subtitleFormat: String = "srt",
+    onSubtitleFormat: (String) -> Unit = {},
+    note: String = "",
+    reading: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -229,6 +236,20 @@ internal fun SubtitlesSelectionCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            if (note.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (reading) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(note, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (subtitles.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Box(
@@ -298,26 +319,26 @@ internal fun SubtitlesSelectionCard(
                     }
                 }
             }
+            }
 
             if (subtitles.any { it.isSelected }) {
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ClipModeOption(
-                        selected = embedSubtitles,
-                        title = LocalizationManager.Strings.subtitlesEmbedInVideo,
-                        lines = emptyList(),
-                        onClick = { onToggleEmbedSubtitles(true) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ClipModeOption(
-                        selected = !embedSubtitles,
-                        title = LocalizationManager.Strings.subtitlesSeparateFile,
-                        lines = emptyList(),
-                        onClick = { onToggleEmbedSubtitles(false) },
-                        modifier = Modifier.weight(1f)
+                SegmentedChoice(
+                    labels = listOf(
+                        LocalizationManager.Strings.subtitlesEmbedInVideo,
+                        LocalizationManager.Strings.subtitlesSeparateFile
+                    ),
+                    selectedIndex = if (embedSubtitles) 0 else 1,
+                    onSelect = { onToggleEmbedSubtitles(it == 0) }
+                )
+                if (!embedSubtitles) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SegmentedChoice(
+                        labels = listOf("SRT", "VTT"),
+                        selectedIndex = if (subtitleFormat == "vtt") 1 else 0,
+                        onSelect = { onSubtitleFormat(if (it == 1) "vtt" else "srt") },
+                        modifier = Modifier.padding(start = 16.dp).fillMaxWidth(),
+                        small = true
                     )
                 }
             }
@@ -420,9 +441,14 @@ internal fun MediaInspectionSection(
     onMediaQualitySelectionToggled: (Int, Boolean) -> Unit,
     onSelectAllMediaQualitiesToggled: (Boolean) -> Unit,
     inspectedSubtitles: List<SubtitleTrack>,
+    subtitlesListShown: Boolean = false,
+    subtitlesListNote: String = "",
+    subtitlesListReading: Boolean = false,
     embedSubtitles: Boolean,
     onSubtitleToggled: (String, Boolean) -> Unit,
     onToggleEmbedSubtitles: (Boolean) -> Unit,
+    subtitleFormat: String = "srt",
+    onSubtitleFormat: (String) -> Unit = {},
     clipStartTime: String,
     clipEndTime: String,
     isClipRangeEnabled: Boolean,
@@ -437,6 +463,8 @@ internal fun MediaInspectionSection(
     onPlaylistEntryToggled: (Int, Boolean) -> Unit,
     onPlaylistSelectAll: (Boolean) -> Unit,
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit,
+    playlistOldestFirst: Boolean = false,
+    onPlaylistOldestFirst: (Boolean) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit,
     onPlaylistFolderChanged: (String) -> Unit,
     showStartTimePickerState: MutableState<Boolean>,
@@ -561,9 +589,26 @@ internal fun MediaInspectionSection(
                 onEntryToggled = onPlaylistEntryToggled,
                 onSelectAll = onPlaylistSelectAll,
                 onQualityChanged = onPlaylistQualityChanged,
+                oldestFirst = playlistOldestFirst,
+                onOldestFirst = onPlaylistOldestFirst,
+                oldestFirstOffered = !inspectedPlaylist.fromBrowser &&
+                        com.michelle.raouf.fetch_jet.feature.media_extractor.isChannelVideosUrl(inputUrl),
                 onFolderChanged = onPlaylistFolderChanged,
                 onUseSingleVideo = if (inputUrl.contains("v=") || inputUrl.contains("youtu.be/")) onPlaylistUseSingleVideo else null
             )
+            if (subtitlesListShown) {
+                Spacer(modifier = Modifier.height(10.dp))
+                SubtitlesSelectionCard(
+                    subtitles = inspectedSubtitles,
+                    embedSubtitles = embedSubtitles,
+                    onSubtitleToggled = onSubtitleToggled,
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                    subtitleFormat = subtitleFormat,
+                    onSubtitleFormat = onSubtitleFormat,
+                    note = subtitlesListNote,
+                    reading = subtitlesListReading
+                )
+            }
         } else if (inspectedMediaQualities.isEmpty()) {
             val isInputAudio = inputUrl.substringBefore('?').substringAfterLast('.', "")
                 .lowercase() in listOf(
@@ -598,13 +643,15 @@ internal fun MediaInspectionSection(
                 onSelectAll = onSelectAllMediaQualitiesToggled
             )
 
-            if (inspectedSubtitles.isNotEmpty()) {
+            if (inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 SubtitlesSelectionCard(
                     subtitles = inspectedSubtitles,
                     embedSubtitles = embedSubtitles,
                     onSubtitleToggled = onSubtitleToggled,
-                    onToggleEmbedSubtitles = onToggleEmbedSubtitles
+                    onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                    subtitleFormat = subtitleFormat,
+                    onSubtitleFormat = onSubtitleFormat
                 )
             }
 

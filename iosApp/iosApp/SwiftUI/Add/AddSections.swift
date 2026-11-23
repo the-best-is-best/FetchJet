@@ -8,12 +8,12 @@ struct AddHeader: View {
     var body: some View {
         HStack(spacing: 10) {
             Text("⚡")
-                .font(.system(size: 18))
+                .font(.fj(18))
                 .frame(width: 36, height: 36)
                 .background(FJTheme.color.primaryContainer.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 1) {
                 Text(store.strings.addDialogTitle)
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.fj(18, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(store.strings.addDialogSubtitle)
                     .font(FJTheme.font.small)
@@ -27,6 +27,7 @@ struct AddHeader: View {
 
 struct AddUrlSection: View {
     @EnvironmentObject var store: FJStore
+    @State private var clearTick = 0
     var body: some View {
         let strings = store.strings
         let url = Binding(
@@ -43,7 +44,7 @@ struct AddUrlSection: View {
                             DispatchQueue.main.async { store.send(DashboardUiEventOnUrlChanged(url: text)) }
                         }
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                 }
                 if store.host.torrentEnabled && TorrentFilePicker.shared.isSupported {
@@ -53,7 +54,7 @@ struct AddUrlSection: View {
                             DispatchQueue.main.async { store.send(DashboardUiEventOnUrlChanged(url: path)) }
                         }
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .lineLimit(1)
                 }
             }
@@ -64,14 +65,19 @@ struct AddUrlSection: View {
                 text: url,
                 multiline: true,
                 keyboard: .URL,
-                trailing: AnyView(trailing)
+                trailing: AnyView(trailing),
+                ltr: true,
+                focusTrigger: clearTick
             )
         }
     }
 
     @ViewBuilder private var trailing: some View {
         if !store.state.inputUrl.trimmingCharacters(in: .whitespaces).isEmpty {
-            AddFieldIcon(symbol: "✕") { store.send(DashboardUiEventOnUrlChanged(url: "")) }
+            AddFieldIcon(symbol: "✕") {
+                store.send(DashboardUiEventOnUrlChanged(url: ""))
+                clearTick += 1
+            }
         } else {
             AddFieldChip(label: "📋 \(store.strings.addPaste)") {
                 if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
@@ -91,8 +97,7 @@ struct AddEngineSelector: View {
             AddLabel(text: strings.addDownloadEngine)
             HStack(spacing: 8) {
                 chip("⚡ \(strings.engineDirect)", engine == .httpDirect, .httpDirect)
-                if store.host.mediaEnabled { chip("🎬 \(strings.engineMedia)", engine == .mediaStream, .mediaStream) }
-                if store.host.torrentEnabled { chip("🧲 \(strings.engineTorrent)", engine == .bittorrent, .bittorrent) }
+                chip("🎬 \(strings.engineMedia)", engine == .mediaStream, .mediaStream)
             }
         }
     }
@@ -102,7 +107,7 @@ struct AddEngineSelector: View {
             store.send(DashboardUiEventOnEngineSelected(engine: type))
         } label: {
             Text(label)
-                .font(.system(size: 12, weight: selected ? .bold : .medium))
+                .font(.fj(12, selected ? .bold : .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .foregroundStyle(selected ? FJTheme.color.onPrimary : FJTheme.color.onSurface)
@@ -178,11 +183,12 @@ struct AddDestinationSection: View {
             AddField(
                 icon: "📁",
                 text: Binding(get: { store.state.destinationPath }, set: { store.send(DashboardUiEventOnDestinationPathChanged(path: $0)) }),
-                trailing: AnyView(AddFieldIcon(symbol: "📂") { showFolderPicker = true })
+                trailing: AnyView(AddFieldIcon(symbol: "📂") { showFolderPicker = true }),
+                ltr: true
             )
             if !store.state.addFolderRuleSite.isEmpty {
                 Text(strings.addFolderFromRule + " " + store.state.addFolderRuleSite)
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.primary)
             }
             HStack(spacing: 8) {
@@ -206,9 +212,9 @@ struct AddDestinationSection: View {
     private func quick(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Text(icon).font(.system(size: 12))
+                Text(icon).font(.fj(12))
                 Text(label)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.fj(11, .medium))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
             }
@@ -252,12 +258,12 @@ struct AddActions: View {
         let strings = store.strings
         let v = validity
         VStack(spacing: 12) {
-            if let err = v.activeError { AddInlineError(message: err) }
+            if let err = v.inlineError { AddInlineError(message: err) }
             HStack(spacing: 10) {
                 Spacer(minLength: 0)
                 Button(action: onDismiss) {
                     Text(strings.cancel)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.fj(13, .medium))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
@@ -273,7 +279,7 @@ struct AddActions: View {
                         }
                     } label: {
                         Text("🔄 \(strings.addRetryInspect)")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.fj(13, .bold))
                             .foregroundStyle(FJTheme.color.onError)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -287,7 +293,7 @@ struct AddActions: View {
                     HStack(spacing: 8) {
                         if s.isLoading { ProgressView().controlSize(.small) }
                         Text(startLabel(s, strings, v))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.fj(13, .bold))
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(v.canStart ? FJTheme.color.onPrimary : FJTheme.color.onSurfaceVariant.opacity(0.6))
@@ -309,6 +315,7 @@ struct AddActions: View {
         if v.hasActiveError { return strings.addInspectionFailed }
         if !v.isUrlValid { return strings.addEnterUrl }
         if linkCount > 0 { return s.scheduleStartMs > 0 ? strings.scheduleLinks(n: linkCount) : strings.downloadLinks(n: linkCount) }
+        if s.needsFileName && s.detectedEngine == .mediaStream { return strings.fileNameNeeded }
         if !v.isInspectionComplete && s.detectedEngine == .mediaStream { return strings.inspectVideoFirst }
         if !v.isInspectionComplete && s.detectedEngine == .bittorrent { return strings.inspectTorrentFirst }
         if !v.isClipRangeValid { return strings.invalidTimeRange }

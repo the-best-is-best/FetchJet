@@ -57,18 +57,25 @@ object ExtensionBridgeServer {
         started = true
         appContext = context.applicationContext
         Thread({
-            try {
-                ServerSocket().use { server ->
-                    server.reuseAddress = true
-                    server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT))
-                    while (true) {
-                        val socket = server.accept()
-                        pool.execute { handle(socket) }
+            while (true) {
+                try {
+                    ServerSocket().use { server ->
+                        server.reuseAddress = true
+                        server.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT))
+                        println("ExtensionBridgeServer: listening on 127.0.0.1:$PORT")
+                        while (true) {
+                            val socket = server.accept()
+                            pool.execute { handle(socket) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("ExtensionBridgeServer: not listening (${e.message}), another FetchJet copy may hold the port; trying again in 5 s")
+                    try {
+                        Thread.sleep(5_000)
+                    } catch (_: InterruptedException) {
+                        return@Thread
                     }
                 }
-            } catch (e: Exception) {
-                println("ExtensionBridgeServer: stopped (${e.message})")
-                started = false
             }
         }, "fetchjet-bridge-accept").apply { isDaemon = true }.start()
     }
@@ -248,9 +255,17 @@ object ExtensionBridgeServer {
         val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
         synchronized(gate) {
             cached()?.let { return it }
-            val fresh = runBlocking {
-                com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
-                    .inspectMediaQualities(url, requestHeaders)
+            val readingKey = "inspect-" + key.hashCode()
+            com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.begin(
+                readingKey, "FetchJet", LocalizationManager.Strings.inspectingVideoQualities
+            )
+            val fresh = try {
+                runBlocking {
+                    com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+                        .inspectMediaQualities(url, requestHeaders)
+                }
+            } finally {
+                com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.end(readingKey)
             }
             if (fresh.isNotEmpty()) synchronized(inspectCache) {
                 inspectCache[key] = System.currentTimeMillis() to fresh
@@ -609,6 +624,7 @@ object ExtensionBridgeServer {
                 ).show()
             } else {
                 showOpenNotification(open)
+                if (toast) com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.linkWaited()
             }
         }
     }

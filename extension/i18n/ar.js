@@ -45,6 +45,8 @@ fjAddLanguage("ar", {
   "errNoExtractor": "FetchJet غير مُشغَّل (أو لا يحتوي على مستخرج وسائط)",
   "errNotRunning": "FetchJet غير مُشغَّل",
   "errCantGet": "تعذّر الحصول على هذا الفيديو",
+  "itemDrm": "هذا الفيديو محمي (DRM)",
+  "itemDrmSub": "لا يمكن تنزيله، لا بـ FetchJet ولا بأي برنامج تنزيل آخر.",
   "itemOpenApp": "فتح في FetchJet",
   "itemOpenAppSub": "اختر الجودة في التطبيق",
   "itemPlaylist": "تنزيل قائمة التشغيل كلها",

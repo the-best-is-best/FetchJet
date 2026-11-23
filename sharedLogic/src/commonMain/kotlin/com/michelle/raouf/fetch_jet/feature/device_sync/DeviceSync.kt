@@ -89,6 +89,8 @@ data class SendRequest(
      * complete piece so the other device lands at 100% instead of fetching the whole thing again.
      */
     val completedFilePath: String = "",
+    /** Side files (subtitle files next to a finished video) sent after its piece, with their own names. */
+    val extraFiles: List<String> = emptyList(),
     /** The local task to remove once the send fully succeeds (when [deleteAfterSuccess]). */
     val sourceTaskId: String = ""
 )

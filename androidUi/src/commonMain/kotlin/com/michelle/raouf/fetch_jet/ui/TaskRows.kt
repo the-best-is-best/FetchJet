@@ -259,13 +259,15 @@ private val PauseIcon: RowIcon = { u, tint ->
 }
 
 private val OpenIcon: RowIcon = { u, tint ->
-    iconLine(u, tint, 10f, 4f, 4f, 4f)
-    iconLine(u, tint, 4f, 4f, 4f, 20f)
-    iconLine(u, tint, 4f, 20f, 20f, 20f)
-    iconLine(u, tint, 20f, 20f, 20f, 14f)
-    iconLine(u, tint, 10f, 14f, 20f, 4f)
-    iconLine(u, tint, 14f, 4f, 20f, 4f)
-    iconLine(u, tint, 20f, 4f, 20f, 10f)
+    val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
+    fun x(v: Float) = if (rtl) 24f - v else v
+    iconLine(u, tint, x(10f), 4f, x(4f), 4f)
+    iconLine(u, tint, x(4f), 4f, x(4f), 20f)
+    iconLine(u, tint, x(4f), 20f, x(20f), 20f)
+    iconLine(u, tint, x(20f), 20f, x(20f), 14f)
+    iconLine(u, tint, x(10f), 14f, x(20f), 4f)
+    iconLine(u, tint, x(14f), 4f, x(20f), 4f)
+    iconLine(u, tint, x(20f), 4f, x(20f), 10f)
 }
 
 private val CompressIcon: RowIcon = { u, tint ->
@@ -516,6 +518,152 @@ fun TaskRow(
                     if (task.status != DownloadStatus.COMPLETED || task.postProcessLabel != null) {
                         Spacer(modifier = Modifier.height(10.dp))
                         ThinBar(rowProgress(task), barColor(task), indeterminate = task.isPreparingFile())
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A saved playlist in the downloads list: one row for all its videos. */
+@Composable
+fun PlaylistGroupRow(
+    group: com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup,
+    speedDisplayUnit: String,
+    onClick: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    checked: Boolean = false,
+    selectionMode: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit = {},
+    onLongClick: () -> Unit = {}
+) = TaskGroupRow(
+    group, "LIST", group.title, group.summaryText, speedDisplayUnit,
+    onClick, onPause, onResume, checked, selectionMode, onCheckedChange, onLongClick
+)
+
+/** A destination folder in the downloads list ("group by folder" on): one row for its files. */
+@Composable
+fun FolderGroupRow(
+    group: com.michelle.raouf.fetch_jet.presentation.dashboard.FolderGroup,
+    speedDisplayUnit: String,
+    onClick: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    checked: Boolean = false,
+    selectionMode: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit = {},
+    onLongClick: () -> Unit = {}
+) = TaskGroupRow(
+    group, "DIR", group.label, group.summaryText, speedDisplayUnit,
+    onClick, onPause, onResume, checked, selectionMode, onCheckedChange, onLongClick
+)
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun TaskGroupRow(
+    group: com.michelle.raouf.fetch_jet.presentation.dashboard.TaskGroupStats,
+    tag: String,
+    title: String,
+    summary: String,
+    speedDisplayUnit: String,
+    onClick: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    checked: Boolean,
+    selectionMode: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onLongClick: () -> Unit
+) {
+    val status = group.status
+    val progress = group.progress.let { if (it.isNaN()) 0f else it.coerceIn(0f, 1f) }
+    val shape = RoundedCornerShape(12.dp)
+    val stateColor = if (status == com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.SOME_FAILED)
+        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val bar = when (status) {
+        com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.DONE -> Color(0xFF34D399)
+        com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.PAUSED -> Color(0xFFFBBF24)
+        com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.SOME_FAILED -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val size = when {
+        group.totalBytes > 0 && status != com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.DONE ->
+            formatBytes(group.downloadedBytes) + " / " + formatBytes(group.totalBytes)
+        group.totalBytes > 0 -> formatBytes(group.totalBytes)
+        else -> "—"
+    }
+    val action = when {
+        group.canPause -> RowAction.PAUSE
+        group.canResume -> RowAction.RESUME
+        else -> RowAction.NONE
+    }
+    val onAction = {
+        when (action) {
+            RowAction.PAUSE -> onPause()
+            RowAction.RESUME -> onResume()
+            else -> onClick()
+        }
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val wide = maxWidth >= 720.dp
+        Surface(
+            shape = shape,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            modifier = Modifier.fillMaxWidth().clip(shape).combinedClickable(
+                onClick = { if (selectionMode) onCheckedChange(!checked) else onClick() },
+                onLongClick = onLongClick
+            )
+        ) {
+            if (wide) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Checkbox(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.size(24.dp))
+                    KindSquare(tag, 34)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(summary, fontSize = 11.sp, color = stateColor, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 2.dp))
+                    }
+                    Text(size, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(76.dp), maxLines = 1)
+                    Column(modifier = Modifier.width(140.dp)) {
+                        ThinBar(progress, bar)
+                        Text("${(progress * 100).toInt()}%", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 3.dp))
+                    }
+                    Text(
+                        if (group.speed > 0) formatSpeed(group.speed, speedDisplayUnit) else "—",
+                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(84.dp), maxLines = 1
+                    )
+                    Text("—", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(64.dp), maxLines = 1)
+                    QuickActionButton(action, 34) { onAction() }
+                }
+            } else {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectionMode) {
+                            Checkbox(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
+                        KindSquare(tag, 40)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                summary + " · " + size + (if (group.speed > 0) " · " + formatSpeed(group.speed, speedDisplayUnit) else ""),
+                                fontSize = 12.sp, color = stateColor, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (!selectionMode) QuickActionButton(action, 44) { onAction() }
+                    }
+                    if (status != com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus.DONE) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        ThinBar(progress, bar)
                     }
                 }
             }

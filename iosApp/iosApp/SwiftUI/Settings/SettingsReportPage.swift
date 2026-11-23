@@ -61,7 +61,7 @@ struct SettingsReportPage: View {
                             withAnimation(.easeInOut(duration: 0.18)) { period = p }
                         } label: {
                             Text(label(p, s))
-                                .font(FJTheme.font.callout.weight(p == period ? .bold : .medium))
+                                .font(Font.fj(14, p == period ? .bold : .medium))
                                 .foregroundStyle(p == period ? FJTheme.color.onPrimary : FJTheme.color.onSurfaceVariant)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
@@ -110,12 +110,12 @@ struct SettingsReportPage: View {
     private func tile(_ value: String, _ label: String, highlight: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(.system(size: 22, weight: .bold))
+                .font(.fj(22, .bold))
                 .foregroundStyle(highlight ? FJTheme.color.primary : FJTheme.color.onSurface)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(label)
-                .font(FJTheme.font.caption.weight(.semibold))
+                .font(Font.fj(12, .semibold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .lineLimit(1)
         }
@@ -135,12 +135,12 @@ struct SettingsReportPage: View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
                 Text("\(index + 1)")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.fj(11, .bold))
                     .foregroundStyle(index == 0 ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                     .frame(width: 22, height: 22)
                     .background(index == 0 ? FJTheme.color.primary.opacity(0.18) : FJTheme.color.surfaceVariant, in: Circle())
                 Text(site)
-                    .font(FJTheme.font.body.weight(.semibold))
+                    .font(Font.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)

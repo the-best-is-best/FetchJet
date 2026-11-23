@@ -160,7 +160,7 @@ struct TaskKindSquare: View {
 
     var body: some View {
         Text(String(tag.prefix(4)))
-            .font(.system(size: 9, weight: .heavy))
+            .font(.fj(9, .heavy))
             .foregroundStyle(TaskUi.kindColor(tag))
             .frame(width: size, height: size)
             .background(FJTheme.color.onSurface.opacity(0.06), in: RoundedRectangle(cornerRadius: size / 4))
@@ -178,7 +178,7 @@ struct TaskPriorityChip: View {
         let color = priority > 0 ? FJTheme.hex(0xEF4444) : (priority < 0 ? FJTheme.hex(0x3B82F6) : FJTheme.color.onSurfaceVariant)
         Button(action: onCycle) {
             Text(label)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.fj(10, .semibold))
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .padding(.horizontal, 7)
@@ -213,7 +213,7 @@ struct TaskQuickActionButton: View {
             }()
             Button(action: onTap) {
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                     .frame(width: size, height: size)
                     .background(FJTheme.color.primary.opacity(0.10), in: Circle())
@@ -234,7 +234,7 @@ struct TaskExtractButton: View {
     var body: some View {
         Button(action: onTap) {
             Image(systemName: "doc.zipper")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.fj(14, .semibold))
                 .foregroundStyle(FJTheme.color.primary)
                 .frame(width: size, height: size)
                 .background(FJTheme.color.primary.opacity(0.10), in: Circle())
@@ -261,7 +261,7 @@ struct TaskRowView: View {
             HStack(spacing: 0) {
                 if selectionMode {
                     Image(systemName: checked ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 20))
+                        .font(.fj(20))
                         .foregroundStyle(checked ? accent : FJTheme.color.onSurfaceVariant)
                         .frame(width: 24, height: 24)
                         .padding(.trailing, 12)
@@ -270,12 +270,12 @@ struct TaskRowView: View {
                     .padding(.trailing, 12)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(TaskUi.displayName(task, store.host))
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.fj(14, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Text(TaskUi.stateLine(task, store))
-                        .font(.system(size: 12))
+                        .font(.fj(12))
                         .foregroundStyle(task.status == .error ? FJTheme.color.error : FJTheme.color.onSurfaceVariant)
                         .lineLimit(1)
                 }

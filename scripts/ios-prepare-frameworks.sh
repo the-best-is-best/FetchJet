@@ -51,7 +51,7 @@ if [ ! -d "$FW/FJTorrent.xcframework" ]; then
 fi
 # ---- 3. curl_cffi for yt-dlp (browser impersonation) --------------------------------------
 # Prebuilt iOS payload from tfourj/SwiftCurlCffi-iOS (what Palladium ships). Sites whose yt-dlp
-# extractor requests impersonation (PornHub, many Cloudflare-fronted hosts) fail with HTTP 403 /
+# extractor requests impersonation (many Cloudflare-fronted hosts) fail with HTTP 403 /
 # "Unable to download webpage" without it. Optional: the build still succeeds when the download
 # fails, yt-dlp just runs without impersonation.
 CC_DIR="$FW/SwiftCurlCffi-iOS"

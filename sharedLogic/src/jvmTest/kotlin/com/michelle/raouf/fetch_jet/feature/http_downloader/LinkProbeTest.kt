@@ -41,7 +41,7 @@ class LinkProbeTest {
     @Test
     fun htmlIsAWebPage() {
         val result = classifyHttpProbe(200, "text/html; charset=utf-8", 2000L, true, pageText = "<html><body>Hello</body></html>")
-        assertEquals(LinkProbeResult.Failed(LinkProbeCode.WEB_PAGE, 200), result)
+        assertEquals(LinkProbeResult.Failed(LinkProbeCode.WEB_PAGE, 200, "<html><body>Hello</body></html>"), result)
     }
 
     @Test

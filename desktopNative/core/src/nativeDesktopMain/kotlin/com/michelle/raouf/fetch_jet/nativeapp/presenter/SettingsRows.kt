@@ -41,7 +41,7 @@ internal val QUEUE_COUNTS = listOf(1, 2, 3, 4, 5, 8, 0)
 
 internal fun languageCodes(): List<String> = listOf(AppLanguage.SYSTEM) + appLanguages.map { it.localeCode }
 
-private class Rows {
+internal class Rows {
     val list = ArrayList<SettingRowDto>()
     private var dividerNext = false
 
@@ -80,7 +80,7 @@ private fun switchRow(id: String, title: String, subtitle: String?, checked: Boo
     clickable = enabled,
 )
 
-private fun infoRow(
+internal fun infoRow(
     title: String,
     subtitle: String? = null,
     id: String = "",
@@ -127,7 +127,7 @@ private fun pickerRow(
     bottom = if (!below) 0 else if (title.isEmpty()) 16 else 14,
 )
 
-private fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0, large: Boolean = false) = SettingRowDto(
+internal fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0, large: Boolean = false) = SettingRowDto(
     kind = SettingKind.NOTE.ordinal,
     title = text,
     tone = tone.ordinal,
@@ -136,7 +136,7 @@ private fun noteRow(text: String, tone: ToneCode, top: Int = 0, bottom: Int = 0,
     large = large,
 )
 
-private fun button(
+internal fun button(
     id: String,
     label: String,
     filled: Boolean = false,
@@ -257,7 +257,9 @@ internal fun Presenter.buildSettingsRows(section: SettingsSection, v: SettingsSl
     val rows = Rows()
     when (section) {
         SettingsSection.GENERAL -> generalRows(rows, v, page)
-        SettingsSection.DOWNLOADS -> downloadsRows(rows, v, page)
+        SettingsSection.DOWNLOADS -> downloadsRows(rows, v)
+        SettingsSection.SPEED -> speedRows(rows, v, page)
+        SettingsSection.FILES -> filesRows(rows, v, page)
         SettingsSection.REPORT -> reportRows(rows, page)
         SettingsSection.BROWSER -> browserRows(rows, page)
         SettingsSection.DEVICES -> devicesRows(rows, v)
@@ -401,7 +403,7 @@ private fun generalRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
     }
 }
 
-private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
+private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice) {
     val s = LocalizationManager.Strings
     val defaultDownloads = pathResolver.getDownloadsDirectory()
     rows.group(title = s.saveLocationGroup, footer = s.saveLocationFooter) {
@@ -436,6 +438,34 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
             )
         )
     }
+    val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
+    rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {
+        rows.add(
+            pickerRow(
+                "queue",
+                s.homeDownloadsAtSameTime,
+                if (max <= 0) s.homeNoLimit else s.homeAtATime(max),
+                QUEUE_COUNTS.map { if (it == 0) s.homeNoLimit else it.toString() },
+                QUEUE_COUNTS.indexOf(max) + 1,
+                below = true,
+            )
+        )
+        if (com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.isSupported) {
+            rows.divider()
+            rows.add(
+                switchRow(
+                    "wakeForSchedule",
+                    s.wakeForScheduleTitle,
+                    s.wakeForScheduleHint,
+                    BehaviorSettings.wakeForSchedule.value,
+                )
+            )
+        }
+    }
+}
+
+private fun Presenter.speedRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
+    val s = LocalizationManager.Strings
     rows.group(title = s.speedPresetsTitle, footer = s.speedPresetsFooter) {
         rows.add(
             SettingRowDto(
@@ -506,6 +536,10 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
             )
         }
     }
+}
+
+private fun Presenter.filesRows(rows: Rows, v: SettingsSlice, page: SettingsPage) {
+    val s = LocalizationManager.Strings
     rows.group(title = s.organizeGroup, footer = s.organizeFooter) {
         rows.add(
             switchRow(
@@ -513,6 +547,16 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 s.sortIntoFolders,
                 if (v.sortIntoFolders) s.sortIntoFoldersOn else s.sortIntoFoldersOff,
                 v.sortIntoFolders,
+            )
+        )
+    }
+    rows.group {
+        rows.add(
+            switchRow(
+                "groupByFolder",
+                s.groupByFolder,
+                if (v.groupByFolder) s.groupByFolderOn else s.groupByFolderOff,
+                v.groupByFolder,
             )
         )
         rows.add(
@@ -623,30 +667,6 @@ private fun Presenter.downloadsRows(rows: Rows, v: SettingsSlice, page: Settings
                 ),
             )
         )
-    }
-    val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
-    rows.group(title = s.homeQueueTitle, footer = s.homeQueueFooter) {
-        rows.add(
-            pickerRow(
-                "queue",
-                s.homeDownloadsAtSameTime,
-                if (max <= 0) s.homeNoLimit else s.homeAtATime(max),
-                QUEUE_COUNTS.map { if (it == 0) s.homeNoLimit else it.toString() },
-                QUEUE_COUNTS.indexOf(max) + 1,
-                below = true,
-            )
-        )
-        if (com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.isSupported) {
-            rows.divider()
-            rows.add(
-                switchRow(
-                    "wakeForSchedule",
-                    s.wakeForScheduleTitle,
-                    s.wakeForScheduleHint,
-                    BehaviorSettings.wakeForSchedule.value,
-                )
-            )
-        }
     }
 }
 
@@ -974,6 +994,16 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
         )
     }
     if (v.ytDlpStatus.isNotBlank()) rows.bare(noteRow(localizeStep(v.ytDlpStatus), ToneCode.MUTED))
+    rows.group {
+        rows.add(
+            switchRow(
+                "videoPlaysEverywhere",
+                s.videoPlaysEverywhere,
+                if (v.videoPlaysEverywhere) s.videoPlaysEverywhereOn else s.videoPlaysEverywhereOff,
+                v.videoPlaysEverywhere,
+            )
+        )
+    }
 }
 
 private fun updatesRows(rows: Rows, update: UpdateState) {

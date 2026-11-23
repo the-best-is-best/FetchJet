@@ -1,5 +1,7 @@
 package com.michelle.raouf.fetch_jet.feature.media_extractor
 
+import kotlinx.coroutines.flow.update
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import io.ktor.client.request.get
 import io.ktor.client.request.head
@@ -13,6 +15,10 @@ internal suspend fun MediaStreamDownloader.inspectHlsVariants(
     requestHeaders: Map<String, String>
 ): List<MediaQualityEntry>? {
     try {
+        if (MediaDrm.looksLikeHls(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
+            lastInspectDrm = true
+            return emptyList()
+        }
         val variants = HlsDownloader.listVariants(client, url.trim(), requestHeaders)
         if (variants.isNotEmpty()) {
             // One rendition's playlist gives the duration (same for all); size follows
@@ -60,6 +66,9 @@ internal suspend fun MediaStreamDownloader.inspectPlatformWithCookieRetry(
         val withHeaders = try {
             inspectPlatformQualities(effectiveUrl, requestHeaders)
         } catch (e: MediaToolMissingException) {
+            throw e
+        } catch (e: SiteBusyException) {
+            SiteBusy.mark(effectiveUrl)
             throw e
         } catch (e: Exception) {
             com.michelle.raouf.fetch_jet.core.log.AppLog.d { "MediaStream: inspect failed with headers ${requestHeaders.keys}: ${e.message}" }
@@ -215,4 +224,64 @@ internal suspend fun MediaStreamDownloader.inspectWebPage(
         }
     }
     return index
+}
+
+/** The site answered "too many requests" (HTTP 429): asking again now only keeps the limit on. */
+class SiteBusyException(val host: String) : Exception() {
+    override val message: String
+        get() = runCatching { com.tbib.kmp_localization.LocalizationManager.Strings.siteBusyRetryLater }
+            .getOrDefault("%1 is limiting requests right now (too many in a row). Try again in a few minutes.")
+            .replace("%1", host)
+}
+
+fun ytDlpSaysTooManyRequests(text: String): Boolean = text.contains("HTTP Error 429")
+
+internal fun linkHost(url: String): String =
+    url.substringAfter("://", url).substringBefore('/').substringBefore('?').substringAfter('@').lowercase().removePrefix("www.")
+
+/** Sites that just answered 429: no new inspect of them for a few minutes. */
+object SiteBusy {
+    private const val WAIT_MS = 3 * 60 * 1000L
+    private val until = kotlinx.coroutines.flow.MutableStateFlow<Map<String, Long>>(emptyMap())
+
+    fun mark(url: String) {
+        val now = com.michelle.raouf.fetch_jet.core.util.currentEpochMs()
+        until.update { it.filterValues { end -> end > now } + (linkHost(url) to now + WAIT_MS) }
+    }
+
+    fun check(url: String) {
+        val host = linkHost(url)
+        if ((until.value[host] ?: 0L) > com.michelle.raouf.fetch_jet.core.util.currentEpochMs()) throw SiteBusyException(host)
+    }
+}
+
+/**
+ * Two formats of one quality and container: which one the list keeps. H.264 plays everywhere
+ * (old TVs, phones, Windows' own player); AV1 / VP9 are smaller. The setting picks
+ * ([com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere]).
+ */
+fun playsWiderThan(newCodec: String, keptCodec: String?): Boolean {
+    val newIsH264 = newCodec.startsWith("avc1", ignoreCase = true)
+    val keptIsH264 = (keptCodec ?: "").startsWith("avc1", ignoreCase = true)
+    return if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.value) newIsH264 && !keptIsH264
+    else !newIsH264 && keptIsH264 && !newCodec.equals("none", ignoreCase = true)
+}
+
+/**
+ * yt-dlp's -f for a chosen video format: its sound in the preferred kind first (AAC for
+ * "plays everywhere", else the best, usually Opus), then the other kind, then the video's own
+ * sound, then the best there is: a missing kind falls back to the next.
+ */
+fun videoWithAudioSelector(formatId: String): String =
+    if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.value)
+        "$formatId+bestaudio[ext=m4a]/$formatId+bestaudio/$formatId/best"
+    else "$formatId+bestaudio/$formatId+bestaudio[ext=m4a]/$formatId/best"
+
+fun httpsFallbackSelector(height: Int, audioOnly: Boolean): String {
+    if (audioOnly) return "bestaudio[protocol^=http]/best[protocol^=http]"
+    val size = if (height > 0) "[height<=$height]" else ""
+    val any = "bestvideo$size[protocol^=http]+bestaudio[protocol^=http]/best$size[protocol^=http]"
+    return if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.videoPlaysEverywhere.value)
+        "bestvideo$size[protocol^=http][vcodec^=avc1]+bestaudio[protocol^=http][ext=m4a]/$any"
+    else any
 }

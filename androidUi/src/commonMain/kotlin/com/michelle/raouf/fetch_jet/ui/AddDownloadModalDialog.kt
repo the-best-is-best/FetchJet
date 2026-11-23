@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
@@ -58,9 +59,14 @@ fun AddDownloadModalDialog(
     courseReading: Pair<Int, Int>? = null,
     inspectedMediaQualities: List<MediaQualityEntry>,
     inspectedSubtitles: List<SubtitleTrack> = emptyList(),
+    subtitlesListShown: Boolean = false,
+    subtitlesListNote: String = "",
+    subtitlesListReading: Boolean = false,
     embedSubtitles: Boolean = false,
     onSubtitleToggled: (String, Boolean) -> Unit = { _, _ -> },
     onToggleEmbedSubtitles: (Boolean) -> Unit = {},
+    subtitleFormat: String = "srt",
+    onSubtitleFormat: (String) -> Unit = {},
     inspectMediaError: String?,
     isYtDlpInstalled: Boolean,
     ytDlpStatus: String = "",
@@ -101,6 +107,8 @@ fun AddDownloadModalDialog(
     onPlaylistEntryToggled: (Int, Boolean) -> Unit = { _, _ -> },
     onPlaylistSelectAll: (Boolean) -> Unit = {},
     onPlaylistQualityChanged: (com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality) -> Unit = {},
+    playlistOldestFirst: Boolean = false,
+    onPlaylistOldestFirst: (Boolean) -> Unit = {},
     onPlaylistUseSingleVideo: () -> Unit = {},
     onPlaylistFolderChanged: (String) -> Unit = {},
     linkList: List<com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry> = emptyList(),
@@ -113,6 +121,16 @@ fun AddDownloadModalDialog(
     onLinkListTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
     onLinkListQualitySelected: (Int, Int) -> Unit = { _, _ -> },
     onLinkListRetryInspect: (Int) -> Unit = {},
+    canGrabPage: Boolean = false,
+    engineChoiceShown: Boolean = false,
+    checkingLink: Boolean = false,
+    grabDepthShown: Boolean = true,
+    siteGrab: com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi = com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi(),
+    grabGroups: List<com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup> = emptyList(),
+    onGrabPage: () -> Unit = {},
+    onGrabCancel: () -> Unit = {},
+    onGrabDepth: (Int) -> Unit = {},
+    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> },
     scheduleStartMs: Long = 0L,
     onScheduleChanged: (Long) -> Unit = {},
     selectedConnections: Int = 0,
@@ -282,14 +300,15 @@ fun AddDownloadModalDialog(
 
     val isUrlValid = inputUrl.isNotBlank()
     val showsLinkList = linkList.isNotEmpty()
-    val needsFileName = com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName(
+    val pageScanShown = canGrabPage || siteGrab.running
+    val needsFileName = !pageScanShown && com.michelle.raouf.fetch_jet.presentation.dashboard.addNeedsFileName(
         detectedEngine, inputUrl, suggestedFileName, fileNameOverride, showsLinkList || inspectedPlaylist != null
     )
     val listInspecting = showsLinkList && linkList.any { it.isSelected && it.isBeingInspected }
     val isInspectionComplete =
         if (showsLinkList) linkList.any { it.isSelected } && !listInspecting && linkList.none { it.isSelected && it.needsRetry } else when (detectedEngine) {
         EngineType.BITTORRENT -> inspectedTorrentFiles.isNotEmpty() && inspectedTorrentFiles.any { it.isSelected } && inspectError == null
-        EngineType.MEDIA_STREAM -> inspectMediaError == null && (
+        EngineType.MEDIA_STREAM -> inspectMediaError == null && !needsFileName && (
                 inspectedPlaylist?.entries?.any { it.isSelected } == true ||
                         (inspectedMediaQualities.isNotEmpty() && inspectedMediaQualities.any { it.isSelected }))
         EngineType.HTTP_DIRECT -> !needsFileName
@@ -345,6 +364,32 @@ fun AddDownloadModalDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                if (checkingLink) {
+                    androidx.compose.material3.Text(
+                        text = LocalizationManager.Strings.addCheckingLink,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                if (engineChoiceShown && !showsLinkList) EngineSelector(
+                    detectedEngine = detectedEngine,
+                    onEngineSelected = onEngineSelected
+                )
+
+                if (canGrabPage || siteGrab.running) {
+                    GrabCard(
+                        grab = siteGrab,
+                        showNote = true,
+                        onFind = onGrabPage,
+                        onStop = onGrabCancel,
+                        onDepth = onGrabDepth,
+                        showDepth = grabDepthShown
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
                 if (showsLinkList) {
                     LinkListSection(
                         links = linkList,
@@ -356,12 +401,27 @@ fun AddDownloadModalDialog(
                         onTorrentFilePriority = onLinkListTorrentFilePriority,
                         onTorrentSelectAll = onLinkListTorrentSelectAll,
                         onQualitySelected = onLinkListQualitySelected,
-                        onRetryInspect = onLinkListRetryInspect
+                        onRetryInspect = onLinkListRetryInspect,
+                        grabGroups = grabGroups,
+                        grabNote = if (canGrabPage || siteGrab.running) "" else siteGrab.note,
+                        onGrabGroupToggled = onGrabGroupToggled,
+                        hiddenKinds = siteGrab.hiddenKinds
                     )
+                    if (subtitlesListShown) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        SubtitlesSelectionCard(
+                            subtitles = inspectedSubtitles,
+                            embedSubtitles = embedSubtitles,
+                            onSubtitleToggled = onSubtitleToggled,
+                            onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                            subtitleFormat = subtitleFormat,
+                            onSubtitleFormat = onSubtitleFormat,
+                            note = subtitlesListNote,
+                            reading = subtitlesListReading
+                        )
+                    }
                     Spacer(modifier = Modifier.height(14.dp))
                 } else {
-                EngineSelector(detectedEngine = detectedEngine, onEngineSelected = onEngineSelected)
-
                 TorrentInspectionSection(
                     detectedEngine = detectedEngine,
                     inputUrl = inputUrl,
@@ -390,9 +450,14 @@ fun AddDownloadModalDialog(
                     onMediaQualitySelectionToggled = onMediaQualitySelectionToggled,
                     onSelectAllMediaQualitiesToggled = onSelectAllMediaQualitiesToggled,
                     inspectedSubtitles = inspectedSubtitles,
+                    subtitlesListShown = subtitlesListShown,
+                    subtitlesListNote = subtitlesListNote,
+                    subtitlesListReading = subtitlesListReading,
                     embedSubtitles = embedSubtitles,
                     onSubtitleToggled = onSubtitleToggled,
                     onToggleEmbedSubtitles = onToggleEmbedSubtitles,
+                    subtitleFormat = subtitleFormat,
+                    onSubtitleFormat = onSubtitleFormat,
                     clipStartTime = clipStartTime,
                     clipEndTime = clipEndTime,
                     isClipRangeEnabled = isClipRangeEnabled,
@@ -407,6 +472,8 @@ fun AddDownloadModalDialog(
                     onPlaylistEntryToggled = onPlaylistEntryToggled,
                     onPlaylistSelectAll = onPlaylistSelectAll,
                     onPlaylistQualityChanged = onPlaylistQualityChanged,
+                    playlistOldestFirst = playlistOldestFirst,
+                    onPlaylistOldestFirst = onPlaylistOldestFirst,
                     onPlaylistUseSingleVideo = onPlaylistUseSingleVideo,
                     onPlaylistFolderChanged = onPlaylistFolderChanged,
                     showStartTimePickerState = showStartTimePickerState,
@@ -417,7 +484,7 @@ fun AddDownloadModalDialog(
                     isStartExceedingVideo = isStartExceedingVideo,
                     clipValidationErrorMessage = clipValidationErrorMessage
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                if (engineChoiceShown || detectedEngine != EngineType.HTTP_DIRECT) Spacer(modifier = Modifier.height(14.dp))
                 }
 
                 // When to start: now, in a while, or at a time of day
@@ -461,7 +528,7 @@ fun AddDownloadModalDialog(
                     onSelected = onAudioConvertFormatSelected
                 )
 
-                if (!showsLinkList && inspectedPlaylist == null) FileNameSection(
+                if (!showsLinkList && inspectedPlaylist == null && !pageScanShown) FileNameSection(
                     suggestedFileName = suggestedFileName,
                     fileNameOverride = fileNameOverride,
                     isInspectingMedia = isInspectingMedia,
@@ -518,6 +585,7 @@ fun AddDownloadModalDialog(
                     inspectedPlaylist = inspectedPlaylist,
                     scheduleStartMs = scheduleStartMs,
                     linkCount = if (showsLinkList) linkList.count { it.isSelected } else 0,
+                    needsName = needsFileName,
                     onInspectTorrent = onInspectTorrent,
                     onInspectMedia = onInspectMedia,
                     onAddDownload = onAddDownload,

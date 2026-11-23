@@ -48,7 +48,12 @@ internal data class PersistedTask(
     val scanResult: String = "",
     val subtitles: String = "",
     val embedSubtitles: Boolean = false,
-    val priority: Int = 0
+    val subtitleFormat: String = "",
+    val priority: Int = 0,
+    val playlistId: String = "",
+    val playlistTitle: String = "",
+    val subtitleLanguages: String = "",
+    val subtitlesFromPage: Boolean = false
 )
 
 internal object TaskCache {
@@ -118,7 +123,12 @@ internal fun DownloadTask.toPersisted() = PersistedTask(
         ).joinToString("\u0001")
     },
     embedSubtitles = embedSubtitles,
-    priority = priority
+    subtitleFormat = if (subtitleFormat == "srt") "" else subtitleFormat,
+    priority = priority,
+    playlistId = playlistId,
+    playlistTitle = playlistTitle,
+    subtitleLanguages = subtitleLanguages,
+    subtitlesFromPage = subtitlesFromPage
 )
 
 internal fun PersistedTask.toTask(
@@ -191,7 +201,12 @@ internal fun PersistedTask.toTask(
             )
         } ?: emptyList(),
         embedSubtitles = embedSubtitles,
-        priority = priority
+        subtitleFormat = subtitleFormat.ifBlank { "srt" },
+        priority = priority,
+        playlistId = playlistId,
+        playlistTitle = playlistTitle,
+        subtitleLanguages = subtitleLanguages,
+        subtitlesFromPage = subtitlesFromPage
     )
 }
 

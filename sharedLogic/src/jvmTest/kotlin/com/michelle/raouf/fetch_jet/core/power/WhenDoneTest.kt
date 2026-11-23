@@ -115,4 +115,20 @@ class WhenDoneTest {
         assertEquals(WhenDoneAction.NOTHING, WhenDone.action.value)
         assertEquals(0, exits)
     }
+
+    @Test
+    fun waitsForAMergeAndForAnExtractionAfterTheDownload() {
+        start()
+        WhenDone.choose(WhenDoneAction.SHUT_DOWN)
+        WhenDone.onTasks(listOf(task("a", DownloadStatus.DOWNLOADING)), scope)
+        WhenDone.onTasks(listOf(task("a", DownloadStatus.DOWNLOADING).copy(postProcessLabel = "Merging video and audio")), scope)
+        Thread.sleep(200)
+        assertNull(WhenDone.secondsLeft.value)
+        WhenDone.onTasks(listOf(task("a", DownloadStatus.COMPLETED).copy(postProcessLabel = "Extracting 40%")), scope)
+        Thread.sleep(200)
+        assertNull(WhenDone.secondsLeft.value)
+        WhenDone.onTasks(listOf(task("a", DownloadStatus.COMPLETED)), scope)
+        Thread.sleep(200)
+        assertEquals(WhenDone.COUNTDOWN_SECONDS, WhenDone.secondsLeft.value)
+    }
 }

@@ -45,6 +45,8 @@ fjAddLanguage("ko", {
   "errNoExtractor": "FetchJet이 실행 중이 아닙니다(또는 미디어 추출기가 없습니다)",
   "errNotRunning": "FetchJet이 실행 중이 아닙니다",
   "errCantGet": "이 동영상을 가져올 수 없습니다",
+  "itemDrm": "이 동영상은 보호되어 있습니다(DRM)",
+  "itemDrmSub": "FetchJet이나 다른 어떤 다운로드 관리자로도 다운로드할 수 없습니다.",
   "itemOpenApp": "FetchJet에서 열기",
   "itemOpenAppSub": "앱에서 화질 선택",
   "itemPlaylist": "재생목록 전체 다운로드",

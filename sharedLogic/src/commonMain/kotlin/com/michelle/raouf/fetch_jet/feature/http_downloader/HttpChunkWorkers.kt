@@ -4,6 +4,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadChunk
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.feature.http_downloader.ChunkLayout.Companion.STALL_FAIL_MS
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import com.michelle.raouf.fetch_jet.core.network.downloadChannel
@@ -22,7 +23,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
-import okio.buffer
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
@@ -70,7 +70,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     }
     val initialChunks = resumed ?: run {
         val n =
-            if (AppFileSystem.exists(partPath(0))) calculateOptimalChunkCount(totalLength) else connections
+            if (AppFileSystem.exists(partPath(0))) legacyChunkCount(totalLength) else connections
         val chunkSize = totalLength / n
         (0 until n).map { i ->
             val start = i * chunkSize
@@ -271,6 +271,8 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
 }
 
 /** Downloads one piece into its part file, stopping at the piece's (possibly shrinking) end. */
+internal const val PIECE_STALL_MS = 20_000L
+
 internal suspend fun HttpChunkDownloader.downloadPiece(
     taskId: String,
     url: String,
@@ -295,6 +297,10 @@ internal suspend fun HttpChunkDownloader.downloadPiece(
         val to = piece.end
 
         client.prepareGet(url) {
+            timeout {
+                connectTimeoutMillis = PIECE_STALL_MS
+                socketTimeoutMillis = PIECE_STALL_MS
+            }
             applyDownloadHeaders(url, taskHeaders(taskId, url))
             header(HttpHeaders.Range, "bytes=$from-$to")
             if (ifRange.value.isNotEmpty()) header(HttpHeaders.IfRange, ifRange.value)
@@ -325,21 +331,20 @@ internal suspend fun pumpPiece(
     rateLimiter: com.michelle.raouf.fetch_jet.core.network.RateLimiter,
     layout: ChunkLayout
 ) {
-    val sink = AppFileSystem.appendingSink(partPath).buffer()
-    val buffer = ByteArray(64 * 1024)
+    val writer = PartWriter(partPath)
     var windowStart = TimeSource.Monotonic.markNow()
     var windowBytes = 0L
     val runStart = TimeSource.Monotonic.markNow()
     val runFrom = piece.downloaded
     try {
         while (!channel.isClosedForRead) {
-            val read = channel.readAvailable(buffer, 0, buffer.size)
+            val read = channel.readAvailable(writer.array, writer.position, writer.room)
             if (read <= 0) break
             // The end may have moved closer (another worker took the tail of this piece).
             val allowed = piece.length - piece.downloaded
             if (allowed <= 0) break
             val n = min(read.toLong(), allowed).toInt()
-            sink.write(buffer, 0, n)
+            writer.added(n)
             piece.downloaded += n
             piece.lastError = null
             layout.lastProgressMs = layout.nowMs()
@@ -354,11 +359,12 @@ internal suspend fun pumpPiece(
             rateLimiter.acquire(n)
             if (piece.isCompleted) break
         }
-        sink.flush()
+        writer.flush()
         val runMs = runStart.elapsedNow().inWholeMilliseconds
-        if (runMs >= 200 && piece.downloaded - runFrom >= 64 * 1024) layout.noteSpeed((piece.downloaded - runFrom) * 1000 / runMs)
+        val got = piece.downloaded - runFrom
+        if ((runMs >= 200 && got >= 64 * 1024) || (runMs >= 20 && got >= 256 * 1024)) layout.noteSpeed(got * 1000 / runMs)
     } finally {
-        sink.close()
+        writer.close()
     }
 }
 
@@ -448,13 +454,8 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
             val resumed = startByte > 0 && response.status.value == 206
 
             val channel: ByteReadChannel = response.downloadChannel()
-            val fileSink = if (resumed) {
-                AppFileSystem.appendingSink(targetOkioPath).buffer()
-            } else {
-                AppFileSystem.sink(targetOkioPath).buffer()
-            }
+            val writer = PartWriter(targetOkioPath, truncate = !resumed)
 
-            val buffer = ByteArray(64 * 1024)
             var downloaded = if (resumed) startByte else 0L
             val timeSource = TimeSource.Monotonic
             val startMark = timeSource.markNow()
@@ -468,10 +469,10 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
                 val updateIntervalMs = 200L
 
                 while (!channel.isClosedForRead) {
-                    val read = channel.readAvailable(buffer, 0, buffer.size)
+                    val read = channel.readAvailable(writer.array, writer.position, writer.room)
                     if (read <= 0) break
 
-                    fileSink.write(buffer, 0, read)
+                    writer.added(read)
                     downloaded += read
                     rateLimiter.acquire(read)
 
@@ -500,9 +501,9 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
                         }
                     }
                 }
-                fileSink.flush()
+                writer.flush()
             } finally {
-                fileSink.close()
+                writer.close()
             }
 
             // A connection that closed early is not a finished file.

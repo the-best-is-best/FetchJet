@@ -45,6 +45,8 @@ fjAddLanguage("zh", {
   "errNoExtractor": "FetchJet 未运行（或没有媒体提取器）",
   "errNotRunning": "FetchJet 未运行",
   "errCantGet": "无法获取此视频",
+  "itemDrm": "此视频受保护（DRM）",
+  "itemDrmSub": "无法下载，FetchJet 和其他任何下载工具都不行。",
   "itemOpenApp": "在 FetchJet 中打开",
   "itemOpenAppSub": "在应用中选择画质",
   "itemPlaylist": "下载整个播放列表",

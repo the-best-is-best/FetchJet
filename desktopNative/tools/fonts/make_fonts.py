@@ -1,11 +1,14 @@
 import argparse
+import io
 import os
+import re
 import sys
 
 from fontTools import subset
 from fontTools.merge import Merger, Options as MergeOptions
 from fontTools.ttLib import TTFont
 from fontTools.ttLib.scaleUpem import scale_upem
+from fontTools.varLib import instancer
 
 FAMILY = "FetchJet Sans"
 WEIGHTS = [("Regular", 400), ("Medium", 500), ("SemiBold", 600), ("Bold", 700)]
@@ -19,6 +22,9 @@ ARABIC_RANGES = [
     (0x0600, 0x06FF), (0x0750, 0x077F), (0x0870, 0x08FF), (0xFB50, 0xFDFF), (0xFE70, 0xFEFE),
     (0x200C, 0x200F), (0x0660, 0x0669), (0x06F0, 0x06F9),
 ]
+DEVANAGARI_RANGES = [
+    (0x0900, 0x097F), (0xA8E0, 0xA8FF), (0x1CD0, 0x1CFF), (0x25CC, 0x25CC),
+]
 SYMBOLS = [
     0x2190, 0x2191, 0x2192, 0x2193, 0x2194, 0x2195, 0x2196, 0x2197, 0x2198, 0x2199, 0x21BA, 0x21BB,
     0x21C4, 0x21C5, 0x2212, 0x221E, 0x2248, 0x2260, 0x2264, 0x2265,
@@ -29,12 +35,31 @@ SYMBOLS = [
 ]
 MONO_SYMBOLS = [0x2315]
 
+CJK_PUNCTUATION = [
+    (0x3000, 0x303F), (0xFF00, 0xFFEF), (0x2E80, 0x2EFF), (0x3200, 0x32FF), (0x3300, 0x33FF),
+]
+CJK = {
+    "SC": {"source": "NotoSansSC-VF.ttf", "provider": "ChineseProvider.kt", "extra": []},
+    "JP": {"source": "NotoSansJP-VF.ttf", "provider": "JapaneseProvider.kt", "extra": [(0x3040, 0x30FF), (0x31F0, 0x31FF)]},
+    "KR": {"source": "NotoSansKR-VF.ttf", "provider": "KoreanProvider.kt", "extra": [(0x1100, 0x11FF), (0x3130, 0x318F)]},
+}
+
 
 def codepoints(ranges):
     out = set()
     for start, end in ranges:
         out.update(range(start, end + 1))
     return out
+
+
+def base_codepoints():
+    return codepoints(TEXT_RANGES) | codepoints(ARABIC_RANGES) | codepoints(DEVANAGARI_RANGES) | set(SYMBOLS) | set(MONO_SYMBOLS)
+
+
+def provider_codepoints(path):
+    text = io.open(path, encoding="utf-8").read()
+    strings = re.findall(r'"((?:[^"\\]|\\.)*)"', text)
+    return {ord(c) for s in strings for c in s if ord(c) > 0x7F}
 
 
 def cut(path, unicodes, layout):
@@ -54,18 +79,27 @@ def cut(path, unicodes, layout):
     return font
 
 
-def rename(font, style, weight):
-    full = FAMILY if style == "Regular" else FAMILY + " " + style
-    post = "FetchJetSans-" + style
+def instance(variable, weight, path, width=None):
+    axes = {"wght": weight}
+    if width is not None:
+        axes["wdth"] = width
+    font = instancer.instantiateVariableFont(TTFont(variable), axes)
+    font.save(path)
+    return path
+
+
+def rename(font, family, post_family, style, weight):
+    full = family if style == "Regular" else family + " " + style
+    post = post_family + "-" + style
     names = font["name"]
     names.names = [n for n in names.names if n.nameID not in (1, 2, 3, 4, 6, 16, 17, 21, 22)]
     for platform, encoding, language in ((3, 1, 0x409), (1, 0, 0)):
-        names.setName(FAMILY, 1, platform, encoding, language)
+        names.setName(family, 1, platform, encoding, language)
         names.setName(style, 2, platform, encoding, language)
-        names.setName("FetchJet " + post + " 1.0", 3, platform, encoding, language)
+        names.setName("FetchJet " + post + " 1.1", 3, platform, encoding, language)
         names.setName(full, 4, platform, encoding, language)
         names.setName(post, 6, platform, encoding, language)
-        names.setName(FAMILY, 16, platform, encoding, language)
+        names.setName(family, 16, platform, encoding, language)
         names.setName(style, 17, platform, encoding, language)
     os2 = font["OS/2"]
     os2.usWeightClass = weight
@@ -81,7 +115,11 @@ def keep_metrics(font, source):
             setattr(font[table], field, getattr(source[table], field))
 
 
-def build(noto, arabic, dejavu, dejavu_mono, out):
+def merge(paths):
+    return Merger(options=MergeOptions(drop_tables=["vmtx", "vhea"])).merge(paths)
+
+
+def build(noto, arabic, devanagari, cjk_dir, providers, dejavu, dejavu_mono, out):
     os.makedirs(out, exist_ok=True)
     work = os.path.join(out, "_work")
     os.makedirs(work, exist_ok=True)
@@ -92,37 +130,82 @@ def build(noto, arabic, dejavu, dejavu_mono, out):
     joined_path = os.path.join(work, "symbols-joined.ttf")
     symbols.save(symbols_path)
     mono.save(mono_path)
-    joined = Merger(options=MergeOptions(drop_tables=["vmtx", "vhea"])).merge([symbols_path, mono_path])
+    joined = merge([symbols_path, mono_path])
     scale_upem(joined, 1000)
     joined.save(joined_path)
+    base = base_codepoints()
     for style, weight in WEIGHTS:
         latin = cut(os.path.join(noto, "NotoSans-" + style + ".ttf"), codepoints(TEXT_RANGES), True)
         arab = cut(os.path.join(arabic, "NotoSansArabic-" + style + ".ttf"), codepoints(ARABIC_RANGES) - codepoints(TEXT_RANGES), True)
+        deva_static = instance(devanagari, weight, os.path.join(work, "deva-static.ttf"), 100)
+        deva = cut(deva_static, codepoints(DEVANAGARI_RANGES) - codepoints(TEXT_RANGES) - codepoints(ARABIC_RANGES), True)
         latin_path = os.path.join(work, "latin-" + style + ".ttf")
         arab_path = os.path.join(work, "arabic-" + style + ".ttf")
+        deva_path = os.path.join(work, "devanagari-" + style + ".ttf")
         latin.save(latin_path)
         arab.save(arab_path)
-        merged = Merger(options=MergeOptions(drop_tables=["vmtx", "vhea"])).merge([latin_path, arab_path, joined_path])
+        deva.save(deva_path)
+        parts = [latin_path, arab_path, deva_path, joined_path]
+        merged = merge(parts)
         keep_metrics(merged, TTFont(latin_path))
-        rename(merged, style, weight)
+        rename(merged, FAMILY, "FetchJetSans", style, weight)
         target = os.path.join(out, "FetchJetSans-" + style + ".ttf")
         merged.save(target)
         print(target, os.path.getsize(target))
+        for tag, spec in CJK.items():
+            wanted = (provider_codepoints(os.path.join(providers, spec["provider"])) | codepoints(CJK_PUNCTUATION)
+                      | codepoints(spec["extra"])) - base
+            cjk_static = instance(os.path.join(cjk_dir, spec["source"]), weight, os.path.join(work, "cjk-static.ttf"))
+            cjk_font = cut(cjk_static, wanted, True)
+            cjk_path = os.path.join(work, "cjk-" + tag + "-" + style + ".ttf")
+            cjk_font.save(cjk_path)
+            merged = merge(parts[:3] + [cjk_path, joined_path])
+            keep_metrics(merged, TTFont(latin_path))
+            rename(merged, FAMILY + " " + tag, "FetchJetSans" + tag, style, weight)
+            target = os.path.join(out, "FetchJetSans" + tag + "-" + style + ".ttf")
+            merged.save(target)
+            print(target, os.path.getsize(target))
     for name in os.listdir(work):
         os.remove(os.path.join(work, name))
     os.rmdir(work)
 
 
+def check(fonts, providers):
+    files = {"": "FetchJetSans", "SC": "FetchJetSansSC", "JP": "FetchJetSansJP", "KR": "FetchJetSansKR"}
+    by_tag = {tag: spec["provider"] for tag, spec in CJK.items()}
+    missing_total = 0
+    for name in sorted(os.listdir(providers)):
+        if not name.endswith("Provider.kt"):
+            continue
+        tag = next((t for t, p in by_tag.items() if p == name), "")
+        wanted = provider_codepoints(os.path.join(providers, name))
+        for style, _ in WEIGHTS:
+            font = TTFont(os.path.join(fonts, files[tag] + "-" + style + ".ttf"))
+            have = set(font.getBestCmap().keys())
+            missing = sorted(c for c in wanted if c not in have and not (0xFE00 <= c <= 0xFE0F) and not 0x1F000 <= c)
+            if missing:
+                missing_total += len(missing)
+                print("%s %s %s: %d missing: %s" % (name, files[tag], style, len(missing), "".join(chr(c) for c in missing[:40])))
+    print("missing characters: %d" % missing_total)
+    return 1 if missing_total else 0
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--noto", required=True)
-    parser.add_argument("--arabic", required=True)
-    parser.add_argument("--dejavu", required=True)
-    parser.add_argument("--dejavu-mono", required=True)
+    parser.add_argument("--check", action="store_true", help="only check that every provider text is in the fonts of --out")
+    parser.add_argument("--noto")
+    parser.add_argument("--arabic")
+    parser.add_argument("--devanagari")
+    parser.add_argument("--cjk")
+    parser.add_argument("--providers", required=True)
+    parser.add_argument("--dejavu")
+    parser.add_argument("--dejavu-mono")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
-    build(args.noto, args.arabic, args.dejavu, args.dejavu_mono, args.out)
-    return 0
+    if args.check:
+        return check(args.out, args.providers)
+    build(args.noto, args.arabic, args.devanagari, args.cjk, args.providers, args.dejavu, args.dejavu_mono, args.out)
+    return check(args.out, args.providers)
 
 
 if __name__ == "__main__":

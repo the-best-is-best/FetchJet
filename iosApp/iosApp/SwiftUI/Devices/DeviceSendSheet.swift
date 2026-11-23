@@ -56,7 +56,7 @@ struct DeviceSendSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let name = task?.fileName, !name.isEmpty {
                         Text(store.host.decodeUnicodeText(input: name))
-                            .font(FJTheme.font.body.weight(.semibold))
+                            .font(Font.fj(15, .semibold))
                             .foregroundStyle(FJTheme.color.onSurface)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -158,7 +158,7 @@ struct DeviceSendSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Text(title.uppercased())
-                    .font(FJTheme.font.small.weight(.semibold))
+                    .font(Font.fj(11, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 if !list.first!.paired && isSearchingMore {
                     ProgressView().controlSize(.mini)
@@ -189,13 +189,13 @@ struct DeviceSendSheet: View {
         } label: {
             HStack(spacing: 10) {
                 Text(fjDeviceEmoji(device.name + " " + device.platform))
-                    .font(.system(size: 15))
+                    .font(.fj(15))
                     .frame(width: 30, height: 30)
                     .background(FJTheme.color.primary.opacity(selected ? 0.22 : 0.12),
                                 in: RoundedRectangle(cornerRadius: 9))
                 HStack(spacing: 0) {
                     Text(hostName)
-                        .font(FJTheme.font.body.weight(.semibold))
+                        .font(Font.fj(15, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(1)
                     if showPlat {
@@ -215,7 +215,7 @@ struct DeviceSendSheet: View {
                         .background(FJTheme.color.primary.opacity(0.16), in: Capsule())
                 }
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .font(.system(size: 20))
+                    .font(.fj(20))
                     .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
             }
             .padding(.horizontal, 12)
@@ -236,10 +236,10 @@ struct DeviceSendSheet: View {
         Button { deleteAfter.toggle() } label: {
             HStack(spacing: 10) {
                 Image(systemName: deleteAfter ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20))
+                    .font(.fj(20))
                     .foregroundStyle(deleteAfter ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                 Text(s.sysDeviceDeleteAfter)
-                    .font(FJTheme.font.body.weight(.medium))
+                    .font(Font.fj(15, .medium))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
@@ -254,11 +254,11 @@ struct DeviceSendSheet: View {
         return Button { mode = value } label: {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .font(.system(size: 20))
+                    .font(.fj(20))
                     .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(FJTheme.font.body.weight(.medium))
+                        .font(Font.fj(15, .medium))
                         .foregroundStyle(FJTheme.color.onSurface)
                     Text(desc)
                         .font(FJTheme.font.caption)
@@ -280,7 +280,7 @@ struct DeviceSendSheet: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: showManualIp ? "chevron.down" : "chevron.forward")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
                 Text(s.sysDeviceManualConnect).font(FJTheme.font.caption)
             }
             .foregroundStyle(FJTheme.color.primary)

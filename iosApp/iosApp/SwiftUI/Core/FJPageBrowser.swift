@@ -137,17 +137,17 @@ struct FJPageBrowserSheet: View {
             HStack(spacing: 12) {
                 Button(action: close) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.fj(15, .semibold))
                         .frame(width: 36, height: 36)
                         .background(FJTheme.color.surfaceVariant, in: Circle())
                 }
                 .accessibilityLabel(store.strings.close)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.title.isEmpty ? (url.host ?? "") : model.title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.fj(15, .semibold))
                         .lineLimit(1)
                     Text(model.webView.url?.host ?? url.host ?? "")
-                        .font(.system(size: 12))
+                        .font(.fj(12))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .lineLimit(1)
                 }
@@ -157,7 +157,7 @@ struct FJPageBrowserSheet: View {
                     model.download { ok in if ok { close() } }
                 } label: {
                     Label(store.strings.addStartDownload, systemImage: "arrow.down.circle.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.fj(14, .semibold))
                         .lineLimit(1)
                         .fixedSize()
                         .padding(.horizontal, 12)

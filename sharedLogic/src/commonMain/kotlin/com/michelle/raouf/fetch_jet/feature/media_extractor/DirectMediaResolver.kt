@@ -34,7 +34,7 @@ object DirectMediaResolver {
     fun selector(formatId: String?, audioOnly: Boolean): String = when {
         formatId.isNullOrBlank() -> "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best"
         audioOnly -> "$formatId/bestaudio/best"
-        else -> "$formatId+bestaudio/$formatId/best"
+        else -> videoWithAudioSelector(formatId)
     }
 
     suspend fun resolve(
@@ -57,11 +57,7 @@ object DirectMediaResolver {
         // client's m3u8 itags): ask for the same picture size as plain https files instead.
         val h = lastRejectHeight
         if (lastReject.contains("protocol=") || lastReject.contains("playlist")) {
-            val httpsSel = when {
-                audioOnly -> "bestaudio[protocol^=http]/best[protocol^=http]"
-                h > 0 -> "bestvideo[height<=$h][protocol^=http]+bestaudio[protocol^=http]/best[height<=$h][protocol^=http]"
-                else -> "bestvideo[protocol^=http]+bestaudio[protocol^=http]/best[protocol^=http]"
-            }
+            val httpsSel = httpsFallbackSelector(h, audioOnly)
             val json2 = runYtDlpJson(url, httpsSel, headers) ?: return hlsOnly
             val parsed2 = parse(json2)?.takeIf { it.hlsUrl == null }
             com.michelle.raouf.fetch_jet.core.log.AppLog.d {

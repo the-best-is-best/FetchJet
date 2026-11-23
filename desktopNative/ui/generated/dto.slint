@@ -13,6 +13,12 @@ export struct ChoiceDto {
     selected: bool,
 }
 
+export struct GrabGroupDto {
+    folder: string,
+    label: string,
+    selected: bool,
+}
+
 export struct QuickFolderDto {
     icon: string,
     label: string,
@@ -57,9 +63,21 @@ export struct AddDto {
     folderRule: string,
     quickFolders: [QuickFolderDto],
     linkSummary: string,
+    linkBefore: string,
     linkAllSelected: bool,
+    linkPickable: bool,
     linkFolder: string,
     linkFolderRev: int,
+    grabShown: bool,
+    grabDepthHidden: bool,
+    engineHidden: bool,
+    checkingLink: bool,
+    grabRunning: bool,
+    grabReading: string,
+    grabDepths: [ChoiceDto],
+    grabNote: string,
+    grabGroups: [GrabGroupDto],
+    linkGrabbed: bool,
     leechShown: bool,
     leech: bool,
     error: string,
@@ -93,6 +111,7 @@ export struct LinkRowDto {
     files: [TorrentFileRowDto],
     filesName: string,
     filesAllSelected: bool,
+    rowLocked: bool,
 }
 
 export struct QualityRowDto {
@@ -116,6 +135,11 @@ export struct PlaylistRowDto {
     titleRtl: bool,
     duration: string,
     selected: bool,
+    size: string,
+    sizeBusy: bool,
+    before: bool,
+    unavailable: bool,
+    inPlaylist: bool,
 }
 
 export struct ClipChipDto {
@@ -146,8 +170,11 @@ export struct AddMediaDto {
     qualitiesTitleRtl: bool,
     qualitiesCount: string,
     subtitlesShown: bool,
+    subtitlesNote: string,
+    subtitlesReading: bool,
     subtitlesAnySelected: bool,
     embedSubtitles: bool,
+    subtitleVtt: bool,
     clipAvailable: bool,
     clipEnabled: bool,
     clipTitle: string,
@@ -169,12 +196,16 @@ export struct AddMediaDto {
     playlistTitle: string,
     playlistTitleRtl: bool,
     playlistSummary: string,
+    playlistBefore: string,
+    playlistPickable: bool,
     playlistAllSelected: bool,
     playlistFolder: string,
     playlistFolderRev: int,
     playlistFromBrowser: bool,
     playlistQualities: [ChoiceDto],
     playlistCanUseSingle: bool,
+    playlistOldestFirst: bool,
+    playlistOldestFirstOffered: bool,
 }
 
 export struct ClipPickerDto {
@@ -362,6 +393,7 @@ export struct DetailsDto {
     canShare: bool,
     canCompress: bool,
     canExtract: bool,
+    canSubtitles: bool,
     compressLabel: string,
     removeLabel: string,
 }
@@ -496,6 +528,19 @@ export struct ChromeDto {
     focusRow: int,
     focusHeads: int,
     focusDone: int,
+    playlistOpen: bool,
+    playlistSummary: string,
+    playlistSubtitles: string,
+    playlistCanPause: bool,
+    playlistCanResume: bool,
+    playlistCanCheck: bool,
+    playlistLanguagesShown: bool,
+    playlistLanguagesBusy: bool,
+    playlistLanguagesNote: string,
+    playlistLanguageChoices: [TextChoiceDto],
+    groupIsFolder: bool,
+    groupIsPage: bool,
+    groupFolderPath: string,
 }
 
 export struct StatusDto {
@@ -562,6 +607,7 @@ export struct SettingsNavDto {
     current: int,
     title: string,
     blurb: string,
+    inSettings: bool,
 }
 
 export struct SettingFieldDto {
@@ -664,6 +710,31 @@ export struct ShellDto {
     whenDoneIndex: int,
     toastText: string,
     toastShown: bool,
+}
+
+export struct SubtitlePageRowDto {
+    key: string,
+    name: string,
+    checked: bool,
+    present: bool,
+    enabled: bool,
+}
+
+export struct SubtitlesPageDto {
+    open: bool,
+    fileName: string,
+    reading: bool,
+    message: string,
+    messageError: bool,
+    note: string,
+    rows: [SubtitlePageRowDto],
+    running: bool,
+    progress: float,
+    progressText: string,
+    added: string,
+    refused: string,
+    failed: string,
+    canAdd: bool,
 }
 
 export struct TorrentTrackerDto {
@@ -877,6 +948,7 @@ export global SideFilterCode {
 export global RowKind {
     out property <int> task: 0;
     out property <int> header: 1;
+    out property <int> group: 2;
 }
 
 export global RowActionCode {
@@ -984,4 +1056,6 @@ export global Core {
     in property <AudioCompressDto> audioCompress;
     in property <TorrentDetailsDto> torrentDetails;
     in property <[RowMenuItemDto]> rowMenu;
+    in property <SubtitlesPageDto> subtitlesPage;
+    in property <[SettingRowDto]> moreRows;
 }

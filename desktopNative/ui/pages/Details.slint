@@ -1091,6 +1091,17 @@ component DetailsBody inherits VerticalLayout {
         font-weight: 600;
         clicked => { Act.detailsExtract(); }
     }
+    if Core.details.canSubtitles: Rectangle {
+        height: 8px;
+    }
+    if Core.details.canSubtitles: OutlinedButton {
+        text: Tr.subtitlesAddButton;
+        height: 42px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        clicked => { Act.detailsSubtitles(); }
+    }
     if Core.details.canShare: Rectangle {
         height: 8px;
     }

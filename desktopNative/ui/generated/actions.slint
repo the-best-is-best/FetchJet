@@ -19,6 +19,15 @@ export global Act {
     callback rowMenu(id: string);
     callback rowMenuPick(key: int);
     callback rowMenuClose();
+    callback openPlaylist(id: string);
+    callback closePlaylist();
+    callback playlistPauseAll();
+    callback playlistResumeAll();
+    callback playlistRemove();
+    callback playlistCheck();
+    callback playlistReadLanguages();
+    callback playlistAddLanguage(code: string);
+    callback playlistLanguagesClose();
     callback cyclePriority(id: string);
     callback checkAll(checked: bool);
     callback clearChecks();
@@ -54,6 +63,10 @@ export global Act {
     callback audioCompressSetFormat(index: int);
     callback audioCompressDelete(path: string);
     callback audioCompressDismiss();
+    callback detailsSubtitles();
+    callback subtitlesToggle(key: string, selected: bool);
+    callback subtitlesAdd();
+    callback subtitlesDismiss();
     callback toggleDetailFile(index: int, selected: bool);
     callback cycleDetailFilePriority(index: int);
     callback torrentAddTracker(url: string);
@@ -66,6 +79,7 @@ export global Act {
     callback alertText(kind: int, text: string);
     callback alertExtra(kind: int);
     callback setSettingsSection(index: int);
+    callback openMore();
     callback settingToggle(id: string, on: bool);
     callback settingPick(id: string, index: int);
     callback settingText(id: string, text: string);
@@ -75,6 +89,10 @@ export global Act {
     callback updateLater(fromScrim: bool);
     callback toggleLink(index: int, selected: bool);
     callback selectAllLinks(selected: bool);
+    callback grabPage();
+    callback grabCancel();
+    callback setGrabDepth(depth: int);
+    callback toggleGrabGroup(folder: string, selected: bool);
     callback setLinkFolder(name: string);
     callback setLinkQuality(index: int, quality: int);
     callback retryLinkInspect(index: int);
@@ -122,6 +140,7 @@ export global Act {
     callback selectAllQualities(selected: bool);
     callback toggleSubtitle(code: string, selected: bool);
     callback setEmbedSubtitles(embed: bool);
+    callback setSubtitleFormat(format: string);
     callback setClipEnabled(on: bool);
     callback setClipRange(start: string, end: string);
     callback setClipFastMode(on: bool);
@@ -136,6 +155,8 @@ export global Act {
     callback selectAllPlaylist(selected: bool);
     callback setPlaylistFolder(name: string);
     callback setPlaylistQuality(quality: int);
+    callback groupOpenFolderOnDisk();
+    callback setPlaylistOldestFirst(on: bool);
     callback useSingleVideo();
     callback choicePrimary(kind: int);
     callback choiceSecondary(kind: int);

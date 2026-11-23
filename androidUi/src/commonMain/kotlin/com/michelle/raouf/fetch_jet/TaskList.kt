@@ -30,6 +30,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.michelle.raouf.fetch_jet.presentation.dashboard.PLAYLIST_ROW_PREFIX
+import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
+import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskListItem
+import com.michelle.raouf.fetch_jet.presentation.dashboard.groupDownloads
+import com.michelle.raouf.fetch_jet.presentation.dashboard.FolderGroup
+import com.michelle.raouf.fetch_jet.presentation.dashboard.FOLDER_ROW_PREFIX
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderGroup
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderKey
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow
+import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
+import com.michelle.raouf.fetch_jet.presentation.dashboard.inFolderGroup
+import com.michelle.raouf.fetch_jet.presentation.dashboard.matchesPlaylistTitle
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -126,29 +140,55 @@ internal fun TaskListArea(
 ) {
     // The ViewModel already orders the list (running first, then waiting, paused, failed).
     // Mixed views show one header per state; tap a header to fold / unfold it.
-    val grouped = groupByState
+    val uiState by viewModel.uiState.collectAsState()
+    val records = uiState.playlists
+    val openGroup = uiState.openPlaylistId?.let { id ->
+        records[id]?.let { PlaylistGroup(it, playlistTasks(uiState.allTasks, id)) }
+    }
+    val openFolder = if (openGroup == null) uiState.openFolder?.let { folderGroup(uiState.allTasks, records, it) } else null
+    val inPage = openGroup != null || openFolder != null
+    val grouped = groupByState && !inPage
     val collapsedGroups = remember { mutableStateMapOf<String, Boolean>() }
     // Search by file name (or link) in the current view.
     var localSearch by remember { mutableStateOf("") }
     val searchQuery = externalSearch ?: localSearch
-    val allTasks = tasks
-    val shownTasks = remember(allTasks, searchQuery) {
+    val allTasks = when {
+        openGroup != null -> openGroup.tasks
+        openFolder != null -> openFolder.tasks
+        else -> tasks
+    }
+    val shownTasks = remember(allTasks, searchQuery, records, openGroup?.id, openFolder?.folder) {
         val q = searchQuery.trim()
         if (q.isEmpty()) allTasks
         else allTasks.filter {
             it.fileName.contains(q, ignoreCase = true) || it.url.contains(q, ignoreCase = true) ||
-                    (it.originalUrl?.contains(q, ignoreCase = true) == true)
+                    (it.originalUrl?.contains(q, ignoreCase = true) == true) ||
+                    (!inPage && matchesPlaylistTitle(it, records, q))
         }
     }
     val unfinished =
         remember(shownTasks) { shownTasks.filter { it.status != DownloadStatus.COMPLETED } }
-
-    val uiState by viewModel.uiState.collectAsState()
+    val byFolder = uiState.groupByFolder
+    val folding = !inPage && (records.isNotEmpty() || byFolder)
+    val itemsOf: (List<DownloadTask>) -> List<TaskListItem> = { list ->
+        if (!folding) list.map { TaskListItem.Single(it) } else groupDownloads(list, uiState.allTasks, records, byFolder)
+    }
+    val expandIds: (Collection<String>) -> List<String> = { keys ->
+        keys.flatMap { key ->
+            playlistIdOfRow(key)?.let { id -> playlistTasks(uiState.allTasks, id).map { it.id } }
+                ?: folderOfRow(key)?.let { folder -> folderTasks(uiState.allTasks, records, folder).map { it.id } }
+                ?: listOf(key)
+        }.distinct()
+    }
 
     var checkedIds by remember { mutableStateOf(emptySet<String>()) }
     var menuTaskId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(allTasks) {
+    LaunchedEffect(allTasks, records) {
         val ids = allTasks.mapTo(HashSet()) { it.id }
+        if (folding) allTasks.forEach {
+            if (it.playlistId in records) ids.add(PLAYLIST_ROW_PREFIX + it.playlistId)
+            else if (byFolder && inFolderGroup(it, records)) ids.add(FOLDER_ROW_PREFIX + folderKey(it.destinationPath))
+        }
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
     }
     val selectionMode = checkedIds.isNotEmpty()
@@ -169,6 +209,16 @@ internal fun TaskListArea(
         state = rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = selectionMode,
         onBackCompleted = { checkedIds = emptySet() }
+    )
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = openGroup != null && !selectionMode,
+        onBackCompleted = { viewModel.onEvent(DashboardUiEvent.OnClosePlaylist) }
+    )
+    NavigationBackHandler(
+        state = rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = openFolder != null && !selectionMode,
+        onBackCompleted = { viewModel.onEvent(DashboardUiEvent.OnCloseFolderGroup) }
     )
 
     val tasks = shownTasks
@@ -360,7 +410,7 @@ internal fun TaskListArea(
                     e.key == Key.Delete || (e.key == Key.Backspace && e.isMetaPressed) -> {
                         when {
                             selectionMode -> viewModel.onEvent(
-                                DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())
+                                DashboardUiEvent.OnRemoveSelectedClicked(expandIds(checkedIds))
                             )
 
                             current != null -> viewModel.onEvent(
@@ -397,16 +447,43 @@ internal fun TaskListArea(
                     .onFocusChanged { searchHasFocus = it.hasFocus }
             )
         }
+        val rowKeys = itemsOf(tasks).map { it.key }
         if (selectionMode) {
             SelectionBar(
                 count = checkedIds.size,
-                allChecked = tasks.isNotEmpty() && tasks.all { it.id in checkedIds },
+                allChecked = rowKeys.isNotEmpty() && rowKeys.all { it in checkedIds },
                 onCheckAll = { all ->
-                    checkedIds = if (all) tasks.mapTo(HashSet()) { it.id } else emptySet()
+                    checkedIds = if (all) rowKeys.toHashSet() else emptySet()
                 },
-                onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(checkedIds.toList())) },
-                onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(checkedIds.toList())) },
+                onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(expandIds(checkedIds))) },
+                onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(expandIds(checkedIds))) },
                 onClose = { checkedIds = emptySet() }
+            )
+        } else if (openGroup != null) {
+            com.michelle.raouf.fetch_jet.ui.PlaylistPageHeader(
+                group = openGroup,
+                languages = uiState.playlistLanguages,
+                onBack = { viewModel.onEvent(DashboardUiEvent.OnClosePlaylist) },
+                onCheck = { viewModel.onEvent(DashboardUiEvent.OnPlaylistCheck(openGroup.id)) },
+                onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupPause(openGroup.id)) },
+                onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupResume(openGroup.id)) },
+                onDelete = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(openGroup.id)) },
+                onReadLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(openGroup.id)) },
+                onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
+                onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
+                onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
+                    ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } }
+            )
+        } else if (openFolder != null) {
+            val firstFile = openFolder.tasks.firstOrNull()
+            com.michelle.raouf.fetch_jet.ui.FolderPageHeader(
+                group = openFolder,
+                canOpenFolder = firstFile != null && pathResolver.isOpenFolderSupported(),
+                onBack = { viewModel.onEvent(DashboardUiEvent.OnCloseFolderGroup) },
+                onOpenFolder = { if (firstFile != null) pathResolver.openFileLocation(fullPathOf(firstFile)) },
+                onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(openFolder.folder)) },
+                onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(openFolder.folder)) },
+                onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) }
             )
         } else if (tasks.isNotEmpty() && showToolbar) {
             ListToolbar(
@@ -444,10 +521,10 @@ internal fun TaskListArea(
         }
 
         TaskRowsHeader(
-            allChecked = tasks.all { it.id in checkedIds },
+            allChecked = rowKeys.all { it in checkedIds },
             someChecked = selectionMode,
             onCheckAll = { all ->
-                checkedIds = if (all) tasks.mapTo(HashSet()) { it.id } else emptySet()
+                checkedIds = if (all) rowKeys.toHashSet() else emptySet()
             }
         )
         // A download just added (dialog or extension) sits at the top: bring it into view.
@@ -537,6 +614,8 @@ internal fun TaskListArea(
                                                 viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COMPRESS ->
                                                 viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id))
+                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SUBTITLES ->
+                                                viewModel.onEvent(DashboardUiEvent.OnSubtitlesClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SEND_TO_DEVICE ->
                                                 viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id))
                                             com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COPY_LINK ->
@@ -582,23 +661,67 @@ internal fun TaskListArea(
                 )
             }
 
+            val groupItem: @Composable (PlaylistGroup) -> Unit = { group ->
+                val key = PLAYLIST_ROW_PREFIX + group.id
+                com.michelle.raouf.fetch_jet.ui.PlaylistGroupRow(
+                    group = group,
+                    speedDisplayUnit = speedDisplayUnit,
+                    onClick = {
+                        checkedIds = emptySet()
+                        viewModel.onEvent(DashboardUiEvent.OnOpenPlaylist(group.id))
+                    },
+                    onPause = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupPause(group.id)) },
+                    onResume = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupResume(group.id)) },
+                    checked = key in checkedIds,
+                    selectionMode = selectionMode,
+                    onCheckedChange = { on -> checkedIds = if (on) checkedIds + key else checkedIds - key },
+                    onLongClick = { checkedIds = checkedIds + key }
+                )
+            }
+            val folderItem: @Composable (FolderGroup) -> Unit = { group ->
+                val key = FOLDER_ROW_PREFIX + group.folder
+                com.michelle.raouf.fetch_jet.ui.FolderGroupRow(
+                    group = group,
+                    speedDisplayUnit = speedDisplayUnit,
+                    onClick = {
+                        checkedIds = emptySet()
+                        viewModel.onEvent(DashboardUiEvent.OnOpenFolderGroup(group.folder))
+                    },
+                    onPause = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(group.folder)) },
+                    onResume = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(group.folder)) },
+                    checked = key in checkedIds,
+                    selectionMode = selectionMode,
+                    onCheckedChange = { on -> checkedIds = if (on) checkedIds + key else checkedIds - key },
+                    onLongClick = { checkedIds = checkedIds + key }
+                )
+            }
+            val rowItem: @Composable (TaskListItem) -> Unit = { item ->
+                when (item) {
+                    is TaskListItem.Single -> taskItem(item.task)
+                    is TaskListItem.Group -> groupItem(item.group)
+                    is TaskListItem.Folder -> folderItem(item.group)
+                }
+            }
             if (grouped) {
+                val placedGroups = HashSet<String>()
                 taskStateGroups(tasks).forEach { group ->
+                    val rows = itemsOf(group.tasks).filter { it is TaskListItem.Single || placedGroups.add(it.key) }
+                    if (rows.isEmpty()) return@forEach
                     val collapsed = collapsedGroups[group.key] == true
                     item(key = "header-" + group.key) {
                         SectionHeader(
                             emoji = group.emoji,
                             title = group.title,
-                            count = group.tasks.size,
+                            count = rows.size,
                             color = group.color(),
                             collapsed = collapsed,
                             onToggle = { collapsedGroups[group.key] = !collapsed }
                         )
                     }
-                    if (!collapsed) items(group.tasks, key = { it.id }) { taskItem(it) }
+                    if (!collapsed) items(rows, key = { it.key }) { rowItem(it) }
                 }
             } else {
-                items(tasks, key = { it.id }) { taskItem(it) }
+                items(itemsOf(tasks), key = { it.key }) { rowItem(it) }
             }
         }
             com.michelle.raouf.fetch_jet.ui.AppScrollbar(
@@ -865,7 +988,10 @@ internal fun SelectionBar(
         Text(
             LocalizationManager.Strings.homeSelectedCount(count),
             fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
         androidx.compose.material3.TextButton(
             onClick = { onCheckAll(!allChecked) },
@@ -875,10 +1001,11 @@ internal fun SelectionBar(
             Text(
                 if (allChecked) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false
             )
         }
-        Spacer(Modifier.weight(1f))
         OutlinedButton(
             onClick = onExport,
             shape = RoundedCornerShape(10.dp),
@@ -888,7 +1015,9 @@ internal fun SelectionBar(
             Text(
                 LocalizationManager.Strings.homeExport,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false
             )
         }
         androidx.compose.material3.Button(
@@ -901,10 +1030,12 @@ internal fun SelectionBar(
             modifier = Modifier.height(34.dp)
         ) {
             Text(
-                "🗑  ${LocalizationManager.Strings.delete}",
+                "🗑 ${LocalizationManager.Strings.delete}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onError
+                color = MaterialTheme.colorScheme.onError,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

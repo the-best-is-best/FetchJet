@@ -31,7 +31,7 @@ extension FJStore {
             items.append(FJTabItem(tab: .media, label: s.homeTabMedia, icon: "film", selectedIcon: "film.fill",
                                    count: tasks.filter { $0.engineType == .mediaStream }.count))
         }
-        items.append(FJTabItem(tab: .settings, label: s.homeSettings, icon: "gearshape", selectedIcon: "gearshape.fill", count: 0))
+        items.append(FJTabItem(tab: .settings, label: s.moreTitle, icon: "ellipsis.circle", selectedIcon: "ellipsis.circle.fill", count: 0))
         return items
     }
 
@@ -104,7 +104,7 @@ struct FJListPage: View {
         ZStack {
             FJTheme.color.background.ignoresSafeArea()
             if store.state.selectedTab == .settings {
-                SettingsScreen()
+                MoreScreen()
             } else {
                 TaskListScreen()
                     .overlay(alignment: .bottomTrailing) { FJAddButton().padding(16) }
@@ -121,7 +121,7 @@ struct FJAddButton: View {
             store.send(DashboardUiEventOnToggleAddDialog(show: true))
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: 24, weight: .bold))
+                .font(.fj(24, .bold))
                 .foregroundStyle(FJTheme.color.onPrimary)
                 .frame(width: 56, height: 56)
                 .background(FJTheme.color.primary, in: RoundedRectangle(cornerRadius: 18))
@@ -160,13 +160,13 @@ struct FJBottomBar: View {
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: selected ? item.selectedIcon : item.icon)
                                 .symbolRenderingMode(.monochrome)
-                                .font(.system(size: 18))
+                                .font(.fj(18))
                                 .frame(width: 44, height: 26)
                                 .background(selected ? FJTheme.color.primaryContainer : .clear,
                                             in: Capsule())
                             if item.count > 0 {
                                 Text("\(item.count)")
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(.fj(9, .bold))
                                     .foregroundStyle(FJTheme.color.onPrimary)
                                     .padding(.horizontal, 4)
                                     .frame(minWidth: 15, minHeight: 15)
@@ -175,7 +175,7 @@ struct FJBottomBar: View {
                             }
                         }
                         Text(item.label)
-                            .font(.system(size: 10, weight: selected ? .semibold : .regular))
+                            .font(.fj(10, selected ? .semibold : .regular))
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     }

@@ -12,10 +12,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
-internal fun uiFontFor(language: String): String = when (language.substringBefore('-')) {
-    "zh" -> "Microsoft YaHei UI"
-    else -> "FetchJet Sans"
-}
+internal fun uiFontFor(language: String): String =
+    com.michelle.raouf.fetch_jet.core.i18n.start.AppFont.familyFor(language).familyName
 
 internal class TrChannel(
     override val id: Int,

@@ -78,8 +78,11 @@ internal class KtorSyncNetwork(
         return KtorUdpSocket(socket)
     }
 
+    @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
     override suspend fun listen(host: String?, port: Int): SyncServerSocket =
-        KtorServerSocket(aSocket(selector).tcp().bind(host ?: DEVICE_SYNC_ANY_HOST, port))
+        KtorServerSocket(aSocket(selector).tcp().bind(host ?: DEVICE_SYNC_ANY_HOST, port) {
+            reuseAddress = Platform.osFamily != OsFamily.WINDOWS
+        })
 
     override suspend fun connect(host: String, port: Int, timeoutMs: Long): SyncConnection? {
         var opened: Socket? = null

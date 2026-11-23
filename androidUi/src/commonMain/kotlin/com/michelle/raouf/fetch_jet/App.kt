@@ -226,7 +226,7 @@ fun App(
                             onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnResumeAllClicked) },
                             onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                             onThemeToggled = { viewModel.onEvent(DashboardUiEvent.OnThemeModeChanged(if (darkMode) "light" else "dark")) },
-                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else LocalizationManager.Strings.homeDownloads
+                            title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else LocalizationManager.Strings.homeDownloads
                         )
 
                         Box(
@@ -236,11 +236,7 @@ fun App(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             if (state.selectedTab == DashboardTab.SETTINGS) {
-                                SettingsContentView(
-                                    state = state,
-                                    viewModel = viewModel,
-                                    pathResolver = pathResolver
-                                )
+                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
                             } else {
                                 TaskListArea(
                                     tasks = state.filteredTasks,
@@ -341,7 +337,7 @@ fun App(
                                 FjTopBar(
                                     showSearch = state.selectedTab != DashboardTab.SETTINGS,
                                     compact = isMedium,
-                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.homeSettings else sideFilter.label,
+                                    title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else sideFilter.label,
                                     searchQuery = searchQuery,
                                     onSearchChange = { searchQuery = it },
                                     totalDlSpeed = state.totalDownloadSpeedBytesPerSec,
@@ -370,11 +366,7 @@ fun App(
                                 )
 
                                 if (state.selectedTab == DashboardTab.SETTINGS) {
-                                    SettingsContentView(
-                                        state = state,
-                                        viewModel = viewModel,
-                                        pathResolver = pathResolver
-                                    )
+                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
                                 } else {
                                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         TaskListArea(
@@ -572,6 +564,9 @@ fun App(
                     courseReading = state.courseReading,
                     inspectedMediaQualities = state.inspectedMediaQualities,
                     inspectedSubtitles = state.inspectedSubtitles,
+                    subtitlesListShown = state.subtitlesOffered,
+                    subtitlesListNote = state.subtitlesListNote,
+                    subtitlesListReading = state.subtitlesListReading,
                     embedSubtitles = state.embedSubtitles,
                     onSubtitleToggled = { lang, selected ->
                         viewModel.onEvent(DashboardUiEvent.OnSubtitleToggled(lang, selected))
@@ -579,6 +574,8 @@ fun App(
                     onToggleEmbedSubtitles = { embed ->
                         viewModel.onEvent(DashboardUiEvent.OnToggleEmbedSubtitles(embed))
                     },
+                    subtitleFormat = state.subtitleFormat,
+                    onSubtitleFormat = { viewModel.onEvent(DashboardUiEvent.OnSubtitleFormatSelected(it)) },
                     inspectMediaError = state.inspectMediaError,
                     isYtDlpInstalled = state.isYtDlpInstalled,
                     ytDlpStatus = state.ytDlpStatus,
@@ -680,6 +677,8 @@ fun App(
                     },
                     inspectedPlaylist = state.inspectedPlaylist,
                     playlistQuality = state.playlistQuality,
+                    playlistOldestFirst = state.playlistOldestFirst,
+                    onPlaylistOldestFirst = { viewModel.onEvent(DashboardUiEvent.OnPlaylistOldestFirst(it)) },
                     onPlaylistEntryToggled = { i, sel ->
                         viewModel.onEvent(
                             DashboardUiEvent.OnPlaylistEntryToggled(
@@ -753,6 +752,18 @@ fun App(
                                 it
                             )
                         )
+                    },
+                    canGrabPage = state.canGrabPage,
+                    engineChoiceShown = state.engineChoiceShown,
+                    checkingLink = state.checkingLink,
+                    grabDepthShown = state.grabDepthShown,
+                    siteGrab = state.siteGrab,
+                    grabGroups = state.grabGroups,
+                    onGrabPage = { viewModel.onEvent(DashboardUiEvent.OnGrabPageClicked) },
+                    onGrabCancel = { viewModel.onEvent(DashboardUiEvent.OnGrabCancelClicked) },
+                    onGrabDepth = { viewModel.onEvent(DashboardUiEvent.OnGrabDepthChanged(it)) },
+                    onGrabGroupToggled = { folder, on ->
+                        viewModel.onEvent(DashboardUiEvent.OnGrabGroupToggled(folder, on))
                     },
                     onLinkListTorrentSelectAll = { link, on ->
                         viewModel.onEvent(
@@ -838,6 +849,9 @@ fun App(
             }
 
             // "Send to device" sheet + first-time pairing (ROADMAP-1.3.0 item 4).
+            state.subtitlesPage?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.SubtitlesDialog(page) { viewModel.onEvent(it) }
+            }
             state.audioCompress?.let { page ->
                 com.michelle.raouf.fetch_jet.ui.AudioCompressDialog(page) { viewModel.onEvent(it) }
             }
@@ -859,6 +873,25 @@ fun App(
                 com.michelle.raouf.fetch_jet.ui.DeviceReceiveDialog(
                     receiving = receiveState,
                     onClose = { viewModel.onEvent(DashboardUiEvent.OnDismissReceiveClicked) }
+                )
+            }
+
+            val askPopUp by com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.pending.collectAsState()
+            if (askPopUp && !com.michelle.raouf.fetch_jet.core.browser.BrowserIntegration.isPopUpAllowed()) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(false) },
+                    title = { Text(LocalizationManager.Strings.popUpOverBrowser) },
+                    text = { Text(LocalizationManager.Strings.popUpAskText) },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(true) }) {
+                            Text(LocalizationManager.Strings.popUpAskAllow)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { com.michelle.raouf.fetch_jet.core.browser.PopUpAsk.answered(false) }) {
+                            Text(LocalizationManager.Strings.popUpAskLater)
+                        }
+                    }
                 )
             }
 

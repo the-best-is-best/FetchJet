@@ -205,7 +205,8 @@ internal fun TorrentFilesSelectionCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
                 TextButton(
                     onClick = {
@@ -217,6 +218,8 @@ internal fun TorrentFilesSelectionCard(
                     Text(
                         if (files.all { it.isSelected }) LocalizationManager.Strings.addDeselectAll else LocalizationManager.Strings.addSelectAll,
                         fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -266,16 +269,18 @@ internal fun TorrentFilesSelectionCard(
                             Spacer(modifier = Modifier.width(6.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = file.path,
+                                    text = file.path.substringAfterLast('/'),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = formatBytes(file.size),
+                                    text = formatBytes(file.size) + file.path.substringBeforeLast('/', "").let { if (it.isEmpty()) "" else " · $it" },
                                     fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Spacer(modifier = Modifier.width(6.dp))

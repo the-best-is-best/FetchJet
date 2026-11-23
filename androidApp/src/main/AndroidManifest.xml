@@ -158,6 +158,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name="com.michelle.raouf.fetch_jet.core.notification.ReadingForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Settings > Browser > "Keep ready for the browser": keeps the app from being frozen
              so the Firefox extension can ask it for video qualities. -->
         <service

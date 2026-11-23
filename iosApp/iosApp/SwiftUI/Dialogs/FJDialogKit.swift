@@ -11,7 +11,7 @@ struct FJDialogButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(FJTheme.font.callout.weight(kind == .text || kind == .dangerText ? .medium : .semibold))
+                .font(Font.fj(14, kind == .text || kind == .dangerText ? .medium : .semibold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
@@ -63,13 +63,13 @@ struct FJDialogFrame<Content: View, Buttons: View>: View {
             HStack(spacing: 12) {
                 if let icon {
                     Text(icon)
-                        .font(.system(size: 22))
+                        .font(.fj(22))
                         .frame(width: 44, height: 44)
                         .background(FJTheme.color.primaryContainer.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(FJTheme.font.headline.weight(.bold))
+                        .font(Font.fj(16, .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                     if let subtitle {
                         Text(subtitle)
@@ -109,7 +109,7 @@ struct FJDialogCheckRow: View {
         Button { checked.toggle() } label: {
             HStack(spacing: 10) {
                 Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 20))
+                    .font(.fj(20))
                     .foregroundStyle(checked ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                 Text(title)
                     .font(FJTheme.font.body)

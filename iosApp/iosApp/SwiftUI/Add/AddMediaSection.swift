@@ -24,6 +24,7 @@ struct AddMediaSection: View {
                 engineNotReady(s, strings)
             } else if let playlist = s.inspectedPlaylist {
                 AddPlaylistCard(playlist: playlist)
+                if s.subtitlesOffered { AddSubtitlesCard() }
             } else if s.inspectedMediaQualities.isEmpty {
                 let ext = (s.inputUrl.components(separatedBy: "?").first ?? "").components(separatedBy: ".").last?.lowercased() ?? ""
                 let isAudio = ["mp3", "m4a", "flac", "wav", "aac", "ogg", "opus"].contains(ext)
@@ -33,7 +34,7 @@ struct AddMediaSection: View {
                 ) { store.send(DashboardUiEventOnInspectMediaClicked.shared) }
             } else {
                 AddQualitiesCard()
-                if !s.inspectedSubtitles.isEmpty { AddSubtitlesCard() }
+                if s.subtitlesOffered { AddSubtitlesCard() }
                 if s.mediaDurationSeconds > 0 { AddClipCard(validity: validity) }
             }
         }
@@ -44,7 +45,7 @@ struct AddMediaSection: View {
         let status = store.host.localizeStep(text: s.ytDlpStatus)
         return VStack(alignment: .leading, spacing: 8) {
             Text(preparing ? "⏳ \(strings.mediaEngineStarting)" : "⚠️ \(strings.mediaEngineNotReady)")
-                .font(.system(size: 13, weight: .bold))
+                .font(.fj(13, .bold))
                 .foregroundStyle(preparing ? FJTheme.hex(0xFDE68A) : FJTheme.color.error)
             Text(status.isEmpty ? strings.mediaEngineRequiresYtDlp : status)
                 .font(FJTheme.font.small)
@@ -55,7 +56,7 @@ struct AddMediaSection: View {
                 HStack(spacing: 8) {
                     if preparing { ProgressView().controlSize(.small).tint(.white) }
                     Text(preparing ? strings.preparingEngine : strings.startMediaEngine)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.fj(12, .semibold))
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -82,18 +83,18 @@ struct AddQualitiesCard: View {
         AddCard {
             HStack {
                 Text("\(icon) \(videoTitle.map { store.host.decodeUnicodeText(input: $0) } ?? (isAudio ? strings.availableAudioFormats : strings.availableQualities))")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
                 Spacer(minLength: 4)
                 Button(strings.addSelectAll) { store.send(DashboardUiEventOnSelectAllMediaQualitiesToggled(selectAll: true)) }
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                 Button(strings.addClearSelection) { store.send(DashboardUiEventOnSelectAllMediaQualitiesToggled(selectAll: false)) }
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
             Text(strings.selectedOfAvailable(selected: Int32(qualities.filter { $0.isSelected }.count), total: Int32(qualities.count)))
-                .font(.system(size: 11, weight: .semibold))
+                .font(.fj(11, .semibold))
                 .foregroundStyle(FJTheme.color.primary)
             ScrollView {
                 LazyVStack(spacing: 2) {
@@ -116,12 +117,13 @@ struct AddQualitiesCard: View {
                 AddCheckbox(checked: q.isSelected)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(q.qualityLabel)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.fj(12, .semibold))
                         .foregroundStyle(FJTheme.color.onSurface)
-                    let size = q.size > 0 ? " • \(store.host.formatSizeDisplay(bytes: q.size))" : ""
+                    let approx = (q.formatId?.lowercased().hasPrefix("hls") ?? false) || q.sizeApprox || q.directUrl.lowercased().contains(".m3u8") ? "~" : ""
+                    let size = q.size > 4096 ? " • \(approx)\(store.host.formatSizeDisplay(bytes: q.size))" : ""
                     let dur = q.durationSeconds > 0 ? " • ⏱️ \(store.host.formatSecondsToDisplayFriendly(totalSeconds: q.durationSeconds))" : ""
                     Text(strings.qualityFormatLine(format: q.format.uppercased(), details: size + dur))
-                        .font(.system(size: 10))
+                        .font(.fj(10))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
                 Spacer(minLength: 0)
@@ -142,8 +144,18 @@ struct AddSubtitlesCard: View {
         let strings = store.strings
         AddCard {
             Text("💬 \(strings.subtitlesTitle)")
-                .font(.system(size: 13, weight: .bold))
+                .font(.fj(13, .bold))
                 .foregroundStyle(FJTheme.color.onSurface)
+            let note = store.state.subtitlesListNote
+            if !note.isEmpty {
+                HStack(spacing: 8) {
+                    if store.state.subtitlesListReading { ProgressView().controlSize(.small) }
+                    Text(note)
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+            }
+            if !subs.isEmpty {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(subs, id: \.langCode) { sub in
@@ -153,12 +165,12 @@ struct AddSubtitlesCard: View {
                             HStack(spacing: 8) {
                                 AddCheckbox(checked: sub.isSelected)
                                 Text(sub.langName)
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.fj(12, .semibold))
                                     .foregroundStyle(FJTheme.color.onSurface)
                                     .lineLimit(1)
                                 if sub.isAuto {
                                     Text(strings.subtitlesAuto)
-                                        .font(.system(size: 9))
+                                        .font(.fj(9))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
@@ -178,17 +190,24 @@ struct AddSubtitlesCard: View {
             }
             .frame(height: min(CGFloat(subs.count) * 34 + 8, 160))
             .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 8))
+            }
             if subs.contains(where: { $0.isSelected }) {
-                HStack(spacing: 8) {
-                    AddOptionCard(selected: store.state.embedSubtitles, title: strings.subtitlesEmbedInVideo) {
-                        store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: true))
-                    }
-                    AddOptionCard(selected: !store.state.embedSubtitles, title: strings.subtitlesSeparateFile) {
-                        store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: false))
+                let embed = store.state.embedSubtitles
+                AddSegmentedRow(
+                    labels: [strings.subtitlesEmbedInVideo, strings.subtitlesSeparateFile],
+                    selectedIndex: embed ? 0 : 1
+                ) { index in
+                    store.send(DashboardUiEventOnToggleEmbedSubtitles(embed: index == 0))
+                }
+                .padding(.top, 2)
+                if !embed {
+                    AddSegmentedRow(
+                        labels: ["SRT", "VTT"],
+                        selectedIndex: store.state.subtitleFormat == "vtt" ? 1 : 0
+                    ) { index in
+                        store.send(DashboardUiEventOnSubtitleFormatSelected(format: index == 1 ? "vtt" : "srt"))
                     }
                 }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 2)
             }
         }
     }
@@ -213,10 +232,10 @@ struct AddClipCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(strings.clipSectionTitle(isAudio: isAudio))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.fj(13, .bold))
                             .foregroundStyle(FJTheme.color.onSurface)
                         Text(strings.clipSectionHint)
-                            .font(.system(size: 10))
+                            .font(.fj(10))
                             .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }
                     Spacer()
@@ -230,7 +249,7 @@ struct AddClipCard: View {
             .buttonStyle(.plain)
             if s.isClipRangeEnabled {
                 Text("⏱️ \(strings.mediaDurationFullRange(isAudio: isAudio, clock: store.addClockText(dur), friendly: store.host.formatSecondsToDisplayFriendly(totalSeconds: dur)))")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -251,7 +270,7 @@ struct AddClipCard: View {
                     if dur >= 3600 { AddChoiceChip(label: strings.clipFirst1Hour, selected: false) { setRange("00:00:00", "01:00:00") } }
                 }
                 Text(strings.clipModeTitle)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.fj(12, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 let sizeText = (selected?.size ?? 0) > 0 ? " (\(store.host.formatBytes(bytes: selected!.size)))" : ""
                 HStack(spacing: 8) {
@@ -296,13 +315,13 @@ struct AddClipCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.fj(10, .semibold))
                     .foregroundStyle(error ? FJTheme.color.error : FJTheme.color.onSurfaceVariant)
                 Text(value)
                     .font(.system(size: 16, weight: .bold, design: .monospaced))
                     .foregroundStyle(error ? FJTheme.color.error : FJTheme.color.primary)
                 Text(store.host.formatSecondsToDisplayFriendly(totalSeconds: store.host.parseHhMmToSeconds(hhMm: value)))
-                    .font(.system(size: 10))
+                    .font(.fj(10))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
             .padding(10)
@@ -385,25 +404,35 @@ struct AddPlaylistCard: View {
 
     var body: some View {
         let strings = store.strings
-        let selected = playlist.entries.filter { $0.isSelected }.count
-        let all = selected == playlist.entries.count
+        let counts = AddCountLinesKt.playlistCountLines(playlist: playlist)
+        let all = AddCountLinesKt.playlistAllTicked(playlist: playlist)
+        let pickable = AddCountLinesKt.playlistAnySelectable(playlist: playlist)
         let url = store.state.inputUrl
         AddCard {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(playlist.title)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.fj(13, .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(2)
-                    Text(strings.playlistSummary(videos: Int32(playlist.entries.count), selected: Int32(selected)))
+                    Text(counts.count)
                         .font(FJTheme.font.small)
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .lineLimit(1)
+                    if !counts.before.isEmpty {
+                        Text(counts.before)
+                            .font(FJTheme.font.small)
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
-                Button(all ? strings.selectNone : strings.selectAll) {
-                    store.send(DashboardUiEventOnPlaylistSelectAll(selected: !all))
+                if pickable {
+                    Button(all ? strings.selectNone : strings.selectAll) {
+                        store.send(DashboardUiEventOnPlaylistSelectAll(selected: !all))
+                    }
+                    .font(.fj(12, .semibold))
                 }
-                .font(.system(size: 12, weight: .semibold))
             }
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(
@@ -411,7 +440,7 @@ struct AddPlaylistCard: View {
                 set: { store.send(DashboardUiEventOnPlaylistFolderChanged(name: $0)) }
             ))
             Text(strings.playlistFolderHint)
-                .font(.system(size: 10))
+                .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
             if !playlist.fromBrowser {
                 AddLabel(text: strings.qualityForAllVideos)
@@ -423,30 +452,73 @@ struct AddPlaylistCard: View {
                     }
                 }
                 Text(strings.qualityForAllVideosHint)
-                    .font(.system(size: 10))
+                    .font(.fj(10))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                if store.state.playlistOldestFirstOffered {
+                Button {
+                    store.send(DashboardUiEventOnPlaylistOldestFirst(on: !store.state.playlistOldestFirst))
+                } label: {
+                    HStack(spacing: 8) {
+                        AddCheckbox(checked: store.state.playlistOldestFirst)
+                        Text(strings.playlistOldestFirst)
+                            .font(.fj(12))
+                            .foregroundStyle(FJTheme.color.onSurface)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                }
             }
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(playlist.entries, id: \.index) { entry in
+                    ForEach(Array(playlist.entries.enumerated()), id: \.element.index) { position, entry in
                         Button {
-                            store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
+                            if !entry.locked {
+                                store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
+                            }
                         } label: {
                             HStack(spacing: 8) {
-                                AddCheckbox(checked: entry.isSelected)
+                                AddCheckbox(checked: entry.isSelected && !entry.locked)
+                                    .opacity(entry.locked ? 0.4 : 1)
                                 if !playlist.fromBrowser {
-                                    Text("\(entry.index + 1).")
-                                        .font(.system(size: 11))
+                                    Text("\(position + 1).")
+                                        .font(.fj(11))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 }
-                                Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(FJTheme.color.onSurface)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
+                                        .font(.fj(12))
+                                        .foregroundStyle(FJTheme.color.onSurface)
+                                        .lineLimit(1)
+                                    if entry.locked {
+                                        Text(strings.playlistInIt)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.primary)
+                                            .lineLimit(1)
+                                    } else if entry.unavailable {
+                                        Text(strings.playlistNotAvailable)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.error)
+                                            .lineLimit(1)
+                                    } else if entry.downloadedBefore {
+                                        Text(strings.playlistDownloadedBefore)
+                                            .font(.fj(10))
+                                            .foregroundStyle(FJTheme.color.primary)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                if !playlist.fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
+                                    Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
+                                        .font(.fj(11))
+                                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                                        .lineLimit(1)
+                                }
                                 if entry.durationSeconds > 0 {
                                     Text(store.addClockText(entry.durationSeconds))
-                                        .font(.system(size: 11))
+                                        .font(.fj(11))
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 }
                             }
@@ -458,13 +530,13 @@ struct AddPlaylistCard: View {
                     }
                 }
             }
-            .frame(height: min(CGFloat(playlist.entries.count) * 34 + 4, 280))
+            .frame(height: min(CGFloat(playlist.entries.count) * 40 + 4, 280))
             .background(FJTheme.color.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
             if url.contains("v=") || url.contains("youtu.be/") {
                 HStack {
                     Spacer()
                     Button(strings.downloadOnlyThisVideo) { store.send(DashboardUiEventOnPlaylistUseSingleVideo.shared) }
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.fj(12, .semibold))
                 }
             }
         }

@@ -288,7 +288,11 @@ fun UpdatesSettingsCard() {
             subtitle = LocalizationManager.Strings.updateReleaseNotesHint,
             onClick = { uriHandler.openUri("https://github.com/${com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY}/releases") }
         ) {
-            Text("↗", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(
+                if (androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) "↖" else "↗",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

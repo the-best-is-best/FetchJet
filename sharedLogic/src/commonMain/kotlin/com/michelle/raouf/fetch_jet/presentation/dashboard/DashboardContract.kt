@@ -1,7 +1,10 @@
 package com.michelle.raouf.fetch_jet.presentation.dashboard
 
+import com.michelle.raouf.fetch_jet.feature.site_grabber.LinkKind
+
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
@@ -64,7 +67,15 @@ data class LinkListEntry(
     val isInspectingMedia: Boolean = false,
     val mediaInspectFailed: Boolean = false,
     val mediaTitle: String? = null,
-    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList()
+    val mediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
+    /** The subtitle tracks this video offers (read with its qualities). */
+    val subtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    /** A file found on a web page (Find files on this page): its name, size (-1 = unknown), type folder and the page it came from. */
+    val fileName: String? = null,
+    val sizeBytes: Long = -1L,
+    val folder: String = "",
+    val sourcePage: String = "",
+    val downloadedBefore: Boolean = false
 ) {
     /** A torrent's files or a video's qualities are still being read: it cannot be started yet. */
     val isBeingInspected: Boolean get() = isInspecting || isInspectingMedia
@@ -72,6 +83,19 @@ data class LinkListEntry(
     /** A video whose qualities could not be read: the user retries it or unchecks it. */
     val needsRetry: Boolean get() = engine == EngineType.MEDIA_STREAM && mediaInspectFailed
 }
+
+/** Find files on this page: how far to read, progress and the note shown after it. */
+data class SiteGrabUi(
+    val depth: Int = 1,
+    val running: Boolean = false,
+    val pagesRead: Int = 0,
+    val note: String = "",
+    val title: String = "",
+    val hiddenKinds: Set<String> = emptySet()
+)
+
+/** One type of file among the files found on a page (Video, Images...), how many, and whether its type filter is on (its rows are listed). */
+data class GrabGroup(val folder: String, val count: Int, val selected: Boolean)
 
 data class FileConflictData(
     val fileName: String,
@@ -142,6 +166,7 @@ data class DashboardUiState(
     val inspectedMediaQualities: List<com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry> = emptyList(),
     val inspectedSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
     val embedSubtitles: Boolean = false,
+    val subtitleFormat: String = "srt",
 
     val inspectMediaError: String? = null,
 
@@ -198,8 +223,13 @@ data class DashboardUiState(
     val linkList: List<LinkListEntry> = emptyList(),
     /** The folder the list's downloads go into, under the chosen one ("" = none). */
     val linkListFolder: String = "",
+    val siteGrab: SiteGrabUi = SiteGrabUi(),
+    val linkKind: LinkKind = LinkKind.UNKNOWN,
+    val linkProbeUrl: String = "",
     val playlistQuality: com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality =
         com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.BEST,
+    /** The playlist is shown (and queued) from its oldest video. */
+    val playlistOldestFirst: Boolean = false,
     /** Start the new download(s) at this time (epoch ms); 0 = now. */
     val scheduleStartMs: Long = 0L,
     /** Connections for this direct download (0 = app setting / automatic). */
@@ -229,11 +259,144 @@ data class DashboardUiState(
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
+    val subtitlesPage: SubtitlesUi? = null,
+    /** Saved playlists (shown as one row each in the downloads list). */
+    val playlists: Map<String, com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord> = emptyMap(),
+    /** The playlist page that is open (its videos instead of the whole list); null = none. */
+    val openPlaylistId: String? = null,
+    /** The Add dialog was opened by "Check" of this playlist: new videos join it. */
+    val checkingPlaylistId: String? = null,
+    /** The playlist page's subtitle languages part. */
+    val playlistLanguages: PlaylistLanguagesUi? = null,
+    /** Settings > Downloads: the list shows each destination folder as one row. */
+    val groupByFolder: Boolean = false,
+    val videoPlaysEverywhere: Boolean = false,
+    /** The folder page that is open (its downloads instead of the whole list); a folder key, null = none. */
+    val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap()
 ) {
+    /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
+    val grabShape: Boolean
+        get() = isAddDialogVisible && linkList.all { it.folder.isNotBlank() } && inspectedPlaylist == null &&
+                (detectedEngine == EngineType.HTTP_DIRECT || (detectedEngine == EngineType.MEDIA_STREAM && com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.knows(com.michelle.raouf.fetch_jet.feature.queue_manager.LearnedMediaHosts.hostOf(inputUrl)))) && inputUrl.trim().let { u ->
+            (u.startsWith("http://", true) || u.startsWith("https://", true)) && u.none { it.isWhitespace() } &&
+                    !com.michelle.raouf.fetch_jet.feature.site_grabber.PageLinks.isFileUrl(u)
+        }
+
+    /** What the probe of the link in the box found; [LinkKind.UNKNOWN] while it has not answered for this exact link. */
+    val probedAs: LinkKind
+        get() = if (linkProbeUrl.isNotEmpty() && linkProbeUrl == inputUrl.trim()) linkKind else LinkKind.UNKNOWN
+
+    /** The link looks like a web page and its probe is still running: neither the scan card nor a wrong state is shown yet. */
+    val checkingLink: Boolean
+        get() = grabShape && probedAs == LinkKind.UNKNOWN && siteGrab.running.not() && linkList.isEmpty()
+
+    /** The link box holds a web page (the probe says so): "Find files on this page" is offered. */
+    val canGrabPage: Boolean
+        get() = grabShape && detectedEngine == EngineType.HTTP_DIRECT && probedAs.let { it == LinkKind.PAGE || it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE }
+
+    /** The files found on a page are being read or listed: the Direct / Media choice has nothing to say there. */
+    val showsEngineChoice: Boolean
+        get() = !siteGrab.running && !(linkList.isNotEmpty() && linkList.all { it.folder.isNotBlank() })
+
+    /**
+     * The engine is picked from the link itself; the Direct / Media choice (never Torrent) is asked only when the
+     * link is a web page that may hold a video, or the check could not tell what it is.
+     */
+    val engineChoiceShown: Boolean
+        get() = showsEngineChoice && linkList.isEmpty() && detectedEngine != EngineType.BITTORRENT &&
+                com.michelle.raouf.fetch_jet.core.edition.AppFeatures.mediaExtractor &&
+                probedAs.let { it == LinkKind.VIDEO_PAGE || it == LinkKind.UNSURE || it == LinkKind.PAGE }
+
+    /** Reading depth is a choice only for pages crawled link by link (a release page of a known site is read directly). */
+    val grabDepthShown: Boolean
+        get() = com.michelle.raouf.fetch_jet.feature.site_grabber.SiteAdapters.forUrl(inputUrl) == null
+
+    /** The files found on the page, grouped by type, in the order of the type chips. */
+    val grabGroups: List<GrabGroup>
+        get() = linkList.filter { it.folder.isNotBlank() }.groupBy { it.folder }.map { (folder, items) ->
+            GrabGroup(folder, items.size, folder !in siteGrab.hiddenKinds)
+        }.sortedBy { com.michelle.raouf.fetch_jet.core.settings.FileCategory.allFolders.indexOf(it.folder).let { i -> if (i < 0) 99 else i } }
+
+    /** The listed rows with their place in [linkList]: the rows of a type the user turned off are left out. */
+    val visibleLinks: List<IndexedValue<LinkListEntry>>
+        get() = linkList.withIndex().filter { !isKindHidden(it.value) }
+
+    fun isKindHidden(entry: LinkListEntry): Boolean = entry.folder.isNotBlank() && entry.folder in siteGrab.hiddenKinds
+
+    /** A type chip: off hides its rows and unchecks them, on lists them again, checked except the ones downloaded before. */
+    fun withKindShown(folder: String, shown: Boolean): DashboardUiState = copy(
+        siteGrab = siteGrab.copy(hiddenKinds = if (shown) siteGrab.hiddenKinds - folder else siteGrab.hiddenKinds + folder),
+        linkList = linkList.map { if (it.folder == folder) it.copy(isSelected = shown && !it.downloadedBefore) else it }
+    )
+
+    fun withLinkChecked(index: Int, checked: Boolean): DashboardUiState = copy(
+        linkList = linkList.mapIndexed { i, entry ->
+            if (i == index && !entry.downloadedBefore && !isKindHidden(entry)) entry.copy(isSelected = checked) else entry
+        }
+    )
+
+    fun withAllLinksChecked(checked: Boolean): DashboardUiState = copy(
+        linkList = linkList.map { if (it.downloadedBefore || isKindHidden(it)) it else it.copy(isSelected = checked) }
+    )
+
+    /** Files found while the page is still being read: a file of a type that is turned off arrives hidden and unchecked. */
+    fun withGrabbedFiles(added: List<LinkListEntry>): DashboardUiState =
+        copy(linkList = linkList + added.map { if (isKindHidden(it)) it.copy(isSelected = false) else it })
+
+    val subtitlesOffered: Boolean
+        get() = inspectedPlaylist.let { list ->
+            if (linkList.isNotEmpty()) {
+                linkList.any {
+                    it.isSelected && it.engine == EngineType.MEDIA_STREAM &&
+                            (it.isBeingInspected || it.mediaQualities.anyVideoSelected())
+                } && (inspectedSubtitles.isNotEmpty() || subtitlesListReading || subtitlesListRead)
+            } else if (list != null) {
+                !list.fromBrowser && list.entries.any { it.isSelected } &&
+                        playlistQuality != com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality.AUDIO
+            } else inspectedSubtitles.isNotEmpty() && inspectedMediaQualities.anyVideoSelected()
+        }
+
+    /** A playlist / link list whose videos are still being read (their subtitle languages too). */
+    val subtitlesListReading: Boolean
+        get() = if (linkList.isNotEmpty()) linkList.any { it.isSelected && it.isBeingInspected }
+        else inspectedPlaylist?.let { pl -> !pl.fromBrowser && pl.entries.any { !it.unavailable && it.size == -1L } } == true
+
+    private val subtitlesListRead: Boolean
+        get() = linkList.any { it.isSelected && it.engine == EngineType.MEDIA_STREAM && it.mediaQualities.isNotEmpty() }
+
+    /** Under the list's subtitles: "reading N of M" while reading, "none" when no video has any. */
+    val subtitlesListNote: String
+        get() {
+            if (linkList.isEmpty() && inspectedPlaylist == null) return ""
+            val s = com.tbib.kmp_localization.LocalizationManager.Strings
+            if (subtitlesListReading) {
+                val pl = inspectedPlaylist
+                if (linkList.isEmpty() && pl != null) {
+                    val readable = pl.entries.filter { !it.unavailable }
+                    return s.subtitlesReadingCount.replace("%1", readable.count { it.size != -1L }.toString())
+                        .replace("%2", readable.size.toString())
+                }
+                return s.subtitlesReadingCount.replace("%1", linkList.count { it.isSelected && !it.isBeingInspected }.toString())
+                    .replace("%2", linkList.count { it.isSelected }.toString())
+            }
+            return if (inspectedSubtitles.isEmpty()) s.subtitlesNoneInList else ""
+        }
+
+    /** "Oldest first" means that only for a channel's videos, which yt-dlp lists newest first. */
+    val playlistOldestFirstOffered: Boolean
+        get() = inspectedPlaylist?.fromBrowser == false &&
+                com.michelle.raouf.fetch_jet.feature.media_extractor.isChannelVideosUrl(inputUrl)
+    val pageScanShown: Boolean
+        get() = canGrabPage || siteGrab.running
+
     val needsFileName: Boolean
-        get() = addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
+        get() = !pageScanShown && addNeedsFileName(detectedEngine, inputUrl, suggestedFileName, fileNameOverride, linkList.isNotEmpty() || inspectedPlaylist != null)
+
+    val fileNameShown: Boolean
+        get() = linkList.isEmpty() && inspectedPlaylist == null && !pageScanShown &&
+                (suggestedFileName.isNotBlank() || fileNameOverride.isNotBlank() || needsFileName)
 }
 
 /** The torrent tab of a task's details: refreshed every 2 s while it is open. */
@@ -250,6 +413,44 @@ data class TorrentDetailsUi(
     /** English code of the last tracker-add failure ("invalid", "refused") or empty. */
     val trackerError: String = ""
 )
+
+/**
+ * The playlist page's "Add a subtitle language": [available] are the languages read from its
+ * videos ([reading] while that runs); [adding] while a new language is fetched for the finished
+ * videos ([done] of [total]).
+ */
+data class PlaylistLanguagesUi(
+    val playlistId: String,
+    val reading: Boolean = false,
+    val available: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val adding: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0,
+    val message: String = "",
+)
+
+data class SubtitlesUi(
+    val taskId: String,
+    val fileName: String,
+    val embed: Boolean,
+    val format: String = "srt",
+    val reading: Boolean = true,
+    val readFailed: Boolean = false,
+    val tracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
+    val present: Set<String> = emptySet(),
+    val running: Boolean = false,
+    val done: Int = 0,
+    val total: Int = 0,
+    val added: List<String> = emptyList(),
+    val refused: List<String> = emptyList(),
+    val failed: List<String> = emptyList()
+) {
+    val canAdd: Boolean
+        get() = !reading && !running && tracks.any { it.isSelected && subtitleKey(it) !in present }
+}
+
+fun subtitleKey(track: com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack): String =
+    track.langCode + if (track.isAuto) ".auto" else ""
 
 data class AudioCompressUi(
     val taskId: String,
@@ -326,9 +527,14 @@ sealed interface DashboardUiEvent {
 
     /** "Download only this video" for a watch?v=...&list=... link. */
     data object OnPlaylistUseSingleVideo : DashboardUiEvent
+    data class OnPlaylistOldestFirst(val on: Boolean) : DashboardUiEvent
     data class OnLinkListEntryToggled(val index: Int, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListSelectAll(val selected: Boolean) : DashboardUiEvent
     data class OnLinkListFolderChanged(val name: String) : DashboardUiEvent
+    data object OnGrabPageClicked : DashboardUiEvent
+    data object OnGrabCancelClicked : DashboardUiEvent
+    data class OnGrabDepthChanged(val depth: Int) : DashboardUiEvent
+    data class OnGrabGroupToggled(val folder: String, val selected: Boolean) : DashboardUiEvent
     data class OnLinkListTorrentFileToggled(
         val linkIndex: Int,
         val fileIndex: Int,
@@ -416,6 +622,8 @@ sealed interface DashboardUiEvent {
     data class OnSubtitleToggled(val langCode: String, val isSelected: Boolean) :
         DashboardUiEvent
 
+    data class OnSubtitleFormatSelected(val format: String) : DashboardUiEvent
+
     data class OnToggleEmbedSubtitles(val embed: Boolean) :
         DashboardUiEvent
 
@@ -469,6 +677,26 @@ sealed interface DashboardUiEvent {
         DashboardUiEvent
 
     data class OnAudioCompressClicked(val taskId: String) : DashboardUiEvent
+    data class OnSubtitlesClicked(val taskId: String) : DashboardUiEvent
+    data class OnSubtitleTrackToggled(val key: String, val selected: Boolean) : DashboardUiEvent
+    data object OnSubtitlesAddClicked : DashboardUiEvent
+    data object OnDismissSubtitles : DashboardUiEvent
+    data class OnOpenPlaylist(val playlistId: String) : DashboardUiEvent
+    data object OnClosePlaylist : DashboardUiEvent
+    data class OnPlaylistGroupPause(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistGroupResume(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistGroupRemove(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistCheck(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistReadLanguages(val playlistId: String) : DashboardUiEvent
+    data class OnPlaylistAddLanguage(val playlistId: String, val langCode: String) : DashboardUiEvent
+    data object OnPlaylistLanguagesDismiss : DashboardUiEvent
+    data class OnGroupByFolderChanged(val on: Boolean) : DashboardUiEvent
+    data class OnVideoPlaysEverywhereChanged(val on: Boolean) : DashboardUiEvent
+    data class OnOpenFolderGroup(val folder: String) : DashboardUiEvent
+    data object OnCloseFolderGroup : DashboardUiEvent
+    data class OnFolderGroupPause(val folder: String) : DashboardUiEvent
+    data class OnFolderGroupResume(val folder: String) : DashboardUiEvent
+    data class OnFolderGroupRemove(val folder: String) : DashboardUiEvent
     data class OnExtractTaskClicked(val taskId: String) : DashboardUiEvent
 
     data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent

@@ -130,7 +130,7 @@ component QuickAction inherits Rectangle {
         label: root.action == RowActionCode.pause ? Tr.pause : root.action == RowActionCode.open ? Tr.open : Tr.resume;
         filled: root.action != RowActionCode.open || root.play;
         commands: root.action == RowActionCode.pause ? "M7 5 H9.5 V19 H7 Z M14.5 5 H17 V19 H14.5 Z"
-            : root.action == RowActionCode.open && !root.play ? "M10 4 H4 V20 H20 V14 M10 14 L20 4 M14 4 H20 V10"
+            : root.action == RowActionCode.open && !root.play ? (Dir.rtl ? "M14 4 H20 V20 H4 V14 M14 14 L4 4 M10 4 H4 V10" : "M10 4 H4 V20 H20 V14 M10 14 L20 4 M14 4 H20 V10")
             : "M8 5 L19 12 L8 19 Z";
         clicked => { root.clicked(); }
     }
@@ -230,6 +230,7 @@ export component TaskRow inherits Rectangle {
     callback reveal(y: length, h: length);
     private property <bool> wide: root.width >= 720px;
     private property <bool> is-header: root.data.kind == RowKind.header;
+    private property <bool> is-group: root.data.kind == RowKind.group;
     private property <color> surface-color: root.data.selected || root.focused ? Theme.primary.mix(Theme.background, 0.09) : Theme.surface;
     changed reveal-ask => {
         if root.focused {
@@ -436,7 +437,7 @@ export component TaskRow inherits Rectangle {
                 height: 50px;
                 chip := PriorityChip {
                     x: Dir.rtl ? 34px + 12px : parent.width - 34px - 12px - self.width;
-                    visible: !root.data.completed;
+                    visible: !root.data.completed && !root.is-group;
                     priority: root.data.priority;
                     label: root.data.priorityLabel;
                     clicked => { Act.cyclePriority(root.data.id); }
@@ -508,10 +509,10 @@ export component TaskRow inherits Rectangle {
                         font-size: 12px;
                     }
                 }
-                if !root.data.completed: Rectangle {
+                if !root.data.completed && !root.is-group: Rectangle {
                     width: 8px;
                 }
-                if !root.data.completed: PriorityChip {
+                if !root.data.completed && !root.is-group: PriorityChip {
                     priority: root.data.priority;
                     label: root.data.priorityLabel;
                     clicked => { Act.cyclePriority(root.data.id); }

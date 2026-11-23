@@ -3,12 +3,18 @@
     <cloud-backup>
         <exclude
             domain="file"
+            path="settings/tasks_cache.json" />
+        <exclude
+            domain="file"
             path="settings/network.json" />
         <exclude
             domain="file"
             path="logs/" />
     </cloud-backup>
     <device-transfer>
+        <exclude
+            domain="file"
+            path="settings/tasks_cache.json" />
         <exclude
             domain="file"
             path="settings/network.json" />

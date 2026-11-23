@@ -37,11 +37,13 @@ fjtorrent.dll (FetchJet's torrent wrapper, statically linked) contains:
 
 Fonts and icons (fonts/, emoji/):
 
-  fonts/FetchJetSans-Regular, -Medium, -SemiBold, -Bold.ttf
+  fonts/FetchJetSans[SC|JP|KR]-Regular, -Medium, -SemiBold, -Bold.ttf
                                                Made by FetchJet (desktopNative/tools/fonts/make_fonts.py)
                                                by subsetting and merging, then renaming to
-                                               "FetchJet Sans":
-    Noto Sans and Noto Sans Arabic             SIL Open Font License 1.1, Copyright 2022 The Noto
+                                               "FetchJet Sans" (and "FetchJet Sans SC / JP / KR"):
+    Noto Sans, Noto Sans Arabic,               SIL Open Font License 1.1, Copyright 2022 The Noto
+    Noto Sans Devanagari, Noto Sans SC,
+    Noto Sans JP, Noto Sans KR
                                                Project Authors (https://github.com/notofonts).
                                                Full text below.
     DejaVu Sans, DejaVu Sans Mono (symbols)    Bitstream Vera licence, Copyright (c) 2003 by
@@ -269,10 +271,12 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-Noto Sans, Noto Sans Arabic, Noto Color Emoji: SIL Open Font License 1.1
+Noto Sans, Noto Sans Arabic, Noto Sans Devanagari, Noto Sans SC / JP / KR, Noto Color Emoji:
+SIL Open Font License 1.1
 ------------------------------------------------------------------------------
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic,
-https://github.com/notofonts/arabic). Noto Color Emoji: Copyright 2013 Google Inc.
+https://github.com/notofonts/arabic, https://github.com/notofonts/devanagari,
+https://github.com/notofonts/noto-cjk). Noto Color Emoji: Copyright 2013 Google Inc.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

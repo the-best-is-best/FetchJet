@@ -45,6 +45,8 @@ fjAddLanguage("es", {
   "errNoExtractor": "FetchJet no se está ejecutando (o no tiene extractor multimedia)",
   "errNotRunning": "FetchJet no se está ejecutando",
   "errCantGet": "No se puede obtener este video",
+  "itemDrm": "Este vídeo está protegido (DRM)",
+  "itemDrmSub": "No se puede descargar, ni con FetchJet ni con ningún otro gestor de descargas.",
   "itemOpenApp": "Abrir en FetchJet",
   "itemOpenAppSub": "Elige la calidad en la aplicación",
   "itemPlaylist": "Descargar toda la lista",

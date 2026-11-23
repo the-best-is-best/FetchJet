@@ -34,6 +34,11 @@ data class PlaylistRowDto(
     val titleRtl: Boolean = false,
     val duration: String = "",
     val selected: Boolean = false,
+    val size: String = "",
+    val sizeBusy: Boolean = false,
+    val before: Boolean = false,
+    val unavailable: Boolean = false,
+    val inPlaylist: Boolean = false,
 )
 
 @Serializable
@@ -67,8 +72,11 @@ data class AddMediaDto(
     val qualitiesTitleRtl: Boolean = false,
     val qualitiesCount: String = "",
     val subtitlesShown: Boolean = false,
+    val subtitlesNote: String = "",
+    val subtitlesReading: Boolean = false,
     val subtitlesAnySelected: Boolean = false,
     val embedSubtitles: Boolean = false,
+    val subtitleVtt: Boolean = false,
     val clipAvailable: Boolean = false,
     val clipEnabled: Boolean = false,
     val clipTitle: String = "",
@@ -90,12 +98,16 @@ data class AddMediaDto(
     val playlistTitle: String = "",
     val playlistTitleRtl: Boolean = false,
     val playlistSummary: String = "",
+    val playlistBefore: String = "",
+    val playlistPickable: Boolean = false,
     val playlistAllSelected: Boolean = false,
     val playlistFolder: String = "",
     val playlistFolderRev: Int = 0,
     val playlistFromBrowser: Boolean = false,
     val playlistQualities: List<ChoiceDto> = emptyList(),
     val playlistCanUseSingle: Boolean = false,
+    val playlistOldestFirst: Boolean = false,
+    val playlistOldestFirstOffered: Boolean = false,
 )
 
 @Serializable

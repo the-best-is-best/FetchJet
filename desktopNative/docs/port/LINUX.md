@@ -206,7 +206,12 @@ Fonts and emoji (only when the source fonts or the UI's emoji change):
 
 ```
 PYTHONPATH=<fonttools wheel> python desktopNative/tools/fonts/make_fonts.py --noto <dir> --arabic <dir> \
+    --devanagari NotoSansDevanagari-VF.ttf --cjk <dir with NotoSansSC/JP/KR-VF.ttf> \
+    --providers sharedLogic/src/commonMain/kotlin/com/michelle/raouf/fetch_jet/core/i18n/data_provider \
     --dejavu DejaVuSans.ttf --dejavu-mono DejaVuSansMono.ttf --out desktopNative/res/fonts
+# then copy the 16 files to androidUi/src/androidMain/res/font (lower case, '-' -> '_') and iosApp/iosApp/Fonts.
+# Sources on the Windows PC: E:/tools/dl/fonts-r3 (+ devanagari/, cjk/), E:/tools/dl/dejavu-r3.
+# --check only checks that every provider text is in its language's font (run it after adding strings).
 python3 -I desktopNative/tools/emoji/extract_emoji.py --font NotoColorEmoji.ttf --out desktopNative/res/emoji \
     --source desktopNative/ui --source desktopNative/core/src
 ```

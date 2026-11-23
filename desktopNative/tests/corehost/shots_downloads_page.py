@@ -19,7 +19,7 @@ def run():
             core.wait_task("COMPLETED", timeout=40, file_name=name)
         core.action("SystemTheme", dark=True)
         core.action("OpenSettings")
-        core.action("SetSettingsSection", index=1)
+        core.action("SetSettingsSection", index=3)
         core.action("SettingToggle", id="extractArchives", on=True)
         core.action("SettingText", id="ruleSite", text="github.com/the-best-is-best/FetchJet")
         core.action("SettingClick", id="ruleChoose")
@@ -28,7 +28,7 @@ def run():
         core.pump(0.5)
         core.action("SettingText", id="ruleSite", text="udemy.com/course/kotlin")
         core.pump(1.0)
-        shot(core, "settings-downloads-dark", width=1100, height=3200)
+        shot(core, "settings-files-dark-long", width=1100, height=3200)
     finally:
         core.finish()
 

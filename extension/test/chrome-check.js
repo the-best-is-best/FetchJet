@@ -29,6 +29,11 @@ const youTubePage = '<!doctype html><title>watch</title><body style="margin:0;di
   '<div class="ytp-ad-player-overlay" style="position:absolute;left:0;top:0;width:854px;height:480px">' + loopVideo("ad", 854, 480) + '</div></div>' +
   '<div id="related">' + loopVideo("preview1", 360, 202) + loopVideo("preview2", 360, 202) + '</div></body>';
 
+const drmPage = '<!doctype html><title>drm test</title><body style="margin:0">' + loopVideo("drm", 640, 360) +
+  '<script>navigator.requestMediaKeySystemAccess("org.w3.clearkey", [{ initDataTypes: ["webm"], videoCapabilities: [{ contentType: \'video/webm; codecs="vp8"\' }] }])' +
+  '.then((a) => a.createMediaKeys()).then((k) => document.getElementById("drm").setMediaKeys(k)).then(() => { document.title = "drm ready"; })' +
+  '.catch((e) => { document.title = "drm failed: " + e; });</script></body>';
+
 const site = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/rec/play/") && url.pathname.endsWith(".html")) {
@@ -42,6 +47,10 @@ const site = http.createServer((req, res) => {
   if (url.pathname === "/watch") {
     res.writeHead(200, { "Content-Type": "text/html" });
     return res.end(youTubePage);
+  }
+  if (url.pathname === "/drm.html") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    return res.end(drmPage);
   }
   if (url.pathname === "/plain.html") {
     res.writeHead(200, { "Content-Type": "text/html" });
@@ -134,12 +143,14 @@ async function main() {
     const targets = (await cdp.send("Target.getTargets")).targetInfos;
     const worker = targets.find((t) => t.type === "service_worker" && t.url.includes(id));
     check("its service worker runs", !!worker, targets.map((t) => t.type + " " + t.url));
+    let workerSession = null;
     if (worker) {
       const { sessionId } = await cdp.send("Target.attachToTarget", { targetId: worker.targetId, flatten: true });
+      workerSession = sessionId;
       await cdp.send("Runtime.enable", {}, sessionId);
       const state = await evaluate(cdp, sessionId, "JSON.stringify({ios: typeof ON_IOS !== 'undefined' ? ON_IOS : 'missing', version: chrome.runtime.getManifest().version, open: typeof openPageInApp, session: typeof iosSessionPage})");
       const s = JSON.parse(state);
-      check("the service worker is not in the iOS mode and reports 3.5.0", s.ios === false && s.version === "3.5.0", s);
+      check("the service worker is not in the iOS mode and reports 3.6.0", s.ios === false && s.version === "3.6.0", s);
     }
 
     const plain = await openTab(cdp, "http://127.0.0.1:" + SITE_PORT + "/test/real.html");
@@ -175,6 +186,26 @@ async function main() {
     const yb = ytInfo.buttons[0];
     check("the YouTube button sits on the main player", !!yb && yb.x >= ytInfo.main.x - 5 && yb.x <= ytInfo.main.x + ytInfo.main.w &&
       yb.y >= ytInfo.main.y - 5 && yb.y <= ytInfo.main.y + ytInfo.main.h, ytInfo);
+
+    const drm = await openTab(cdp, "http://127.0.0.1:" + SITE_PORT + "/drm.html");
+    await sleep(4500);
+    const drmTitle = await evaluate(cdp, drm.sessionId, "document.title + ' / mediaKeys ' + !!document.getElementById('drm').mediaKeys");
+    check("the DRM test page gets Clear Key media keys", /drm ready/.test(drmTitle) && /mediaKeys true/.test(drmTitle), drmTitle);
+    if (workerSession) {
+      const drmItems = JSON.parse(await evaluate(cdp, workerSession, `(async () => {
+        const [t] = await chrome.tabs.query({ url: "http://127.0.0.1:${SITE_PORT}/drm.html" });
+        const r = await itemsForTab(t.id);
+        const v = await resolveVideo({ page: "", src: "blob:x", frame: false }, t);
+        return JSON.stringify({ items: r.items.map((i) => [i.label, !!i.disabled]), button: (v.items || []).map((i) => i.label), drmText: fjT("itemDrm") });
+      })()`));
+      check("a DRM page's list says the video is protected, and nothing else", drmItems.items.length === 1 && drmItems.items[0][0] === drmItems.drmText && drmItems.items[0][1], drmItems);
+      check("the page button says it too", drmItems.button.length === 1 && drmItems.button[0] === drmItems.drmText, drmItems);
+      const plainItems = JSON.parse(await evaluate(cdp, workerSession, `(async () => {
+        const [t] = await chrome.tabs.query({ url: "http://127.0.0.1:${SITE_PORT}/test/real.html" });
+        return JSON.stringify((await itemsForTab(t.id)).items.map((i) => i.label));
+      })()`));
+      check("a page without DRM does not get the DRM line", !plainItems.includes(drmItems.drmText), plainItems);
+    }
 
     const popup = await openTab(cdp, "chrome-extension://" + id + "/popup.html");
     await sleep(2500);

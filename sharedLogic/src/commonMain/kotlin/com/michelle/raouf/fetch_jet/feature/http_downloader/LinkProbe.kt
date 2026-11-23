@@ -8,7 +8,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface LinkProbeResult {
     data class Ok(val sizeBytes: Long, val resumable: Boolean, val fileName: String) : LinkProbeResult
-    data class Failed(val code: String, val status: Int = 0) : LinkProbeResult
+    data class Failed(val code: String, val status: Int = 0, val pageHead: String = "") : LinkProbeResult
 }
 
 object LinkProbeCode {
@@ -66,13 +66,14 @@ internal fun classifyHttpProbe(
     contentLength: Long,
     acceptRanges: Boolean,
     pageText: String = "",
-    fileName: String = ""
+    fileName: String = "",
+    pageHead: String = ""
 ): LinkProbeResult {
     val html = contentType.lowercase().contains("text/html")
     if (html && looksLikeRobotCheck(pageText)) return LinkProbeResult.Failed(LinkProbeCode.ROBOT, status)
     return when {
         status in 200..299 ->
-            if (html) LinkProbeResult.Failed(LinkProbeCode.WEB_PAGE, status)
+            if (html) LinkProbeResult.Failed(LinkProbeCode.WEB_PAGE, status, pageHead.ifEmpty { pageText })
             else LinkProbeResult.Ok(
                 sizeBytes = if (contentLength > 0L) contentLength else -1L,
                 resumable = acceptRanges && contentLength > 0L,
@@ -139,6 +140,7 @@ suspend fun probeLink(url: String, requestHeaders: Map<String, String> = emptyMa
                     contentLength = metadata.contentLength,
                     acceptRanges = metadata.acceptRanges,
                     pageText = metadata.pageText,
+                    pageHead = metadata.pageHead,
                     fileName = serverFileName(link, metadata.finalUrl, metadata.contentDisposition)
                 )
             }

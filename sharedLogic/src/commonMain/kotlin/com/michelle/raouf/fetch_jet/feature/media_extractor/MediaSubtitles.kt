@@ -23,6 +23,32 @@ object MediaSubtitleStore {
     }
 }
 
+/** The subtitle tracks the last inspect of this very link found (safe when several links are read at once). */
+suspend fun MediaStreamDownloader.subtitlesFoundFor(url: String): List<SubtitleTrack> =
+    MediaSubtitleStore.last(resolveEffectiveMediaUrl(url))
+
+/** The comma list of a playlist's wanted languages, applied to one video's own tracks. */
+fun List<SubtitleTrack>.forLanguages(languages: Collection<String>): List<SubtitleTrack> =
+    filter { it.langCode in languages }.map { it.copy(isSelected = true) }
+
+fun subtitleLanguageList(text: String): List<String> =
+    text.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
+/** One row per language over all the videos of a list; a language is "auto" only when no video has it written. */
+fun mergeSubtitleLanguages(current: List<SubtitleTrack>, found: List<SubtitleTrack>): List<SubtitleTrack> {
+    val merged = linkedMapOf<String, SubtitleTrack>()
+    for (t in current) merged[t.langCode] = t
+    for (t in found) {
+        val had = merged[t.langCode]
+        merged[t.langCode] = when {
+            had == null -> t.copy(url = "", isSelected = false)
+            had.isAuto && !t.isAuto -> had.copy(isAuto = false, langName = t.langName)
+            else -> had
+        }
+    }
+    return merged.values.sortedWith(compareBy({ it.isAuto }, { it.langName.lowercase() }))
+}
+
 private val SUBTITLE_EXT_PRIORITY = listOf("srt", "vtt", "ass", "ssa")
 
 /**

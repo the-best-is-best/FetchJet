@@ -45,6 +45,8 @@ fjAddLanguage("id", {
   "errNoExtractor": "FetchJet tidak berjalan (atau tidak punya pengekstrak media)",
   "errNotRunning": "FetchJet tidak berjalan",
   "errCantGet": "Tidak dapat mengambil video ini",
+  "itemDrm": "Video ini dilindungi (DRM)",
+  "itemDrmSub": "Tidak bisa diunduh, baik dengan FetchJet maupun pengelola unduhan lain.",
   "itemOpenApp": "Buka di FetchJet",
   "itemOpenAppSub": "Pilih kualitas di aplikasi",
   "itemPlaylist": "Unduh seluruh playlist",

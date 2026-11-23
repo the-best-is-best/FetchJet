@@ -71,6 +71,7 @@ data class DetailsDto(
     val canShare: Boolean = false,
     val canCompress: Boolean = false,
     val canExtract: Boolean = false,
+    val canSubtitles: Boolean = false,
     val compressLabel: String = "",
     val removeLabel: String = "",
 )

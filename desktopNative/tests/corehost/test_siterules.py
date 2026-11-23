@@ -49,7 +49,7 @@ def run():
     try:
         core.pump(0.5)
         core.action("OpenSettings")
-        core.action("SetSettingsSection", index=1)
+        core.action("SetSettingsSection", index=3)
         core.pump(0.5)
         print("rules are added from Settings")
         add_rule(core, "127.0.0.1", local_rule)

@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
 import com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
@@ -229,7 +230,8 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
 
     val links = listOf(
         strings.detailsPage to (task.requestHeaders["Referer"] ?: task.originalUrl.orEmpty()),
-    ).filter { (_, link) -> link.isNotBlank() }.distinctBy { (_, link) -> link }.map { (label, link) -> LinkDto(label, link) }
+        strings.detailsPlaylist to com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task),
+    ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }.distinctBy { (_, link) -> link }.map { (label, link) -> LinkDto(label, link) }
 
     val checksumShown = !task.expectedChecksum.isNullOrBlank()
     val scan = ScanOutcome.of(task.scanResult)?.takeIf { it != ScanOutcome.NO_SCANNER }
@@ -420,6 +422,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
             canShare = task.canSendToDevice(),
             canCompress = AudioCompress.canCompress(task),
             canExtract = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task),
+            canSubtitles = task.canAddSubtitles(),
             compressLabel = strings.audioCompressTitle +
                     (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: ""),
             removeLabel = if (completed) strings.detailsRemoveFromList else strings.detailsCancelDownload,

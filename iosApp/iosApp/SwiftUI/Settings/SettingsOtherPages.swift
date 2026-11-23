@@ -57,6 +57,13 @@ struct SettingsMediaPage: View {
                     .font(FJTheme.font.caption)
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
+            SettingsGroupBox {
+                SettingsSwitchRow(
+                    title: s.videoPlaysEverywhere,
+                    subtitle: st.videoPlaysEverywhere ? s.videoPlaysEverywhereOn : s.videoPlaysEverywhereOff,
+                    isOn: st.videoPlaysEverywhere
+                ) { store.send(DashboardUiEventOnVideoPlaysEverywhereChanged(on: $0)) }
+            }
         }
     }
 
@@ -143,7 +150,7 @@ struct SettingsTrafficLimit: View {
                 Text(title).font(FJTheme.font.headline)
                 Spacer()
                 Text(bytes <= 0 ? s.speedLimitNoLimit : SettingsSpeed.shortLabel(bytes))
-                    .font(FJTheme.font.caption.weight(.bold))
+                    .font(Font.fj(12, .bold))
                     .foregroundStyle(bytes <= 0 ? FJTheme.color.onSurfaceVariant : FJTheme.color.primary)
             }
             SettingsFlow(spacing: 6) {
@@ -205,7 +212,7 @@ struct SettingsBrowserPage: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(s.extInstallGroup.uppercased())
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.fj(12, .semibold))
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 Text(s.extensionInstallFooter)
                     .font(FJTheme.font.caption)
@@ -326,7 +333,7 @@ struct SettingsUpdatesPage: View {
                 SettingsRow(title: s.updateReleaseNotes, subtitle: s.updateReleaseNotesHint, onTap: {
                     if let url = URL(string: "https://github.com/the-best-is-best/FetchJet/releases") { openURL(url) }
                 }) {
-                    Image(systemName: "arrow.up.forward").font(.system(size: 13, weight: .bold)).foregroundStyle(FJTheme.color.primary)
+                    Image(systemName: "arrow.up.forward").font(.fj(13, .bold)).foregroundStyle(FJTheme.color.primary)
                 }
             }
         }

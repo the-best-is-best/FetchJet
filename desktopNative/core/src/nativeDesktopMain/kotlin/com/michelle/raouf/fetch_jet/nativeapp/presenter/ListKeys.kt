@@ -53,6 +53,14 @@ internal fun Presenter.moveFocus(shift: Boolean, target: (current: Int, last: In
 }
 
 internal fun Presenter.keyOpen() {
+    com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow(local.value.focusId.orEmpty())?.let {
+        vm.onEvent(DashboardUiEvent.OnOpenPlaylist(it))
+        return
+    }
+    com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow(local.value.focusId.orEmpty())?.let {
+        vm.onEvent(DashboardUiEvent.OnOpenFolderGroup(it))
+        return
+    }
     val task = keyTarget() ?: return
     if (rowActionFor(task) == RowActionCode.OPEN) openDownloadedFile(taskFilePath(task), task.id)
     else local.update { it.copy(selectedTaskId = task.id) }

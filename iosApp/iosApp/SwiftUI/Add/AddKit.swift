@@ -5,7 +5,7 @@ struct AddLabel: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .semibold))
+            .font(.fj(12, .semibold))
             .foregroundStyle(FJTheme.color.onSurface)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -31,11 +31,14 @@ struct AddField: View {
     var keyboard: UIKeyboardType = .default
     var trailing: AnyView? = nil
     var hasError = false
+    var ltr = false
+    var focusTrigger = 0
     @FocusState private var focused: Bool
+    @Environment(\.layoutDirection) private var layoutDirection
 
     var body: some View {
         HStack(alignment: multiline ? .top : .center, spacing: 8) {
-            Text(icon).font(.system(size: 16)).padding(.top, multiline ? 2 : 0)
+            Text(icon).font(.fj(16)).padding(.top, multiline ? 2 : 0)
             Group {
                 if multiline {
                     TextField(placeholder, text: $text, axis: .vertical).lineLimit(1...3)
@@ -43,6 +46,8 @@ struct AddField: View {
                     TextField(placeholder, text: $text)
                 }
             }
+            .environment(\.layoutDirection, ltr ? .leftToRight : layoutDirection)
+            .onChange(of: focusTrigger) { _, _ in focused = true }
             .font(FJTheme.font.callout)
             .foregroundStyle(FJTheme.color.onSurface)
             .keyboardType(keyboard)
@@ -69,7 +74,7 @@ struct AddFieldIcon: View {
     var body: some View {
         Button(action: action) {
             Text(symbol)
-                .font(.system(size: 13, weight: .bold))
+                .font(.fj(13, .bold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .frame(width: 28, height: 28)
                 .background(FJTheme.color.surfaceVariant, in: Circle())
@@ -84,7 +89,7 @@ struct AddFieldChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.fj(12, .semibold))
                 .foregroundStyle(FJTheme.color.primary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -101,7 +106,7 @@ struct AddChoiceChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 12, weight: selected ? .bold : .medium))
+                .font(.fj(12, selected ? .bold : .medium))
                 .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurface)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -121,11 +126,39 @@ struct AddChipRow<Content: View>: View {
     }
 }
 
+struct AddSegmentedRow: View {
+    let labels: [String]
+    let selectedIndex: Int
+    let onSelect: (Int) -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
+                let selected = index == selectedIndex
+                Button {
+                    onSelect(index)
+                } label: {
+                    Text(label)
+                        .font(.fj(12, selected ? .bold : .medium))
+                        .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurface)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(selected ? FJTheme.color.primary.opacity(0.18) : FJTheme.color.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(selected ? FJTheme.color.primary : FJTheme.color.outlineVariant.opacity(0.6), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 struct AddCheckbox: View {
     let checked: Bool
     var body: some View {
         Image(systemName: checked ? "checkmark.square.fill" : "square")
-            .font(.system(size: 20))
+            .font(.fj(20))
             .foregroundStyle(checked ? FJTheme.hex(0x0284C7) : FJTheme.hex(0x64748B))
     }
 }
@@ -137,7 +170,7 @@ struct AddLoadingBanner: View {
         HStack(spacing: 12) {
             ProgressView().tint(FJTheme.color.primary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(FJTheme.color.primary)
+                Text(title).font(.fj(13, .bold)).foregroundStyle(FJTheme.color.primary)
                 Text(subtitle).font(FJTheme.font.small).foregroundStyle(FJTheme.color.onSurfaceVariant)
             }
             Spacer(minLength: 0)
@@ -153,8 +186,8 @@ struct AddInlineError: View {
     let message: String
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            Text("⚠️").font(.system(size: 14))
-            Text(message).font(.system(size: 11, weight: .medium)).foregroundStyle(FJTheme.color.error)
+            Text("⚠️").font(.fj(14))
+            Text(message).font(.fj(11, .medium)).foregroundStyle(FJTheme.color.error)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)
@@ -170,13 +203,13 @@ struct AddFailureCard: View {
     let onRetry: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 13, weight: .bold)).foregroundStyle(FJTheme.color.error)
+            Text(title).font(.fj(13, .bold)).foregroundStyle(FJTheme.color.error)
             Text(message).font(FJTheme.font.small).foregroundStyle(FJTheme.color.onSurfaceVariant)
             HStack {
                 Spacer()
                 Button(action: onRetry) {
                     Text(retryLabel)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.fj(12, .bold))
                         .foregroundStyle(FJTheme.color.onError)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -199,7 +232,7 @@ struct AddOutlineButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.fj(13, .semibold))
                 .foregroundStyle(FJTheme.hex(0x38BDF8))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
@@ -223,13 +256,13 @@ struct AddOptionCard: View {
                     Text(selected ? "◉" : "○")
                         .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurfaceVariant)
                     Text(title)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.fj(12, .bold))
                         .foregroundStyle(selected ? FJTheme.color.primary : FJTheme.color.onSurface)
                         .multilineTextAlignment(.leading)
                 }
                 ForEach(lines, id: \.self) { line in
                     Text("• \(line)")
-                        .font(.system(size: 10))
+                        .font(.fj(10))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                         .multilineTextAlignment(.leading)
                 }

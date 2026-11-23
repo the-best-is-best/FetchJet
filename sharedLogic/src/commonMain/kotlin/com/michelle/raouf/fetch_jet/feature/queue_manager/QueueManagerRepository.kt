@@ -11,6 +11,7 @@ import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.http_downloader.HttpDownloadEngine
 import com.michelle.raouf.fetch_jet.feature.http_downloader.createHttpEngine
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaStreamDownloader
+import com.michelle.raouf.fetch_jet.feature.media_extractor.addSubtitlesToFinished
 import com.michelle.raouf.fetch_jet.feature.torrent_engine.TorrentDownloader
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -157,12 +159,12 @@ class QueueManagerRepository(
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var taskSequence = 0L
+    private val taskSequence = MutableStateFlow(0L)
 
     private fun generateUniqueTaskId(): String {
-        taskSequence++
+        val sequence = taskSequence.updateAndGet { it + 1 }
         val randomNum = kotlin.random.Random.nextLong(100000L, 999999L)
-        return "task_${taskSequence}_$randomNum"
+        return "task_${sequence}_$randomNum"
     }
 
     // ---- Queue & schedule ------------------------------------------------------------------
@@ -418,6 +420,34 @@ class QueueManagerRepository(
 
     private val activeRunningTaskIds = mutableSetOf<String>()
     private val completedNotifiedTaskIds = mutableSetOf<String>()
+    private val runningPlaylists = mutableMapOf<String, String>()
+
+    /**
+     * One notice when every video of a playlist that ran in this session is done (finished or
+     * failed), instead of one per video. A list paused or still waiting is not done yet.
+     */
+    private fun notifyFinishedPlaylists(tasks: List<DownloadTask>) {
+        for (task in tasks) {
+            if (task.playlistId.isNotEmpty() &&
+                (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING)
+            ) runningPlaylists[task.playlistId] = task.playlistTitle
+        }
+        val finished = runningPlaylists.keys.filter { id ->
+            tasks.filter { it.playlistId == id }.all { it.status == DownloadStatus.COMPLETED || it.status == DownloadStatus.ERROR }
+        }
+        for (id in finished) {
+            val title = runningPlaylists.remove(id).orEmpty()
+            val members = tasks.filter { it.playlistId == id }
+            if (members.isEmpty()) continue
+            val done = members.count { it.status == DownloadStatus.COMPLETED }
+            val failed = members.size - done
+            val text = com.michelle.raouf.fetch_jet.feature.media_extractor.playlistDoneText(title, done, failed)
+            println("Playlist done: $title ($done finished, $failed failed)")
+            com.michelle.raouf.fetch_jet.core.notification.SystemNotice.show(
+                "playlist-$id", LocalizationManager.Strings.sysPlaylistDoneTitle, text
+            )
+        }
+    }
 
     init {
         observeTasksForNotifications()
@@ -430,6 +460,25 @@ class QueueManagerRepository(
             while (true) {
                 delay(1000)
                 if (pendingTasks.value.isNotEmpty() || resumeQueue.value.isNotEmpty()) pumpQueue()
+            }
+        }
+        scope.launch {
+            combine(
+                httpEngine.getAllTasksFlow(),
+                torrentEngine.getAllTasksFlow(),
+                mediaEngine.getAllTasksFlow()
+            ) { http, torrent, media ->
+                var running = 0
+                for (map in arrayOf(http, torrent, media)) {
+                    for (t in map.values) {
+                        if (t.status == DownloadStatus.DOWNLOADING || t.status == DownloadStatus.CONNECTING ||
+                            t.status == DownloadStatus.QUEUED
+                        ) running++
+                    }
+                }
+                running
+            }.distinctUntilChanged().collect {
+                if ((pendingTasks.value.isNotEmpty() || resumeQueue.value.isNotEmpty()) && hasFreeSlot()) pumpQueue()
             }
         }
     }
@@ -464,7 +513,11 @@ class QueueManagerRepository(
                             totalBytes = task.totalBytes
                         )
                     } else if (task.status == DownloadStatus.COMPLETED) {
-                        if (activeRunningTaskIds.contains(task.id) && !completedNotifiedTaskIds.contains(
+                        if (task.playlistId.isNotEmpty() && activeRunningTaskIds.contains(task.id)) {
+                            completedNotifiedTaskIds.add(task.id)
+                            activeRunningTaskIds.remove(task.id)
+                            notificationManager.cancelNotification(task.id)
+                        } else if (activeRunningTaskIds.contains(task.id) && !completedNotifiedTaskIds.contains(
                                 task.id
                             )
                         ) {
@@ -487,6 +540,7 @@ class QueueManagerRepository(
                         notificationManager.cancelNotification(task.id)
                     }
                 }
+                notifyFinishedPlaylists(tasks)
             }
         }
     }
@@ -695,12 +749,57 @@ class QueueManagerRepository(
             com.michelle.raouf.fetch_jet.core.log.AppLog.d {
                 "Inspect: end in ${started.elapsedNow().inWholeMilliseconds}ms, ${list.size} qualities"
             }
+            if (list.isNotEmpty() && list.any { it.directUrl != url.trim() }) LearnedMediaHosts.learn(url)
         }
     }
+
+    /** The last [inspectMediaQualities] gave nothing because the video is DRM-protected. */
+    val lastInspectDrm: Boolean
+        get() = mediaEngine.lastInspectDrm ||
+                com.michelle.raouf.fetch_jet.feature.media_extractor.MediaDrm.errorSaysDrm(
+                    com.michelle.raouf.fetch_jet.feature.media_extractor.lastMediaInspectionError()
+                )
 
     /** Subtitle tracks the last [inspectMediaQualities] found (for the Add dialog). */
     val lastMediaSubtitles: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>
         get() = mediaEngine.lastSubtitles
+
+    /** The subtitle tracks the page of a finished video offers now (fresh links). */
+    suspend fun inspectSubtitlesOf(task: DownloadTask): List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> {
+        val page = task.originalUrl?.takeIf { it.isNotBlank() } ?: task.url
+        if (page.startsWith("fjenc1:")) throw IllegalStateException("The link of this download cannot be read on this device")
+        inspectMediaQualities(page, task.requestHeaders)
+        return mediaEngine.lastSubtitles
+    }
+
+    suspend fun addSubtitles(
+        taskId: String,
+        tracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack>,
+        onTrackDone: (Int) -> Unit = {}
+    ): com.michelle.raouf.fetch_jet.feature.media_extractor.SubtitleAddResult? {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return null
+        val result = mediaEngine.addSubtitlesToFinished(task, tracks, onTrackDone)
+        if (result.added.isNotEmpty()) {
+            val current = allTasksFlow.value.firstOrNull { it.id == taskId } ?: task
+            val addedKeys = result.added.map { it.langCode to it.isAuto }.toSet()
+            val merged = current.subtitleTracks.filter { (it.langCode to it.isAuto) !in addedKeys } +
+                    result.added.map { it.copy(isSelected = true) }
+            val changed = current.copy(subtitleTracks = merged)
+            when (current.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(changed)
+                EngineType.BITTORRENT -> Unit
+                EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(changed)
+            }
+        }
+        return result
+    }
+
+    /** Subtitle languages a media task picks up when it downloads (playlist "Add language"). */
+    fun setSubtitleLanguages(taskId: String, languages: String) {
+        val pending = pendingTasks.value[taskId]
+        if (pending != null) pendingTasks.update { it + (taskId to pending.copy(subtitleLanguages = languages)) }
+        else mediaEngine.updateTaskState(taskId) { it.copy(subtitleLanguages = languages) }
+    }
 
     /** The videos of a playlist / channel link (null = not a playlist). */
     suspend fun inspectPlaylist(
@@ -717,7 +816,8 @@ class QueueManagerRepository(
 
     private fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
-        val others = allTasksFlow.value.filter { it.destinationPath.trimEnd('/', '\\') == dir }
+        val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
+            .filter { it.destinationPath.trimEnd('/', '\\') == dir }
         return firstFreeFileName(fileName) { name ->
             AppFileSystem.exists("$dir/$name".toPath()) || others.any { it.fileName.equals(name, ignoreCase = true) }
         }
@@ -750,16 +850,24 @@ class QueueManagerRepository(
         expectedChecksum: String? = null,
         subtitleTracks: List<com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack> = emptyList(),
         embedSubtitles: Boolean = false,
+        subtitleFormat: String = "srt",
+        playlistId: String = "",
+        playlistTitle: String = "",
+        subtitleLanguages: String = "",
         initialStepText: String? = null,
         displayTotalBytes: Long = 0L,
         displayDownloadedBytes: Long = 0L,
         /** Never reuse the name of a file already in the folder or of another task there. */
-        keepExistingFiles: Boolean = false
+        keepExistingFiles: Boolean = false,
+        /** A finished video taken from another device as a plain file: [pageUrl] still offers its subtitles. */
+        subtitlesFromPage: Boolean = false,
+        pageUrl: String = ""
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
             if (com.michelle.raouf.fetch_jet.feature.torrent_engine.isLocalTorrentPath(it))
                 com.michelle.raouf.fetch_jet.feature.torrent_engine.normalizeLocalTorrentPath(it)
+            else if (forcedEngineType == EngineType.MEDIA_STREAM) it
             else codeHostRawUrl(it)
         }
         if (trimmedUrl.isBlank()) return Result.failure(Exception("URL cannot be empty"))
@@ -847,10 +955,14 @@ class QueueManagerRepository(
 
         val shownTotal = if (initialTotalBytes > 0L) initialTotalBytes else displayTotalBytes.coerceAtLeast(0L)
         val shownDownloaded = if (shownTotal > 0L) displayDownloadedBytes.coerceIn(0L, shownTotal) else 0L
+        val sameFolderList = if (playlistId.isBlank() && engineType != EngineType.BITTORRENT)
+            com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.inFolder(destDir) else null
         val task = DownloadTask(
             id = taskId,
             url = targetUrl,
-            fileName = safeFileName?.let { if (keepExistingFiles) freeNameIn(destDir, it) else it }
+            fileName = safeFileName?.let {
+                if (keepExistingFiles && engineType != EngineType.BITTORRENT) freeNameIn(destDir, it) else it
+            }
                 ?: torrentName ?: "",
             destinationPath = destDir,
             engineType = engineType,
@@ -864,7 +976,8 @@ class QueueManagerRepository(
             maxDownloadSpeedBytesPerSec = maxDownloadSpeedBytesPerSec,
             maxUploadSpeedBytesPerSec = maxUploadSpeedBytesPerSec,
             formatId = formatId,
-            originalUrl = originalMediaUrl,
+            originalUrl = originalMediaUrl ?: pageUrl.takeIf { subtitlesFromPage && it.isNotBlank() },
+            subtitlesFromPage = subtitlesFromPage && pageUrl.isNotBlank(),
             pairedAudioUrl = pairedAudioUrl?.takeIf { it.isNotBlank() },
             clipStart = clipStart,
             clipEnd = clipEnd,
@@ -876,31 +989,37 @@ class QueueManagerRepository(
             scheduledAtMs = scheduledAtMs.takeIf { it > nowEpochMs() } ?: 0L,
             maxConnections = maxConnections.coerceIn(0, 32),
             expectedChecksum = expectedChecksum?.takeIf { it.isNotBlank() },
-            subtitleTracks = if (engineType == EngineType.MEDIA_STREAM) subtitleTracks.filter { it.isSelected } else emptyList(),
-            embedSubtitles = embedSubtitles
+            subtitleTracks = if (engineType == EngineType.MEDIA_STREAM || (subtitlesFromPage && pageUrl.isNotBlank())) subtitleTracks.filter { it.isSelected } else emptyList(),
+            embedSubtitles = embedSubtitles,
+            subtitleFormat = subtitleFormat,
+            playlistId = sameFolderList?.id ?: playlistId,
+            playlistTitle = sameFolderList?.title ?: playlistTitle,
+            subtitleLanguages = if (engineType == EngineType.MEDIA_STREAM) subtitleLanguages else ""
         )
 
-        // Later (scheduled), others already waiting, or no free slot: join the queue. The pump
-        // (under its lock) starts it, so a new add never jumps ahead of waiting ones.
-        if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
-            pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
-            pumpQueue()
-            return Result.success(task)
-        }
-
-        return try {
-            // An engine that refuses (e.g. BitTorrent not available on this build) must not be
-            // reported as "Started download".
-            // QUEUED (= starting) right away, so the next add already counts this one as running.
-            val starting = task.copy(status = DownloadStatus.QUEUED)
-            when (engineType) {
-                EngineType.HTTP_DIRECT -> httpEngine.start(starting)
-                EngineType.BITTORRENT -> torrentEngine.start(starting)
-                EngineType.MEDIA_STREAM -> mediaEngine.start(starting)
-            }.getOrThrow()
-            Result.success(task)
-        } catch (e: Exception) {
-            Result.failure(e)
+        // Later (scheduled), others already waiting, or no free slot: join the queue. The check
+        // and the start happen under the pump's lock, and a started task is in its engine (counted
+        // as running) before the lock opens, so adds made in a tight loop never exceed the limit.
+        return pumpLock.withLock {
+            if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
+                pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
+                pumpQueue()
+                return@withLock Result.success(task)
+            }
+            try {
+                // An engine that refuses (e.g. BitTorrent not available on this build) must not be
+                // reported as "Started download".
+                // QUEUED (= starting) right away, so the next add already counts this one as running.
+                val starting = task.copy(status = DownloadStatus.QUEUED)
+                when (engineType) {
+                    EngineType.HTTP_DIRECT -> httpEngine.start(starting)
+                    EngineType.BITTORRENT -> torrentEngine.start(starting)
+                    EngineType.MEDIA_STREAM -> mediaEngine.start(starting)
+                }.getOrThrow()
+                Result.success(task)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
@@ -1135,6 +1254,22 @@ class QueueManagerRepository(
         torrentEngine.updateFilePriority(taskId, fileIndex, priority)
     }
 
+    /** Makes a saved download one of a playlist's videos. */
+    fun setPlaylist(taskId: String, playlistId: String, playlistTitle: String) {
+        val pending = pendingTasks.value[taskId]
+        if (pending != null) {
+            pendingTasks.update { it + (taskId to pending.copy(playlistId = playlistId, playlistTitle = playlistTitle)) }
+            return
+        }
+        val task = getAllCurrentTasks().firstOrNull { it.id == taskId } ?: return
+        val changed = task.copy(playlistId = playlistId, playlistTitle = playlistTitle)
+        when (task.engineType) {
+            EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(changed)
+            EngineType.BITTORRENT -> return
+            EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(changed)
+        }
+    }
+
     /** Task-level queue priority (1 High / 0 Normal / -1 Low): decides which waiting task starts next. */
     fun setTaskPriority(taskId: String, priority: Int) {
         val pending = pendingTasks.value[taskId]
@@ -1297,6 +1432,7 @@ class QueueManagerRepository(
 internal fun nowEpochMs(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
 internal fun codeHostRawUrl(url: String): String {
+    com.michelle.raouf.fetch_jet.feature.http_downloader.googleDriveDownloadUrl(url)?.let { return it }
     val github = Regex(
         """^(https?://(?:www\.)?github\.com/[^/]+/[^/]+)/blob/(.+)$""",
         RegexOption.IGNORE_CASE

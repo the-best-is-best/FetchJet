@@ -174,7 +174,7 @@ struct FJClipboardOfferDialog: View {
         FJDialogFrame(title: s.homeClipboardOfferTitle) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(name)
-                    .font(FJTheme.font.body.weight(.semibold))
+                    .font(Font.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(2)
                 Text(shownUrl).fjMuted().lineLimit(2).truncationMode(.middle)
@@ -233,12 +233,12 @@ struct FJDuplicateDialog: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(task.fileName.isEmpty ? store.host.displayUrl(url: task.url) : store.host.decodeUnicodeText(input: task.fileName))
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.fj(13, .bold))
                         .foregroundStyle(FJTheme.color.onSurface)
                         .lineLimit(2)
                     HStack {
                         Text(s.duplicateDialogStatus(status: task.status.name))
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.fj(11, .bold))
                             .foregroundStyle(statusColor)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -246,7 +246,7 @@ struct FJDuplicateDialog: View {
                         Spacer()
                         if task.progress > 0 {
                             Text("\(Int(task.progress * 100))%")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.fj(12, .bold))
                                 .foregroundStyle(FJTheme.color.statusConnecting)
                         }
                     }
@@ -258,7 +258,7 @@ struct FJDuplicateDialog: View {
                 .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.6)))
                 Text(s.duplicateDialogQuestion)
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface)
             }
         } buttons: {
@@ -293,7 +293,7 @@ struct FJFileConflictDialog: View {
                 .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.6)))
                 Text(s.overwriteDialogQuestion)
-                    .font(.system(size: 12))
+                    .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface)
             }
         } buttons: {
@@ -311,9 +311,9 @@ struct FJFileConflictDialog: View {
     }
 
     private func row(_ label: String, _ value: String, _ labelColor: Color, _ valueColor: Color) -> some View {
-        (Text(label).font(.system(size: 12, weight: .bold)).foregroundColor(labelColor)
+        (Text(label).font(.fj(12, .bold)).foregroundColor(labelColor)
             + Text(" ")
-            + Text(value).font(.system(size: 12, weight: .semibold)).foregroundColor(valueColor))
+            + Text(value).font(.fj(12, .semibold)).foregroundColor(valueColor))
             .lineLimit(2)
     }
 }
@@ -331,10 +331,10 @@ struct FJUpdateDialog: View {
         FJDialogFrame(title: "🎉 " + s.updateNewVersionAvailable) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(s.updateVersionLine(version: release.version, current: state.currentVersion))
-                    .font(FJTheme.font.body.weight(.semibold))
+                    .font(Font.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                 Text(s.updateWhatsNew)
-                    .font(FJTheme.font.callout.weight(.semibold))
+                    .font(Font.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .padding(.top, 4)
                 ScrollView {

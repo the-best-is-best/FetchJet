@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from corehost import Core, CheckFailed, SERVER, server_sha256, sha256_of_file
 
 LIMIT = 512 * 1024
-DOWNLOADS_PAGE = 1
+SPEED_PAGE = 2
 IN_USE = 170000
 AWAY = 600000
 
@@ -40,10 +40,10 @@ def run():
         print("    idle time from the system: %s ms" % faked.get("osIdleMs"))
         core.action("OpenSettings")
         core.pump(0.5)
-        core.action("SetSettingsSection", index=DOWNLOADS_PAGE)
+        core.action("SetSettingsSection", index=SPEED_PAGE)
         core.pump(0.5)
         row = settings_row(core, "speedLimitOnlyInUse")
-        core.check("the switch is on the downloads page, off", row.get("title") == strings.get("speedLimitWhileInUseTitle") and
+        core.check("the switch is on the speed limits page, off", row.get("title") == strings.get("speedLimitWhileInUseTitle") and
                    not row.get("checked", False), row)
 
         print("setting off, user away: the limit stays")

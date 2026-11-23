@@ -39,7 +39,7 @@ object Secrets {
         return try {
             SecretBox.open(Base64.decode(stored.removePrefix(PREFIX))).decodeToString()
         } catch (t: Throwable) {
-            AppLog.e("Secrets: could not decrypt (${t.message})")
+            AppLog.e("Secrets: could not decrypt (${t::class.simpleName}: ${t.message}, ${stored.length} chars)")
             null
         }
     }

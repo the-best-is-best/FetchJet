@@ -6,7 +6,7 @@ import { ScrollArea } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { SectionLabel, Gap, ChoiceChip, Spinner } from "../widgets/Kit.slint";
 import { MediaSection, AudioConvertSection } from "AddMedia.slint";
-import { LinkListSection } from "AddLinks.slint";
+import { LinkListSection, GrabCard } from "AddLinks.slint";
 import { TorrentSection } from "AddTorrent.slint";
 import { CheckBox } from "../widgets/CheckBox.slint";
 import { Core, ChoiceDto, EngineChoiceDto, QuickFolderDto, MediaStateCode, AddModeCode, TorrentStateCode } from "../generated/dto.slint";
@@ -207,6 +207,7 @@ component UrlSection inherits VerticalLayout {
         size: 6px;
     }
     field := TextArea {
+        ltr: true;
         placeholder: Tr.urlPlaceholder;
         leading-emoji: "🔗";
         has-trailing: true;
@@ -219,6 +220,7 @@ component UrlSection inherits VerticalLayout {
             clicked => {
                 field.set-text("");
                 Act.setUrl("");
+                field.focus-field();
             }
             glyph: "✕";
             label: Tr.addClearSelection;
@@ -568,15 +570,27 @@ component AddBody inherits VerticalLayout {
         size: 16px;
     }
     UrlSection { }
-    Gap { }
-    if root.links: LinkListSection { }
-    if !root.links: SectionLabel {
+    if Core.add.grabShown: Gap {
+        size: 10px;
+    }
+    if Core.add.checkingLink: Text {
+        text: Tr.addCheckingLink;
+        color: Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        vertical-alignment: center;
+        height: 24px;
+    }
+    if !root.links && !Core.add.engineHidden: Gap {
+        size: 12px;
+    }
+    if !root.links && !Core.add.engineHidden: SectionLabel {
         text: Tr.addDownloadEngine;
     }
-    if !root.links: Gap {
+    if !root.links && !Core.add.engineHidden: Gap {
         size: 6px;
     }
-    if !root.links: HBox {
+    if !root.links && !Core.add.engineHidden: HBox {
         height: 48px;
         spacing: 8px;
         cross-axis-alignment: center;
@@ -584,9 +598,15 @@ component AddBody inherits VerticalLayout {
             data: choice;
         }
     }
+    if !root.links && !Core.add.engineHidden && Core.add.grabShown: Gap {
+        size: 10px;
+    }
+    if Core.add.grabShown: GrabCard { }
+    Gap { }
+    if root.links: LinkListSection { }
     if !root.links && Core.addTorrent.state != TorrentStateCode.hidden: TorrentSection { }
     if !root.links && Core.addMedia.state != MediaStateCode.hidden: MediaSection { }
-    Gap { }
+    if root.links || !Core.add.engineHidden || Core.addTorrent.state != TorrentStateCode.hidden || Core.addMedia.state != MediaStateCode.hidden: Gap { }
     ScheduleSection { }
     Gap { }
     if Core.add.connectionsShown: SectionLabel {
@@ -661,6 +681,7 @@ component AddBody inherits VerticalLayout {
         size: 6px;
     }
     TextField {
+        ltr: true;
         leading-emoji: "📁";
         has-trailing: true;
         value: Core.add.destination;

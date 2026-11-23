@@ -3,7 +3,17 @@ package com.michelle.raouf.fetch_jet.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -37,7 +49,15 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
+import com.michelle.raouf.fetch_jet.presentation.dashboard.GrabGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.LinkListEntry
+import com.michelle.raouf.fetch_jet.presentation.dashboard.SiteGrabUi
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabDepthShortName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.grabGroupName
+import com.michelle.raouf.fetch_jet.presentation.dashboard.linkCountLines
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
 import com.michelle.raouf.fetch_jet.utils.formatBytes
 import com.tbib.kmp_localization.LocalizationManager
@@ -53,19 +73,37 @@ internal fun LinkListSection(
     onTorrentFilePriority: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onTorrentSelectAll: (Int, Boolean) -> Unit = { _, _ -> },
     onQualitySelected: (Int, Int) -> Unit = { _, _ -> },
-    onRetryInspect: (Int) -> Unit = {}
+    onRetryInspect: (Int) -> Unit = {},
+    grabGroups: List<GrabGroup> = emptyList(),
+    grabNote: String = "",
+    onGrabGroupToggled: (String, Boolean) -> Unit = { _, _ -> },
+    hiddenKinds: Set<String> = emptySet()
 ) {
-    val selected = links.count { it.isSelected }
-    val allSelected = selected == links.size
+    val shown = links.withIndex().filter { !(it.value.folder.isNotBlank() && it.value.folder in hiddenKinds) }
+    val selected = shown.count { it.value.isSelected }
+    val pickable = shown.count { !it.value.downloadedBefore }
+    val allSelected = pickable > 0 && selected == pickable
+    val before = shown.count { it.value.downloadedBefore }
+    val counts = linkCountLines(selected, shown.size, before)
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            LocalizationManager.Strings.selectedOfLinks(selected, links.size),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        TextButton(onClick = { onSelectAll(!allSelected) }) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                counts.count,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (counts.before.isNotEmpty()) Text(
+                counts.before,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (pickable > 0) TextButton(onClick = { onSelectAll(!allSelected) }) {
             Text(
                 if (allSelected) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
                 fontSize = 12.sp,
@@ -85,15 +123,27 @@ internal fun LinkListSection(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
     )
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column {
-            links.forEachIndexed { index, link ->
-                if (index > 0) {
+    if (grabNote.isNotBlank()) {
+        GrabNote(grabNote, Modifier.padding(bottom = 8.dp))
+    }
+    if (grabGroups.isNotEmpty()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            items(grabGroups, key = { it.folder }) { group ->
+                FilterChip(
+                    selected = group.selected,
+                    onClick = { onGrabGroupToggled(group.folder, !group.selected) },
+                    label = { Text(grabGroupName(group.folder) + " " + group.count, fontSize = 12.sp) }
+                )
+            }
+        }
+    }
+    val lazyRows = links.any { it.folder.isNotBlank() }
+    @Composable
+    fun EntryBlock(position: Int, index: Int, link: LinkListEntry) {
+                if (position > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 }
                 LinkRow(link) { onToggled(index, it) }
@@ -155,6 +205,134 @@ internal fun LinkListSection(
                         }
                     }
                 }
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (lazyRows) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                itemsIndexed(shown) { position, row -> EntryBlock(position, row.index, row.value) }
+            }
+        } else {
+            Column {
+                shown.forEachIndexed { position, row -> EntryBlock(position, row.index, row.value) }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun GrabNote(note: String, modifier: Modifier = Modifier) {
+    Text(
+        note,
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun SegmentedChoice(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    small: Boolean = false
+) {
+    androidx.compose.material3.SingleChoiceSegmentedButtonRow(
+        modifier = modifier.fillMaxWidth().height(if (small) 32.dp else 40.dp)
+    ) {
+        labels.forEachIndexed { i, label ->
+            SegmentedButton(
+                selected = i == selectedIndex,
+                onClick = { onSelect(i) },
+                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, labels.size),
+                icon = {},
+                contentPadding = PaddingValues(horizontal = 6.dp),
+                label = {
+                    Text(
+                        label,
+                        fontSize = if (small) 11.sp else 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+internal fun GrabCard(
+    grab: SiteGrabUi,
+    showNote: Boolean,
+    onFind: () -> Unit,
+    onStop: () -> Unit,
+    onDepth: (Int) -> Unit,
+    showDepth: Boolean = true
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                LocalizationManager.Strings.grabFindFiles,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (grab.running) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    LocalizationManager.Strings.grabReading.replace("%1", grab.pagesRead.toString()),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onStop) {
+                        Text(LocalizationManager.Strings.grabStop, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else {
+                if (showDepth) {
+                Text(
+                    LocalizationManager.Strings.grabHow,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                )
+                SegmentedChoice(
+                    labels = (1..3).map { grabDepthShortName(it) },
+                    selectedIndex = grab.depth - 1,
+                    onSelect = { onDepth(it + 1) }
+                )
+                Text(
+                    grabDepthName(grab.depth),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onFind,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(LocalizationManager.Strings.grabFindFiles, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                if (showNote && grab.note.isNotBlank()) {
+                    GrabNote(grab.note, Modifier.padding(top = 8.dp))
+                }
             }
         }
     }
@@ -162,7 +340,14 @@ internal fun LinkListSection(
 
 @Composable
 private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
-    val (tag, tagColor) = when (link.engine) {
+    val (tag, tagColor) = if (link.folder.isNotBlank()) {
+        com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagOf(link.fileName ?: link.url, link.folder) to
+                when (com.michelle.raouf.fetch_jet.presentation.dashboard.grabTagKindOf(link.folder)) {
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.VIDEO -> Color(0xFFE879F9)
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.AUDIO -> Color(0xFFFBBF24)
+                    com.michelle.raouf.fetch_jet.presentation.dashboard.GrabTagKind.OTHER -> Color(0xFF38BDF8)
+                }
+    } else when (link.engine) {
         EngineType.MEDIA_STREAM -> if (link.mediaQualities.isAllAudio())
             LocalizationManager.Strings.linkTagAudio to Color(0xFFFBBF24)
         else LocalizationManager.Strings.linkTagVideo to Color(0xFFE879F9)
@@ -179,19 +364,44 @@ private fun LinkRow(link: LinkListEntry, onToggle: (Boolean) -> Unit) {
         Checkbox(
             checked = link.isSelected,
             onCheckedChange = onToggle,
+            enabled = !link.downloadedBefore,
             modifier = Modifier.size(40.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Column(modifier = Modifier.weight(1f)) {
+            val grabbed = link.folder.isNotBlank()
             Text(
-                link.mediaTitle?.let { decodeUnicodeText(it) } ?: linkTitle(link.url),
+                if (grabbed) link.fileName ?: link.url else link.mediaTitle?.let { decodeUnicodeText(it) } ?: linkTitle(link.url),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (link.downloadedBefore) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
             )
-            Text(
+            if (grabbed) {
+                val lead = listOfNotNull(
+                    LocalizationManager.Strings.playlistDownloadedBefore.takeIf { link.downloadedBefore },
+                    formatBytes(link.sizeBytes).takeIf { link.sizeBytes >= 0 }
+                ).joinToString(" · ")
+                val host = linkHost(link.sourcePage.ifBlank { link.url })
+                Row {
+                    if (lead.isNotEmpty()) Text(
+                        lead,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (host.isNotBlank()) Text(
+                        (if (lead.isNotEmpty()) " · " else "") + host,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+            } else Text(
                 linkHost(link.url),
                 fontSize = 11.sp,
                 maxLines = 1,
@@ -285,7 +495,7 @@ private fun VideoQualityLine(link: LinkListEntry, onRetry: () -> Unit, onSelecte
 }
 
 private fun qualityText(q: MediaQualityEntry): String =
-    q.qualityLabel + if (q.size > 0L) " · " + formatBytes(q.size) else ""
+    q.qualityLabel + if (q.hasShownSize) " · " + q.sizeMark + formatBytes(q.size) else ""
 
 private fun linkTitle(url: String): String {
     if (url.startsWith("magnet:", ignoreCase = true)) {

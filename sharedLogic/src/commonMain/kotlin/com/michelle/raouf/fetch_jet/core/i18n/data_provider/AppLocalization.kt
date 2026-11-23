@@ -29,6 +29,16 @@ interface AppLocalization : LocalizationProvider {
     val languageHint: String
     val systemLanguage: String
     val homeSettings: String
+    val moreTitle: String
+    val moreSettingsHint: String
+    val moreEverywhereTitle: String
+    val moreShare: String
+    val moreCommunityTitle: String
+    val moreFacebook: String
+    val moreIssues: String
+    val moreSource: String
+    val morePrivacy: String
+    val moreStats: String
     val homeDownloads: String
 
     val homeTabAll: String
@@ -224,6 +234,7 @@ interface AppLocalization : LocalizationProvider {
     val engineTorrent: String
     val addFileNameLabel: String
     val findingName: String
+    val addCheckingLink: String
     val saveDestination: String
     val quickFolderDownloads: String
     val quickFolderDocuments: String
@@ -249,6 +260,18 @@ interface AppLocalization : LocalizationProvider {
     val subtitlesAuto: String
     val subtitlesEmbedInVideo: String
     val subtitlesSeparateFile: String
+    val subtitlesAddButton: String
+    val subtitlesReading: String
+    val subtitlesNone: String
+    val subtitlesReadFailed: String
+    val subtitlesAlreadyThere: String
+    val subtitlesGoInside: String
+    val subtitlesGoBeside: String
+    val subtitlesAddSelected: String
+    val subtitlesAddingProgress: String
+    val subtitlesAddedList: String
+    val subtitlesRefusedList: String
+    val subtitlesFailedList: String
     val addSelectAll: String
     val addClearSelection: String
     fun selectedOfAvailable(selected: Int, total: Int): String
@@ -484,6 +507,33 @@ interface AppLocalization : LocalizationProvider {
     val sectionGeneralBlurb: String
     val sectionDownloads: String
     val sectionDownloadsBlurb: String
+    val sectionFiles: String
+    val sectionFilesBlurb: String
+    val grabFindFiles: String
+    val grabDepth1: String
+    val grabDepth2: String
+    val grabDepth3: String
+    val grabDepthShort1: String
+    val grabDepthShort2: String
+    val grabDepthShort3: String
+    val grabHow: String
+    val grabReading: String
+    val grabFound: String
+    val grabNothing: String
+    val grabRefused: String
+    val grabScript: String
+    val grabLimit: String
+    val grabStop: String
+    val grabStopped: String
+    val grabCheckNew: String
+    val grabDownloadedCount: String
+    val grabGroupVideo: String
+    val grabGroupMusic: String
+    val grabGroupArchives: String
+    val grabGroupDocuments: String
+    val grabGroupPrograms: String
+    val grabGroupImages: String
+    val grabGroupOther: String
     val sectionBrowser: String
     val sectionBrowserBlurb: String
     val sectionSpeed: String
@@ -540,6 +590,11 @@ interface AppLocalization : LocalizationProvider {
     val sortIntoFolders: String
     val sortIntoFoldersOn: String
     val sortIntoFoldersOff: String
+    val groupByFolder: String
+    val groupByFolderOn: String
+    val groupByFolderOff: String
+    val folderGroupFiles: String
+    val folderDeleteAll: String
 
     val speedLimitsFooter: String
     val speedLimitsFooterIos: String
@@ -703,6 +758,7 @@ interface AppLocalization : LocalizationProvider {
     val sysEnterMediaUrlFirst: String
     fun sysUnableToFetchFormatsWithReason(reason: String): String
     val sysUnableToFetchFormats: String
+    val sysDrmProtected: String
     val sysFailedToInspectMediaQualities: String
     fun sysTorrentEngineError(message: String): String
     fun sysTorrentEngineInstallFailed(message: String): String
@@ -718,6 +774,37 @@ interface AppLocalization : LocalizationProvider {
     val sysUnknownErrorCapital: String
     fun sysCouldNotSaveFileTo(dir: String): String
     val sysPlaylistFallbackTitle: String
+    val sysPlaylistDoneTitle: String
+    val sysPlaylistDoneCount: String
+    val sysPlaylistDoneFailed: String
+    val playlistOldestFirst: String
+    val playlistDownloadedBefore: String
+    val subtitlesReadingCount: String
+    val subtitlesNoneInList: String
+    val playlistVideoJoined: String
+    val detailsPlaylist: String
+    val popUpAskText: String
+    val popUpAskAllow: String
+    val popUpAskLater: String
+    val driveNoDownloadError: String
+    val siteBusyRetryLater: String
+    val videoPlaysEverywhere: String
+    val videoPlaysEverywhereOn: String
+    val videoPlaysEverywhereOff: String
+    val sysReadingChannelName: String
+    val sysReadingVideosCount: String
+    val playlistGroupDone: String
+    val playlistCheckNew: String
+    val playlistBack: String
+    val playlistDeleteAll: String
+    val playlistSubtitlesFor: String
+    val playlistNoSubtitles: String
+    val playlistAddLanguage: String
+    val playlistLanguageAdding: String
+    val playlistLanguageAdded: String
+    val playlistReadingLanguages: String
+    val playlistInIt: String
+    val playlistNotAvailable: String
     val sysPlaylistQualityBest: String
     val sysPlaylistQualityAudioOnly: String
     val sysToolsReadyYtDlpFfmpeg: String

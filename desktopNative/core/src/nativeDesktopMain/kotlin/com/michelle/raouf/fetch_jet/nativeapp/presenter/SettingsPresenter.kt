@@ -45,6 +45,8 @@ internal const val DEVICE_SYNC_READY = true
 internal enum class SettingsSection(val glyph: String) {
     GENERAL("◐"),
     DOWNLOADS("↓"),
+    SPEED("⚡"),
+    FILES("☰"),
     BROWSER("⧉"),
     DEVICES("⇄"),
     NETWORK("◎"),
@@ -59,6 +61,8 @@ internal fun SettingsSection.title(): String {
     return when (this) {
         SettingsSection.GENERAL -> s.sectionGeneral
         SettingsSection.DOWNLOADS -> s.sectionDownloads
+        SettingsSection.SPEED -> s.sectionSpeed
+        SettingsSection.FILES -> s.sectionFiles
         SettingsSection.BROWSER -> s.sectionBrowser
         SettingsSection.DEVICES -> s.sectionDevices
         SettingsSection.NETWORK -> s.sectionNetwork
@@ -74,6 +78,8 @@ internal fun SettingsSection.blurb(): String {
     return when (this) {
         SettingsSection.GENERAL -> s.sectionGeneralBlurb
         SettingsSection.DOWNLOADS -> s.sectionDownloadsBlurb
+        SettingsSection.SPEED -> s.sectionSpeedBlurb
+        SettingsSection.FILES -> s.sectionFilesBlurb
         SettingsSection.BROWSER -> s.sectionBrowserBlurb
         SettingsSection.DEVICES -> s.sectionDevicesBlurb
         SettingsSection.NETWORK -> s.sectionNetworkBlurb
@@ -152,6 +158,7 @@ internal data class SettingsLocal(
     val section: SettingsSection? = null,
     val generation: Int = 0,
     val poke: Int = 0,
+    val inSettings: Boolean = false,
     val page: SettingsPage = SettingsPage(),
     val browserDialog: BrowserDialog? = null,
 )
@@ -181,8 +188,11 @@ internal data class SettingsSlice(
     val clipboardVideoPages: Boolean,
     val destinationPath: String,
     val sortIntoFolders: Boolean,
+    val groupByFolder: Boolean,
+    val videoPlaysEverywhere: Boolean,
     val extractArchives: Boolean,
     val defaultConnections: Int,
+    val downloadLimit: Long,
     val lowBytes: Long,
     val lowUnit: String,
     val mediumBytes: Long,
@@ -222,8 +232,11 @@ internal fun DashboardUiState.settingsSlice() = SettingsSlice(
     clipboardVideoPages = clipboardVideoPages,
     destinationPath = destinationPath,
     sortIntoFolders = sortIntoFolders,
+    groupByFolder = groupByFolder,
+    videoPlaysEverywhere = videoPlaysEverywhere,
     extractArchives = extractArchives,
     defaultConnections = defaultConnections,
+    downloadLimit = globalDownloadSpeedLimitBytes,
     lowBytes = speedPresetLowBytes,
     lowUnit = speedPresetLowUnit,
     mediumBytes = speedPresetMediumBytes,
@@ -277,6 +290,29 @@ private fun networkSummary(proxy: ProxySettings, logins: Int): String {
     return if (logins == 0) text else text + " · " + LocalizationManager.Strings.netLoginsCount(logins)
 }
 
+private fun speedSummary(v: SettingsSlice): String {
+    val s = LocalizationManager.Strings
+    val limit = v.downloadLimit
+    val text = when {
+        limit <= 0L -> s.summaryNoSpeedLimit
+        limit == v.fastBytes -> s.speedPresetFast + " · " + speedPresetShortLabel(limit)
+        limit == v.mediumBytes -> s.speedPresetMedium + " · " + speedPresetShortLabel(limit)
+        limit == v.lowBytes -> s.speedPresetLow + " · " + speedPresetShortLabel(limit)
+        else -> speedPresetShortLabel(limit)
+    }
+    return if (SpeedSchedule.enabled.value) text + " · " + s.speedScheduleTitle else text
+}
+
+private fun filesSummary(v: SettingsSlice): String {
+    val s = LocalizationManager.Strings
+    return when {
+        v.sortIntoFolders && v.groupByFolder -> s.sortIntoFolders + " · " + s.groupByFolder
+        v.sortIntoFolders -> s.sortIntoFolders
+        v.groupByFolder -> s.groupByFolder
+        else -> s.settingOff
+    }
+}
+
 private fun Presenter.sectionHint(section: SettingsSection, v: SettingsSlice): Pair<String, ToneCode> {
     val s = LocalizationManager.Strings
     return when (section) {
@@ -285,6 +321,12 @@ private fun Presenter.sectionHint(section: SettingsSection, v: SettingsSlice): P
             val max = QueueManagerRepository.getInstance().maxConcurrentDownloads.value
             folderName(v.destinationPath) + " · " + (if (max <= 0) s.summaryNoQueueLimit else s.summaryAtATime(max)) to ToneCode.MUTED
         }
+
+        SettingsSection.SPEED ->
+            speedSummary(v) to (if (v.downloadLimit > 0L || SpeedSchedule.activeCap.value != null) ToneCode.COMPLETED else ToneCode.MUTED)
+
+        SettingsSection.FILES ->
+            filesSummary(v) to (if (v.sortIntoFolders || v.groupByFolder) ToneCode.COMPLETED else ToneCode.MUTED)
 
         SettingsSection.NETWORK -> {
             val proxy = NetworkSettings.proxy.value
@@ -335,7 +377,13 @@ internal fun Presenter.startSettings() {
     val open = slices.map { it.open }.distinctUntilChanged()
     scope.launch {
         combine(open, AppLanguage.current) { _, _ -> Unit }.drop(1).collect {
-            settingsLocal.update { SettingsLocal(generation = it.generation + 1, poke = it.poke + 1) }
+            settingsLocal.update {
+                SettingsLocal(
+                    generation = it.generation + 1,
+                    poke = it.poke + 1,
+                    inSettings = it.inSettings && vm.uiState.value.selectedTab == DashboardTab.SETTINGS,
+                )
+            }
         }
     }
     scope.launch {
@@ -433,6 +481,7 @@ private fun Presenter.publishSettings() {
     if (!v.open) {
         settingsNav.publish(SettingsNavDto())
         settingsRows.publish(emptyList())
+        moreRows.publish(emptyList())
         return
     }
     val ui = settingsLocal.value
@@ -455,7 +504,9 @@ private fun Presenter.publishSettings() {
             current = sections.indexOf(current),
             title = current.title(),
             blurb = current.blurb(),
+            inSettings = ui.inSettings,
         )
     )
+    moreRows.publish(buildMoreRows())
     settingsRows.publish(buildSettingsRows(current, v, ui.page))
 }

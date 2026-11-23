@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -51,6 +52,10 @@ class MediaStreamDownloader(
 
     /** Subtitle tracks the last [inspectMediaQualities] found (yt-dlp sites), for the Add dialog. */
     internal var lastSubtitles: List<SubtitleTrack> = emptyList()
+
+    /** The last [inspectMediaQualities] found a DRM-protected stream (nothing can be downloaded). */
+    var lastInspectDrm: Boolean = false
+        internal set
 
     /** HTTP/1.1-only client for piece downloads (googlevideo rejects ranged requests over h2). */
     private val streamClients =
@@ -76,7 +81,7 @@ class MediaStreamDownloader(
 
     internal val tasksState = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
 
-    internal val activeJobs = mutableMapOf<String, Job>()
+    internal val activeJobs = MutableStateFlow<Map<String, Job>>(emptyMap())
 
     internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -102,7 +107,7 @@ class MediaStreamDownloader(
         return try {
             // Wait for a previous run to really stop (yt-dlp/ffmpeg killed, files closed)
             // before touching its files.
-            activeJobs.remove(task.id)?.let { it.cancel(); withTimeoutOrNull(3000L) { it.join() } }
+            activeJobs.getAndUpdate { it - task.id }[task.id]?.let { it.cancel(); withTimeoutOrNull(3000L) { it.join() } }
 
             // Only the section mode cannot resume; a cut-afterwards clip resumes like any video.
             val isClip =
@@ -127,7 +132,7 @@ class MediaStreamDownloader(
             val job = scope.launch {
                 executeMediaDownload(task.id)
             }
-            activeJobs[task.id] = job
+            activeJobs.update { it + (task.id to job) }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -141,7 +146,7 @@ class MediaStreamDownloader(
                 downloadSpeedBytesPerSec = 0L
             )
         }
-        val currentJob = activeJobs.remove(taskId)
+        val currentJob = activeJobs.getAndUpdate { it - taskId }[taskId]
         currentJob?.cancel()
         // Wait (briefly) until yt-dlp/ffmpeg is really gone, so an immediate Resume never works
         // on files the old process is still writing. Capped: on iOS the in-app engine cannot
@@ -157,7 +162,7 @@ class MediaStreamDownloader(
     }
 
     override suspend fun cancel(taskId: String): Result<Unit> {
-        val currentJob = activeJobs.remove(taskId)
+        val currentJob = activeJobs.getAndUpdate { it - taskId }[taskId]
         currentJob?.cancel()
         currentJob?.let { withTimeoutOrNull(3000L) { it.join() } } // capped: see pause()
         tasksState.update { current -> current - taskId }
@@ -363,7 +368,7 @@ class MediaStreamDownloader(
                 throw Exception("Unable to extract direct video stream. The video may be private, age-restricted, or protected.")
             }
 
-            if (initialTask.subtitleTracks.any { it.isSelected } &&
+            if ((initialTask.subtitleTracks.any { it.isSelected } || initialTask.subtitleLanguages.isNotBlank()) &&
                 tasksState.value[taskId]?.status != DownloadStatus.PAUSED
             ) {
                 try {
@@ -515,7 +520,14 @@ class MediaStreamDownloader(
         requestHeaders: Map<String, String> = emptyMap()
     ): List<MediaQualityEntry> {
         lastSubtitles = emptyList()
+        lastInspectDrm = false
         if (com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(url)) return emptyList()
+        if (FACEBOOK_STORY.containsMatchIn(url)) return emptyList()
+        SiteBusy.check(url)
+        if (MediaDrm.looksLikeDash(url) && MediaDrm.isProtected(client, url.trim(), requestHeaders)) {
+            lastInspectDrm = true
+            return emptyList()
+        }
         // A playlist link (.m3u8): FetchJet's own HLS engine reads the renditions itself. The
         // CDNs that block yt-dlp / ffmpeg (Cloudflare on Udemy...) let this client through.
         inspectHlsVariants(url, requestHeaders)?.let { return it }
@@ -563,6 +575,8 @@ class MediaStreamDownloader(
             } else {
                 inspectWebPage(effectiveUrl, resolvedTitle, list, currentIndex)
             }
+        } catch (e: SiteBusyException) {
+            throw e
         } catch (_: Exception) {
         }
 
@@ -655,3 +669,6 @@ internal fun parseTimeToSecondsOrNull(t: String): Double? {
         else -> null
     }
 }
+
+/** Facebook story pages: yt-dlp has no extractor for them, the browser's captured video is the way. */
+private val FACEBOOK_STORY = Regex("""^https?://([\w-]+\.)?facebook\.com/stories/""", RegexOption.IGNORE_CASE)

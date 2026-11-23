@@ -9,12 +9,14 @@ import com.michelle.raouf.fetch_jet.core.update.AppRelease
 import com.michelle.raouf.fetch_jet.core.update.ReleaseAsset
 import com.michelle.raouf.fetch_jet.core.update.UPDATE_REPOSITORY
 import com.michelle.raouf.fetch_jet.core.update.UpdateState
+import com.michelle.raouf.fetch_jet.core.update.PlatformUpdater
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
 import com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice
 import com.michelle.raouf.fetch_jet.feature.device_sync.PairingState
 import com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.presentation.dashboard.onDeviceReceive
+import com.michelle.raouf.fetch_jet.presentation.dashboard.loopbackDeviceSend
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.BrowserDialog
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.DeviceDebug
@@ -54,8 +56,10 @@ internal object DebugCalls {
         "testLink" -> testLink()
         "extensionSteps" -> extensionSteps(args)
         "update" -> update(args)
+        "installUpdate" -> PlatformUpdater.launchInstallerAndExit(text(args, "path")).fold({ "ok" }, { "error: " + it.message })
         "devices" -> devices(args)
         "receive" -> receive(args)
+        "loopbackSend" -> if (NativeApp.presenter.vm.loopbackDeviceSend(text(args, "id"))) "ok" else "refused"
         "proxyStart" -> proxyStart(args)
         "proxyStop" -> proxyStop()
         "mainSetup" -> {
@@ -90,6 +94,10 @@ internal object DebugCalls {
             put("supported", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.isSupported)
             put("on", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.wakeForSchedule.value)
             put("armedAtMs", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.armedAtMs.value)
+        }.toString()
+        "opened" -> buildJsonObject {
+            putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
+            putJsonArray("shared") { for (text in NativeApp.presenter.sharedTexts.value) add(kotlinx.serialization.json.JsonPrimitive(text)) }
         }.toString()
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
@@ -249,6 +257,9 @@ internal object DebugCalls {
                 put("downloadedBytes", task.downloadedBytes)
                 put("speed", task.downloadSpeedBytesPerSec)
                 put("progress", task.progress)
+                put("playlistId", task.playlistId)
+                put("subtitleLanguages", task.subtitleLanguages)
+                put("subtitles", task.subtitleTracks.filter { it.isSelected }.joinToString(",") { it.langCode })
                 put("connections", task.connections)
                 put("chunks", task.chunks.size)
                 put("error", task.errorMessage.orEmpty())

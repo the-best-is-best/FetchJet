@@ -66,7 +66,7 @@ internal suspend fun HttpChunkDownloader.downloadFtp(taskId: String) {
         val identity = FileIdentity("", modified, size ?: -1L)
 
         val rawName = task.fileName.ifBlank { target.fileName }
-        val targetFileName = pathResolver.sanitizeFileName(rawName)
+        val targetFileName = claimFileName(taskId, pathResolver.sanitizeFileName(rawName))
         val taskCacheDir = "${pathResolver.getTempDirectory()}/task_$taskId"
         val cachePath = "$taskCacheDir/$targetFileName"
         val finalDestPath = "${task.destinationPath}/$targetFileName"
@@ -485,7 +485,7 @@ private suspend fun HttpChunkDownloader.ftpsWithTool(taskId: String, task: Downl
     val modified = Regex("(?i)last-modified:\\s*([^\\r\\n]+)").find(head.output)?.groupValues?.get(1)?.trim().orEmpty()
     val identity = FileIdentity("", modified, size)
 
-    val targetFileName = pathResolver.sanitizeFileName(task.fileName.ifBlank { target.fileName })
+    val targetFileName = claimFileName(taskId, pathResolver.sanitizeFileName(task.fileName.ifBlank { target.fileName }))
     val taskCacheDir = "${pathResolver.getTempDirectory()}/task_$taskId"
     val cachePath = "$taskCacheDir/$targetFileName"
     val finalDestPath = "${task.destinationPath}/$targetFileName"

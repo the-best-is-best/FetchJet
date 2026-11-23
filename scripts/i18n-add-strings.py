@@ -29,6 +29,9 @@ def kt(text):
 def insert_after_member(raw, nl, anchor, lines):
     at = raw.index(anchor)
     end = raw.index(nl, at)
+    while raw[at:end].rstrip().endswith("="):
+        at = end + len(nl)
+        end = raw.index(nl, at)
     return raw[:end + len(nl)] + nl.join(lines) + nl + raw[end + len(nl):]
 
 

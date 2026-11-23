@@ -19,6 +19,8 @@ derivative work of GPL-3.0 code, which is why the whole project carries the GPL.
 | OpenSSL (krzyzanowskim)                                                       | iOS                                                                             | Apache-2.0               |                                                                                    |
 | Ktor, Okio, OkHttp, kotlinx.coroutines, Compose Multiplatform, Gson, AndroidX | all platforms                                                                   | Apache-2.0               |                                                                                    |
 | Mozilla CA bundle (`cacert.pem`)                                              | iOS                                                                             | MPL-2.0                  |                                                                                    |
+| Noto Sans, Noto Sans Arabic, Noto Sans Devanagari, Noto Sans SC / JP / KR     | all platforms, merged into "FetchJet Sans" (`desktopNative/res/fonts`, Android `res/font`, `iosApp/iosApp/Fonts`) | OFL-1.1 | https://github.com/notofonts; built by `desktopNative/tools/fonts/make_fonts.py` |
+| DejaVu Sans / Sans Mono (symbol glyphs)                                       | all platforms, inside "FetchJet Sans"                                           | Bitstream Vera / PD      | https://dejavu-fonts.github.io                                                     |
 
 The browser extension (`extension/`) is original code (GPL-3.0-or-later like the rest); its
 YouTube stream handling was designed after the Ezoo Download extension's approach.

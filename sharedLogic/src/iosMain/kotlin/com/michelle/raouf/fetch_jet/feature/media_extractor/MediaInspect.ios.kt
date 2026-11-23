@@ -7,6 +7,7 @@ import com.michelle.raouf.fetch_jet.core.util.MiniJson
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import io.ktor.client.HttpClient
 import io.ktor.client.request.head
+import io.ktor.client.request.prepareGet
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -28,7 +29,16 @@ private suspend fun probeContentLength(urlStr: String): Long {
             header(HttpHeaders.UserAgent, "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")
         }
         val len = response.headers[HttpHeaders.ContentLength]?.toLongOrNull() ?: -1L
-        if (len > 0L) len else -1L
+        if (len > 4096L && !com.michelle.raouf.fetch_jet.domain.model.looksLikeNotMedia(response.headers[HttpHeaders.ContentType])) len
+        else {
+            probeClient.prepareGet(clean) {
+                header(HttpHeaders.UserAgent, "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")
+                header(HttpHeaders.Range, "bytes=0-0")
+            }.execute { ranged ->
+                val total = com.michelle.raouf.fetch_jet.domain.model.totalFromContentRange(ranged.headers[HttpHeaders.ContentRange])
+                if (ranged.status.value == 206 && total > 4096L) total else -1L
+            }
+        }
     } catch (_: Exception) {
         -1L
     }
@@ -88,6 +98,13 @@ private fun getIntFromMap(map: Map<*, *>?, key: String): Int? {
     return v.toString().toIntOrNull()
 }
 
+private fun getDoubleFromMap(map: Map<*, *>?, key: String): Double? {
+    val v = getValueFromMap(map, key) ?: return null
+    if (v is Number) return v.toDouble()
+    if (v is NSNumber) return v.doubleValue
+    return v.toString().toDoubleOrNull()
+}
+
 private fun getLongFromMap(map: Map<*, *>?, key: String): Long? {
     val v = getValueFromMap(map, key) ?: return null
     if (v is Number) return v.toLong()
@@ -126,6 +143,7 @@ actual suspend fun inspectPlatformQualities(
             val reason = bridge?.lastErrorText()?.lineSequence()
                 ?.map { it.trim() }
                 ?.lastOrNull { it.isNotBlank() }
+            if (reason != null && ytDlpSaysTooManyRequests(reason)) throw SiteBusyException(linkHost(trimmedUrl))
             throw Exception(reason ?: "yt-dlp returned no metadata")
         }
 
@@ -176,6 +194,8 @@ actual suspend fun inspectPlatformQualities(
         val rawFormats = (getValueFromMap(parsedRoot, "formats") as? List<*>) ?: emptyList<Any?>()
         val list = mutableListOf<MediaQualityEntry>()
         val seenKeys = mutableSetOf<String>()
+        val keptCodec = HashMap<String, String>()
+        val hlsEstimates = HashMap<String, Long>()
 
         for (rawF in rawFormats) {
             val f = rawF as? Map<*, *> ?: continue
@@ -206,7 +226,9 @@ actual suspend fun inspectPlatformQualities(
             val filesize = when {
                 explicitFilesize > 0L -> explicitFilesize
                 clenFromUrl > 0L -> clenFromUrl
-                isHlsFormat -> -1L
+                isHlsFormat -> com.michelle.raouf.fetch_jet.domain.model.estimateStreamBytes(
+                    (getDoubleFromMap(f, "tbr") ?: 0.0) * 1000.0, videoDuration
+                )
                 else -> getCachedContentLength(directUrl.ifBlank { trimmedUrl })
             }
 
@@ -311,10 +333,13 @@ actual suspend fun inspectPlatformQualities(
                         ignoreCase = true
                     ))
 
+                if (isHlsFormat && filesize > 0L) hlsEstimates.getOrPut(com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label)) { filesize }
+
                 val existingIndex = list.indexOfFirst {
-                    it.qualityLabel == label && it.format.equals(ext, ignoreCase = true)
+                    it.qualityLabel == com.michelle.raouf.fetch_jet.domain.model.withQualityTag(label) && it.format.equals(ext, ignoreCase = true)
                 }
                 if (existingIndex == -1) {
+                    keptCodec[formatId] = vcodec
                     seenKeys.add(key)
                     list.add(
                         MediaQualityEntry(
@@ -341,7 +366,8 @@ actual suspend fun inspectPlatformQualities(
                                 ignoreCase = true
                             ) ||
                             existing.formatId?.startsWith("hls", ignoreCase = true) == true
-                    if (existingIsHls) {
+                    if (existingIsHls || playsWiderThan(vcodec, keptCodec[existing.formatId.orEmpty()])) {
+                        keptCodec[formatId] = vcodec
                         list[existingIndex] = MediaQualityEntry(
                             index = 0,
                             qualityLabel = com.michelle.raouf.fetch_jet.domain.model.withQualityTag(
@@ -436,6 +462,8 @@ actual suspend fun inspectPlatformQualities(
                 }
             }
         }
+
+        com.michelle.raouf.fetch_jet.domain.model.fillSizeEstimates(list, hlsEstimates)
 
         list.sortByDescending { entry ->
             when {

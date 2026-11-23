@@ -103,7 +103,7 @@ def run():
         saved = open(os.path.join(core.home, "behavior.properties"), encoding="utf-8").read()
         core.check("the setting is saved", "scanFiles=true" in saved, saved)
         core.action("OpenSettings")
-        core.action("SetSettingsSection", index=1)
+        core.action("SetSettingsSection", index=3)
         core.pump(0.6)
         hints = [r.get("footer", "") for r in core.rows("settingsRows") if r.get("footer", "").startswith("[File] is replaced")]
         core.action("SetSettingsSection", index=-1)

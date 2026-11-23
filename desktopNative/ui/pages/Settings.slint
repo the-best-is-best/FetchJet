@@ -794,7 +794,7 @@ component RowView inherits VerticalLayout {
                 if root.data.side != "": Rectangle {
                     width: side.preferred-width;
                     side := Text {
-                        text: root.data.side;
+                        text: Dir.rtl && root.data.side == "↗" ? "↖" : Dir.rtl && root.data.side == "›" ? "‹" : root.data.side;
                         color: Theme.tone(root.data.sideTone);
                         font-family: Theme.font;
                         font-size: 16px;
@@ -1111,14 +1111,21 @@ component NavItem inherits Rectangle {
         color: root.selected ? Theme.primary : Theme.on-surface;
         overflow: elide;
     }
-    T {
+    Rectangle {
         x: Dir.rtl ? parent.width - 56px - root.text-width : 56px;
         y: 28px;
         width: root.text-width;
-        text: root.data.hint;
-        font-size: 12px;
-        color: Theme.tone(root.data.hintTone);
-        overflow: elide;
+        height: hint-text.height;
+        clip: true;
+        hint-text := T {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            text: root.data.hint;
+            font-size: 12px;
+            color: Theme.tone(root.data.hintTone);
+            overflow: elide;
+        }
     }
     if root.chevron: Text {
         x: Dir.rtl ? 10px : parent.width - 10px - self.width;
@@ -1137,6 +1144,67 @@ component NavItem inherits Rectangle {
     }
 }
 
+component BackButton inherits Rectangle {
+    in property <string> label;
+    callback clicked();
+    height: 40px;
+    Rectangle {
+        x: Dir.rtl ? parent.width - self.width : 0;
+        width: 12px + arrow.preferred-width + 8px + word.preferred-width;
+        border-radius: 10px;
+        accessible-role: button;
+        accessible-label: root.label;
+        accessible-action-default => { root.clicked(); }
+        back := TouchArea {
+            clicked => { root.clicked(); }
+        }
+        arrow := Text {
+            x: Dir.rtl ? parent.width - 6px - self.preferred-width : 6px;
+            width: self.preferred-width;
+            text: Dir.rtl ? "→" : "←";
+            color: Theme.primary;
+            font-family: Theme.font;
+            font-size: 18px;
+            vertical-alignment: center;
+        }
+        word := Text {
+            x: Dir.rtl ? 6px : 6px + arrow.preferred-width + 8px;
+            width: self.preferred-width;
+            text: root.label;
+            color: Theme.primary;
+            font-family: Theme.font;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: Dir.rtl ? 0px : 0.1px;
+            vertical-alignment: center;
+        }
+        Hover {
+            border-radius: 10px;
+            ink: Theme.primary;
+            hovered: back.has-hover;
+            pressed: back.pressed;
+        }
+    }
+}
+
+component MorePage inherits Rectangle {
+    private property <length> start-pad: root.width >= 720px ? 28px : 4px;
+    private property <length> end-pad: 14px + max(0px, root.width - root.start-pad - 14px - 720px);
+    ScrollArea {
+        VerticalLayout {
+            padding-left: Dir.rtl ? root.end-pad : root.start-pad;
+            padding-right: Dir.rtl ? root.start-pad : root.end-pad;
+            padding-top: 4px;
+            padding-bottom: 28px;
+            spacing: 0px;
+            for row[i] in Core.moreRows: RowView {
+                data: row;
+                index: i;
+            }
+        }
+    }
+}
+
 component NavList inherits Rectangle {
     in property <bool> narrow;
     ScrollArea {
@@ -1146,6 +1214,10 @@ component NavList inherits Rectangle {
             padding-top: 4px;
             padding-bottom: 4px;
             spacing: root.narrow ? 6px : 4px;
+            BackButton {
+                label: Tr.moreTitle;
+                clicked => { Act.openMore(); }
+            }
             for section[i] in Core.settingsNav.sections: NavItem {
                 data: section;
                 selected: !root.narrow && section.selected;
@@ -1261,20 +1333,21 @@ component Page inherits Rectangle {
 
 export component SettingsPanel inherits Rectangle {
     private property <bool> wide: root.width >= 720px;
-    if root.wide: NavList {
+    if !Core.settingsNav.inSettings: MorePage { }
+    if Core.settingsNav.inSettings && root.wide: NavList {
         x: Dir.rtl ? parent.width - 250px : 0;
         width: 250px;
         narrow: false;
     }
-    if root.wide: Rectangle {
+    if Core.settingsNav.inSettings && root.wide: Rectangle {
         x: Dir.rtl ? parent.width - 251px : 250px;
         width: 1px;
         background: Theme.outline-variant.with-alpha(0.35);
     }
-    if !root.wide && !Core.settingsNav.pageOpen: NavList {
+    if Core.settingsNav.inSettings && !root.wide && !Core.settingsNav.pageOpen: NavList {
         narrow: true;
     }
-    if root.wide || Core.settingsNav.pageOpen: Page {
+    if Core.settingsNav.inSettings && (root.wide || Core.settingsNav.pageOpen): Page {
         x: root.wide && !Dir.rtl ? 251px : 0;
         width: root.wide ? parent.width - 251px : parent.width;
         wide: root.wide;

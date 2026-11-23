@@ -37,18 +37,27 @@ struct AddTorrentFilesCard: View {
     let onPriority: (Int32, Int32) -> Void
     let onSelectAll: (Bool) -> Void
 
+    private func torrentFolderPart(_ path: String) -> String {
+        let parts = path.split(separator: "/")
+        return parts.count > 1 ? " · " + parts.dropLast().joined(separator: "/") : ""
+    }
+
     var body: some View {
         let strings = store.strings
         let all = files.allSatisfy { $0.isSelected }
         AddCard {
             HStack {
                 Text(name ?? strings.torrentFiles)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.fj(13, .bold))
                     .foregroundStyle(FJTheme.color.onSurface)
                     .lineLimit(1)
-                Spacer()
+                    .truncationMode(.tail)
+                Spacer(minLength: 8)
                 Button(all ? strings.addDeselectAll : strings.addSelectAll) { onSelectAll(!all) }
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.fj(11, .semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
             }
             ScrollView {
                 LazyVStack(spacing: 2) {
@@ -74,14 +83,16 @@ struct AddTorrentFilesCard: View {
                 HStack(spacing: 8) {
                     AddCheckbox(checked: file.isSelected)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(file.path)
-                            .font(.system(size: 12, weight: .semibold))
+                        Text(String(file.path.split(separator: "/").last ?? Substring(file.path)))
+                            .font(.fj(12, .semibold))
                             .foregroundStyle(FJTheme.color.onSurface)
                             .lineLimit(1)
-                            .truncationMode(.middle)
-                        Text(store.host.formatBytes(bytes: file.size))
-                            .font(.system(size: 10))
+                            .truncationMode(.tail)
+                        Text(store.host.formatBytes(bytes: file.size) + torrentFolderPart(file.path))
+                            .font(.fj(10))
                             .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     Spacer(minLength: 0)
                 }
@@ -93,7 +104,7 @@ struct AddTorrentFilesCard: View {
                 onPriority(file.index, next)
             } label: {
                 Text(label)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.fj(10, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -112,33 +123,53 @@ struct AddLinkListSection: View {
     @EnvironmentObject var store: FJStore
 
     var body: some View {
-        let links = store.state.linkList
+        let rows = store.state.visibleLinks.compactMap { row in row.value.map { (index: row.index, value: $0) } }
+        let links = rows.map { $0.value }
         let strings = store.strings
         let selected = links.filter { $0.isSelected }.count
-        let all = selected == links.count
+        let pickable = links.filter { !$0.downloadedBefore }.count
+        let all = pickable > 0 && selected == pickable
         VStack(alignment: .leading, spacing: 8) {
+            let counts = AddCountLinesKt.linkCountLines(selected: Int32(selected), total: Int32(links.count), before: Int32(links.filter { $0.downloadedBefore }.count))
             HStack {
-                Text(strings.selectedOfLinks(selected: Int32(selected), total: Int32(links.count)))
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(FJTheme.color.onSurface)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(counts.count)
+                        .font(.fj(13, .bold))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                        .lineLimit(1)
+                    if !counts.before.isEmpty {
+                        Text(counts.before)
+                            .font(.fj(11))
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
-                Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
-                    .font(.system(size: 12, weight: .semibold))
+                if pickable > 0 {
+                    Button(all ? strings.selectNone : strings.selectAll) { store.send(DashboardUiEventOnLinkListSelectAll(selected: !all)) }
+                        .font(.fj(12, .semibold))
+                }
             }
+            if !store.state.canGrabPage {
+                AddGrabNote(note: store.state.siteGrab.note)
+            }
+            AddGrabGroupRow()
             AddLabel(text: strings.playlistFolder)
             AddField(icon: "📁", text: Binding(
                 get: { store.state.linkListFolder },
                 set: { store.send(DashboardUiEventOnLinkListFolderChanged(name: $0)) }
             ))
             Text(strings.playlistFolderHint)
-                .font(.system(size: 10))
+                .font(.fj(10))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
-            VStack(spacing: 0) {
-                ForEach(Array(links.enumerated()), id: \.offset) { i, link in
-                    if i > 0 { Divider().overlay(FJTheme.color.outlineVariant.opacity(0.35)) }
-                    linkRow(link, Int32(i))
-                    if link.engine == .mediaStream && link.isSelected { qualityLine(link, Int32(i), strings) }
-                    if link.engine == .bittorrent && link.isSelected { torrentPart(link, Int32(i), strings) }
+            LazyVStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.index) { position, row in
+                    let link = row.value
+                    let i = Int32(row.index)
+                    if position > 0 { Divider().overlay(FJTheme.color.outlineVariant.opacity(0.35)) }
+                    linkRow(link, i)
+                    if link.engine == .mediaStream && link.isSelected { qualityLine(link, i, strings) }
+                    if link.engine == .bittorrent && link.isSelected { torrentPart(link, i, strings) }
                 }
             }
             .background(FJTheme.color.surfaceVariant.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
@@ -149,6 +180,14 @@ struct AddLinkListSection: View {
     private func linkRow(_ link: LinkListEntry, _ index: Int32) -> some View {
         let strings = store.strings
         let (tag, color): (String, Color) = {
+            if !link.folder.isEmpty {
+                let name = GrabTagKt.grabTagOf(fileName: link.fileName ?? link.url, folder: link.folder)
+                switch GrabTagKt.grabTagKindOf(folder: link.folder) {
+                case .video: return (name, FJTheme.hex(0xE879F9))
+                case .audio: return (name, FJTheme.hex(0xFBBF24))
+                default: return (name, FJTheme.hex(0x38BDF8))
+                }
+            }
             switch link.engine {
             case .mediaStream:
                 return MediaQualityEntryKt.isAllAudio(link.mediaQualities)
@@ -162,19 +201,34 @@ struct AddLinkListSection: View {
         } label: {
             HStack(spacing: 8) {
                 AddCheckbox(checked: link.isSelected)
+                    .opacity(link.downloadedBefore ? 0.35 : 1)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(FJTheme.color.onSurface)
+                    Text(link.fileName ?? link.mediaTitle.map { store.host.decodeUnicodeText(input: $0) } ?? AddLinkText.title(link.url, strings, store))
+                        .font(.fj(12, .semibold))
+                        .foregroundStyle(FJTheme.color.onSurface.opacity(link.downloadedBefore ? 0.5 : 1))
                         .lineLimit(1)
-                    Text(AddLinkText.host(link.url))
-                        .font(.system(size: 10))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                        .lineLimit(1)
+                    HStack(spacing: 0) {
+                        let lead = secondLead(link)
+                        if !lead.isEmpty {
+                            Text(lead)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .layoutPriority(1)
+                        }
+                        let host = secondHost(link)
+                        if !host.isEmpty {
+                            Text((lead.isEmpty ? "" : " · ") + "\u{2066}" + host + "\u{2069}")
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    .environment(\.layoutDirection, .leftToRight)
+                    .font(.fj(10))
+                    .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
                 Spacer(minLength: 0)
                 Text(tag)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.fj(9, .bold))
                     .foregroundStyle(color)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
@@ -188,6 +242,19 @@ struct AddLinkListSection: View {
         .buttonStyle(.plain)
     }
 
+    private func secondLead(_ link: LinkListEntry) -> String {
+        guard !link.folder.isEmpty else { return "" }
+        var parts: [String] = []
+        if link.downloadedBefore { parts.append(store.strings.playlistDownloadedBefore) }
+        if link.sizeBytes >= 0 { parts.append(store.host.formatBytes(bytes: link.sizeBytes)) }
+        return parts.joined(separator: " · ")
+    }
+
+    private func secondHost(_ link: LinkListEntry) -> String {
+        guard !link.folder.isEmpty else { return AddLinkText.host(link.url) }
+        return AddLinkText.host(link.sourcePage.isEmpty ? link.url : link.sourcePage)
+    }
+
     @ViewBuilder
     private func qualityLine(_ link: LinkListEntry, _ index: Int32, _ strings: AppLocalization) -> some View {
         Group {
@@ -195,7 +262,7 @@ struct AddLinkListSection: View {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
                     Text(strings.inspectingVideoQualities)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             } else if !link.mediaQualities.isEmpty {
@@ -206,7 +273,7 @@ struct AddLinkListSection: View {
                     }
                 } label: {
                     Text(qualityText(current) + "  ▾")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.fj(11, .semibold))
                         .foregroundStyle(FJTheme.color.primary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -216,10 +283,10 @@ struct AddLinkListSection: View {
             } else if link.mediaInspectFailed {
                 HStack(spacing: 6) {
                     Text(strings.sysFailedToInspectMediaQualities)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.error)
                     Button(strings.retry) { store.send(DashboardUiEventOnLinkListRetryInspect(linkIndex: index)) }
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.fj(11, .bold))
                 }
             }
         }
@@ -236,7 +303,7 @@ struct AddLinkListSection: View {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
                     Text(strings.readingTorrentFiles)
-                        .font(.system(size: 11))
+                        .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 }
             } else if !link.torrentFiles.isEmpty {
@@ -249,7 +316,7 @@ struct AddLinkListSection: View {
                 )
             } else if let err = link.inspectError {
                 Text(strings.couldNotReadTorrentFiles(error: err))
-                    .font(.system(size: 11))
+                    .font(.fj(11))
                     .foregroundStyle(FJTheme.color.error)
             }
         }
@@ -259,7 +326,8 @@ struct AddLinkListSection: View {
     }
 
     private func qualityText(_ q: MediaQualityEntry) -> String {
-        q.qualityLabel + (q.size > 0 ? " · " + store.host.formatBytes(bytes: q.size) : "")
+        let approx = (q.formatId?.lowercased().hasPrefix("hls") ?? false) || q.sizeApprox || q.directUrl.lowercased().contains(".m3u8") ? "~" : ""
+        return q.qualityLabel + (q.size > 4096 ? " · " + approx + store.host.formatBytes(bytes: q.size) : "")
     }
 }
 

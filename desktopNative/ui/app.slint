@@ -13,6 +13,7 @@ import { ChoiceDialogs, ClipPickerDialog } from "pages/ChoiceDialogs.slint";
 import { SettingsPanel } from "pages/Settings.slint";
 import { UpdateDialog } from "pages/UpdateDialog.slint";
 import { AudioCompressDialog } from "pages/AudioCompress.slint";
+import { SubtitlesDialog } from "pages/SubtitlesPage.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
 import { ShortcutsDialog } from "pages/Shortcuts.slint";
 import { PairingCode } from "generated/dto.slint";
@@ -78,7 +79,7 @@ export component AppWindow inherits Window {
     private property <length> nav: root.medium ? 84px : 232px;
     private property <length> panel: root.details-side ? 340px : 0px;
     private property <bool> overlay-open: Core.chrome.settingsOpen || Core.add.visible || Core.clipPicker.open || Core.deviceSheet.open
-        || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.updateDialog.open
+        || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.subtitlesPage.open || Core.updateDialog.open
         || Core.alerts.length > 0 || Core.choices.length > 0;
     changed overlay-open => {
         if !root.overlay-open {
@@ -90,9 +91,11 @@ export component AppWindow inherits Window {
         list.scroll-to-top();
     }
     private property <int> resize-stamp: 0;
+    callback resized();
+    public function repaint() { root.resize-stamp += 1; }
     init => { Screen.height = root.height; }
-    changed height => { Screen.height = root.height; root.resize-stamp += 1; }
-    changed width => { root.resize-stamp += 1; }
+    changed height => { Screen.height = root.height; root.resize-stamp += 1; root.resized(); }
+    changed width => { root.resize-stamp += 1; root.resized(); }
     preferred-width: 1100px;
     preferred-height: 750px;
     min-width: 680px;
@@ -167,6 +170,7 @@ export component AppWindow inherits Window {
     if Core.deviceSheet.open: DeviceSheet { }
     if Core.devicePairing.state != PairingCode.none: PairingDialog { }
     if Core.audioCompress.open: AudioCompressDialog { }
+    if Core.subtitlesPage.open: SubtitlesDialog { }
     if Core.updateDialog.open: UpdateDialog { }
     Alerts { }
     ChoiceDialogs { }

@@ -6,6 +6,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
 
 enum class RowMenuEntry(val danger: Boolean = false, val dividerBefore: Boolean = false) {
     OPEN,
@@ -14,6 +15,7 @@ enum class RowMenuEntry(val danger: Boolean = false, val dividerBefore: Boolean 
     RESUME,
     EXTRACT,
     COMPRESS,
+    SUBTITLES,
     SEND_TO_DEVICE(dividerBefore = true),
     COPY_LINK,
     SELECT,
@@ -40,6 +42,7 @@ object RowMenu {
         if (task.status in RESUMABLE) add(RowMenuEntry.RESUME)
         if (done && ArchiveTasks.canExtract(task)) add(RowMenuEntry.EXTRACT)
         if (options.canCompress && !busy && AudioCompress.canCompress(task)) add(RowMenuEntry.COMPRESS)
+        if (!busy && task.canAddSubtitles()) add(RowMenuEntry.SUBTITLES)
         if (options.canSend && task.canSendToDevice()) add(RowMenuEntry.SEND_TO_DEVICE)
         if (task.url.isNotBlank()) add(RowMenuEntry.COPY_LINK)
         if (options.selectEntry) add(RowMenuEntry.SELECT)
@@ -54,6 +57,7 @@ object RowMenu {
         RowMenuEntry.RESUME -> s.rowMenuResume
         RowMenuEntry.EXTRACT -> s.rowMenuExtract
         RowMenuEntry.COMPRESS -> s.rowMenuCompress
+        RowMenuEntry.SUBTITLES -> s.subtitlesAddButton
         RowMenuEntry.SEND_TO_DEVICE -> s.rowMenuSendToDevice
         RowMenuEntry.COPY_LINK -> s.rowMenuCopyLink
         RowMenuEntry.SELECT -> s.rowMenuSelect

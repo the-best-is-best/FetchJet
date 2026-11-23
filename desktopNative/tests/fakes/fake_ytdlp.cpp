@@ -94,7 +94,14 @@ static int run(const std::vector<std::string> &args) {
         return 1;
     }
     if (big_j || flat) {
-        if (url.find("list=") != std::string::npos && print_file("playlist.json"))
+        if (url.find("PLgone") != std::string::npos && print_file("playlist-gone.json"))
+            return 0;
+        if (url.find("PLgrow") != std::string::npos) {
+            std::ifstream grown(in_folder("playlist-grown"));
+            if (print_file(grown ? "playlist-2.json" : "playlist.json"))
+                return 0;
+        }
+        if ((url.find("list=") != std::string::npos || url.find("/@") != std::string::npos) && print_file("playlist.json"))
             return 0;
         std::fputs("ERROR: [fake] not a playlist\n", stderr);
         return 1;

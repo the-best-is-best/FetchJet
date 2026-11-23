@@ -6,7 +6,7 @@ import { CheckBox } from "../widgets/CheckBox.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { ElideText } from "../widgets/ElideText.slint";
-import { SectionLabel, Gap, ChoiceChip, SmallChip, Spinner, Switch, RadioMark } from "../widgets/Kit.slint";
+import { SectionLabel, Gap, ChoiceChip, SmallChip, Spinner, Switch, RadioMark, SegChoice } from "../widgets/Kit.slint";
 import { Core, MediaStateCode, QualityRowDto, SubtitleRowDto, PlaylistRowDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
@@ -356,7 +356,7 @@ component OptionCard inherits Rectangle {
     }
 }
 
-component SubtitlesCard inherits SectionCard {
+export component SubtitlesCard inherits SectionCard {
     VerticalLayout {
         padding: 12px;
         spacing: 0px;
@@ -372,6 +372,21 @@ component SubtitlesCard inherits SectionCard {
                 text: Tr.subtitlesTitle;
                 font-size: 13px;
                 font-weight: 700;
+                horizontal-stretch: 1;
+            }
+        }
+        if Core.addMedia.subtitlesNote != "": HBox {
+            height: 28px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            if Core.addMedia.subtitlesReading: Spinner {
+                size: 14px;
+            }
+            T {
+                text: Core.addMedia.subtitlesNote;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
                 horizontal-stretch: 1;
             }
         }
@@ -422,21 +437,21 @@ component SubtitlesCard inherits SectionCard {
         if Core.addMedia.subtitlesAnySelected: Gap {
             size: 10px;
         }
-        if Core.addMedia.subtitlesAnySelected: GridLayout {
-            spacing: 8px;
-            OptionCard {
-                row: 0;
-                col: Dir.rtl ? 1 : 0;
-                selected: Core.addMedia.embedSubtitles;
-                title: Tr.subtitlesEmbedInVideo;
-                clicked => { Act.setEmbedSubtitles(true); }
-            }
-            OptionCard {
-                row: 0;
-                col: Dir.rtl ? 0 : 1;
-                selected: !Core.addMedia.embedSubtitles;
-                title: Tr.subtitlesSeparateFile;
-                clicked => { Act.setEmbedSubtitles(false); }
+        if Core.addMedia.subtitlesAnySelected: SegChoice {
+            options: [Tr.subtitlesEmbedInVideo, Tr.subtitlesSeparateFile];
+            pick: Core.addMedia.embedSubtitles ? 0 : 1;
+            picked(i) => { Act.setEmbedSubtitles(i == 0); }
+        }
+        if Core.addMedia.subtitlesAnySelected && !Core.addMedia.embedSubtitles: Gap {
+            size: 6px;
+        }
+        if Core.addMedia.subtitlesAnySelected && !Core.addMedia.embedSubtitles: HBox {
+            height: 32px;
+            SegChoice {
+                small: true;
+                options: ["SRT", "VTT"];
+                pick: Core.addMedia.subtitleVtt ? 1 : 0;
+                picked(i) => { Act.setSubtitleFormat(i == 0 ? "srt" : "vtt"); }
             }
         }
     }
@@ -714,8 +729,14 @@ component PlaylistCard inherits SectionCard {
                     color: Theme.on-surface-variant;
                     overflow: elide;
                 }
+                if Core.addMedia.playlistBefore != "": T {
+                    text: Core.addMedia.playlistBefore;
+                    font-size: 11px;
+                    color: Theme.on-surface-variant;
+                    overflow: elide;
+                }
             }
-            TextButton {
+            if Core.addMedia.playlistPickable: TextButton {
                 text: Core.addMedia.playlistAllSelected ? Tr.selectNone : Tr.selectAll;
                 font-size: 12px;
                 font-weight: 500;
@@ -782,6 +803,20 @@ component PlaylistCard inherits SectionCard {
                 overflow: elide;
             }
         }
+        if Core.addMedia.playlistOldestFirstOffered: HBox {
+            height: 40px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            CheckBox {
+                checked: Core.addMedia.playlistOldestFirst;
+                label: Tr.playlistOldestFirst;
+                toggled(on) => { Act.setPlaylistOldestFirst(on); }
+            }
+            T {
+                text: Tr.playlistOldestFirst;
+                font-size: 12px;
+            }
+        }
         Gap {
             size: 8px;
         }
@@ -820,11 +855,39 @@ component PlaylistCard inherits SectionCard {
                             font-size: 11px;
                             color: Theme.on-surface-variant;
                         }
-                        ElideText {
-                            text: entry.title;
-                            text-rtl: entry.titleRtl;
-                            behind: Theme.surface;
-                            font-size: 12px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            min-width: 0;
+                            alignment: center;
+                            spacing: 0px;
+                            ElideText {
+                                text: entry.title;
+                                text-rtl: entry.titleRtl;
+                                behind: Theme.surface;
+                                font-size: 12px;
+                                line: 20px;
+                            }
+                            if entry.unavailable: ElideText {
+                                text: Tr.playlistNotAvailable;
+                                ink: Theme.error;
+                                behind: Theme.surface;
+                                font-size: 10px;
+                                line: 14px;
+                            }
+                            if entry.before && !entry.unavailable: ElideText {
+                                text: entry.inPlaylist ? Tr.playlistInIt : Tr.playlistDownloadedBefore;
+                                ink: Theme.primary;
+                                behind: Theme.surface;
+                                font-size: 10px;
+                                line: 14px;
+                            }
+                        }
+                        if entry.size != "" || entry.sizeBusy: T {
+                            width: 72px;
+                            text: entry.size != "" ? entry.size : "…";
+                            font-size: 11px;
+                            color: Theme.on-surface-variant;
+                            horizontal-alignment: Dir.end;
                         }
                         if entry.duration != "": T {
                             width: self.preferred-width + 10px;
@@ -861,6 +924,10 @@ export component MediaSection inherits VerticalLayout {
     if root.state == MediaStateCode.error: InspectError { }
     if root.state == MediaStateCode.engine-missing: EngineMissing { }
     if root.state == MediaStateCode.playlist: PlaylistCard { }
+    if root.state == MediaStateCode.playlist && Core.addMedia.subtitlesShown: Gap {
+        size: 12px;
+    }
+    if root.state == MediaStateCode.playlist && Core.addMedia.subtitlesShown: SubtitlesCard { }
     if root.state == MediaStateCode.not-inspected: OutlinedButton {
         text: Core.addMedia.inspectIcon + " " + Core.addMedia.inspectLabel;
         border-radius: 10px;

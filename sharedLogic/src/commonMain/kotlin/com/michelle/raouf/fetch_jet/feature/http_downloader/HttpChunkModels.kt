@@ -13,6 +13,7 @@ internal data class ResolvedHttpMetadata(
     val etag: String = "",
     val lastModified: String = "",
     val pageText: String = "",
+    val pageHead: String = "",
     val serverChecksum: ServerChecksum? = null
 ) {
     val identity: FileIdentity get() = FileIdentity(etag, lastModified, contentLength)

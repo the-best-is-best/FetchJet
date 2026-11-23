@@ -6,10 +6,16 @@ import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
+import com.michelle.raouf.fetch_jet.domain.model.hasShownSize
+import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMATS
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
+import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
+import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AddMediaDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDto
@@ -110,6 +116,7 @@ private data class MediaSlice(
     val qualities: List<MediaQualityEntry>,
     val subtitles: List<SubtitleTrack>,
     val embedSubtitles: Boolean,
+    val subtitleVtt: Boolean,
     val error: String?,
     val ytDlpInstalled: Boolean,
     val ytDlpStatus: String,
@@ -122,6 +129,11 @@ private data class MediaSlice(
     val audioFormat: String?,
     val playlist: MediaPlaylist?,
     val playlistQuality: PlaylistQuality,
+    val playlistOldestFirst: Boolean,
+    val playlistOldestFirstOffered: Boolean,
+    val subtitlesOffered: Boolean,
+    val subtitlesNote: String,
+    val subtitlesReading: Boolean,
     val linkList: List<LinkListEntry>,
 )
 
@@ -134,6 +146,7 @@ private fun DashboardUiState.mediaSlice() = MediaSlice(
     qualities = inspectedMediaQualities,
     subtitles = inspectedSubtitles,
     embedSubtitles = embedSubtitles,
+    subtitleVtt = subtitleFormat == "vtt",
     error = inspectMediaError,
     ytDlpInstalled = isYtDlpInstalled,
     ytDlpStatus = ytDlpStatus,
@@ -146,6 +159,11 @@ private fun DashboardUiState.mediaSlice() = MediaSlice(
     audioFormat = audioConvertFormat,
     playlist = inspectedPlaylist,
     playlistQuality = playlistQuality,
+    playlistOldestFirst = playlistOldestFirst,
+    playlistOldestFirstOffered = playlistOldestFirstOffered,
+    subtitlesOffered = subtitlesOffered,
+    subtitlesNote = subtitlesListNote,
+    subtitlesReading = subtitlesListReading,
     linkList = linkList,
 )
 
@@ -202,9 +220,22 @@ private fun Presenter.publishMedia(s: MediaSlice) {
     val audioTitle = if (showsLinkList || playlist != null) strings.audioConvertAllTo else strings.audioConvertTo
 
     if (showsLinkList || s.engine != EngineType.MEDIA_STREAM) {
-        addMedia.publish(AddMediaDto(audioShown = audioShown, audioTitle = audioTitle, audioFormats = audioFormats))
+        val listSubtitles = showsLinkList && s.subtitlesOffered
+        addMedia.publish(
+            AddMediaDto(
+                audioShown = audioShown, audioTitle = audioTitle, audioFormats = audioFormats,
+                subtitlesShown = listSubtitles,
+                subtitlesNote = if (listSubtitles) s.subtitlesNote else "",
+                subtitlesReading = listSubtitles && s.subtitlesReading,
+                subtitlesAnySelected = listSubtitles && s.subtitles.any { it.isSelected },
+                embedSubtitles = s.embedSubtitles,
+                subtitleVtt = s.subtitleVtt,
+            )
+        )
         addQualities.publish(emptyList())
-        addSubtitles.publish(emptyList())
+        addSubtitles.publish(
+            if (listSubtitles) s.subtitles.map { SubtitleRowDto(it.langCode, it.langName, it.isAuto, it.isSelected) } else emptyList()
+        )
         addPlaylist.publish(emptyList())
         return
     }
@@ -239,7 +270,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
 
     if (state == MediaStateCode.QUALITIES) {
         addQualities.publish(s.qualities.map { quality ->
-            val sizeText = if (quality.size > 0) " • ${formatSizeDisplay(quality.size)}" else ""
+            val sizeText = if (quality.hasShownSize) " • ${quality.sizeMark}${formatSizeDisplay(quality.size)}" else ""
             val durText = if (quality.durationSeconds > 0) " • ⏱ ${formatSecondsToDisplayFriendly(quality.durationSeconds)}" else ""
             QualityRowDto(
                 index = quality.index,
@@ -248,21 +279,29 @@ private fun Presenter.publishMedia(s: MediaSlice) {
                 selected = quality.isSelected,
             )
         })
-        addSubtitles.publish(s.subtitles.map { SubtitleRowDto(it.langCode, it.langName, it.isAuto, it.isSelected) })
     } else {
         addQualities.publish(emptyList())
+    }
+    if ((state == MediaStateCode.QUALITIES || state == MediaStateCode.PLAYLIST) && s.subtitlesOffered) {
+        addSubtitles.publish(s.subtitles.map { SubtitleRowDto(it.langCode, it.langName, it.isAuto, it.isSelected) })
+    } else {
         addSubtitles.publish(emptyList())
     }
     if (state == MediaStateCode.PLAYLIST && playlist != null) {
-        addPlaylist.publish(playlist.entries.map { entry ->
+        addPlaylist.publish(playlist.entries.mapIndexed { position, entry ->
             val title = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title
             PlaylistRowDto(
                 index = entry.index,
-                number = if (playlist.fromBrowser) "" else "${entry.index + 1}.",
+                number = if (playlist.fromBrowser) "" else "${position + 1}.",
                 title = title,
                 titleRtl = startsRightToLeft(title),
                 duration = if (entry.durationSeconds > 0L) clockText(entry.durationSeconds) else "",
                 selected = entry.isSelected,
+                size = if (entry.size > 0L) formatBytes(entry.size) else "",
+                sizeBusy = !playlist.fromBrowser && entry.size == -1L && !entry.unavailable,
+                before = entry.downloadedBefore && !entry.unavailable,
+                inPlaylist = entry.locked,
+                unavailable = entry.unavailable,
             )
         })
     } else {
@@ -294,9 +333,12 @@ private fun Presenter.publishMedia(s: MediaSlice) {
             qualitiesTitle = qualitiesTitle,
             qualitiesTitleRtl = startsRightToLeft(qualitiesTitle),
             qualitiesCount = strings.selectedOfAvailable(s.qualities.count { it.isSelected }, s.qualities.size),
-            subtitlesShown = state == MediaStateCode.QUALITIES && s.subtitles.isNotEmpty(),
+            subtitlesShown = (state == MediaStateCode.QUALITIES || state == MediaStateCode.PLAYLIST) && s.subtitlesOffered,
+            subtitlesNote = if (state == MediaStateCode.PLAYLIST) s.subtitlesNote else "",
+            subtitlesReading = state == MediaStateCode.PLAYLIST && s.subtitlesReading,
             subtitlesAnySelected = s.subtitles.any { it.isSelected },
             embedSubtitles = s.embedSubtitles,
+            subtitleVtt = s.subtitleVtt,
             clipAvailable = state == MediaStateCode.QUALITIES && s.duration > 0L,
             clipEnabled = s.clipEnabled,
             clipTitle = strings.clipSectionTitle(isAnyAudio),
@@ -319,8 +361,10 @@ private fun Presenter.publishMedia(s: MediaSlice) {
             audioFormats = audioFormats,
             playlistTitle = playlist?.title.orEmpty(),
             playlistTitleRtl = startsRightToLeft(playlist?.title.orEmpty()),
-            playlistSummary = if (playlist != null) strings.playlistSummary(playlist.entries.size, selectedCount) else "",
-            playlistAllSelected = playlist != null && selectedCount == playlist.entries.size,
+            playlistSummary = if (playlist != null) playlistCountLines(playlist).count else "",
+            playlistBefore = if (playlist != null) playlistCountLines(playlist).before else "",
+            playlistPickable = playlist != null && playlist.anySelectable,
+            playlistAllSelected = playlist != null && playlist.allTicked,
             playlistFolder = playlistFolder,
             playlistFolderRev = addFields.playlistFolder.rev(playlistFolder),
             playlistFromBrowser = playlist?.fromBrowser == true,
@@ -328,6 +372,8 @@ private fun Presenter.publishMedia(s: MediaSlice) {
                 ChoiceDto(it.ordinal, it.label, it == s.playlistQuality)
             },
             playlistCanUseSingle = s.inputUrl.contains("v=") || s.inputUrl.contains("youtu.be/"),
+            playlistOldestFirst = s.playlistOldestFirst,
+            playlistOldestFirstOffered = s.playlistOldestFirstOffered,
         )
     )
 }

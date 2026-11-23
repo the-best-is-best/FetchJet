@@ -118,6 +118,12 @@
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[INSTALLDIR]FetchJet.exe" />
     <CustomAction Id="FjLaunchApp" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+    <CustomAction Id="FjRemoveStartup" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]FetchJet.exe&quot; --remove-startup"
+                  Execute="deferred" Impersonate="yes" Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="FjRemoveStartup" Before="RemoveFiles">REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="FjLaunchApp" After="InstallFinalize">FJ_RELAUNCH="1" AND NOT REMOVE~="ALL"</Custom>
+    </InstallExecuteSequence>
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
     <UI>

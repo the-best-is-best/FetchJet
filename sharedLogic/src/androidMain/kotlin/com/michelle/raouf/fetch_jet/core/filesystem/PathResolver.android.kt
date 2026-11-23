@@ -100,6 +100,17 @@ actual class PathResolver actual constructor() {
             }
         }
 
+        try {
+            ctx.startActivity(
+                Intent("samsung.myfiles.intent.action.LAUNCH_MY_FILES")
+                    .setPackage("com.sec.android.app.myfiles")
+                    .putExtra("samsung.myfiles.intent.extra.START_PATH", dir.absolutePath)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
+            return true
+        } catch (_: Exception) {
+        }
+
         // 1. Try DocumentsContract for external storage folder
         try {
             val storageRoot = Environment.getExternalStorageDirectory().absolutePath
@@ -189,12 +200,23 @@ actual class PathResolver actual constructor() {
             putExtra("selectFile", file.absolutePath)
             putExtra("highlight_file", file.name)
             putExtra("focus_file", file.name)
-            putExtra("com.sec.android.app.myfiles.EXTRA_PATH", file.absolutePath)
-            putExtra("path", file.absolutePath)
+            putExtra("com.sec.android.app.myfiles.EXTRA_PATH", dir.absolutePath)
+            putExtra("path", dir.absolutePath)
             putExtra("current_path", dir.absolutePath)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             return this
+        }
+
+        try {
+            ctx.startActivity(
+                Intent("samsung.myfiles.intent.action.LAUNCH_MY_FILES")
+                    .setPackage("com.sec.android.app.myfiles")
+                    .putExtra("samsung.myfiles.intent.extra.START_PATH", dir.absolutePath)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
+            return true
+        } catch (_: Exception) {
         }
 
         // 1. Try DocumentsContract with initial URI pointing to the specific file

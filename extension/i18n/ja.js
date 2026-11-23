@@ -45,6 +45,8 @@ fjAddLanguage("ja", {
   "errNoExtractor": "FetchJet が起動していません（またはメディア抽出機能がありません）",
   "errNotRunning": "FetchJet が起動していません",
   "errCantGet": "この動画を取得できません",
+  "itemDrm": "この動画は保護されています（DRM）",
+  "itemDrmSub": "FetchJet でも他のダウンロードマネージャーでもダウンロードできません。",
   "itemOpenApp": "FetchJet で開く",
   "itemOpenAppSub": "アプリで画質を選択",
   "itemPlaylist": "再生リストをすべてダウンロード",

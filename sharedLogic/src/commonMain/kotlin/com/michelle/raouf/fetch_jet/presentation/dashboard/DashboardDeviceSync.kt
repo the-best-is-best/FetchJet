@@ -12,6 +12,13 @@ import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.STEP_PREPARING_FILE
 import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.domain.model.canTransferToDevice
+import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
+import com.michelle.raouf.fetch_jet.feature.device_sync.SOURCE_ENGINE_MEDIA
+import com.michelle.raouf.fetch_jet.feature.device_sync.SubtitleTrackWire
+import com.michelle.raouf.fetch_jet.feature.device_sync.syncJson
+import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitleLanguageList
+import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitleSideFiles
+import com.michelle.raouf.fetch_jet.feature.device_sync.wantedSubtitleLanguages
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendMode
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendPayload
 import com.michelle.raouf.fetch_jet.feature.device_sync.SendRequest
@@ -76,8 +83,11 @@ internal fun DashboardViewModel.initDeviceSync() {
 /** A download arrived from another device. Add it here; continue from the sent bytes if any. */
 fun DashboardViewModel.onDeviceReceive(
     payload: SendPayload,
-    localPartialFiles: List<String>
+    receivedFiles: List<String>
 ) {
+    val sideNames = payload.sideFiles.toSet()
+    val sideFiles = receivedFiles.filter { it.toPath().name in sideNames }
+    val localPartialFiles = receivedFiles - sideFiles.toSet()
     scope.launch {
         val engine = runCatching { EngineType.valueOf(payload.engineType) }
             .getOrDefault(EngineType.HTTP_DIRECT)
@@ -90,6 +100,9 @@ fun DashboardViewModel.onDeviceReceive(
             if (payload.userAgent.isNotBlank()) put("User-Agent", payload.userAgent)
         }
         val transfer = localPartialFiles.isNotEmpty() && engine != EngineType.BITTORRENT
+        val fromMedia = transfer && engine == EngineType.HTTP_DIRECT &&
+                payload.sourceEngine == SOURCE_ENGINE_MEDIA && payload.originalUrl.isNotBlank()
+        val pendingMedia = engine == EngineType.MEDIA_STREAM && payload.subtitleTracks.isNotEmpty()
         // Hold a transfer QUEUED for a moment so we can drop the received parts into its scratch
         // folder before the engine starts; it then resumes from them instead of refetching.
         val scheduledAt = if (transfer) nowEpochMs() + 4000 else 0L
@@ -118,9 +131,20 @@ fun DashboardViewModel.onDeviceReceive(
             initialStepText = STEP_PREPARING_FILE,
             displayTotalBytes = payload.totalBytes,
             displayDownloadedBytes = if (transfer) payload.downloadedBytes else 0L,
-            keepExistingFiles = true
+            keepExistingFiles = true,
+            subtitleTracks = if (fromMedia) payload.subtitleTracks.map {
+                SubtitleTrack(it.langCode, it.langName.ifBlank { it.langCode }, it.ext, "", it.isAuto, true)
+            } else emptyList(),
+            embedSubtitles = (fromMedia || pendingMedia) && payload.embedSubtitles,
+            subtitleFormat = if (fromMedia || pendingMedia) payload.subtitleFormat.ifBlank { "srt" } else "srt",
+            subtitleLanguages = if (pendingMedia) payload.wantedSubtitleLanguages() else "",
+            subtitlesFromPage = fromMedia,
+            pageUrl = payload.originalUrl
         )
         val task = result.getOrNull()
+        if (task != null && sideFiles.isNotEmpty()) {
+            placeReceivedSideFiles(task, sideFiles, payload.fileName)
+        }
         if (task != null && transfer) {
             placeReceivedParts(task.id, localPartialFiles, payload.fileName, task.fileName)
         }
@@ -170,7 +194,25 @@ private fun DashboardViewModel.placeReceivedParts(
     }
 }
 
-/** `<sent name>.part0` -> `<local name>.part0` when the receiver saved under a free name. */
+/** Subtitle files that came with a finished video go next to it, named after the video's local name. */
+private fun DashboardViewModel.placeReceivedSideFiles(task: DownloadTask, files: List<String>, sentName: String) {
+    val dir = task.destinationPath.trimEnd('/', '\\')
+    runCatching { AppFileSystem.createDirectories(dir.toPath()) }
+    val sentBase = sentName.substringBeforeLast('.', sentName)
+    val localBase = task.fileName.substringBeforeLast('.', task.fileName)
+    for (path in files) {
+        val src = path.toPath()
+        val name = if (src.name.startsWith("$sentBase.")) localBase + src.name.removePrefix(sentBase) else src.name
+        val dst = "$dir/$name".toPath()
+        runCatching {
+            if (AppFileSystem.exists(dst)) AppFileSystem.delete(dst)
+            AppFileSystem.copy(src, dst)
+            runCatching { AppFileSystem.delete(src) }
+        }
+    }
+}
+
+/** `<sent name>.part0` ->`<local name>.part0` when the receiver saved under a free name. */
 internal fun renamedPart(name: String, sentName: String, localName: String): String =
     if (sentName.isNotEmpty() && localName.isNotEmpty() && sentName != localName && name.startsWith(sentName))
         localName + name.removePrefix(sentName) else name
@@ -238,6 +280,56 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
     if (!task.canSendToDevice()) return
     val mode = if (event.mode == SendMode.TRANSFER_AND_CONTINUE && task.canTransferToDevice())
         SendMode.TRANSFER_AND_CONTINUE else SendMode.LINK_ONLY
+    val request = buildSendRequest(task, event.deviceId, mode, event.deleteAfterSuccess)
+    val alreadyPaired = deviceSync.paired.value.any { it.id == event.deviceId }
+    if (alreadyPaired) {
+        scope.launch { sendWithRetry(request, tries = 1) }
+    } else {
+        // First time: pair (both users compare the 6-digit code), then send once confirmed.
+        pendingDeviceSend = request
+        deviceSync.startPairing(event.deviceId)
+    }
+}
+
+/** Sends a task to this same app through the wire's data shapes, without sockets (tests). */
+fun DashboardViewModel.loopbackDeviceSend(taskId: String): Boolean {
+    val task = queueRepository.allTasksFlow.value.firstOrNull { it.id == taskId } ?: return false
+    if (!task.canSendToDevice()) return false
+    val mode = if (task.canTransferToDevice()) SendMode.TRANSFER_AND_CONTINUE else SendMode.LINK_ONLY
+    val request = buildSendRequest(task, "loopback", mode, false)
+    val payload = runCatching {
+        syncJson.decodeFromString(SendPayload.serializer(), syncJson.encodeToString(SendPayload.serializer(), request.payload))
+    }.getOrNull() ?: return false
+    val staging = "${queueRepository.pathResolver.getSettingsDirectory()}/device-sync-tmp/recv-${nowEpochMs()}"
+    AppFileSystem.createDirectories(staging.toPath())
+    val received = mutableListOf<String>()
+    fun copyIn(from: String, wireName: String) {
+        val target = "$staging/$wireName".toPath()
+        AppFileSystem.copy(from.toPath(), target)
+        received.add(target.toString())
+    }
+    when {
+        request.partialFiles.isNotEmpty() -> request.partialFiles.forEach { copyIn(it, it.toPath().name) }
+        request.completedFilePath.isNotBlank() && mode == SendMode.TRANSFER_AND_CONTINUE -> {
+            val base = payload.fileName.ifBlank { request.completedFilePath.toPath().name }
+            val manifest = "$staging/$base.chunks".toPath()
+            val size = AppFileSystem.metadataOrNull(request.completedFilePath.toPath())?.size ?: 0L
+            AppFileSystem.write(manifest) { writeUtf8("0 0 ${(size - 1).coerceAtLeast(0L)}") }
+            received.add(manifest.toString())
+            copyIn(request.completedFilePath, "$base.part0")
+            request.extraFiles.forEach { copyIn(it, it.toPath().name) }
+        }
+    }
+    onDeviceReceive(payload.copy(fromDeviceId = "loopback", fromDeviceName = "Loopback"), received)
+    return true
+}
+
+private fun DashboardViewModel.buildSendRequest(
+    task: DownloadTask,
+    deviceId: String,
+    mode: SendMode,
+    deleteAfterSuccess: Boolean
+): SendRequest {
     val transfer = mode == SendMode.TRANSFER_AND_CONTINUE
     // Finished: the file itself travels as one complete piece (any engine), and the other device
     // takes it as a finished direct download, with no network. Not finished: the scratch files
@@ -271,23 +363,37 @@ private fun DashboardViewModel.startDeviceSend(event: DashboardUiEvent.OnSendToD
             else -> task.downloadedBytes
         }
     )
-    val request = SendRequest(
-        deviceId = event.deviceId,
-        payload = payload,
+    val isVideoFromPage = completedFile.isNotBlank() &&
+            task.originalUrl?.isNotBlank() == true &&
+            (task.engineType == EngineType.MEDIA_STREAM || task.subtitlesFromPage)
+    val sideFiles = if (isVideoFromPage) task.subtitleSideFiles().map { it.toString() } else emptyList()
+    val unfinishedMedia = task.status != DownloadStatus.COMPLETED && task.engineType == EngineType.MEDIA_STREAM
+    val wantedWire = task.subtitleTracks.filter { it.isSelected }.map {
+        SubtitleTrackWire(it.langCode, it.langName, it.ext, it.isAuto)
+    }.ifEmpty { subtitleLanguageList(task.subtitleLanguages).map { SubtitleTrackWire(it) } }
+    val payloadWithSubtitles = if (unfinishedMedia && wantedWire.isNotEmpty()) payload.copy(
+        subtitleTracks = wantedWire,
+        embedSubtitles = task.embedSubtitles,
+        subtitleFormat = task.subtitleFormat
+    ) else if (!isVideoFromPage) payload else payload.copy(
+        sourceEngine = SOURCE_ENGINE_MEDIA,
+        subtitleTracks = task.subtitleTracks.filter { it.isSelected }.map {
+            SubtitleTrackWire(it.langCode, it.langName, it.ext, it.isAuto)
+        },
+        embedSubtitles = task.embedSubtitles,
+        subtitleFormat = task.subtitleFormat,
+        sideFiles = sideFiles.map { it.toPath().name }
+    )
+    return SendRequest(
+        deviceId = deviceId,
+        payload = payloadWithSubtitles,
         mode = mode,
-        deleteAfterSuccess = event.deleteAfterSuccess,
+        deleteAfterSuccess = deleteAfterSuccess,
         partialFiles = partialFiles,
         completedFilePath = completedFile,
+        extraFiles = sideFiles,
         sourceTaskId = task.id
     )
-    val alreadyPaired = deviceSync.paired.value.any { it.id == event.deviceId }
-    if (alreadyPaired) {
-        scope.launch { sendWithRetry(request, tries = 1) }
-    } else {
-        // First time: pair (both users compare the 6-digit code), then send once confirmed.
-        pendingDeviceSend = request
-        deviceSync.startPairing(event.deviceId)
-    }
 }
 
 /** A finished download's saved file, if it is really there. */

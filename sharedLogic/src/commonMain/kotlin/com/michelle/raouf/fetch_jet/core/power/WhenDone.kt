@@ -57,7 +57,7 @@ object WhenDone {
     }
 
     fun onTasks(tasks: List<DownloadTask>, scope: CoroutineScope) {
-        val nowRunning = tasks.filter { it.status in active }.map { it.id }.toSet()
+        val nowRunning = tasks.filter { it.status in active || it.postProcessLabel != null }.map { it.id }.toSet()
         val finished = running - nowRunning
         running = nowRunning
         if (nowRunning.isNotEmpty()) {

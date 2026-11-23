@@ -2,12 +2,14 @@ import SwiftUI
 import SharedLogic
 
 enum SettingsSection: String, CaseIterable, Hashable {
-    case general, downloads, browser, devices, network, media, torrent, report, updates
+    case general, downloads, speed, files, browser, devices, network, media, torrent, report, updates
 
     var icon: String {
         switch self {
         case .general: return "circle.lefthalf.filled"
         case .downloads: return "arrow.down"
+        case .speed: return "speedometer"
+        case .files: return "folder"
         case .browser: return "safari"
         case .devices: return "arrow.left.arrow.right"
         case .network: return "network"
@@ -22,6 +24,8 @@ enum SettingsSection: String, CaseIterable, Hashable {
         switch self {
         case .general: return s.sectionGeneral
         case .downloads: return s.sectionDownloads
+        case .speed: return s.sectionSpeed
+        case .files: return s.sectionFiles
         case .browser: return s.sectionBrowser
         case .devices: return s.sectionDevices
         case .network: return s.sectionNetwork
@@ -36,6 +40,8 @@ enum SettingsSection: String, CaseIterable, Hashable {
         switch self {
         case .general: return s.sectionGeneralBlurb
         case .downloads: return s.sectionDownloadsBlurb
+        case .speed: return s.sectionSpeedBlurb
+        case .files: return s.sectionFilesBlurb
         case .browser: return s.sectionBrowserBlurb
         case .devices: return s.sectionDevicesBlurb
         case .network: return s.sectionNetworkBlurb
@@ -51,6 +57,7 @@ struct SettingsScreen: View {
     @EnvironmentObject var store: FJStore
     @StateObject private var live = SettingsLive()
     @State private var open: SettingsSection?
+    var onBack: (() -> Void)? = nil
 
     var body: some View {
         let s = store.strings
@@ -63,8 +70,8 @@ struct SettingsScreen: View {
                                 withAnimation(.easeInOut(duration: 0.22)) { self.open = nil }
                             } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "chevron.backward").font(.system(size: 15, weight: .semibold))
-                                    Text(s.settingsAllSettings)
+                                    Image(systemName: "chevron.backward").font(.fj(15, .semibold))
+                                    Text(s.settingsAllSettings).font(.fj(17))
                                 }
                             }
                         }
@@ -107,6 +114,18 @@ struct SettingsScreen: View {
         .background(FJTheme.color.background.ignoresSafeArea())
         .navigationTitle(s.homeSettings)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if let onBack {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onBack) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.backward").font(.fj(15, .semibold))
+                            Text(s.moreTitle).font(.fj(17))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var sections: [SettingsSection] {
@@ -125,13 +144,13 @@ struct SettingsScreen: View {
         let (hint, hintColor) = summary(section, s)
         return HStack(spacing: 12) {
             Image(systemName: section.icon)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.fj(15, .semibold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 .frame(width: 34, height: 34)
                 .background(FJTheme.color.surfaceVariant, in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 2) {
                 Text(section.title(s))
-                    .font(FJTheme.font.body.weight(.semibold))
+                    .font(Font.fj(15, .semibold))
                     .foregroundStyle(FJTheme.color.onSurface)
                 Text(hint)
                     .font(FJTheme.font.caption)
@@ -140,7 +159,7 @@ struct SettingsScreen: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.forward")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.fj(13, .semibold))
                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
         }
         .padding(.horizontal, 12)
@@ -158,6 +177,18 @@ struct SettingsScreen: View {
         case .downloads:
             let q = live.maxAtOnce <= 0 ? s.summaryNoQueueLimit : s.summaryAtATime(n: live.maxAtOnce)
             return (settingsFolderName(st.destinationPath) + " · " + q, nil)
+        case .speed:
+            if live.scheduleOn && live.scheduleActive {
+                return (s.speedScheduleActive, FJTheme.color.statusCompleted)
+            }
+            let limit = st.globalDownloadSpeedLimitBytes
+            let base = limit > 0 ? settingsSpeedLabel(limit) : s.summaryNoSpeedLimit
+            return (live.scheduleOn ? base + " · " + s.speedScheduleTitle : base, nil)
+        case .files:
+            var parts: [String] = []
+            if st.sortIntoFolders { parts.append(s.sortIntoFolders) }
+            if st.extractArchives { parts.append(s.extractArchives) }
+            return (parts.isEmpty ? s.sortIntoFoldersOff : parts.joined(separator: " · "), nil)
         case .network:
             return (settingsNetworkSummary(live.proxy, live.logins.count, s), live.proxy.isOn ? FJTheme.color.statusCompleted : nil)
         case .media:
@@ -214,6 +245,8 @@ struct SettingsPageScreen: View {
         switch section {
         case .general: SettingsGeneralPage()
         case .downloads: SettingsDownloadsPage(live: live)
+        case .speed: SettingsSpeedPage(live: live)
+        case .files: SettingsFilesPage()
         case .browser: SettingsBrowserPage(live: live)
         case .devices: SettingsDevicesPage(live: live)
         case .network: SettingsNetworkPage(live: live)
@@ -245,6 +278,15 @@ func settingsFolderName(_ path: String) -> String {
     let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/\\"))
     let last = trimmed.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? ""
     return last.isEmpty ? path : last
+}
+
+func settingsSpeedLabel(_ bytes: Int64) -> String {
+    if bytes >= 1024 * 1024 {
+        let mb = Double(bytes) / (1024 * 1024)
+        let n = mb == mb.rounded(.down) ? String(Int64(mb)) : String(Double(Int64(mb * 10)) / 10)
+        return "\(n) MB/s"
+    }
+    return "\(bytes / 1024) KB/s"
 }
 
 func settingsProxyKindLabel(_ kind: ProxyKind, _ s: AppLocalization) -> String {
