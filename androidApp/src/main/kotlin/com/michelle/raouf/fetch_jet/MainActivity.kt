@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import android.app.KeyguardManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +43,38 @@ class MainActivity : ComponentActivity() {
         cb?.invoke(uri)
     }
 
+    private var authResult: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
+    private val authLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        authResult?.complete(result.resultCode == RESULT_OK)
+        authResult = null
+    }
+
+    private suspend fun confirmDeviceCredential(reason: String): Boolean {
+        val keyguard = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+        if (!keyguard.isDeviceSecure) throw IllegalStateException("no screen lock")
+        @Suppress("DEPRECATION")
+        val intent = keyguard.createConfirmDeviceCredentialIntent(reason, null)
+            ?: throw IllegalStateException("no screen lock")
+        authResult?.complete(false)
+        val pending = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        authResult = pending
+        authLauncher.launch(intent)
+        return pending.await()
+    }
+
+    private val deviceAuthHandler: suspend (String) -> Boolean = { reason -> confirmDeviceCredential(reason) }
+
+    override fun onDestroy() {
+        if (com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler === deviceAuthHandler) {
+            com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler = null
+        }
+        authResult?.complete(false)
+        authResult = null
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         PathResolver.appContext = applicationContext
         com.tbib.kmp_localization.LocalizationManager.start()
@@ -67,7 +100,9 @@ class MainActivity : ComponentActivity() {
             true
         }
         DownloadNotificationManager.setContext(applicationContext)
+        com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler = deviceAuthHandler
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        if (BuildConfig.DEBUG) com.michelle.raouf.fetch_jet.feature.device_sync.DeviceSyncPorts.use(28471, 28472)
         // Debug / verbose builds only: a log file and the "Save log" button. Release builds
         // have neither.
         if (BuildConfig.DEBUG || BuildConfig.VERBOSE_LOGS) com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
@@ -93,7 +128,7 @@ class MainActivity : ComponentActivity() {
         com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.launcher = { onResult ->
             torrentPickCallback = onResult
             try {
-                torrentPicker.launch(arrayOf("text/plain", "text/*"))
+                torrentPicker.launch(arrayOf("application/octet-stream", "application/json", "text/*"))
             } catch (_: Throwable) {
                 torrentPickCallback = null
                 onResult(null)

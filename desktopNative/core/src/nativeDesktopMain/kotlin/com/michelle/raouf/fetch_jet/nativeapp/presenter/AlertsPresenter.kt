@@ -24,6 +24,8 @@ private data class VmAlerts(
     val missingName: String?,
     val restartIsClip: Boolean?,
     val password: com.michelle.raouf.fetch_jet.presentation.dashboard.ArchivePasswordAsk?,
+    val notice: Boolean = false,
+    val recovery: String? = null,
 )
 
 private data class OtherAlerts(
@@ -36,8 +38,8 @@ private data class OtherAlerts(
 
 internal fun Presenter.startAlerts() {
     val fromVm = combine(vm.uiState, local) { state, ui ->
-        val missing = ui.missingFileTaskId?.let { id -> state.allTasks.firstOrNull { it.id == id } }
-        val restart = ui.restartPauseTaskId?.let { id -> state.allTasks.firstOrNull { it.id == id } }
+        val missing = ui.missingFileTaskId?.let { id -> state.findTask(id) }
+        val restart = ui.restartPauseTaskId?.let { id -> state.findTask(id) }
         VmAlerts(
             removeId = state.removeConfirmationTaskId,
             removeIds = state.removeConfirmationTaskIds,
@@ -46,6 +48,8 @@ internal fun Presenter.startAlerts() {
             missingName = missing?.fileName,
             restartIsClip = restart?.let { it.engineType == EngineType.MEDIA_STREAM },
             password = state.archivePassword,
+            notice = state.hidden.encryptNoticeNeeded,
+            recovery = state.hidden.recoveryCode,
         )
     }.distinctUntilChanged()
     val others = combine(
@@ -57,7 +61,7 @@ internal fun Presenter.startAlerts() {
     ) { pairing, seconds, pending, error, language -> OtherAlerts(pairing, seconds, pending, error, language) }
     val dialogs = settingsLocal.map { it.browserDialog }.distinctUntilChanged()
     scope.launch {
-        combine(fromVm, others, dialogs) { a, b, dialog -> buildAlerts(a, b, dialog) }.collect { alerts.publish(it) }
+        combine(fromVm, others, dialogs, hiddenAlertFlow()) { a, b, dialog, pin -> buildAlerts(a, b, dialog, pin) }.collect { alerts.publish(it) }
     }
 }
 
@@ -105,7 +109,7 @@ private fun browserAlert(dialog: BrowserDialog): AlertDto {
     }
 }
 
-private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?): List<AlertDto> {
+private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?, pin: AlertDto?): List<AlertDto> {
     val strings = LocalizationManager.Strings
     val list = ArrayList<AlertDto>(2)
     if (a.removeId != null || a.removeIds.isNotEmpty()) {
@@ -219,11 +223,27 @@ private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?): Li
             dismissLabel = strings.cancel,
         )
     }
+    if (a.notice) {
+        list += AlertDto(
+            kind = AlertKind.HIDDEN_NOTICE.ordinal,
+            title = strings.hiddenNoticeTitle,
+            titleSmall = true,
+            text = strings.hiddenNoticeBody,
+            confirmLabel = strings.hiddenNoticeAccept,
+            dismissLabel = strings.cancel,
+        )
+    }
     if (dialog != null) list += browserAlert(dialog)
+    if (pin != null) list += pin
+    a.recovery?.let { list += hiddenRecoveryAlert(it) }
     return list
 }
 
 private var alertTyped = HashMap<Int, String>()
+
+internal fun Presenter.clearTyped(kind: Int) {
+    alertTyped.remove(kind)
+}
 
 internal fun Presenter.alertText(kind: Int, text: String) {
     alertTyped[kind] = text
@@ -231,6 +251,10 @@ internal fun Presenter.alertText(kind: Int, text: String) {
 
 internal fun Presenter.alertExtra(kind: Int) {
     if (AlertKind.entries.getOrNull(kind) == AlertKind.EXTENSION_STEPS) browserDialogExtra()
+}
+
+internal fun Presenter.alertLink(kind: Int) {
+    if (AlertKind.entries.getOrNull(kind) == AlertKind.HIDDEN_PIN) hiddenLink()
 }
 
 internal fun Presenter.alertConfirm(kind: Int, checked: Boolean) {
@@ -266,6 +290,10 @@ internal fun Presenter.alertConfirm(kind: Int, checked: Boolean) {
             vm.onEvent(DashboardUiEvent.OnArchivePasswordEntered(ask.taskId, typed))
         }
 
+        AlertKind.HIDDEN_PIN -> hiddenConfirm(alertTyped.remove(kind).orEmpty())
+        AlertKind.HIDDEN_NOTICE -> hiddenNoticeAccept()
+        AlertKind.HIDDEN_RECOVERY -> hiddenRecoveryCopy()
+
         AlertKind.NONE, null -> Unit
     }
 }
@@ -287,6 +315,10 @@ internal fun Presenter.alertDismiss(kind: Int, fromScrim: Boolean) {
             alertTyped.remove(kind)
             vm.onEvent(DashboardUiEvent.OnArchivePasswordDismissed)
         }
+
+        AlertKind.HIDDEN_PIN -> hiddenDismiss()
+        AlertKind.HIDDEN_NOTICE -> hiddenNoticeDismiss()
+        AlertKind.HIDDEN_RECOVERY -> hiddenRecoveryClose()
 
         AlertKind.NONE, null -> Unit
     }

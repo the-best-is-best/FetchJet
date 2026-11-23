@@ -123,6 +123,12 @@ data class DashboardUiState(
 
     val allTasks: List<DownloadTask> = emptyList(),
 
+    val hidden: HiddenUiState = HiddenUiState(),
+
+    val backup: BackupUiState = BackupUiState(),
+
+    val addHidden: Boolean = false,
+
     val filteredTasks: List<DownloadTask> = emptyList(),
 
     val selectedTab: DashboardTab = DashboardTab.ALL,
@@ -701,6 +707,44 @@ sealed interface DashboardUiEvent {
 
     data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent
 
+    data class OnHideTargets(
+        val taskIds: List<String> = emptyList(),
+        val playlistIds: List<String> = emptyList(),
+        val folders: List<String> = emptyList(),
+        val lockAfter: Boolean = false
+    ) : DashboardUiEvent
+
+    data object OnHiddenNoticeShown : DashboardUiEvent
+    data class OnAddHiddenToggled(val on: Boolean) : DashboardUiEvent
+    data object OnHiddenAddDownload : DashboardUiEvent
+    data class OnUnhideTasks(val taskIds: List<String>) : DashboardUiEvent
+    data object OnUnhideAll : DashboardUiEvent
+    data class OnHiddenOpenPlaylist(val playlistId: String) : DashboardUiEvent
+    data class OnHiddenOpenFolder(val folder: String) : DashboardUiEvent
+    data object OnHiddenCloseGroup : DashboardUiEvent
+    data class OnUnhideGroup(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenGroupPause(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenGroupResume(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenSetPin(val pin: String) : DashboardUiEvent
+    data class OnHiddenUnlock(val pin: String) : DashboardUiEvent
+    data object OnHiddenLock : DashboardUiEvent
+    data class OnHiddenChangePin(val oldPin: String, val newPin: String) : DashboardUiEvent
+    data class OnHiddenRemoveLock(val pin: String) : DashboardUiEvent
+    data class OnHiddenOpenFile(val taskId: String) : DashboardUiEvent
+    data object OnHiddenClosePlayer : DashboardUiEvent
+    data object OnHiddenEncryptNoticeAccepted : DashboardUiEvent
+    data object OnHiddenEncryptNoticeDismissed : DashboardUiEvent
+    data object OnHiddenShowRecoveryCode : DashboardUiEvent
+    data object OnHiddenRecoveryCodeShown : DashboardUiEvent
+    data class OnHiddenRestoreWithCode(val code: String) : DashboardUiEvent
+    data object OnHiddenForgotPin : DashboardUiEvent
+    data class OnHiddenResetPin(val pin: String) : DashboardUiEvent
+    data object OnHiddenResetCancel : DashboardUiEvent
+    data object OnBackupExportRequested : DashboardUiEvent
+    data object OnBackupWritten : DashboardUiEvent
+    data class OnBackupRestoreText(val text: String) : DashboardUiEvent
+    data object OnBackupNoticeShown : DashboardUiEvent
+
     data class OnArchivePasswordEntered(val taskId: String, val password: String) : DashboardUiEvent
 
     data object OnArchivePasswordDismissed : DashboardUiEvent
@@ -764,6 +808,8 @@ sealed interface DashboardUiEffect {
     data class ShowToast(val text: String) : DashboardUiEffect
 
     data class CopyText(val text: String) : DashboardUiEffect
+
+    data class OpenHiddenFile(val path: String) : DashboardUiEffect
 
 }
 

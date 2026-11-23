@@ -38,7 +38,7 @@ import java.util.concurrent.Executors
  * or downloading (foreground service).
  */
 object ExtensionBridgeServer {
-    private const val PORT = 28450
+    private val PORT = if (BuildConfig.DEBUG) 28470 else 28450
     private const val MAX_BODY = 4 * 1024 * 1024
     private val TOKEN_PATHS = setOf("/inspect", "/add", "/links", "/download", "/show")
 

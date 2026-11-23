@@ -8,6 +8,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
 
@@ -15,10 +17,12 @@ import com.tbib.kmp_localization.LocalizationManager
 fun MissingFileDialog(
     fileName: String,
     onRemove: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    secure: Boolean = false
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(securePolicy = if (secure) SecureFlagPolicy.SecureOn else SecureFlagPolicy.Inherit),
         title = {
             Text(
                 text = LocalizationManager.Strings.fileMissingTitle,

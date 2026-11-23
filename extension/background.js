@@ -56,6 +56,7 @@ const DEFAULT_SETTINGS = {
   holdKey: "alt",             // hold this key while clicking to download with the browser
   notifications: true,
   autoLaunch: true,           // start FetchJet when it is not running (off = browser downloads it)
+  openDirectly: false,        // open the app with fetchjet://download instead of the silent local send
   autoResolve: true,          // ask the app (yt-dlp) for qualities when a page plays a video
   pagePanel: true             // floating "Download this video" button on pages
 };
@@ -479,7 +480,7 @@ async function launchApp(firstUrl) {
   try {
     // Firefox for Android only hands a link to another app from the visible tab.
     const onAndroid = /android/i.test(navigator.userAgent);
-    const tab = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(firstUrl || ""), active: onAndroid });
+    const tab = await openProtocolTab(PROTOCOL + encodeURIComponent(firstUrl || ""), onAndroid, 0);
     if (tab && tab.id != null) keepLaunchTab(tab.id, onAndroid);
     return true;
   } catch (_) { return false; }
@@ -518,6 +519,22 @@ async function openAppAt(url, tabId = null) {
   } catch (_) { return false; }
 }
 
+async function openProtocolTab(url, active, removeAfterMs = 6000) {
+  const tab = await api.tabs.create({ url, active });
+  if (removeAfterMs && tab && tab.id != null) setTimeout(() => api.tabs.remove(tab.id).catch(() => {}), removeAfterMs);
+  return tab;
+}
+
+const DIRECT_BATCH_MAX = 3;
+
+function isDirectOpenLink(request) {
+  return isPlainLink(request) && !request.fileName && !request.referer;
+}
+
+function isPlainLink(request) {
+  return !request.formatId && !request.audioUrl && !request.playlist && !request.openClip && !request.direct;
+}
+
 async function waitForApp(maxMs = 12000) {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
@@ -543,11 +560,19 @@ async function notify(message, extra = {}) {
  */
 async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, from = null, quiet = false }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
+  const settings = await getSettings();
   const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist, from });
   if (ON_IOS) {
     const page = iosSessionPage(request);
     if (page) return (await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page))) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
+  }
+
+  if (settings.openDirectly && isDirectOpenLink(request)) {
+    try {
+      await openProtocolTab(PROTOCOL + encodeURIComponent(request.url), true);
+      return { ok: true };
+    } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
   }
 
   if (await deliverOne(request)) return { ok: true };
@@ -583,6 +608,18 @@ async function sendBatchToFetchJet(items, referer = "", group = "", from = null)
   const requests = [];
   for (const it of unique.values()) requests.push(await buildRequest({ ...it, group, from }));
   if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
+
+  if (requests.length <= DIRECT_BATCH_MAX && (await getSettings()).openDirectly) {
+    let opened = 0;
+    for (const r of requests) {
+      try {
+        await openProtocolTab(PROTOCOL + encodeURIComponent(r.url), opened === 0);
+        opened++;
+      } catch (_) {}
+      await new Promise(res => setTimeout(res, 400));
+    }
+    return { ok: opened > 0, count: opened };
+  }
 
   if (!(await pingApp())) {
     if (!(await launchApp(requests[0].url)) || !(await waitForApp())) {
@@ -1394,8 +1431,7 @@ async function downloadItem(item, tab) {
       return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     }
     try {
-      const t = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(item.url), active: true });
-      if (t && t.id != null) setTimeout(() => api.tabs.remove(t.id).catch(() => {}), 1500);
+      await openProtocolTab(PROTOCOL + encodeURIComponent(item.url), true, 1500);
       return { ok: true };
     } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
   }
@@ -1707,6 +1743,16 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try { if (!/^https?:$/.test(new URL(page).protocol)) page = ""; } catch (_) { page = ""; }
         if (!page) return { ok: false };
         return { ok: await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) };
+      }
+      case "openPageDialog": {
+        if (ON_IOS) return { ok: false, reason: "unsupported url" };
+        let page = request.page || (sender.tab && sender.tab.url) || "";
+        try { if (!/^https?:$/.test(new URL(page).protocol)) page = ""; } catch (_) { page = ""; }
+        if (!page) return { ok: false, reason: "unsupported url" };
+        try {
+          await openProtocolTab(PROTOCOL + encodeURIComponent(page), true);
+          return { ok: true };
+        } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
       }
       case "launchApp": {
         const launched = await launchApp(request.url || "");

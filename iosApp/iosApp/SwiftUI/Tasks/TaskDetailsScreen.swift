@@ -392,7 +392,7 @@ private struct TaskDetailsContent: View {
         let s = store.strings
         let running = TaskUi.isRunning(task)
         let resolver = PathResolver()
-        let canFolder = resolver.isOpenFolderSupported()
+        let canFolder = resolver.isOpenFolderSupported() && !task.hidden
         let path = fullPath
         let openFolder = { _ = resolver.openFileLocation(filePath: path) }
         VStack(spacing: 8) {

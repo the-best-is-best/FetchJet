@@ -679,4 +679,8 @@ namespace fjhost::os {
         return _strdup(text.c_str());
     }
 
+    void *main_window() {
+        return g_window;
+    }
+
 }

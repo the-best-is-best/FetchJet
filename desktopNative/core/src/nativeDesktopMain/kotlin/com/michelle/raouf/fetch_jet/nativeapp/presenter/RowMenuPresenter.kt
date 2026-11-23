@@ -19,11 +19,30 @@ private fun Presenter.rowMenuEntries(id: String): List<RowMenuEntry> {
 }
 
 internal fun Presenter.openRowMenu(id: String) {
+    val s = LocalizationManager.Strings
+    val inHidden = local.value.hiddenOpen
+    if (rowIsGroup(id)) {
+        rowMenuTask.value = id
+        rowMenu.publish(listOf(if (inHidden) RowMenuItemDto(UNHIDE_KEY, s.hiddenUnhide) else RowMenuItemDto(HIDE_KEY, s.hiddenHide)))
+        return
+    }
     val entries = rowMenuEntries(id)
     if (entries.isEmpty()) return closeRowMenu()
-    val s = LocalizationManager.Strings
     rowMenuTask.value = id
-    rowMenu.publish(entries.map { RowMenuItemDto(it.ordinal, RowMenu.label(it, s), it.danger, it.dividerBefore) })
+    val items = entries.map { RowMenuItemDto(it.ordinal, RowMenu.label(it, s), it.danger, it.dividerBefore) }.toMutableList()
+    if (!inHidden) items.add((items.size - 1).coerceAtLeast(0), RowMenuItemDto(HIDE_KEY, s.hiddenHide))
+    rowMenu.publish(items)
+}
+
+private fun Presenter.menuRows(id: String): Set<String> {
+    val checked = local.value.checkedIds
+    return if (id in checked && checked.size > 1) checked else setOf(id)
+}
+
+private fun Presenter.unhideMenuRows(id: String) {
+    if (!local.value.hiddenOpen) return
+    vm.onEvent(DashboardUiEvent.OnUnhideTasks(expandPlaylistRows(menuRows(id))))
+    local.update { it.copy(checkedIds = emptySet(), selectedTaskId = null, focusId = null) }
 }
 
 internal fun Presenter.closeRowMenu() {
@@ -35,6 +54,8 @@ internal fun Presenter.pickRowMenu(key: Int) {
     val id = rowMenuTask.value
     closeRowMenu()
     id ?: return
+    if (key == HIDE_KEY) return hideTargets(hiddenTargetOf(menuRows(id)))
+    if (key == UNHIDE_KEY) return unhideMenuRows(id)
     val entry = RowMenuEntry.entries.getOrNull(key) ?: return
     if (entry !in rowMenuEntries(id)) return
     val task = task(id) ?: return
@@ -53,6 +74,7 @@ internal fun Presenter.pickRowMenu(key: Int) {
         RowMenuEntry.COPY_LINK -> vm.onEvent(DashboardUiEvent.OnCopyTaskLink(id))
         RowMenuEntry.SELECT -> local.update { it.copy(checkedIds = it.checkedIds + id) }
         RowMenuEntry.DETAILS -> local.update { it.copy(selectedTaskId = id) }
+        RowMenuEntry.UNHIDE -> unhideMenuRows(id)
         RowMenuEntry.DELETE -> vm.onEvent(DashboardUiEvent.OnRemoveClicked(id))
     }
 }

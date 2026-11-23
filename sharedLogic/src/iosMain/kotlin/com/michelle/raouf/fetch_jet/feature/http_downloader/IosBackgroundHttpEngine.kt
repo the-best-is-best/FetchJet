@@ -117,6 +117,10 @@ class IosBackgroundHttpEngine(
 
     override fun getAllTasksFlow(): StateFlow<Map<String, DownloadTask>> = tasksState.asStateFlow()
 
+    override fun setDestination(taskId: String, destinationPath: String, fileName: String?) {
+        updateTask(taskId) { it.copy(destinationPath = destinationPath, fileName = fileName ?: it.fileName) }
+    }
+
     // ---- lifecycle ------------------------------------------------------------------------
 
     override suspend fun start(task: DownloadTask): Result<Unit> {

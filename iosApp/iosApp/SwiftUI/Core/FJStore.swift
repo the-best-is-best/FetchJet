@@ -1,4 +1,5 @@
 import SwiftUI
+import QuickLook
 import SharedLogic
 
 struct FJToast: Identifiable, Equatable {
@@ -18,6 +19,7 @@ final class FJStore: ObservableObject {
     private(set) var lastEffect: DashboardUiEffect?
     var onEffect: ((DashboardUiEffect) -> Void)?
     private var watchers: [IosCancelable] = []
+    private var previewWatch: Task<Void, Never>?
 
     init() {
         let host = IosAppHost()
@@ -26,8 +28,9 @@ final class FJStore: ObservableObject {
         self.language = host.language
         self.isRtl = host.isRtl
         FJFont.applyToNavigationBars()
+        DeviceAuth.shared.handler = FJDeviceAuth()
         watchers.append(host.watch(
-            onState: { [weak self] s in self?.state = s },
+            onState: { [weak self] s in self?.apply(s) },
             onEffect: { [weak self] e in self?.handle(e) }
         ))
         watchers.append(host.watchLanguage { [weak self] lang, rtl in
@@ -39,8 +42,39 @@ final class FJStore: ObservableObject {
 
     var strings: AppLocalization { host.strings() }
 
+    var liveHidden: HiddenUiState { host.state.hidden }
+
     func send(_ event: DashboardUiEvent) {
         host.send(event: event)
+    }
+
+    private func apply(_ s: DashboardUiState) {
+        state = s
+        if let notice = s.hidden.notice {
+            showToast(HiddenTextsKt.hiddenNoticeText(notice: notice))
+            send(DashboardUiEventOnHiddenNoticeShown.shared)
+        }
+        if let notice = s.backup.notice {
+            showToast(DashboardBackupKt.backupNoticeText(notice: notice))
+            send(DashboardUiEventOnBackupNoticeShown.shared)
+        }
+    }
+
+    func hide(_ targets: HideTargets, lockAfter: Bool = false) {
+        send(DashboardUiEventOnHideTargets(taskIds: targets.taskIds, playlistIds: targets.playlistIds, folders: targets.folders, lockAfter: lockAfter))
+    }
+
+    func acceptHiddenNotice() {
+        send(DashboardUiEventOnHiddenEncryptNoticeAccepted.shared)
+    }
+
+    func dismissHiddenNotice() {
+        send(DashboardUiEventOnHiddenEncryptNoticeDismissed.shared)
+    }
+
+    func hiddenLock() {
+        send(DashboardUiEventOnHiddenClosePlayer.shared)
+        send(DashboardUiEventOnHiddenLock.shared)
     }
 
     func showToast(_ text: String) {
@@ -49,10 +83,14 @@ final class FJStore: ObservableObject {
 
     func task(_ id: String?) -> DownloadTask? {
         guard let id else { return nil }
-        return state.allTasks.first { $0.id == id }
+        return state.allTasks.first { $0.id == id } ?? state.hidden.tasks.first { $0.id == id }
     }
 
     func openFile(_ task: DownloadTask) {
+        if task.hidden {
+            send(DashboardUiEventOnHiddenOpenFile(taskId: task.id))
+            return
+        }
         if !host.openTaskFile(task: task) {
             missingFileTaskId = task.id
         }
@@ -66,6 +104,43 @@ final class FJStore: ObservableObject {
         if let c = effect as? DashboardUiEffectCopyText {
             UIPasteboard.general.string = c.text
         }
+        if let h = effect as? DashboardUiEffectOpenHiddenFile {
+            if host.openDownloadedFile(fullPath: h.path) {
+                watchHiddenPreview()
+            } else {
+                showToast(strings.fileMissingTitle)
+            }
+        }
         onEffect?(effect)
+    }
+
+    private func watchHiddenPreview() {
+        previewWatch?.cancel()
+        previewWatch = Task { [weak self] in
+            var seen = false
+            var waited = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if Self.previewShown() {
+                    seen = true
+                } else if seen || waited > 40 {
+                    break
+                }
+                waited += 1
+            }
+            if !Task.isCancelled { self?.send(DashboardUiEventOnHiddenClosePlayer.shared) }
+        }
+    }
+
+    private static func previewShown() -> Bool {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for window in scenes.flatMap({ $0.windows }) {
+            var controller = window.rootViewController
+            while let c = controller {
+                if c is QLPreviewController { return true }
+                controller = c.presentedViewController
+            }
+        }
+        return false
     }
 }

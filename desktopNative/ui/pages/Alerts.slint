@@ -35,7 +35,7 @@ component AlertOverlay inherits Rectangle {
     private property <length> radius: root.data.titleSmall || root.data.round ? 28px : 18px;
     private property <length> button-radius: root.data.titleSmall || root.data.round ? 20px : 10px;
     private property <length> widest: max(280px, min(560px, root.width - 48px));
-    private property <bool> fill: root.data.kind == AlertKind.remove || root.data.kind == AlertKind.when-done-countdown || root.data.kind == AlertKind.extension-steps;
+    private property <bool> fill: root.data.kind == AlertKind.remove || root.data.kind == AlertKind.when-done-countdown || root.data.kind == AlertKind.extension-steps || root.data.kind == AlertKind.hidden-recovery;
     background: #00000099;
     init => { keys.focus(); }
     scrim := TouchArea {
@@ -128,6 +128,7 @@ component AlertOverlay inherits Rectangle {
             }
             if root.data.hint != "": SmallText {
                 text: root.data.hint;
+                color: root.data.hintError ? Theme.error : Theme.on-surface-variant;
                 wrap: word-wrap;
                 max-height: 64px;
             }
@@ -136,11 +137,32 @@ component AlertOverlay inherits Rectangle {
             }
             if root.data.inputLabel != "": TextField {
                 placeholder: root.data.inputLabel;
+                rev: root.data.inputRev;
+                value: "";
+                enabled: !root.data.inputDisabled;
+                init => { self.focus-field(); }
+                escaped => {
+                    if !root.data.locked {
+                        Act.alertDismiss(root.data.kind, true);
+                    }
+                }
                 input-type: root.data.inputSecret ? InputType.password : InputType.text;
                 edited(text) => { Act.alertText(root.data.kind, text); }
                 accepted(text) => {
                     Act.alertText(root.data.kind, text);
                     Act.alertConfirm(root.data.kind, root.checked);
+                }
+            }
+            if root.data.linkLabel != "": Rectangle {
+                height: 4px;
+            }
+            if root.data.linkLabel != "": HBox {
+                height: 40px;
+                alignment: start;
+                cross-axis-alignment: center;
+                TextButton {
+                    text: root.data.linkLabel;
+                    clicked => { Act.alertLink(root.data.kind); }
                 }
             }
             if root.data.checkLabel != "": Rectangle {

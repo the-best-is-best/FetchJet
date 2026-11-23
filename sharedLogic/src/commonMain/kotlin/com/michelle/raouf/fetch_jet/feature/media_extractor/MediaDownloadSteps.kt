@@ -264,8 +264,14 @@ internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
                 finalTargetPath.parent?.let { AppFileSystem.createDirectories(it) }
             } catch (_: Exception) {
             }
-            val actualFinalPath =
+            val actualFinalPath = com.michelle.raouf.fetch_jet.feature.hidden.retargetFinal(
+                tasksState.value[taskId]?.destinationPath,
                 "${initialTask.destinationPath}/${foundCachePath.name}".toPath()
+            )
+            try {
+                actualFinalPath.parent?.let { AppFileSystem.createDirectories(it) }
+            } catch (_: Exception) {
+            }
             val savedPath = moveIntoPlace(taskId, foundCachePath, actualFinalPath)
             deleteRecursively(cacheDir.toPath())
             updateTaskState(taskId) {
@@ -437,6 +443,7 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
             "manifest"
         ) || initialTask.url.contains("m3u8") || initialTask.url.contains("videoplayback")
 
+    val finalTargetPath = com.michelle.raouf.fetch_jet.feature.hidden.retargetDir(tasksState.value[taskId]?.destinationPath, finalTargetPath)
     val directStreamUrl = if (isDirectVideo) {
         initialTask.url
     } else if (isYouTubeUrl(effectiveUrl)) {

@@ -20,6 +20,7 @@ enum class RowMenuEntry(val danger: Boolean = false, val dividerBefore: Boolean 
     COPY_LINK,
     SELECT,
     DETAILS,
+    UNHIDE,
     DELETE(danger = true, dividerBefore = true),
 }
 
@@ -36,6 +37,16 @@ object RowMenu {
     fun entries(task: DownloadTask, options: RowMenuOptions = RowMenuOptions()): List<RowMenuEntry> = buildList {
         val done = task.status == DownloadStatus.COMPLETED
         val busy = task.postProcessLabel != null
+        if (task.hidden) {
+            if (done && !busy) add(RowMenuEntry.OPEN)
+            if (task.status in PAUSABLE && !busy) add(RowMenuEntry.PAUSE)
+            if (task.status in RESUMABLE) add(RowMenuEntry.RESUME)
+            if (options.selectEntry) add(RowMenuEntry.SELECT)
+            add(RowMenuEntry.DETAILS)
+            add(RowMenuEntry.UNHIDE)
+            add(RowMenuEntry.DELETE)
+            return@buildList
+        }
         if (done && !busy) add(RowMenuEntry.OPEN)
         if (task.destinationPath.isNotBlank()) add(RowMenuEntry.OPEN_FOLDER)
         if (task.status in PAUSABLE && !busy) add(RowMenuEntry.PAUSE)
@@ -62,6 +73,7 @@ object RowMenu {
         RowMenuEntry.COPY_LINK -> s.rowMenuCopyLink
         RowMenuEntry.SELECT -> s.rowMenuSelect
         RowMenuEntry.DETAILS -> s.rowMenuDetails
+        RowMenuEntry.UNHIDE -> s.hiddenUnhide
         RowMenuEntry.DELETE -> s.rowMenuDelete
     }
 }

@@ -315,6 +315,10 @@ sealed interface UiAction {
     data class AlertExtra(val kind: Int = 0) : UiAction
 
     @Serializable
+    @SerialName("AlertLink")
+    data class AlertLink(val kind: Int = 0) : UiAction
+
+    @Serializable
     @SerialName("SetSettingsSection")
     data class SetSettingsSection(val index: Int = 0) : UiAction
 
@@ -645,4 +649,40 @@ sealed interface UiAction {
     @Serializable
     @SerialName("ChoiceDismiss")
     data class ChoiceDismiss(val kind: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("HideChecked")
+    data object HideChecked : UiAction
+
+    @Serializable
+    @SerialName("UnhideChecked")
+    data object UnhideChecked : UiAction
+
+    @Serializable
+    @SerialName("UnhideAll")
+    data object UnhideAll : UiAction
+
+    @Serializable
+    @SerialName("UnhideGroup")
+    data object UnhideGroup : UiAction
+
+    @Serializable
+    @SerialName("HiddenChangePin")
+    data object HiddenChangePin : UiAction
+
+    @Serializable
+    @SerialName("HiddenRemovePin")
+    data object HiddenRemovePin : UiAction
+
+    @Serializable
+    @SerialName("HiddenLock")
+    data object HiddenLock : UiAction
+
+    @Serializable
+    @SerialName("HiddenRecoveryCode")
+    data object HiddenRecoveryCode : UiAction
+
+    @Serializable
+    @SerialName("HiddenRestore")
+    data object HiddenRestore : UiAction
 }

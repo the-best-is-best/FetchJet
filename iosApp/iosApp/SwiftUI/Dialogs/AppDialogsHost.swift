@@ -14,6 +14,8 @@ enum FJDialogKind: Equatable {
     case clipboard(String)
     case browserFallback(String)
     case update(String)
+    case hiddenNotice
+    case hiddenOpening
 
     var id: String { String(describing: self) }
 }
@@ -57,6 +59,8 @@ final class FJDialogsModel: ObservableObject {
 
     func active(_ store: FJStore) -> FJDialogKind? {
         let st = store.state
+        if st.hidden.encryptNoticeNeeded { return .hiddenNotice }
+        if st.hidden.opening != nil { return .hiddenOpening }
         if let p = st.devicePairing {
             if let o = p as? PairingStateOffer { return .pairing("offer|\(o.peerId)|\(o.fileName)") }
             if let c = p as? PairingStateConfirm { return .pairing("confirm|\(c.peerId)|\(c.code)") }
@@ -182,6 +186,7 @@ struct FJDialogOverlay: View {
         case .whenDoneError: WhenDone.shared.dismissError()
         case .duplicate: store.send(DashboardUiEventOnDismissDuplicateDialog.shared)
         case .fileConflict: store.send(DashboardUiEventOnDismissFileConflictDialog.shared)
+        case .hiddenNotice: store.dismissHiddenNotice()
         default: break
         }
     }
@@ -206,6 +211,9 @@ struct FJDialogOverlay: View {
         case .browserFallback(let url): FJBrowserFallbackDialog(url: url)
         case .update:
             if let u = model.update, let r = u.available { FJUpdateDialog(state: u, release: r) }
+        case .hiddenNotice: FJHiddenNoticeDialog()
+        case .hiddenOpening:
+            FJHiddenOpeningDialog(fraction: store.state.hidden.opening?.fraction ?? 0)
         }
     }
 }

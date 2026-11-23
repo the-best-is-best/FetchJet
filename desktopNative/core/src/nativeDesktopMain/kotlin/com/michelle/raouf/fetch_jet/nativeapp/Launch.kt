@@ -163,7 +163,7 @@ internal object Launch {
         val name = file.takeIf { it.isNotBlank() }?.let { repository.pathResolver.sanitizeFileName(it) }?.takeIf { it.isNotBlank() }
         val pages = ArrayList<String>()
         for (url in urls) {
-            val known = repository.allTasksFlow.value.any {
+            val known = repository.visibleTasksFlow.value.any {
                 it.url.equals(url, ignoreCase = true) || it.originalUrl.equals(url, ignoreCase = true)
             }
             if (known) continue

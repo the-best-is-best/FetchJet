@@ -4,6 +4,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.network.NetworkClient
 import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
+import com.michelle.raouf.fetch_jet.core.security.hexOf
 import com.michelle.raouf.fetch_jet.core.update.APP_VERSION
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import io.ktor.client.HttpClient
@@ -71,7 +72,7 @@ object UsagePing {
     }
 
     private fun newId(): String =
-        Random.nextBytes(16).joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+        hexOf(Random.nextBytes(16))
 
     private fun read(): Pair<String?, Long> = try {
         if (!AppFileSystem.exists(file)) null to -1L

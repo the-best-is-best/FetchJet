@@ -78,14 +78,18 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canResume
+import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
+import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenUiState
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWorkingText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.theme.StatusPaused
 import com.michelle.raouf.fetch_jet.ui.RowAction
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.TaskRow
+import com.michelle.raouf.fetch_jet.ui.TaskRowMenu
 import com.michelle.raouf.fetch_jet.ui.TaskRowsHeader
 import com.michelle.raouf.fetch_jet.ui.rowActionFor
 import com.michelle.raouf.fetch_jet.utils.decodeUnicodeText
@@ -94,7 +98,7 @@ import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
+internal fun ProgressBanner(text: String, fraction: Float?) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
@@ -102,9 +106,7 @@ internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(
-                text = LocalizationManager.Strings.homeUpdatingMediaTools(
-                    tool.orEmpty(),
-                    fraction?.let { (it * 100).toInt() }),
+                text = text,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
@@ -120,6 +122,19 @@ internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
             }
         }
     }
+}
+
+@Composable
+internal fun ToolsDownloadBanner(tool: String?, fraction: Float?) {
+    ProgressBanner(
+        LocalizationManager.Strings.homeUpdatingMediaTools(tool.orEmpty(), fraction?.let { (it * 100).toInt() }),
+        fraction
+    )
+}
+
+@Composable
+internal fun HiddenWorkBanner(hidden: HiddenUiState) {
+    ProgressBanner(hiddenWorkingText(hidden.workDone, hidden.workTotal), hidden.workFraction.takeIf { it > 0f })
 }
 
 @Composable
@@ -192,6 +207,31 @@ internal fun TaskListArea(
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
     }
     val selectionMode = checkedIds.isNotEmpty()
+    var hideRequest by remember { mutableStateOf<DashboardUiEvent.OnHideTargets?>(null) }
+    val sendHide: (DashboardUiEvent.OnHideTargets) -> Unit = { request ->
+        viewModel.onEvent(request)
+        checkedIds = emptySet()
+    }
+    val requestHide: (List<String>, List<String>, List<String>) -> Unit = { taskIds, playlistIds, folders ->
+        val request = DashboardUiEvent.OnHideTargets(taskIds, playlistIds, folders)
+        if (uiState.hidden.lockType == null) hideRequest = request else sendHide(request)
+    }
+    val requestHideKeys: (Collection<String>) -> Unit = { keys ->
+        val playlistIds = keys.mapNotNull { playlistIdOfRow(it) }.distinct()
+        val folders = keys.mapNotNull { folderOfRow(it) }.distinct()
+        val taskIds = expandIds(keys.filter { playlistIdOfRow(it) == null && folderOfRow(it) == null })
+        requestHide(taskIds, playlistIds, folders)
+    }
+    hideRequest?.let { request ->
+        com.michelle.raouf.fetch_jet.ui.SetPinDialog(
+            viewModel = viewModel,
+            onDismiss = { hideRequest = null },
+            onDone = {
+                hideRequest = null
+                sendHide(request.copy(lockAfter = true))
+            }
+        )
+    }
     var anchorId by remember { mutableStateOf<String?>(null) }
     val listFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -427,6 +467,7 @@ internal fun TaskListArea(
         if (uiState.isDownloadingYtDlp && uiState.toolDownloadName != null) {
             ToolsDownloadBanner(uiState.toolDownloadName, uiState.toolDownloadFraction)
         }
+        if (uiState.hidden.working) HiddenWorkBanner(uiState.hidden)
         com.michelle.raouf.fetch_jet.ui.WhenDoneBanner()
         if (allTasks.isNotEmpty() && externalSearch == null) {
             com.michelle.raouf.fetch_jet.ui.FetchJetTextField(
@@ -457,6 +498,7 @@ internal fun TaskListArea(
                 },
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(expandIds(checkedIds))) },
                 onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(expandIds(checkedIds))) },
+                onHide = { requestHideKeys(checkedIds) },
                 onClose = { checkedIds = emptySet() }
             )
         } else if (openGroup != null) {
@@ -468,6 +510,7 @@ internal fun TaskListArea(
                 onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupPause(openGroup.id)) },
                 onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupResume(openGroup.id)) },
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(openGroup.id)) },
+                onHide = { requestHide(emptyList(), listOf(openGroup.id), emptyList()) },
                 onReadLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(openGroup.id)) },
                 onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
                 onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
@@ -483,7 +526,8 @@ internal fun TaskListArea(
                 onOpenFolder = { if (firstFile != null) pathResolver.openFileLocation(fullPathOf(firstFile)) },
                 onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(openFolder.folder)) },
                 onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(openFolder.folder)) },
-                onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) }
+                onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
+                onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) }
             )
         } else if (tasks.isNotEmpty() && showToolbar) {
             ListToolbar(
@@ -577,59 +621,25 @@ internal fun TaskListArea(
                         if (selectionMode) checkedIds = checkedIds + task.id else menuTaskId = task.id
                     },
                     rowMenu = {
-                        val strings = com.tbib.kmp_localization.LocalizationManager.Strings
-                        val entries = remember(task, menuTaskId) {
-                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu.entries(
-                                task,
-                                com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions(selectEntry = true)
-                            )
-                        }
-                        DropdownMenu(expanded = menuTaskId == task.id, onDismissRequest = {
-                            menuTaskId = null
-                            checkedIds = checkedIds + task.id
-                        }) {
-                            entries.forEach { entry ->
-                                if (entry.dividerBefore) androidx.compose.material3.HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu.label(entry, strings),
-                                            color = if (entry.danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    onClick = {
-                                        menuTaskId = null
-                                        when (entry) {
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.OPEN -> {
-                                                openDownloadedFile(fullPathOf(task), task.id)
-                                            }
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.OPEN_FOLDER ->
-                                                if (pathResolver.isOpenFolderSupported()) pathResolver.openFileLocation(fullPathOf(task)) else onSelect(task.id)
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.PAUSE ->
-                                                if (task.canResume() == false) onSelect(task.id)
-                                                else viewModel.onEvent(DashboardUiEvent.OnPauseClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.RESUME ->
-                                                viewModel.onEvent(DashboardUiEvent.OnResumeClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.EXTRACT ->
-                                                viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COMPRESS ->
-                                                viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SUBTITLES ->
-                                                viewModel.onEvent(DashboardUiEvent.OnSubtitlesClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SEND_TO_DEVICE ->
-                                                viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.COPY_LINK ->
-                                                viewModel.onEvent(DashboardUiEvent.OnCopyTaskLink(task.id))
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.SELECT ->
-                                                checkedIds = checkedIds + task.id
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.DETAILS -> onSelect(task.id)
-                                            com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry.DELETE ->
-                                                viewModel.onEvent(DashboardUiEvent.OnRemoveClicked(task.id))
-                                        }
-                                    }
-                                )
-                            }
-                        }
+                        TaskRowMenu(
+                            task = task,
+                            expanded = menuTaskId == task.id,
+                            viewModel = viewModel,
+                            options = RowMenuOptions(selectEntry = true),
+                            extraLabel = LocalizationManager.Strings.hiddenHide,
+                            onExtra = { requestHide(listOf(task.id), emptyList(), emptyList()) },
+                            onDismiss = {
+                                menuTaskId = null
+                                checkedIds = checkedIds + task.id
+                            },
+                            onPicked = { menuTaskId = null },
+                            onOpen = { openDownloadedFile(fullPathOf(task), task.id) },
+                            onOpenFolder = {
+                                if (pathResolver.isOpenFolderSupported()) pathResolver.openFileLocation(fullPathOf(task)) else onSelect(task.id)
+                            },
+                            onSelect = { checkedIds = checkedIds + task.id },
+                            onDetails = { onSelect(task.id) }
+                        )
                     },
                     onCompress = if (com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.canCompress(task)) {
                         { viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id)) }
@@ -970,23 +980,26 @@ internal fun SelectionBar(
     count: Int,
     allChecked: Boolean,
     onCheckAll: (Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onExport: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onExport: (() -> Unit)? = null,
+    onHide: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+    onUnhide: (() -> Unit)? = null
 ) {
+    val s = LocalizationManager.Strings
+    val shape = RoundedCornerShape(10.dp)
+    val padding = PaddingValues(horizontal = 12.dp)
+    val label: @Composable (String, Color) -> Unit = { text, color ->
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, softWrap = false)
+    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) {
-            Text(
-                "✕",
-                fontSize = 14.sp
-            )
-        }
+        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
         Text(
-            LocalizationManager.Strings.homeSelectedCount(count),
+            s.homeSelectedCount(count),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -997,46 +1010,30 @@ internal fun SelectionBar(
             onClick = { onCheckAll(!allChecked) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp)
-        ) {
-            Text(
-                if (allChecked) LocalizationManager.Strings.selectNone else LocalizationManager.Strings.selectAll,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                softWrap = false
-            )
+        ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+        if (onExport != null) {
+            OutlinedButton(onClick = onExport, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
+                label(s.homeExport, Color.Unspecified)
+            }
         }
-        OutlinedButton(
-            onClick = onExport,
-            shape = RoundedCornerShape(10.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-            modifier = Modifier.height(34.dp)
-        ) {
-            Text(
-                LocalizationManager.Strings.homeExport,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                softWrap = false
-            )
+        if (onHide != null) {
+            OutlinedButton(onClick = onHide, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
+                label(s.hiddenHide, Color.Unspecified)
+            }
         }
-        androidx.compose.material3.Button(
-            onClick = onDelete,
-            shape = RoundedCornerShape(10.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            ),
-            modifier = Modifier.height(34.dp)
-        ) {
-            Text(
-                "🗑 ${LocalizationManager.Strings.delete}",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onError,
-                maxLines = 1,
-                softWrap = false
-            )
+        if (onDelete != null) {
+            androidx.compose.material3.Button(
+                onClick = onDelete,
+                shape = shape,
+                contentPadding = padding,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.height(34.dp)
+            ) { label("🗑 ${s.delete}", MaterialTheme.colorScheme.onError) }
+        }
+        if (onUnhide != null) {
+            androidx.compose.material3.Button(onClick = onUnhide, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
+                label(s.hiddenUnhide, Color.Unspecified)
+            }
         }
     }
 }

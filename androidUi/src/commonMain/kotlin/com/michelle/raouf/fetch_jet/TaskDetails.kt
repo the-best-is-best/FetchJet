@@ -83,6 +83,7 @@ internal fun DownloadTaskItem(
     onCompress: (() -> Unit)? = null,
     onSubtitles: (() -> Unit)? = null,
     onExtract: (() -> Unit)? = null,
+    onOpenHidden: (() -> Unit)? = null,
     compressedCopies: Int = 0,
     torrentSection: (@Composable () -> Unit)? = null
 ) {
@@ -615,7 +616,7 @@ internal fun DownloadTaskItem(
             // Actions: two equal buttons, then the red one across the full width.
             val running =
                 task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING
-            val canFolder = pathResolver.isOpenFolderSupported()
+            val canFolder = pathResolver.isOpenFolderSupported() && !task.hidden
             val openFolder = { pathResolver.openFileLocation(fullPath); Unit }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -627,7 +628,7 @@ internal fun DownloadTaskItem(
                         DetailPrimaryButton(
                             LocalizationManager.Strings.detailsOpenFile,
                             m
-                        ) { openDownloadedFile(fullPath, task.id) }
+                        ) { if (task.hidden && onOpenHidden != null) onOpenHidden() else openDownloadedFile(fullPath, task.id) }
                         if (canFolder) DetailSecondaryButton(
                             LocalizationManager.Strings.detailsOpenFolder,
                             m,
@@ -949,6 +950,9 @@ internal fun TaskDetailsPane(
                 } else null,
                 onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
+                } else null,
+                onOpenHidden = if (task.hidden) {
+                    { viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id)) }
                 } else null,
                 compressedCopies = compressedCopies,
                 torrentSection = if (task.engineType == EngineType.BITTORRENT) {

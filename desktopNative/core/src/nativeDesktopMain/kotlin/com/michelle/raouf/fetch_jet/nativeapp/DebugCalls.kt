@@ -97,7 +97,9 @@ internal object DebugCalls {
         }.toString()
         "opened" -> buildJsonObject {
             putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
+            putJsonArray("hidden") { for (path in NativeApp.presenter.openedHidden.value) add(kotlinx.serialization.json.JsonPrimitive(path)) }
             putJsonArray("shared") { for (text in NativeApp.presenter.sharedTexts.value) add(kotlinx.serialization.json.JsonPrimitive(text)) }
+            put("secretCopies", NativeApp.presenter.secretCopies.value)
         }.toString()
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
@@ -294,6 +296,7 @@ internal object DebugCalls {
             put("toolsDownloading", s.isDownloadingYtDlp)
             put("torrentReady", s.isTorrentEngineReady)
             put("linkList", s.linkList.size)
+            put("addHidden", s.addHidden)
             putJsonArray("qualities") { for (q in s.inspectedMediaQualities) add(kotlinx.serialization.json.JsonPrimitive(q.qualityLabel)) }
             put("inspectMediaError", s.inspectMediaError.orEmpty())
             put("isInspectingMedia", s.isInspectingMedia)

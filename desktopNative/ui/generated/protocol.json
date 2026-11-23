@@ -299,7 +299,10 @@
    "EXTENSION_STEPS",
    "EXTENSION_FROM_FILE",
    "EXTENSION_FAILED",
-   "ARCHIVE_PASSWORD"
+   "ARCHIVE_PASSWORD",
+   "HIDDEN_PIN",
+   "HIDDEN_NOTICE",
+   "HIDDEN_RECOVERY"
   ],
   "ChannelKind": [
    "STRINGS",
@@ -1422,6 +1425,22 @@
    [
     "inputSecret",
     "Boolean"
+   ],
+   [
+    "inputRev",
+    "Int"
+   ],
+   [
+    "inputDisabled",
+    "Boolean"
+   ],
+   [
+    "hintError",
+    "Boolean"
+   ],
+   [
+    "linkLabel",
+    "String"
    ]
   ],
   "AudioCopyDto": [
@@ -2284,6 +2303,26 @@
    [
     "groupFolderPath",
     "String"
+   ],
+   [
+    "hiddenOpen",
+    "Boolean"
+   ],
+   [
+    "hiddenNote",
+    "String"
+   ],
+   [
+    "hiddenWorkShown",
+    "Boolean"
+   ],
+   [
+    "hiddenWorkText",
+    "String"
+   ],
+   [
+    "hiddenWorkFraction",
+    "Float"
    ]
   ],
   "StatusDto": [
@@ -3455,6 +3494,12 @@
     "Int"
    ]
   ],
+  "AlertLink": [
+   [
+    "kind",
+    "Int"
+   ]
+  ],
   "SetSettingsSection": [
    [
     "index",
@@ -3880,7 +3925,16 @@
     "kind",
     "Int"
    ]
-  ]
+  ],
+  "HideChecked": [],
+  "UnhideChecked": [],
+  "UnhideAll": [],
+  "UnhideGroup": [],
+  "HiddenChangePin": [],
+  "HiddenRemovePin": [],
+  "HiddenLock": [],
+  "HiddenRecoveryCode": [],
+  "HiddenRestore": []
  },
  "tr": [
   "languageName",
@@ -3918,6 +3972,64 @@
   "moreSource",
   "morePrivacy",
   "moreStats",
+  "hiddenTitle",
+  "hiddenHide",
+  "hiddenUnhide",
+  "hiddenUnhideAll",
+  "hiddenSetPinTitle",
+  "hiddenSetPinHint",
+  "hiddenEnterPin",
+  "hiddenConfirmPin",
+  "hiddenPinMismatch",
+  "hiddenInvalidPin",
+  "hiddenWrongPin",
+  "hiddenLockedFor",
+  "hiddenChangePin",
+  "hiddenOldPin",
+  "hiddenNewPin",
+  "hiddenRemovePin",
+  "hiddenRemoveWarn",
+  "hiddenLock",
+  "hiddenEmpty",
+  "hiddenHiddenToast",
+  "hiddenNoteEncrypted",
+  "hiddenWorking",
+  "hiddenNoticeTitle",
+  "hiddenNoticeBody",
+  "hiddenNoticeAccept",
+  "hiddenOpening",
+  "hiddenNoticeCopyLeft",
+  "hiddenNoticeMoveFailed",
+  "hiddenNoticeOpenFailed",
+  "hiddenRecoveryTitle",
+  "hiddenRecoveryBody",
+  "hiddenRecoveryCopy",
+  "hiddenRecoveryRestoreTitle",
+  "hiddenRecoveryRestoreHint",
+  "hiddenRecoveryEnter",
+  "hiddenForgotPin",
+  "hiddenForgotReason",
+  "hiddenResetPinTitle",
+  "hiddenNoticeRestoreDone",
+  "hiddenNoticeRestoreWrong",
+  "hiddenNoticeRestoreNothing",
+  "hiddenNoticeRecoveryUnavailable",
+  "hiddenNoticeAuthFailed",
+  "hiddenNoticeResetDone",
+  "hiddenNoticeResetExpired",
+  "backupExport",
+  "backupRestore",
+  "backupExportHint",
+  "backupRestoreHint",
+  "backupDone",
+  "backupNothingNew",
+  "backupNeedRestart",
+  "backupSkipped",
+  "backupWrongPlatform",
+  "backupSettingsDone",
+  "backupInvalid",
+  "backupHiddenBlocked",
+  "backupFailed",
   "homeDownloads",
   "homeTabAll",
   "homeTabActive",

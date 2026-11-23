@@ -39,6 +39,64 @@ interface AppLocalization : LocalizationProvider {
     val moreSource: String
     val morePrivacy: String
     val moreStats: String
+    val hiddenTitle: String
+    val hiddenHide: String
+    val hiddenUnhide: String
+    val hiddenUnhideAll: String
+    val hiddenSetPinTitle: String
+    val hiddenSetPinHint: String
+    val hiddenEnterPin: String
+    val hiddenConfirmPin: String
+    val hiddenPinMismatch: String
+    val hiddenInvalidPin: String
+    val hiddenWrongPin: String
+    val hiddenLockedFor: String
+    val hiddenChangePin: String
+    val hiddenOldPin: String
+    val hiddenNewPin: String
+    val hiddenRemovePin: String
+    val hiddenRemoveWarn: String
+    val hiddenLock: String
+    val hiddenEmpty: String
+    val hiddenHiddenToast: String
+    val hiddenNoteEncrypted: String
+    val hiddenWorking: String
+    val hiddenNoticeTitle: String
+    val hiddenNoticeBody: String
+    val hiddenNoticeAccept: String
+    val hiddenOpening: String
+    val hiddenNoticeCopyLeft: String
+    val hiddenNoticeMoveFailed: String
+    val hiddenNoticeOpenFailed: String
+    val hiddenRecoveryTitle: String
+    val hiddenRecoveryBody: String
+    val hiddenRecoveryCopy: String
+    val hiddenRecoveryRestoreTitle: String
+    val hiddenRecoveryRestoreHint: String
+    val hiddenRecoveryEnter: String
+    val hiddenForgotPin: String
+    val hiddenForgotReason: String
+    val hiddenResetPinTitle: String
+    val hiddenNoticeRestoreDone: String
+    val hiddenNoticeRestoreWrong: String
+    val hiddenNoticeRestoreNothing: String
+    val hiddenNoticeRecoveryUnavailable: String
+    val hiddenNoticeAuthFailed: String
+    val hiddenNoticeResetDone: String
+    val hiddenNoticeResetExpired: String
+    val backupExport: String
+    val backupRestore: String
+    val backupExportHint: String
+    val backupRestoreHint: String
+    val backupDone: String
+    val backupNothingNew: String
+    val backupNeedRestart: String
+    val backupSkipped: String
+    val backupWrongPlatform: String
+    val backupSettingsDone: String
+    val backupInvalid: String
+    val backupHiddenBlocked: String
+    val backupFailed: String
     val homeDownloads: String
 
     val homeTabAll: String

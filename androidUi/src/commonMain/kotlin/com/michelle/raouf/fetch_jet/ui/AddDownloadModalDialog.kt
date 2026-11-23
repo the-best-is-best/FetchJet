@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -138,7 +139,8 @@ fun AddDownloadModalDialog(
     onConnectionsChanged: (Int) -> Unit = {},
     onEngineSelected: (EngineType) -> Unit = {},
     onAddDownload: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    secure: Boolean = false
 ) {
     val defaultDownloads = remember { pathResolver.getDownloadsDirectory() }
     val defaultDocs = remember { pathResolver.getDocumentsDirectory() }
@@ -320,7 +322,10 @@ fun AddDownloadModalDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            securePolicy = if (secure) SecureFlagPolicy.SecureOn else SecureFlagPolicy.Inherit
+        )
     ) {
         Card(
             modifier = Modifier

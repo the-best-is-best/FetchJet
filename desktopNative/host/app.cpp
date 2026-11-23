@@ -15,6 +15,8 @@
 
 namespace fjhost {
 
+    void watch_minimize(bool on);
+
     namespace {
 
         CoreApi g_core;
@@ -141,6 +143,8 @@ namespace fjhost {
                 os::apply_title_bar(dark);
                 os::update_tray_tip(plain(window.global<Core>().get_shell().trayTooltip));
             }
+            if (channel == fjgen::Channel::Chrome)
+                watch_minimize(window.global<Core>().get_chrome().hiddenOpen);
         }
 
         void notify_from_core(unsigned int mask) {
@@ -172,6 +176,12 @@ namespace fjhost {
 #ifdef _WIN32
             else if (service == "storeUpdates")
                 result = os::store_updates();
+#endif
+#if defined(_WIN32) || defined(__APPLE__)
+            else if (service == "authAvailable")
+                result = os::auth_available() ? "1" : "";
+            else if (service == "authVerify")
+                result = os::auth_verify(arg("reason")) ? "1" : "";
 #endif
             return os::copy_for_core(result);
         }
@@ -297,6 +307,28 @@ namespace fjhost {
     }
 
     slint::Timer g_repaint_timer;
+    slint::Timer g_minimize_timer;
+    bool g_was_minimized = false;
+
+    void lock_hidden() {
+        send_action("{\"type\":\"HiddenLock\"}");
+    }
+
+    void watch_minimize(bool on) {
+        if (!on) {
+            g_minimize_timer.stop();
+            return;
+        }
+        if (g_minimize_timer.running())
+            return;
+        g_was_minimized = g_shown && os::window_minimized();
+        g_minimize_timer.start(slint::TimerMode::Repeated, std::chrono::seconds(1), [] {
+            bool minimized = g_shown && os::window_minimized();
+            if (minimized && !g_was_minimized)
+                lock_hidden();
+            g_was_minimized = minimized;
+        });
+    }
 
     void repaint_window() {
         if (g_shown && g_ui && ui().window().is_visible())
@@ -325,6 +357,7 @@ namespace fjhost {
             quit_app();
             return;
         }
+        lock_hidden();
         ui().hide();
         g_shown = false;
         os::window_hidden();
@@ -379,6 +412,7 @@ namespace fjhost {
                 quit_app();
                 return slint::CloseRequestResponse::HideWindow;
             }
+            lock_hidden();
             g_shown = false;
             os::window_hidden();
             return slint::CloseRequestResponse::HideWindow;

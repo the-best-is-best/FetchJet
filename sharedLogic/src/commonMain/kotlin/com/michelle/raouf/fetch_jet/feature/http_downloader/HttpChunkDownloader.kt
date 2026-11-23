@@ -67,6 +67,10 @@ class HttpChunkDownloader(
         return task
     }
 
+    override fun setDestination(taskId: String, destinationPath: String, fileName: String?) {
+        updateTaskState(taskId) { it.copy(destinationPath = destinationPath, fileName = fileName ?: it.fileName) }
+    }
+
     override suspend fun start(task: DownloadTask): Result<Unit> {
         return try {
             enqueueTask(task)

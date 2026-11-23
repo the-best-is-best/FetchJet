@@ -244,7 +244,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     deleteParts()
 
     // Copy assembled file from cache to final destination
-    val savedPath = copyIntoPlace(destOkioPath, finalDestPath.toPath())
+    val savedPath = copyIntoPlace(destOkioPath, com.michelle.raouf.fetch_jet.feature.hidden.retargetFinal(tasksState.value[taskId]?.destinationPath, finalDestPath.toPath()))
     destOkioPath.parent?.let { deleteRecursively(it) }
 
     val doneChunks = layout.snapshot().map {
@@ -514,7 +514,7 @@ internal suspend fun HttpChunkDownloader.downloadSingleStream(
             val integrity = checkAssembledFile(taskId, targetOkioPath, finalDestPath.toPath().name, serverChecksum)
 
             // Copy completed file from cache to final destination
-            val savedPath = copyIntoPlace(targetOkioPath, finalDestPath.toPath())
+            val savedPath = copyIntoPlace(targetOkioPath, com.michelle.raouf.fetch_jet.feature.hidden.retargetFinal(tasksState.value[taskId]?.destinationPath, finalDestPath.toPath()))
             targetOkioPath.parent?.let { deleteRecursively(it) }
 
             updateTaskState(taskId) {

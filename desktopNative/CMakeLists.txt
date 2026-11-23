@@ -47,7 +47,7 @@ string(TIMESTAMP FJ_VERSION_YEAR "%Y")
 configure_file(res/version.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/fj_version.h" @ONLY)
 
 if (WIN32)
-    add_executable(fetchjet_native WIN32 host/app.cpp host/win/platform_win.cpp host/win/store_win.cpp res/app.rc res/app.manifest)
+    add_executable(fetchjet_native WIN32 host/app.cpp host/win/platform_win.cpp host/win/store_win.cpp host/win/auth_win.cpp res/app.rc res/app.manifest)
     target_link_libraries(fetchjet_native PRIVATE Slint::Slint dwmapi ole32 shell32 uuid d2d1 dwrite windowscodecs delayimp runtimeobject)
 elseif (APPLE)
     set(FJ_MAC_BUNDLE_ID "com.michelle.raouf.fetch_jet" CACHE STRING "CFBundleIdentifier of the native FetchJet.app")
@@ -60,7 +60,7 @@ elseif (APPLE)
     set_source_files_properties("${FJ_MAC_ICON}" "${FJ_MAC_TRAY_ICON}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     add_executable(fetchjet_native MACOSX_BUNDLE host/app.cpp host/mac/platform_mac.mm "${FJ_MAC_ICON}" "${FJ_MAC_TRAY_ICON}")
     target_link_libraries(fetchjet_native PRIVATE Slint::Slint ${CMAKE_DL_LIBS}
-            "-framework AppKit" "-framework Foundation" "-framework UniformTypeIdentifiers")
+            "-framework AppKit" "-framework Foundation" "-framework UniformTypeIdentifiers" "-framework LocalAuthentication")
     target_compile_options(fetchjet_native PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc> "-mmacosx-version-min=${FJ_MAC_MIN_OS}")
     target_link_options(fetchjet_native PRIVATE "-mmacosx-version-min=${FJ_MAC_MIN_OS}")
     set_target_properties(fetchjet_native PROPERTIES BUILD_RPATH "@executable_path" INSTALL_RPATH "@executable_path"

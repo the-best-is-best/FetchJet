@@ -82,6 +82,11 @@ data class ChromeDto(
     val groupIsFolder: Boolean = false,
     val groupIsPage: Boolean = false,
     val groupFolderPath: String = "",
+    val hiddenOpen: Boolean = false,
+    val hiddenNote: String = "",
+    val hiddenWorkShown: Boolean = false,
+    val hiddenWorkText: String = "",
+    val hiddenWorkFraction: Float = 0f,
 )
 
 @Serializable

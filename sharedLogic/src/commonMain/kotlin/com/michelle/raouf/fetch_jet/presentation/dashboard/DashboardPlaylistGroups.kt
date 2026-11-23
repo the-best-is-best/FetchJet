@@ -83,6 +83,7 @@ internal fun DashboardViewModel.handlePlaylistGroupEvent(event: DashboardUiEvent
  * a video that joined a playlist by its folder says so.
  */
 internal suspend fun DashboardViewModel.showGroupOf(task: DownloadTask, askedList: String = "") {
+    if (task.id in com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore.state.value.ids) return
     val id = task.playlistId
     if (id.isNotEmpty() && PlaylistStore.get(id) != null) {
         _uiState.update { it.copy(openPlaylistId = id, openFolder = null, playlistLanguages = null) }
@@ -132,12 +133,12 @@ internal fun DashboardViewModel.watchPlaylists() {
     }
     scope.launch {
         val seen = HashSet<String>()
-        queueRepository.allTasksFlow.collect { tasks ->
+        queueRepository.visibleTasksFlow.collect { tasks ->
             _uiState.value.openFolder?.let { folder ->
                 if (folderTasks(tasks, _uiState.value.playlists, folder).isEmpty()) _uiState.update { it.copy(openFolder = null) }
             }
             adoptLoneVideos(tasks)
-            val present = tasks.mapNotNullTo(HashSet()) { it.playlistId.takeIf { id -> id.isNotEmpty() } }
+            val present = queueRepository.allTasksFlow.value.mapNotNullTo(HashSet()) { it.playlistId.takeIf { id -> id.isNotEmpty() } }
             val gone = seen.filter { it !in present }
             seen.addAll(present)
             if (gone.isNotEmpty()) {

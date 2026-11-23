@@ -12,7 +12,7 @@ const DEFAULT_EXTENSIONS = [
   "torrent"
 ];
 
-const BOOLS = ["enabled", "captureDownloads", "limitToListed", "captureLinks", "captureMedia", "sendCookies", "notifications", "autoLaunch", "autoResolve", "pagePanel"];
+const BOOLS = ["enabled", "captureDownloads", "limitToListed", "captureLinks", "captureMedia", "sendCookies", "notifications", "autoLaunch", "openDirectly", "autoResolve", "pagePanel"];
 
 function parseList(text, lower = true) {
   return text.split(/[\s,;]+/).map(s => s.trim().replace(/^\./, "")).filter(Boolean).map(s => lower ? s.toLowerCase() : s);

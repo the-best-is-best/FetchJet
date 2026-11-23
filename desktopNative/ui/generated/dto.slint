@@ -288,6 +288,10 @@ export struct AlertDto {
     round: bool,
     inputLabel: string,
     inputSecret: bool,
+    inputRev: int,
+    inputDisabled: bool,
+    hintError: bool,
+    linkLabel: string,
 }
 
 export struct AudioCopyDto {
@@ -541,6 +545,11 @@ export struct ChromeDto {
     groupIsFolder: bool,
     groupIsPage: bool,
     groupFolderPath: string,
+    hiddenOpen: bool,
+    hiddenNote: string,
+    hiddenWorkShown: bool,
+    hiddenWorkText: string,
+    hiddenWorkFraction: float,
 }
 
 export struct StatusDto {
@@ -875,6 +884,9 @@ export global AlertKind {
     out property <int> extension-from-file: 11;
     out property <int> extension-failed: 12;
     out property <int> archive-password: 13;
+    out property <int> hidden-pin: 14;
+    out property <int> hidden-notice: 15;
+    out property <int> hidden-recovery: 16;
 }
 
 export global ToneCode {

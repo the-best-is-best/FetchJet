@@ -108,7 +108,8 @@ data class DownloadTask(
     val expectedChecksum: String? = null,
     /** Result of the checksum check: true = matched, false = mismatch, null = not checked yet. */
     val checksumVerified: Boolean? = null,
-    val scanResult: String? = null
+    val scanResult: String? = null,
+    val hidden: Boolean = false
 )
 
 const val STEP_PREPARING_FILE = "Preparing file"
@@ -134,7 +135,7 @@ fun DownloadTask.canResume(): Boolean? = when (engineType) {
 
 /** "Send to device": never a torrent; otherwise a finished download or one that keeps its bytes. */
 fun DownloadTask.canSendToDevice(): Boolean =
-    engineType != EngineType.BITTORRENT &&
+    !hidden && engineType != EngineType.BITTORRENT &&
             (status == DownloadStatus.COMPLETED || (canResume() != false && !url.startsWith("fjenc1:")))
 
 /** The finished file, or the bytes fetched so far, can travel and the other device continues. */

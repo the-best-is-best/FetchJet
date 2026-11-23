@@ -70,6 +70,7 @@ struct FJRoot: View {
             FJPageBrowserSheet(url: target.url) { browser.page = nil }.environmentObject(store)
         }
         .overlay(alignment: .bottom) { FJToastHost() }
+        .modifier(HiddenRootGuard())
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
         .id(store.language)
         .onAppear { FJInterfaceStyle.apply(store.state.themeMode) }
@@ -115,11 +116,10 @@ struct FJListPage: View {
 
 struct FJAddButton: View {
     @EnvironmentObject var store: FJStore
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        Button {
-            store.send(DashboardUiEventOnToggleAddDialog(show: true))
-        } label: {
+        Button(action: action ?? openAddDialog) {
             Image(systemName: "plus")
                 .font(.fj(24, .bold))
                 .foregroundStyle(FJTheme.color.onPrimary)
@@ -128,6 +128,10 @@ struct FJAddButton: View {
                 .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
         }
         .accessibilityLabel(store.strings.homeAddDownload)
+    }
+
+    private func openAddDialog() {
+        store.send(DashboardUiEventOnToggleAddDialog(show: true))
     }
 }
 

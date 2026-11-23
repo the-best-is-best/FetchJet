@@ -88,6 +88,9 @@ namespace AlertKind {
     inline constexpr int ExtensionFromFile = 11;
     inline constexpr int ExtensionFailed = 12;
     inline constexpr int ArchivePassword = 13;
+    inline constexpr int HiddenPin = 14;
+    inline constexpr int HiddenNotice = 15;
+    inline constexpr int HiddenRecovery = 16;
 }
 
 namespace ToneCode {
@@ -599,6 +602,10 @@ inline AlertDto parse_AlertDto(const fj::Json &j) {
     d.round = fj::flag(j, "round");
     d.inputLabel = fj::text(j, "inputLabel");
     d.inputSecret = fj::flag(j, "inputSecret");
+    d.inputRev = fj::integer(j, "inputRev");
+    d.inputDisabled = fj::flag(j, "inputDisabled");
+    d.hintError = fj::flag(j, "hintError");
+    d.linkLabel = fj::text(j, "linkLabel");
     return d;
 }
 
@@ -882,6 +889,11 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.groupIsFolder = fj::flag(j, "groupIsFolder");
     d.groupIsPage = fj::flag(j, "groupIsPage");
     d.groupFolderPath = fj::text(j, "groupFolderPath");
+    d.hiddenOpen = fj::flag(j, "hiddenOpen");
+    d.hiddenNote = fj::text(j, "hiddenNote");
+    d.hiddenWorkShown = fj::flag(j, "hiddenWorkShown");
+    d.hiddenWorkText = fj::text(j, "hiddenWorkText");
+    d.hiddenWorkFraction = fj::real(j, "hiddenWorkFraction");
     return d;
 }
 
@@ -1288,6 +1300,64 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_moreSource(next());
     tr.set_morePrivacy(next());
     tr.set_moreStats(next());
+    tr.set_hiddenTitle(next());
+    tr.set_hiddenHide(next());
+    tr.set_hiddenUnhide(next());
+    tr.set_hiddenUnhideAll(next());
+    tr.set_hiddenSetPinTitle(next());
+    tr.set_hiddenSetPinHint(next());
+    tr.set_hiddenEnterPin(next());
+    tr.set_hiddenConfirmPin(next());
+    tr.set_hiddenPinMismatch(next());
+    tr.set_hiddenInvalidPin(next());
+    tr.set_hiddenWrongPin(next());
+    tr.set_hiddenLockedFor(next());
+    tr.set_hiddenChangePin(next());
+    tr.set_hiddenOldPin(next());
+    tr.set_hiddenNewPin(next());
+    tr.set_hiddenRemovePin(next());
+    tr.set_hiddenRemoveWarn(next());
+    tr.set_hiddenLock(next());
+    tr.set_hiddenEmpty(next());
+    tr.set_hiddenHiddenToast(next());
+    tr.set_hiddenNoteEncrypted(next());
+    tr.set_hiddenWorking(next());
+    tr.set_hiddenNoticeTitle(next());
+    tr.set_hiddenNoticeBody(next());
+    tr.set_hiddenNoticeAccept(next());
+    tr.set_hiddenOpening(next());
+    tr.set_hiddenNoticeCopyLeft(next());
+    tr.set_hiddenNoticeMoveFailed(next());
+    tr.set_hiddenNoticeOpenFailed(next());
+    tr.set_hiddenRecoveryTitle(next());
+    tr.set_hiddenRecoveryBody(next());
+    tr.set_hiddenRecoveryCopy(next());
+    tr.set_hiddenRecoveryRestoreTitle(next());
+    tr.set_hiddenRecoveryRestoreHint(next());
+    tr.set_hiddenRecoveryEnter(next());
+    tr.set_hiddenForgotPin(next());
+    tr.set_hiddenForgotReason(next());
+    tr.set_hiddenResetPinTitle(next());
+    tr.set_hiddenNoticeRestoreDone(next());
+    tr.set_hiddenNoticeRestoreWrong(next());
+    tr.set_hiddenNoticeRestoreNothing(next());
+    tr.set_hiddenNoticeRecoveryUnavailable(next());
+    tr.set_hiddenNoticeAuthFailed(next());
+    tr.set_hiddenNoticeResetDone(next());
+    tr.set_hiddenNoticeResetExpired(next());
+    tr.set_backupExport(next());
+    tr.set_backupRestore(next());
+    tr.set_backupExportHint(next());
+    tr.set_backupRestoreHint(next());
+    tr.set_backupDone(next());
+    tr.set_backupNothingNew(next());
+    tr.set_backupNeedRestart(next());
+    tr.set_backupSkipped(next());
+    tr.set_backupWrongPlatform(next());
+    tr.set_backupSettingsDone(next());
+    tr.set_backupInvalid(next());
+    tr.set_backupHiddenBlocked(next());
+    tr.set_backupFailed(next());
     tr.set_homeDownloads(next());
     tr.set_homeTabAll(next());
     tr.set_homeTabActive(next());
@@ -2259,6 +2329,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_alertDismiss([send](int kind, bool fromScrim) { fj::ActionWriter w("AlertDismiss"); w.add("kind", kind); w.add("fromScrim", fromScrim); send(w.finish()); });
     act.on_alertText([send](int kind, slint::SharedString text) { fj::ActionWriter w("AlertText"); w.add("kind", kind); w.add("text", text); send(w.finish()); });
     act.on_alertExtra([send](int kind) { fj::ActionWriter w("AlertExtra"); w.add("kind", kind); send(w.finish()); });
+    act.on_alertLink([send](int kind) { fj::ActionWriter w("AlertLink"); w.add("kind", kind); send(w.finish()); });
     act.on_setSettingsSection([send](int index) { fj::ActionWriter w("SetSettingsSection"); w.add("index", index); send(w.finish()); });
     act.on_openMore([send]() { fj::ActionWriter w("OpenMore"); send(w.finish()); });
     act.on_settingToggle([send](slint::SharedString id, bool on) { fj::ActionWriter w("SettingToggle"); w.add("id", id); w.add("on", on); send(w.finish()); });
@@ -2342,6 +2413,15 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_choicePrimary([send](int kind) { fj::ActionWriter w("ChoicePrimary"); w.add("kind", kind); send(w.finish()); });
     act.on_choiceSecondary([send](int kind) { fj::ActionWriter w("ChoiceSecondary"); w.add("kind", kind); send(w.finish()); });
     act.on_choiceDismiss([send](int kind) { fj::ActionWriter w("ChoiceDismiss"); w.add("kind", kind); send(w.finish()); });
+    act.on_hideChecked([send]() { fj::ActionWriter w("HideChecked"); send(w.finish()); });
+    act.on_unhideChecked([send]() { fj::ActionWriter w("UnhideChecked"); send(w.finish()); });
+    act.on_unhideAll([send]() { fj::ActionWriter w("UnhideAll"); send(w.finish()); });
+    act.on_unhideGroup([send]() { fj::ActionWriter w("UnhideGroup"); send(w.finish()); });
+    act.on_hiddenChangePin([send]() { fj::ActionWriter w("HiddenChangePin"); send(w.finish()); });
+    act.on_hiddenRemovePin([send]() { fj::ActionWriter w("HiddenRemovePin"); send(w.finish()); });
+    act.on_hiddenLock([send]() { fj::ActionWriter w("HiddenLock"); send(w.finish()); });
+    act.on_hiddenRecoveryCode([send]() { fj::ActionWriter w("HiddenRecoveryCode"); send(w.finish()); });
+    act.on_hiddenRestore([send]() { fj::ActionWriter w("HiddenRestore"); send(w.finish()); });
 }
 
 }

@@ -23,6 +23,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.Channels
 import com.michelle.raouf.fetch_jet.nativeapp.dto.EffectKind
 import com.michelle.raouf.fetch_jet.nativeapp.host.HostFreeFn
 import com.michelle.raouf.fetch_jet.nativeapp.host.HostServiceFn
+import com.michelle.raouf.fetch_jet.core.security.DeviceAuth
 import com.michelle.raouf.fetch_jet.nativeapp.host.HostServices
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.Presenter
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.dispatch
@@ -44,6 +45,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.put
 
@@ -194,6 +196,15 @@ internal object NativeApp {
         }
         if (services != null) HostHooks.storeUpdates = { services.call("storeUpdates") }
         if (services != null) {
+            presenter.scope.launch(Dispatchers.IO) {
+                if (services.call("authAvailable") == "1") {
+                    DeviceAuth.handler = { reason ->
+                        withContext(Dispatchers.IO) {
+                            services.call("authVerify") { put("reason", reason) } == "1"
+                        }
+                    }
+                }
+            }
             HostHooks.pickFile = { title, filterName, pattern ->
                 services.call("pickFile") {
                     put("title", title)

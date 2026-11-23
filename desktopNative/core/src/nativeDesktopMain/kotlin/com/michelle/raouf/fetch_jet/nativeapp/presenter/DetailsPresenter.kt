@@ -95,7 +95,7 @@ internal fun Presenter.startDetails() {
     val tick = MutableStateFlow(0L)
     val selected = combine(vm.uiState, local) { state, ui ->
         if (state.selectedTab == DashboardTab.SETTINGS) null
-        else ui.selectedTaskId?.let { id -> state.allTasks.firstOrNull { it.id == id } }
+        else ui.selectedTaskId?.let { id -> state.findTask(id) }
     }.distinctUntilChanged().throttleLatest(HOME_PERIOD_MS)
     val unit = combine(vm.uiState, AppLanguage.current) { state, language ->
         Triple(state.speedDisplayUnit, language, state.audioCopyCounts)

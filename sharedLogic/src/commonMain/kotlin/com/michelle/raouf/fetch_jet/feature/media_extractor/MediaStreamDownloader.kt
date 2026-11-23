@@ -103,6 +103,10 @@ class MediaStreamDownloader(
 
     }
 
+    fun setDestination(taskId: String, destinationPath: String, fileName: String? = null) {
+        updateTaskState(taskId) { it.copy(destinationPath = destinationPath, fileName = fileName ?: it.fileName) }
+    }
+
     override suspend fun start(task: DownloadTask): Result<Unit> {
         return try {
             // Wait for a previous run to really stop (yt-dlp/ffmpeg killed, files closed)

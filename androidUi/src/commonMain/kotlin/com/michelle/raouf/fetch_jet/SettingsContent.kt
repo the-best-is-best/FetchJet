@@ -137,11 +137,43 @@ internal fun MoreContentView(
         if (jump != null) inSettings = true
     }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    if (!inSettings) {
+    var hiddenFlow by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val hiddenUnlocked = state.hidden.unlocked
+    androidx.compose.runtime.LaunchedEffect(hiddenUnlocked) {
+        if (!hiddenUnlocked) hiddenFlow = false
+    }
+    if (hiddenFlow && hiddenUnlocked) {
+        com.michelle.raouf.fetch_jet.ui.HiddenScreen(
+            state = state,
+            viewModel = viewModel,
+            onClose = { hiddenFlow = false }
+        )
+    } else if (!inSettings) {
         com.michelle.raouf.fetch_jet.ui.MorePage(
             onOpenSettings = { inSettings = true },
+            onOpenHidden = { hiddenFlow = true },
+            onBackup = { viewModel.onEvent(com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent.OnBackupExportRequested) },
+            onRestore = {
+                com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.pick { text ->
+                    if (text != null) viewModel.onEvent(com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent.OnBackupRestoreText(text))
+                }
+            },
             onToast = { text -> scope.launch { snackbarHostState.showSnackbar(text) } }
         )
+        if (hiddenFlow) {
+            if (state.hidden.lockType == null) {
+                com.michelle.raouf.fetch_jet.ui.SetPinDialog(
+                    viewModel = viewModel,
+                    onDismiss = { hiddenFlow = false },
+                    onDone = {}
+                )
+            } else {
+                com.michelle.raouf.fetch_jet.ui.UnlockPinDialog(
+                    viewModel = viewModel,
+                    onDismiss = { hiddenFlow = false }
+                )
+            }
+        }
     } else {
         androidx.compose.foundation.layout.Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
             androidx.compose.foundation.layout.Row(

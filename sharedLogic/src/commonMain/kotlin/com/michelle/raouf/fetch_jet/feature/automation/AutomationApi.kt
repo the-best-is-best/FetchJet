@@ -39,7 +39,7 @@ object AutomationApi {
     }
 
     fun status(id: String?): AutomationReply {
-        val tasks = QueueManagerRepository.getInstance().allTasksFlow.value
+        val tasks = QueueManagerRepository.getInstance().visibleTasksFlow.value
         if (!id.isNullOrBlank()) {
             val task = tasks.firstOrNull { it.id == id } ?: return error(404, "download not found")
             return AutomationReply(200, taskJson(task).toString())
@@ -59,7 +59,7 @@ object AutomationApi {
         val wanted = ids.map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(500)
         if (wanted.isEmpty()) return error(400, "missing id")
         val repository = QueueManagerRepository.getInstance()
-        val byId = repository.allTasksFlow.value.associateBy { it.id }
+        val byId = repository.visibleTasksFlow.value.associateBy { it.id }
         val missing = wanted.filter { it !in byId }
         val failed = ArrayList<String>()
         var done = 0

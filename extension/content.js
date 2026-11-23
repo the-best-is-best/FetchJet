@@ -502,6 +502,12 @@
     .btn:focus-visible #label { display: inline; }
     .btn:focus-visible .part { width: auto; padding: 0 6px 0 9px; gap: 6px; }
     .item:focus-visible, .act:focus-visible, .cut:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
+    .go { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 34px; cursor: pointer; border-left: 1px solid rgba(255,255,255,.28); border-radius: 0 999px 999px 0; }
+    .go:hover { background: rgba(255,255,255,.18); }
+    .go .arrow { width: 16px; height: 16px; flex: none; }
+    .go:focus-visible { outline: 2px solid #fff; outline-offset: -3px; }
+    .wrap[dir="rtl"] .go { border-left: 0; border-right: 1px solid rgba(255,255,255,.28); border-radius: 999px 0 0 999px; }
+    .wrap[dir="rtl"] .go .arrow { transform: scaleX(-1); }
     .count { position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #0f172a; color: #fff; font-size: 10px; line-height: 16px; text-align: center; border: 1.5px solid #a855f7; display: none; }
     .count.on { display: block; }
     .side { position: absolute; top: -7px; left: -7px; width: 16px; height: 16px; border-radius: 50%; background: #0f172a; color: #e2e8f0; font-size: 9px; line-height: 16px; text-align: center; cursor: pointer; display: none; border: 1px solid rgba(255,255,255,.3); }
@@ -534,6 +540,10 @@
     .wrap[data-theme="light"] { color: #0f172a; }
     .wrap[data-theme="light"] .btn { color: #3730a3; background: linear-gradient(135deg, #e0e7ff, #f5e8ff); box-shadow: 0 2px 10px rgba(15,23,42,.28), 0 0 0 1.5px rgba(99,102,241,.55); }
     .wrap[data-theme="light"] .ico path { fill: #3730a3; }
+    .wrap[data-theme="light"] .arrow path { stroke: #3730a3; }
+    .wrap[data-theme="light"] .go { border-color: rgba(67,56,202,.35); }
+    .wrap[data-theme="light"] .go:hover { background: rgba(67,56,202,.12); }
+    .wrap[data-theme="light"] .go:focus-visible { outline-color: #4338ca; }
     .wrap[data-theme="light"] .spin { border-color: rgba(67,56,202,.3); border-top-color: #4338ca; }
     .wrap[data-theme="light"] .btn:focus-visible { outline-color: #4338ca; }
     .wrap[data-theme="light"] .list { background: #ffffff; color: #0f172a; border-color: rgba(15,23,42,.14); box-shadow: 0 12px 40px rgba(15,23,42,.25); }
@@ -576,6 +586,17 @@
     return svg;
   }
 
+  function arrowIcon() {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "arrow"); svg.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", "M7 17 17 7M9 7h8v8");
+    path.setAttribute("fill", "none"); path.setAttribute("stroke", "#fff"); path.setAttribute("stroke-width", "2.4"); path.setAttribute("stroke-linecap", "round"); path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    return svg;
+  }
+
   const isAudioAnchor = (v) => (v.tagName !== "VIDEO" && v !== fileHero) || isZoomMedia(v);
   const byKind = (v, key) => fjT(key + (isFileAnchor(v) ? "File" : isAudioAnchor(v) ? "Audio" : "Video"));
 
@@ -592,6 +613,7 @@
       el("div", { class: "wrap" },
         el("div", { class: "btn", id: "main", title: byKind(video, "btnTitle") },
           el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownload") })),
+          ...(ON_IOS ? [] : [el("span", { class: "go", id: "go", title: fjT("openInApp"), role: "button", "aria-label": fjT("openInApp") }, arrowIcon())]),
           el("span", { class: "count", id: "count" }),
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
@@ -605,6 +627,15 @@
       if (!e.isTrusted) return;
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); clicked(b); }
     });
+    const goEl = root.getElementById("go");
+    if (goEl) {
+      goEl.tabIndex = 0;
+      goEl.addEventListener("click", (e) => { e.stopPropagation(); openInApp(b); });
+      goEl.addEventListener("keydown", (e) => {
+        if (!e.isTrusted) return;
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); openInApp(b); }
+      });
+    }
     root.getElementById("grab").addEventListener("mousedown", (e) => {
       if (e.button !== 0) return;
       const hr = host.getBoundingClientRect();
@@ -644,6 +675,12 @@
     }).catch(() => { b.loading = false; renderOne(b, fjT("extReloaded"), true); });
   }
 
+  function openInApp(b) {
+    const anchor = b.video.tagName !== "VIDEO";
+    const page = anchor ? audioPageUrl() : ownLink(b.video) || (TOP ? linkFor(b.video) : "");
+    sendOne(b, { action: "openPageDialog", page });
+  }
+
   function clicked(b) {
     if (!itemsOf(b).length && !b.loading && !isFileAnchor(b.video)) return lookUp(b);
     b.open = !b.open;
@@ -674,12 +711,13 @@
     });
     return row;
   }
-  function pageInAppRow() {
-    if (!ON_IOS) return null;
-    const row = el("div", { class: "item" }, el("span", { class: "num", text: "\u2197" }),
-      el("div", { class: "body" }, el("div", { class: "t", text: fjT("openPageInApp") }), el("div", { class: "s", text: fjT("openPageInAppSub") })));
+  function pageInAppRow(b) {
+    if (!ON_IOS && itemsOf(b).some((i) => i.kind === "openApp")) return null;
+    const row = el("div", { class: "item" }, el("span", { class: "num", text: "↗" }),
+      el("div", { class: "body" }, el("div", { class: "t", text: fjT(ON_IOS ? "openPageInApp" : "itemOpenApp") }), el("div", { class: "s", text: fjT(ON_IOS ? "openPageInAppSub" : "itemOpenAppSub") })));
     row.addEventListener("click", () => {
-      try { api.runtime.sendMessage({ action: "openPageInApp", page: TOP ? location.href : "" }).catch(() => {}); } catch (_) {}
+      if (ON_IOS) { try { api.runtime.sendMessage({ action: "openPageInApp", page: TOP ? location.href : "" }).catch(() => {}); } catch (_) {} }
+      else openInApp(b);
     });
     return row;
   }
@@ -697,6 +735,8 @@
     b.root.getElementById("label").textContent = protectedOnly ? fjT("itemDrm") : usable.length > 1 ? fjT("downloadOptions", { n: usable.length }) : byKind(b.video, "btnDownload");
     b.root.getElementById("main").title = byKind(b.video, "btnTitle");
     b.root.getElementById("close").title = fjT("hideButton");
+    const goBtn = b.root.getElementById("go");
+    if (goBtn) { goBtn.title = fjT("openInApp"); goBtn.setAttribute("aria-label", fjT("openInApp")); }
     b.root.querySelector(".wrap").dir = fjIsRtl() ? "rtl" : "ltr";
     b.root.querySelector(".wrap").setAttribute("data-theme", fjTheme());
     const count = b.root.getElementById("count");
@@ -709,7 +749,7 @@
     box.hidden = !b.open;
     box.replaceChildren();
     const file = fileRow(b);
-    const tail = () => { if (file) box.appendChild(file); const pg = pageInAppRow(); if (pg) box.appendChild(pg); box.appendChild(footRow()); pressable(box); };
+    const tail = () => { if (file) box.appendChild(file); const pg = pageInAppRow(b); if (pg) box.appendChild(pg); box.appendChild(footRow()); pressable(box); };
     if (note) {
       const d = el("div", { class: "msg" + (isError ? " err" : ""), text: note });
       if (action) { const a = el("div", { class: "act", text: action.text }); a.addEventListener("click", action.run); d.append(el("br"), a); }
@@ -745,9 +785,14 @@
         cut.addEventListener("click", (e) => { e.stopPropagation(); download(b, { ...m, openClip: true }); });
         row.appendChild(cut);
       }
+      if (!m.disabled && (m.kind === "captured" || (m.kind === "media" && m.stream))) {
+        const go = el("button", { class: "cut", text: "↗", title: fjT("openInApp") });
+        go.addEventListener("click", (e) => { e.stopPropagation(); openInApp(b); });
+        row.appendChild(go);
+      }
       box.appendChild(row);
     }
-    const pg = protectedOnly ? null : pageInAppRow();
+    const pg = protectedOnly ? null : pageInAppRow(b);
     if (pg) box.appendChild(pg);
     box.appendChild(footRow());
     pressable(box);
@@ -799,7 +844,7 @@
     const top = layer(), next = b.host.nextElementSibling;
     if (b.host.parentNode !== top) top.appendChild(b.host);
     else if (next && next.localName !== "fetchjet-button" && b.lifts < 6) { b.lifts++; top.appendChild(b.host); }
-    const w = b.open ? 340 : 34; // keep the anchor stable while the label expands on hover
+    const w = b.open ? 340 : ON_IOS ? 34 : 64; // keep the anchor stable while the label expands on hover
     const h = 34;
     const sp = spot;
     let y = sp ? r.top + sp[1] * r.height : r.top + 10;

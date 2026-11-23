@@ -108,6 +108,7 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
                         it.copy(
                             duplicateTaskAlert = null,
                             isAddDialogVisible = false,
+                            addHidden = false,
                             inputUrl = "",
                             linkList = emptyList()
                         )

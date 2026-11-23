@@ -57,6 +57,11 @@ class IosHybridHttpEngine(
 
     override fun getAllTasksFlow(): StateFlow<Map<String, DownloadTask>> = merged
 
+    override fun setDestination(taskId: String, destinationPath: String, fileName: String?) {
+        foreground.setDestination(taskId, destinationPath, fileName)
+        background.setDestination(taskId, destinationPath, fileName)
+    }
+
     override fun enqueueTask(task: DownloadTask): DownloadTask {
         // Not started yet: park it with the engine the current limit implies.
         return engineFor(task.id, create = true, url = task.url).enqueueTask(task)

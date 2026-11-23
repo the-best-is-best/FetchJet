@@ -78,6 +78,7 @@ export global Act {
     callback alertDismiss(kind: int, fromScrim: bool);
     callback alertText(kind: int, text: string);
     callback alertExtra(kind: int);
+    callback alertLink(kind: int);
     callback setSettingsSection(index: int);
     callback openMore();
     callback settingToggle(id: string, on: bool);
@@ -161,4 +162,13 @@ export global Act {
     callback choicePrimary(kind: int);
     callback choiceSecondary(kind: int);
     callback choiceDismiss(kind: int);
+    callback hideChecked();
+    callback unhideChecked();
+    callback unhideAll();
+    callback unhideGroup();
+    callback hiddenChangePin();
+    callback hiddenRemovePin();
+    callback hiddenLock();
+    callback hiddenRecoveryCode();
+    callback hiddenRestore();
 }

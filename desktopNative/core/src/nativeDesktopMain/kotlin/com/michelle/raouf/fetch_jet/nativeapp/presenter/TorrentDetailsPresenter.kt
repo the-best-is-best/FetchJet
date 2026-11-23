@@ -113,7 +113,7 @@ internal fun Presenter.startTorrentDetails() {
     val openId = combine(vm.uiState, local) { state, ui ->
         val id = ui.selectedTaskId
         if (id == null || state.selectedTab == DashboardTab.SETTINGS) null
-        else state.allTasks.firstOrNull { it.id == id }?.takeIf { it.engineType == EngineType.BITTORRENT }?.id
+        else state.findTask(id)?.takeIf { it.engineType == EngineType.BITTORRENT }?.id
     }.distinctUntilChanged()
     val page = vm.uiState.map { it.torrentDetails }.distinctUntilChanged()
     scope.launch {

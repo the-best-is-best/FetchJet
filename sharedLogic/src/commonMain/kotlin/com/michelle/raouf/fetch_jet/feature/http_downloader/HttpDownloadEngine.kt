@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface HttpDownloadEngine : DownloadEngine {
     fun enqueueTask(task: DownloadTask): DownloadTask
     fun getAllTasksFlow(): StateFlow<Map<String, DownloadTask>>
+
+    fun setDestination(taskId: String, destinationPath: String, fileName: String? = null)
 }
 
 /**

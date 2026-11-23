@@ -150,7 +150,7 @@ async function main() {
       await cdp.send("Runtime.enable", {}, sessionId);
       const state = await evaluate(cdp, sessionId, "JSON.stringify({ios: typeof ON_IOS !== 'undefined' ? ON_IOS : 'missing', version: chrome.runtime.getManifest().version, open: typeof openPageInApp, session: typeof iosSessionPage})");
       const s = JSON.parse(state);
-      check("the service worker is not in the iOS mode and reports 3.6.0", s.ios === false && s.version === "3.6.0", s);
+      check("the service worker is not in the iOS mode and reports 3.7.0", s.ios === false && s.version === "3.7.0", s);
     }
 
     const plain = await openTab(cdp, "http://127.0.0.1:" + SITE_PORT + "/test/real.html");

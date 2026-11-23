@@ -232,6 +232,53 @@ object BehaviorSettings {
 
     fun removeSiteFolder(site: String) = setSiteFolders(_siteFolders.value.filter { it.site != site })
 
+    fun snapshot(): Map<String, String> = buildMap {
+        put("monitorClipboard", _monitorClipboard.value.toString())
+        put("clipboardVideoPages", _clipboardVideoPages.value.toString())
+        put("sortIntoFolders", _sortIntoFolders.value.toString())
+        put("groupByFolder", _groupByFolder.value.toString())
+        put("videoPlaysEverywhere", _videoPlaysEverywhere.value.toString())
+        put("extractArchives", _extractArchives.value.toString())
+        put("extractPlace", _extractPlace.value.name)
+        put("deleteToTrash", _deleteToTrash.value.toString())
+        put("trashArchiveAfterExtract", _trashArchiveAfterExtract.value.toString())
+        put("scanFiles", _scanFiles.value.toString())
+        put("speedLimitOnlyInUse", _speedLimitOnlyInUse.value.toString())
+        put("connections", _connections.value.toString())
+        put("torrentStopRatio", _torrentStopRatio.value.toString())
+        for ((category, folder) in _categoryFolders.value) put("folder.$category", folder)
+        if (_siteFolders.value.isNotEmpty()) put("siteFolders", SiteFolderRules.encode(_siteFolders.value))
+    }
+
+    internal fun restore(values: Map<String, String>, paths: com.michelle.raouf.fetch_jet.core.filesystem.ImportedPaths) {
+        fun flag(key: String, set: (Boolean) -> Unit) {
+            values[key]?.toBooleanStrictOrNull()?.let { set(it) }
+        }
+        flag("monitorClipboard", this::setMonitorClipboard)
+        flag("clipboardVideoPages", this::setClipboardVideoPages)
+        flag("sortIntoFolders", this::setSortIntoFolders)
+        flag("groupByFolder", this::setGroupByFolder)
+        flag("videoPlaysEverywhere", this::setVideoPlaysEverywhere)
+        flag("extractArchives", this::setExtractArchives)
+        flag("deleteToTrash", this::setDeleteToTrash)
+        flag("trashArchiveAfterExtract", this::setTrashArchiveAfterExtract)
+        flag("scanFiles", this::setScanFiles)
+        flag("speedLimitOnlyInUse", this::setSpeedLimitOnlyInUse)
+        values["extractPlace"]?.let { v ->
+            com.michelle.raouf.fetch_jet.feature.archive_extract.ExtractPlace.entries.firstOrNull { it.name == v }?.let { setExtractPlace(it) }
+        }
+        values["connections"]?.toIntOrNull()?.let { setConnections(it.coerceAtLeast(0)) }
+        values["torrentStopRatio"]?.toFloatOrNull()?.takeIf { !it.isNaN() }?.let { setTorrentStopRatio(it.coerceAtLeast(0f)) }
+        for (category in FileCategory.allFolders) {
+            val folder = values["folder.$category"]?.takeIf { it.isNotBlank() }?.let { paths.directory(it) } ?: continue
+            setCategoryFolder(category, folder)
+        }
+        values["siteFolders"]?.let { text ->
+            val rules = SiteFolderRules.decode(text).mapNotNull { rule -> paths.directory(rule.folder)?.let { rule.copy(folder = it) } }
+            if (rules.isNotEmpty()) setSiteFolders(rules)
+        }
+    }
+
     private fun read(key: String): String? = try {
         if (!AppFileSystem.exists(file)) null
         else AppFileSystem.read(file) { readUtf8() }.lineSequence().map { it.trim() }

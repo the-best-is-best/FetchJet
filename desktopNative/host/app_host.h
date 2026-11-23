@@ -50,6 +50,9 @@ namespace fjhost {
                               const std::string &filter_name, const std::string &pattern);
         char *copy_for_core(const std::string &text);
         std::string store_updates();
+        bool auth_available();
+        bool auth_verify(const std::string &reason);
+        void *main_window();
 
         int child_main(int argc, char **argv, bool &handled);
     }

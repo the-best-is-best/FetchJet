@@ -11,7 +11,7 @@ from test_bridge import ALERT
 
 PORT = int(os.environ.get("FJ_ROWMENU_PORT", "18264"))
 BASE = "http://127.0.0.1:%d" % PORT
-KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "DELETE"]
+KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "UNHIDE", "DELETE"]
 KEY = {name: index for index, name in enumerate(KEYS)}
 
 
@@ -37,11 +37,11 @@ def add_and_wait(core, url, name, status=("COMPLETED", "ERROR")):
 def menu(core, task_id):
     core.action("RowMenu", id=task_id)
     core.pump(0.3)
-    return [KEYS[r.get("key", 0)] for r in core.rows("rowMenu")]
+    return [KEYS[r.get("key", 0)] for r in core.rows("rowMenu") if r.get("key", 0) < len(KEYS)]
 
 
 def labels(core):
-    return [(r.get("label", ""), r.get("danger", False), r.get("divider", False)) for r in core.rows("rowMenu")]
+    return [(r.get("label", ""), r.get("danger", False), r.get("divider", False)) for r in core.rows("rowMenu") if r.get("key", 0) < len(KEYS)]
 
 
 def run():

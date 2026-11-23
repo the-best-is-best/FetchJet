@@ -78,7 +78,7 @@ internal fun reportToday(): DayKey =
 @Composable
 internal fun ReportPage() {
     val s = LocalizationManager.Strings
-    val tasks by QueueManagerRepository.getInstance().allTasksFlow.collectAsState()
+    val tasks by QueueManagerRepository.getInstance().visibleTasksFlow.collectAsState()
     var period by rememberSaveable { mutableStateOf(ReportPeriod.THIS_MONTH) }
     var from by rememberSaveable { mutableStateOf<String?>(null) }
     var to by rememberSaveable { mutableStateOf<String?>(null) }
