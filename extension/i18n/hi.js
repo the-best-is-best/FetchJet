@@ -113,6 +113,7 @@ fjAddLanguage("hi", {
   "popupCaptureToggle": "डाउनलोड और लिंक कैप्चर करें",
   "popupMediaToggle": "पेजों पर मीडिया पहचानें",
   "popupSettings": "सेटिंग्स",
+  "extVersion": "एक्सटेंशन v{version}",
   "popupHoldHint": "ब्राउज़र से डाउनलोड करने के लिए क्लिक करते समय {key} दबाए रखें",
   "popupMenuHint": "FetchJet से डाउनलोड करने के लिए राइट-क्लिक मेनू का उपयोग करें",
   "popupDownloadWith": "FetchJet से डाउनलोड करें",

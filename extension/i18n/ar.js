@@ -113,6 +113,7 @@ fjAddLanguage("ar", {
   "popupCaptureToggle": "التقاط التنزيلات والروابط",
   "popupMediaToggle": "رصد الوسائط في الصفحات",
   "popupSettings": "الإعدادات",
+  "extVersion": "الإضافة v{version}",
   "popupHoldHint": "اضغط مع الاستمرار على {key} أثناء النقر للتنزيل بالمتصفح",
   "popupMenuHint": "استخدم قائمة السياق للتنزيل باستخدام FetchJet",
   "popupDownloadWith": "تنزيل باستخدام FetchJet",

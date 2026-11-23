@@ -31,6 +31,10 @@ function setStatus(state, text) {
   $("statusText").textContent = text;
 }
 
+function showExtVersion() {
+  $("extVersion").textContent = fjT("extVersion", { version: api.runtime.getManifest().version });
+}
+
 async function checkStatus() {
   setStatus("busy", fjT("popupChecking"));
   try {
@@ -210,7 +214,7 @@ function renderTexts() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  fjOnLanguage(() => { renderTexts(); checkStatus(); loadMedia(); });
+  fjOnLanguage(() => { renderTexts(); showExtVersion(); checkStatus(); loadMedia(); });
   renderTexts();
   setStatus("busy", fjT("popupChecking"));
   settings = await send({ action: "getSettings" });

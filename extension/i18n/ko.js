@@ -113,6 +113,7 @@ fjAddLanguage("ko", {
   "popupCaptureToggle": "다운로드 및 링크 가로채기",
   "popupMediaToggle": "페이지의 미디어 감지",
   "popupSettings": "설정",
+  "extVersion": "확장 프로그램 v{version}",
   "popupHoldHint": "{key} 키를 누른 채 클릭하면 브라우저로 다운로드합니다",
   "popupMenuHint": "컨텍스트 메뉴를 사용해 FetchJet으로 다운로드하세요",
   "popupDownloadWith": "FetchJet으로 다운로드",

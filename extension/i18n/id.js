@@ -113,6 +113,7 @@ fjAddLanguage("id", {
   "popupCaptureToggle": "Tangkap unduhan & link",
   "popupMediaToggle": "Deteksi media di halaman",
   "popupSettings": "Setelan",
+  "extVersion": "Ekstensi v{version}",
   "popupHoldHint": "Tahan {key} saat mengeklik untuk mengunduh dengan browser",
   "popupMenuHint": "Gunakan menu konteks untuk mengunduh dengan FetchJet",
   "popupDownloadWith": "Unduh dengan FetchJet",

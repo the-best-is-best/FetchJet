@@ -80,6 +80,10 @@ async function save() {
   setTimeout(() => { $("saved").textContent = ""; }, 2000);
 }
 
+function showExtVersion() {
+  $("extVersion").textContent = fjT("extVersion", { version: api.runtime.getManifest().version });
+}
+
 let lastStatus = null;
 function renderStatus() {
   const r = lastStatus;
@@ -95,7 +99,7 @@ function renderStatus() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  fjOnLanguage(() => { fitToBrowser(); renderStatus(); renderHidden(); });
+  fjOnLanguage(() => { fitToBrowser(); renderStatus(); renderHidden(); showExtVersion(); });
   api.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.settings && changes.settings.newValue) { hiddenSites = changes.settings.newValue.hiddenSites || []; renderHidden(); }
   });

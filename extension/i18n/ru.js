@@ -113,6 +113,7 @@ fjAddLanguage("ru", {
   "popupCaptureToggle": "Перехватывать загрузки и ссылки",
   "popupMediaToggle": "Находить медиа на страницах",
   "popupSettings": "Настройки",
+  "extVersion": "Расширение v{version}",
   "popupHoldHint": "Удерживайте {key} при нажатии, чтобы скачать браузером",
   "popupMenuHint": "Используйте контекстное меню, чтобы скачать с помощью FetchJet",
   "popupDownloadWith": "Скачать с помощью FetchJet",

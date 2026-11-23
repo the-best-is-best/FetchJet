@@ -113,6 +113,7 @@ fjAddLanguage("tr", {
   "popupCaptureToggle": "İndirmeleri ve bağlantıları yakala",
   "popupMediaToggle": "Sayfalarda medya algıla",
   "popupSettings": "Ayarlar",
+  "extVersion": "Uzantı v{version}",
   "popupHoldHint": "Tarayıcıyla indirmek için tıklarken {key} tuşunu basılı tutun",
   "popupMenuHint": "FetchJet ile indirmek için sağ tık menüsünü kullanın",
   "popupDownloadWith": "FetchJet ile indir",

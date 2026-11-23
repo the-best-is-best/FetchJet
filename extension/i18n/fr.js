@@ -113,6 +113,7 @@ fjAddLanguage("fr", {
   "popupCaptureToggle": "Intercepter les téléchargements et liens",
   "popupMediaToggle": "Détecter les médias sur les pages",
   "popupSettings": "Paramètres",
+  "extVersion": "Extension v{version}",
   "popupHoldHint": "Maintenez {key} en cliquant pour télécharger avec le navigateur",
   "popupMenuHint": "Utilisez le menu contextuel pour télécharger avec FetchJet",
   "popupDownloadWith": "Télécharger avec FetchJet",

@@ -113,6 +113,7 @@ fjAddLanguage("zh", {
   "popupCaptureToggle": "捕获下载和链接",
   "popupMediaToggle": "检测页面上的媒体",
   "popupSettings": "设置",
+  "extVersion": "扩展 v{version}",
   "popupHoldHint": "点击时按住 {key} 可使用浏览器下载",
   "popupMenuHint": "使用右键菜单通过 FetchJet 下载",
   "popupDownloadWith": "使用 FetchJet 下载",

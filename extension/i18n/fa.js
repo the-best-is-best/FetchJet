@@ -113,6 +113,7 @@ fjAddLanguage("fa", {
   "popupCaptureToggle": "گرفتن دانلودها و پیوندها",
   "popupMediaToggle": "شناسایی رسانه در صفحات",
   "popupSettings": "تنظیمات",
+  "extVersion": "افزونه v{version}",
   "popupHoldHint": "برای دانلود با مرورگر، هنگام کلیک {key} را نگه دارید",
   "popupMenuHint": "برای دانلود با FetchJet از منوی راست‌کلیک استفاده کنید",
   "popupDownloadWith": "دانلود با FetchJet",

@@ -113,6 +113,7 @@ fjAddLanguage("ja", {
   "popupCaptureToggle": "ダウンロードとリンクを取得",
   "popupMediaToggle": "ページ上のメディアを検出",
   "popupSettings": "設定",
+  "extVersion": "拡張機能 v{version}",
   "popupHoldHint": "{key} を押しながらクリックするとブラウザでダウンロードします",
   "popupMenuHint": "右クリックメニューから FetchJet でダウンロードできます",
   "popupDownloadWith": "FetchJet でダウンロード",
