@@ -25,8 +25,7 @@ internal class ImportedPaths(
         if (!clean.startsWith("/") && !driveStart.containsMatchIn(clean)) return null
         if (clean.split('/').any { it == ".." }) return null
         val windows = driveStart.containsMatchIn(clean)
-        val ownStorage = storageRoot != null && clean.startsWith("$storageRoot/") &&
-            !clean.startsWith("$storageRoot/Android/") && clean != "$storageRoot/Android"
+        val ownStorage = storageRoot != null && clean.startsWith("$storageRoot/")
         val inside = ownStorage || roots.any { root ->
             clean.equals(root, ignoreCase = windows) || clean.startsWith("$root/", ignoreCase = windows)
         }
