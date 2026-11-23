@@ -243,7 +243,7 @@ suspend fun QueueManagerRepository.unhideTasks(ids: Collection<String>): HiddenM
     var report = HiddenMoveReport()
     val shown = ArrayList<DownloadTask>()
     val gone = ArrayList<DownloadTask>()
-    val leaving = allTasksFlow.value.filter { it.id in wanted && it.hidden }
+    val leaving = allTasksFlow.value.filter { it.id in wanted && (it.hidden || HiddenStore.state.value.hides(it)) }
     val leavingIds = leaving.map { it.id }.toSet()
     var remaining = 0
     HiddenWork.owned.update { it + leavingIds }

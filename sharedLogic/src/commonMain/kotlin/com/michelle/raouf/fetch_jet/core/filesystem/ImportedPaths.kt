@@ -15,15 +15,19 @@ internal class ImportedPaths(
         addAll(extraRoots)
     }.map { clean(it) }.filter { it.isNotEmpty() && !driveRoot.matches(it) }.distinct()
 
+    private val storageRoot: String? = androidStorageRoot.find(clean(downloads))?.value
+
     fun directory(path: String): String? {
         if (!trustPaths) return null
-        val relocated = relocateAppPath(path.trim())
+        val relocated = remapStorageUser(relocateAppPath(path.trim()), storageRoot)
         val clean = clean(relocated)
         if (clean.isEmpty() || clean.any { it < ' ' }) return null
         if (!clean.startsWith("/") && !driveStart.containsMatchIn(clean)) return null
         if (clean.split('/').any { it == ".." }) return null
         val windows = driveStart.containsMatchIn(clean)
-        val inside = roots.any { root ->
+        val ownStorage = storageRoot != null && clean.startsWith("$storageRoot/") &&
+            !clean.startsWith("$storageRoot/Android/") && clean != "$storageRoot/Android"
+        val inside = ownStorage || roots.any { root ->
             clean.equals(root, ignoreCase = windows) || clean.startsWith("$root/", ignoreCase = windows)
         }
         return if (inside) relocated else null
@@ -38,3 +42,8 @@ internal class ImportedPaths(
         val driveRoot = Regex("^[A-Za-z]:$")
     }
 }
+
+private val androidStorageRoot = Regex("^/storage/emulated/[0-9]+")
+
+internal fun remapStorageUser(path: String, currentRoot: String?): String =
+    if (currentRoot == null) path else androidStorageRoot.replaceFirst(path, currentRoot)
