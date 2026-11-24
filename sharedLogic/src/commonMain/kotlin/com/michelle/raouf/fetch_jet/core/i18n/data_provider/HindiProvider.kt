@@ -922,6 +922,7 @@ object HindiProvider : AppLocalization {
     override val netLoginBrowserHint = "पेज पर साइन इन करें, फिर हो गया दबाएँ। FetchJet सत्र को एन्क्रिप्ट करके रखता है और इस साइट के डाउनलोड के लिए उपयोग करता है।"
     override val netLoginsEmpty = "कोई सहेजा गया लॉगिन नहीं"
     override val netRemove = "हटाएँ"
+    override val netRemoveConfirm = "यह सहेजा हुआ साइन-इन हटाएँ?"
     override fun netLoginsCount(n: Int) = "${n} लॉगिन"
     override val sysTabAllDownloads = "सभी डाउनलोड"
     override val sysTabActive = "सक्रिय"

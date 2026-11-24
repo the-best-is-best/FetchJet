@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
@@ -167,6 +168,7 @@ private fun SiteLoginsCard() {
     val logins by NetworkSettings.logins.collectAsState()
     val sessions by NetworkSettings.cookies.collectAsState()
     var signInSite by remember { mutableStateOf<String?>(null) }
+    var removing by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     var site by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -179,6 +181,22 @@ private fun SiteLoginsCard() {
         }
     }
 
+    removing?.let { (name, action) ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text(LocalizationManager.Strings.netRemoveConfirm) },
+            text = { Text(name) },
+            confirmButton = {
+                TextButton(onClick = { action(); removing = null }) {
+                    Text(LocalizationManager.Strings.netRemove, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removing = null }) { Text(LocalizationManager.Strings.cancel) }
+            }
+        )
+    }
+
     SettingsGroup(
         title = LocalizationManager.Strings.netLoginsGroup,
         footer = LocalizationManager.Strings.netLoginsHint
@@ -188,7 +206,7 @@ private fun SiteLoginsCard() {
         }
         sessions.forEach { session ->
             SettingRow(title = session.site, subtitle = LocalizationManager.Strings.netLoginBrowserTag) {
-                TextButton(onClick = { NetworkSettings.removeCookie(session.site) }) {
+                TextButton(onClick = { removing = session.site to { NetworkSettings.removeCookie(session.site) } }) {
                     Text(
                         LocalizationManager.Strings.netRemove,
                         color = MaterialTheme.colorScheme.error
@@ -199,7 +217,7 @@ private fun SiteLoginsCard() {
         }
         logins.forEach { login ->
             SettingRow(title = login.site, subtitle = login.user) {
-                TextButton(onClick = { NetworkSettings.removeLogin(login.site) }) {
+                TextButton(onClick = { removing = login.site to { NetworkSettings.removeLogin(login.site) } }) {
                     Text(
                         LocalizationManager.Strings.netRemove,
                         color = MaterialTheme.colorScheme.error

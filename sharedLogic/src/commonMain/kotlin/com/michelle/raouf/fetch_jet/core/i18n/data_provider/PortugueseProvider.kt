@@ -943,6 +943,7 @@ object PortugueseProvider : AppLocalization {
     override val netLoginBrowserHint = "Entre na página e toque em Pronto. O FetchJet guarda a sessão (criptografada) para downloads deste site."
     override val netLoginsEmpty = "Nenhum login salvo"
     override val netRemove = "Remover"
+    override val netRemoveConfirm = "Remover este login salvo?"
     override fun netLoginsCount(n: Int) = "${n} logins"
     override val sysTabAllDownloads = "Todos os downloads"
     override val sysTabActive = "Ativos"

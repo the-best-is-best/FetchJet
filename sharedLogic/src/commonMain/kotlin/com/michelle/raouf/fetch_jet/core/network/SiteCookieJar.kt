@@ -19,9 +19,14 @@ object SiteCookieJar {
     private var bySite: Map<String, Map<String, String>> = emptyMap()
 
     /** "www.udemy.com" and "udemy.com" are one site; "m.youtube.com" / "youtu.be" -> "youtube.com". */
+    private val ipv4 = Regex("""^\d{1,3}(\.\d{1,3}){3}(:\d+)?$""")
+
     fun siteOf(url: String): String {
-        val host = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
-            .substringBefore(':').lowercase().removePrefix("www.").removePrefix("m.")
+        val authority = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
+            .substringBefore('#').substringAfterLast('@').lowercase()
+        // An address, localhost or a port on it is its own site: never share a cookie jar slot with another one.
+        if (authority.startsWith("[") || ipv4.matches(authority) || authority == "localhost" || authority.startsWith("localhost:")) return authority
+        val host = authority.substringBefore(':').removePrefix("www.").removePrefix("m.")
         if (host == "youtu.be") return "youtube.com"
         val parts = host.split('.')
         // Hosting domains where every sub-domain is someone else's site: keep one more label.

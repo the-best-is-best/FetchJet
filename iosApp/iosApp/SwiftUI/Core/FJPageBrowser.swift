@@ -203,14 +203,6 @@ struct FJPageBrowserSheet: View {
         let s = store.strings
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Button { model.webView.goBack() } label: {
-                    Image(systemName: "chevron.left").font(.fj(15, .semibold)).frame(width: 32, height: 36)
-                }
-                .disabled(!model.canBack)
-                Button { model.webView.goForward() } label: {
-                    Image(systemName: "chevron.right").font(.fj(15, .semibold)).frame(width: 32, height: 36)
-                }
-                .disabled(!model.canForward)
                 TextField(s.browserAddressHint, text: $typed)
                     .font(.fj(14))
                     .textInputAutocapitalization(.never)
@@ -223,13 +215,9 @@ struct FJPageBrowserSheet: View {
                     .padding(.horizontal, 10)
                     .frame(height: 36)
                     .background(FJTheme.color.surfaceVariant, in: RoundedRectangle(cornerRadius: 10))
-                if model.loading {
-                    ProgressView()
-                } else {
-                    Button { model.webView.reload() } label: {
-                        Image(systemName: "arrow.clockwise").font(.fj(14, .semibold)).frame(width: 32, height: 36)
+                    .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { note in
+                        DispatchQueue.main.async { (note.object as? UITextField)?.selectAll(nil) }
                     }
-                }
                 Button(action: close) {
                     Image(systemName: "xmark")
                         .font(.fj(15, .semibold))
@@ -242,38 +230,47 @@ struct FJPageBrowserSheet: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(FJTheme.color.surface)
-            Divider()
-            FJPageWebView(model: model, url: url)
-            Divider()
-            HStack(spacing: 10) {
-                Button {
-                    model.sendPage { ok in if ok { close() } }
-                } label: {
-                    Text(s.browserSendPage)
-                        .font(.fj(14, .semibold))
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(FJTheme.color.primary)
+            HStack(spacing: 0) {
+                Button { model.webView.goBack() } label: {
+                    Image(systemName: "chevron.left").font(.fj(22, .semibold)).frame(maxWidth: .infinity, minHeight: 44)
                 }
-                Button {
-                    model.download { ok in if ok { close() } }
-                } label: {
-                    Text(s.browserDownloadMedia)
-                        .font(.fj(14, .semibold))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(.white)
-                        .background(FJTheme.color.primary.opacity(model.mediaUrl.isEmpty ? 0.35 : 1), in: Capsule())
+                .disabled(!model.canBack)
+                Button { model.webView.goForward() } label: {
+                    Image(systemName: "chevron.right").font(.fj(22, .semibold)).frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .disabled(model.mediaUrl.isEmpty)
+                .disabled(!model.canForward)
+                if model.loading {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+                } else {
+                    Button { model.webView.reload() } label: {
+                        Image(systemName: "arrow.clockwise").font(.fj(20, .semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                }
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
             .background(FJTheme.color.surface)
+            Divider()
+            ZStack(alignment: .bottomTrailing) {
+                FJPageWebView(model: model, url: url)
+                Button {
+                    if model.mediaUrl.isEmpty {
+                        model.sendPage { ok in if ok { close() } }
+                    } else {
+                        model.download { ok in if ok { close() } }
+                    }
+                } label: {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.fj(22, .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(FJTheme.color.primary.opacity(model.mediaUrl.isEmpty ? 0.6 : 1), in: Circle())
+                        .shadow(radius: 4, y: 2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(s.browserDownloadMedia)
+                .padding(16)
+            }
         }
         .background(FJTheme.color.background.ignoresSafeArea())
         .onAppear {

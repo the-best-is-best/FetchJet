@@ -940,6 +940,7 @@ object ItalianProvider : AppLocalization {
     override val netLoginBrowserHint = "Accedi nella pagina e premi Fatto. FetchJet conserva la sessione (cifrata) per i download di questo sito."
     override val netLoginsEmpty = "Nessun accesso salvato"
     override val netRemove = "Rimuovi"
+    override val netRemoveConfirm = "Rimuovere questo accesso salvato?"
     override fun netLoginsCount(n: Int) = "${n} accessi"
     override val sysTabAllDownloads = "Tutti i download"
     override val sysTabActive = "Attivi"

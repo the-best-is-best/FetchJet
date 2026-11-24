@@ -816,6 +816,7 @@ interface AppLocalization : LocalizationProvider {
     val netLoginBrowserHint: String
     val netLoginsEmpty: String
     val netRemove: String
+    val netRemoveConfirm: String
     fun netLoginsCount(n: Int): String
     val sysTabAllDownloads: String
     val sysTabActive: String

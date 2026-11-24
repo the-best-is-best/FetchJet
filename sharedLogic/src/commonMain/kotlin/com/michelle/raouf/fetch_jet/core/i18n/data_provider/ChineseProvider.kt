@@ -896,6 +896,7 @@ object ChineseProvider : AppLocalization {
     override val netLoginBrowserHint = "在页面中登录，然后点击完成。FetchJet 会加密保存会话，并用于此网站的下载。"
     override val netLoginsEmpty = "没有保存的登录"
     override val netRemove = "删除"
+    override val netRemoveConfirm = "要移除这个已保存的登录吗？"
     override fun netLoginsCount(n: Int) = "${n} 个登录"
     override val sysTabAllDownloads = "全部下载"
     override val sysTabActive = "进行中"

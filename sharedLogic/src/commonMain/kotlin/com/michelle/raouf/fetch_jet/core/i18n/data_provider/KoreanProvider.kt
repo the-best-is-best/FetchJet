@@ -886,6 +886,7 @@ object KoreanProvider : AppLocalization {
     override val netLoginBrowserHint = "페이지에서 로그인한 뒤 완료를 누르세요. FetchJet은 세션을 암호화해 저장하고 이 사이트의 다운로드에 사용합니다."
     override val netLoginsEmpty = "저장된 로그인이 없습니다"
     override val netRemove = "삭제"
+    override val netRemoveConfirm = "저장된 로그인을 삭제할까요?"
     override fun netLoginsCount(n: Int) = "로그인 ${n}개"
     override val sysTabAllDownloads = "모든 다운로드"
     override val sysTabActive = "진행 중"

@@ -933,6 +933,7 @@ object PersianProvider : AppLocalization {
     override val netLoginBrowserHint = "در صفحه وارد شوید و تمام را بزنید. FetchJet نشست را رمزگذاری‌شده نگه می‌دارد و برای دانلود از این سایت به کار می‌برد."
     override val netLoginsEmpty = "هیچ ورودی ذخیره نشده است"
     override val netRemove = "حذف"
+    override val netRemoveConfirm = "این ورود ذخیره‌شده حذف شود؟"
     override fun netLoginsCount(n: Int) = "${n} ورود"
     override val sysTabAllDownloads = "همه دانلودها"
     override val sysTabActive = "فعال"

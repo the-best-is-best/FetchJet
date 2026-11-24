@@ -930,6 +930,7 @@ object TurkishProvider : AppLocalization {
     override val netLoginBrowserHint = "Sayfada giriş yapın, sonra Bitti'ye basın. FetchJet oturumu (şifreli) bu siteden indirmeler için saklar."
     override val netLoginsEmpty = "Kayıtlı giriş yok"
     override val netRemove = "Kaldır"
+    override val netRemoveConfirm = "Kayıtlı bu girişi kaldırmak istiyor musunuz?"
     override fun netLoginsCount(n: Int) = "${n} giriş"
     override val sysTabAllDownloads = "Tüm indirmeler"
     override val sysTabActive = "Etkin"

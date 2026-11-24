@@ -956,6 +956,7 @@ object GermanProvider : AppLocalization {
     override val netLoginBrowserHint = "Melde dich auf der Seite an und tippe auf Fertig. FetchJet speichert die Sitzung (verschlüsselt) für Downloads von dieser Seite."
     override val netLoginsEmpty = "Keine gespeicherten Anmeldungen"
     override val netRemove = "Entfernen"
+    override val netRemoveConfirm = "Diese gespeicherte Anmeldung entfernen?"
     override fun netLoginsCount(n: Int) = "${n} Anmeldungen"
     override val sysTabAllDownloads = "Alle Downloads"
     override val sysTabActive = "Aktiv"

@@ -926,6 +926,7 @@ object EnglishProvider : AppLocalization {
     override val netLoginBrowserHint = "Sign in on the page, then press Done. FetchJet keeps the session (encrypted) and uses it for downloads from this site."
     override val netLoginsEmpty = "No saved logins"
     override val netRemove = "Remove"
+    override val netRemoveConfirm = "Remove this saved sign-in?"
     override fun netLoginsCount(n: Int) = "${n} logins"
     override val sysTabAllDownloads = "All Downloads"
     override val sysTabActive = "Active"

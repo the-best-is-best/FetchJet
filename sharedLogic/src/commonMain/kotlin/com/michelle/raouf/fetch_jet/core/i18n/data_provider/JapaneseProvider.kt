@@ -927,6 +927,7 @@ object JapaneseProvider : AppLocalization {
     override val netLoginBrowserHint = "ページでログインし、「完了」を押してください。FetchJet はセッションを暗号化して保存し、このサイトのダウンロードに使います。"
     override val netLoginsEmpty = "保存されたログインはありません"
     override val netRemove = "削除"
+    override val netRemoveConfirm = "保存済みのログインを削除しますか？"
     override fun netLoginsCount(n: Int) = "ログイン ${n} 件"
     override val sysTabAllDownloads = "すべてのダウンロード"
     override val sysTabActive = "進行中"

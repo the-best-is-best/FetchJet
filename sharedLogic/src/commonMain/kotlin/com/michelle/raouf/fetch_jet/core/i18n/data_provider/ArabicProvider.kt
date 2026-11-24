@@ -941,6 +941,7 @@ object ArabicProvider : AppLocalization {
     override val netLoginBrowserHint = "سجّل دخولك في الصفحة وبعدين اضغط تم. FetchJet بيحفظ الجلسة (مشفّرة) ويستخدمها لتنزيلات الموقع ده."
     override val netLoginsEmpty = "لا توجد بيانات دخول محفوظة"
     override val netRemove = "حذف"
+    override val netRemoveConfirm = "حذف تسجيل الدخول المحفوظ ده؟"
     override fun netLoginsCount(n: Int) = "${n} حسابات"
     override val sysTabAllDownloads = "كل التنزيلات"
     override val sysTabActive = "النشطة"

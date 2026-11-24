@@ -941,6 +941,7 @@ object RussianProvider : AppLocalization {
     override val netLoginBrowserHint = "Войдите на странице и нажмите «Готово». FetchJet сохранит сеанс (в зашифрованном виде) для загрузок с этого сайта."
     override val netLoginsEmpty = "Нет сохранённых входов"
     override val netRemove = "Удалить"
+    override val netRemoveConfirm = "Удалить этот сохранённый вход?"
     override fun netLoginsCount(n: Int) = "Входов: ${n}"
     override val sysTabAllDownloads = "Все загрузки"
     override val sysTabActive = "Активные"

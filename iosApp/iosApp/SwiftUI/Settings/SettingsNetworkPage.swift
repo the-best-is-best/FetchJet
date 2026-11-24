@@ -112,6 +112,7 @@ struct SettingsLoginsCard: View {
     @State private var user = ""
     @State private var password = ""
     @State private var signIn: FJSignInTarget?
+    @State private var removing: (name: String, action: () -> Void)?
 
     var body: some View {
         let s = store.strings
@@ -124,8 +125,10 @@ struct SettingsLoginsCard: View {
             ForEach(live.sessions, id: \.site) { session in
                 SettingsRow(title: session.site, subtitle: s.netLoginBrowserTag) {
                     Button(s.netRemove) {
-                        NetworkSettings.shared.removeCookie(site: session.site)
-                        live.refresh()
+                        removing = (session.site, {
+                            NetworkSettings.shared.removeCookie(site: session.site)
+                            live.refresh()
+                        })
                     }
                     .font(Font.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.error)
@@ -136,8 +139,10 @@ struct SettingsLoginsCard: View {
             ForEach(live.logins, id: \.site) { login in
                 SettingsRow(title: login.site, subtitle: login.user) {
                     Button(s.netRemove) {
-                        NetworkSettings.shared.removeLogin(site: login.site)
-                        live.refresh()
+                        removing = (login.site, {
+                            NetworkSettings.shared.removeLogin(site: login.site)
+                            live.refresh()
+                        })
                     }
                     .font(Font.fj(14, .semibold))
                     .foregroundStyle(FJTheme.color.error)
@@ -178,6 +183,12 @@ struct SettingsLoginsCard: View {
                 signIn = nil
             }
             .environmentObject(store)
+        }
+        .alert(s.netRemoveConfirm, isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
+            Button(s.netRemove, role: .destructive) { removing?.action(); removing = nil }
+            Button(s.cancel, role: .cancel) { removing = nil }
+        } message: {
+            Text(removing?.name ?? "")
         }
     }
 }

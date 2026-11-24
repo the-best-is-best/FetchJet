@@ -945,6 +945,7 @@ object SpanishProvider : AppLocalization {
     override val netLoginBrowserHint = "Inicia sesión en la página y pulsa Listo. FetchJet guarda la sesión (cifrada) para las descargas de este sitio."
     override val netLoginsEmpty = "No hay inicios de sesión guardados"
     override val netRemove = "Quitar"
+    override val netRemoveConfirm = "¿Quitar este inicio de sesión guardado?"
     override fun netLoginsCount(n: Int) = "${n} inicios de sesión"
     override val sysTabAllDownloads = "Todas las descargas"
     override val sysTabActive = "Activas"

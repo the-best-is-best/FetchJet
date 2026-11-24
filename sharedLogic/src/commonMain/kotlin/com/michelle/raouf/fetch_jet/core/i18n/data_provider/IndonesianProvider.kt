@@ -936,6 +936,7 @@ object IndonesianProvider : AppLocalization {
     override val netLoginBrowserHint = "Masuk di halaman, lalu tekan Selesai. FetchJet menyimpan sesi (terenkripsi) untuk unduhan dari situs ini."
     override val netLoginsEmpty = "Belum ada login tersimpan"
     override val netRemove = "Hapus"
+    override val netRemoveConfirm = "Hapus login tersimpan ini?"
     override fun netLoginsCount(n: Int) = "${n} login"
     override val sysTabAllDownloads = "Semua unduhan"
     override val sysTabActive = "Aktif"
