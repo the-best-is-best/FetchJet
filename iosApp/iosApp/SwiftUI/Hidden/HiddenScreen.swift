@@ -177,6 +177,7 @@ struct HiddenScreen: View {
                 }
                 .environmentObject(store)
                 .hiddenPrivacyCover()
+                .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
             }
         }
         .onChange(of: rows.map { $0.id }) { _, ids in
@@ -185,6 +186,12 @@ struct HiddenScreen: View {
         }
         .onChange(of: store.state.hidden.tasks.map { $0.id }) { _, ids in
             if let id = detailId, !ids.contains(id) { detailId = nil }
+        }
+        .onChange(of: store.state.hidden.covered) { _, covered in
+            if covered {
+                detailId = nil
+                sheet = nil
+            }
         }
         .onDisappear { if !FJStore.previewShown() { store.hiddenLock() } }
     }
