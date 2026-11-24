@@ -542,7 +542,9 @@ namespace fjhost::player {
             }
             g_event_posted = false;
             g_frame_posted = false;
+#ifndef __APPLE__
             unload_library();
+#endif
         }
 
         void begin_hold(bool forward) {
