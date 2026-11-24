@@ -16,6 +16,7 @@ namespace fjhost {
     void quit_app();
     void open_external(const std::string &url);
     std::string plain(const slint::SharedString &text);
+    std::string core_call(const std::string &name, const std::string &args);
 
     namespace os {
         void prepare_process();

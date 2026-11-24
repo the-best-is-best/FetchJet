@@ -540,6 +540,7 @@ export struct ChromeDto {
     playlistCanPause: bool,
     playlistCanResume: bool,
     playlistCanCheck: bool,
+    playlistCanPlay: bool,
     playlistLanguagesShown: bool,
     playlistLanguagesBusy: bool,
     playlistLanguagesNote: string,
@@ -947,6 +948,7 @@ export global EffectKind {
     out property <int> scroll-to-row: 2;
     out property <int> notify: 3;
     out property <int> exit: 4;
+    out property <int> open-player: 5;
 }
 
 export global SideFilterCode {

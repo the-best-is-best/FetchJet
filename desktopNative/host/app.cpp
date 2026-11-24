@@ -1,5 +1,6 @@
 #include "app_host.h"
 #include "emoji_files.h"
+#include "player_mpv.h"
 
 #include <chrono>
 #include <cstdio>
@@ -113,6 +114,9 @@ namespace fjhost {
                     case fjgen::EffectKind::Exit:
                         quit_app();
                         break;
+                    case fjgen::EffectKind::OpenPlayer:
+                        player::open(plain(effect.text));
+                        break;
                     default:
                         break;
                 }
@@ -195,7 +199,18 @@ namespace fjhost {
                 g_script_timer.stop();
                 return;
             }
-            send_action(g_script[g_script_next++]);
+            const std::string &line = g_script[g_script_next++];
+            if (line.compare(0, 10, "{\"player\":") == 0) {
+                fj::Json json;
+                std::string error;
+                if (fj::parse_json(line, json, error)) {
+                    const fj::Json *name = json.find("player");
+                    const fj::Json *value = json.find("value");
+                    player::debug(name ? name->text : "", value ? value->number : 0.0);
+                }
+                return;
+            }
+            send_action(line);
         }
 
         std::string start_config(int argc, char **argv, bool &can_focus) {
@@ -278,6 +293,12 @@ namespace fjhost {
 
     bool has_ui() {
         return g_ui.has_value();
+    }
+
+    std::string core_call(const std::string &name, const std::string &args) {
+        if (!g_core.call)
+            return "";
+        return take(g_core.call(name.c_str(), args.c_str()));
     }
 
     std::string plain(const slint::SharedString &text) {
@@ -401,6 +422,7 @@ namespace fjhost {
         g_ui = AppWindow::create();
         auto &window = ui();
         register_fonts();
+        player::wire();
         window.global<Emoji>().on_icon([](slint::SharedString glyph, int size, int) { return emoji_icon(glyph, size); });
         window.global<Emoji>().set_ready(true);
         window.on_resized([] { repaint_soon(); });
@@ -439,6 +461,7 @@ namespace fjhost {
 
         g_running = false;
         os::remove_tray();
+        player::shutdown();
         g_core.shutdown();
         g_ui.reset();
         os::release_instance(instance);

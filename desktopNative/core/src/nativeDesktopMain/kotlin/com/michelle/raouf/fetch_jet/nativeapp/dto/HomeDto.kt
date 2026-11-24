@@ -75,6 +75,7 @@ data class ChromeDto(
     val playlistCanPause: Boolean = false,
     val playlistCanResume: Boolean = false,
     val playlistCanCheck: Boolean = false,
+    val playlistCanPlay: Boolean = false,
     val playlistLanguagesShown: Boolean = false,
     val playlistLanguagesBusy: Boolean = false,
     val playlistLanguagesNote: String = "",

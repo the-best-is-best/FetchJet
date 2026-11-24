@@ -358,7 +358,8 @@
    "SHOW_WINDOW",
    "SCROLL_TO_ROW",
    "NOTIFY",
-   "EXIT"
+   "EXIT",
+   "OPEN_PLAYER"
   ],
   "SideFilterCode": [
    "ALL",
@@ -2285,6 +2286,10 @@
     "Boolean"
    ],
    [
+    "playlistCanPlay",
+    "Boolean"
+   ],
+   [
     "playlistLanguagesShown",
     "Boolean"
    ],
@@ -3260,6 +3265,7 @@
   "PlaylistResumeAll": [],
   "PlaylistRemove": [],
   "PlaylistCheck": [],
+  "PlayOpenGroup": [],
   "PlaylistReadLanguages": [],
   "PlaylistAddLanguage": [
    [
@@ -3989,6 +3995,11 @@
   "morePrivacy",
   "moreStats",
   "hiddenTitle",
+  "browserTitle",
+  "browserHint",
+  "browserAddressHint",
+  "browserSendPage",
+  "browserDownloadMedia",
   "hiddenHide",
   "hiddenUnhide",
   "hiddenUnhideAll",
@@ -4641,8 +4652,13 @@
   "netLoginsHint",
   "netLoginSite",
   "netLoginAdd",
+  "netLoginBrowser",
+  "netLoginBrowserTag",
+  "netLoginBrowserDone",
+  "netLoginBrowserHint",
   "netLoginsEmpty",
   "netRemove",
+  "netRemoveConfirm",
   "sysTabAllDownloads",
   "sysTabActive",
   "sysTabCompleted",
@@ -4699,6 +4715,9 @@
   "sysReadingChannelName",
   "sysReadingVideosCount",
   "playlistGroupDone",
+  "playerAllFinished",
+  "playerStartOver",
+  "playerPlayAll",
   "playlistCheckNew",
   "playlistBack",
   "playlistDeleteAll",

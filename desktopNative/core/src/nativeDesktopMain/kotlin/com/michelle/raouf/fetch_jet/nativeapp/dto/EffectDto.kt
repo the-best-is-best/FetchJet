@@ -8,6 +8,7 @@ enum class EffectKind {
     SCROLL_TO_ROW,
     NOTIFY,
     EXIT,
+    OPEN_PLAYER,
 }
 
 @Serializable

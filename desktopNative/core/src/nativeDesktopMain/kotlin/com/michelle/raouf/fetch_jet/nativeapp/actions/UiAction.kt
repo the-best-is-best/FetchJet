@@ -103,6 +103,10 @@ sealed interface UiAction {
     data object PlaylistCheck : UiAction
 
     @Serializable
+    @SerialName("PlayOpenGroup")
+    data object PlayOpenGroup : UiAction
+
+    @Serializable
     @SerialName("PlaylistReadLanguages")
     data object PlaylistReadLanguages : UiAction
 

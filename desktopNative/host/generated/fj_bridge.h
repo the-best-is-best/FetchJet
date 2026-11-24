@@ -147,6 +147,7 @@ namespace EffectKind {
     inline constexpr int ScrollToRow = 2;
     inline constexpr int Notify = 3;
     inline constexpr int Exit = 4;
+    inline constexpr int OpenPlayer = 5;
 }
 
 namespace SideFilterCode {
@@ -884,6 +885,7 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.playlistCanPause = fj::flag(j, "playlistCanPause");
     d.playlistCanResume = fj::flag(j, "playlistCanResume");
     d.playlistCanCheck = fj::flag(j, "playlistCanCheck");
+    d.playlistCanPlay = fj::flag(j, "playlistCanPlay");
     d.playlistLanguagesShown = fj::flag(j, "playlistLanguagesShown");
     d.playlistLanguagesBusy = fj::flag(j, "playlistLanguagesBusy");
     d.playlistLanguagesNote = fj::text(j, "playlistLanguagesNote");
@@ -1305,6 +1307,11 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_morePrivacy(next());
     tr.set_moreStats(next());
     tr.set_hiddenTitle(next());
+    tr.set_browserTitle(next());
+    tr.set_browserHint(next());
+    tr.set_browserAddressHint(next());
+    tr.set_browserSendPage(next());
+    tr.set_browserDownloadMedia(next());
     tr.set_hiddenHide(next());
     tr.set_hiddenUnhide(next());
     tr.set_hiddenUnhideAll(next());
@@ -1957,8 +1964,13 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_netLoginsHint(next());
     tr.set_netLoginSite(next());
     tr.set_netLoginAdd(next());
+    tr.set_netLoginBrowser(next());
+    tr.set_netLoginBrowserTag(next());
+    tr.set_netLoginBrowserDone(next());
+    tr.set_netLoginBrowserHint(next());
     tr.set_netLoginsEmpty(next());
     tr.set_netRemove(next());
+    tr.set_netRemoveConfirm(next());
     tr.set_sysTabAllDownloads(next());
     tr.set_sysTabActive(next());
     tr.set_sysTabCompleted(next());
@@ -2015,6 +2027,9 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysReadingChannelName(next());
     tr.set_sysReadingVideosCount(next());
     tr.set_playlistGroupDone(next());
+    tr.set_playerAllFinished(next());
+    tr.set_playerStartOver(next());
+    tr.set_playerPlayAll(next());
     tr.set_playlistCheckNew(next());
     tr.set_playlistBack(next());
     tr.set_playlistDeleteAll(next());
@@ -2306,6 +2321,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_playlistResumeAll([send]() { fj::ActionWriter w("PlaylistResumeAll"); send(w.finish()); });
     act.on_playlistRemove([send]() { fj::ActionWriter w("PlaylistRemove"); send(w.finish()); });
     act.on_playlistCheck([send]() { fj::ActionWriter w("PlaylistCheck"); send(w.finish()); });
+    act.on_playOpenGroup([send]() { fj::ActionWriter w("PlayOpenGroup"); send(w.finish()); });
     act.on_playlistReadLanguages([send]() { fj::ActionWriter w("PlaylistReadLanguages"); send(w.finish()); });
     act.on_playlistAddLanguage([send](slint::SharedString code) { fj::ActionWriter w("PlaylistAddLanguage"); w.add("code", code); send(w.finish()); });
     act.on_playlistLanguagesClose([send]() { fj::ActionWriter w("PlaylistLanguagesClose"); send(w.finish()); });

@@ -53,6 +53,7 @@ internal fun Presenter.dispatch(action: UiAction) {
                 ?: openPlaylistId()?.let { id -> state.allTasks.firstOrNull { it.playlistId == id }?.destinationPath ?: state.playlists[id]?.folder }
             if (path != null && !headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
         }
+        UiAction.PlayOpenGroup -> playOpenGroup()
         UiAction.PlaylistCheck -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistCheck(it)) }
         UiAction.PlaylistReadLanguages -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(it)) }
         is UiAction.PlaylistAddLanguage -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(it, action.code)) }
@@ -437,6 +438,7 @@ private fun Presenter.rowQuickAction(id: String) {
 
 internal fun Presenter.openDownloadedFile(fullPath: String, taskId: String) {
     if (local.value.hiddenOpen) return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(taskId))
+    task(taskId)?.let { if (!headless && playTask(it)) return }
     scope.launch(Dispatchers.IO) {
         if (!pathResolver.fileExists(fullPath)) {
             local.update { it.copy(missingFileTaskId = taskId) }

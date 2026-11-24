@@ -16,12 +16,14 @@ import { AudioCompressDialog } from "pages/AudioCompress.slint";
 import { SubtitlesDialog } from "pages/SubtitlesPage.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
 import { ShortcutsDialog } from "pages/Shortcuts.slint";
+import { PlayerPage, PlayerUi } from "pages/Player.slint";
 import { PairingCode } from "generated/dto.slint";
 import { Core } from "generated/dto.slint";
 import { Tr } from "generated/tr.slint";
 import { Act } from "generated/actions.slint";
 export * from "generated/dto.slint";
 export { Theme, Dir, Tr, Act, Emoji }
+export { PlayerUi, PlayerRow } from "pages/Player.slint";
 
 component DetailsSheet inherits Rectangle {
     in-out property <bool> expanded: false;
@@ -80,7 +82,7 @@ export component AppWindow inherits Window {
     private property <length> panel: root.details-side ? 340px : 0px;
     private property <bool> overlay-open: Core.chrome.settingsOpen || Core.add.visible || Core.clipPicker.open || Core.deviceSheet.open
         || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.subtitlesPage.open || Core.updateDialog.open
-        || Core.alerts.length > 0 || Core.choices.length > 0;
+        || Core.alerts.length > 0 || Core.choices.length > 0 || PlayerUi.open;
     changed overlay-open => {
         if !root.overlay-open {
             list.focus();
@@ -177,4 +179,5 @@ export component AppWindow inherits Window {
     shortcuts := ShortcutsDialog {
         host-width: root.width;
     }
+    if PlayerUi.open: PlayerPage { }
 }

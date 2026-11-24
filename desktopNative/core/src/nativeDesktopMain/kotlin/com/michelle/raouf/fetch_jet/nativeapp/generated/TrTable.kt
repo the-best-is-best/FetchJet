@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 1010
+internal const val TR_COUNT = 1023
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -42,6 +42,11 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.morePrivacy,
     s.moreStats,
     s.hiddenTitle,
+    s.browserTitle,
+    s.browserHint,
+    s.browserAddressHint,
+    s.browserSendPage,
+    s.browserDownloadMedia,
     s.hiddenHide,
     s.hiddenUnhide,
     s.hiddenUnhideAll,
@@ -694,8 +699,13 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.netLoginsHint,
     s.netLoginSite,
     s.netLoginAdd,
+    s.netLoginBrowser,
+    s.netLoginBrowserTag,
+    s.netLoginBrowserDone,
+    s.netLoginBrowserHint,
     s.netLoginsEmpty,
     s.netRemove,
+    s.netRemoveConfirm,
     s.sysTabAllDownloads,
     s.sysTabActive,
     s.sysTabCompleted,
@@ -752,6 +762,9 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.sysReadingChannelName,
     s.sysReadingVideosCount,
     s.playlistGroupDone,
+    s.playerAllFinished,
+    s.playerStartOver,
+    s.playerPlayAll,
     s.playlistCheckNew,
     s.playlistBack,
     s.playlistDeleteAll,

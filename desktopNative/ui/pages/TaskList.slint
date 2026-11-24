@@ -158,6 +158,11 @@ component PlaylistBar inherits Rectangle {
                 overflow: elide;
                 horizontal-stretch: 1;
             }
+            if Core.chrome.playlistCanPlay: BarButton {
+                glyph: "🎬";
+                text: Tr.playerPlayAll;
+                clicked => { Act.playOpenGroup(); }
+            }
             if !Core.chrome.groupIsFolder && !Core.chrome.hiddenOpen: BarButton {
                 glyph: "🔄";
                 text: Core.chrome.groupIsPage ? Tr.grabCheckNew : Tr.playlistCheckNew;

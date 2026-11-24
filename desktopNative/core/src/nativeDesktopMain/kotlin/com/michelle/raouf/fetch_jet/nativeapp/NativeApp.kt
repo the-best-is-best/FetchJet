@@ -252,6 +252,7 @@ internal object NativeApp {
             name == "version" -> APP_VERSION
             name == "home" -> DesktopApp.appHome
             name == "openUrl" -> openExternal(args)
+            name.startsWith("player.") -> com.michelle.raouf.fetch_jet.nativeapp.presenter.playerCall(name.removePrefix("player."), args)
             name.startsWith("debug.") && config.debug -> DebugCalls.call(name.removePrefix("debug."), args)
             else -> ""
         }
