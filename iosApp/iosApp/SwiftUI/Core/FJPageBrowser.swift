@@ -151,7 +151,8 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
     ) {
         let response = navigationResponse.response as? HTTPURLResponse
         let disposition = response?.value(forHTTPHeaderField: "Content-Disposition")?.lowercased() ?? ""
-        let isFile = navigationResponse.isForMainFrame && (!navigationResponse.canShowMIMEType || disposition.contains("attachment"))
+        let succeeded = (200...299).contains(response?.statusCode ?? 200)
+        let isFile = navigationResponse.isForMainFrame && succeeded && (!navigationResponse.canShowMIMEType || disposition.contains("attachment"))
         guard isFile, let link = navigationResponse.response.url?.absoluteString else {
             decisionHandler(.allow)
             return
