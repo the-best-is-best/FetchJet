@@ -84,6 +84,7 @@ internal fun QueueManagerRepository.moveTaskFiles(
     if (name.isBlank()) return MovedFiles(HiddenMove.NOTHING_TO_MOVE, name)
     var finalName = name
     val decrypting = HiddenStore.hasEncrypted(task.id) && HiddenFiles.isPrivate(pathResolver, from)
+    if (!decrypting && task.engineType != EngineType.BITTORRENT && !AppFileSystem.exists("$from/$name".toPath())) return MovedFiles(HiddenMove.NOTHING_TO_MOVE, name)
     val encrypting = !decrypting && shouldEncrypt(task, to, "$from/$name".toPath())
     if (!encrypting && AppFileSystem.exists("$to/$name".toPath())) {
         if (!renameIfTaken) return MovedFiles(HiddenMove.FAILED, name)

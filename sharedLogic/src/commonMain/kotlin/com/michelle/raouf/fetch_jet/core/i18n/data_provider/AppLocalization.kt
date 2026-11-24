@@ -805,6 +805,10 @@ interface AppLocalization : LocalizationProvider {
     val netLoginsHint: String
     val netLoginSite: String
     val netLoginAdd: String
+    val netLoginBrowser: String
+    val netLoginBrowserTag: String
+    val netLoginBrowserDone: String
+    val netLoginBrowserHint: String
     val netLoginsEmpty: String
     val netRemove: String
     fun netLoginsCount(n: Int): String

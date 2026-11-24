@@ -4,6 +4,7 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenFiles
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenMove
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.Dispatchers
@@ -333,6 +334,20 @@ class QueueHiddenTest {
         assertEncryptedAndHidden(id, "n.webm")
         assertEquals(0, repo.unhideTasks(listOf(id)).issues)
         assertContentEquals(payload, File(work, "n.webm").readBytes())
+    }
+
+    @Test
+    fun aSecondRelocateOfAFileThatAlreadyMovedKeepsTheTaskName() = runBlocking {
+        val id = add("a.bin").id
+        finished(id)
+        val staleView = task(id)!!
+        assertEquals(0, repo.hideTasks(listOf(id)).issues)
+        waitFor("hidden") { task(id)?.hidden == true }
+        val again = repo.relocateTask(staleView, HiddenFiles.dirFor(repo.pathResolver, id))
+        assertEquals(HiddenMove.NOTHING_TO_MOVE, again)
+        assertEquals("a.bin", task(id)!!.fileName)
+        assertTrue(privateFile(id, "a.bin").exists())
+        assertFalse(privateFile(id, "a (1).bin").exists())
     }
 
     @Test

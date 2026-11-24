@@ -86,9 +86,15 @@ data class DnsSettings(val mode: DnsMode = DnsMode.SYSTEM, val custom: String = 
 }
 
 @Serializable
+data class SiteCookie(val site: String, val cookie: String) {
+    fun matches(host: String): Boolean = SiteLogin(site, "", "").matches(host)
+}
+
+@Serializable
 private data class NetworkFile(
     val proxy: ProxySettings = ProxySettings(),
     val logins: List<SiteLogin> = emptyList(),
+    val cookies: List<SiteCookie> = emptyList(),
     val dns: DnsSettings = DnsSettings(),
     val adapter: String = "",
 )
@@ -109,6 +115,7 @@ object NetworkSettings {
     /** Encrypted passwords this device cannot open (key gone): written back unchanged. */
     private var lockedProxyPassword: String? = null
     private val lockedLogins = mutableMapOf<String, String>()
+    private val lockedCookies = mutableMapOf<String, String>()
     private var plainOnDisk = false
 
     private val loaded = load()
@@ -117,6 +124,9 @@ object NetworkSettings {
 
     private val _logins = MutableStateFlow(loaded.logins)
     val logins: StateFlow<List<SiteLogin>> = _logins.asStateFlow()
+
+    private val _cookies = MutableStateFlow(loaded.cookies)
+    val cookies: StateFlow<List<SiteCookie>> = _cookies.asStateFlow()
 
     private val _dns = MutableStateFlow(loaded.dns)
     val dns: StateFlow<DnsSettings> = _dns.asStateFlow()
@@ -176,6 +186,22 @@ object NetworkSettings {
         _logins.value = _logins.value.filterNot { it.site == site }; save()
     }
 
+    fun saveCookie(site: String, cookie: String) {
+        val clean = SiteLogin.cleanSite(site)
+        if (clean.isEmpty() || cookie.isBlank()) return
+        lockedCookies.remove(clean)
+        _cookies.value = _cookies.value.filterNot { SiteLogin.cleanSite(it.site) == clean } + SiteCookie(clean, cookie.trim())
+        save()
+    }
+
+    fun removeCookie(site: String) {
+        lockedCookies.remove(site)
+        _cookies.value = _cookies.value.filterNot { it.site == site }; save()
+    }
+
+    fun cookieFor(host: String): SiteCookie? =
+        _cookies.value.filter { it.matches(host) }.maxByOrNull { it.site.length }
+
     fun loginFor(host: String): SiteLogin? =
         _logins.value.filter { it.matches(host) }.maxByOrNull { it.site.length }
 
@@ -214,7 +240,10 @@ object NetworkSettings {
         val logins = stored.logins.map { l ->
             l.copy(password = open(l.password) { lockedLogins[l.site] = l.password })
         }
-        return NetworkFile(proxy, logins, stored.dns, stored.adapter)
+        val cookies = stored.cookies.map { c ->
+            c.copy(cookie = open(c.cookie) { lockedCookies[c.site] = c.cookie })
+        }
+        return NetworkFile(proxy, logins, cookies, stored.dns, stored.adapter)
     }
 
     private fun save() {
@@ -226,6 +255,9 @@ object NetworkSettings {
             _logins.value.map { l ->
                 l.copy(password = lockedLogins[l.site]?.takeIf { l.password.isEmpty() }
                     ?: Secrets.protect(l.password))
+            },
+            _cookies.value.map { c ->
+                c.copy(cookie = lockedCookies[c.site]?.takeIf { c.cookie.isEmpty() } ?: Secrets.protect(c.cookie))
             },
             _dns.value,
             _adapter.value,
@@ -253,6 +285,15 @@ private val SiteLogins = createClientPlugin("FetchJetSiteLogins") {
     }
 }
 
+private val SiteCookies = createClientPlugin("FetchJetSiteCookies") {
+    onRequest { request, _ ->
+        val saved = NetworkSettings.cookieFor(request.url.host) ?: return@onRequest
+        if (request.headers[HttpHeaders.Cookie] == null) {
+            request.headers.append(HttpHeaders.Cookie, saved.cookie)
+        }
+    }
+}
+
 private val PlainHttpProxyLogin = createClientPlugin("FetchJetProxyLogin") {
     onRequest { request, _ ->
         val p = NetworkSettings.proxy.value
@@ -269,6 +310,7 @@ private val PlainHttpProxyLogin = createClientPlugin("FetchJetProxyLogin") {
 fun HttpClientConfig<*>.useNetworkSettings() {
     install(RedirectCookieGuard)
     install(SiteLogins)
+    install(SiteCookies)
     install(PlainHttpProxyLogin)
     @Suppress("UNCHECKED_CAST")
     (this as HttpClientConfig<HttpClientEngineConfig>).engine {
