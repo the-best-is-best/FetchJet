@@ -57,6 +57,7 @@ def run():
     auth = {"allow": True, "reasons": []}
     pick = {"path": ""}
     core = Core("recovery", before_start=install_fake_ytdlp, host_services=services(auth, pick))
+    core.debug("hideAnyType", {"on": True})
     site = os.path.join(core.work, "site")
     make_site(site)
     open(os.path.join(site, "clip.mp4"), "wb").write(os.urandom(64 * 1024))
@@ -292,6 +293,7 @@ def run_restore(path):
     auth = {"allow": True, "reasons": []}
     pick = {"path": path}
     core = Core("recovery_restore", before_start=install_fake_ytdlp, host_services=services(auth, pick))
+    core.debug("hideAnyType", {"on": True})
     try:
         core.pump(0.8)
         strings = core.strings()
@@ -317,6 +319,7 @@ def run_noauth():
     auth = {"allow": True, "reasons": []}
     pick = {"path": ""}
     core = Core("recovery_noauth", before_start=install_fake_ytdlp, host_services=services(auth, pick, available=False))
+    core.debug("hideAnyType", {"on": True})
     site = os.path.join(core.work, "site")
     make_site(site)
     server = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT + 1), "--bind", "127.0.0.1", "--directory", site],

@@ -239,6 +239,21 @@ for the in-app updater with the `UPDATE_SIGNING_KEY` repository secret.
 
 ---
 
+## Code signing policy
+
+Free code signing for the Windows installers (`.msi` and `-setup.exe`) is provided by [SignPath.io](https://signpath.io), with the certificate from the [SignPath Foundation](https://signpath.org).
+
+- **What is signed:** only the Windows installers built by our public GitHub Actions workflow
+  ([`build.yml`](.github/workflows/build.yml)) from the source in this repository. Nothing is signed by hand and no
+  other program is signed with this certificate.
+- **Roles:** the repository owner ([the-best-is-best](https://github.com/the-best-is-best)) is the only committer,
+  reviewer and approver of a signing request. Both the GitHub and the SignPath accounts use multi-factor authentication.
+- **Privacy:** see [Privacy](#privacy) above. The installers do not collect anything beyond what is described there.
+- **Microsoft Store:** the Store build is signed by Microsoft when it is published.
+
+Until the signing is active, Windows SmartScreen may say "Windows protected your PC" for a new installer: choose
+**More info**, then **Run anyway**.
+
 ## License
 
 See [LICENSE](LICENSE). Third-party components are listed

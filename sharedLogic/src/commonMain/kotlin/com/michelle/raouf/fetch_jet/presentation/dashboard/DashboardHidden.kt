@@ -72,7 +72,7 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnHiddenUnlock -> applyHiddenCheck(HiddenStore.verify(event.pin), unlockOnOk = true)
         DashboardUiEvent.OnHiddenLock -> lockHidden()
-        DashboardUiEvent.OnHiddenCover -> _uiState.update { if (it.hidden.unlocked) it.copy(hidden = it.hidden.copy(covered = true)) else it }
+        DashboardUiEvent.OnHiddenCover -> coverHidden()
         DashboardUiEvent.OnHiddenReauth -> reauthHidden()
         is DashboardUiEvent.OnHiddenChangePin -> applyHiddenCheck(HiddenStore.changePin(event.oldPin, event.newPin, event.newLockType), unlockOnOk = false)
         is DashboardUiEvent.OnHiddenRemoveLock -> {
@@ -407,17 +407,27 @@ private fun DashboardViewModel.reauthHidden() {
     }
 }
 
+private fun DashboardViewModel.coverHidden() {
+    if (!_uiState.value.hidden.unlocked) return
+    HiddenMedia.cleanup(queueRepository.pathResolver)
+    val hiddenIds = queueRepository.allTasksFlow.value.filter { it.hidden }.mapTo(HashSet()) { it.id }
+    _uiState.update { it.withoutHiddenDialogs(hiddenIds).let { s -> s.copy(hidden = s.hidden.copy(covered = true)) } }
+}
+
+private fun DashboardUiState.withoutHiddenDialogs(hiddenIds: Set<String>): DashboardUiState = copy(
+    torrentDetails = torrentDetails?.takeIf { d -> d.taskId !in hiddenIds },
+    archivePassword = archivePassword?.takeIf { a -> a.taskId !in hiddenIds },
+    removeConfirmationTaskId = removeConfirmationTaskId?.takeIf { id -> id !in hiddenIds },
+    removeConfirmationTaskIds = removeConfirmationTaskIds.filter { id -> id !in hiddenIds },
+    deviceShareTaskId = deviceShareTaskId?.takeIf { id -> id !in hiddenIds }
+)
+
 internal fun DashboardViewModel.lockHidden() {
     HiddenStore.cancelPinReset()
     HiddenMedia.cleanup(queueRepository.pathResolver)
     val hiddenIds = queueRepository.allTasksFlow.value.filter { it.hidden }.mapTo(HashSet()) { it.id }
     _uiState.update {
-        it.copy(
-            torrentDetails = it.torrentDetails?.takeIf { d -> d.taskId !in hiddenIds },
-            archivePassword = it.archivePassword?.takeIf { a -> a.taskId !in hiddenIds },
-            removeConfirmationTaskId = it.removeConfirmationTaskId?.takeIf { id -> id !in hiddenIds },
-            removeConfirmationTaskIds = it.removeConfirmationTaskIds.filter { id -> id !in hiddenIds },
-            deviceShareTaskId = it.deviceShareTaskId?.takeIf { id -> id !in hiddenIds },
+        it.withoutHiddenDialogs(hiddenIds).copy(
             hidden = HiddenUiState(
                 lockType = HiddenStore.state.value.lockType,
                 notice = it.hidden.notice,

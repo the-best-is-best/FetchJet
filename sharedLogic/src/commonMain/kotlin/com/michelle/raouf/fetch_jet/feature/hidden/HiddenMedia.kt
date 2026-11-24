@@ -28,7 +28,7 @@ object HiddenMedia {
     internal var tempOverride: String? = null
 
     @kotlin.concurrent.Volatile
-    internal var mediaOnly: Boolean = true
+    var mediaOnly: Boolean = true
 
     internal val triedIds = MutableStateFlow<Set<String>>(emptySet())
 
