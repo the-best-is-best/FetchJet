@@ -216,6 +216,7 @@ function renderTexts() {
 document.addEventListener("DOMContentLoaded", async () => {
   fjOnLanguage(() => { renderTexts(); showExtVersion(); checkStatus(); loadMedia(); });
   renderTexts();
+  showExtVersion();
   setStatus("busy", fjT("popupChecking"));
   settings = await send({ action: "getSettings" });
   if (!FJ_PLATFORM.qualitiesInPopup) $("resolveBtn").style.display = "none";

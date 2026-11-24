@@ -103,6 +103,7 @@ object AudioCompress {
 
     fun canCompress(task: DownloadTask): Boolean =
         task.status == DownloadStatus.COMPLETED &&
+                !task.hidden &&
                 task.engineType != EngineType.BITTORRENT &&
                 isAudioFile(task.fileName)
 

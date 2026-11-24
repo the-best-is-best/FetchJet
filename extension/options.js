@@ -104,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (area === "local" && changes.settings && changes.settings.newValue) { hiddenSites = changes.settings.newValue.hiddenSites || []; renderHidden(); }
   });
   fitToBrowser();
+  showExtVersion();
   load();
   $("save").addEventListener("click", save);
   $("resetExt").addEventListener("click", () => { $("extensions").value = DEFAULT_EXTENSIONS.join(", "); });

@@ -20,6 +20,8 @@ final class FJStore: ObservableObject {
     var onEffect: ((DashboardUiEffect) -> Void)?
     private var watchers: [IosCancelable] = []
     private var previewWatch: Task<Void, Never>?
+    private var lifecycle: [NSObjectProtocol] = []
+    private var hiddenWentBackground = false
 
     init() {
         let host = IosAppHost()
@@ -38,6 +40,26 @@ final class FJStore: ObservableObject {
             self?.language = lang
             self?.isRtl = rtl.boolValue
         })
+        let center = NotificationCenter.default
+        lifecycle.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.appEnteredBackground() }
+        })
+        lifecycle.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.appBecameActive() }
+        })
+    }
+
+    private func appEnteredBackground() {
+        guard liveHidden.unlocked else { return }
+        hiddenWentBackground = true
+        Self.dismissPreview()
+        hiddenCover()
+    }
+
+    private func appBecameActive() {
+        guard hiddenWentBackground else { return }
+        hiddenWentBackground = false
+        if liveHidden.covered { send(DashboardUiEventOnHiddenReauth.shared) }
     }
 
     var strings: AppLocalization { host.strings() }
@@ -134,6 +156,20 @@ final class FJStore: ObservableObject {
                 waited += 1
             }
             if !Task.isCancelled { self?.send(DashboardUiEventOnHiddenClosePlayer.shared) }
+        }
+    }
+
+    private static func dismissPreview() {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for window in scenes.flatMap({ $0.windows }) {
+            var controller = window.rootViewController
+            while let c = controller {
+                if c is QLPreviewController {
+                    c.presentingViewController?.dismiss(animated: false)
+                    return
+                }
+                controller = c.presentedViewController
+            }
         }
     }
 
