@@ -70,7 +70,7 @@ struct FJHiddenNoticeDialog: View {
     var body: some View {
         let s = store.strings
         FJDialogFrame(title: s.hiddenNoticeTitle) {
-            Text(s.hiddenNoticeBody).fjBody()
+            Text(s.hiddenNoticeBody).font(FJTheme.font.body).foregroundStyle(FJTheme.color.onSurface)
         } buttons: {
             FJDialogButton(title: s.cancel, kind: .outlined) { store.dismissHiddenNotice() }
             FJDialogButton(title: s.hiddenNoticeAccept) { store.acceptHiddenNotice() }
@@ -263,6 +263,7 @@ struct HiddenSheetBody<Content: View>: View {
         }
         .presentationDetents([.medium, .large])
         .hiddenPrivacyCover()
+        .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
     }
 }
 
@@ -668,6 +669,7 @@ struct HiddenRootGuard: ViewModifier {
     @EnvironmentObject var store: FJStore
     @Environment(\.scenePhase) private var phase
     @State private var latched = false
+    @State private var fromBackground = false
 
     func body(content: Content) -> some View {
         content
@@ -683,10 +685,14 @@ struct HiddenRootGuard: ViewModifier {
             .onChange(of: phase) { _, new in
                 if new == .active {
                     latched = false
-                    if store.state.hidden.covered { store.send(DashboardUiEventOnHiddenReauth.shared) }
+                    if store.state.hidden.covered && fromBackground { store.send(DashboardUiEventOnHiddenReauth.shared) }
+                    fromBackground = false
                 } else if store.state.hidden.unlocked {
                     latched = true
-                    if new == .background { store.hiddenCover() }
+                    if new == .background {
+                        fromBackground = true
+                        store.hiddenCover()
+                    }
                 } else if store.state.hidden.pinResetAllowed {
                     store.send(DashboardUiEventOnHiddenResetCancel.shared)
                 }

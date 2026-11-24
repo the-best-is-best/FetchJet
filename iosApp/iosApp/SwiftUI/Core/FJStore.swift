@@ -137,7 +137,7 @@ final class FJStore: ObservableObject {
         }
     }
 
-    private static func previewShown() -> Bool {
+    static func previewShown() -> Bool {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for window in scenes.flatMap({ $0.windows }) {
             var controller = window.rootViewController
