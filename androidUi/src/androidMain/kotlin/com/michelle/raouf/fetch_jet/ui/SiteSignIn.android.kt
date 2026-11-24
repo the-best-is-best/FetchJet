@@ -46,6 +46,10 @@ internal actual fun SiteSignInDialog(site: String, onFinished: (cookie: String?)
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     factory = { context ->
                         WebView(context).apply {
+                            layoutParams = android.view.ViewGroup.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             CookieManager.getInstance().setAcceptCookie(true)

@@ -185,6 +185,8 @@ private struct FJPageWebView: UIViewRepresentable {
     let url: URL
 
     func makeUIView(context: Context) -> WKWebView {
+        model.webView.scrollView.contentInset.bottom = 80
+        model.webView.scrollView.verticalScrollIndicatorInsets.bottom = 80
         model.webView.load(URLRequest(url: url))
         return model.webView
     }
@@ -216,7 +218,11 @@ struct FJPageBrowserSheet: View {
                     .frame(height: 36)
                     .background(FJTheme.color.surfaceVariant, in: RoundedRectangle(cornerRadius: 10))
                     .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { note in
-                        DispatchQueue.main.async { (note.object as? UITextField)?.selectAll(nil) }
+                        let field = note.object as? UITextField
+                        DispatchQueue.main.async { field?.selectAll(nil) }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                            if field?.isFirstResponder == true { field?.selectAll(nil) }
+                        }
                     }
                 Button(action: close) {
                     Image(systemName: "xmark")
