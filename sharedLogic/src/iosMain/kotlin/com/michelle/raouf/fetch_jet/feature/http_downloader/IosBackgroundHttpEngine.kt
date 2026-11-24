@@ -146,6 +146,9 @@ class IosBackgroundHttpEngine(
             } else {
                 val request = NSMutableURLRequest(uRL = url)
                 request.setValue(USER_AGENT, forHTTPHeaderField = "User-Agent")
+                task.requestHeaders.forEach { (name, value) ->
+                    if (value.isNotBlank() && name.lowercase() !in UNSETTABLE_HEADERS) request.setValue(value, forHTTPHeaderField = name)
+                }
                 session.downloadTaskWithRequest(request)
             }
             native.taskDescription = task.id
@@ -373,6 +376,7 @@ class IosBackgroundHttpEngine(
     }
 
     private companion object {
+        val UNSETTABLE_HEADERS = setOf("cookie", "authorization", "host", "content-length", "connection", "proxy-authorization", "transfer-encoding")
         const val USER_AGENT =
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 FetchJet"
     }
