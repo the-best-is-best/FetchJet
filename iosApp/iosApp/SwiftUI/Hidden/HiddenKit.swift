@@ -638,6 +638,32 @@ extension View {
     func hiddenPrivacyCover() -> some View { modifier(HiddenPrivacyCover()) }
 }
 
+struct HiddenCoverScreen: View {
+    @EnvironmentObject var store: FJStore
+
+    private var canAuth: Bool { DeviceAuth.shared.available() }
+
+    var body: some View {
+        let s = store.strings
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if store.state.hidden.covered && canAuth {
+                VStack(spacing: 12) {
+                    FJDialogButton(title: s.hiddenCoverUnlock, fill: true) { store.send(DashboardUiEventOnHiddenReauth.shared) }
+                    FJDialogButton(title: s.hiddenCoverExit, kind: .text, fill: true) { store.send(DashboardUiEventOnHiddenLock.shared) }
+                }
+                .padding(32)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { store.state.hidden.covered && !canAuth },
+            set: { if !$0 && store.state.hidden.covered { store.send(DashboardUiEventOnHiddenLock.shared) } }
+        )) {
+            HiddenUnlockSheet(onUnlocked: {}).environmentObject(store)
+        }
+    }
+}
+
 struct HiddenRootGuard: ViewModifier {
     @EnvironmentObject var store: FJStore
     @Environment(\.scenePhase) private var phase
@@ -652,14 +678,15 @@ struct HiddenRootGuard: ViewModifier {
                 HiddenRecoveryCodeSheet(code: item.id).environmentObject(store)
             }
             .overlay {
-                if phase != .active && latched { HiddenCoverView() }
+                if (phase != .active && latched) || store.state.hidden.covered { HiddenCoverScreen() }
             }
             .onChange(of: phase) { _, new in
                 if new == .active {
                     latched = false
+                    if store.state.hidden.covered { store.send(DashboardUiEventOnHiddenReauth.shared) }
                 } else if store.state.hidden.unlocked {
                     latched = true
-                    if new == .background { store.hiddenLock() }
+                    if new == .background { store.hiddenCover() }
                 } else if store.state.hidden.pinResetAllowed {
                     store.send(DashboardUiEventOnHiddenResetCancel.shared)
                 }

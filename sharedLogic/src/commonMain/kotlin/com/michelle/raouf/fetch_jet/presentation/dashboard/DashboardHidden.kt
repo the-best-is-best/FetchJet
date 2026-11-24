@@ -32,7 +32,7 @@ enum class HiddenError { WRONG_PIN, LOCKED, INVALID_PIN }
 enum class HiddenNotice {
     COPY_LEFT, MOVE_FAILED, OPEN_FAILED, HIDDEN_DONE,
     RESTORE_DONE, RESTORE_WRONG_CODE, RESTORE_NOTHING, RECOVERY_UNAVAILABLE,
-    AUTH_FAILED, RESET_DONE, RESET_EXPIRED, NEED_FILE_ACCESS
+    AUTH_FAILED, RESET_DONE, RESET_EXPIRED, NEED_FILE_ACCESS, NOT_MEDIA
 }
 
 data class HiddenUiState(
@@ -51,7 +51,8 @@ data class HiddenUiState(
     val workTotal: Int = 0,
     val workFraction: Float = 0f,
     val recoveryCode: String? = null,
-    val pinResetAllowed: Boolean = false
+    val pinResetAllowed: Boolean = false,
+    val covered: Boolean = false
 ) {
     val hasLock: Boolean get() = lockType != null
     val canResetPin: Boolean get() = hasLock && DeviceAuth.available()
@@ -71,6 +72,8 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnHiddenUnlock -> applyHiddenCheck(HiddenStore.verify(event.pin), unlockOnOk = true)
         DashboardUiEvent.OnHiddenLock -> lockHidden()
+        DashboardUiEvent.OnHiddenCover -> _uiState.update { if (it.hidden.unlocked) it.copy(hidden = it.hidden.copy(covered = true)) else it }
+        DashboardUiEvent.OnHiddenReauth -> reauthHidden()
         is DashboardUiEvent.OnHiddenChangePin -> applyHiddenCheck(HiddenStore.changePin(event.oldPin, event.newPin, event.newLockType), unlockOnOk = false)
         is DashboardUiEvent.OnHiddenRemoveLock -> {
             val check = HiddenStore.verify(event.pin)
@@ -269,6 +272,7 @@ private fun DashboardViewModel.openHiddenFile(taskId: String) {
 internal fun HiddenMoveReport.notice(): HiddenNotice? = when {
     failed > 0 -> HiddenNotice.MOVE_FAILED
     copiesLeft > 0 -> HiddenNotice.COPY_LEFT
+    skipped > 0 -> HiddenNotice.NOT_MEDIA
     else -> null
 }
 
@@ -344,7 +348,7 @@ internal suspend fun DashboardViewModel.runHideTargets(event: OnHideTargets) {
             HideStep.Kind.FOLDER -> {
                 val ids = folderTasks(queueRepository.visibleTasksFlow.value, _uiState.value.playlists, step.value).map { it.id }
                 val one = queueRepository.hideTasks(ids)
-                if (one.failed == 0) HiddenStore.hideFolder(step.value)
+                if (one.failed == 0 && one.skipped == 0) HiddenStore.hideFolder(step.value)
                 one
             }
         }
@@ -373,7 +377,7 @@ internal fun DashboardViewModel.applyHiddenCheck(check: HiddenCheck, unlockOnOk:
         val h = state.hidden
         state.copy(
             hidden = when (check) {
-                HiddenCheck.Ok -> h.copy(lockType = HiddenStore.state.value.lockType, unlocked = h.unlocked || unlockOnOk, error = null, triesLeft = 0, lockedSeconds = 0)
+                HiddenCheck.Ok -> h.copy(lockType = HiddenStore.state.value.lockType, unlocked = h.unlocked || unlockOnOk, covered = if (unlockOnOk) false else h.covered, error = null, triesLeft = 0, lockedSeconds = 0)
                 is HiddenCheck.Wrong -> h.copy(error = HiddenError.WRONG_PIN, triesLeft = check.triesLeft)
                 is HiddenCheck.Locked -> h.copy(error = HiddenError.LOCKED, lockedSeconds = check.secondsLeft)
                 HiddenCheck.Invalid -> h.copy(error = HiddenError.INVALID_PIN)
@@ -383,6 +387,24 @@ internal fun DashboardViewModel.applyHiddenCheck(check: HiddenCheck, unlockOnOk:
         )
     }
     refreshHiddenTasks()
+}
+
+private fun DashboardViewModel.reauthHidden() {
+    val auth = DeviceAuth.handler ?: return
+    if (!_uiState.value.hidden.covered || reauthRunning) return
+    reauthRunning = true
+    scope.launch {
+        val ok = try {
+            auth(LocalizationManager.Strings.hiddenReauthReason)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            false
+        } finally {
+            reauthRunning = false
+        }
+        if (ok) _uiState.update { it.copy(hidden = it.hidden.copy(covered = false)) }
+    }
 }
 
 internal fun DashboardViewModel.lockHidden() {

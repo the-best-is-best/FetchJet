@@ -359,6 +359,28 @@ internal fun SetPinDialog(
 }
 
 @Composable
+internal fun HiddenCover(viewModel: DashboardViewModel) {
+    val s = LocalizationManager.Strings
+    val canAuth = com.michelle.raouf.fetch_jet.core.security.DeviceAuth.available()
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color.Black)
+            .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {},
+        contentAlignment = Alignment.Center
+    ) {
+        if (canAuth) {
+            androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.material3.Button(onClick = { viewModel.onEvent(DashboardUiEvent.OnHiddenReauth) }) { Text(s.hiddenCoverUnlock) }
+                TextButton(onClick = { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) }) { Text(s.hiddenCoverExit) }
+            }
+        } else {
+            UnlockPinDialog(viewModel, onDismiss = { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) })
+        }
+    }
+}
+
+@Composable
 internal fun UnlockPinDialog(viewModel: DashboardViewModel, onDismiss: () -> Unit) {
     val s = LocalizationManager.Strings
     val state by viewModel.uiState.collectAsState()
@@ -734,7 +756,7 @@ internal fun HiddenScreen(
         AddFab(onClick = { viewModel.onEvent(DashboardUiEvent.OnHiddenAddDownload) }, modifier = Modifier.align(Alignment.BottomEnd))
     }
     }
-    val detailsTask = state.hidden.tasks.firstOrNull { it.id == detailsId }
+    val detailsTask = if (state.hidden.covered) null else state.hidden.tasks.firstOrNull { it.id == detailsId }
     if (detailsTask != null) {
         Dialog(
             onDismissRequest = { detailsId = null },

@@ -27,6 +27,9 @@ object HiddenMedia {
     @kotlin.concurrent.Volatile
     internal var tempOverride: String? = null
 
+    @kotlin.concurrent.Volatile
+    internal var mediaOnly: Boolean = true
+
     internal val triedIds = MutableStateFlow<Set<String>>(emptySet())
 
     fun isMedia(fileName: String): Boolean = fileName.substringAfterLast('.', "").lowercase() in extensions
@@ -45,6 +48,7 @@ object HiddenMedia {
 
     internal fun resetForTest() {
         triedIds.value = emptySet()
+        mediaOnly = true
     }
 
     private fun percentSteps(onFraction: (Float) -> Unit): (Long, Long) -> Unit {

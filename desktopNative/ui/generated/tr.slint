@@ -57,7 +57,7 @@ export global Tr {
     in property <string> hiddenLock: "Lock";
     in property <string> hiddenEmpty: "No hidden downloads";
     in property <string> hiddenHiddenToast: "Hidden. Open it from More > Hidden.";
-    in property <string> hiddenNoteEncrypted: "Audio and video you hide are encrypted. Other files are only moved out of sight; on a computer they can still be read from the app folder.";
+    in property <string> hiddenNoteEncrypted: "Only video and audio can be hidden. They are encrypted, and each one is decrypted only when you play it.";
     in property <string> hiddenWorking: "Moving files… {n} of {total}";
     in property <string> hiddenNoticeTitle: "Hidden audio and video are encrypted";
     in property <string> hiddenNoticeBody: "Audio and video you hide are encrypted with a key tied to this device. If you uninstall the app, clear its data or move to another device, they cannot be opened again. Keep this in mind. The PIN only protects opening this screen.";
@@ -74,6 +74,7 @@ export global Tr {
     in property <string> hiddenRecoveryEnter: "Recovery code";
     in property <string> hiddenForgotPin: "Forgot PIN?";
     in property <string> hiddenForgotReason: "Confirm it is you to reset the PIN of the hidden area";
+    in property <string> hiddenReauthReason: "Confirm it is you to open the hidden area";
     in property <string> hiddenResetPinTitle: "Set a new PIN";
     in property <string> hiddenNoticeRestoreDone: "Hidden files restored on this device.";
     in property <string> hiddenNoticeRestoreWrong: "That recovery code is not correct.";
@@ -83,6 +84,9 @@ export global Tr {
     in property <string> hiddenNoticeResetDone: "PIN changed.";
     in property <string> hiddenNoticeResetExpired: "Time is up. Confirm again to reset the PIN.";
     in property <string> hiddenNoticeNeedFileAccess: "Allow access to all files, then try again: some files were saved by another install of FetchJet.";
+    in property <string> hiddenNoticeNotMedia: "Only video and audio files can be hidden.";
+    in property <string> hiddenCoverUnlock: "Unlock";
+    in property <string> hiddenCoverExit: "Leave Hidden";
     in property <string> hiddenLockTypeTitle: "Lock with";
     in property <string> hiddenLockTypePin: "PIN";
     in property <string> hiddenLockTypePattern: "Pattern";

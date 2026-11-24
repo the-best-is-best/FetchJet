@@ -731,6 +731,8 @@ sealed interface DashboardUiEvent {
     }
     data class OnHiddenUnlock(val pin: String) : DashboardUiEvent
     data object OnHiddenLock : DashboardUiEvent
+    data object OnHiddenCover : DashboardUiEvent
+    data object OnHiddenReauth : DashboardUiEvent
     data class OnHiddenChangePin(val oldPin: String, val newPin: String, val newLockType: HiddenLockType) : DashboardUiEvent {
         constructor(oldPin: String, newPin: String) : this(oldPin, newPin, HiddenLockType.PIN)
     }

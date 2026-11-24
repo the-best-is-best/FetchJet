@@ -19,9 +19,9 @@ import kotlinx.coroutines.sync.withLock
 import okio.Path
 import okio.Path.Companion.toPath
 
-data class HiddenMoveReport(val moved: Int = 0, val copiesLeft: Int = 0, val failed: Int = 0) {
+data class HiddenMoveReport(val moved: Int = 0, val copiesLeft: Int = 0, val failed: Int = 0, val skipped: Int = 0) {
     operator fun plus(other: HiddenMoveReport) =
-        HiddenMoveReport(moved + other.moved, copiesLeft + other.copiesLeft, failed + other.failed)
+        HiddenMoveReport(moved + other.moved, copiesLeft + other.copiesLeft, failed + other.failed, skipped + other.skipped)
 
     internal fun with(result: HiddenMove): HiddenMoveReport = when (result) {
         HiddenMove.FAILED -> copy(failed = failed + 1)
@@ -184,9 +184,12 @@ private suspend fun QueueManagerRepository.hideOne(task: DownloadTask): HiddenMo
 suspend fun QueueManagerRepository.hideTasks(ids: Collection<String>): HiddenMoveReport {
     if (!HiddenStore.hasLock()) return HiddenMoveReport()
     val wanted = ids.toSet()
-    val targets = allTasksFlow.value.filter {
+    val chosen = allTasksFlow.value.filter {
         it.id in wanted && !(it.hidden && HiddenFiles.isPrivate(pathResolver, it.destinationPath))
     }
+    val targets = chosen.filter { !HiddenMedia.mediaOnly || HiddenMedia.mayBeMedia(it) }
+    val skipped = chosen.size - targets.size
+    if (targets.isEmpty()) return HiddenMoveReport(skipped = skipped)
     val targetIds = targets.map { it.id }
     var remaining = 0
     HiddenWork.owned.update { it + targetIds }
@@ -195,12 +198,12 @@ suspend fun QueueManagerRepository.hideTasks(ids: Collection<String>): HiddenMov
         val stored = newOrigins.all { HiddenStore.setOrigin(it.id, it.destinationPath) } && HiddenStore.hide(targetIds)
         if (!stored) {
             HiddenStore.drop(newOrigins.map { it.id }, keepKeys = true)
-            return HiddenMoveReport(failed = targets.size)
+            return HiddenMoveReport(failed = targets.size, skipped = skipped)
         }
         HiddenWork.begin(targets.size)
         remaining = targets.size
         return hideLock.withLock {
-            var report = HiddenMoveReport()
+            var report = HiddenMoveReport(skipped = skipped)
             for (task in targets) {
                 val current = allTasksFlow.value.find { it.id == task.id }
                 if (current == null) HiddenStore.drop(listOf(task.id))
@@ -234,7 +237,7 @@ suspend fun QueueManagerRepository.hideTasks(ids: Collection<String>): HiddenMov
 
 suspend fun QueueManagerRepository.hidePlaylistTasks(playlistId: String): HiddenMoveReport {
     val report = hideTasks(allTasksFlow.value.filter { it.playlistId == playlistId }.map { it.id })
-    if (report.failed == 0) HiddenStore.hidePlaylist(playlistId)
+    if (report.failed == 0 && report.skipped == 0) HiddenStore.hidePlaylist(playlistId)
     return report
 }
 

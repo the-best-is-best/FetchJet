@@ -71,3 +71,10 @@ Use `desktopNative/tools/testserver/server.py --port 18200` (files like `http://
 - **Test these on the Mac:** hide a video, accept the notice, the recovery code sheet shows (also when the area is locked); "Forgot PIN?" in the unlock sheet (Face ID or device passcode), cancel closes the one-shot window (`OnHiddenResetCancel`), new PIN works and the hidden items stay; Backup exports a file (name keeps `.fjbackup`) and Restore (accepts `.data` and `.json`) merges into a second empty install; copy of the recovery code is local only (no Universal Clipboard) and expires.
 - **macOS native:** `StoreLock.macos.kt`, `BackupPlatform` actual, `LAContext` auth in `platform_mac.mm` and the `LocalAuthentication` link in `desktopNative/CMakeLists.txt` were not compiled.
 - **Android debug flavour:** `com.michelle.raouf.fetch_jet.debug`, name "FetchJet Debug", orange icon with a DEBUG ribbon; it uses its own ports (bridge 28470, sync 28471 / 28472) so it can sit next to the release build. Nothing to do on the Mac.
+
+## Added 2026-11-24: cover instead of lock, hide only video and audio
+
+- `HiddenUiState.covered`, events `OnHiddenCover` / `OnHiddenReauth` (shared). The app leaving the foreground while Hidden is open no longer locks: it covers; coming back asks `DeviceAuth` (Face ID / passcode), and without it the unlock sheet (PIN or pattern). Closing the app still locks.
+- iOS: `HiddenKit.swift` (`HiddenCoverScreen`, `HiddenRootGuard`) and `FJStore.hiddenCover()`. Not compiled. Check on the simulator: background and return shows a black screen with Unlock / Leave Hidden, the Face ID prompt, same page and scroll after success; with no biometrics enrolled the PIN or pattern sheet; whether a sheet that was open (details, add) stays visible above the cover.
+- Hide accepts only audio and video (`HiddenMedia.mayBeMedia`); other types are skipped with the notice `NOT_MEDIA` (`hiddenNoticeNotMedia`). Check the row menu, the selection bar and a playlist / folder with a zip inside on iOS.
+- New strings: `hiddenNoticeNotMedia`, `hiddenCoverUnlock`, `hiddenCoverExit`, `hiddenReauthReason`; `hiddenNoteEncrypted` reworded.

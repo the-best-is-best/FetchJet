@@ -209,7 +209,7 @@ fun App(
         if (viewModel.uiState.value.hidden.pinResetAllowed) viewModel.onEvent(DashboardUiEvent.OnHiddenResetCancel)
         if (com.michelle.raouf.fetch_jet.ui.HiddenFlow.playerOut) {
             com.michelle.raouf.fetch_jet.ui.HiddenFlow.leftAt = kotlin.time.TimeSource.Monotonic.markNow()
-        } else if (viewModel.uiState.value.hidden.unlocked) viewModel.onEvent(DashboardUiEvent.OnHiddenLock)
+        } else if (viewModel.uiState.value.hidden.unlocked) viewModel.onEvent(DashboardUiEvent.OnHiddenCover)
     }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_START) {
         val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
@@ -219,9 +219,10 @@ fun App(
             val away = flow.leftAt?.elapsedNow()
             flow.leftAt = null
             if (away != null && away > 30.seconds && viewModel.uiState.value.hidden.unlocked) {
-                viewModel.onEvent(DashboardUiEvent.OnHiddenLock)
+                viewModel.onEvent(DashboardUiEvent.OnHiddenCover)
             }
         }
+        if (viewModel.uiState.value.hidden.covered) viewModel.onEvent(DashboardUiEvent.OnHiddenReauth)
     }
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
@@ -988,6 +989,9 @@ fun App(
                 )
             }
 
+            if (state.hidden.unlocked && state.hidden.covered) {
+                com.michelle.raouf.fetch_jet.ui.HiddenCover(viewModel)
+            }
             if (state.hidden.encryptNoticeNeeded) {
                 com.michelle.raouf.fetch_jet.ui.HiddenNoticeDialog(viewModel)
             }

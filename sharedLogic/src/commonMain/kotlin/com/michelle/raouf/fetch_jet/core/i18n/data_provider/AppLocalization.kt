@@ -76,6 +76,7 @@ interface AppLocalization : LocalizationProvider {
     val hiddenRecoveryEnter: String
     val hiddenForgotPin: String
     val hiddenForgotReason: String
+    val hiddenReauthReason: String
     val hiddenResetPinTitle: String
     val hiddenNoticeRestoreDone: String
     val hiddenNoticeRestoreWrong: String
@@ -85,6 +86,9 @@ interface AppLocalization : LocalizationProvider {
     val hiddenNoticeResetDone: String
     val hiddenNoticeResetExpired: String
     val hiddenNoticeNeedFileAccess: String
+    val hiddenNoticeNotMedia: String
+    val hiddenCoverUnlock: String
+    val hiddenCoverExit: String
     val hiddenLockTypeTitle: String
     val hiddenLockTypePin: String
     val hiddenLockTypePattern: String

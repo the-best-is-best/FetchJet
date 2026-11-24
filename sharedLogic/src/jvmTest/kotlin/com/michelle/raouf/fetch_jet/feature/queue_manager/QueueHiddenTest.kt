@@ -47,6 +47,7 @@ class QueueHiddenTest {
         work = File(home, "Work").also { it.mkdirs() }
         storeFile = File(home, "hidden-test.json")
         HiddenStore.resetForTest(storeFile.absolutePath)
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = false
         assertTrue(HiddenStore.setPin("1234"))
         HiddenStore.acceptNotice()
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
@@ -333,6 +334,23 @@ class QueueHiddenTest {
         assertEncryptedAndHidden(id, "n.webm")
         assertEquals(0, repo.unhideTasks(listOf(id)).issues)
         assertContentEquals(payload, File(work, "n.webm").readBytes())
+    }
+
+    @Test
+    fun onlyVideoAndAudioCanBeHidden() = runBlocking {
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = true
+        val zip = add("z.zip").id
+        val video = add("v.mkv").id
+        finished(zip)
+        finished(video)
+        val report = repo.hideTasks(listOf(zip, video))
+        assertEquals(1, report.moved)
+        assertEquals(1, report.skipped)
+        assertEquals(false, task(zip)?.hidden)
+        assertTrue(File(work, "z.zip").exists())
+        val only = repo.hideTasks(listOf(zip))
+        assertEquals(0, only.moved)
+        assertEquals(1, only.skipped)
     }
 
     @Test

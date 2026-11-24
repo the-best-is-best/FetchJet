@@ -50,6 +50,7 @@ class DashboardViewModel(
         { requests, review -> handleExternalBatch(requests, review) }
 
     internal var pendingHide: DashboardUiEvent.OnHideTargets? = null
+    internal var reauthRunning = false
     internal var pendingAddDialog = false
 
     internal val _uiState = MutableStateFlow(
@@ -796,7 +797,7 @@ class DashboardViewModel(
 
             is DashboardUiEvent.OnHideTargets, DashboardUiEvent.OnHiddenNoticeShown, is DashboardUiEvent.OnAddHiddenToggled, DashboardUiEvent.OnHiddenAddDownload, is DashboardUiEvent.OnUnhideTasks,
             DashboardUiEvent.OnUnhideAll, is DashboardUiEvent.OnHiddenSetPin, is DashboardUiEvent.OnHiddenUnlock,
-            DashboardUiEvent.OnHiddenLock, is DashboardUiEvent.OnHiddenChangePin, is DashboardUiEvent.OnHiddenRemoveLock,
+            DashboardUiEvent.OnHiddenLock, DashboardUiEvent.OnHiddenCover, DashboardUiEvent.OnHiddenReauth, is DashboardUiEvent.OnHiddenChangePin, is DashboardUiEvent.OnHiddenRemoveLock,
             is DashboardUiEvent.OnHiddenOpenFile, DashboardUiEvent.OnHiddenClosePlayer, DashboardUiEvent.OnHiddenEncryptNoticeAccepted,
             DashboardUiEvent.OnHiddenEncryptNoticeDismissed, DashboardUiEvent.OnHiddenShowRecoveryCode,
             DashboardUiEvent.OnHiddenRecoveryCodeShown, is DashboardUiEvent.OnHiddenRestoreWithCode,

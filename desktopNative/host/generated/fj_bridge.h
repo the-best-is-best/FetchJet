@@ -1340,6 +1340,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_hiddenRecoveryEnter(next());
     tr.set_hiddenForgotPin(next());
     tr.set_hiddenForgotReason(next());
+    tr.set_hiddenReauthReason(next());
     tr.set_hiddenResetPinTitle(next());
     tr.set_hiddenNoticeRestoreDone(next());
     tr.set_hiddenNoticeRestoreWrong(next());
@@ -1349,6 +1350,9 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_hiddenNoticeResetDone(next());
     tr.set_hiddenNoticeResetExpired(next());
     tr.set_hiddenNoticeNeedFileAccess(next());
+    tr.set_hiddenNoticeNotMedia(next());
+    tr.set_hiddenCoverUnlock(next());
+    tr.set_hiddenCoverExit(next());
     tr.set_hiddenLockTypeTitle(next());
     tr.set_hiddenLockTypePin(next());
     tr.set_hiddenLockTypePattern(next());

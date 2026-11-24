@@ -72,6 +72,11 @@ final class FJStore: ObservableObject {
         send(DashboardUiEventOnHiddenEncryptNoticeDismissed.shared)
     }
 
+    func hiddenCover() {
+        send(DashboardUiEventOnHiddenClosePlayer.shared)
+        send(DashboardUiEventOnHiddenCover.shared)
+    }
+
     func hiddenLock() {
         send(DashboardUiEventOnHiddenClosePlayer.shared)
         send(DashboardUiEventOnHiddenLock.shared)

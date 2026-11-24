@@ -80,4 +80,5 @@ fun hiddenNoticeText(notice: HiddenNotice): String = when (notice) {
     HiddenNotice.RESET_DONE -> hiddenLockTexts(storedLockType()).changed
     HiddenNotice.RESET_EXPIRED -> LocalizationManager.Strings.hiddenNoticeResetExpired
     HiddenNotice.NEED_FILE_ACCESS -> LocalizationManager.Strings.hiddenNoticeNeedFileAccess
+    HiddenNotice.NOT_MEDIA -> LocalizationManager.Strings.hiddenNoticeNotMedia
 }

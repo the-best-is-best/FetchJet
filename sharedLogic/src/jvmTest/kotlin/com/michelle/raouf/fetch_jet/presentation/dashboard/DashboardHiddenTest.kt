@@ -46,6 +46,7 @@ class DashboardHiddenTest {
         System.setProperty("user.home", home.absolutePath)
         work = File(home, "Work").also { it.mkdirs() }
         HiddenStore.resetForTest(File(home, "hidden-test.json").absolutePath)
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = false
         assertTrue(HiddenStore.setPin("1234"))
         HiddenStore.acceptNotice()
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
@@ -305,13 +306,15 @@ class DashboardHiddenTest {
     }
 
     @Test
-    fun aPlainFileNeedsNoNotice() = runBlocking {
+    fun aPlainFileIsNotHiddenAndSaysSo() = runBlocking {
         HiddenStore.resetForTest(File(home, "hidden-fresh3.json").absolutePath)
         assertTrue(HiddenStore.setPin("1234"))
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = true
         val id = add("doc.bin")
         vm.onEvent(DashboardUiEvent.OnHideTargets(listOf(id)))
         assertFalse(vm.uiState.value.hidden.encryptNoticeNeeded)
-        waitFor("hidden") { task(id)?.hidden == true }
+        waitFor("notice") { vm.uiState.value.hidden.notice == HiddenNotice.NOT_MEDIA }
+        assertFalse(task(id)?.hidden == true)
     }
 
     @Test
