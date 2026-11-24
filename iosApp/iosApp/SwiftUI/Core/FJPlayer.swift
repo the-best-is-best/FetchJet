@@ -33,6 +33,8 @@ final class FJPlayerModel: ObservableObject {
     private var rewindTimer: Timer?
     private var hideTask: Task<Void, Never>?
     private var wasPlayingBeforeHold = false
+    private var rewindTarget: Double = 0
+    private var rewindSeeking = false
 
     init(queue: PlaybackQueue) {
         self.queue = queue
@@ -47,7 +49,13 @@ final class FJPlayerModel: ObservableObject {
             if let d = self.player.currentItem?.duration.seconds, d.isFinite, d > 0 { self.duration = d }
         }
         rateObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] p, _ in
-            DispatchQueue.main.async { self?.playing = p.timeControlStatus != .paused }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let now = p.timeControlStatus != .paused
+                guard now != self.playing else { return }
+                self.playing = now
+                if now { self.scheduleHide() }
+            }
         }
         load(index, autoplay: true)
     }
@@ -89,8 +97,10 @@ final class FJPlayerModel: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 if it.status == .failed {
-                    self.failed = true
-                    if self.hasNext { self.load(self.index + 1, autoplay: true) }
+                    self.player.pause()
+                    self.hideTask?.cancel()
+                    self.controls = true
+                    if self.hasNext { self.load(self.index + 1, autoplay: false) } else { self.failed = true }
                 }
             }
         }
@@ -162,10 +172,20 @@ final class FJPlayerModel: ObservableObject {
             hold = -1
             wasPlayingBeforeHold = playing
             player.pause()
+            let now = player.currentTime().seconds
+            rewindTarget = now.isFinite ? now : position
             rewindTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                let target = max(0, self.player.currentTime().seconds - 0.2)
-                self.player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity)
+                self.rewindTarget = max(0, self.rewindTarget - 0.2)
+                self.position = self.rewindTarget
+                guard !self.rewindSeeking else { return }
+                self.rewindSeeking = true
+                self.player.seek(
+                    to: CMTime(seconds: self.rewindTarget, preferredTimescale: 600),
+                    toleranceBefore: .zero, toleranceAfter: .zero
+                ) { [weak self] _ in
+                    DispatchQueue.main.async { self?.rewindSeeking = false }
+                }
             }
         }
     }

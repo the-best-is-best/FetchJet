@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.media_player
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.feature.hidden.newStoreLock
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -10,7 +11,7 @@ import okio.Path.Companion.toPath
 object PlayerProgress {
     private val json = Json { ignoreUnknownKeys = true }
     private val serializer = MapSerializer(String.serializer(), String.serializer())
-    private val lock = Any()
+    private val lock = newStoreLock()
 
     @kotlin.concurrent.Volatile
     internal var fileOverride: String? = null
@@ -37,31 +38,39 @@ object PlayerProgress {
         }
     }
 
-    internal fun resetForTest(path: String?) = synchronized(lock) {
+    internal fun resetForTest(path: String?) = lock.withLock {
         fileOverride = path
         loaded = false
         last = emptyMap()
     }
 
-    fun lastPlayed(groupKey: String): String? = synchronized(lock) {
+    fun lastPlayed(groupKey: String): String? {
         if (groupKey.isEmpty()) return null
-        load()
-        last[groupKey]
+        return lock.withLock {
+            load()
+            last[groupKey]
+        }
     }
 
-    fun remember(groupKey: String, taskId: String) = synchronized(lock) {
-        if (groupKey.isEmpty()) return@synchronized
-        load()
-        if (last[groupKey] == taskId) return@synchronized
-        last = last + (groupKey to taskId)
-        save()
+    fun remember(groupKey: String, taskId: String) {
+        if (groupKey.isEmpty()) return
+        lock.withLock {
+            load()
+            if (last[groupKey] != taskId) {
+                last = last + (groupKey to taskId)
+                save()
+            }
+        }
     }
 
-    fun clear(groupKey: String) = synchronized(lock) {
-        if (groupKey.isEmpty()) return@synchronized
-        load()
-        if (groupKey !in last) return@synchronized
-        last = last - groupKey
-        save()
+    fun clear(groupKey: String) {
+        if (groupKey.isEmpty()) return
+        lock.withLock {
+            load()
+            if (groupKey in last) {
+                last = last - groupKey
+                save()
+            }
+        }
     }
 }
