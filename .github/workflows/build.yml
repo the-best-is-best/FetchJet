@@ -459,6 +459,44 @@ jobs:
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\ci-windows.ps1 -Step package
 
+      - name: Upload the unsigned installers for SignPath
+        id: unsigned
+        if: needs.plan.outputs.release == 'true' && needs.plan.outputs.desktop_engine == 'native' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-windows
+          path: |
+            E:/tools/probes/package/ci/out/FetchJet-*.msi
+            E:/tools/probes/package/ci/out/FetchJet-*-setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign the installers with SignPath
+        if: needs.plan.outputs.release == 'true' && needs.plan.outputs.desktop_engine == 'native' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3.2
+        with:
+          connector-url: ${{ vars.SIGNPATH_CONNECTOR_URL || 'https://app.signpath.io/Api' }}
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'FetchJet' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ github.workspace }}\signed-windows
+
+      - name: Replace the installers with the signed ones
+        if: needs.plan.outputs.release == 'true' && needs.plan.outputs.desktop_engine == 'native' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        shell: bash
+        run: |
+          OUT=/e/tools/probes/package/ci/out
+          for f in signed-windows/FetchJet-*.msi signed-windows/FetchJet-*-setup.exe; do
+            [ -f "$f" ] || continue
+            cp -f "$f" "$OUT/$(basename "$f")"
+            echo "signed: $(basename "$f")"
+          done
+          [ -n "$(ls signed-windows/FetchJet-*.msi 2>/dev/null)" ] || { echo "::error::SignPath returned no signed .msi"; exit 1; }
+
       - name: Upload MSI, MSIX and stage zip (verify run, workflow artifact)
         if: needs.plan.outputs.release != 'true' && needs.plan.outputs.desktop_engine == 'native'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -95,6 +95,10 @@ internal object DebugCalls {
             put("on", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.wakeForSchedule.value)
             put("armedAtMs", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.armedAtMs.value)
         }.toString()
+        "hideAnyType" -> {
+            com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = text(args, "on") != "true"
+            "{}"
+        }
         "opened" -> buildJsonObject {
             putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
             putJsonArray("hidden") { repeat(NativeApp.presenter.openedHidden.value.size) { add(kotlinx.serialization.json.JsonPrimitive("hidden")) } }

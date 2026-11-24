@@ -669,7 +669,7 @@ struct HiddenRootGuard: ViewModifier {
     @EnvironmentObject var store: FJStore
     @Environment(\.scenePhase) private var phase
     @State private var latched = false
-    @State private var fromBackground = false
+    @State private var wentBackground = false
 
     func body(content: Content) -> some View {
         content
@@ -685,12 +685,12 @@ struct HiddenRootGuard: ViewModifier {
             .onChange(of: phase) { _, new in
                 if new == .active {
                     latched = false
-                    if store.state.hidden.covered && fromBackground { store.send(DashboardUiEventOnHiddenReauth.shared) }
-                    fromBackground = false
+                    if wentBackground && store.state.hidden.covered { store.send(DashboardUiEventOnHiddenReauth.shared) }
+                    wentBackground = false
                 } else if store.state.hidden.unlocked {
                     latched = true
                     if new == .background {
-                        fromBackground = true
+                        wentBackground = true
                         store.hiddenCover()
                     }
                 } else if store.state.hidden.pinResetAllowed {
