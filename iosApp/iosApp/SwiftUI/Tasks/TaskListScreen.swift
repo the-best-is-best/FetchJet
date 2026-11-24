@@ -379,6 +379,7 @@ struct TaskListScreen: View {
         } preview: {
             TaskRowView(task: task, checked: isChecked, selectionMode: selectionMode) { _ in }
                 .environmentObject(store)
+                .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
                 .frame(width: previewWidth)
                 .fixedSize(horizontal: false, vertical: true)
                 .onAppear { menuPicked = false }
@@ -1177,6 +1178,7 @@ struct FolderPageBar: View {
     }
 }
 
+@MainActor
 struct TaskRowActions {
     let store: FJStore
     let showDetails: (DownloadTask) -> Void

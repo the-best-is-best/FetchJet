@@ -49,13 +49,13 @@ struct HiddenScreen: View {
         TaskRowActions(store: store, showDetails: { detailId = $0.id }, select: { checked.insert($0.id) })
     }
 
-    private var pageTasks: [DownloadTask]? { DashboardHiddenGroupsKt.hiddenPageTasks(store.state) }
+    private var pageTasks: [DownloadTask]? { store.state.hiddenPageTasks() }
     private var inPage: Bool { pageTasks != nil }
 
     private var rows: [HiddenRow] {
         if let page = pageTasks { return page.map { HiddenRow(id: $0.id, task: $0) } }
         var out: [HiddenRow] = []
-        for item in DashboardHiddenGroupsKt.hiddenItems(store.state) {
+        for item in store.state.hiddenItems() {
             if let single = item as? TaskListItemSingle {
                 out.append(HiddenRow(id: single.task.id, task: single.task))
             } else if let grouped = item as? TaskListItemGroup {
@@ -68,7 +68,7 @@ struct HiddenScreen: View {
     }
 
     private func rowIds(_ keys: Set<String>) -> [String] {
-        DashboardHiddenGroupsKt.hiddenTaskIdsOfRows(store.state, keys: Array(keys))
+        store.state.hiddenTaskIdsOfRows(keys: Array(keys))
     }
 
     private func goBack() {
@@ -95,11 +95,11 @@ struct HiddenScreen: View {
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4)
-                if let playlist = DashboardHiddenGroupsKt.hiddenOpenPlaylist(store.state) {
+                if let playlist = store.state.hiddenOpenPlaylist() {
                     HiddenGroupBar(tag: "LIST", title: playlist.title, summary: playlist.summaryText,
                                    canPause: playlist.canPause, canResume: playlist.canResume,
                                    playlistId: playlist.id, folder: "")
-                } else if let folder = DashboardHiddenGroupsKt.hiddenOpenFolder(store.state) {
+                } else if let folder = store.state.hiddenOpenFolder() {
                     HiddenGroupBar(tag: "DIR", title: folder.label, summary: folder.summaryText,
                                    canPause: folder.canPause, canResume: folder.canResume,
                                    playlistId: "", folder: folder.folder)
@@ -186,7 +186,7 @@ struct HiddenScreen: View {
         .onChange(of: store.state.hidden.tasks.map { $0.id }) { _, ids in
             if let id = detailId, !ids.contains(id) { detailId = nil }
         }
-        .onDisappear { store.hiddenLock() }
+        .onDisappear { if !FJStore.previewShown() { store.hiddenLock() } }
     }
 
     private func emptyState(_ s: AppLocalization) -> some View {

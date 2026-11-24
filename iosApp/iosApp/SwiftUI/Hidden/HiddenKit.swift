@@ -70,7 +70,7 @@ struct FJHiddenNoticeDialog: View {
     var body: some View {
         let s = store.strings
         FJDialogFrame(title: s.hiddenNoticeTitle) {
-            Text(s.hiddenNoticeBody).fjBody()
+            Text(s.hiddenNoticeBody).font(FJTheme.font.body).foregroundStyle(FJTheme.color.onSurface)
         } buttons: {
             FJDialogButton(title: s.cancel, kind: .outlined) { store.dismissHiddenNotice() }
             FJDialogButton(title: s.hiddenNoticeAccept) { store.acceptHiddenNotice() }
@@ -263,6 +263,7 @@ struct HiddenSheetBody<Content: View>: View {
         }
         .presentationDetents([.medium, .large])
         .hiddenPrivacyCover()
+        .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
     }
 }
 

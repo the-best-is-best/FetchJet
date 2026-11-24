@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.hidden
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.filesystem.relocateAppPath
 import com.michelle.raouf.fetch_jet.core.security.CryptoBox
 import com.michelle.raouf.fetch_jet.core.security.SecretBox
 import com.michelle.raouf.fetch_jet.core.security.hexOf
@@ -147,6 +148,10 @@ object HiddenStore {
                 saved ?: HiddenFile()
             }
         }
+        data = data.copy(
+            origins = data.origins.mapValues { relocateAppPath(it.value) },
+            folders = data.folders.map { normalizedDir(relocateAppPath(it)) }
+        )
         publish()
         migrateRecovery()
         if (!startupCleaned && fileOverride == null) {
