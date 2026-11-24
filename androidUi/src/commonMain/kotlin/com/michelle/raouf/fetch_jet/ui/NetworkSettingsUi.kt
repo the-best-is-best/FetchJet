@@ -239,7 +239,7 @@ private fun SiteLoginsCard() {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 OutlinedButton(
                     enabled = canSignIn,
-                    onClick = { signInSite = SiteLogin.cleanSite(site) }
+                    onClick = { signInSite = site.trim() }
                 ) { Text(LocalizationManager.Strings.netLoginBrowser) }
                 Spacer(Modifier.width(8.dp))
                 Button(
