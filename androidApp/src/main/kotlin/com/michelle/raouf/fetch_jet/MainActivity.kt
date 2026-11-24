@@ -199,6 +199,10 @@ class MainActivity : ComponentActivity() {
         // Consume it: a rotation must not add the same torrent again.
         intent.data = null
         intent.action = null
+        if (uri.scheme.equals("fetchjet", true) && uri.host.equals("browse", true)) {
+            uri.getQueryParameter("url")?.let { com.michelle.raouf.fetch_jet.core.network.BrowserRequests.open(it) }
+            return
+        }
         val target = when (uri.scheme?.lowercase()) {
             "magnet" -> uri.toString()
             // From the browser extension: fetchjet://download?url=<encoded link>

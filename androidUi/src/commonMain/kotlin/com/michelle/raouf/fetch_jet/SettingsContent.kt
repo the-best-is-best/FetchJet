@@ -152,6 +152,7 @@ internal fun MoreContentView(
         com.michelle.raouf.fetch_jet.ui.MorePage(
             onOpenSettings = { inSettings = true },
             onOpenHidden = { hiddenFlow = true },
+            onOpenBrowser = { com.michelle.raouf.fetch_jet.core.network.BrowserRequests.open("") },
             onBackup = { viewModel.onEvent(com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent.OnBackupExportRequested) },
             onRestore = {
                 com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.pick { text ->

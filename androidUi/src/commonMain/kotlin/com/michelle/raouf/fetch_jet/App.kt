@@ -989,6 +989,12 @@ fun App(
                 )
             }
 
+            val browserUrl by com.michelle.raouf.fetch_jet.core.network.BrowserRequests.url.collectAsState()
+            browserUrl?.let { start ->
+                com.michelle.raouf.fetch_jet.ui.InAppBrowser(start) {
+                    com.michelle.raouf.fetch_jet.core.network.BrowserRequests.close()
+                }
+            }
             if (state.hidden.unlocked && state.hidden.covered) {
                 com.michelle.raouf.fetch_jet.ui.HiddenCover(viewModel)
             }

@@ -13,7 +13,7 @@ class Handler(BaseHTTPRequestHandler):
         print("%s %s cookie=%s" % (self.command, self.path, self.headers.get("Cookie")), flush=True)
 
     def page(self, text, extra=None):
-        body = ("<html><body><h2>%s</h2><p>FetchJet cookie test page</p></body></html>" % text).encode()
+        body = ("<html><body><h2>%s</h2><p>FetchJet cookie test page</p><p><a id=\"get\" href=\"/secret.bin\" style=\"font-size:40px\">Get secret file</a></p></body></html>" % text).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -45,6 +45,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(status)
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", "attachment; filename=\"secret.bin\"")
             self.send_header("Content-Length", str(length))
             if status == 206:
                 self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, SIZE))

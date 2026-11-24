@@ -40,6 +40,11 @@ interface AppLocalization : LocalizationProvider {
     val morePrivacy: String
     val moreStats: String
     val hiddenTitle: String
+    val browserTitle: String
+    val browserHint: String
+    val browserAddressHint: String
+    val browserSendPage: String
+    val browserDownloadMedia: String
     val hiddenHide: String
     val hiddenUnhide: String
     val hiddenUnhideAll: String

@@ -45,6 +45,7 @@ import com.tbib.kmp_localization.LocalizationManager
 internal fun MorePage(
     onOpenSettings: () -> Unit,
     onOpenHidden: () -> Unit,
+    onOpenBrowser: () -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onToast: (String) -> Unit
@@ -117,6 +118,12 @@ internal fun MorePage(
                 }
 
                 SettingsGroup {
+                    SettingRow(
+                        title = s.browserTitle,
+                        subtitle = s.browserHint,
+                        onClick = onOpenBrowser
+                    ) { MoreChevron() }
+                    SettingDivider()
                     SettingRow(
                         title = s.hiddenTitle,
                         onClick = onOpenHidden
