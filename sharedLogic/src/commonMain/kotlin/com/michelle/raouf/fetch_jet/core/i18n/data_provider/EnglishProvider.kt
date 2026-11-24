@@ -58,6 +58,7 @@ object EnglishProvider : AppLocalization {
     override val hiddenEmpty = "No hidden downloads"
     override val hiddenHiddenToast = "Hidden. Open it from More > Hidden."
     override val hiddenNoteEncrypted = "Only video and audio can be hidden. They are encrypted, and each one is decrypted only when you play it."
+    override val hiddenNoteAnyType = "Audio and video you hide are encrypted. Other files are only moved to the app's private folder, out of sight of other apps."
     override val hiddenWorking = "Moving files… {n} of {total}"
     override val hiddenNoticeTitle = "Hidden audio and video are encrypted"
     override val hiddenNoticeBody = "Audio and video you hide are encrypted with a key tied to this device. If you uninstall the app, clear its data or move to another device, they cannot be opened again. Keep this in mind. The PIN only protects opening this screen."

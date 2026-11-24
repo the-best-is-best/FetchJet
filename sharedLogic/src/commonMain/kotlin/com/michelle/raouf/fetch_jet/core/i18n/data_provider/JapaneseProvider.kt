@@ -58,6 +58,7 @@ object JapaneseProvider : AppLocalization {
     override val hiddenEmpty = "非表示のダウンロードはありません"
     override val hiddenHiddenToast = "非表示にしました。「その他 > 非表示」から開けます。"
     override val hiddenNoteEncrypted = "非表示にできるのは動画と音声のみです。暗号化され、再生するときだけ復号されます。"
+    override val hiddenNoteAnyType = "非表示にした音声と動画は暗号化されます。その他のファイルは、アプリ専用フォルダーに移動されるだけで、他のアプリからは見えません。"
     override val hiddenWorking = "ファイルを移動しています… {n}/{total}"
     override val hiddenNoticeTitle = "非表示の音声と動画は暗号化されます"
     override val hiddenNoticeBody = "非表示にした音声と動画は、この端末に結び付いた鍵で暗号化されます。アプリをアンインストールしたり、データを消去したり、別の端末に移したりすると、二度と開けなくなります。ご注意ください。PIN はこの画面を開くときだけを保護します。"

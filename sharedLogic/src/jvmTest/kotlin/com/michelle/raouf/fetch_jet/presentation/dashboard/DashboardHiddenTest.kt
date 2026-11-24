@@ -46,7 +46,6 @@ class DashboardHiddenTest {
         System.setProperty("user.home", home.absolutePath)
         work = File(home, "Work").also { it.mkdirs() }
         HiddenStore.resetForTest(File(home, "hidden-test.json").absolutePath)
-        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = false
         assertTrue(HiddenStore.setPin("1234"))
         HiddenStore.acceptNotice()
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

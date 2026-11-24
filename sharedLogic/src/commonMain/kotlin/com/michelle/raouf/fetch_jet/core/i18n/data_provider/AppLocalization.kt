@@ -60,6 +60,7 @@ interface AppLocalization : LocalizationProvider {
     val hiddenEmpty: String
     val hiddenHiddenToast: String
     val hiddenNoteEncrypted: String
+    val hiddenNoteAnyType: String
     val hiddenWorking: String
     val hiddenNoticeTitle: String
     val hiddenNoticeBody: String

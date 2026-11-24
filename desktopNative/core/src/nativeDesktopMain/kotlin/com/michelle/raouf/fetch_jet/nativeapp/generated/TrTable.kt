@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 1008
+internal const val TR_COUNT = 1009
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -62,6 +62,7 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.hiddenEmpty,
     s.hiddenHiddenToast,
     s.hiddenNoteEncrypted,
+    s.hiddenNoteAnyType,
     s.hiddenWorking,
     s.hiddenNoticeTitle,
     s.hiddenNoticeBody,

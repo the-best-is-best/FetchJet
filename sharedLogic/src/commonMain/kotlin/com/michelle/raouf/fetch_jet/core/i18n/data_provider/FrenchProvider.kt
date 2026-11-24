@@ -58,6 +58,7 @@ object FrenchProvider : AppLocalization {
     override val hiddenEmpty = "Aucun téléchargement masqué"
     override val hiddenHiddenToast = "Masqué. Ouvrez-le depuis Plus > Masqués."
     override val hiddenNoteEncrypted = "Seules les vidéos et les fichiers audio peuvent être masqués. Ils sont chiffrés et ne sont déchiffrés qu'à la lecture."
+    override val hiddenNoteAnyType = "Les fichiers audio et vidéo masqués sont chiffrés. Les autres fichiers sont seulement déplacés dans le dossier privé de l'application, hors de vue des autres applications."
     override val hiddenWorking = "Déplacement des fichiers… {n} sur {total}"
     override val hiddenNoticeTitle = "L'audio et la vidéo masqués sont chiffrés"
     override val hiddenNoticeBody = "L'audio et la vidéo que vous masquez sont chiffrés avec une clé liée à cet appareil. Si vous désinstallez l'application, effacez ses données ou changez d'appareil, ils ne pourront plus être ouverts. Gardez-le en tête. Le code PIN protège uniquement l'ouverture de cet écran."

@@ -628,7 +628,7 @@ internal fun HiddenScreen(
             }
         }
         Text(
-            s.hiddenNoteEncrypted,
+            s.hiddenNoteAnyType,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)

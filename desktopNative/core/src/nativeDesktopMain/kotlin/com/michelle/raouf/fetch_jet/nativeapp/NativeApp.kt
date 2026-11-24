@@ -115,6 +115,7 @@ internal object NativeApp {
         val parsed = parse(configJson)
         config = parsed
         applyOverrides(parsed)
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = true
         val logs = DesktopOs.join(DesktopApp.appHome, "logs")
         DesktopOs.createDirectories(logs)
         CrashLog.install(DesktopOs.join(logs, "native-crash.log"), null, terminateOnUnhandled = true, quietAbort = true)

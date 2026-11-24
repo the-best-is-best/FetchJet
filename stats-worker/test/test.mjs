@@ -19,6 +19,7 @@ const insert = db.prepare("INSERT INTO pings (day, install_id, version, platform
 
 const env = {
   STATS_TOKEN: "secret",
+  ALLOW_ANY_VERSION: "1",
   DB: {
     prepare(sql) {
       const st = db.prepare(sql);
@@ -239,6 +240,39 @@ test("ping still inserts", async () => {
   const res = await worker.fetch(new Request("https://x.test/ping", { method: "POST", body: JSON.stringify({ id: "abcdefghijklmnop1234", version: "1.6.0", platform: "windows" }) }), env);
   assert.equal(res.status, 200);
   db.prepare("DELETE FROM pings WHERE install_id = 'abcdefghijklmnop1234'").run();
+});
+
+test("only published GitHub versions are counted", async () => {
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify([
+      { tag_name: "v2.0.0", draft: false },
+      { tag_name: "v2.1.0", draft: true },
+      { tag_name: "v1.5.0", draft: false },
+    ]), { status: 200 });
+  };
+  try {
+    const gated = { STATS_TOKEN: "secret", DB: env.DB, EXTRA_VERSIONS: "1.5.1" };
+    const send = async (id, version) => {
+      const res = await worker.fetch(new Request("https://x.test/ping", { method: "POST", body: JSON.stringify({ id, version, platform: "windows" }) }), gated);
+      assert.equal(res.status, 200);
+    };
+    const count = (id) => db.prepare("SELECT COUNT(*) AS n FROM pings WHERE install_id = ?").get(id).n;
+    await send("gateinstall0000001", "2.0.0");
+    await send("gateinstall0000002", "2.1.0");
+    await send("gateinstall0000003", "9.9.9");
+    await send("gateinstall0000004", "1.5.1");
+    assert.equal(count("gateinstall0000001"), 1);
+    assert.equal(count("gateinstall0000002"), 0);
+    assert.equal(count("gateinstall0000003"), 0);
+    assert.equal(count("gateinstall0000004"), 1);
+    assert.ok(calls <= 1, "the release list is fetched once and cached");
+  } finally {
+    globalThis.fetch = realFetch;
+    db.prepare("DELETE FROM pings WHERE install_id LIKE 'gateinstall%'").run();
+  }
 });
 
 async function pageHtml() {

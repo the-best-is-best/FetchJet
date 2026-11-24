@@ -58,6 +58,7 @@ object IndonesianProvider : AppLocalization {
     override val hiddenEmpty = "Tidak ada unduhan tersembunyi"
     override val hiddenHiddenToast = "Disembunyikan. Buka dari Lainnya > Tersembunyi."
     override val hiddenNoteEncrypted = "Hanya video dan audio yang bisa disembunyikan. Keduanya dienkripsi dan hanya didekripsi saat diputar."
+    override val hiddenNoteAnyType = "Audio dan video yang disembunyikan dienkripsi. File lain hanya dipindahkan ke folder pribadi aplikasi, di luar jangkauan aplikasi lain."
     override val hiddenWorking = "Memindahkan file… {n} dari {total}"
     override val hiddenNoticeTitle = "Audio dan video tersembunyi dienkripsi"
     override val hiddenNoticeBody = "Audio dan video yang Anda sembunyikan dienkripsi dengan kunci yang terikat ke perangkat ini. Jika Anda menghapus aplikasi, menghapus datanya, atau pindah ke perangkat lain, file tidak bisa dibuka lagi. Ingatlah hal ini. PIN hanya melindungi pembukaan layar ini."

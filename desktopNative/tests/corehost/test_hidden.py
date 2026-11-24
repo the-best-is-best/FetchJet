@@ -436,6 +436,7 @@ def run():
         clip = add_and_wait(core, BASE + "/clip.mp4", "clip.mp4")
         doc = add_and_wait(core, BASE + "/doc.zip", "doc.zip")
         core.action("RowCheck", id=doc["id"], checked=True)
+        wait_toast(core, "Started download: doc.zip", 6)
         core.debug("hideAnyType", {"on": False})
         core.action("HideChecked")
         refused = wait_toast(core, strings["hiddenNoticeNotMedia"], 6)

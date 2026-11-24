@@ -225,6 +225,39 @@ function clean(value, max) {
 
 const MIN_COUNTRY = 5;
 
+const RELEASES_URL = "https://api.github.com/repos/the-best-is-best/FetchJet/releases?per_page=100";
+const RELEASES_TTL_MS = 3600000;
+let releasesCache = { at: 0, versions: null };
+
+async function publishedVersions(env) {
+  if (releasesCache.versions && Date.now() - releasesCache.at < RELEASES_TTL_MS) return releasesCache.versions;
+  try {
+    const headers = { "user-agent": "FetchJet-stats", accept: "application/vnd.github+json" };
+    if (env.GITHUB_TOKEN) headers.authorization = "Bearer " + env.GITHUB_TOKEN;
+    const res = await fetch(RELEASES_URL, { headers });
+    if (!res.ok) return releasesCache.versions;
+    const list = await res.json();
+    const versions = new Set(
+      list.filter((r) => r && !r.draft && typeof r.tag_name === "string").map((r) => r.tag_name.replace(/^v/i, ""))
+    );
+    String(env.EXTRA_VERSIONS || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .forEach((v) => versions.add(v));
+    releasesCache = { at: Date.now(), versions };
+    return versions;
+  } catch (e) {
+    return releasesCache.versions;
+  }
+}
+
+async function isPublishedVersion(env, version) {
+  if (env.ALLOW_ANY_VERSION === "1") return true;
+  const versions = await publishedVersions(env);
+  return !versions || versions.has(version);
+}
+
 function json(body, status, extra) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
@@ -249,6 +282,7 @@ async function ping(request, env) {
   if (id.length < 16 || !version || !PLATFORMS.includes(platform)) {
     return json({ error: "bad fields" }, 400);
   }
+  if (!(await isPublishedVersion(env, version))) return json({ ok: true });
   const country = (request.cf && request.cf.country) || "XX";
   const day = new Date().toISOString().slice(0, 10);
   await env.DB.prepare(

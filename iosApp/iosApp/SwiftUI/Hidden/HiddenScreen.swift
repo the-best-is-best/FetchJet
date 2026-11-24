@@ -90,7 +90,7 @@ struct HiddenScreen: View {
         let rows = self.rows
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                Text(s.hiddenNoteEncrypted)
+                Text(s.hiddenNoteAnyType)
                     .font(FJTheme.font.caption)
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(maxWidth: .infinity, alignment: .leading)

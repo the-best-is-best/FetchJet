@@ -58,6 +58,7 @@ object PortugueseProvider : AppLocalization {
     override val hiddenEmpty = "Nenhum download oculto"
     override val hiddenHiddenToast = "Oculto. Abra em Mais > Ocultos."
     override val hiddenNoteEncrypted = "Só é possível ocultar vídeo e áudio. Eles são criptografados e só são descriptografados ao reproduzir."
+    override val hiddenNoteAnyType = "Áudio e vídeo ocultos são criptografados. Os outros arquivos apenas são movidos para a pasta privada do app, fora da vista de outros apps."
     override val hiddenWorking = "Movendo arquivos… {n} de {total}"
     override val hiddenNoticeTitle = "Áudio e vídeo ocultos são criptografados"
     override val hiddenNoticeBody = "O áudio e o vídeo que você oculta são criptografados com uma chave ligada a este dispositivo. Se você desinstalar o app, limpar seus dados ou mudar de dispositivo, não será mais possível abri-los. Tenha isso em mente. O PIN protege apenas a abertura desta tela."

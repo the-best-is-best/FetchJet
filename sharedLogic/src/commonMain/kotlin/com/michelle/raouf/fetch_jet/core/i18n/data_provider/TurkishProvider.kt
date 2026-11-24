@@ -58,6 +58,7 @@ object TurkishProvider : AppLocalization {
     override val hiddenEmpty = "Gizli indirme yok"
     override val hiddenHiddenToast = "Gizlendi. Daha fazla > Gizli bölümünden açın."
     override val hiddenNoteEncrypted = "Yalnızca video ve ses gizlenebilir. Şifrelenirler ve yalnızca oynatırken çözülürler."
+    override val hiddenNoteAnyType = "Gizlediğiniz ses ve video şifrelenir. Diğer dosyalar yalnızca uygulamanın özel klasörüne taşınır, diğer uygulamaların göremeyeceği yere."
     override val hiddenWorking = "Dosyalar taşınıyor… {n}/{total}"
     override val hiddenNoticeTitle = "Gizli ses ve videolar şifrelidir"
     override val hiddenNoticeBody = "Gizlediğiniz ses ve videolar, bu cihaza bağlı bir anahtarla şifrelenir. Uygulamayı kaldırırsanız, verilerini silerseniz ya da başka bir cihaza geçerseniz bir daha açılamazlar. Bunu aklınızda tutun. PIN yalnızca bu ekranın açılmasını korur."

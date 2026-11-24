@@ -58,6 +58,7 @@ object HindiProvider : AppLocalization {
     override val hiddenEmpty = "कोई छिपा हुआ डाउनलोड नहीं"
     override val hiddenHiddenToast = "छिपा दिया गया। इसे और > छिपे हुए से खोलें।"
     override val hiddenNoteEncrypted = "केवल वीडियो और ऑडियो छिपाए जा सकते हैं। वे एन्क्रिप्ट होते हैं और केवल चलाते समय डिक्रिप्ट होते हैं।"
+    override val hiddenNoteAnyType = "छिपाए गए ऑडियो और वीडियो एन्क्रिप्ट होते हैं। अन्य फ़ाइलें बस ऐप के निजी फ़ोल्डर में ले जाई जाती हैं, दूसरे ऐप्स की नज़र से दूर।"
     override val hiddenWorking = "फ़ाइलें ले जाई जा रही हैं… {n}/{total}"
     override val hiddenNoticeTitle = "छिपे ऑडियो और वीडियो एन्क्रिप्ट हैं"
     override val hiddenNoticeBody = "आपके छिपाए गए ऑडियो और वीडियो इस डिवाइस से जुड़ी कुंजी से एन्क्रिप्ट होते हैं। अगर आप ऐप अनइंस्टॉल करते हैं, उसका डेटा साफ़ करते हैं या दूसरे डिवाइस पर जाते हैं, तो वे दोबारा नहीं खुल पाएँगे। इसे याद रखें। PIN केवल इस स्क्रीन को खोलने की सुरक्षा करता है।"

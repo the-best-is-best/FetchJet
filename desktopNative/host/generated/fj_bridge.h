@@ -1324,6 +1324,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_hiddenEmpty(next());
     tr.set_hiddenHiddenToast(next());
     tr.set_hiddenNoteEncrypted(next());
+    tr.set_hiddenNoteAnyType(next());
     tr.set_hiddenWorking(next());
     tr.set_hiddenNoticeTitle(next());
     tr.set_hiddenNoticeBody(next());

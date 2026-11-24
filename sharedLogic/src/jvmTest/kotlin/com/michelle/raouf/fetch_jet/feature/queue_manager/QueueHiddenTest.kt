@@ -47,7 +47,6 @@ class QueueHiddenTest {
         work = File(home, "Work").also { it.mkdirs() }
         storeFile = File(home, "hidden-test.json")
         HiddenStore.resetForTest(storeFile.absolutePath)
-        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = false
         assertTrue(HiddenStore.setPin("1234"))
         HiddenStore.acceptNotice()
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

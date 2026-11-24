@@ -58,6 +58,7 @@ object KoreanProvider : AppLocalization {
     override val hiddenEmpty = "숨긴 다운로드가 없습니다"
     override val hiddenHiddenToast = "숨겼습니다. 더보기 > 숨김에서 열 수 있습니다."
     override val hiddenNoteEncrypted = "동영상과 오디오만 숨길 수 있습니다. 암호화되며 재생할 때만 복호화됩니다."
+    override val hiddenNoteAnyType = "숨긴 오디오와 동영상은 암호화됩니다. 다른 파일은 앱의 비공개 폴더로 옮겨질 뿐이며 다른 앱에서는 보이지 않습니다."
     override val hiddenWorking = "파일 이동 중… {n}/{total}"
     override val hiddenNoticeTitle = "숨긴 오디오와 비디오는 암호화됩니다"
     override val hiddenNoticeBody = "숨긴 오디오와 비디오는 이 기기에 묶인 키로 암호화됩니다. 앱을 삭제하거나 데이터를 지우거나 다른 기기로 옮기면 다시 열 수 없습니다. 이 점을 기억하세요. PIN은 이 화면을 여는 것만 보호합니다."

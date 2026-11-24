@@ -58,6 +58,7 @@ object ChineseProvider : AppLocalization {
     override val hiddenEmpty = "没有隐藏的下载"
     override val hiddenHiddenToast = "已隐藏。可在“更多 > 已隐藏”中打开。"
     override val hiddenNoteEncrypted = "只能隐藏视频和音频。它们会被加密，仅在播放时解密。"
+    override val hiddenNoteAnyType = "隐藏的音频和视频会被加密。其他文件只是被移到应用的私有文件夹，其他应用看不到。"
     override val hiddenWorking = "正在移动文件… {n}/{total}"
     override val hiddenNoticeTitle = "隐藏的音频和视频已加密"
     override val hiddenNoticeBody = "您隐藏的音频和视频会用绑定此设备的密钥加密。如果卸载应用、清除其数据或换到另一台设备,它们将无法再打开。请记住这一点。PIN 只保护打开此界面。"

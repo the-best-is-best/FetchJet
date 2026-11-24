@@ -28,7 +28,7 @@ object HiddenMedia {
     internal var tempOverride: String? = null
 
     @kotlin.concurrent.Volatile
-    var mediaOnly: Boolean = true
+    var mediaOnly: Boolean = false
 
     internal val triedIds = MutableStateFlow<Set<String>>(emptySet())
 
@@ -48,7 +48,7 @@ object HiddenMedia {
 
     internal fun resetForTest() {
         triedIds.value = emptySet()
-        mediaOnly = true
+        mediaOnly = false
     }
 
     private fun percentSteps(onFraction: (Float) -> Unit): (Long, Long) -> Unit {

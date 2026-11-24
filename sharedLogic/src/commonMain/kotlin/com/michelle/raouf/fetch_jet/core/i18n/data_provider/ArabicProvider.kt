@@ -58,6 +58,7 @@ object ArabicProvider : AppLocalization {
     override val hiddenEmpty = "لا توجد تنزيلات مخفية"
     override val hiddenHiddenToast = "تم الإخفاء. افتحها من المزيد > المخفية."
     override val hiddenNoteEncrypted = "الإخفاء للفيديو والصوت فقط. بتتشفّر، وكل ملف بيتفك تشفيره لحظة التشغيل بس."
+    override val hiddenNoteAnyType = "الصوت والفيديو اللي بتخفيهم بيتشفّروا. باقي الملفات بتتنقل بس لمجلد خاص بالتطبيق، بعيد عن باقي التطبيقات."
     override val hiddenWorking = "جارٍ نقل الملفات… {n} من {total}"
     override val hiddenNoticeTitle = "الصوت والفيديو المخفيان مشفّران"
     override val hiddenNoticeBody = "يُشفَّر الصوت والفيديو اللذان تخفيهما بمفتاح مرتبط بهذا الجهاز. إذا حذفت التطبيق أو مسحت بياناته أو انتقلت إلى جهاز آخر فلن يمكن فتحهما مرة أخرى. ضع ذلك في بالك. الرمز السري يحمي فتح هذه الشاشة فقط."

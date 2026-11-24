@@ -58,6 +58,7 @@ object PersianProvider : AppLocalization {
     override val hiddenEmpty = "دانلود پنهانی وجود ندارد"
     override val hiddenHiddenToast = "پنهان شد. از بیشتر > پنهان باز کنید."
     override val hiddenNoteEncrypted = "فقط ویدیو و صوت را می‌توان پنهان کرد. آن‌ها رمزگذاری می‌شوند و فقط هنگام پخش رمزگشایی می‌شوند."
+    override val hiddenNoteAnyType = "صوت و ویدیوی پنهان‌شده رمزگذاری می‌شوند. فایل‌های دیگر فقط به پوشه خصوصی برنامه منتقل می‌شوند و برنامه‌های دیگر آن‌ها را نمی‌بینند."
     override val hiddenWorking = "در حال انتقال فایل‌ها… {n} از {total}"
     override val hiddenNoticeTitle = "صدا و ویدیوی پنهان رمزگذاری شده است"
     override val hiddenNoticeBody = "صدا و ویدیویی که پنهان می‌کنید با کلیدی وابسته به این دستگاه رمزگذاری می‌شود. اگر برنامه را حذف کنید، داده‌هایش را پاک کنید یا به دستگاه دیگری بروید، دیگر باز نخواهد شد. این را به خاطر داشته باشید. پین فقط از باز کردن این صفحه محافظت می‌کند."
