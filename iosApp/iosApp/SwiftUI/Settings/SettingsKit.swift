@@ -7,6 +7,7 @@ final class SettingsLive: ObservableObject {
     @Published private(set) var visibleToDevices = false
     @Published private(set) var proxy: ProxySettings = ProxySettings(kind: .none, host: "", port: 0, user: "", password: "")
     @Published private(set) var logins: [SiteLogin] = []
+    @Published private(set) var sessions: [SiteCookie] = []
     @Published private(set) var allowedOrigins: [String] = []
     @Published private(set) var blockedOrigins: [String] = []
     @Published private(set) var update: UpdateState?
@@ -33,6 +34,8 @@ final class SettingsLive: ObservableObject {
         if let p = NetworkSettings.shared.proxy.value as? ProxySettings, !p.isEqual(proxy) { proxy = p }
         let l = (NetworkSettings.shared.logins.value as? [SiteLogin]) ?? []
         if l.map({ "\($0.site)|\($0.user)" }) != logins.map({ "\($0.site)|\($0.user)" }) { logins = l }
+        let c = (NetworkSettings.shared.cookies.value as? [SiteCookie]) ?? []
+        if c.map({ $0.site }) != sessions.map({ $0.site }) { sessions = c }
         let a = Self.origins(BridgePairing.shared.legacyAllowed.value)
         if a != allowedOrigins { allowedOrigins = a }
         let b = Self.origins(BridgePairing.shared.blocked.value)

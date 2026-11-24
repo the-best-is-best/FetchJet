@@ -111,13 +111,27 @@ struct SettingsLoginsCard: View {
     @State private var site = ""
     @State private var user = ""
     @State private var password = ""
+    @State private var signIn: FJSignInTarget?
 
     var body: some View {
         let s = store.strings
         let canAdd = SiteLogin.companion.cleanSite(text: site).contains(".") && !user.trimmingCharacters(in: .whitespaces).isEmpty
+        let canSignIn = SiteLogin.companion.cleanSite(text: site).contains(".")
         SettingsGroupBox(title: s.netLoginsGroup, footer: s.netLoginsHint) {
-            if live.logins.isEmpty {
+            if live.logins.isEmpty && live.sessions.isEmpty {
                 SettingsRow(title: s.netLoginsEmpty)
+            }
+            ForEach(live.sessions, id: \.site) { session in
+                SettingsRow(title: session.site, subtitle: s.netLoginBrowserTag) {
+                    Button(s.netRemove) {
+                        NetworkSettings.shared.removeCookie(site: session.site)
+                        live.refresh()
+                    }
+                    .font(Font.fj(14, .semibold))
+                    .foregroundStyle(FJTheme.color.error)
+                    .buttonStyle(.plain)
+                }
+                SettingsDivider()
             }
             ForEach(live.logins, id: \.site) { login in
                 SettingsRow(title: login.site, subtitle: login.user) {
@@ -139,6 +153,11 @@ struct SettingsLoginsCard: View {
                 }
                 HStack {
                     Spacer()
+                    Button(s.netLoginBrowser) {
+                        signIn = FJSignInTarget.make(from: site)
+                    }
+                    .buttonStyle(SettingsButtonStyle())
+                    .disabled(!canSignIn)
                     Button(s.netLoginAdd) {
                         NetworkSettings.shared.saveLogin(login: SiteLogin(site: site, user: user, password: password))
                         site = ""; user = ""; password = ""
@@ -149,6 +168,16 @@ struct SettingsLoginsCard: View {
                 }
             }
             .padding(16)
+        }
+        .fullScreenCover(item: $signIn) { target in
+            FJSiteSignInSheet(target: target) { cookie in
+                if let cookie {
+                    NetworkSettings.shared.saveCookie(site: target.site, cookie: cookie)
+                    live.refresh()
+                }
+                signIn = nil
+            }
+            .environmentObject(store)
         }
     }
 }

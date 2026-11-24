@@ -79,7 +79,7 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
         loading = false
     }
 
-    private static func matches(_ cookie: HTTPCookie, _ url: URL) -> Bool {
+    static func matches(_ cookie: HTTPCookie, _ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return false }
         let domain = cookie.domain.lowercased()
         let bare = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain

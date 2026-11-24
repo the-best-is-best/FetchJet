@@ -112,7 +112,8 @@ class IosHybridHttpEngine(
         val host = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
             .substringAfterLast('@').substringBefore(':')
         return host.isNotEmpty() &&
-                com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null
+                (com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null ||
+                        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.cookieFor(host) != null)
     }
 }
 
