@@ -206,7 +206,7 @@ private fun SiteLoginsCard() {
         }
         sessions.forEach { session ->
             SettingRow(title = session.site, subtitle = LocalizationManager.Strings.netLoginBrowserTag) {
-                TextButton(onClick = { removing = session.site to { NetworkSettings.removeCookie(session.site) } }) {
+                TextButton(onClick = { removing = session.site to { clearBrowserLogin(session.site); NetworkSettings.removeCookie(session.site) } }) {
                     Text(
                         LocalizationManager.Strings.netRemove,
                         color = MaterialTheme.colorScheme.error
@@ -217,7 +217,7 @@ private fun SiteLoginsCard() {
         }
         logins.forEach { login ->
             SettingRow(title = login.site, subtitle = login.user) {
-                TextButton(onClick = { removing = login.site to { NetworkSettings.removeLogin(login.site) } }) {
+                TextButton(onClick = { removing = login.site to { clearBrowserLogin(login.site); NetworkSettings.removeLogin(login.site) } }) {
                     Text(
                         LocalizationManager.Strings.netRemove,
                         color = MaterialTheme.colorScheme.error

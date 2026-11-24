@@ -12,8 +12,9 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print("%s %s cookie=%s" % (self.command, self.path, self.headers.get("Cookie")), flush=True)
 
-    def page(self, text, extra=None):
-        body = ("<html><body><h2>%s</h2><p>FetchJet cookie test page</p><p><a id=\"get\" href=\"/secret.bin\" style=\"font-size:40px\">Get secret file</a></p></body></html>" % text).encode()
+    def page(self, text, extra=None, form=False):
+        box = "<form action=\"/login\" method=\"get\"><input id=\"pw\" type=\"password\" name=\"p\" style=\"font-size:36px\"><button id=\"go\" style=\"font-size:36px\">Sign in</button></form>" if form else ""
+        body = ("<html><body><h2>%s</h2><p>FetchJet cookie test page</p>%s<p><a id=\"get\" href=\"/secret.bin\" style=\"font-size:40px\">Get secret file</a></p></body></html>" % (text, box)).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -52,7 +53,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"x" * length)
             return
-        self.page("Sign in page", [])
+        self.page("Sign in page", [], True)
 
 
 if __name__ == "__main__":

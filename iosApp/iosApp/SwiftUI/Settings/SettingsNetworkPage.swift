@@ -126,6 +126,7 @@ struct SettingsLoginsCard: View {
                 SettingsRow(title: session.site, subtitle: s.netLoginBrowserTag) {
                     Button(s.netRemove) {
                         removing = (session.site, {
+                            FJBrowserSession.clear(site: session.site)
                             NetworkSettings.shared.removeCookie(site: session.site)
                             live.refresh()
                         })
@@ -140,6 +141,7 @@ struct SettingsLoginsCard: View {
                 SettingsRow(title: login.site, subtitle: login.user) {
                     Button(s.netRemove) {
                         removing = (login.site, {
+                            FJBrowserSession.clear(site: login.site)
                             NetworkSettings.shared.removeLogin(site: login.site)
                             live.refresh()
                         })

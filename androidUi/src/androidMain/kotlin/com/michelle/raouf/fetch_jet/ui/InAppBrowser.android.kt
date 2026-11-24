@@ -65,6 +65,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge
 import com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest
+import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
+import com.michelle.raouf.fetch_jet.core.network.SiteLogin
 import com.tbib.kmp_localization.LocalizationManager
 
 private const val FINDER = """
@@ -84,6 +86,13 @@ private const val FINDER = """
   }
   setInterval(look, 700);
   look();
+  if (!window.__fjLoginWatch) {
+    window.__fjLoginWatch = true;
+    document.addEventListener("input", function (e) {
+      var t = e.target;
+      if (t && t.type === "password" && t.value) { try { FJLogin.typed(); } catch (x) {} }
+    }, true);
+  }
 })();
 """
 
@@ -174,6 +183,15 @@ private fun BrowserDownloadButton(ready: Boolean, modifier: Modifier, onClick: (
     }
 }
 
+private class LoginBridge(private val onTyped: () -> Unit) {
+    private val main = Handler(Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun typed() {
+        main.post { onTyped() }
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
@@ -184,6 +202,19 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
     var canBack by remember { mutableStateOf(false) }
     var canForward by remember { mutableStateOf(false) }
     var media by remember { mutableStateOf("") }
+    val loginTyped = remember { booleanArrayOf(false) }
+
+    fun rememberSession(view: WebView) {
+        val page = view.url.orEmpty()
+        val host = android.net.Uri.parse(page).host.orEmpty()
+        if (host.isEmpty()) return
+        val manager = CookieManager.getInstance()
+        manager.flush()
+        val cookie = manager.getCookie(page).orEmpty()
+        if (cookie.isBlank()) return
+        NetworkSettings.saveCookie(SiteLogin.cleanSite(host), cookie)
+        loginTyped[0] = false
+    }
 
     fun send(view: WebView?, url: String, fileName: String = "") {
         val page = view?.url.orEmpty()
@@ -263,6 +294,7 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
                             CookieManager.getInstance().setAcceptCookie(true)
                             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                             addJavascriptInterface(MediaBridge { media = it }, "FJMedia")
+                            addJavascriptInterface(LoginBridge { loginTyped[0] = true }, "FJLogin")
                             setDownloadListener { url, _, contentDisposition, mimeType, _ ->
                                 send(this, url, URLUtil.guessFileName(url, contentDisposition, mimeType))
                             }
@@ -284,6 +316,11 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
                                     canBack = view.canGoBack()
                                     canForward = view.canGoForward()
                                     view.evaluateJavascript(FINDER, null)
+                                    if (loginTyped[0]) {
+                                        view.evaluateJavascript("document.querySelector('input[type=password]') === null") { gone ->
+                                            if (gone == "true") rememberSession(view)
+                                        }
+                                    }
                                 }
                             }
                             webChromeClient = object : WebChromeClient() {

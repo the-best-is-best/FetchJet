@@ -2,6 +2,20 @@ import SwiftUI
 import WebKit
 import SharedLogic
 
+enum FJBrowserSession {
+    static func clear(site: String) {
+        let store = WKWebsiteDataStore.default()
+        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
+            let matching = records.filter {
+                let name = $0.displayName.lowercased()
+                return name == site || site.hasSuffix("." + name) || name.hasSuffix("." + site)
+            }
+            if matching.isEmpty { return }
+            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: matching) {}
+        }
+    }
+}
+
 final class FJPageBrowser: ObservableObject {
     static let shared = FJPageBrowser()
     @Published var page: URL?
@@ -25,6 +39,7 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
     @Published var canBack = false
     @Published var canForward = false
     var onSent: (() -> Void)?
+    var loginTyped = false
     let webView: WKWebView
 
     static func address(from typed: String) -> URL? {
@@ -61,6 +76,13 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
       }
       setInterval(look, 700);
       look();
+      if (!window.__fjLoginWatch) {
+        window.__fjLoginWatch = true;
+        document.addEventListener("input", function (e) {
+          var t = e.target;
+          if (t && t.type === "password" && t.value) { try { window.webkit.messageHandlers.fjLogin.postMessage("typed"); } catch (x) {} }
+        }, true);
+      }
     })();
     """
 
@@ -71,6 +93,7 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
         config.userContentController.add(self, name: "fjMedia")
+        config.userContentController.add(self, name: "fjLogin")
         config.userContentController.addUserScript(
             WKUserScript(source: Self.finder, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
@@ -80,7 +103,24 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "fjLogin" {
+            loginTyped = true
+            return
+        }
         mediaUrl = (message.body as? String) ?? ""
+    }
+
+    private func rememberSession() {
+        guard let page = webView.url, let host = page.host else { return }
+        webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
+            let header = cookies.filter { Self.matches($0, page) }
+                .map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+            if header.isEmpty { return }
+            DispatchQueue.main.async {
+                NetworkSettings.shared.saveCookie(site: SiteLogin.companion.cleanSite(text: host), cookie: header)
+                self.loginTyped = false
+            }
+        }
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -97,6 +137,11 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
         loading = false
         title = webView.title ?? ""
         refreshNavigation()
+        if loginTyped {
+            webView.evaluateJavaScript("document.querySelector('input[type=password]') === null") { [weak self] gone, _ in
+                if (gone as? Bool) == true { self?.rememberSession() }
+            }
+        }
     }
 
     func webView(
