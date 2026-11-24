@@ -1010,6 +1010,7 @@ object RussianProvider : AppLocalization {
     override val subtitlesNoneInList = "Ни у одного из этих видео нет субтитров"
     override val playlistVideoJoined = "Сохранено в папке «%1»: добавлено в этот плейлист"
     override val detailsPlaylist = "Плейлист"
+    override val detailsLinkSensitive = "Скрыто: в этой ссылке есть логин или токен, поэтому любой, кто её получит, сможет ею воспользоваться."
     override val popUpAskText = "Браузер отправил ссылку, но FetchJet не смог открыться сам. Разрешить «Показ поверх других приложений», чтобы в следующий раз он открывался сразу?"
     override val popUpAskAllow = "Разрешить"
     override val popUpAskLater = "Не сейчас"

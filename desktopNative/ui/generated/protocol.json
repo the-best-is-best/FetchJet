@@ -1621,6 +1621,10 @@
    [
     "url",
     "String"
+   ],
+   [
+    "note",
+    "String"
    ]
   ],
   "DetailsDto": [
@@ -4683,6 +4687,7 @@
   "subtitlesNoneInList",
   "playlistVideoJoined",
   "detailsPlaylist",
+  "detailsLinkSensitive",
   "popUpAskText",
   "popUpAskAllow",
   "popUpAskLater",

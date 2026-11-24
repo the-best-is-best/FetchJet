@@ -998,6 +998,7 @@ object PersianProvider : AppLocalization {
     override val subtitlesNoneInList = "هیچ‌کدام از این ویدیوها زیرنویس ندارند"
     override val playlistVideoJoined = "در پوشهٔ «%1» ذخیره شد: به آن فهرست پخش اضافه شد"
     override val detailsPlaylist = "فهرست پخش"
+    override val detailsLinkSensitive = "پنهان: این پیوند ورود یا توکن دارد و هر کسی که آن را بگیرد می‌تواند از آن استفاده کند."
     override val popUpAskText = "مرورگر پیوندی فرستاد اما FetchJet نتوانست خودش باز شود. اجازهٔ «نمایش روی برنامه‌های دیگر» را می‌دهید تا دفعهٔ بعد فوراً باز شود؟"
     override val popUpAskAllow = "اجازه"
     override val popUpAskLater = "فعلاً نه"

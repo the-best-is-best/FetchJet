@@ -532,14 +532,8 @@ internal fun DownloadTaskItem(
             )
 
             val clipboard = LocalClipboardManager.current
-            listOf(
-                LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
-                    ?: task.originalUrl.orEmpty()),
-                LocalizationManager.Strings.detailsPlaylist to
-                        com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task)
-            ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }
-                .distinctBy { (_, link) -> link }
-                .forEach { (label, link) ->
+            com.michelle.raouf.fetch_jet.presentation.dashboard.detailsLinks(task)
+                .forEach { (label, link, note) ->
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -548,7 +542,7 @@ internal fun DownloadTaskItem(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
-                        Text(
+                        if (note.isEmpty()) Text(
                             text = LocalizationManager.Strings.copy,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
@@ -568,7 +562,7 @@ internal fun DownloadTaskItem(
                     }
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(
-                            text = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(link),
+                            text = note.ifEmpty { com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(link) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                             maxLines = 4,

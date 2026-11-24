@@ -987,6 +987,7 @@ object HindiProvider : AppLocalization {
     override val subtitlesNoneInList = "इनमें से किसी वीडियो में सबटाइटल नहीं हैं"
     override val playlistVideoJoined = "\"%1\" के फ़ोल्डर में सहेजा गया: उस प्लेलिस्ट में जोड़ा गया"
     override val detailsPlaylist = "प्लेलिस्ट"
+    override val detailsLinkSensitive = "छिपा हुआ: इस लिंक में लॉगिन या टोकन है, इसलिए जिसे भी यह मिलेगा वह इसका उपयोग कर सकता है।"
     override val popUpAskText = "ब्राउज़र ने लिंक भेजा, पर FetchJet अपने आप नहीं खुल सका। \"दूसरे ऐप्स के ऊपर दिखाएँ\" की अनुमति दें ताकि अगली बार यह तुरंत खुले?"
     override val popUpAskAllow = "अनुमति दें"
     override val popUpAskLater = "अभी नहीं"

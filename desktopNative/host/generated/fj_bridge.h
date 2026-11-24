@@ -669,6 +669,7 @@ inline LinkDto parse_LinkDto(const fj::Json &j) {
     LinkDto d{};
     d.label = fj::text(j, "label");
     d.url = fj::text(j, "url");
+    d.note = fj::text(j, "note");
     return d;
 }
 
@@ -2002,6 +2003,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_subtitlesNoneInList(next());
     tr.set_playlistVideoJoined(next());
     tr.set_detailsPlaylist(next());
+    tr.set_detailsLinkSensitive(next());
     tr.set_popUpAskText(next());
     tr.set_popUpAskAllow(next());
     tr.set_popUpAskLater(next());

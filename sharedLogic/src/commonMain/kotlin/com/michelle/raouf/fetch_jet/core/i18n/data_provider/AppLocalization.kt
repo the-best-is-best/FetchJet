@@ -866,6 +866,7 @@ interface AppLocalization : LocalizationProvider {
     val subtitlesNoneInList: String
     val playlistVideoJoined: String
     val detailsPlaylist: String
+    val detailsLinkSensitive: String
     val popUpAskText: String
     val popUpAskAllow: String
     val popUpAskLater: String

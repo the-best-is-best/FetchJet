@@ -19,6 +19,7 @@ data class ChipDto(
 data class LinkDto(
     val label: String = "",
     val url: String = "",
+    val note: String = "",
 )
 
 @Serializable

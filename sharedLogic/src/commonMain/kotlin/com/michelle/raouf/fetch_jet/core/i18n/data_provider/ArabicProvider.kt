@@ -1009,6 +1009,7 @@ object ArabicProvider : AppLocalization {
     override val subtitlesNoneInList = "لا توجد ترجمات في هذه الفيديوهات"
     override val playlistVideoJoined = "حُفظ في مجلد \"%1\"، فأُضيف إلى قائمة التشغيل هذه"
     override val detailsPlaylist = "قائمة التشغيل"
+    override val detailsLinkSensitive = "مخفي: الرابط ده فيه تسجيل دخول أو توكن، فأي حد ياخده يقدر يستخدمه."
     override val popUpAskText = "أرسل المتصفح رابطًا لكن FetchJet لم يستطع أن يفتح وحده. هل تسمح له بـ\"الظهور فوق التطبيقات الأخرى\" ليفتح فورًا في المرة القادمة؟"
     override val popUpAskAllow = "السماح"
     override val popUpAskLater = "ليس الآن"

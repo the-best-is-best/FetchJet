@@ -956,6 +956,7 @@ object ChineseProvider : AppLocalization {
     override val subtitlesNoneInList = "这些视频都没有字幕"
     override val playlistVideoJoined = "保存在“%1”的文件夹中：已加入该播放列表"
     override val detailsPlaylist = "播放列表"
+    override val detailsLinkSensitive = "已隐藏：此链接含有登录信息或令牌，任何拿到的人都能使用。"
     override val popUpAskText = "浏览器发送了链接，但 FetchJet 无法自行打开。允许“显示在其他应用上层”，以便下次立即打开？"
     override val popUpAskAllow = "允许"
     override val popUpAskLater = "以后再说"

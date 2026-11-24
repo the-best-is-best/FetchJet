@@ -967,6 +967,7 @@ component DetailsBody inherits VerticalLayout {
                 horizontal-stretch: 1;
             }
             Rectangle {
+                visible: link.note == "";
                 width: copy.preferred-width + 12px;
                 height: 20px;
                 border-radius: 4px;
@@ -998,7 +999,7 @@ component DetailsBody inherits VerticalLayout {
             height: 3px;
         }
         Text {
-            text: link.url;
+            text: link.note != "" ? link.note : link.url;
             color: Theme.on-surface.with-alpha(0.75);
             font-family: Theme.font;
             font-size: 12px;

@@ -33,6 +33,22 @@ fun ftpFileName(url: String): String =
         ""
     }
 
+private val accessQuery = Regex(
+    "(?i)[?&;](access[_-]?token|token|api[_-]?key|apikey|key|sig|signature|x-amz-signature|x-goog-signature|auth|authorization|password|passwd|pwd|secret|session|sid|jwt)="
+)
+
+fun linkCarriesAccess(url: String): Boolean {
+    val hostEnd = url.indexOf("://").takeIf { it >= 0 }?.let { s ->
+        url.indexOfAny(charArrayOf('/', '?', '#'), s + 3).let { if (it < 0) url.length else it }
+    }
+    if (hostEnd != null) {
+        val at = url.lastIndexOf('@', hostEnd - 1)
+        val start = url.indexOf("://") + 3
+        if (at > start && url.substring(start, at).contains(':')) return true
+    }
+    return accessQuery.containsMatchIn(url)
+}
+
 fun displayUrl(url: String): String {
     val start = url.indexOf("://").takeIf { it >= 0 }?.plus(3) ?: return url
     val end = url.indexOfAny(charArrayOf('/', '?', '#'), start).let { if (it < 0) url.length else it }

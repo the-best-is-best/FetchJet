@@ -338,32 +338,32 @@ private struct TaskDetailsContent: View {
 
     private var links: some View {
         let s = store.strings
-        let page = task.requestHeaders["Referer"] ?? task.originalUrl ?? ""
-        var items: [(String, String)] = []
-        let playlist = PlaylistGroupsKt.playlistLinkOf(task: task)
-        for (label, link) in [(s.detailsPage, page), (s.detailsPlaylist, playlist)] where !link.isEmpty && !Secrets.shared.isProtected(stored: link) {
-            if !items.contains(where: { $0.1 == link }) { items.append((label, link)) }
-        }
-        return ForEach(items, id: \.1) { label, link in
+        let items = DetailsLinksKt.detailsLinks(task: task)
+        return ForEach(items, id: \.label) { item in
+            let label = item.label
+            let link = item.link
+            let note = item.note
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(label)
                         .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     Spacer()
-                    Button {
-                        UIPasteboard.general.string = link
-                        store.showToast(s.copied)
-                    } label: {
-                        Text(s.copy)
-                            .font(.fj(11, .semibold))
-                            .foregroundStyle(FJTheme.color.primary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                    if note.isEmpty {
+                        Button {
+                            UIPasteboard.general.string = link
+                            store.showToast(s.copied)
+                        } label: {
+                            Text(s.copy)
+                                .font(.fj(11, .semibold))
+                                .foregroundStyle(FJTheme.color.primary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
-                Text(store.host.displayUrl(url: link))
+                Text(note.isEmpty ? store.host.displayUrl(url: link) : note)
                     .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface.opacity(0.75))
                     .lineLimit(4)

@@ -945,6 +945,7 @@ object KoreanProvider : AppLocalization {
     override val subtitlesNoneInList = "이 동영상들에는 자막이 없습니다"
     override val playlistVideoJoined = "\"%1\" 폴더에 저장됨: 해당 재생목록에 추가됨"
     override val detailsPlaylist = "재생목록"
+    override val detailsLinkSensitive = "숨김: 이 링크에는 로그인 정보나 토큰이 들어 있어 누구든 얻으면 사용할 수 있습니다."
     override val popUpAskText = "브라우저가 링크를 보냈지만 FetchJet이 스스로 열리지 못했습니다. 다음에 바로 열리도록 \"다른 앱 위에 표시\"를 허용할까요?"
     override val popUpAskAllow = "허용"
     override val popUpAskLater = "나중에"

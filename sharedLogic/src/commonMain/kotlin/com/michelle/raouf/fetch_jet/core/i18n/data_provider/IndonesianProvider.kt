@@ -1001,6 +1001,7 @@ object IndonesianProvider : AppLocalization {
     override val subtitlesNoneInList = "Tidak ada video ini yang punya subtitle"
     override val playlistVideoJoined = "Disimpan di folder \"%1\": ditambahkan ke playlist itu"
     override val detailsPlaylist = "Playlist"
+    override val detailsLinkSensitive = "Disembunyikan: tautan ini berisi login atau token, jadi siapa pun yang mendapatkannya bisa memakainya."
     override val popUpAskText = "Browser mengirim tautan tetapi FetchJet tidak bisa terbuka sendiri. Izinkan \"tampilkan di atas aplikasi lain\" agar lain kali langsung terbuka?"
     override val popUpAskAllow = "Izinkan"
     override val popUpAskLater = "Nanti"

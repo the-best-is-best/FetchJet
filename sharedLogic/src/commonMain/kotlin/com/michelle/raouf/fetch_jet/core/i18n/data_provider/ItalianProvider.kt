@@ -1015,6 +1015,7 @@ object ItalianProvider : AppLocalization {
     override val subtitlesNoneInList = "Nessuno di questi video ha sottotitoli"
     override val playlistVideoJoined = "Salvato nella cartella di \"%1\": aggiunto a quella playlist"
     override val detailsPlaylist = "Playlist"
+    override val detailsLinkSensitive = "Nascosto: questo link contiene un accesso o un token, quindi chiunque lo ottenga potrebbe usarlo."
     override val popUpAskText = "Il browser ha inviato un link ma FetchJet non è riuscito ad aprirsi da solo. Consentire \"Mostra sopra altre app\" perché la prossima volta si apra subito?"
     override val popUpAskAllow = "Consenti"
     override val popUpAskLater = "Non ora"

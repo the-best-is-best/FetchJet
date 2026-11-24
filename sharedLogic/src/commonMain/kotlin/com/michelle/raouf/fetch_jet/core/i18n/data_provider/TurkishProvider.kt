@@ -996,6 +996,7 @@ object TurkishProvider : AppLocalization {
     override val subtitlesNoneInList = "Bu videoların hiçbirinde altyazı yok"
     override val playlistVideoJoined = "\"%1\" klasörüne kaydedildi: o oynatma listesine eklendi"
     override val detailsPlaylist = "Oynatma listesi"
+    override val detailsLinkSensitive = "Gizli: bu bağlantıda bir giriş bilgisi veya jeton var, bu yüzden onu alan herkes kullanabilir."
     override val popUpAskText = "Tarayıcı bir bağlantı gönderdi ama FetchJet kendiliğinden açılamadı. Bir dahaki sefere hemen açılması için \"diğer uygulamaların üzerinde göster\" izni verilsin mi?"
     override val popUpAskAllow = "İzin ver"
     override val popUpAskLater = "Şimdi değil"

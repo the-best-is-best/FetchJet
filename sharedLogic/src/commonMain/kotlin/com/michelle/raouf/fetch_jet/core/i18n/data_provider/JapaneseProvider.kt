@@ -997,6 +997,7 @@ object JapaneseProvider : AppLocalization {
     override val subtitlesNoneInList = "これらの動画に字幕はありません"
     override val playlistVideoJoined = "「%1」のフォルダーに保存: そのプレイリストに追加しました"
     override val detailsPlaylist = "プレイリスト"
+    override val detailsLinkSensitive = "非表示：このリンクにはログイン情報またはトークンが含まれており、入手した人は誰でも使えます。"
     override val popUpAskText = "ブラウザーからリンクが届きましたが、FetchJet が自動で開けませんでした。次回すぐ開くように「他のアプリの上に重ねて表示」を許可しますか？"
     override val popUpAskAllow = "許可"
     override val popUpAskLater = "今はしない"
