@@ -94,6 +94,12 @@ struct MoreScreen: View {
                         Image(systemName: "chevron.forward").font(.fj(13, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }
                     SettingsDivider()
+                    SettingsRow(title: s.browserTitle, subtitle: s.browserHint, onTap: {
+                        FJPageBrowser.shared.page = URL(string: "https://www.google.com")
+                    }) {
+                        Image(systemName: "chevron.forward").font(.fj(13, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
+                    }
+                    SettingsDivider()
                     SettingsRow(title: s.hiddenTitle, onTap: openHidden) {
                         Image(systemName: "chevron.forward").font(.fj(13, .semibold)).foregroundStyle(FJTheme.color.onSurfaceVariant)
                     }

@@ -17,11 +17,32 @@ final class FJPageBrowser: ObservableObject {
     }
 }
 
-final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate {
+final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     @Published var mediaUrl: String = ""
     @Published var title: String = ""
     @Published var loading = true
+    @Published var address: String = ""
+    @Published var canBack = false
+    @Published var canForward = false
+    var onSent: (() -> Void)?
     let webView: WKWebView
+
+    static func address(from typed: String) -> URL? {
+        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty { return nil }
+        if text.contains("://") { return URL(string: text) }
+        let looksLikeAddress = !text.contains(" ") && (text.contains(".") || text.hasPrefix("localhost"))
+        if looksLikeAddress { return URL(string: "https://" + text) }
+        var query = URLComponents(string: "https://www.google.com/search")
+        query?.queryItems = [URLQueryItem(name: "q", value: text)]
+        return query?.url
+    }
+
+    private func refreshNavigation() {
+        address = webView.url?.absoluteString ?? address
+        canBack = webView.canGoBack
+        canForward = webView.canGoForward
+    }
 
     private static let finder = """
     (function () {
@@ -54,6 +75,7 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
             WKUserScript(source: Self.finder, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
         webView.navigationDelegate = self
+        webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
     }
 
@@ -64,11 +86,46 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         loading = true
         mediaUrl = ""
+        refreshNavigation()
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        refreshNavigation()
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         loading = false
         title = webView.title ?? ""
+        refreshNavigation()
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        let response = navigationResponse.response as? HTTPURLResponse
+        let disposition = response?.value(forHTTPHeaderField: "Content-Disposition")?.lowercased() ?? ""
+        let isFile = navigationResponse.isForMainFrame && (!navigationResponse.canShowMIMEType || disposition.contains("attachment"))
+        guard isFile, let link = navigationResponse.response.url?.absoluteString else {
+            decisionHandler(.allow)
+            return
+        }
+        decisionHandler(.cancel)
+        let name = navigationResponse.response.suggestedFilename ?? ""
+        send(link: link, fileName: name) { [weak self] ok in
+            if ok { self?.onSent?() }
+        }
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        let scheme = navigationAction.request.url?.scheme?.lowercased() ?? ""
+        decisionHandler(scheme == "http" || scheme == "https" || scheme == "about" ? .allow : .cancel)
+    }
+
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if navigationAction.targetFrame == nil { webView.load(navigationAction.request) }
+        return nil
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -90,20 +147,29 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
     }
 
     func download(done: @escaping (Bool) -> Void) {
-        guard let media = URL(string: mediaUrl), let page = webView.url else { return done(false) }
+        let name = URL(string: mediaUrl)?.lastPathComponent ?? ""
+        send(link: mediaUrl, fileName: name.contains(".") ? name : "", done: done)
+    }
+
+    func sendPage(done: @escaping (Bool) -> Void) {
+        guard let page = webView.url?.absoluteString else { return done(false) }
+        send(link: page, fileName: "", done: done)
+    }
+
+    func send(link: String, fileName: String, done: @escaping (Bool) -> Void) {
+        guard let target = URL(string: link), let page = webView.url else { return done(false) }
         let store = webView.configuration.websiteDataStore.httpCookieStore
         webView.evaluateJavaScript("navigator.userAgent") { [weak self] agent, _ in
             store.getAllCookies { cookies in
                 guard let self else { return done(false) }
-                let header = cookies.filter { Self.matches($0, media) }
+                let header = cookies.filter { Self.matches($0, target) }
                     .map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
-                let name = media.lastPathComponent
                 let body: [String: Any] = [
-                    "url": self.mediaUrl,
+                    "url": link,
                     "cookie": header,
                     "referer": page.absoluteString,
                     "userAgent": (agent as? String) ?? "",
-                    "fileName": name.contains(".") ? name : ""
+                    "fileName": fileName
                 ]
                 guard let data = try? JSONSerialization.data(withJSONObject: body),
                       let json = String(data: data, encoding: .utf8),
@@ -129,51 +195,93 @@ private struct FJPageWebView: UIViewRepresentable {
 struct FJPageBrowserSheet: View {
     @EnvironmentObject var store: FJStore
     @StateObject private var model = FJPageBrowserModel()
+    @State private var typed = ""
     let url: URL
     let close: () -> Void
 
     var body: some View {
+        let s = store.strings
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Button { model.webView.goBack() } label: {
+                    Image(systemName: "chevron.left").font(.fj(15, .semibold)).frame(width: 32, height: 36)
+                }
+                .disabled(!model.canBack)
+                Button { model.webView.goForward() } label: {
+                    Image(systemName: "chevron.right").font(.fj(15, .semibold)).frame(width: 32, height: 36)
+                }
+                .disabled(!model.canForward)
+                TextField(s.browserAddressHint, text: $typed)
+                    .font(.fj(14))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .onSubmit {
+                        if let target = FJPageBrowserModel.address(from: typed) { model.webView.load(URLRequest(url: target)) }
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 36)
+                    .background(FJTheme.color.surfaceVariant, in: RoundedRectangle(cornerRadius: 10))
+                if model.loading {
+                    ProgressView()
+                } else {
+                    Button { model.webView.reload() } label: {
+                        Image(systemName: "arrow.clockwise").font(.fj(14, .semibold)).frame(width: 32, height: 36)
+                    }
+                }
                 Button(action: close) {
                     Image(systemName: "xmark")
                         .font(.fj(15, .semibold))
                         .frame(width: 36, height: 36)
                         .background(FJTheme.color.surfaceVariant, in: Circle())
                 }
-                .accessibilityLabel(store.strings.close)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(model.title.isEmpty ? (url.host ?? "") : model.title)
-                        .font(.fj(15, .semibold))
+                .accessibilityLabel(s.close)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(FJTheme.color.surface)
+            Divider()
+            FJPageWebView(model: model, url: url)
+            Divider()
+            HStack(spacing: 10) {
+                Button {
+                    model.sendPage { ok in if ok { close() } }
+                } label: {
+                    Text(s.browserSendPage)
+                        .font(.fj(14, .semibold))
                         .lineLimit(1)
-                    Text(model.webView.url?.host ?? url.host ?? "")
-                        .font(.fj(12))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(FJTheme.color.primary)
                 }
-                Spacer(minLength: 0)
-                if model.loading { ProgressView() }
                 Button {
                     model.download { ok in if ok { close() } }
                 } label: {
-                    Label(store.strings.addStartDownload, systemImage: "arrow.down.circle.fill")
+                    Text(s.browserDownloadMedia)
                         .font(.fj(14, .semibold))
-                        .lineLimit(1)
-                        .fixedSize()
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                         .foregroundStyle(.white)
                         .background(FJTheme.color.primary.opacity(model.mediaUrl.isEmpty ? 0.35 : 1), in: Capsule())
                 }
                 .disabled(model.mediaUrl.isEmpty)
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(FJTheme.color.surface)
-            Divider()
-            FJPageWebView(model: model, url: url)
         }
         .background(FJTheme.color.background.ignoresSafeArea())
+        .onAppear {
+            typed = url.absoluteString
+            model.onSent = close
+        }
+        .onChange(of: model.address) { _, value in
+            if !value.isEmpty { typed = value }
+        }
     }
 }
