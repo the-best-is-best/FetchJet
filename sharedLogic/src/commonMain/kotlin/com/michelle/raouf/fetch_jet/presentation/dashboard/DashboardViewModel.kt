@@ -51,6 +51,7 @@ class DashboardViewModel(
 
     internal var pendingHide: DashboardUiEvent.OnHideTargets? = null
     internal var reauthRunning = false
+    internal val accessAskedFor = HashSet<String>()
     internal var pendingAddDialog = false
 
     internal val _uiState = MutableStateFlow(
@@ -729,6 +730,8 @@ class DashboardViewModel(
             queueRepository.allTasksFlow.collect { everything ->
 
                 com.michelle.raouf.fetch_jet.core.power.WhenDone.onTasks(everything, scope)
+
+                askFileAccessForFailedWrites(everything)
 
                 val tasks = everything.filter { !it.hidden }
 

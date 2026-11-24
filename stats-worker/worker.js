@@ -193,7 +193,7 @@ var ret = d.retention || {};
 var stick = d.stickiness;
 var more = el("div", "cards");
 more.appendChild(card("الاحتفاظ بعد يوم", ret.d1 ? pct(ret.d1.rate) : "—", ret.d1 ? ret.d1.returned + " من " + ret.d1.size + " جهاز جديد" : "لسه مفيش بيانات كفاية"));
-more.appendChild(card("الاحتفاظ بعد 7 أيام", ret.d7 ? pct(ret.d7.rate) : "—", ret.d7 ? ret.d7.returned + " من " + ret.d7.size + " جهاز جديد" : "محتاج 7 أيام من البيانات"));
+more.appendChild(card("رجعوا خلال أسبوع", ret.w7 ? pct(ret.w7.rate) : "—", ret.w7 ? ret.w7.returned + " من " + ret.w7.size + " جهاز جديد فتحوه تاني خلال 7 أيام" : "محتاج 7 أيام من البيانات"));
 more.appendChild(card("النشاط اليومي ÷ الأسبوعي", stick && stick.rate !== null ? pct(stick.rate) : "—", stick ? stick.dau + " من " + stick.wau + " في آخر 7 أيام (آخر يوم كامل " + stick.day + ")" : ""));
 app.appendChild(more);
 app.appendChild(chart(d.perDay));
@@ -352,7 +352,8 @@ async function aggregate(env, days, publicView) {
     await env.DB.prepare(
       `SELECT f.first AS day, COUNT(*) AS size,
         SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+1 day')) THEN 1 ELSE 0 END) AS d1,
-        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS d7
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS d7,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day > f.first AND x.day <= date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS w7
        FROM (${FIRST_SEEN}) f WHERE f.first >= ? GROUP BY f.first ORDER BY f.first`
     )
       .bind(cohortSince)
@@ -363,10 +364,12 @@ async function aggregate(env, days, publicView) {
     size: c.size,
     d1: c.day <= yesterday ? c.d1 : null,
     d7: c.day <= weekAgo ? c.d7 : null,
+    w7: c.day <= weekAgo ? c.w7 : null,
   }));
   const retention = {
     d1: pooled(cohortList.filter((c) => c.d1 !== null), "d1"),
     d7: pooled(cohortList.filter((c) => c.d7 !== null), "d7"),
+    w7: pooled(cohortList.filter((c) => c.w7 !== null), "w7"),
   };
   let shownCohorts = cohortList;
   if (publicView) shownCohorts = shownCohorts.filter((c) => c.size >= MIN_COUNTRY);

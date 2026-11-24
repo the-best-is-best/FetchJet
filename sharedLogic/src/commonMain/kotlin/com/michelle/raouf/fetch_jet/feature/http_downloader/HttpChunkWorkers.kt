@@ -79,7 +79,11 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
             DownloadChunk(i, start, end, have, have >= end - start + 1)
         }
     }
-    val layout = ChunkLayout(initialChunks, HostLimits.hostOf(url))
+    val host = HostLimits.hostOf(url)
+    val tuner = if (connectionsAreAuto(taskId) && connections > ConnectionTuner.START_CONNECTIONS)
+        ConnectionTuner(connections, ConnectionTuner.learnedFor(host) ?: ConnectionTuner.START_CONNECTIONS)
+    else null
+    val layout = ChunkLayout(initialChunks, host, tuner = tuner)
     try {
         AppFileSystem.write(manifestPath) { writeUtf8(layout.manifest()) }
     } catch (_: Exception) {
@@ -106,6 +110,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
             delay(200)
             val nowMs = startMark.elapsedNow().inWholeMilliseconds
             val currentTotal = layout.total()
+            layout.tune(nowMs, currentTotal, totalLength)
             val speed = speedometer.recordSample(nowMs, currentTotal)
             val prog =
                 if (totalLength > 0) currentTotal.toFloat() / totalLength.toFloat() else 0f
@@ -207,6 +212,7 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
         try {
             workers.awaitAll()
         } finally {
+            layout.rememberTuning()
             tickerJob.cancel()
         }
     }
@@ -385,6 +391,13 @@ internal suspend fun HttpChunkDownloader.probeIdentity(taskId: String, url: Stri
     throw e
 } catch (_: Exception) {
     null
+}
+
+/** True when neither the task nor the app setting fixes the connection count: the tuner chooses it. */
+internal fun HttpChunkDownloader.connectionsAreAuto(taskId: String): Boolean {
+    val task = tasksState.value[taskId]
+    return task?.maxConnections?.takeIf { it > 0 } == null &&
+            com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.connections.value <= 0
 }
 
 /** Connections for this task: its own setting, else the app setting, else by file size. */

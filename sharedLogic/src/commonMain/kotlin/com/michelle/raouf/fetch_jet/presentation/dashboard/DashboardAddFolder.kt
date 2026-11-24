@@ -3,6 +3,8 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.core.settings.FileCategory
+import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
+import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -104,6 +106,26 @@ internal fun DashboardViewModel.rememberAddFolder() {
     if (state.addSiteRule()?.let { com.michelle.raouf.fetch_jet.core.settings.SiteFolderRules.samePath(it.folder, path) } == true) return
     val custom = baseFolder(path) != baseFolder(defaultDestinationPath)
     BehaviorSettings.setCategoryFolder(category, if (custom) path else "")
+}
+
+private val unwritableMessage = Regex("permission denied|eacces|read-only file system|operation not permitted|not writable|failed to create", RegexOption.IGNORE_CASE)
+
+internal fun failedForWriteAccess(tasks: List<DownloadTask>, alreadyAsked: Set<String>): List<DownloadTask> =
+    tasks.filter {
+        it.status == DownloadStatus.ERROR && it.id !in alreadyAsked &&
+                it.errorMessage?.let { m -> unwritableMessage.containsMatchIn(m) } == true
+    }
+
+internal fun DashboardViewModel.askFileAccessForFailedWrites(everything: List<DownloadTask>) {
+    val newlyFailed = failedForWriteAccess(everything, accessAskedFor)
+    if (newlyFailed.isEmpty()) return
+    accessAskedFor += newlyFailed.map { it.id }
+    val allFiles = com.michelle.raouf.fetch_jet.core.filesystem.AllFilesAccess
+    if (!allFiles.needed()) return
+    allFiles.openSettings()
+    scope.launch {
+        _uiEffect.emit(DashboardUiEffect.ShowToast(com.tbib.kmp_localization.LocalizationManager.Strings.storageNeedsAllFiles))
+    }
 }
 
 internal fun DashboardViewModel.destinationAllowed(): Boolean {
