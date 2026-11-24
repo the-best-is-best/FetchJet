@@ -927,6 +927,7 @@ struct PlaylistPageBar: View {
                 }
                 Spacer(minLength: 0)
             }
+            GroupPlayButton(groupKey: group.id, tasks: group.tasks)
             if !group.record.url.isEmpty {
                 Button {
                     store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id))
@@ -1076,6 +1077,31 @@ struct FolderGroupRowView: View {
     }
 }
 
+struct GroupPlayButton: View {
+    @EnvironmentObject var store: FJStore
+    let groupKey: String
+    let tasks: [DownloadTask]
+
+    var body: some View {
+        if MediaPlayback.shared.hasPlayable(tasks: tasks) {
+            Button {
+                if let queue = store.host.playbackQueue(groupKey: groupKey, tasks: tasks) {
+                    FJPlayer.shared.queue = queue
+                }
+            } label: {
+                Label(store.strings.playerPlayAll, systemImage: "play.fill")
+                    .font(.fj(13, .semibold))
+                    .foregroundStyle(FJTheme.color.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+}
+
 struct FolderPageBar: View {
     @EnvironmentObject var store: FJStore
     let group: FolderGroup
@@ -1138,6 +1164,7 @@ struct FolderPageBar: View {
                 }
                 Spacer(minLength: 0)
             }
+            GroupPlayButton(groupKey: "dir:" + group.folder, tasks: group.tasks)
             if canOpen {
                 Button {
                     _ = resolver.openDirectoryInExplorer(path: group.path)

@@ -116,6 +116,24 @@ class IosAppHost {
 
     fun openTaskFile(task: DownloadTask): Boolean = openDownloadedFile(taskFilePath(task))
 
+    /** The in-app player's queue for a finished audio / video file, or null when it is not playable. */
+    fun playbackQueue(task: DownloadTask): com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue? {
+        if (!com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task)) return null
+        if (!PathResolver().fileExists(taskFilePath(task))) return null
+        return com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.queueFor(
+            task,
+            viewModel.uiState.value.allTasks
+        ) { com.michelle.raouf.fetch_jet.ios.decodeUnicodeText(it) }
+    }
+
+    fun playbackQueue(groupKey: String, tasks: List<DownloadTask>): com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue? {
+        val queue = com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.queueForGroup(groupKey, tasks) {
+            com.michelle.raouf.fetch_jet.ios.decodeUnicodeText(it)
+        } ?: return null
+        val missing = queue.items.firstOrNull { !PathResolver().fileExists(it.path) }
+        return if (missing == null) queue else null
+    }
+
     private var clipboardFirstRun = true
 
     private fun watchClipboard() {

@@ -888,6 +888,9 @@ interface AppLocalization : LocalizationProvider {
     val sysReadingChannelName: String
     val sysReadingVideosCount: String
     val playlistGroupDone: String
+    val playerAllFinished: String
+    val playerStartOver: String
+    val playerPlayAll: String
     val playlistCheckNew: String
     val playlistBack: String
     val playlistDeleteAll: String

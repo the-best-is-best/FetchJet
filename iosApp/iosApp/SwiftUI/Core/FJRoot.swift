@@ -45,6 +45,7 @@ struct FJRoot: View {
     @EnvironmentObject var store: FJStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @ObservedObject private var browser = FJPageBrowser.shared
+    @ObservedObject private var player = FJPlayer.shared
 
     var body: some View {
         Group {
@@ -68,6 +69,12 @@ struct FJRoot: View {
             set: { browser.page = $0?.url }
         )) { target in
             FJPageBrowserSheet(url: target.url) { browser.page = nil }.environmentObject(store)
+        }
+        .fullScreenCover(item: Binding(
+            get: { player.queue.map(FJPlayerTarget.init) },
+            set: { if $0 == nil { player.queue = nil } }
+        )) { target in
+            FJPlayerScreen(queue: target.queue) { player.queue = nil }.environmentObject(store)
         }
         .overlay(alignment: .bottom) { FJToastHost() }
         .modifier(HiddenRootGuard())

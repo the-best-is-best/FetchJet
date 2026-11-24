@@ -56,11 +56,12 @@ fun PlaylistPageHeader(
     onAddLanguage: (String) -> Unit,
     onDismissLanguages: () -> Unit,
     onOpenFolder: (() -> Unit)? = null,
+    onPlay: (() -> Unit)? = null,
 ) {
     val s = LocalizationManager.Strings
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
         GroupHeaderRow(group.title, group.summaryText, onBack) {
-            PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onHide, onOpenFolder)
+            PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onHide, onOpenFolder, onPlay)
         }
         if (group.isPage) return@Column
         val record = group.record
@@ -124,9 +125,11 @@ private fun PageActions(
     onDelete: () -> Unit,
     onHide: () -> Unit,
     onOpenFolder: (() -> Unit)?,
+    onPlay: (() -> Unit)?,
 ) {
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
+    if (onPlay != null) PlayGroupButton(onPlay)
     if (onOpenFolder != null) {
         OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
     }
@@ -157,10 +160,12 @@ fun FolderPageHeader(
     onResumeAll: () -> Unit,
     onDelete: () -> Unit,
     onHide: () -> Unit,
+    onPlay: (() -> Unit)? = null,
 ) {
     val s = LocalizationManager.Strings
     val actions: @Composable () -> Unit = {
         val shape = RoundedCornerShape(10.dp)
+        if (onPlay != null) PlayGroupButton(onPlay)
         if (canOpenFolder) {
             OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
         }
@@ -231,6 +236,13 @@ internal fun GroupPageHeader(
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun PlayGroupButton(onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = RoundedCornerShape(10.dp)) {
+        Text("▶ " + LocalizationManager.Strings.playerPlayAll, fontSize = 12.sp)
     }
 }
 

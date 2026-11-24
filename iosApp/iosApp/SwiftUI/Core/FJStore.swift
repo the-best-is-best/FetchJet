@@ -118,6 +118,10 @@ final class FJStore: ObservableObject {
             send(DashboardUiEventOnHiddenOpenFile(taskId: task.id))
             return
         }
+        if let queue = host.playbackQueue(task: task) {
+            FJPlayer.shared.queue = queue
+            return
+        }
         if !host.openTaskFile(task: task) {
             missingFileTaskId = task.id
         }

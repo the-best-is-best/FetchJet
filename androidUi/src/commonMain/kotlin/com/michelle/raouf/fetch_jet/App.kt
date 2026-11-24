@@ -72,6 +72,17 @@ internal fun openDownloadedFile(fullPath: String, taskId: String) {
         missingFileTaskId.value = taskId
         return
     }
+    val all = com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+        .allTasksFlow.value
+    val task = all.firstOrNull { it.id == taskId }
+    if (task != null && com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task)) {
+        val queue = com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.queueFor(
+            task,
+            all
+        ) { com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(it) }
+        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(queue)
+        return
+    }
     if (!resolver.openFile(fullPath)) {
         resolver.openFileLocation(fullPath)
     }
@@ -993,6 +1004,12 @@ fun App(
             browserUrl?.let { start ->
                 com.michelle.raouf.fetch_jet.ui.InAppBrowser(start) {
                     com.michelle.raouf.fetch_jet.core.network.BrowserRequests.close()
+                }
+            }
+            val playerQueue by com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.queue.collectAsState()
+            playerQueue?.let { q ->
+                com.michelle.raouf.fetch_jet.ui.MediaPlayerScreen(q) {
+                    com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
                 }
             }
             if (state.hidden.unlocked && state.hidden.covered) {

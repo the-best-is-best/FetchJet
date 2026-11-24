@@ -488,6 +488,15 @@ internal fun TaskListArea(
                     .onFocusChanged { searchHasFocus = it.hasFocus }
             )
         }
+    fun playGroup(groupKey: String, groupTasks: List<DownloadTask>): (() -> Unit)? =
+        if (!com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(groupTasks)) null
+        else {
+            {
+                com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
+                    .queueForGroup(groupKey, groupTasks) { decodeUnicodeText(it) }
+                    ?.let { com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(it) }
+            }
+        }
         val rowKeys = itemsOf(tasks).map { it.key }
         if (selectionMode) {
             SelectionBar(
@@ -515,7 +524,8 @@ internal fun TaskListArea(
                 onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
                 onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
                 onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
-                    ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } }
+                    ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } },
+                onPlay = playGroup(openGroup.id, openGroup.tasks)
             )
         } else if (openFolder != null) {
             val firstFile = openFolder.tasks.firstOrNull()
@@ -527,7 +537,8 @@ internal fun TaskListArea(
                 onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(openFolder.folder)) },
                 onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(openFolder.folder)) },
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
-                onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) }
+                onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) },
+                onPlay = playGroup(FOLDER_ROW_PREFIX + openFolder.folder, openFolder.tasks)
             )
         } else if (tasks.isNotEmpty() && showToolbar) {
             ListToolbar(
