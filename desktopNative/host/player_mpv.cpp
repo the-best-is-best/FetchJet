@@ -81,6 +81,7 @@ namespace fjhost::player {
         double g_duration = 0;
         bool g_paused = true;
         bool g_finished = false;
+        bool g_force_render = false;
         bool g_failed = false;
         int g_width = 960;
         int g_height = 540;
@@ -154,6 +155,18 @@ namespace fjhost::player {
 #endif
         }
 
+        void unload_library() {
+            if (!g_lib)
+                return;
+#ifdef _WIN32
+            FreeLibrary(static_cast<HMODULE>(g_lib));
+#else
+            dlclose(g_lib);
+#endif
+            g_lib = nullptr;
+            g_api = Api();
+        }
+
         bool load_library() {
             if (g_lib)
                 return true;
@@ -197,8 +210,10 @@ namespace fjhost::player {
                 return false;
 #define FJ_SYM(field, name) \
             g_api.field = reinterpret_cast<decltype(g_api.field)>(symbol(name)); \
-            if (!g_api.field) \
-                return false;
+            if (!g_api.field) { \
+                unload_library(); \
+                return false; \
+            }
             FJ_SYM(create, "mpv_create")
             FJ_SYM(initialize, "mpv_initialize")
             FJ_SYM(set_option_string, "mpv_set_option_string")
@@ -300,7 +315,8 @@ namespace fjhost::player {
 
         void keep_awake(bool on) {
 #ifdef _WIN32
-            SetThreadExecutionState(on ? (ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED) : ES_CONTINUOUS);
+            bool video = !g_items.empty() && g_index >= 0 && g_index < int(g_items.size()) && g_items[g_index].video;
+            SetThreadExecutionState(on ? (ES_CONTINUOUS | ES_SYSTEM_REQUIRED | (video ? ES_DISPLAY_REQUIRED : 0)) : ES_CONTINUOUS);
 #else
             (void) on;
 #endif
@@ -341,6 +357,7 @@ namespace fjhost::player {
             g_index = std::clamp(index, 0, int(g_items.size()) - 1);
             g_finished = false;
             g_failed = false;
+            g_seek_pending = false;
             g_position = 0;
             g_duration = 0;
             g_label_second = -1;
@@ -390,7 +407,7 @@ namespace fjhost::player {
                         if (!prop || prop->format == MPV_FORMAT_NONE)
                             break;
                         if (event->reply_userdata == ObsPosition && prop->format == MPV_FORMAT_DOUBLE) {
-                            if (g_hold >= 0 || !g_seek_pending) {
+                            if (!g_seek_pending) {
                                 g_position = *static_cast<double *>(prop->data);
                                 publish_time(false);
                             }
@@ -425,8 +442,9 @@ namespace fjhost::player {
             if (!g_render)
                 return;
             uint64_t flags = g_api.render_update(g_render);
-            if (!(flags & MPV_RENDER_UPDATE_FRAME))
+            if (!(flags & MPV_RENDER_UPDATE_FRAME) && !g_force_render)
                 return;
+            g_force_render = false;
             if (!g_items.empty() && !g_items[g_index].video)
                 return;
             int width = std::max(g_width, 16);
@@ -484,6 +502,7 @@ namespace fjhost::player {
             if (g_api.initialize(g_mpv) < 0) {
                 g_api.terminate_destroy(g_mpv);
                 g_mpv = nullptr;
+                unload_library();
                 return false;
             }
             int advanced = 1;
@@ -495,6 +514,7 @@ namespace fjhost::player {
                 g_api.terminate_destroy(g_mpv);
                 g_mpv = nullptr;
                 g_render = nullptr;
+                unload_library();
                 return false;
             }
             g_api.render_set_callback(g_render, on_render_update, nullptr);
@@ -521,19 +541,11 @@ namespace fjhost::player {
             }
             g_event_posted = false;
             g_frame_posted = false;
-            if (g_lib) {
-#ifdef _WIN32
-                FreeLibrary(static_cast<HMODULE>(g_lib));
-#else
-                dlclose(g_lib);
-#endif
-                g_lib = nullptr;
-                g_api = Api();
-            }
+            unload_library();
         }
 
         void begin_hold(bool forward) {
-            if (!g_mpv || g_finished || g_failed)
+            if (!g_mpv || g_finished || g_failed || g_hold != 0)
                 return;
             g_resume_after_hold = !g_paused;
             if (forward) {
@@ -601,7 +613,7 @@ namespace fjhost::player {
             }
             if (g_paused && g_duration > 0 && g_position >= g_duration - 0.3)
                 seek_to(0);
-            set("pause", g_paused ? "no" : "yes");
+            command_async({"cycle", "pause"});
         }
 
         void previous() {
@@ -672,8 +684,10 @@ namespace fjhost::player {
         p.on_surface_size([](int w, int h) {
             g_width = std::clamp(w, 16, 2560);
             g_height = std::clamp(h, 16, 1440);
-            if (g_open && g_render)
+            if (g_open && g_render) {
+                g_force_render = true;
                 post_frame();
+            }
         });
     }
 
@@ -682,8 +696,12 @@ namespace fjhost::player {
         apply_queue(queue_json);
         if (g_items.empty())
             return;
-        if (!start_engine())
+        if (!start_engine()) {
+            if (g_index >= 0 && g_index < int(g_items.size()))
+                core_call("player.system", "{\"path\":" + quote(g_items[g_index].path) + "}");
+            g_items.clear();
             return;
+        }
         g_index = std::clamp(g_index, 0, int(g_items.size()) - 1);
         g_speed = 1.0f;
         g_open = true;

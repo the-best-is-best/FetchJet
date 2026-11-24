@@ -378,6 +378,7 @@ namespace fjhost {
             quit_app();
             return;
         }
+        player::close();
         lock_hidden();
         ui().hide();
         g_shown = false;

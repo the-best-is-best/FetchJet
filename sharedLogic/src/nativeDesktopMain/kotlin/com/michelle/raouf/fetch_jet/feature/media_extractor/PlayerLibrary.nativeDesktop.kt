@@ -4,6 +4,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.feature.archive_extract.GzipSource
+import com.michelle.raouf.fetch_jet.platform.desktop.DesktopApp
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.platform.desktop.join
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEffect
@@ -62,7 +63,13 @@ private fun isFilePath(path: String): Boolean = DesktopOs.fileInfo(path)?.isDire
 fun getExistingPlayerLibrary(): String? =
     DesktopOs.join(getToolsDir(), playerLibraryAsset().fileName).takeIf { isFilePath(it) }
 
-fun isPlayerLibraryReady(): Boolean = getExistingPlayerLibrary() != null || systemPlayerLibraryPaths.any { isFilePath(it) }
+private fun nextToExecutable(): Boolean =
+    DesktopOs.join(DesktopApp.exeDir, playerLibraryAsset().fileName).let { isFilePath(it) }
+
+fun isPlayerLibraryReady(): Boolean =
+    getExistingPlayerLibrary() != null || nextToExecutable() || systemPlayerLibraryPaths.any { isFilePath(it) }
+
+fun isPlayerLibraryAvailable(): Boolean = isPlayerLibraryReady() || playerLibraryAsset().sha256.isNotEmpty()
 
 internal suspend fun installPlayerLibrary(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
     val asset = playerLibraryAsset()
@@ -122,6 +129,7 @@ fun DashboardViewModel.ensurePlayerLibrary(onReady: () -> Unit) {
         } finally {
             _uiState.update { it.copy(isDownloadingYtDlp = false, toolDownloadName = null, toolDownloadFraction = null) }
             PlayerLibraryInstall.running = false
+            if (error != null) PlayerLibraryInstall.pending = null
         }
         refreshToolStatus()
         val open = PlayerLibraryInstall.pending

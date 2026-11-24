@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.media_extractor.ensurePlayerLibrary
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable
 import com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
 import com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue
 import com.michelle.raouf.fetch_jet.feature.media_player.PlayerProgress
@@ -38,6 +39,7 @@ private fun Presenter.pushPlayerEffect(queue: PlaybackQueue, tasks: List<Downloa
 
 internal fun Presenter.playTask(task: DownloadTask): Boolean {
     if (!MediaPlayback.canPlay(task)) return false
+    if (!isPlayerLibraryAvailable()) return false
     if (!pathResolver.fileExists(taskFilePath(task))) return false
     val all = vm.uiState.value.allTasks
     openPlayer(MediaPlayback.queueFor(task, all), all)
@@ -45,6 +47,7 @@ internal fun Presenter.playTask(task: DownloadTask): Boolean {
 }
 
 internal fun Presenter.playOpenGroup() {
+    if (headless || !isPlayerLibraryAvailable()) return
     val state = vm.uiState.value
     val folder = state.openFolder
     val playlist = state.openPlaylistId
@@ -65,6 +68,10 @@ internal fun playerCall(name: String, args: String): String {
     }
     val key = obj["key"]?.jsonPrimitive?.content.orEmpty()
     when (name) {
+        "system" -> {
+            val path = obj["path"]?.jsonPrimitive?.content.orEmpty()
+            if (path.isNotEmpty()) com.michelle.raouf.fetch_jet.core.filesystem.PathResolver().openFile(path)
+        }
         "remember" -> PlayerProgress.remember(key, obj["id"]?.jsonPrimitive?.content.orEmpty())
         "clear" -> PlayerProgress.clear(key)
         else -> return ""
