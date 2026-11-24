@@ -111,6 +111,11 @@ struct HiddenPinField: View {
     }
 }
 
+struct HiddenPatternShownKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
 struct PatternPad: View {
     @EnvironmentObject var store: FJStore
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
@@ -166,6 +171,7 @@ struct PatternPad: View {
             }
             .aspectRatio(1, contentMode: .fit)
             .frame(maxWidth: 280)
+            .preference(key: HiddenPatternShownKey.self, value: true)
             if voiceOver {
                 HStack(spacing: 8) {
                     FJDialogButton(title: store.strings.cancel, kind: .outlined, enabled: !path.isEmpty) { path = [] }
@@ -242,6 +248,7 @@ struct HiddenSheetBody<Content: View>: View {
     let title: String
     let onCancel: () -> Void
     @ViewBuilder var content: Content
+    @State private var hasPattern = false
 
     var body: some View {
         NavigationStack {
@@ -250,6 +257,9 @@ struct HiddenSheetBody<Content: View>: View {
                     .frame(maxWidth: 480, alignment: .leading)
                     .padding(16)
                     .frame(maxWidth: .infinity)
+            }
+            .onPreferenceChange(HiddenPatternShownKey.self) { shown in
+                MainActor.assumeIsolated { hasPattern = shown }
             }
             .scrollDismissesKeyboard(.interactively)
             .background(FJTheme.color.background.ignoresSafeArea())
@@ -261,7 +271,7 @@ struct HiddenSheetBody<Content: View>: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(hasPattern ? [.large] : [.medium, .large])
         .hiddenPrivacyCover()
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
     }
