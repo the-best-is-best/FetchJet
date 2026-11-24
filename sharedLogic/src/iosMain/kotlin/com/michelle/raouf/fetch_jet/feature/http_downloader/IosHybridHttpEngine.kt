@@ -104,6 +104,10 @@ class IosHybridHttpEngine(
                         carriesSession(headers))
             ) Owner.FOREGROUND else Owner.BACKGROUND
             owners[taskId] = decided
+            println(
+                "IosHybrid: task $taskId -> $decided (existing=$existing onDisk=$onDisk create=$create limit=${speedLimitProvider(taskId)} " +
+                        "proxy=${com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn} login=${hasSiteLogin(url)} session=${carriesSession(headers)})"
+            )
             decided
         }
         return if (owner == Owner.FOREGROUND) foreground else background
