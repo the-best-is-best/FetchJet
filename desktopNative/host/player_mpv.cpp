@@ -478,6 +478,7 @@ namespace fjhost::player {
             const char *options[][2] = {
                     {"vo", "libmpv"},
                     {"hwdec", "no"},
+                    {"sws-fast", "yes"},
                     {"audio-display", "no"},
                     {"idle", "yes"},
                     {"keep-open", "yes"},
@@ -602,6 +603,8 @@ namespace fjhost::player {
             g_position = target;
             publish_time(true);
             publish_state();
+            if (g_paused && g_duration > 0 && target >= g_duration - 0.05)
+                end_of_item();
         }
 
         void toggle_play() {
@@ -696,19 +699,21 @@ namespace fjhost::player {
         apply_queue(queue_json);
         if (g_items.empty())
             return;
-        if (!start_engine()) {
-            if (g_index >= 0 && g_index < int(g_items.size()))
-                core_call("player.system", "{\"path\":" + quote(g_items[g_index].path) + "}");
-            g_items.clear();
-            return;
-        }
         g_index = std::clamp(g_index, 0, int(g_items.size()) - 1);
         g_speed = 1.0f;
-        g_open = true;
         auto &p = ui().global<PlayerUi>();
         clear_frame();
         publish_items();
+        publish_item();
         p.set_open(true);
+        if (!start_engine()) {
+            p.set_open(false);
+            core_call("player.system", "{\"path\":" + quote(g_items[g_index].path) + "}");
+            g_items.clear();
+            g_model.reset();
+            return;
+        }
+        g_open = true;
         load_item(g_index, true);
     }
 

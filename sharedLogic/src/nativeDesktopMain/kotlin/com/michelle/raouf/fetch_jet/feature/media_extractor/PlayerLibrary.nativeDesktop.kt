@@ -24,10 +24,10 @@ import okio.buffer
 import okio.use
 
 internal object PlayerLibraryPin {
-    const val VERSION = "20261111"
+    const val VERSION = "0.42.0"
     const val REPOSITORY = "the-best-is-best/FetchJet"
     const val RELEASE_TAG = "libmpv-$VERSION"
-    const val WINDOWS_X64_SHA256 = ""
+    const val WINDOWS_X64_SHA256 = "ecdd46e7d604e493227aca10e669063ce8825cb90e7a687d80ae671e274528c3"
     const val LINUX_X64_SHA256 = ""
     const val MACOS_ARM64_SHA256 = ""
 }
