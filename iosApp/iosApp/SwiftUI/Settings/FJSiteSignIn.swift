@@ -31,8 +31,11 @@ final class FJSiteSignInModel: NSObject, ObservableObject, WKNavigationDelegate 
         loading = false
     }
 
-    func cookieHeader(for address: URL, done: @escaping (String) -> Void) {
-        let target = webView.url ?? address
+    func cookieHeader(for address: URL, site: String, done: @escaping (String) -> Void) {
+        let host = webView.url?.host?.lowercased() ?? ""
+        let wanted = site.lowercased()
+        let onSite = !host.isEmpty && (host == wanted || host.hasSuffix("." + wanted))
+        let target = onSite ? (webView.url ?? address) : address
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
             let header = cookies.filter { FJPageBrowserModel.matches($0, target) }
                 .map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
@@ -86,7 +89,7 @@ struct FJSiteSignInSheet: View {
                     Spacer(minLength: 0)
                     if model.loading { ProgressView() }
                     Button {
-                        model.cookieHeader(for: target.url) { header in
+                        model.cookieHeader(for: target.url, site: target.site) { header in
                             finished(header.isEmpty ? nil : header)
                         }
                     } label: {

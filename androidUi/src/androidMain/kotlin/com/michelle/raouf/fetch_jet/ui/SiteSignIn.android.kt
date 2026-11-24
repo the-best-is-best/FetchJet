@@ -63,10 +63,13 @@ internal actual fun SiteSignInDialog(site: String, onFinished: (cookie: String?)
                 ) {
                     TextButton(onClick = { onFinished(null) }) { Text(s.cancel) }
                     Button(onClick = {
-                        val url = webView[0]?.url ?: address
+                        val current = webView[0]?.url
+                        val wanted = com.michelle.raouf.fetch_jet.core.network.SiteLogin.cleanSite(site)
+                        val onSite = current != null && com.michelle.raouf.fetch_jet.core.network.SiteLogin(wanted, "", "")
+                            .matches(android.net.Uri.parse(current).host.orEmpty())
                         val manager = CookieManager.getInstance()
                         manager.flush()
-                        onFinished(manager.getCookie(url)?.takeIf { it.isNotBlank() } ?: manager.getCookie(address))
+                        onFinished(manager.getCookie(if (onSite) current else address)?.takeIf { it.isNotBlank() })
                     }) { Text(s.netLoginBrowserDone) }
                 }
             }
