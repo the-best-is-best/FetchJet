@@ -406,7 +406,7 @@ private struct TaskDetailsContent: View {
             HStack(spacing: 8) {
                 if isCompleted {
                     TaskDetailButton(text: s.detailsOpenFile, primary: true,
-                                     icon: MediaPlayback.shared.canPlay(task: task) ? "play.fill" : "doc") { store.openFile(task) }
+                                     icon: MediaPlayback.shared.canPlay(task: task, allowHidden: task.hidden) ? "play.fill" : "doc") { store.openFile(task) }
                 } else if running {
                     TaskDetailButton(text: s.pause, primary: true, icon: "pause.fill") { pauseClicked() }
                 } else if task.waitingInQueue {

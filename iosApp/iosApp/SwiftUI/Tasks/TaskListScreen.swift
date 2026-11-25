@@ -1088,7 +1088,7 @@ struct GroupPlayButton: View {
     let tasks: [DownloadTask]
 
     var body: some View {
-        if MediaPlayback.shared.hasPlayable(tasks: tasks) {
+        if store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) {
             Button {
                 if let queue = store.host.playbackQueue(groupKey: groupKey, tasks: tasks) {
                     FJPlayer.shared.queue = queue

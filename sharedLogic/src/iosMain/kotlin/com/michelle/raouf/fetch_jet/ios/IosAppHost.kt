@@ -14,6 +14,9 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEffect
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenGroupCanPlay
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenGroupQueue
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenQueueFor
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +136,32 @@ class IosAppHost {
         val missing = queue.items.firstOrNull { !PathResolver().fileExists(it.path) }
         return if (missing == null) queue else null
     }
+
+    fun hiddenPlaybackQueue(taskId: String): com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue? =
+        viewModel.hiddenQueueFor(taskId)
+
+    fun hiddenGroupPlaybackQueue(): com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue? =
+        viewModel.hiddenGroupQueue()
+
+    fun hiddenGroupCanPlay(): Boolean = viewModel.uiState.value.hiddenGroupCanPlay()
+
+    fun inAppPlayerOn(): Boolean = !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff()
+
+    fun prepareHidden(taskId: String, onProgress: (Float) -> Unit, onDone: (String?) -> Unit): Job =
+        scope.launch(Dispatchers.Main) {
+            val path = try {
+                com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback.prepare(taskId) { onProgress(it) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                null
+            }
+            onDone(path)
+        }
+
+    fun releaseHidden(taskId: String) = com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback.release(taskId)
+
+    fun releaseAllHidden() = com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback.releaseAll()
 
     private var clipboardFirstRun = true
 

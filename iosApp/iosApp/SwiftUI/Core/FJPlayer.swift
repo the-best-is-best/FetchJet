@@ -6,6 +6,9 @@ import UIKit
 final class FJPlayer: ObservableObject {
     static let shared = FJPlayer()
     @Published var queue: PlaybackQueue?
+    weak var host: IosAppHost?
+
+    var hasHidden: Bool { queue?.items.contains { $0.hidden } ?? false }
 }
 
 struct FJPlayerTarget: Identifiable {
@@ -25,6 +28,10 @@ final class FJPlayerModel: ObservableObject {
     @Published var hold = 0
     @Published var failed = false
     @Published var finished = false
+    @Published var preparing = false
+    private var prepareJob: Kotlinx_coroutines_coreJob?
+    private var preparedId: String?
+    private var loadToken = 0
 
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
@@ -61,6 +68,8 @@ final class FJPlayerModel: ObservableObject {
     }
 
     deinit {
+        prepareJob?.cancel(cause: nil)
+        if queue.items.contains(where: { $0.hidden }) { FJPlayer.shared.host?.releaseAllHidden() }
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         rewindTimer?.invalidate()
@@ -79,7 +88,38 @@ final class FJPlayerModel: ObservableObject {
         duration = 0
         let entry = queue.items[index]
         PlayerProgress.shared.remember(groupKey: queue.groupKey, taskId: entry.taskId)
-        let playerItem = AVPlayerItem(url: URL(fileURLWithPath: entry.path))
+        loadToken += 1
+        prepareJob?.cancel(cause: nil)
+        prepareJob = nil
+        if let old = preparedId, old != entry.taskId {
+            player.replaceCurrentItem(with: nil)
+            FJPlayer.shared.host?.releaseHidden(taskId: old)
+            preparedId = nil
+        }
+        guard HiddenPlayback.shared.needsPrepare(item: entry), let host = FJPlayer.shared.host else {
+            preparing = false
+            start(path: entry.path, autoplay: autoplay)
+            return
+        }
+        player.replaceCurrentItem(with: nil)
+        preparing = true
+        let token = loadToken
+        prepareJob = host.prepareHidden(taskId: entry.taskId, onProgress: { _ in }, onDone: { [weak self] path in
+            guard let self, self.loadToken == token else { return }
+            self.preparing = false
+            self.prepareJob = nil
+            guard let path, !path.isEmpty else {
+                self.controls = true
+                self.failed = true
+                return
+            }
+            self.preparedId = entry.taskId
+            self.start(path: path, autoplay: autoplay)
+        })
+    }
+
+    private func start(path: String, autoplay: Bool) {
+        let playerItem = AVPlayerItem(url: URL(fileURLWithPath: path))
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main
@@ -268,6 +308,7 @@ struct FJPlayerScreen: View {
     let onClose: () -> Void
     @EnvironmentObject private var store: FJStore
     @StateObject private var model: FJPlayerModel
+    @Environment(\.scenePhase) private var phase
     @State private var showQueue = false
     @State private var dragging: Double?
 
@@ -278,6 +319,7 @@ struct FJPlayerScreen: View {
     }
 
     private var playback: MediaPlayback { MediaPlayback.shared }
+    private var hasHidden: Bool { queue.items.contains { $0.hidden } }
 
     var body: some View {
         ZStack {
@@ -319,6 +361,11 @@ struct FJPlayerScreen: View {
                     .frame(maxHeight: .infinity, alignment: .top)
                     .padding(.top, 70)
             }
+            if model.preparing {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.4)
+            }
             if model.failed {
                 Text("⚠").font(.largeTitle).foregroundStyle(.white)
             }
@@ -327,7 +374,25 @@ struct FJPlayerScreen: View {
             if showQueue { queueList }
         }
         .statusBarHidden(!model.controls)
-        .onDisappear { model.player.pause() }
+        .overlay {
+            if hasHidden && phase != .active { Color.black.ignoresSafeArea() }
+        }
+        .onChange(of: phase) { _, new in
+            if hasHidden && new != .active { model.player.pause() }
+        }
+        .onChange(of: store.state.hidden.unlocked) { _, unlocked in
+            if hasHidden && !unlocked { onClose() }
+        }
+        .onChange(of: store.state.hidden.covered) { _, covered in
+            if hasHidden && covered { onClose() }
+        }
+        .onDisappear {
+            model.player.pause()
+            if hasHidden {
+                store.host.releaseAllHidden()
+                store.send(DashboardUiEventOnHiddenClosePlayer.shared)
+            }
+        }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }

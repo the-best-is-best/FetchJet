@@ -153,6 +153,7 @@ struct SettingsFilesPage: View {
                     isOn: st.extractArchives
                 ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
+            SettingsPlayerModeCard()
             SettingsSiteFoldersCard()
         }
     }
@@ -420,6 +421,29 @@ struct SettingsSiteFoldersCard: View {
                 folder = picked
             }
             .environmentObject(store)
+        }
+    }
+}
+
+struct SettingsPlayerModeCard: View {
+    @EnvironmentObject var store: FJStore
+    @State private var mode = PlayerMode.shared.current()
+
+    var body: some View {
+        let s = store.strings
+        SettingsGroupBox {
+            SettingsRow(title: s.playerModeTitle, subtitle: s.playerModeHintShort)
+            SettingsSegments(
+                options: ["on", "off"],
+                selected: mode == "off" ? "off" : "on",
+                label: { $0 == "off" ? s.playerModeOff : s.playerModeOn },
+                onSelect: { value in
+                    PlayerMode.shared.set(mode: value)
+                    mode = PlayerMode.shared.current()
+                }
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
         }
     }
 }

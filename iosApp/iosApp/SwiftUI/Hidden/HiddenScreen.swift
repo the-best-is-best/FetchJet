@@ -368,6 +368,24 @@ private struct HiddenGroupBar: View {
                 }
                 Spacer(minLength: 0)
             }
+            if store.host.hiddenGroupCanPlay() {
+                Button {
+                    if let queue = store.host.hiddenGroupPlaybackQueue() {
+                        store.send(DashboardUiEventOnHiddenGroupPlayClicked.shared)
+                        FJPlayer.shared.queue = queue
+                    }
+                } label: {
+                    Label(s.playerPlayAll, systemImage: "play.fill")
+                        .font(.fj(13, .semibold))
+                        .foregroundStyle(FJTheme.color.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(FJTheme.color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+                        .contentShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
             HStack(spacing: 8) {
                 if canPause {
                     Button(s.homePauseAll) {

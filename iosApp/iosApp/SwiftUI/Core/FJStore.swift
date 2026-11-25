@@ -26,6 +26,7 @@ final class FJStore: ObservableObject {
     init() {
         let host = IosAppHost()
         self.host = host
+        FJPlayer.shared.host = host
         self.state = host.state
         self.language = host.language
         self.isRtl = host.isRtl
@@ -115,10 +116,15 @@ final class FJStore: ObservableObject {
 
     func openFile(_ task: DownloadTask) {
         if task.hidden {
-            send(DashboardUiEventOnHiddenOpenFile(taskId: task.id))
+            if let queue = host.hiddenPlaybackQueue(taskId: task.id) {
+                send(DashboardUiEventOnHiddenPlayClicked(taskId: task.id))
+                FJPlayer.shared.queue = queue
+            } else {
+                send(DashboardUiEventOnHiddenOpenFile(taskId: task.id))
+            }
             return
         }
-        if let queue = host.playbackQueue(task: task) {
+        if host.inAppPlayerOn(), let queue = host.playbackQueue(task: task) {
             FJPlayer.shared.queue = queue
             return
         }
