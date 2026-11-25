@@ -130,7 +130,7 @@ internal fun parseHhMmToSeconds(hhMm: String): Long {
     val parts = hhMm.split(":")
     val h = parts.getOrNull(0)?.toLongOrNull() ?: 0L
     val m = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-    val s = parts.getOrNull(2)?.toLongOrNull() ?: 0L
+    val s = parts.getOrNull(2)?.let { it.toLongOrNull() ?: it.replace(',', '.').toDoubleOrNull()?.toLong() } ?: 0L
     return (h * 3600L + m * 60L + s).coerceAtLeast(0L)
 }
 
