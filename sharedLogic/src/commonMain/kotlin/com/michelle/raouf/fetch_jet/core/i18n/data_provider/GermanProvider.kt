@@ -1267,6 +1267,15 @@ object GermanProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Die Zeitleiste braucht eine mp4- oder mov-Datei"
     override val videoCutSaved = "Ausschnitt gespeichert"
     override val videoCutNeedsTools = "Zum Schneiden werden die Medienwerkzeuge (FFmpeg) benötigt. Lade sie unter Einstellungen > Medienwerkzeuge herunter."
+    override val audioExtractTitle = "Audio extrahieren"
+    override val audioExtractRunning = "Audio wird extrahiert…"
+    override val audioExtractDone = "Audio gespeichert"
+    override val audioExtractFailed = "Audio konnte nicht extrahiert werden"
+    override val audioExtractNoAudio = "Dieses Video hat keinen Ton"
+    override val rowMenuSectionOpen = "Öffnen"
+    override val rowMenuSectionMedia = "Medien"
+    override val rowMenuSectionDownload = "Download"
+    override val rowMenuSectionManage = "Verwalten"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "An Gerät senden"

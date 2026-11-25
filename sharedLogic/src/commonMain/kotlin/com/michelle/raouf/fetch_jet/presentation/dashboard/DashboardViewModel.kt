@@ -842,6 +842,8 @@ class DashboardViewModel(
             is DashboardUiEvent.OnVideoCutDeleteClip,
             is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
 
+            is DashboardUiEvent.OnExtractAudioClicked -> extractAudio(event.taskId)
+
             is DashboardUiEvent.OnSubtitlesClicked,
             is DashboardUiEvent.OnSubtitleTrackToggled,
             DashboardUiEvent.OnSubtitlesAddClicked,

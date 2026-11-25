@@ -20,7 +20,7 @@ class RowMenuTest {
     fun aHiddenFinishedTaskOffersOnlyWhatDoesNotTouchThePlainFile() {
         val entries = RowMenu.entries(task("a.zip", DownloadStatus.COMPLETED, true), options)
         assertEquals(
-            listOf(RowMenuEntry.OPEN, RowMenuEntry.SELECT, RowMenuEntry.DETAILS, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
+            listOf(RowMenuEntry.OPEN, RowMenuEntry.DETAILS, RowMenuEntry.SELECT, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
             entries
         )
     }
@@ -28,11 +28,11 @@ class RowMenuTest {
     @Test
     fun aHiddenRunningOrPausedTaskKeepsPauseAndResume() {
         assertEquals(
-            listOf(RowMenuEntry.PAUSE, RowMenuEntry.DETAILS, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
+            listOf(RowMenuEntry.DETAILS, RowMenuEntry.PAUSE, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
             RowMenu.entries(task("a.mp4", DownloadStatus.DOWNLOADING, true))
         )
         assertEquals(
-            listOf(RowMenuEntry.RESUME, RowMenuEntry.DETAILS, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
+            listOf(RowMenuEntry.DETAILS, RowMenuEntry.RESUME, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE),
             RowMenu.entries(task("a.mp4", DownloadStatus.PAUSED, true))
         )
     }
@@ -57,5 +57,51 @@ class RowMenuTest {
         assertTrue(RowMenuEntry.OPEN_FOLDER in plain)
         val hidden = RowMenu.entries(task("a.zip", DownloadStatus.COMPLETED, true), options)
         assertEquals(hidden.indexOf(RowMenuEntry.DELETE) - 1, hidden.indexOf(RowMenuEntry.UNHIDE))
+    }
+
+    @Test
+    fun entriesComeGroupedOpenMediaDownloadManage() {
+        val video = RowMenu.entries(task("a.mp4", DownloadStatus.COMPLETED, false), options)
+        assertEquals(
+            listOf(
+                RowMenuEntry.OPEN, RowMenuEntry.OPEN_FOLDER, RowMenuEntry.DETAILS,
+                RowMenuEntry.CUT, RowMenuEntry.EXTRACT_AUDIO,
+                RowMenuEntry.SEND_TO_DEVICE, RowMenuEntry.COPY_LINK,
+                RowMenuEntry.SELECT, RowMenuEntry.DELETE
+            ),
+            video
+        )
+        assertTrue(RowMenu.startsSection(video, video.indexOf(RowMenuEntry.CUT)))
+        assertFalse(RowMenu.startsSection(video, video.indexOf(RowMenuEntry.EXTRACT_AUDIO)))
+        val running = RowMenu.entries(task("a.bin", DownloadStatus.DOWNLOADING, false), options)
+        assertEquals(
+            listOf(RowMenuEntry.OPEN_FOLDER, RowMenuEntry.DETAILS, RowMenuEntry.PAUSE, RowMenuEntry.SEND_TO_DEVICE, RowMenuEntry.COPY_LINK, RowMenuEntry.SELECT, RowMenuEntry.DELETE),
+            running
+        )
+        for (name in listOf("a.zip", "a.mp3", "a.mp4", "a.bin")) {
+            for (status in DownloadStatus.entries) {
+                for (hidden in listOf(false, true)) {
+                    val sections = RowMenu.entries(task(name, status, hidden), options).map { it.section.ordinal }
+                    assertEquals(sections.sorted(), sections, "$name $status $hidden")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun everyEntryHasASection() {
+        val expected = mapOf(
+            RowMenuEntry.OPEN to RowMenuSection.OPEN, RowMenuEntry.OPEN_FOLDER to RowMenuSection.OPEN,
+            RowMenuEntry.DETAILS to RowMenuSection.OPEN,
+            RowMenuEntry.EXTRACT to RowMenuSection.MEDIA, RowMenuEntry.COMPRESS to RowMenuSection.MEDIA,
+            RowMenuEntry.CUT to RowMenuSection.MEDIA, RowMenuEntry.EXTRACT_AUDIO to RowMenuSection.MEDIA,
+            RowMenuEntry.SUBTITLES to RowMenuSection.MEDIA,
+            RowMenuEntry.PAUSE to RowMenuSection.DOWNLOAD, RowMenuEntry.RESUME to RowMenuSection.DOWNLOAD,
+            RowMenuEntry.SEND_TO_DEVICE to RowMenuSection.DOWNLOAD, RowMenuEntry.COPY_LINK to RowMenuSection.DOWNLOAD,
+            RowMenuEntry.SELECT to RowMenuSection.MANAGE, RowMenuEntry.UNHIDE to RowMenuSection.MANAGE,
+            RowMenuEntry.DELETE to RowMenuSection.MANAGE
+        )
+        assertEquals(RowMenuEntry.entries.toSet(), expected.keys)
+        expected.forEach { (entry, section) -> assertEquals(section, entry.section, entry.name) }
     }
 }

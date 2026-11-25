@@ -1226,6 +1226,15 @@ object JapaneseProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "タイムラインには mp4 または mov ファイルが必要です"
     override val videoCutSaved = "クリップを保存しました"
     override val videoCutNeedsTools = "切り取りにはメディアツール（FFmpeg）が必要です。設定 > メディアツール からダウンロードしてください。"
+    override val audioExtractTitle = "音声を抽出"
+    override val audioExtractRunning = "音声を抽出しています…"
+    override val audioExtractDone = "音声を保存しました"
+    override val audioExtractFailed = "音声を抽出できませんでした"
+    override val audioExtractNoAudio = "この動画には音声がありません"
+    override val rowMenuSectionOpen = "開く"
+    override val rowMenuSectionMedia = "メディア"
+    override val rowMenuSectionDownload = "ダウンロード"
+    override val rowMenuSectionManage = "管理"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "デバイスに送信"

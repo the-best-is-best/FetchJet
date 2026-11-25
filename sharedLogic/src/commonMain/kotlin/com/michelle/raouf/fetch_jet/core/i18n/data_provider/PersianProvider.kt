@@ -1215,6 +1215,15 @@ object PersianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "خط زمانی به فایل mp4 یا mov نیاز دارد"
     override val videoCutSaved = "کلیپ ذخیره شد"
     override val videoCutNeedsTools = "برش به ابزارهای رسانه (FFmpeg) نیاز دارد. آن‌ها را از تنظیمات > ابزارهای رسانه دانلود کنید."
+    override val audioExtractTitle = "استخراج صدا"
+    override val audioExtractRunning = "در حال استخراج صدا…"
+    override val audioExtractDone = "صدا ذخیره شد"
+    override val audioExtractFailed = "استخراج صدا ممکن نشد"
+    override val audioExtractNoAudio = "این ویدیو صدا ندارد"
+    override val rowMenuSectionOpen = "باز کردن"
+    override val rowMenuSectionMedia = "رسانه"
+    override val rowMenuSectionDownload = "دانلود"
+    override val rowMenuSectionManage = "مدیریت"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "ارسال به دستگاه"

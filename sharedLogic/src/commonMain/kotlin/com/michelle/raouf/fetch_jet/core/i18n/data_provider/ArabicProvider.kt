@@ -1228,6 +1228,15 @@ object ArabicProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "الخط الزمني يحتاج ملف mp4 أو mov"
     override val videoCutSaved = "تم حفظ المقطع"
     override val videoCutNeedsTools = "القص محتاج أدوات الوسائط (FFmpeg). نزّلها من الإعدادات ← أدوات الوسائط."
+    override val audioExtractTitle = "استخراج الصوت"
+    override val audioExtractRunning = "جارٍ استخراج الصوت…"
+    override val audioExtractDone = "تم حفظ الصوت"
+    override val audioExtractFailed = "تعذّر استخراج الصوت"
+    override val audioExtractNoAudio = "هذا الفيديو بدون صوت"
+    override val rowMenuSectionOpen = "فتح"
+    override val rowMenuSectionMedia = "الوسائط"
+    override val rowMenuSectionDownload = "التنزيل"
+    override val rowMenuSectionManage = "الإدارة"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "ابعت لجهاز"

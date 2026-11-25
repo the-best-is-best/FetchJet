@@ -283,7 +283,8 @@ data class DashboardUiState(
     val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
     val audioCopyCounts: Map<String, Int> = emptyMap(),
-    val videoClips: Map<String, List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip>> = emptyMap()
+    val videoClips: Map<String, List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip>> = emptyMap(),
+    val audioExtracting: Set<String> = emptySet()
 ) {
     /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
     val grabShape: Boolean
@@ -821,6 +822,8 @@ sealed interface DashboardUiEvent {
     data class OnVideoCutDeleteClip(val path: String) : DashboardUiEvent
 
     data class OnVideoCutShowClips(val taskId: String) : DashboardUiEvent
+
+    data class OnExtractAudioClicked(val taskId: String) : DashboardUiEvent
 
     /** Open the "Send to device" sheet for a task. */
     data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent

@@ -1060,6 +1060,15 @@ interface AppLocalization : LocalizationProvider {
     val videoCutTimelineNeedsMp4: String
     val videoCutSaved: String
     val videoCutNeedsTools: String
+    val audioExtractTitle: String
+    val audioExtractRunning: String
+    val audioExtractDone: String
+    val audioExtractFailed: String
+    val audioExtractNoAudio: String
+    val rowMenuSectionOpen: String
+    val rowMenuSectionMedia: String
+    val rowMenuSectionDownload: String
+    val rowMenuSectionManage: String
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String

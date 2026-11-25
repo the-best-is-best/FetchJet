@@ -1215,6 +1215,15 @@ object IndonesianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Linimasa memerlukan file mp4 atau mov"
     override val videoCutSaved = "Klip disimpan"
     override val videoCutNeedsTools = "Memotong butuh alat media (FFmpeg). Unduh di Pengaturan > Alat media."
+    override val audioExtractTitle = "Ekstrak audio"
+    override val audioExtractRunning = "Mengekstrak audio…"
+    override val audioExtractDone = "Audio disimpan"
+    override val audioExtractFailed = "Tidak dapat mengekstrak audio"
+    override val audioExtractNoAudio = "Video ini tidak memiliki audio"
+    override val rowMenuSectionOpen = "Buka"
+    override val rowMenuSectionMedia = "Media"
+    override val rowMenuSectionDownload = "Unduhan"
+    override val rowMenuSectionManage = "Kelola"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Kirim ke perangkat"

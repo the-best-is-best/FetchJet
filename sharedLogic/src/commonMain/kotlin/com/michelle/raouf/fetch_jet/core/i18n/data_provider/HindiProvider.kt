@@ -1209,6 +1209,15 @@ object HindiProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "टाइमलाइन के लिए mp4 या mov फ़ाइल चाहिए"
     override val videoCutSaved = "क्लिप सहेजी गई"
     override val videoCutNeedsTools = "काटने के लिए मीडिया टूल (FFmpeg) चाहिए। इन्हें सेटिंग्स > मीडिया टूल में डाउनलोड करें।"
+    override val audioExtractTitle = "ऑडियो निकालें"
+    override val audioExtractRunning = "ऑडियो निकाला जा रहा है…"
+    override val audioExtractDone = "ऑडियो सहेजा गया"
+    override val audioExtractFailed = "ऑडियो नहीं निकाला जा सका"
+    override val audioExtractNoAudio = "इस वीडियो में ऑडियो नहीं है"
+    override val rowMenuSectionOpen = "खोलें"
+    override val rowMenuSectionMedia = "मीडिया"
+    override val rowMenuSectionDownload = "डाउनलोड"
+    override val rowMenuSectionManage = "प्रबंधित करें"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "डिवाइस पर भेजें"

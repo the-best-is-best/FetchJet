@@ -1245,6 +1245,15 @@ object RussianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Для шкалы времени нужен файл mp4 или mov"
     override val videoCutSaved = "Фрагмент сохранён"
     override val videoCutNeedsTools = "Для обрезки нужны медиаинструменты (FFmpeg). Скачайте их в Настройки > Медиаинструменты."
+    override val audioExtractTitle = "Извлечь звук"
+    override val audioExtractRunning = "Извлечение звука…"
+    override val audioExtractDone = "Звук сохранён"
+    override val audioExtractFailed = "Не удалось извлечь звук"
+    override val audioExtractNoAudio = "В этом видео нет звука"
+    override val rowMenuSectionOpen = "Открыть"
+    override val rowMenuSectionMedia = "Медиа"
+    override val rowMenuSectionDownload = "Загрузка"
+    override val rowMenuSectionManage = "Управление"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Отправить на устройство"

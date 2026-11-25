@@ -1210,6 +1210,15 @@ object TurkishProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Zaman çizelgesi için mp4 veya mov dosyası gerekir"
     override val videoCutSaved = "Klip kaydedildi"
     override val videoCutNeedsTools = "Kesmek için medya araçları (FFmpeg) gerekir. Ayarlar > Medya araçları bölümünden indirin."
+    override val audioExtractTitle = "Sesi çıkar"
+    override val audioExtractRunning = "Ses çıkarılıyor…"
+    override val audioExtractDone = "Ses kaydedildi"
+    override val audioExtractFailed = "Ses çıkarılamadı"
+    override val audioExtractNoAudio = "Bu videoda ses yok"
+    override val rowMenuSectionOpen = "Aç"
+    override val rowMenuSectionMedia = "Medya"
+    override val rowMenuSectionDownload = "İndirme"
+    override val rowMenuSectionManage = "Yönet"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Cihaza gönder"

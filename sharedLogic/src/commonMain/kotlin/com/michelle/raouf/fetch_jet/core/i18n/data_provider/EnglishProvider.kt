@@ -1210,6 +1210,15 @@ object EnglishProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "The timeline needs an mp4 or mov file"
     override val videoCutSaved = "Clip saved"
     override val videoCutNeedsTools = "Cutting needs the media tools (FFmpeg). Download them in Settings > Media tools."
+    override val audioExtractTitle = "Extract audio"
+    override val audioExtractRunning = "Extracting audio…"
+    override val audioExtractDone = "Audio saved"
+    override val audioExtractFailed = "Could not extract the audio"
+    override val audioExtractNoAudio = "This video has no audio"
+    override val rowMenuSectionOpen = "Open"
+    override val rowMenuSectionMedia = "Media"
+    override val rowMenuSectionDownload = "Download"
+    override val rowMenuSectionManage = "Manage"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

@@ -1157,6 +1157,15 @@ object ChineseProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "时间轴需要 mp4 或 mov 文件"
     override val videoCutSaved = "片段已保存"
     override val videoCutNeedsTools = "剪切需要媒体工具（FFmpeg）。请在 设置 > 媒体工具 中下载。"
+    override val audioExtractTitle = "提取音频"
+    override val audioExtractRunning = "正在提取音频…"
+    override val audioExtractDone = "音频已保存"
+    override val audioExtractFailed = "无法提取音频"
+    override val audioExtractNoAudio = "此视频没有音频"
+    override val rowMenuSectionOpen = "打开"
+    override val rowMenuSectionMedia = "媒体"
+    override val rowMenuSectionDownload = "下载"
+    override val rowMenuSectionManage = "管理"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "发送到设备"
