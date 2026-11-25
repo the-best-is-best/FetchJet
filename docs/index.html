@@ -6,8 +6,8 @@
     <title>FetchJet downloads</title>
     <meta content="Every FetchJet release for every platform: Windows, macOS, Linux, Android, iOS and the browser extension."
           name="description">
-    <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2322D3EE' d='M12 3v12m-5-5 5 5 5-5M5 20h14' stroke='%2322D3EE' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"
-          rel="icon">
+    <link href="media/logo.png" rel="icon" type="image/png">
+    <link href="media/logo.png" rel="apple-touch-icon">
     <style>
         :root {
           --bg: #0B1020; --panel: #121933; --panel-2: #141B33; --line: rgba(255,255,255,0.07);
@@ -24,7 +24,7 @@
         body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", "Nirmala UI", "Noto Sans Devanagari", "Noto Sans Arabic", sans-serif; }
         a { color: var(--accent); }
         header { max-width: 1100px; margin: 0 auto; padding: 40px 16px 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-        header .logo { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+        header .logo { width: 44px; height: 44px; flex-shrink: 0; display: block; }
         header h1 { font-size: 26px; margin: 0; }
         header p { margin: 0; color: var(--muted); }
         header .grow { flex: 1 1 auto; }
@@ -76,14 +76,7 @@
 </head>
 <body>
 <header>
-    <div aria-hidden="true" class="logo">
-        <svg fill="none" height="22" stroke="#0B1020" stroke-linecap="round" stroke-linejoin="round"
-             stroke-width="2.5" viewBox="0 0 24 24" width="22">
-            <path d="M12 3v12"/>
-            <path d="m7 10 5 5 5-5"/>
-            <path d="M5 20h14"/>
-        </svg>
-    </div>
+    <img alt="" aria-hidden="true" class="logo" src="media/logo.png">
     <div><h1 id="title">FetchJet downloads</h1>
         <p id="subtitle">Every version, for every platform. Pick yours.</p></div>
     <div class="grow"></div>
