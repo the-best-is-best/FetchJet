@@ -403,9 +403,21 @@ object VideoCut {
         val eta = CutEta()
         onProgress(eta.update(0f))
         val copy = listOf("-c:a", "copy")
-        val encode = AUDIO_ENCODE[ext]
+        val encode = AUDIO_ENCODE[ext]?.let { matchBitrate(it, input, sourceDurationMs) }
         val order = if (ext == "mp3" && startMs > 0L && encode != null) listOf(encode, copy) else listOfNotNull(copy, encode)
         return order.any { runAudioCut(input, output, ext, startMs, endMs, toEnd, lengthMs, it, eta, onProgress) }
+    }
+
+    private val MP3_RATES = listOf(32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)
+
+    private fun matchBitrate(args: List<String>, input: String, durationMs: Long): List<String> {
+        val codec = args.getOrNull(1) ?: return args
+        if (codec !in setOf("libmp3lame", "aac", "libopus")) return args
+        val bytes = runCatching { AppFileSystem.metadataOrNull(input.toPath())?.size }.getOrNull() ?: 0L
+        if (bytes <= 0L || durationMs <= 0L) return args
+        val kbps = (bytes * 8L / durationMs).toInt().coerceIn(32, 320)
+        val rate = if (codec == "libmp3lame") MP3_RATES.firstOrNull { it >= kbps } ?: 320 else kbps
+        return listOf("-c:a", codec, "-b:a", "${rate}k")
     }
 
     private suspend fun runAudioCut(

@@ -228,6 +228,7 @@ class VideoCutTest {
                 val clip = File(dir, VideoCut.clipName(source.name, 2_000, 5_500, ext))
                 assertTrue(VideoCut.cut(source.path, clip.path, 2_000, 5_500, {}, duration), name)
                 assertFalse(File(dir, clip.nameWithoutExtension + ".part.$ext").exists())
+                if (ext == "mp3") assertTrue(clip.length() < source.length() * 0.35 * 1.3, "mp3 clip ${clip.length()} of ${source.length()}")
                 val len = audioMs(clip)
                 assertTrue(abs(len - 3_500L) < 80L, "$name clip $len")
                 val tail = File(dir, "tail.$ext")
