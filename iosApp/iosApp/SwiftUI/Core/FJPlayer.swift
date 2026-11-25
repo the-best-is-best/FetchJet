@@ -29,6 +29,7 @@ final class FJPlayerModel: ObservableObject {
     @Published var failed = false
     @Published var finished = false
     @Published var preparing = false
+    let subtitles = FJSubtitles()
     private var prepareJob: Kotlinx_coroutines_coreJob?
     private var preparedId: String?
     private var loadToken = 0
@@ -120,6 +121,9 @@ final class FJPlayerModel: ObservableObject {
 
     private func start(path: String, autoplay: Bool) {
         let playerItem = AVPlayerItem(url: URL(fileURLWithPath: path))
+        if item.isVideo {
+            subtitles.attach(player: player, item: playerItem, entry: item, path: path)
+        }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main
@@ -310,6 +314,7 @@ struct FJPlayerScreen: View {
     @StateObject private var model: FJPlayerModel
     @Environment(\.scenePhase) private var phase
     @State private var showQueue = false
+    @State private var pickingSubtitle = false
     @State private var dragging: Double?
 
     init(queue: PlaybackQueue, onClose: @escaping () -> Void) {
@@ -351,6 +356,9 @@ struct FJPlayerScreen: View {
             )
             .ignoresSafeArea()
 
+            if model.item.isVideo {
+                FJSubtitleOverlay(subtitles: model.subtitles, raised: model.controls)
+            }
             if model.hold != 0 {
                 Text(model.hold > 0 ? "▶▶  2x" : "◀◀  2x")
                     .font(.subheadline)
@@ -376,6 +384,15 @@ struct FJPlayerScreen: View {
         .statusBarHidden(!model.controls)
         .overlay {
             if hasHidden && phase != .active { Color.black.ignoresSafeArea() }
+        }
+        .fileImporter(isPresented: $pickingSubtitle, allowedContentTypes: FJSubtitles.fileTypes) { result in
+            if case .success(let url) = result { model.subtitles.pickFile(url) }
+        }
+        .onReceive(model.subtitles.$failed) { failed in
+            if failed {
+                store.showToast(store.strings.playerSubtitlesFailed)
+                model.subtitles.failed = false
+            }
         }
         .onChange(of: phase) { _, new in
             if hasHidden && new != .active { model.player.pause() }
@@ -459,7 +476,11 @@ struct FJPlayerScreen: View {
                     }
                     .disabled(!model.hasNext)
                     Spacer()
-                    Color.clear.frame(width: 64, height: 44)
+                    if model.item.isVideo {
+                        FJSubtitleMenu(subtitles: model.subtitles, picking: $pickingSubtitle)
+                    } else {
+                        Color.clear.frame(width: 64, height: 44)
+                    }
                 }
                 .foregroundStyle(.white)
             }
