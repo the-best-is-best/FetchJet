@@ -39,6 +39,7 @@ data class PlaylistRowDto(
     val before: Boolean = false,
     val unavailable: Boolean = false,
     val inPlaylist: Boolean = false,
+    val tag: String = "",
 )
 
 @Serializable

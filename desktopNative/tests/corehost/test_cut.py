@@ -7,13 +7,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, REPO, install_libmpv, run_window, ON_MAC, MAC_APP_EXE
+from corehost import Core, CheckFailed, REPO, ON_LINUX, install_libmpv, run_window, window_runner, PLAYER_EXE, PLAYER_LIBMPV
 from test_compress import install_ffmpeg, serve_folder, select, FFMPEG_SOURCE
 
-MEDIA = os.environ.get("FJ_CUT_MEDIA", "E:/tools/mpv-spike/media")
-EXE = os.environ.get("FJ_PLAYER_EXE", MAC_APP_EXE if ON_MAC else os.path.join(REPO, "desktopNative", "build-release", "Release", "FetchJet.exe"))
-LIBMPV = os.environ.get("FJ_PLAYER_LIBMPV", "E:/tools/mpv-subs/dist/libmpv-2.dll")
-DESKRUN = os.path.join(REPO, "desktopNative", "tools", "shot", "build", "Release", "deskrun.exe")
+MEDIA = os.environ.get("FJ_CUT_MEDIA", "/mnt/e/tools/mpv-spike/media" if ON_LINUX else "E:/tools/mpv-spike/media")
+EXE = PLAYER_EXE
+LIBMPV = PLAYER_LIBMPV
 OUT = os.environ.get("FJ_SHOT_OUT", "")
 MP3_FRAME = 1152.0 / 44100.0
 
@@ -267,14 +266,14 @@ def run_app(core, name, steps, capture_after=None):
     total = 500 * len(steps) + 6000
     after = capture_after if capture_after else total - 2000
     capture = os.path.join(OUT or core.work, name + ".bmp")
-    output = run_window(DESKRUN, total + 4000, after, capture, [EXE, "--home", core.home, "--downloads", core.downloads, "--no-bridge", "--no-focus", "--no-auto-downloads", "--script", script], env)
-    print("  " + output.replace("\n", "\n  ")[-600:])
+    output = run_window([EXE, "--home", core.home, "--downloads", core.downloads, "--no-bridge", "--no-focus", "--no-auto-downloads", "--script", script], env, total, after, capture)
+    print("  " + output.strip().replace("\n", "\n  ")[-600:])
     print("  screenshot: " + capture)
     return open(log, encoding="utf-8", errors="replace").read() if os.path.exists(log) else ""
 
 
 def host_part(core, audio):
-    missing = [p for p in ([EXE, LIBMPV] if ON_MAC else [EXE, DESKRUN, LIBMPV]) if not os.path.isfile(p)]
+    missing = [p for p in [EXE, *window_runner(), LIBMPV] if not os.path.isfile(p)]
     if missing:
         print("SKIP the player window part, missing: " + ", ".join(missing))
         return

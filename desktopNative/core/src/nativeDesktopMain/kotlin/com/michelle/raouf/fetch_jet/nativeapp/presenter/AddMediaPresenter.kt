@@ -15,6 +15,9 @@ import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMAT
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
 import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.feature.media_extractor.fileTag
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isFile
+import com.michelle.raouf.fetch_jet.feature.media_extractor.shownName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.michelle.raouf.fetch_jet.nativeapp.dto.AddMediaDto
@@ -290,7 +293,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
     }
     if (state == MediaStateCode.PLAYLIST && playlist != null) {
         addPlaylist.publish(playlist.entries.mapIndexed { position, entry ->
-            val title = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title
+            val title = entry.shownName(playlist.fromBrowser)
             PlaylistRowDto(
                 index = entry.index,
                 number = if (playlist.fromBrowser) "" else "${position + 1}.",
@@ -303,6 +306,7 @@ private fun Presenter.publishMedia(s: MediaSlice) {
                 before = entry.downloadedBefore && !entry.unavailable,
                 inPlaylist = entry.locked,
                 unavailable = entry.unavailable,
+                tag = if (entry.isFile) entry.fileTag() else "",
             )
         })
     } else {

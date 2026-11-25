@@ -79,7 +79,8 @@ fun isPlayerLibraryOutdated(): Boolean {
 }
 
 fun isPlayerLibraryReady(): Boolean =
-    (getExistingPlayerLibrary() != null && !isPlayerLibraryOutdated()) || nextToExecutable() || systemPlayerLibraryPaths.any { isFilePath(it) }
+    if (getExistingPlayerLibrary() != null) !isPlayerLibraryOutdated()
+    else nextToExecutable() || systemPlayerLibraryPaths.any { isFilePath(it) }
 
 fun isPlayerLibraryAvailable(): Boolean = isPlayerLibraryReady() || playerLibraryAsset().sha256.isNotEmpty()
 

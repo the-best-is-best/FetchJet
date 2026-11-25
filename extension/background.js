@@ -1291,12 +1291,48 @@ async function readUdemyCourseInPage(slug, part) {
           .sort((a, b) => (parseInt(b.label, 10) || 0) - (parseInt(a.label, 10) || 0));
         return files.length ? srcOf(files[0]) : "";
       };
+      const typeOf = (a) => (a && (a.asset_type || a.assetType)) || "";
+      const fileOf = (a) => {
+        const urls = a && a.download_urls;
+        if (!urls || typeof urls !== "object") return "";
+        const type = typeOf(a);
+        const lists = [urls[type]].concat(Object.keys(urls).filter(k => k !== type && k !== "Video").map(k => urls[k]));
+        for (const list of lists) {
+          for (const x of [].concat(list || [])) {
+            const u = (x && (x.file || x.src)) || "";
+            if (/^https?:/i.test(u)) return u;
+          }
+        }
+        return "";
+      };
+      const external = (a) => typeOf(a) === "ExternalLink" || !!(a && a.external_url);
       return await Promise.all(part.lectures.map(async (lec) => {
         try {
-          const d = await get(`/api-2.0/users/me/subscribed-courses/${part.id}/lectures/${lec.id}/?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`);
-          const url = d.asset ? pick(d.asset) : "";
-          if (url) return { url, title: d.title || lec.title || "" };
-          return { drm: !!(d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length)) };
+          const lecturePath = `/api-2.0/users/me/subscribed-courses/${part.id}/lectures/${lec.id}/`;
+          let d;
+          try { d = await get(`${lecturePath}?fields[lecture]=title,asset,supplementary_assets&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed,title,filename,external_url`); }
+          catch (_) { d = await get(`${lecturePath}?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`); }
+          const out = { title: d.title || lec.title || "" };
+          const kind = lec.kind || "video";
+          if (kind === "video") {
+            const url = d.asset ? pick(d.asset) : "";
+            if (url) out.url = url;
+            else out.drm = !!(d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length));
+          } else if (kind === "file" && d.asset) {
+            const url = fileOf(d.asset);
+            if (url) out.file = { url, name: d.asset.filename || d.asset.title || "" };
+          }
+          const resources = [];
+          for (const a of [].concat(d.supplementary_assets || [])) {
+            if (!a || external(a)) continue;
+            let url = fileOf(a);
+            if (!url && a.id) {
+              try { url = fileOf(await get(`${lecturePath}supplementary-assets/${a.id}/?fields[asset]=download_urls,filename,title,asset_type`)); } catch (_) {}
+            }
+            if (url) resources.push({ url, name: a.filename || a.title || "" });
+          }
+          if (resources.length) out.resources = resources;
+          return out;
         } catch (_) { return {}; }
       }));
     }
@@ -1306,18 +1342,49 @@ async function readUdemyCourseInPage(slug, part) {
       const c = await get(`/api-2.0/courses/${id || encodeURIComponent(slug)}/?fields[course]=id,title`);
       id = String(c.id || id); title = c.title || "";
     } catch (e) { if (!id) throw e; }
-    const query = "?page_size=1000&fields[lecture]=title,object_index,asset&fields[chapter]=title,object_index&fields[asset]=asset_type";
+    const query = "?page_size=1000&fields[lecture]=title,object_index,asset,supplementary_assets&fields[chapter]=title,object_index&fields[asset]=asset_type,external_url";
+    const plainQuery = "?page_size=1000&fields[lecture]=title,object_index,asset&fields[chapter]=title,object_index&fields[asset]=asset_type";
     let page;
     try { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${query}`); }
-    catch (_) { page = await get(`/api-2.0/courses/${id}/cached-subscriber-curriculum-items/${query}`); }
+    catch (_) {
+      try { page = await get(`/api-2.0/courses/${id}/cached-subscriber-curriculum-items/${query}`); }
+      catch (_) { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${plainQuery}`); }
+    }
     let items = page.results || [];
     while (page.next) { page = await get(page.next); items = items.concat(page.results || []); }
-    const lectures = items.filter(e => e._class === "lecture" &&
-      (!e.asset || (e.asset.asset_type || e.asset.assetType) === "Video")).map(e => ({ id: e.id, title: e.title || "" }));
+    const FILE_TYPES = ["E-Book", "File", "Presentation", "Audio", "SourceCode"];
+    const lectures = [];
+    for (const e of items) {
+      if (e._class !== "lecture") continue;
+      const type = e.asset ? (e.asset.asset_type || e.asset.assetType || "") : "Video";
+      const kind = type === "Video" ? "video" : FILE_TYPES.includes(type) ? "file" : "";
+      const resources = [].concat(e.supplementary_assets || []).filter(a => a &&
+        (a.asset_type || a.assetType) !== "ExternalLink" && !a.external_url).length;
+      if (kind || resources) lectures.push({ id: e.id, title: e.title || "", kind: kind || "none" });
+    }
     return { id, title, lectures };
   } catch (e) {
     return { error: (e && e.message) || "error" };
   }
+}
+
+function udemyFileName(number, name, fileName, url) {
+  const extOf = (s) => {
+    const m = /\.([a-z0-9]{1,8})$/i.exec(String(s || "").trim());
+    return m && /[a-z]/i.test(m[1]) ? m[1].toLowerCase() : "";
+  };
+  let ext = extOf(fileName);
+  if (!ext) {
+    try {
+      const u = new URL(url);
+      const disposition = u.searchParams.get("response-content-disposition") || "";
+      const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+      ext = extOf(m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "") || extOf(decodeURIComponent(u.pathname.split("/").pop() || ""));
+    } catch (_) {}
+  }
+  const base = String(name || fileName || "").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "file";
+  const named = ext && !base.toLowerCase().endsWith("." + ext);
+  return `${number} - ${base}${named ? "." + ext : ""}`;
 }
 
 /** Tells the app how far the course reading is (it shows "12 / 80"), or why it failed. */
@@ -1414,8 +1481,18 @@ async function downloadItem(item, tab) {
       const part = await inPage({ id: head.id, lectures: head.lectures.slice(i, i + 12) });
       if (!Array.isArray(part)) return fail(fjT("courseFailed", { reason: part && part.error ? `(${part.error})` : "" }));
       part.forEach((r, k) => {
-        if (r && r.url) entries.push({ title: `${String(i + k + 1).padStart(3, "0")} - ${r.title}`, url: r.url });
-        else if (r && r.drm) drm++;
+        if (!r) return;
+        const number = String(i + k + 1).padStart(3, "0");
+        if (r.url) entries.push({ title: `${number} - ${r.title}`, url: r.url });
+        else if (r.drm) drm++;
+        if (r.file && r.file.url) {
+          const fileName = udemyFileName(number, r.title, r.file.name, r.file.url);
+          entries.push({ title: fileName, url: r.file.url, fileName });
+        }
+        for (const res of r.resources || []) {
+          const fileName = udemyFileName(number, res.name, res.name, res.url);
+          entries.push({ title: fileName, url: res.url, fileName });
+        }
       });
     }
     if (!entries.length) return fail(drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: "" }));

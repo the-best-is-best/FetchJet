@@ -23,8 +23,23 @@ data class PlaylistEntry(
     /** A private / deleted video the list still names, or one that gave no quality: left unticked. */
     val unavailable: Boolean = false,
     /** "Check" of a saved playlist: this video is already in it and cannot be ticked. */
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val fileName: String = ""
 )
+
+val PlaylistEntry.isFile: Boolean get() = fileName.isNotBlank()
+
+fun PlaylistEntry.shownName(fromBrowser: Boolean): String = when {
+    isFile -> fileName
+    fromBrowser -> "$title.mp4"
+    else -> title
+}
+
+fun PlaylistEntry.fileTag(): String {
+    val ext = fileName.trim().substringAfterLast('.', "")
+    return if (ext.isNotEmpty() && ext.length <= 5 && ext.all { it.isLetterOrDigit() && it.code < 128 }) ext.uppercase()
+    else LocalizationManager.Strings.linkTagFile
+}
 
 /** "Select all" ticks only these: not a video downloaded before, gone, or already in the playlist. */
 val PlaylistEntry.selectableByAll: Boolean get() = !unavailable && !locked && !downloadedBefore
@@ -149,7 +164,7 @@ fun looksLikePlaylistUrl(url: String): Boolean {
 }
 
 /**
- * A list the browser extension already read (a Udemy course: `{title, entries: [{title, url}]}`
+ * A list the browser extension already read (a Udemy course: `{title, entries: [{title, url, fileName?}]}`
  * in the request's `playlist`), shown like a playlist without asking yt-dlp.
  */
 fun parseExternalPlaylist(raw: Any?): MediaPlaylist? {
@@ -164,9 +179,9 @@ fun parseExternalPlaylist(raw: Any?): MediaPlaylist? {
                 true
             )
         ) return@mapNotNull null
-        m.getString("title")?.trim().orEmpty().take(200) to url
-    }.mapIndexed { i, (title, url) ->
-        PlaylistEntry(index = i, title = title.ifBlank { "Video ${i + 1}" }, url = url)
+        Triple(m.getString("title")?.trim().orEmpty().take(200), url, m.getString("fileName")?.trim().orEmpty().take(240))
+    }.mapIndexed { i, (title, url, fileName) ->
+        PlaylistEntry(index = i, title = title.ifBlank { fileName.ifBlank { "Video ${i + 1}" } }, url = url, fileName = fileName)
     }
     if (entries.isEmpty()) return null
     val title = root.getString("title")?.trim()?.take(200)?.ifBlank { null }

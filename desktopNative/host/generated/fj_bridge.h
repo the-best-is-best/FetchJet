@@ -455,6 +455,7 @@ inline PlaylistRowDto parse_PlaylistRowDto(const fj::Json &j) {
     d.before = fj::flag(j, "before");
     d.unavailable = fj::flag(j, "unavailable");
     d.inPlaylist = fj::flag(j, "inPlaylist");
+    d.tag = fj::text(j, "tag");
     return d;
 }
 
@@ -2129,6 +2130,17 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_playerModeAsk(next());
     tr.set_playerModeOn(next());
     tr.set_playerModeOff(next());
+    tr.set_pdfModeTitle(next());
+    tr.set_pdfModeHint(next());
+    tr.set_pdfModeOn(next());
+    tr.set_pdfAskTitle(next());
+    tr.set_pdfAskText(next());
+    tr.set_pdfAskDownload(next());
+    tr.set_pdfPage(next());
+    tr.set_pdfGoToPage(next());
+    tr.set_pdfFitWidth(next());
+    tr.set_pdfOpenFailed(next());
+    tr.set_pdfPasswordProtected(next());
     tr.set_playlistCheckNew(next());
     tr.set_playlistBack(next());
     tr.set_playlistDeleteAll(next());
