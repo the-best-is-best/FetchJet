@@ -209,7 +209,7 @@ namespace fjhost::pdf {
                 return true;
             for (const auto &name: names) {
 #ifdef _WIN32
-                w_lib = LoadLibraryW(wide(name).c_str());
+                w_lib = LoadLibraryExW(wide(name).c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 #else
                 w_lib = dlopen(name.c_str(), RTLD_NOW | RTLD_LOCAL);
 #endif
@@ -402,7 +402,7 @@ namespace fjhost::pdf {
                 tools += "tools/";
             }
 #ifdef _WIN32
-            return {tools + "pdfium.dll", folder + "pdfium.dll", "pdfium.dll"};
+            return {tools + "pdfium.dll", folder + "pdfium.dll"};
 #elif defined(__APPLE__)
             return {tools + "libpdfium.dylib", folder + "libpdfium.dylib", folder + "../Frameworks/libpdfium.dylib", "libpdfium.dylib"};
 #else

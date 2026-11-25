@@ -202,6 +202,13 @@ namespace fjhost::player {
         long g_tile_to = 0;
         std::shared_ptr<ThumbJob> g_thumb_job;
         std::atomic<unsigned> g_thumb_tag{0};
+        std::atomic<int> g_workers{0};
+        std::atomic<bool> g_closing{false};
+
+        struct Working {
+            Working() { g_workers++; }
+            ~Working() { g_workers--; }
+        };
         std::atomic<int> g_thumb_made{0};
         int g_thumbs_loaded = 0;
         std::vector<float> g_wave_all;
@@ -346,13 +353,13 @@ namespace fjhost::player {
                 tools += "tools/";
             }
 #ifdef _WIN32
-            std::vector<std::string> names = {tools + "libmpv-2.dll", folder + "libmpv-2.dll", "libmpv-2.dll"};
+            std::vector<std::string> names = {tools + "libmpv-2.dll", folder + "libmpv-2.dll"};
             for (const auto &name: names) {
                 int length = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), -1, nullptr, 0);
                 std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
                 if (length > 1)
                     MultiByteToWideChar(CP_UTF8, 0, name.c_str(), -1, wide.data(), length);
-                g_lib = LoadLibraryW(wide.c_str());
+                g_lib = LoadLibraryExW(wide.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
                 if (g_lib)
                     break;
             }
@@ -1317,7 +1324,7 @@ namespace fjhost::player {
 #endif
             if (!home.empty() && file_exists(home + "tools/" + name))
                 return home + "tools/" + name;
-            return "ffmpeg";
+            return "";
         }
 
         bool run_tool(const std::vector<std::string> &args, const std::atomic<bool> &cancel) {
@@ -1389,6 +1396,7 @@ namespace fjhost::player {
         }
 
         void thumb_worker(std::shared_ptr<ThumbJob> job) {
+            Working working;
             ThumbTile tile;
             while (thumb_next(job, tile)) {
                 std::string out = job->folder + "/thumb-" + std::to_string(job->tag) + "-" + std::to_string(tile.level + 64) + "-" +
@@ -1521,7 +1529,10 @@ namespace fjhost::player {
                                ",\"durationMs\":" + std::to_string(std::llround(g_duration * 1000.0)) + "}";
             trim_log("trim wave " + std::to_string(bars) + " bars");
             std::thread([tag, args] {
+                Working working;
                 std::vector<float> peaks = parse_peaks(core_call("player.waveform", args));
+                if (g_closing.load())
+                    return;
                 slint::invoke_from_event_loop([tag, peaks] {
                     if (tag != g_thumb_tag.load() || !g_trim.on)
                         return;
@@ -1550,8 +1561,11 @@ namespace fjhost::player {
                 return nullptr;
             make_folder(home + "cache");
             make_folder(home + "cache/player-thumbs");
+            std::string ffmpeg = find_ffmpeg();
+            if (ffmpeg.empty())
+                return nullptr;
             auto job = std::make_shared<ThumbJob>();
-            job->ffmpeg = find_ffmpeg();
+            job->ffmpeg = ffmpeg;
             job->input = g_items[g_index].path;
             job->folder = home + "cache/player-thumbs";
             job->height = std::clamp(g_trim.strip_h, 16, 240);
@@ -2177,8 +2191,12 @@ namespace fjhost::player {
     }
 
     void shutdown() {
+        g_closing = true;
         if (g_open || g_mpv)
             close();
+        cancel_thumbs();
+        for (int waited = 0; g_workers.load() > 0 && waited < 5000; waited += 20)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     void debug(const std::string &name, double value) {

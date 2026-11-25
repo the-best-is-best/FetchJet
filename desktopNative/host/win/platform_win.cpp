@@ -147,6 +147,10 @@ namespace fjhost::os {
             DWORD attributes = GetFileAttributesW(path.c_str());
             if (attributes == INVALID_FILE_ATTRIBUTES)
                 return;
+            if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) && (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                RemoveDirectoryW(path.c_str());
+                return;
+            }
             if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
                 WIN32_FIND_DATAW data;
                 HANDLE find = FindFirstFileW((path + L"\\*").c_str(), &data);
@@ -176,6 +180,8 @@ namespace fjhost::os {
                     continue;
                 std::wstring path = dir + L"\\" + name;
                 if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    if (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+                        continue;
                     if (depth == 0 && (lower(name) == L"data" || lower(name) == L".fetchjet-update"))
                         continue;
                     if (depth < 8)
@@ -338,7 +344,10 @@ namespace fjhost::os {
             g_emoji_sent = g_emoji_missing;
             HANDLE child = process.hProcess;
             std::thread([child] {
-                WaitForSingleObject(child, 120000);
+                if (WaitForSingleObject(child, 120000) != WAIT_OBJECT_0) {
+                    TerminateProcess(child, 1);
+                    WaitForSingleObject(child, 5000);
+                }
                 CloseHandle(child);
                 slint::invoke_from_event_loop([] {
                     g_emoji_child = false;
@@ -392,6 +401,7 @@ namespace fjhost::os {
     }
 
     void prepare_process() {
+        SetDllDirectoryW(L"");
         finish_portable_update();
         upgrade_old_startup_entry();
         if (!std::getenv("SLINT_BACKEND"))
