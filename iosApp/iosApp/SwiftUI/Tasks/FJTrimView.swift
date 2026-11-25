@@ -9,12 +9,16 @@ final class FJTrimModel: ObservableObject {
     let asset: AVURLAsset
     let player: AVPlayer
     let durationMs: Int64
+    let audio: Bool
     @Published var startMs: Int64
     @Published var endMs: Int64
     @Published var edge: FJTrimEdge = .start
     @Published var playheadMs: Int64
     @Published var playingRange = false
     @Published var frames: [CGImage] = []
+    @Published var peaks: [Float] = []
+    private var waveJob: Kotlinx_coroutines_coreJob?
+    private var waveBars = 0
     private(set) var frameMs: Double = 1000.0 / 30.0
     private var seeking = false
     private var pendingSeekMs: Int64?
@@ -23,7 +27,9 @@ final class FJTrimModel: ObservableObject {
     private var generator: AVAssetImageGenerator?
     private var framesKey = ""
 
-    init(path: String, durationMs: Int64, startMs: Int64, endMs: Int64) {
+    init(path: String, durationMs: Int64, audio: Bool, startMs: Int64, endMs: Int64) {
+        self.audio = audio
+        if audio { frameMs = 10 }
         asset = AVURLAsset(url: URL(fileURLWithPath: path), options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
         player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
         player.actionAtItemEnd = .pause
@@ -42,7 +48,7 @@ final class FJTrimModel: ObservableObject {
             self.playheadMs = Int64(time.seconds * 1000)
             if self.playheadMs >= self.endMs { self.stopRange() }
         }
-        Task { await self.readFrameRate() }
+        if !audio { Task { await self.readFrameRate() } }
         seek(to: s)
     }
 
@@ -50,7 +56,19 @@ final class FJTrimModel: ObservableObject {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         if let boundaryObserver { player.removeTimeObserver(boundaryObserver) }
         generator?.cancelAllCGImageGeneration()
+        waveJob?.cancel(cause: nil)
         player.pause()
+    }
+
+    func loadWave(host: IosAppHost, bars: Int) {
+        guard audio, bars > 0, bars != waveBars else { return }
+        waveBars = bars
+        waveJob?.cancel(cause: nil)
+        waveJob = host.audioWaveform(path: asset.url.path, bars: Int32(bars), durationMs: durationMs) { [weak self] values in
+            guard let self, self.waveBars == bars else { return }
+            self.peaks = values.map { $0.floatValue }
+            self.waveJob = nil
+        }
     }
 
     var minGapMs: Int64 { max(Int64(frameMs.rounded(.up)), 1) }
@@ -235,9 +253,15 @@ struct FJTrimView: View {
     let onCut: (Int64, Int64) -> Void
     let onClose: () -> Void
 
-    init(path: String, durationMs: Int64, startMs: Int64, endMs: Int64, message: String? = nil, failed: Bool = false,
+    let audio: Bool
+    let title: String
+
+    init(path: String, durationMs: Int64, audio: Bool = false, title: String = "", startMs: Int64, endMs: Int64,
+         message: String? = nil, failed: Bool = false,
          onCut: @escaping (Int64, Int64) -> Void, onClose: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: FJTrimModel(path: path, durationMs: durationMs, startMs: startMs, endMs: endMs))
+        _model = StateObject(wrappedValue: FJTrimModel(path: path, durationMs: durationMs, audio: audio, startMs: startMs, endMs: endMs))
+        self.audio = audio
+        self.title = title
         self.message = message
         self.failed = failed
         self.onCut = onCut
@@ -264,8 +288,24 @@ struct FJTrimView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 8)
 
-            FJTrimPlayerSurface(player: model.player)
+            if audio {
+                VStack(spacing: 16) {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 72, weight: .semibold))
+                        .foregroundStyle(FJTheme.color.primary)
+                    Text(title)
+                        .font(.fj(15, .medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .truncationMode(.middle)
+                        .padding(.horizontal, 24)
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                FJTrimPlayerSurface(player: model.player)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
             VStack(spacing: 14) {
                 if failed || !(message ?? "").isEmpty {
@@ -402,6 +442,7 @@ struct FJRepeatButton: View {
 }
 
 struct FJTrimTrack: View {
+    @EnvironmentObject var store: FJStore
     @ObservedObject var model: FJTrimModel
     @State private var dragStartMs: Int64?
     private let handle: CGFloat = 18
@@ -442,12 +483,47 @@ struct FJTrimTrack: View {
             }
             .frame(width: geo.size.width, height: height, alignment: .topLeading)
             .contentShape(Rectangle())
-            .onAppear { model.loadFrames(count: max(Int(width / 40), 6), height: height) }
-            .onChange(of: Int(width)) { _, w in model.loadFrames(count: max(w / 40, 6), height: height) }
+            .onAppear { load(width: width, height: height) }
+            .onChange(of: Int(width)) { _, w in load(width: CGFloat(w), height: height) }
         }
     }
 
+    private func load(width: CGFloat, height: CGFloat) {
+        if model.audio {
+            model.loadWave(host: store.host, bars: max(Int(width / 4), 16))
+        } else {
+            model.loadFrames(count: max(Int(width / 40), 6), height: height)
+        }
+    }
+
+    @ViewBuilder
     private func strip(width: CGFloat, height: CGFloat) -> some View {
+        if model.audio {
+            wave(width: width, height: height)
+        } else {
+            frames(width: width, height: height)
+        }
+    }
+
+    private func wave(width: CGFloat, height: CGFloat) -> some View {
+        let peaks = model.peaks
+        return Canvas { context, size in
+            guard !peaks.isEmpty else { return }
+            let step = size.width / CGFloat(peaks.count)
+            let bar = max(step * 0.6, 1)
+            let mid = size.height / 2
+            for (i, p) in peaks.enumerated() {
+                let h = max(CGFloat(p) * (size.height - 8), 2)
+                let rect = CGRect(x: CGFloat(i) * step + (step - bar) / 2, y: mid - h / 2, width: bar, height: h)
+                context.fill(Path(roundedRect: rect, cornerRadius: bar / 2), with: .color(.white.opacity(0.75)))
+            }
+        }
+        .frame(width: width, height: height)
+        .background(Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func frames(width: CGFloat, height: CGFloat) -> some View {
         HStack(spacing: 0) {
             if model.frames.isEmpty {
                 Rectangle().fill(Color.white.opacity(0.08))

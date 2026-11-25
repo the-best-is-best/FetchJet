@@ -22,10 +22,11 @@ struct FJVideoCutSheetModifier: ViewModifier {
 enum VideoCutPlayable {
     private static var cache: [String: Bool] = [:]
 
-    static func check(_ path: String) -> Bool {
+    static func check(_ path: String, audio: Bool = false) -> Bool {
         if let known = cache[path] { return known }
         let ext = (path as NSString).pathExtension.lowercased()
-        let ok = ["mp4", "m4v", "mov"].contains(ext) && AVURLAsset(url: URL(fileURLWithPath: path)).isPlayable
+        let kinds = audio ? ["mp3", "m4a", "aac", "flac", "wav", "caf", "aiff", "opus", "ogg"] : ["mp4", "m4v", "mov"]
+        let ok = kinds.contains(ext) && AVURLAsset(url: URL(fileURLWithPath: path)).isPlayable
         cache[path] = ok
         return ok
     }
@@ -51,6 +52,8 @@ struct VideoCutSheet: View {
                 FJTrimView(
                     path: path,
                     durationMs: page.durationMs,
+                    audio: page.isAudio,
+                    title: page.fileName,
                     startMs: page.startMs,
                     endMs: page.endMs > 0 ? page.endMs : page.durationMs,
                     message: page.message,
@@ -67,7 +70,7 @@ struct VideoCutSheet: View {
                 VideoCutTimeView(page: page)
                     .presentationDetents([.medium, .large])
             } else {
-                VideoCutChooser(page: page, timeline: page.timelineAvailable && VideoCutPlayable.check(path))
+                VideoCutChooser(page: page, timeline: page.timelineAvailable && VideoCutPlayable.check(path, audio: page.isAudio))
                     .presentationDetents([.medium, .large])
             }
         }

@@ -159,6 +159,14 @@ class IosAppHost {
             onDone(path)
         }
 
+    fun audioWaveform(path: String, bars: Int, durationMs: Long, onDone: (List<Float>) -> Unit): Job =
+        scope.launch(Dispatchers.Main) {
+            val peaks = kotlinx.coroutines.withContext(Dispatchers.Default) {
+                com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.waveform(path, bars, durationMs)
+            }
+            onDone(peaks)
+        }
+
     fun releaseHidden(taskId: String) = com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback.release(taskId)
 
     fun releaseAllHidden() = com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback.releaseAll()
