@@ -338,17 +338,40 @@ class MediaStreamDownloader(
                 }
 
                 val hlsClipOffset = hlsClipOffsetsMs.value[taskId]
-                val foundCachePath = (if (hlsOutputPath != cacheTargetPath && AppFileSystem.exists(hlsOutputPath)) hlsOutputPath
-                else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
-                    ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
-                    ?.let {
-                        if (!isClipTask(initialTask)) it
-                        else if (hlsClipOffset != null) cutClipExactly(taskId, initialTask, it, hlsClipOffset, false)
-                        else if (isClipping) {
-                            val sectionStartMs = clipTimeMs(initialTask.clipStart) ?: 0L
-                            cutClipExactly(taskId, initialTask, it, sectionStartMs, sectionStartMs > 0L)
-                        } else cutClipExactly(taskId, initialTask, it, 0L, false)
+                val foundCachePath = try {
+                    (if (hlsOutputPath != cacheTargetPath && AppFileSystem.exists(hlsOutputPath)) hlsOutputPath
+                    else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
+                        ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
+                        ?.let {
+                            if (!isClipTask(initialTask)) it
+                            else if (hlsClipOffset != null) cutClipExactly(taskId, initialTask, it, hlsClipOffset, false)
+                            else if (isClipping) {
+                                val sectionStartMs = clipTimeMs(initialTask.clipStart) ?: 0L
+                                cutClipExactly(taskId, initialTask, it, sectionStartMs, sectionStartMs > 0L)
+                            } else cutClipExactly(taskId, initialTask, it, 0L, false)
+                        }
+                } catch (e: SectionDownloadUnusable) {
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("clip: the section download gave no readable video, downloading the whole video to cut it")
+                    runCatching { AppFileSystem.delete(e.file) }
+                    val whole = initialTask.copy(clipByCutting = true)
+                    updateTaskState(taskId) {
+                        if (it.status == DownloadStatus.PAUSED) it
+                        else it.copy(currentStepText = "Preparing download...", progress = 0f, downloadedBytes = 0L)
                     }
+                    val wholeDone = downloadWithYtDlp(
+                        taskId, whole, downloadSourceUrl, cacheDir, fileName,
+                        false, currentLimit, MultiStreamProgress()
+                    )
+                    if (tasksState.value[taskId]?.status == DownloadStatus.PAUSED) return
+                    if (!wholeDone) throw Exception(
+                        MediaToolErrors.last(cacheDir)
+                            ?.let { "yt-dlp: ${it.removePrefix("ERROR:").trim()}" }
+                            ?: "Media tool reported a failure. Check the URL, quality or your network."
+                    )
+                    findFinishedFileInCache(cacheDir, cacheTargetPath, fileName)
+                        ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
+                        ?.let { cutClipExactly(taskId, whole, it, 0L, false) }
+                }
                 downloadedRealFile =
                     moveFinishedFileIntoPlace(
                         taskId,

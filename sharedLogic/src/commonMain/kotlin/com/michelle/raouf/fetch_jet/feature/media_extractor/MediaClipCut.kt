@@ -25,6 +25,8 @@ internal fun clipSectionArgs(clipStart: String?, clipEnd: String?, clipByCutting
     return listOf("--download-sections", "*$s-$e")
 }
 
+internal class SectionDownloadUnusable(val file: Path) : Exception("the section download gave no readable video")
+
 internal fun isClipTask(task: DownloadTask): Boolean =
     !task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank()
 
@@ -45,6 +47,7 @@ internal suspend fun MediaStreamDownloader.cutClipExactly(
     val to = endMs?.let { (it - offsetMs).coerceAtLeast(0L) }
     val input = file.toString()
     val durationMs = runCatching { VideoCut.durationMs(input) }.getOrDefault(0L)
+    if (sectionWithPreRoll && durationMs <= 0L) throw SectionDownloadUnusable(file)
     if (from <= 0L && !sectionWithPreRoll && (to == null || (durationMs > 0L && to >= durationMs))) return file
     val end = when {
         to == null -> durationMs
