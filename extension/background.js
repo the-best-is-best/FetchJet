@@ -609,7 +609,7 @@ async function sendBatchToFetchJet(items, referer = "", group = "", from = null)
   for (const it of unique.values()) requests.push(await buildRequest({ ...it, group, from }));
   if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
-  if (requests.length <= DIRECT_BATCH_MAX && (await getSettings()).openDirectly) {
+  if (requests.length <= DIRECT_BATCH_MAX && !requests.some(r => r.fileName) && (await getSettings()).openDirectly) {
     let opened = 0;
     for (const r of requests) {
       try {
@@ -892,6 +892,12 @@ async function sniffMedia(details) {
   if (!settings.enabled || !settings.captureMedia) return;
   const url = details.url;
   if (!isValidDownloadUrl(url) || SKIP_MEDIA_HOSTS.test(hostOf(url))) return;
+  if (CANVA_ORIGIN.test(`${details.initiator || ""} ${details.originUrl || ""} ${details.documentUrl || ""} ${url}`) &&
+    !/^(image|text|font)\/|json|javascript|css|html/.test(header(details.responseHeaders, "content-type").toLowerCase())) {
+    let tabUrl = "";
+    try { tabUrl = ((await api.tabs.get(details.tabId)) || {}).url || ""; } catch (_) {}
+    if (canvaDesign(tabUrl)) return addCanvaMedia(details, tabUrl);
+  }
 
   const ctype = header(details.responseHeaders, "content-type").toLowerCase();
   const ext = extensionOf(url);
@@ -1134,7 +1140,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
 async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
-  if (UDEMY_COURSE_PAGE.test(page)) return;
+  if (UDEMY_COURSE_PAGE.test(page) || canvaDesign(page)) return;
   const current = await tabState(RES_KEY, tabId);
   if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
@@ -1167,6 +1173,8 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
 
 /** Everything the popup and the page button show for a tab, in one list. */
 async function itemsForTab(tabId) {
+  const canva = await canvaForTab(tabId);
+  if (canva) return canva;
   const [yt, res, mediaAll] = await Promise.all([tabState(YT_KEY, tabId), tabState(RES_KEY, tabId), sessionGet(MEDIA_KEY)]);
   const media = Object.values(mediaAll[tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0));
   const items = [];
@@ -1392,6 +1400,206 @@ async function courseProgressToApp(courseUrl, referer, extra, from = null) {
   try { await postJson("/add", { ...(await buildRequest({ url: courseUrl, referer, from })), ...extra }, 2500); } catch (_) {}
 }
 
+const CANVA_KEY = "fetchjet_canva_by_tab";
+const CANVA_PAGE = /^https:\/\/([\w-]+\.)?canva\.(com|cn)\/design\/([\w-]+)/i;
+const CANVA_ORIGIN = /canva\.(com|cn)|canva-apps\.com|canvausercontent\.com/i;
+const CANVA_MEDIA_ID = /^V[A-Z][A-Za-z0-9_-]{9}$/;
+const CANVA_PREVIEW = /thumb|poster|preview|sprite|storyboard|filmstrip|waveform|placeholder|image-resize|document-image/i;
+const CANVA_PLAY_WINDOW = 8000;
+const CANVA_TYPE_EXT = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "video/x-matroska": "mkv", "video/x-m4v": "m4v", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac", "audio/webm": "webm" };
+
+const canvaDesign = (url) => { const m = CANVA_PAGE.exec(String(url || "")); return m ? m[3] : ""; };
+const canvaTitle = (t) => String(t || "").replace(/\s*[-–|·]\s*Canva\s*$/i, "").trim();
+const stripExt = (n) => String(n || "").replace(/\.[a-z0-9]{2,5}$/i, "");
+const nameExt = (n) => { const m = /\.([a-z0-9]{2,5})$/i.exec(String(n || "")); return m ? m[1].toLowerCase() : ""; };
+const safeBase = (n) => String(n || "").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim().slice(0, 150).replace(/[. ]+$/, "");
+
+function canvaMediaId(url) {
+  let path = "";
+  try { path = decodeURIComponent(new URL(url).pathname); } catch (_) { return ""; }
+  return path.split(/[/:]/).find(p => CANVA_MEDIA_ID.test(p)) || "";
+}
+
+function canvaServerName(url, headers) {
+  const fromDisposition = (v) => {
+    const m = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)|filename\s*=\s*"?([^";]+)"?/i.exec(v || "");
+    if (!m) return "";
+    const raw = (m[1] || m[2]).trim();
+    try { return decodeURIComponent(raw); } catch (_) { return raw; }
+  };
+  let name = fromDisposition(header(headers, "content-disposition"));
+  try {
+    const u = new URL(url);
+    name = name || fromDisposition(u.searchParams.get("response-content-disposition")) || u.searchParams.get("filename") || "";
+  } catch (_) {}
+  return /\.[a-z0-9]{2,5}$/i.test(name) ? baseName(name) : "";
+}
+
+function canvaState(all, tabId, design, page) {
+  const state = all[tabId];
+  if (state && state.design === design) return state;
+  return { design, page, files: {}, figures: [], plays: [], next: 0 };
+}
+
+function bindCanvaPlays(state, now = Date.now()) {
+  const files = Object.entries(state.files || {});
+  for (const p of state.plays || []) {
+    if (p.done) continue;
+    const byId = files.find(([, f]) => f.id && (p.ids || []).includes(f.id));
+    if (byId) { p.key = byId[0]; p.done = true; continue; }
+    const from = p.since - 500, to = p.at + CANVA_PLAY_WINDOW;
+    const hit = files.filter(([, f]) => (f.hits || []).some(t => t >= from && t <= to));
+    p.key = hit.length === 1 ? hit[0][0] : "";
+    if (now > to) p.done = true;
+  }
+}
+
+async function addCanvaMedia(details, pageUrl) {
+  const url = String(details.url).split("#")[0];
+  const headers = details.responseHeaders;
+  const ctype = header(headers, "content-type").toLowerCase().split(";")[0].trim();
+  let host = "", path = "";
+  try { const u = new URL(url); host = u.hostname; path = u.pathname; } catch (_) { return; }
+  if (/^(image|text|font)\//.test(ctype) || /json|javascript/.test(ctype)) return;
+  if (ctype.startsWith("video/mp2t") || ctype.includes("iso.segment") || /\.(m4s|ts|cmfv|cmfa)$/i.test(path)) return;
+  const ext = extensionOf(url);
+  const id = canvaMediaId(url);
+  const stream = ext === "m3u8" || ext === "mpd" || ctype.includes("mpegurl") || ctype.includes("dash+xml");
+  const media = /^(video|audio)\//.test(ctype) || stream || MEDIA_EXTS.has(ext);
+  if (!media && !(id && (!ctype || /octet-stream/.test(ctype)))) return;
+  const range = /\/(\d+)\s*$/.exec(header(headers, "content-range"));
+  const size = range ? parseInt(range[1], 10) : details.statusCode === 200 ? (parseInt(header(headers, "content-length"), 10) || 0) : 0;
+  if (!stream && size > 0 && size < 512 * 1024) return;
+  const key = id || host + path;
+  const all = await sessionGet(CANVA_KEY);
+  const state = canvaState(all, details.tabId, canvaDesign(pageUrl), pageUrl);
+  state.page = pageUrl;
+  const now = Date.now();
+  const file = {
+    id, url, size, stream, preview: CANVA_PREVIEW.test(path),
+    ext: MEDIA_EXTS.has(ext) ? ext : (CANVA_TYPE_EXT[ctype] || ""), serverName: canvaServerName(url, headers)
+  };
+  const rank = (f) => (f.stream ? 0 : 2) + (f.preview ? 0 : 1);
+  const old = state.files[key];
+  let shown = true;
+  if (!old) {
+    const keys = Object.keys(state.files);
+    if (keys.length >= 60) delete state.files[keys[0]];
+    state.next = (state.next || 0) + 1;
+    state.files[key] = { ...file, order: state.next, hits: [now] };
+  } else {
+    const hits = [...(old.hits || []).filter(t => now - t < 60000).slice(-29), now];
+    if (rank(file) > rank(old) || (rank(file) === rank(old) && old.url !== url && size > (old.size || 0))) {
+      state.files[key] = { ...file, serverName: file.serverName || old.serverName, order: old.order, hits };
+    } else {
+      shown = false;
+      old.hits = hits;
+      if (old.url === url && size > (old.size || 0)) { old.size = size; shown = true; }
+      if (!old.serverName && file.serverName) { old.serverName = file.serverName; shown = true; }
+    }
+  }
+  const before = (state.plays || []).map(p => p.key || "").join("|");
+  bindCanvaPlays(state, now);
+  if ((state.plays || []).map(p => p.key || "").join("|") !== before) shown = true;
+  all[details.tabId] = state;
+  await sessionSet(CANVA_KEY, all);
+  if (shown) pushToTab(details.tabId);
+}
+
+async function addCanvaFigures(tab, figures, play) {
+  const design = canvaDesign(tab && tab.url);
+  if (!design) return { ok: false };
+  await serial(async () => {
+    const all = await sessionGet(CANVA_KEY);
+    const state = canvaState(all, tab.id, design, tab.url);
+    const cleanIds = (ids) => (Array.isArray(ids) ? ids : []).map(String).filter(i => CANVA_MEDIA_ID.test(i)).slice(0, 8);
+    for (const f of (Array.isArray(figures) ? figures : []).slice(0, 200)) {
+      const name = String((f && f.name) || "").trim().slice(0, 200);
+      if (!name) continue;
+      const ids = cleanIds(f.ids);
+      const same = state.figures.find(g => g.name === name && (!ids.length || !g.ids.length || ids.some(i => g.ids.includes(i))));
+      if (same) { for (const i of ids) if (!same.ids.includes(i)) same.ids.push(i); continue; }
+      state.figures.push({ name, ids });
+    }
+    if (state.figures.length > 300) state.figures = state.figures.slice(-300);
+    if (play && play.name) {
+      const at = Number(play.at) || Date.now();
+      const since = Math.min(at, Number(play.since) || at - 3000);
+      state.plays = [...(state.plays || []).slice(-19), { name: String(play.name).slice(0, 200), ids: cleanIds(play.ids), since, at, key: "" }];
+    }
+    bindCanvaPlays(state);
+    all[tab.id] = state;
+    await sessionSet(CANVA_KEY, all);
+  });
+  pushToTab(tab.id);
+  return { ok: true };
+}
+
+function canvaItems(state, tabTitle, pageUrl) {
+  const files = Object.entries(state.files || {}).map(([key, f]) => ({ key, ...f })).sort((a, b) => a.order - b.order);
+  const figures = state.figures || [];
+  const used = new Set();
+  const names = new Map();
+  const take = (f, name) => {
+    names.set(f.key, name);
+    figures.forEach((g, k) => { if (g.name === name || (f.id && g.ids.includes(f.id))) used.add(k); });
+  };
+  for (const f of files) {
+    if (!f.id) continue;
+    const g = figures.find(x => x.ids.includes(f.id));
+    if (g) take(f, g.name);
+  }
+  const plays = (state.plays || []).filter(p => p.key && state.files[p.key]).sort((a, b) => a.at - b.at);
+  for (const p of plays) {
+    const f = files.find(x => x.key === p.key);
+    if (f && !names.has(f.key)) take(f, p.name);
+  }
+  for (const f of files) {
+    if (names.has(f.key) || !f.serverName) continue;
+    names.set(f.key, f.serverName);
+    const base = stripExt(f.serverName).toLowerCase();
+    figures.forEach((g, k) => { if (stripExt(g.name).toLowerCase() === base) used.add(k); });
+  }
+  const left = files.filter(f => !names.has(f.key));
+  if (left.length === 1) {
+    const f = left[0];
+    const free = figures.filter((g, k) => !used.has(k));
+    const fits = [...new Set(free.filter(g => !g.ids.length || !f.id).map(g => g.name))];
+    if (fits.length === 1 && free.every(g => g.name === fits[0])) take(f, fits[0]);
+  }
+  const last = (state.plays || []).slice(-1)[0];
+  const playing = last && last.key && state.files[last.key] ? last.key : "";
+  const title = safeBase(canvaTitle(tabTitle)) || "Canva";
+  const taken = new Set();
+  const items = files.map((f, n) => {
+    const figure = names.get(f.key) || "";
+    const ext = f.stream ? "mp4" : (f.ext || nameExt(figure) || "mp4");
+    const base = safeBase(figure ? stripExt(figure) : "") || `${title} - ${n + 1}`;
+    let name = `${base}.${ext}`;
+    for (let k = 2; taken.has(name.toLowerCase()); k++) name = `${base} (${k}).${ext}`;
+    taken.add(name.toLowerCase());
+    const item = {
+      kind: "media", canva: true, label: name, sub: "", url: f.url, fileName: name, referer: pageUrl,
+      size: f.stream ? 0 : (f.size || 0), ext, stream: !!f.stream, figure
+    };
+    if (f.key === playing) { item.playing = true; item.note = fjT("itemCanvaPlaying"); }
+    return item;
+  });
+  return items.sort((a, b) => (b.playing ? 1 : 0) - (a.playing ? 1 : 0));
+}
+
+async function canvaForTab(tabId) {
+  let tab = null;
+  try { tab = await api.tabs.get(tabId); } catch (_) { return null; }
+  const design = canvaDesign(tab && tab.url);
+  if (!design) return null;
+  const state = await tabState(CANVA_KEY, tabId);
+  const mine = state && state.design === design ? state : { files: {}, figures: [], plays: [] };
+  const items = canvaItems(mine, tab.title, tab.url);
+  if (!items.length && mine.figures.length) items.push({ label: fjT("itemCanvaWait"), sub: fjT("itemCanvaWaitSub"), disabled: true });
+  return { items, title: canvaTitle(tab.title) };
+}
+
 /**
  * The tab's YouTube list (`list=`) as a link the app lists video by video. Not for a mix
  * (RD...): YouTube makes it endless (yt-dlp listed 762 videos for one).
@@ -1421,7 +1629,7 @@ async function pushToTab(tabId) {
 async function clearTab(tabId) {
   seenStreams.delete(tabId);
   videoPages.delete(tabId);
-  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null), setTabState(DRM_KEY, tabId, null)]);
+  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null), setTabState(DRM_KEY, tabId, null), setTabState(CANVA_KEY, tabId, null)]);
   updateBadge(tabId, 0);
   api.tabs.sendMessage(tabId, { action: "fetchjetItems", items: [] }).catch(() => {});
   refreshMenus(tabId).catch(() => {});
@@ -1535,7 +1743,7 @@ async function downloadItem(item, tab) {
   // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
   // (the lecture / video title), not after the playlist's hash.
   let fileName = item.fileName || "";
-  if (item.kind === "media" && (item.stream || /\.(m3u8|mpd)$/i.test(fileName))) {
+  if (item.kind === "media" && !item.canva && (item.stream || /\.(m3u8|mpd)$/i.test(fileName))) {
     // The app lists the playlist's renditions and the user picks one there: no quality in the name.
     fileName = `${clean}.mp4`;
   }
@@ -1556,7 +1764,9 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (info.url) {
     const yt = await tabState(YT_KEY, tabId);
     const newId = ytVideoId(info.url);
-    if (!(yt && newId && yt.videoId === newId)) await clearTab(tabId); // not the same video
+    const canva = canvaDesign(info.url) ? await tabState(CANVA_KEY, tabId) : null;
+    const sameDesign = !!canva && canva.design === canvaDesign(info.url);
+    if (!(yt && newId && yt.videoId === newId) && !sameDesign) await clearTab(tabId); // not the same video
   } else if (info.status === "loading") {
     // Plain reload: same URL, new page - forget what the old page played.
     const yt = await tabState(YT_KEY, tabId);
@@ -1584,7 +1794,8 @@ const MENU = {
   selectionLinks: "fetchjet-selection-links",
   pageMedia: "fetchjet-page-media",
   course: "fetchjet-course",
-  playlist: "fetchjet-playlist"
+  playlist: "fetchjet-playlist",
+  canvaAll: "fetchjet-canva-all"
 };
 
 function installMenus() {
@@ -1600,6 +1811,7 @@ function installMenus() {
     create({ id: MENU.course, title: fjT("itemCourse"), contexts: ["page", "frame", "video"], visible: false });
     create({ id: MENU.playlist, title: fjT("itemPlaylist"), contexts: ["page", "frame"], visible: false });
     create({ id: MENU.page, title: fjT("menuPage"), contexts: ["page", "frame"], visible: false });
+    create({ id: MENU.canvaAll, title: fjT("menuCanvaAll"), contexts: ["page", "frame", "image", "video"], visible: false });
     create({ id: MENU.allLinks, title: fjT("menuAllLinks"), contexts: ["page", "frame"] });
     create({ id: MENU.pageMedia, title: fjT("menuPageMedia"), contexts: ["action"] });
     api.tabs.query({ active: true, currentWindow: true }).then(([t]) => t && refreshMenus(t.id)).catch(() => {});
@@ -1623,14 +1835,16 @@ async function refreshMenus(tabId) {
   } catch (_) { return; }
   const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;
   const list = course ? null : await listUrlForTab(tabId);
+  const canva = course || list ? null : await canvaForTab(tabId);
+  const canvaFiles = canva ? canva.items.filter(i => i.canva).length : 0;
   let video = false;
-  if (!course) {
+  if (!course && !canva) {
     let url = "";
     try { url = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) {}
     const all = await sessionGet(MEDIA_KEY);
     video = !!ytVideoId(url) || videoPages.get(tabId) === true || Object.keys(all[tabId] || {}).length > 0;
   }
-  const want = { [MENU.course]: !!course, [MENU.playlist]: !!list, [MENU.page]: video, [MENU.allLinks]: !course && !list && !video };
+  const want = { [MENU.course]: !!course, [MENU.playlist]: !!list, [MENU.page]: video, [MENU.allLinks]: !course && !list && !video && !canva, [MENU.canvaAll]: canvaFiles > 0 };
   for (const [id, visible] of Object.entries(want)) {
     if (shownMenus.get(id) === visible) continue;
     shownMenus.set(id, visible);
@@ -1667,6 +1881,7 @@ if (api.contextMenus) {
       case MENU.selectionLinks:
         return collectAndSendLinks(tab, { selectionOnly: true, frameId: info.frameId });
       case MENU.pageMedia:
+      case MENU.canvaAll:
         return sendDetectedMedia(tab && tab.id);
     }
   });
@@ -1736,6 +1951,12 @@ async function tabGroupName(tabOrId) {
 
 async function sendDetectedMedia(tabId) {
   if (tabId == null) return { ok: false, count: 0 };
+  const canva = await canvaForTab(tabId);
+  if (canva) {
+    const files = canva.items.filter(i => i.canva);
+    if (!files.length) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
+    return sendBatchToFetchJet(files.map(i => ({ url: i.url, referer: i.referer, fileName: i.fileName })), "", await tabGroupName(tabId), tabId);
+  }
   const all = await sessionGet(MEDIA_KEY);
   const items = Object.values(all[tabId] || {});
   if (items.length === 0) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
@@ -1879,6 +2100,9 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       case "resolveVideo":
         return resolveVideo(request, sender.tab || null);
+      case "canvaFigures":
+        if (!sender.tab || sender.tab.id == null) return { ok: false };
+        return addCanvaFigures(sender.tab, request.figures, request.play || null);
       case "mediaSeen": {
         // iOS: media URLs the page loaded, read by the content script (no webRequest there).
         if (!ON_IOS || !sender.tab || sender.tab.id == null) return { ok: false };
