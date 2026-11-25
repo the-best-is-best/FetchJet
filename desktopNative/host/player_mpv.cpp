@@ -1975,7 +1975,11 @@ namespace fjhost::player {
             if (auto *v = json.find("index")) g_index = int(v->number);
             g_key.clear();
             if (auto *v = json.find("groupKey")) g_key = v->text;
+            int strip_w = g_trim.strip_w;
+            int strip_h = g_trim.strip_h;
             g_trim = Trim();
+            g_trim.strip_w = strip_w;
+            g_trim.strip_h = strip_h;
             if (auto *v = json.find("trim")) g_trim.on = v->boolean;
             if (auto *v = json.find("cutTaskId")) g_trim.task = v->text;
             if (auto *v = json.find("startMs")) g_trim.start_ms = long(v->number);
