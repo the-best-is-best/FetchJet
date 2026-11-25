@@ -83,6 +83,8 @@ class MediaStreamDownloader(
 
     internal val activeJobs = MutableStateFlow<Map<String, Job>>(emptyMap())
 
+    internal val hlsClipOffsetsMs = MutableStateFlow<Map<String, Long>>(emptyMap())
+
     internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     internal val desktopUserAgent =
@@ -178,6 +180,7 @@ class MediaStreamDownloader(
     internal suspend fun executeMediaDownload(taskId: String) {
         MediaToolsLock.awaitIdle()
         var initialTask = tasksState.value[taskId] ?: return
+        hlsClipOffsetsMs.update { it - taskId }
         if (!coroutineContext.isActive || tasksState.value[taskId]?.status == DownloadStatus.PAUSED) {
             return
         }
@@ -334,9 +337,18 @@ class MediaStreamDownloader(
                     )
                 }
 
+                val hlsClipOffset = hlsClipOffsetsMs.value[taskId]
                 val foundCachePath = (if (hlsOutputPath != cacheTargetPath && AppFileSystem.exists(hlsOutputPath)) hlsOutputPath
                 else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
                     ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
+                    ?.let {
+                        if (!isClipTask(initialTask)) it
+                        else if (hlsClipOffset != null) cutClipExactly(taskId, initialTask, it, hlsClipOffset, false)
+                        else if (isClipping) {
+                            val sectionStartMs = clipTimeMs(initialTask.clipStart) ?: 0L
+                            cutClipExactly(taskId, initialTask, it, sectionStartMs, sectionStartMs > 0L)
+                        } else cutClipExactly(taskId, initialTask, it, 0L, false)
+                    }
                 downloadedRealFile =
                     moveFinishedFileIntoPlace(
                         taskId,

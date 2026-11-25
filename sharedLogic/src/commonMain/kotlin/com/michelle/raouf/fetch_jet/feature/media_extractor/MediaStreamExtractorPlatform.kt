@@ -64,8 +64,8 @@ expect suspend fun downloadMediaWithPlatformTool(
     clipStart: String? = null,
     clipEnd: String? = null,
     /**
-     * true: download the whole video at full speed and cut it locally afterwards (yt-dlp
-     * --remove-chapters with time ranges, stream copy). false: --download-sections, which only
+     * true: download the whole video at full speed and cut it locally afterwards
+     * (MediaClipCut.kt). false: --download-sections, which only
      * fetches the part but through ffmpeg on one connection that YouTube throttles.
      */
     clipByCutting: Boolean = false,
