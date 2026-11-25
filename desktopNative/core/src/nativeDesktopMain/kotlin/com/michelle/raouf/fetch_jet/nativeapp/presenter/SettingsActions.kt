@@ -209,8 +209,11 @@ internal fun Presenter.settingPick(id: String, index: Int) {
             if (mode != vm.uiState.value.themeMode) vm.onEvent(DashboardUiEvent.OnThemeModeChanged(mode))
         }
 
-        id == "desktopPlayer" -> com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.DESKTOP_PLAYER_MODES.getOrNull(index)?.let {
-            com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setDesktopPlayer(it)
+        id == "desktopPlayer" -> listOf(
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.ON,
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.OFF,
+        ).getOrNull(index)?.let {
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.set(it)
             settingsPoke()
         }
 
@@ -528,6 +531,7 @@ internal fun Presenter.settingClick(id: String) {
         id.startsWith("login.remove.") -> NetworkSettings.removeLogin(id.removePrefix("login.remove."))
         id == "toolsFolder" -> openFolder(vm.uiState.value.toolsDirectoryPath)
         id == "tools" -> vm.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked)
+        id == "playerLibrary" -> playerLibraryDownload()
         id == "updateSee" -> updateShow()
         id == "updateCheck" -> UpdateManager.checkNow()
         id == "releaseNotes" -> openExternal("https://github.com/$UPDATE_REPOSITORY/releases")

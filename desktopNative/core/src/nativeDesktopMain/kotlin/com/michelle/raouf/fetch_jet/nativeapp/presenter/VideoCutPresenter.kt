@@ -70,9 +70,8 @@ internal fun Presenter.videoCutChoose(timeline: Boolean) {
     val page = vm.uiState.value.videoCut ?: return
     if (!timeline) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
     if (!page.timelineAvailable) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
-    vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
-    val task = task(page.taskId) ?: return
-    if (headless) return
+    val task = task(page.taskId)
+    if (task == null || headless) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
     openTrimPlayer(task, PlayerTrim(page.taskId, page.startMs, page.endMs))
 }
 

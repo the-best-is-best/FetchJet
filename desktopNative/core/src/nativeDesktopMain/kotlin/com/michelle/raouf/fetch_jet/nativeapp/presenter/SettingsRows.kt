@@ -950,17 +950,42 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
             )
         }
         rows.divider()
-        val modes = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.DESKTOP_PLAYER_MODES
+        val playerMode = com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode
         rows.add(
             pickerRow(
                 "desktopPlayer",
                 s.playerModeTitle,
                 s.playerModeHint,
-                listOf(s.playerModeAsk, s.playerModeOn, s.playerModeOff),
-                modes.indexOf(com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.desktopPlayer.value) + 1,
+                listOf(s.playerModeOn, s.playerModeOff),
+                when {
+                    playerMode.isOn() -> 1
+                    playerMode.isOff() -> 2
+                    else -> 0
+                },
                 below = true,
             )
         )
+        if (playerMode.isOn() && !com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady()) {
+            val libmpv = v.isDownloadingYtDlp && v.toolDownloadName == "libmpv"
+            rows.add(noteRow(s.playerAskText, ToneCode.MUTED))
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 8,
+                    bottom = 14,
+                    buttons = listOf(
+                        button(
+                            "playerLibrary",
+                            if (libmpv) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("libmpv", (it * 100).toInt()) } ?: s.mediaDownloadingTool("libmpv")
+                            else s.playerAskDownload,
+                            filled = true,
+                            enabled = !v.isDownloadingYtDlp,
+                            busy = libmpv,
+                        )
+                    ),
+                )
+            )
+        }
         if (v.toolsDirectoryPath.isNotBlank()) {
             rows.divider()
             rows.add(

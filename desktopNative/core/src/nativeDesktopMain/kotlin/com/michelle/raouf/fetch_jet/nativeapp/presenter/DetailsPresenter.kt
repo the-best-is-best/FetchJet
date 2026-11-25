@@ -305,7 +305,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String, clips: Li
     }
     if (task.canSendToDevice()) fileTools += DetailToolDto(DetailToolCode.SHARE.ordinal, "📲", strings.sysDeviceSendTitle)
     val mediaTools = ArrayList<DetailToolDto>(4)
-    if (completed && !busy && MediaPlayback.canPlay(task) && BehaviorSettings.desktopPlayer.value != "off" && isPlayerLibraryAvailable()) {
+    if (completed && !busy && MediaPlayback.canPlay(task, allowHidden = task.hidden) && !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff() && isPlayerLibraryAvailable()) {
         mediaTools += DetailToolDto(DetailToolCode.PLAY.ordinal, "▶", strings.playerPlayAll)
     }
     if (!busy && AudioCompress.canCompress(task)) {

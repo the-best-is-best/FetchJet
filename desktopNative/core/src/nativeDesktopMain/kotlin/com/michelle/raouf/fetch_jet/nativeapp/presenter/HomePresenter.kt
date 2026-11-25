@@ -92,6 +92,7 @@ internal data class HomeExtras(
     val maxAtOnce: Int,
     val scheduled: Boolean,
     val whenDone: WhenDoneAction,
+    val playerMode: String = "",
 )
 
 private fun DashboardUiState.homeSlice() = HomeSlice(
@@ -272,7 +273,8 @@ internal fun Presenter.startHome() {
         queue.maxConcurrentDownloads,
         SpeedSchedule.activeCap,
         WhenDone.action,
-    ) { language, maxAtOnce, cap, whenDone -> HomeExtras(language, maxAtOnce, cap != null, whenDone) }
+        com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPlayer,
+    ) { language, maxAtOnce, cap, whenDone, playerMode -> HomeExtras(language, maxAtOnce, cap != null, whenDone, playerMode) }
     val controls = vm.uiState.map {
         HomeControls(
             selectedTab = it.selectedTab,
@@ -505,7 +507,9 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             playlistCanPause = (openGroup ?: openFolderGroup)?.canPause == true,
             playlistCanResume = (openGroup ?: openFolderGroup)?.canResume == true,
             playlistCanCheck = openGroup?.record?.url?.isNotBlank() == true,
-            playlistCanPlay = !hiddenScreen && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.desktopPlayer.value != "off" && (openGroup ?: openFolderGroup)?.let { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(it.tasks) } == true,
+            playlistCanPlay = !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff() && com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable() &&
+                (if (hiddenScreen) (openGroup ?: openFolderGroup)?.tasks?.any { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(it, allowHidden = true) } == true
+                else (openGroup ?: openFolderGroup)?.let { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(it.tasks) } == true),
             playlistLanguagesShown = openGroup != null && !openGroup.isPage && slice.playlistLanguages?.playlistId == openGroup.id,
             playlistLanguagesBusy = slice.playlistLanguages?.let { it.reading || it.adding } == true,
             playlistLanguagesNote = slice.playlistLanguages?.let { page ->

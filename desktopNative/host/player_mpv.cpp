@@ -43,6 +43,7 @@ namespace fjhost::player {
             std::string title;
             std::string path;
             bool video = false;
+            bool hidden = false;
         };
 
         struct Api {
@@ -103,6 +104,12 @@ namespace fjhost::player {
         slint::SharedPixelBuffer<slint::Rgb8Pixel> g_buffers[2];
         int g_buffer_next = 0;
         std::shared_ptr<slint::VectorModel<PlayerRow>> g_model;
+        std::string g_preparing;
+        bool g_preparing_autoplay = false;
+        std::vector<std::string> g_release_after_end;
+        bool g_had_hidden = false;
+        int g_loaded = 0;
+        bool g_prepare_deferred = false;
 
         struct Trim {
             bool on = false;
@@ -212,6 +219,34 @@ namespace fjhost::player {
             if (g_key.empty())
                 return;
             core_call("player.clear", "{\"key\":" + quote(g_key) + "}");
+        }
+
+        void send_hidden(const char *type, const std::string &id) {
+            send_action(std::string("{\"type\":\"") + type + "\",\"id\":" + quote(id) + "}");
+        }
+
+        void release_hidden(int index) {
+            if (index < 0 || index >= int(g_items.size()) || !g_items[index].hidden)
+                return;
+            Item &item = g_items[index];
+            if (g_preparing == item.id) {
+                g_preparing.clear();
+                if (!g_prepare_deferred)
+                    send_hidden("PlayerRelease", item.id);
+                g_prepare_deferred = false;
+                return;
+            }
+            if (item.path.empty())
+                return;
+            item.path.clear();
+            g_release_after_end.push_back(item.id);
+        }
+
+        void flush_releases() {
+            std::vector<std::string> ids;
+            ids.swap(g_release_after_end);
+            for (const auto &id: ids)
+                send_hidden("PlayerRelease", id);
         }
 
         void *symbol(const char *name) {
@@ -417,12 +452,21 @@ namespace fjhost::player {
             ui().global<PlayerUi>().set_frame(slint::Image());
         }
 
+        void set_opening(bool on, int percent) {
+            auto &p = ui().global<PlayerUi>();
+            p.set_opening(on);
+            p.set_opening_percent(percent);
+        }
+
         void load_item(int index, bool autoplay) {
             if (g_items.empty())
                 return;
             g_rewind_timer.stop();
             g_hold = 0;
-            g_index = std::clamp(index, 0, int(g_items.size()) - 1);
+            int target = std::clamp(index, 0, int(g_items.size()) - 1);
+            if (target != g_index)
+                release_hidden(g_index);
+            g_index = target;
             g_finished = false;
             g_failed = false;
             g_seek_pending = false;
@@ -432,7 +476,25 @@ namespace fjhost::player {
             g_paused = !autoplay;
             set("speed", number_text(g_speed).c_str());
             set("pause", autoplay ? "no" : "yes");
-            command_async({"loadfile", g_items[g_index].path.c_str(), "replace"});
+            const Item &item = g_items[g_index];
+            if (item.hidden && item.path.empty()) {
+                command_async({"stop"});
+                clear_frame();
+                if (g_preparing != item.id) {
+                    if (!g_preparing.empty() && !g_prepare_deferred)
+                        send_hidden("PlayerRelease", g_preparing);
+                    g_preparing = item.id;
+                    g_prepare_deferred = g_loaded > 0;
+                    if (!g_prepare_deferred)
+                        send_hidden("PlayerPrepare", item.id);
+                }
+                g_preparing_autoplay = autoplay;
+                set_opening(true, 0);
+            } else {
+                set_opening(false, 0);
+                g_loaded++;
+                command_async({"loadfile", item.path.c_str(), "replace"});
+            }
             remember();
             publish_item();
             publish_state();
@@ -514,6 +576,14 @@ namespace fjhost::player {
                         break;
                     case MPV_EVENT_END_FILE: {
                         auto *end = static_cast<mpv_event_end_file *>(event->data);
+                        g_loaded = std::max(0, g_loaded - 1);
+                        flush_releases();
+                        if (g_loaded == 0) {
+                            if (g_prepare_deferred && !g_preparing.empty()) {
+                                g_prepare_deferred = false;
+                                send_hidden("PlayerPrepare", g_preparing);
+                            }
+                        }
                         if (end && end->reason == MPV_END_FILE_REASON_ERROR) {
                             if (g_trim.on) {
                                 g_failed = true;
@@ -1135,6 +1205,11 @@ namespace fjhost::player {
             if (!fj::parse_json(queue_json, json, error))
                 return;
             g_items.clear();
+            g_preparing.clear();
+            g_release_after_end.clear();
+            g_had_hidden = false;
+            g_loaded = 0;
+            g_prepare_deferred = false;
             if (const fj::Json *items = json.find("items")) {
                 for (const auto &entry: items->items) {
                     Item item;
@@ -1142,6 +1217,9 @@ namespace fjhost::player {
                     if (auto *v = entry.find("title")) item.title = v->text;
                     if (auto *v = entry.find("path")) item.path = v->text;
                     if (auto *v = entry.find("video")) item.video = v->boolean;
+                    if (auto *v = entry.find("hidden")) item.hidden = v->boolean;
+                    if (item.hidden)
+                        g_had_hidden = true;
                     g_items.push_back(item);
                 }
             }
@@ -1237,6 +1315,8 @@ namespace fjhost::player {
 
     void open(const std::string &queue_json) {
         wire();
+        if (g_had_hidden && (g_open || g_mpv))
+            close();
         apply_queue(queue_json);
         if (g_items.empty())
             return;
@@ -1256,8 +1336,11 @@ namespace fjhost::player {
         p.set_open(true);
         if (!start_engine()) {
             p.set_open(false);
-            core_call("player.system", "{\"path\":" + quote(g_items[g_index].path) + "}");
+            const Item &item = g_items[g_index];
+            core_call("player.system", "{\"path\":" + quote(item.path) + ",\"id\":" + quote(item.id) +
+                                       ",\"hidden\":" + (item.hidden ? "true" : "false") + "}");
             g_items.clear();
+            g_had_hidden = false;
             g_model.reset();
             return;
         }
@@ -1274,6 +1357,15 @@ namespace fjhost::player {
         g_trim = Trim();
         g_thumbs.reset();
         stop_engine();
+        set_opening(false, 0);
+        g_preparing.clear();
+        g_release_after_end.clear();
+        g_loaded = 0;
+        g_prepare_deferred = false;
+        if (g_had_hidden) {
+            g_had_hidden = false;
+            send_action("{\"type\":\"PlayerClosed\"}");
+        }
         auto &p = ui().global<PlayerUi>();
         p.set_trim(false);
         p.set_trim_ready(false);
@@ -1285,6 +1377,28 @@ namespace fjhost::player {
         g_model.reset();
         g_buffers[0] = slint::SharedPixelBuffer<slint::Rgb8Pixel>();
         g_buffers[1] = slint::SharedPixelBuffer<slint::Rgb8Pixel>();
+    }
+
+    void prepared(const std::string &id, const std::string &path) {
+        bool current = g_open && !g_items.empty() && g_items[g_index].id == id && g_preparing == id;
+        if (!current) {
+            if (!path.empty())
+                send_hidden("PlayerRelease", id);
+            return;
+        }
+        g_preparing.clear();
+        set_opening(false, 0);
+        if (path.empty()) {
+            item_failed();
+            return;
+        }
+        g_items[g_index].path = path;
+        load_item(g_index, g_preparing_autoplay);
+    }
+
+    void preparing(const std::string &id, int percent) {
+        if (g_open && g_preparing == id)
+            set_opening(true, std::clamp(percent, 0, 100));
     }
 
     void shutdown() {
@@ -1356,9 +1470,10 @@ namespace fjhost::player {
         if (!path)
             return;
         if (FILE *file = std::fopen(path, "a")) {
-            std::fprintf(file, "%s %g -> open=%d index=%d/%zu pos=%.2f dur=%.2f paused=%d speed=%g hold=%d finished=%d failed=%d\n",
+            std::fprintf(file, "%s %g -> open=%d index=%d/%zu pos=%.2f dur=%.2f paused=%d speed=%g hold=%d finished=%d failed=%d preparing=%s hidden=%d path=%s\n",
                          name.c_str(), value, g_open ? 1 : 0, g_index, g_items.size(), g_position, g_duration,
-                         g_paused ? 1 : 0, double(g_speed), g_hold, g_finished ? 1 : 0, g_failed ? 1 : 0);
+                         g_paused ? 1 : 0, double(g_speed), g_hold, g_finished ? 1 : 0, g_failed ? 1 : 0, g_preparing.c_str(),
+                         g_items.empty() ? 0 : (g_items[g_index].hidden ? 1 : 0), g_items.empty() ? "" : g_items[g_index].path.c_str());
             if (g_trim.on)
                 std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu\n",
                              g_trim.ready ? 1 : 0, g_trim.fps, g_trim.fps_guess ? "?" : "", g_trim.frames, g_trim.s, g_trim.e,

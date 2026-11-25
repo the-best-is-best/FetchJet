@@ -9,6 +9,9 @@ enum class EffectKind {
     NOTIFY,
     EXIT,
     OPEN_PLAYER,
+    PLAYER_PATH,
+    PLAYER_PREPARING,
+    CLOSE_PLAYER,
 }
 
 @Serializable

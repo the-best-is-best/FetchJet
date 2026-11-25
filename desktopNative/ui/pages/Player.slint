@@ -4,6 +4,7 @@ import { ElideText } from "../widgets/ElideText.slint";
 import { FilledButton } from "../widgets/Buttons.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { Tr } from "../generated/tr.slint";
+import { Spinner } from "../widgets/Kit.slint";
 
 export struct PlayerRow { title: string, video: bool, active: bool }
 
@@ -24,6 +25,8 @@ export global PlayerUi {
     in property <int> hold;
     in property <bool> finished;
     in property <bool> failed;
+    in property <bool> opening;
+    in property <int> opening-percent;
     in property <[PlayerRow]> items;
     in property <[string]> speed-labels;
     callback close();
@@ -547,7 +550,7 @@ export component PlayerPage inherits Rectangle {
     private property <bool> held: false;
     private property <length> down-x: 0px;
     private property <length> down-y: 0px;
-    private property <bool> controls-on: PlayerUi.trim || root.shown || !PlayerUi.playing || PlayerUi.finished || PlayerUi.failed || root.list-open || root.speed-open;
+    private property <bool> controls-on: PlayerUi.trim || root.shown || !PlayerUi.playing || PlayerUi.finished || PlayerUi.failed || PlayerUi.opening || root.list-open || root.speed-open;
     pure function two(n: int) -> string {
         return (n < 10 ? "0" : "") + n;
     }
@@ -645,7 +648,7 @@ export component PlayerPage inherits Rectangle {
             source: PlayerUi.frame;
             image-fit: contain;
         }
-        if !PlayerUi.has-video && !PlayerUi.failed: Rectangle {
+        if !PlayerUi.has-video && !PlayerUi.failed && !PlayerUi.opening: Rectangle {
             width: parent.width;
             height: parent.height;
             VerticalLayout {
@@ -698,6 +701,27 @@ export component PlayerPage inherits Rectangle {
                     wrap: word-wrap;
                     overflow: elide;
                 }
+            }
+        }
+        if PlayerUi.opening && !PlayerUi.failed: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            alignment: center;
+            spacing: 14px;
+            HorizontalLayout {
+                alignment: center;
+                Spinner {
+                    size: 48px;
+                    stroke: 2.5px;
+                    ink: #FFFFFF;
+                }
+            }
+            Text {
+                text: PlayerUi.opening-percent > 0 ? Tr.hiddenOpening + "  " + PlayerUi.opening-percent + "%" : Tr.hiddenOpening;
+                color: #FFFFFF;
+                font-family: Theme.font;
+                font-size: 16px;
+                horizontal-alignment: center;
             }
         }
         if PlayerUi.failed: Rectangle {

@@ -315,7 +315,7 @@ class Core:
 def refuse_in_tests(action_type, fields):
     key = str(fields.get("id", ""))
     reason = None
-    if action_type == "DownloadTools" or (action_type == "SettingClick" and key in ("tools", "updateCheck")):
+    if action_type in ("DownloadTools", "PlayerLibraryDownload") or (action_type == "SettingClick" and key in ("tools", "updateCheck", "playerLibrary")):
         reason = "it downloads from the internet"
     elif action_type == "SetWhenDone" and fields.get("index", 0) != 0:
         reason = "it can put the PC to sleep or shut it down"

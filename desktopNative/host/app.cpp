@@ -117,6 +117,15 @@ namespace fjhost {
                     case fjgen::EffectKind::OpenPlayer:
                         player::open(plain(effect.text));
                         break;
+                    case fjgen::EffectKind::PlayerPath:
+                        player::prepared(plain(effect.title), plain(effect.text));
+                        break;
+                    case fjgen::EffectKind::PlayerPreparing:
+                        player::preparing(plain(effect.title), effect.number);
+                        break;
+                    case fjgen::EffectKind::ClosePlayer:
+                        player::close();
+                        break;
                     default:
                         break;
                 }

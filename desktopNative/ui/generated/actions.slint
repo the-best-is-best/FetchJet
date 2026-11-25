@@ -26,6 +26,10 @@ export global Act {
     callback playlistRemove();
     callback playlistCheck();
     callback playOpenGroup();
+    callback playerPrepare(id: string);
+    callback playerRelease(id: string);
+    callback playerClosed();
+    callback playerLibraryDownload();
     callback playlistReadLanguages();
     callback playlistAddLanguage(code: string);
     callback playlistLanguagesClose();

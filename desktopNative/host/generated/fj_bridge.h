@@ -161,6 +161,9 @@ namespace EffectKind {
     inline constexpr int Notify = 3;
     inline constexpr int Exit = 4;
     inline constexpr int OpenPlayer = 5;
+    inline constexpr int PlayerPath = 6;
+    inline constexpr int PlayerPreparing = 7;
+    inline constexpr int ClosePlayer = 8;
 }
 
 namespace SideFilterCode {
@@ -2225,6 +2228,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_videoCutByTimeHint(next());
     tr.set_videoCutOnTimeline(next());
     tr.set_videoCutOnTimelineHint(next());
+    tr.set_videoCutNeedsPlayerLibrary(next());
     tr.set_videoCutFrom(next());
     tr.set_videoCutTo(next());
     tr.set_videoCutDuration(next());
@@ -2433,6 +2437,10 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_playlistRemove([send]() { fj::ActionWriter w("PlaylistRemove"); send(w.finish()); });
     act.on_playlistCheck([send]() { fj::ActionWriter w("PlaylistCheck"); send(w.finish()); });
     act.on_playOpenGroup([send]() { fj::ActionWriter w("PlayOpenGroup"); send(w.finish()); });
+    act.on_playerPrepare([send](slint::SharedString id) { fj::ActionWriter w("PlayerPrepare"); w.add("id", id); send(w.finish()); });
+    act.on_playerRelease([send](slint::SharedString id) { fj::ActionWriter w("PlayerRelease"); w.add("id", id); send(w.finish()); });
+    act.on_playerClosed([send]() { fj::ActionWriter w("PlayerClosed"); send(w.finish()); });
+    act.on_playerLibraryDownload([send]() { fj::ActionWriter w("PlayerLibraryDownload"); send(w.finish()); });
     act.on_playlistReadLanguages([send]() { fj::ActionWriter w("PlaylistReadLanguages"); send(w.finish()); });
     act.on_playlistAddLanguage([send](slint::SharedString code) { fj::ActionWriter w("PlaylistAddLanguage"); w.add("code", code); send(w.finish()); });
     act.on_playlistLanguagesClose([send]() { fj::ActionWriter w("PlaylistLanguagesClose"); send(w.finish()); });

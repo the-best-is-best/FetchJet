@@ -54,6 +54,10 @@ internal fun Presenter.dispatch(action: UiAction) {
             if (path != null && !headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
         }
         UiAction.PlayOpenGroup -> playOpenGroup()
+        is UiAction.PlayerPrepare -> playerPrepare(action.id)
+        is UiAction.PlayerRelease -> playerRelease(action.id)
+        UiAction.PlayerClosed -> playerClosed()
+        UiAction.PlayerLibraryDownload -> playerLibraryDownload()
         UiAction.PlaylistCheck -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistCheck(it)) }
         UiAction.PlaylistReadLanguages -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(it)) }
         is UiAction.PlaylistAddLanguage -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(it, action.code)) }
@@ -131,7 +135,7 @@ internal fun Presenter.dispatch(action: UiAction) {
 
         is UiAction.ListKey -> listKey(action.key, action.shift, action.rows)
         UiAction.CloseDetails -> {
-            if (local.value.hiddenOpen) vm.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+            if (local.value.hiddenOpen && !hiddenPlayer.value) vm.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
             local.update { it.copy(selectedTaskId = null) }
         }
         UiAction.CancelWhenDone -> WhenDone.cancel()
@@ -446,7 +450,10 @@ private fun Presenter.rowQuickAction(id: String) {
 }
 
 internal fun Presenter.openDownloadedFile(fullPath: String, taskId: String) {
-    if (local.value.hiddenOpen) return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(taskId))
+    if (local.value.hiddenOpen) {
+        if (!headless && playHiddenTask(taskId)) return
+        return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(taskId))
+    }
     task(taskId)?.let { if (!headless && playTask(it)) return }
     scope.launch(Dispatchers.IO) {
         if (!pathResolver.fileExists(fullPath)) {

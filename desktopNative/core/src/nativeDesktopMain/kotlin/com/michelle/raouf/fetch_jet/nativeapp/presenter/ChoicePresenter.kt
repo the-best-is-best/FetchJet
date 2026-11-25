@@ -115,7 +115,7 @@ internal fun Presenter.choiceDismiss(kind: Int) {
 
 internal fun Presenter.choiceCheck(kind: Int, checked: Boolean) {
     when (ChoiceDialogKind.entries.getOrNull(kind)) {
-        ChoiceDialogKind.PLAYER_LIBRARY -> playerAsk.value = playerAsk.value?.copy(remember = checked)
+        ChoiceDialogKind.PLAYER_LIBRARY -> Unit
         else -> Unit
     }
 }

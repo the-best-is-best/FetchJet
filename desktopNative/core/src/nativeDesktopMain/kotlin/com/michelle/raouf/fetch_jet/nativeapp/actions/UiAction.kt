@@ -107,6 +107,22 @@ sealed interface UiAction {
     data object PlayOpenGroup : UiAction
 
     @Serializable
+    @SerialName("PlayerPrepare")
+    data class PlayerPrepare(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlayerRelease")
+    data class PlayerRelease(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlayerClosed")
+    data object PlayerClosed : UiAction
+
+    @Serializable
+    @SerialName("PlayerLibraryDownload")
+    data object PlayerLibraryDownload : UiAction
+
+    @Serializable
     @SerialName("PlaylistReadLanguages")
     data object PlaylistReadLanguages : UiAction
 

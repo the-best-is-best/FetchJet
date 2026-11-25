@@ -368,6 +368,7 @@ internal fun Presenter.hiddenLockAll() {
     val h = vm.uiState.value.hidden
     if (!local.value.hiddenOpen && !h.unlocked) return
     val ids = h.tasks.mapTo(HashSet()) { it.id }
+    closeHiddenPlayer()
     vm.onEvent(DashboardUiEvent.OnHiddenLock)
     closeRowMenu()
     vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)

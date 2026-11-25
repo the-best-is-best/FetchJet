@@ -371,7 +371,10 @@
    "SCROLL_TO_ROW",
    "NOTIFY",
    "EXIT",
-   "OPEN_PLAYER"
+   "OPEN_PLAYER",
+   "PLAYER_PATH",
+   "PLAYER_PREPARING",
+   "CLOSE_PLAYER"
   ],
   "SideFilterCode": [
    "ALL",
@@ -3456,6 +3459,20 @@
   "PlaylistRemove": [],
   "PlaylistCheck": [],
   "PlayOpenGroup": [],
+  "PlayerPrepare": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "PlayerRelease": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "PlayerClosed": [],
+  "PlayerLibraryDownload": [],
   "PlaylistReadLanguages": [],
   "PlaylistAddLanguage": [
    [
@@ -5079,6 +5096,7 @@
   "videoCutByTimeHint",
   "videoCutOnTimeline",
   "videoCutOnTimelineHint",
+  "videoCutNeedsPlayerLibrary",
   "videoCutFrom",
   "videoCutTo",
   "videoCutDuration",
