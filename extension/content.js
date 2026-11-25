@@ -314,6 +314,7 @@
     }
     return 0;
   }
+  let canvaSent = "", canvaPicked = null, canvaClickAt = 0, canvaHover = null, canvaHoverLeft = 0, canvaPlaying = null, canvaVideo = null;
   function canvaScope(el) {
     let best = el;
     for (let e = el.parentElement, i = 0; e && i < 4; e = e.parentElement, i++) {
@@ -323,10 +324,11 @@
     }
     return best;
   }
-  let canvaSent = "", canvaPicked = null, canvaClickAt = 0, canvaHover = null, canvaHoverLeft = 0, canvaPlaying = null, canvaVideo = null;
-  function canvaRect(el) {
-    const own = el.getBoundingClientRect();
-    if (areaOf(own) > 0) return own;
+  const rectArr = (r) => [r.left, r.top, r.width, r.height].map((n) => Math.round(n || 0));
+  const canvaLast = new Map();
+  const canvaFrom = new WeakMap();
+  let canvaVideos = [];
+  function canvaUnion(el) {
     let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
     for (const e of canvaNodes(el)) {
       if (e === el) continue;
@@ -334,18 +336,51 @@
       if (areaOf(q) <= 0) continue;
       l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom);
     }
-    if (r > l && b > t) return { left: l, top: t, right: r, bottom: b, width: r - l, height: b - t };
-    if (canvaVideo && canvaVideo.isConnected && canvaPlaying && canvaPlaying.el === el) {
-      const q = canvaVideo.getBoundingClientRect();
+    return r > l && b > t ? { left: l, top: t, right: r, bottom: b, width: r - l, height: b - t } : null;
+  }
+  function canvaVideoRect(trace) {
+    const list = [canvaVideo, ...canvaVideos.filter((v) => v !== canvaVideo && !v.paused && !v.ended)];
+    for (const v of list) {
+      if (!v || !v.isConnected) continue;
+      const q = v.getBoundingClientRect();
+      if (trace) trace.push(["video", rectArr(q)]);
       if (areaOf(q) > 0) return q;
     }
+    return null;
+  }
+  function canvaMeasure(el, trace) {
+    const name = canvaName(el), page = canvaPageOf(el), key = `${page}|${name}`;
+    const done = (rect, from) => {
+      if (from !== "last" && areaOf(rect) > 0) canvaLast.set(key, rect);
+      canvaFrom.set(el, from);
+      return rect;
+    };
+    const big = (q) => areaOf(q) < 0.6 * innerWidth * innerHeight;
+    if (canvaPlaying && canvaPlaying.name === name && canvaPlaying.page === page) {
+      const q = canvaVideoRect(trace);
+      if (q) return done(q, "video");
+    }
+    const own = el.getBoundingClientRect();
+    if (trace) trace.push(["figure", rectArr(own)]);
+    if (areaOf(own) > 0) return done(own, "figure");
+    const kids = canvaUnion(el);
+    if (trace) trace.push(["children", kids ? rectArr(kids) : null]);
+    if (kids) return done(kids, "children");
     const scope = canvaScope(el);
     if (scope !== el) {
       const q = scope.getBoundingClientRect();
-      if (areaOf(q) > 0 && areaOf(q) < 0.6 * innerWidth * innerHeight) return q;
+      if (trace) trace.push(["wrapper", rectArr(q)]);
+      if (areaOf(q) > 0 && big(q)) return done(q, "wrapper");
+      const u = canvaUnion(scope);
+      if (trace) trace.push(["wrapper-children", u ? rectArr(u) : null]);
+      if (u && big(u)) return done(u, "wrapper-children");
     }
-    return own;
+    const last = canvaLast.get(key);
+    if (trace) trace.push(["last", last ? rectArr(last) : null]);
+    if (last) return done(last, "last");
+    return done(own, "none");
   }
+  const canvaRect = (el) => canvaMeasure(el);
   const canvaShown = (el) => { const r = canvaRect(el); return areaOf(r) > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; };
   const canvaAnchors = new WeakMap();
   function canvaAnchor(el) {
@@ -356,6 +391,17 @@
       canvaAnchors.set(el, a);
     }
     return a;
+  }
+  let canvaFollowing = false;
+  function canvaFollow() {
+    if (canvaFollowing) return;
+    canvaFollowing = true;
+    requestAnimationFrame(() => {
+      canvaFollowing = false;
+      let any = false;
+      for (const b of bubbles.values()) if (b.video.el && !b.dismissed) { any = true; placeOne(b); }
+      if (any) canvaFollow();
+    });
   }
   const canvaDurations = new Map();
   function canvaFigureEls() {
@@ -387,7 +433,7 @@
       const scope = canvaScope(f.el);
       if (scope !== f.el) { if (!ids.length) ids = canvaIds(scope); if (!thumb) thumb = canvaThumb(scope); }
     }
-    return { name: f.name, page: f.page, ids, thumb, duration: canvaDurations.get(f.el) || 0, visible: canvaShown(f.el), box: [r.left, r.top, r.width, r.height].map(Math.round) };
+    return { name: f.name, page: f.page, ids, thumb, duration: canvaDurations.get(f.el) || 0, visible: canvaShown(f.el), box: rectArr(r), boxFrom: canvaFrom.get(f.el) || "" };
   }
   function reportCanva(extra) {
     if (!onCanvaDesign()) return;
@@ -436,8 +482,8 @@
   }
   function canvaWatch() {
     if (!onCanvaDesign()) return;
-    for (const v of allVideos()) {
-      if (v.tagName !== "VIDEO") continue;
+    canvaVideos = allVideos().filter((v) => v.tagName === "VIDEO");
+    for (const v of canvaVideos) {
       if (!canvaHooked.has(v)) {
         canvaHooked.add(v);
         for (const t of ["play", "playing"]) v.addEventListener(t, () => canvaPlayed(v, false));
@@ -457,7 +503,7 @@
     for (const b of bubbles.values()) if (path.includes(b.host)) { canvaHoverLeft = 0; return; }
     const f = canvaFigureIn(path) || (typeof e.clientX === "number" ? canvaFigureAt(e.clientX, e.clientY) : null);
     if (!f) { if (canvaHover && !canvaHoverLeft) canvaHoverLeft = Date.now(); return; }
-    const changed = !canvaHover || canvaHover.el !== f.el || canvaHoverLeft;
+    const changed = !canvaHover || canvaHover.name !== f.name || canvaHover.page !== f.page || canvaHoverLeft;
     canvaHover = f; canvaHoverLeft = 0;
     if (changed) place();
   }, true);
@@ -470,23 +516,26 @@
   }
   function placeCanva() {
     const figs = onCanvaDesign() ? canvaFigureEls() : [];
-    const want = new Set();
-    const hovered = canvaHover && (!canvaHoverLeft || Date.now() - canvaHoverLeft < 1500) ? canvaHover.el : null;
-    for (const el of [hovered, canvaPicked && canvaPicked.el, canvaPlaying && canvaPlaying.el]) if (el) want.add(el);
-    for (const b of bubbles.values()) if (b.open && b.video.el) want.add(b.video.el);
-    const playingItem = items.find((i) => i.canva && i.playing && i.figure);
-    const playingFig = playingItem ? figs.find((x) => x.name === playingItem.figure && (!playingItem.page || !x.page || x.page === playingItem.page)) : null;
-    if (playingFig) want.add(playingFig.el);
-    for (const [v, b] of bubbles) if (!v.el || !want.has(v.el) || !figs.some((f) => f.el === v.el)) { b.host.remove(); bubbles.delete(v); }
+    const targets = [];
+    if (canvaHover && (!canvaHoverLeft || Date.now() - canvaHoverLeft < 1500)) targets.push(canvaHover);
+    if (canvaPicked) targets.push(canvaPicked);
+    if (canvaPlaying) targets.push(canvaPlaying);
+    for (const b of bubbles.values()) if (b.open && b.video.fig) targets.push(b.video.fig);
+    for (const i of items) if (i.canva && i.playing && i.figure) targets.push({ name: i.figure, page: i.page || 0 });
+    const wanted = (f) => targets.some((x) => x.name === f.name && (!x.page || !f.page || x.page === f.page));
+    const keep = new Set(figs.filter(wanted).map((f) => f.el));
+    for (const [v, b] of bubbles) if (!v.el || !keep.has(v.el)) { b.host.remove(); bubbles.delete(v); }
     for (const f of figs) {
-      if (!want.has(f.el)) continue;
+      if (!keep.has(f.el)) continue;
       const a = canvaAnchor(f.el);
+      a.fig = { name: f.name, page: f.page };
       const b = bubbles.get(a) || makeBubble(a);
       const own = canvaItemsFor(f);
       const sig = JSON.stringify(own.map((i) => [i.url, i.fileName, i.sub, i.label]));
       if (b.canvaSig !== sig) { b.canvaSig = sig; b.own = own; renderOne(b); }
       if (!b.dismissed) placeOne(b);
     }
+    if (bubbles.size) canvaFollow();
   }
   function hideSite() {
     if (!SITE) return;
@@ -1299,6 +1348,17 @@
       let cookie = "";
       try { cookie = document.cookie || ""; } catch (_) {}
       sendResponse({ cookie, page: window.location.href });
+      return false;
+    }
+    if (request && request.action === "canvaDebug") {
+      if (!onCanvaDesign()) return false;
+      const vids = [...new Set([...document.querySelectorAll("video"), ...canvaVideos])];
+      sendResponse({
+        figures: canvaFigureEls().map((f) => { const tried = []; const r = canvaMeasure(f.el, tried); return { label: f.name, page: f.page, box: rectArr(r), from: canvaFrom.get(f.el) || "", tried }; }),
+        videos: vids.map((v) => ({ rect: rectArr(v.getBoundingClientRect()), paused: !!v.paused, src: String(v.currentSrc || v.src || "").slice(0, 40), inShadow: !document.documentElement.contains(v), connected: !!v.isConnected })),
+        playing: canvaPlaying ? { label: canvaPlaying.name, page: canvaPlaying.page } : null,
+        buttons: [...bubbles.values()].map((b) => ({ display: b.host.style.display, top: b.host.style.top, left: b.host.style.left, right: b.host.style.right, parent: b.host.parentNode ? b.host.parentNode.nodeName : "" }))
+      });
       return false;
     }
     if (request && request.action === "pageInfo") {

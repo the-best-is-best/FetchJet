@@ -1456,10 +1456,31 @@ function canvaServerName(url, headers) {
   return /\.[a-z0-9]{2,5}$/i.test(name) ? baseName(name) : "";
 }
 
-function canvaState(all, tabId, design, page) {
+function canvaState(all, tabId, design, page, memo = null) {
   const state = all[tabId];
   if (state && state.design === design) return state;
-  return { design, page, files: {}, figures: [], plays: [], pairs: {}, binds: {}, log: [], next: 0 };
+  const kept = memo && memo.design === design ? memo : null;
+  return { design, page, files: {}, figures: [], plays: [], pairs: { ...((kept && kept.pairs) || {}) }, binds: {}, remembered: { ...((kept && kept.names) || {}) }, log: [], next: 0 };
+}
+
+const CANVA_MEMO_KEY = "fetchjet_canva_memo_by_tab";
+
+async function rememberCanva(tabId, state, memos) {
+  const old = memos[tabId];
+  const memo = old && old.design === state.design ? { design: state.design, names: { ...old.names }, pairs: { ...old.pairs } } : { design: state.design, names: {}, pairs: {} };
+  const { clips, named } = canvaNaming(state);
+  for (const c of clips) {
+    const fig = named.get(c.key);
+    if (fig && fig.name) for (const k of c.keys) memo.names[k] = { name: fig.name, page: fig.page || 0 };
+    if (c.video && c.audio) memo.pairs[c.video.key] = c.audio.key;
+  }
+  for (const part of ["names", "pairs"]) {
+    const keys = Object.keys(memo[part]);
+    if (keys.length > 200) for (const k of keys.slice(0, keys.length - 200)) delete memo[part][k];
+  }
+  if (JSON.stringify(old) === JSON.stringify(memo)) return;
+  memos[tabId] = memo;
+  await sessionSet(CANVA_MEMO_KEY, memos);
 }
 
 function canvaClips(state) {
@@ -1544,8 +1565,9 @@ async function addCanvaMedia(details, pageUrl) {
   const headers = details.responseHeaders;
   const ctype = header(headers, "content-type").toLowerCase().split(";")[0].trim();
   const all = await sessionGet(CANVA_KEY);
+  const memos = await sessionGet(CANVA_MEMO_KEY);
   const design = canvaDesign(pageUrl);
-  const state = canvaState(all, details.tabId, design, pageUrl);
+  const state = canvaState(all, details.tabId, design, pageUrl, memos[details.tabId]);
   state.page = pageUrl;
   const save = async (note) => { logCanva(state, details, note); all[details.tabId] = state; await sessionSet(CANVA_KEY, all); };
   let host = "", path = "";
@@ -1586,6 +1608,7 @@ async function addCanvaMedia(details, pageUrl) {
   bindCanvaPlays(state, now);
   if ((state.plays || []).map(p => p.key || "").join("|") !== before) shown = true;
   await save(old ? "again" : "file");
+  await rememberCanva(details.tabId, state, memos);
   if (shown) pushToTab(details.tabId);
 }
 
@@ -1594,7 +1617,8 @@ async function addCanvaFigures(tab, figures, play, bind) {
   if (!design) return { ok: false };
   await serial(async () => {
     const all = await sessionGet(CANVA_KEY);
-    const state = canvaState(all, tab.id, design, tab.url);
+    const memos = await sessionGet(CANVA_MEMO_KEY);
+    const state = canvaState(all, tab.id, design, tab.url, memos[tab.id]);
     const cleanIds = (ids) => (Array.isArray(ids) ? ids : []).map(String).filter(i => i.length >= 8 && i.length <= 64 && i !== design).slice(0, 12);
     const list = Array.isArray(figures) ? figures : [];
     if (list.length) state.figures.forEach(g => { g.visible = false; });
@@ -1602,14 +1626,14 @@ async function addCanvaFigures(tab, figures, play, bind) {
       const name = String((f && f.name) || "").trim().slice(0, 200);
       if (!name) continue;
       const page = Number(f.page) || 0;
-      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: f.box || null, visible: !!f.visible };
+      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: f.box || null, boxFrom: String(f.boxFrom || "").slice(0, 20), visible: !!f.visible };
       const same = state.figures.find(g => g.name === name && (!page || !g.page || g.page === page));
       if (same) {
         same.page = same.page || page;
         same.ids = [...new Set([...same.ids, ...fig.ids])].slice(0, 12);
         if (fig.thumb) same.thumb = fig.thumb;
         if (fig.duration) same.duration = fig.duration;
-        if (fig.box) same.box = fig.box;
+        if (fig.box) { same.box = fig.box; same.boxFrom = fig.boxFrom; }
         same.visible = fig.visible;
       } else state.figures.push(fig);
     }
@@ -1627,12 +1651,13 @@ async function addCanvaFigures(tab, figures, play, bind) {
     bindCanvaPlays(state);
     all[tab.id] = state;
     await sessionSet(CANVA_KEY, all);
+    await rememberCanva(tab.id, state, memos);
   });
   pushToTab(tab.id);
   return { ok: true };
 }
 
-function canvaItems(state, tabTitle, pageUrl) {
+function canvaNaming(state) {
   const clips = canvaClips(state);
   const figures = state.figures || [];
   const figKey = (g) => `${g.page || 0}|${g.name}`;
@@ -1656,6 +1681,7 @@ function canvaItems(state, tabTitle, pageUrl) {
   const plays = (state.plays || []).filter(p => p.key).sort((a, b) => a.at - b.at);
   const clipOf = (key) => clips.find(c => c.keys.includes(key));
   for (const p of plays) { const c = clipOf(p.key); if (c && p.name) take(c, figureOf(p.name, p.page)); }
+  for (const c of clips) for (const k of c.keys) { const r = state.remembered && state.remembered[k]; if (r) take(c, figureOf(r.name, r.page)); }
   for (const c of clips) {
     if (named.has(c.key) || !c.serverName) continue;
     const base = stripExt(c.serverName).toLowerCase();
@@ -1679,6 +1705,11 @@ function canvaItems(state, tabTitle, pageUrl) {
     const fits = [...new Set(free.filter(g => !g.ids.length || !left[0].tokens.length).map(figKey))];
     if (fits.length === 1 && free.length === free.filter(g => figKey(g) === fits[0]).length) take(left[0], free[0]);
   }
+  return { clips, named, clipOf };
+}
+
+function canvaItems(state, tabTitle, pageUrl) {
+  const { clips, named, clipOf } = canvaNaming(state);
   const last = (state.plays || []).slice(-1)[0];
   const playingClip = last && last.key ? clipOf(last.key) : null;
   const title = safeBase(canvaTitle(tabTitle)) || "Canva";
@@ -1736,14 +1767,17 @@ async function canvaReport(tabId) {
   let tab = null;
   try { tab = await api.tabs.get(tabId); } catch (_) {}
   const state = (await tabState(CANVA_KEY, tabId)) || {};
+  let live = null;
+  try { live = await api.tabs.sendMessage(tabId, { action: "canvaDebug" }); } catch (_) {}
   return {
-    extension: EXT_VERSION, page: stripQuery((tab && tab.url) || ""), appMerges,
+    extension: EXT_VERSION, page: stripQuery((tab && tab.url) || ""), appMerges, live,
+    remembered: (await tabState(CANVA_MEMO_KEY, tabId)) || null,
     captures: state.log || [],
     files: canvaClips(state.files ? state : { files: {} }).map(c => ({
       key: c.key, keys: c.keys, tokens: c.tokens, first: Math.min(...c.keys.map(k => (state.files[k] || {}).first || Infinity)), video: c.video ? { url: stripQuery(c.video.url), size: c.video.size, ext: c.video.ext, preview: c.video.preview } : null,
       audio: c.audio ? { url: stripQuery(c.audio.url), size: c.audio.size, ext: c.audio.ext, preview: c.audio.preview } : null
     })),
-    figures: (state.figures || []).map(g => ({ label: g.name, page: g.page, thumb: stripQuery(g.thumb), ids: g.ids, duration: g.duration, box: g.box, visible: !!g.visible })),
+    figures: (state.figures || []).map(g => ({ label: g.name, page: g.page, thumb: stripQuery(g.thumb), ids: g.ids, duration: g.duration, box: g.box, boxFrom: g.boxFrom || "", visible: !!g.visible })),
     plays: (state.plays || []).map(p => ({ name: p.name, page: p.page, since: p.since, at: p.at, key: p.key })),
     pairs: state.pairs || {}, binds: state.binds || {}
   };
@@ -1928,7 +1962,7 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   }
   if (info.url || info.status === "loading" || info.status === "complete") ensureYoutubeResolved(tabId, url);
 });
-api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}).then(() => shownBadges.delete(tabId)); });
+api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}).then(() => { shownBadges.delete(tabId); return setTabState(CANVA_MEMO_KEY, tabId, null); }).catch(() => {}); });
 
 // ---------------------------------------------------------------------------
 // 3. Context menus & keyboard commands

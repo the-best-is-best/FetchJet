@@ -314,7 +314,7 @@ function makeCanvaPage() {
     performance: { getEntriesByType: () => [] },
     fjT: (k) => k, fjIsRtl: () => false, fjOnLanguage() {}, fjReason: (r) => r, fjTheme: () => "dark", fjOnTheme() {},
     getComputedStyle: () => ({}), MutationObserver: function () { this.observe = () => {}; },
-    requestAnimationFrame: (fn) => fn()
+    requestAnimationFrame: (fn) => setTimeout(fn, 16)
   };
   context.window.window = context.window; win.top = win;
   context.self = context.window;
@@ -386,7 +386,7 @@ async function realReportTests() {
   check("report: two videos starting with one audio: not paired by guess", items.length === 3 && !items.some((i) => i.audioUrl), items.map((i) => i.label));
 }
 
-function makeReportPage(mode) {
+function makeReportPage(mode, videoRect) {
   const sent = [];
   const handlers = [];
   const intervals = [];
@@ -414,7 +414,7 @@ function makeReportPage(mode) {
   host.shadowRoot = shadow;
   body.appendChild(host);
   const video = new Node("video");
-  video.rect = { left: 406, top: 112, right: 606, bottom: 472, width: 200, height: 360 };
+  video.rect = videoRect || { left: 406, top: 112, right: 606, bottom: 472, width: 200, height: 360 };
   video.paused = false; video.ended = false; video.duration = 49.09; video.currentSrc = "blob:https://www.canva.com/9c1d"; video.src = video.currentSrc;
   const document = {
     createElement: (t) => new Node(t), createElementNS: (ns, t) => new Node(t),
@@ -445,7 +445,7 @@ function makeReportPage(mode) {
     performance: { getEntriesByType: () => [] },
     fjT: (k) => k, fjIsRtl: () => false, fjOnLanguage() {}, fjReason: (r) => r, fjTheme: () => "dark", fjOnTheme() {},
     getComputedStyle: () => ({}), MutationObserver: function () { this.observe = () => {}; },
-    requestAnimationFrame: (fn) => fn()
+    requestAnimationFrame: (fn) => setTimeout(fn, 16)
   };
   context.window.window = context.window; win.top = win;
   context.self = context.window;
@@ -453,6 +453,53 @@ function makeReportPage(mode) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "content.js"), "utf8"), context, { filename: "content.js" });
   const tick = () => intervals.forEach((fn) => fn());
   return { sent, handlers, html, video, shadow, fig, tick };
+}
+
+async function clearKeepsNameTests() {
+  const bg = await loadBackground("Copy of DI - Canva", true);
+  bg.setClock(REAL.t0 - 300);
+  await bg.ask({ action: "canvaFigures", figures: [{ name: NAME_A, page: 7, ids: [], visible: true, box: [406, 112, 0, 0] }], play: { name: NAME_A, page: 7, ids: [], duration: 49.09, since: REAL.t0 - 400, at: REAL.t0 - 300 } });
+  await realReport(bg);
+  let it = ((await bg.sandbox.itemsForTab(7)).items)[0] || {};
+  check("clear: named before Clear", it.fileName === NAME_A && it.audioUrl === REAL.audio, it.fileName);
+  await bg.ask({ action: "clearDetectedMedia", tabId: 7 });
+  check("clear: the list is empty after Clear", (await bg.sandbox.itemsForTab(7)).items.length === 0);
+  bg.setClock(REAL.t0 + 70000);
+  await bg.response(REAL.video, 206, { "content-type": "video/mp4", "content-range": "bytes 1500000-1799999/2837360" });
+  bg.setClock(REAL.t0 + 73000);
+  await bg.response(REAL.audio, 206, { "content-type": "application/octet-stream", "content-range": "bytes 650000-779999/1208095" });
+  const items = (await bg.sandbox.itemsForTab(7)).items;
+  it = items[0] || {};
+  check("clear: captured again, still one paired item", items.length === 1 && it.url === REAL.video && it.audioUrl === REAL.audio, items.map((i) => [i.label, i.audioUrl]));
+  check("clear: captured again, keeps the figure name and page", it.fileName === NAME_A && it.page === 7 && /Page 7/.test(it.note || ""), [it.fileName, it.page, it.note]);
+  check("clear: and the full size", it.size === 4045455, it.size);
+}
+
+async function playingVideoBoxTests() {
+  const p = makeReportPage("video-only", { left: 310, top: 114, right: 596, bottom: 622, width: 286, height: 508 });
+  await wait(20);
+  p.shadow.appendChild(p.video);
+  for (let i = 0; i < 6; i++) p.tick();
+  await wait(20);
+  p.handlers[0]({ action: "fetchjetItems", items: [{ kind: "media", canva: true, clipKey: "k", label: NAME_A, fileName: NAME_A, url: REAL.video, audioUrl: REAL.audio, size: 4045455, ext: "mp4", figure: NAME_A, page: 7, playing: true, sub: "Playing now · Page 7" }] }, {}, () => {});
+  await wait(40);
+  let bs = p.html.find((n) => n.localName === "fetchjet-button" && n.parentNode);
+  const b = bs[0];
+  check("video box: one button, fixed, on top, in the page root", bs.length === 1 && /position:fixed/.test(b.style.cssText) && /2147483647/.test(b.style.cssText) && b.parentNode === p.html, bs.length && [b.style.cssText, b.parentNode && b.parentNode.localName]);
+  check("video box: placed by the playing video's rect (286x508 at 310,114)", !!b && b.style.display === "block" && b.style.top === "124px" && b.style.right === `${1280 - 596 + 10}px`, b && [b.style.top, b.style.right]);
+  const fresh = new Node("div"); fresh.setAttribute("role", "figure"); fresh.setAttribute("aria-label", NAME_A);
+  fresh.rect = { left: 406, top: 112, right: 406, bottom: 112, width: 0, height: 0 };
+  const parent = p.fig.parentNode;
+  p.fig.remove(); parent.appendChild(fresh);
+  p.video.rect = { left: 310, top: 214, right: 596, bottom: 722, width: 286, height: 508 };
+  p.tick();
+  await wait(60);
+  bs = p.html.find((n) => n.localName === "fetchjet-button" && n.parentNode);
+  check("video box: figure re-rendered and the video moved: the button follows", bs.length === 1 && bs[0].style.display === "block" && bs[0].style.top === "224px", bs.map((x) => [x.style.display, x.style.top]));
+  let debug = null;
+  p.handlers[0]({ action: "canvaDebug" }, {}, (r) => { debug = r; });
+  check("video box: debug lists the videos with rect / paused / src", !!debug && debug.videos.some((v) => v.rect.join() === "310,214,286,508" && v.paused === false && /^blob:/.test(v.src)), debug && debug.videos);
+  check("video box: debug tells which box was used and what was tried", !!debug && debug.figures[0].from === "video" && debug.figures[0].tried.length > 0 && debug.buttons.length === 1, debug && debug.figures);
 }
 
 async function reportContentTests() {
@@ -540,6 +587,8 @@ async function contentTests() {
   await contentTests();
   await realReportTests();
   await reportContentTests();
+  await clearKeepsNameTests();
+  await playingVideoBoxTests();
   console.log(failed ? failed + " FAILED" : "all ok");
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.log("  FAIL  harness error: " + (e && e.stack || e)); process.exit(1); });
