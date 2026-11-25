@@ -543,9 +543,9 @@ async function contentTests() {
   if (bs.length) {
     const root = bs[0].shadow;
     check("content: placed on the figure's box", parseInt(bs[0].style.top, 10) >= 100 && bs[0].style.right === `${1280 - 300 + 10}px`, [bs[0].style.top, bs[0].style.right]);
-    check("content: no Open-in-app arrow on it", !root.getElementById("go"));
+    check("content: same Open-in-app arrow as every site", !!root.getElementById("go"));
     const rows = root.find((n) => n.classList.contains("item") && !n.classList.contains("foot"));
-    check("content: figure A's button lists only clip A", rows.length === 1 && rows[0].textContent.includes(NAME_A), rows.map((r) => r.textContent));
+    check("content: figure A's button lists only clip A (plus the usual open-in-app row)", rows.length === 2 && rows[0].textContent.includes(NAME_A) && rows[1].textContent.includes("itemOpenApp"), rows.map((r) => r.textContent));
     p.sent.length = 0;
     if (rows[0]) rows[0].fire("click");
     await wait(20);
@@ -560,7 +560,7 @@ async function contentTests() {
   check("content: moving to figure B moves the button", bs.length === 1, bs.length);
   if (bs.length) {
     const rows = bs[0].shadow.find((n) => n.classList.contains("item") && !n.classList.contains("foot"));
-    check("content: B (no match yet) offers the clips without a figure", rows.length === 1 && rows[0].textContent.includes("Video 2"), rows.map((r) => r.textContent));
+    check("content: B (no match yet) offers the clips without a figure (plus the usual open-in-app row)", rows.length === 2 && rows[0].textContent.includes("Video 2") && rows[1].textContent.includes("itemOpenApp"), rows.map((r) => r.textContent));
     p.sent.length = 0;
     if (rows[0]) rows[0].fire("click");
     await wait(20);
