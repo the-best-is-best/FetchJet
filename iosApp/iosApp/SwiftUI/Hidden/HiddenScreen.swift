@@ -322,13 +322,17 @@ struct HiddenScreen: View {
     @ViewBuilder
     private func rowMenu(_ task: DownloadTask) -> some View {
         let s = store.strings
-        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: false, canCompress: false, canCut: false, selectEntry: true))
-        ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-            if entry.dividerBefore { Divider() }
-            Button(role: entry.danger ? ButtonRole.destructive : nil) {
-                actions.pick(task, entry)
-            } label: {
-                Text(RowMenu.shared.label(entry: entry, s: s))
+        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: false, canCompress: false, canCut: false,
+                                                                                    canExtractAudio: false, selectEntry: true))
+        ForEach(RowMenuGroups.of(entries), id: \.key) { group in
+            Section(RowMenuGroups.title(group.key, s)) {
+                ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                    Button(role: entry.danger ? ButtonRole.destructive : nil) {
+                        actions.pick(task, entry)
+                    } label: {
+                        Text(RowMenu.shared.label(entry: entry, s: s))
+                    }
+                }
             }
         }
     }

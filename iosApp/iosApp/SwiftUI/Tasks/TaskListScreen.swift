@@ -410,14 +410,19 @@ struct TaskListScreen: View {
     @ViewBuilder
     private func rowMenu(_ task: DownloadTask) -> some View {
         let s = store.strings
-        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, canCut: true, selectEntry: true))
-        ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-            if entry.dividerBefore { Divider() }
-            Button(role: entry.danger ? ButtonRole.destructive : nil) {
-                menuPicked = true
-                actions.pick(task, entry)
-            } label: {
-                Text(RowMenu.shared.label(entry: entry, s: s))
+        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, canCut: true,
+                                                                                    canExtractAudio: true, selectEntry: true))
+        ForEach(RowMenuGroups.of(entries), id: \.key) { group in
+            Section(RowMenuGroups.title(group.key, s)) {
+                ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                    Button(role: entry.danger ? ButtonRole.destructive : nil) {
+                        menuPicked = true
+                        actions.pick(task, entry)
+                    } label: {
+                        Text(RowMenu.shared.label(entry: entry, s: s))
+                    }
+                    .disabled(entry.name == "EXTRACT_AUDIO" && store.state.audioExtracting.contains(task.id))
+                }
             }
         }
     }
@@ -1249,6 +1254,8 @@ struct TaskRowActions {
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
         case "CUT":
             store.send(DashboardUiEventOnVideoCutClicked(taskId: task.id))
+        case "EXTRACT_AUDIO":
+            store.send(DashboardUiEventOnExtractAudioClicked(taskId: task.id))
         case "SUBTITLES":
             showDetails(task)
             store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
@@ -1266,6 +1273,29 @@ struct TaskRowActions {
             store.send(DashboardUiEventOnRemoveClicked(taskId: task.id))
         default:
             break
+        }
+    }
+}
+
+enum RowMenuGroups {
+    static func of(_ entries: [RowMenuEntry]) -> [(key: Int, entries: [RowMenuEntry])] {
+        var groups: [(key: Int, entries: [RowMenuEntry])] = []
+        for (i, entry) in entries.enumerated() {
+            if i == 0 || RowMenu.shared.startsSection(entries: entries, index: Int32(i)) {
+                groups.append((key: Int(entry.section.ordinal), entries: [entry]))
+            } else {
+                groups[groups.count - 1].entries.append(entry)
+            }
+        }
+        return groups
+    }
+
+    static func title(_ key: Int, _ s: AppLocalization) -> String {
+        switch key {
+        case 0: return s.rowMenuSectionOpen
+        case 1: return s.rowMenuSectionMedia
+        case 2: return s.rowMenuSectionDownload
+        default: return s.rowMenuSectionManage
         }
     }
 }

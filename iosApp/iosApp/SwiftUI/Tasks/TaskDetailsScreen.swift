@@ -397,6 +397,8 @@ private struct TaskDetailsContent: View {
         let openFolder = { _ = resolver.openFileLocation(filePath: path) }
         let canExtract = ArchiveTasks.shared.canExtract(task: task)
         let canSend = task.canSendToDevice()
+        let canAudio = AudioExtract.shared.canExtract(task: task)
+        let extracting = store.state.audioExtracting.contains(task.id)
         let canCut = VideoCut.shared.canCut(task: task)
         let canCompress = !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task)
         let canSubtitles = task.canAddSubtitles()
@@ -421,13 +423,21 @@ private struct TaskDetailsContent: View {
                     }
                 }
             }
-            if canFolder || canExtract || canSend {
+            if canFolder || canExtract || canSend || canAudio {
                 LazyVGrid(columns: tileColumns, spacing: 8) {
                     if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, icon: "folder", action: openFolder) }
                     if canExtract {
                         TaskDetailButton(text: s.extractNow, primary: false, icon: "archivebox") {
                             store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
                         }
+                    }
+                    if canAudio {
+                        TaskDetailButton(text: extracting ? s.audioExtractRunning : s.audioExtractTitle, primary: false,
+                                         icon: "waveform") {
+                            store.send(DashboardUiEventOnExtractAudioClicked(taskId: task.id))
+                        }
+                        .disabled(extracting)
+                        .opacity(extracting ? 0.6 : 1)
                     }
                     if canSend {
                         TaskDetailButton(text: s.sysDeviceSendTitle, primary: false, icon: "iphone.and.arrow.forward") {

@@ -412,6 +412,18 @@ struct VideoCutClipsSection: View {
 
     private var clips: [CutClip] { store.state.videoClips[task.id] ?? [] }
 
+
+    private func isAudio(_ clip: CutClip) -> Bool {
+        let ext = (clip.path as NSString).pathExtension.lowercased()
+        return ["m4a", "mp3", "opus", "ogg", "oga", "flac", "wav", "mka", "ac3", "aac"].contains(ext)
+    }
+
+    private func clipLine(_ clip: CutClip) -> String {
+        let size = ByteCountFormatter.string(fromByteCount: clip.bytes, countStyle: .file)
+        if clip.startMs == 0 && isAudio(clip) { return size }
+        return "\(FJTrimFormat.text(clip.startMs)) – \(FJTrimFormat.text(clip.endMs)) · \(size)"
+    }
+
     var body: some View {
         let s = store.strings
         if !clips.isEmpty {
@@ -421,7 +433,7 @@ struct VideoCutClipsSection: View {
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                 ForEach(clips, id: \.path) { clip in
                     HStack(spacing: 10) {
-                        Image(systemName: "film")
+                        Image(systemName: isAudio(clip) ? "waveform" : "film")
                             .font(.fj(14, .semibold))
                             .foregroundStyle(FJTheme.color.primary)
                             .frame(width: 32, height: 32)
@@ -432,7 +444,7 @@ struct VideoCutClipsSection: View {
                                 .foregroundStyle(FJTheme.color.onSurface)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
-                            Text("\(FJTrimFormat.text(clip.startMs)) – \(FJTrimFormat.text(clip.endMs)) · \(ByteCountFormatter.string(fromByteCount: clip.bytes, countStyle: .file))")
+                            Text(clipLine(clip))
                                 .font(.fj(11))
                                 .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 .lineLimit(1)
