@@ -10,6 +10,8 @@ import { RowMenuItemDto } from "../generated/dto.slint";
 
 export struct PlayerRow { title: string, video: bool, active: bool }
 
+export struct TrimTile { img: image, at: float, len: float }
+
 export global PlayerUi {
     in-out property <bool> open;
     in property <image> frame;
@@ -53,9 +55,15 @@ export global PlayerUi {
     callback sub-pick(int);
     in property <bool> trim;
     in property <bool> trim-ready;
-    in property <[image]> trim-thumbs;
+    in property <[TrimTile]> trim-thumbs;
     in property <bool> trim-audio;
     in property <[float]> trim-wave;
+    in property <float> trim-wave-first;
+    in property <float> trim-wave-step;
+    in property <float> trim-view-start;
+    in property <float> trim-view-span: 1;
+    in property <bool> trim-zoom-in;
+    in property <bool> trim-zoom-out;
     in property <float> trim-start;
     in property <float> trim-end: 1;
     in property <float> trim-playhead;
@@ -63,7 +71,11 @@ export global PlayerUi {
     in property <string> trim-end-label;
     in property <string> trim-length-label;
     in property <int> trim-active;
-    callback trim-drag(int, float);
+    callback trim-drag-view(int, float);
+    callback trim-drag-end();
+    callback trim-pan(float);
+    callback trim-zoom(float, float);
+    callback trim-overview(float);
     callback trim-seek(float);
     callback trim-select(int);
     callback trim-nudge(int, int);
@@ -74,7 +86,7 @@ export global PlayerUi {
     callback trim-strip-size(int, int);
 }
 
-component PBtn inherits Rectangle {
+export component PBtn inherits Rectangle {
     in property <string> commands;
     in property <bool> filled;
     in property <bool> enabled: true;
@@ -288,6 +300,7 @@ component TrimHandle inherits Rectangle {
     in property <bool> active;
     callback grab();
     callback drag(length);
+    callback release();
     width: 18px;
     background: Theme.primary;
     border-top-left-radius: root.side == 0 ? 8px : 0px;
@@ -312,6 +325,9 @@ component TrimHandle inherits Rectangle {
             if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
                 root.grab();
             }
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                root.release();
+            }
         }
         moved => {
             if self.pressed {
@@ -325,8 +341,15 @@ component TrimStrip inherits Rectangle {
     private property <length> hw: 18px;
     private property <length> track-x: root.hw;
     private property <length> track-w: max(root.width - 2 * root.hw, 1px);
-    private property <length> sx: root.track-x + root.track-w * PlayerUi.trim-start;
-    private property <length> ex: root.track-x + root.track-w * PlayerUi.trim-end;
+    private property <float> vs: PlayerUi.trim-view-start;
+    private property <float> vw: max(PlayerUi.trim-view-span, 0.000001);
+    private property <length> sx: root.track-x + (PlayerUi.trim-start - root.vs) / root.vw * root.track-w;
+    private property <length> ex: root.track-x + (PlayerUi.trim-end - root.vs) / root.vw * root.track-w;
+    private property <length> csx: clamp(root.sx, root.track-x, root.track-x + root.track-w);
+    private property <length> cex: clamp(root.ex, root.track-x, root.track-x + root.track-w);
+    private property <length> px: root.track-x + (PlayerUi.trim-playhead - root.vs) / root.vw * root.track-w;
+    private property <bool> panning;
+    private property <length> last-x;
     function report() {
         PlayerUi.trim-strip-size(Math.round(root.track-w / 1phx), Math.round(thumbs.height / 1phx));
     }
@@ -341,89 +364,172 @@ component TrimStrip inherits Rectangle {
         background: PlayerUi.trim-audio ? #1C1C24 : #FFFFFF14;
         clip: true;
         if PlayerUi.trim-audio: Rectangle {
-            private property <length> step: parent.width / max(PlayerUi.trim-wave.length, 1);
+            private property <length> step: PlayerUi.trim-wave-step / root.vw * root.track-w;
+            private property <length> first: (PlayerUi.trim-wave-first - root.vs) / root.vw * root.track-w;
             for peak[i] in PlayerUi.trim-wave: Rectangle {
-                x: i * parent.step + parent.step * 0.2;
+                x: parent.first + i * parent.step + parent.step * 0.2;
                 width: max(1px, parent.step * 0.6);
                 height: max(1.5px, clamp(peak, 0, 1) * parent.height * 0.9);
                 y: (parent.height - self.height) / 2;
                 background: #8FA3C8;
             }
         }
-        for img[i] in PlayerUi.trim-thumbs: Image {
-            x: i * parent.width / max(PlayerUi.trim-thumbs.length, 1);
-            width: parent.width / max(PlayerUi.trim-thumbs.length, 1) + 1px;
+        for tile in PlayerUi.trim-thumbs: Image {
+            x: (tile.at - root.vs) / root.vw * root.track-w;
+            width: tile.len / root.vw * root.track-w + 1px;
             height: parent.height;
-            source: img;
-            image-fit: fill;
+            source: tile.img;
+            image-fit: cover;
         }
     }
     scrub := TouchArea {
         x: root.track-x;
         width: root.track-w;
         enabled: PlayerUi.trim-ready;
+        mouse-cursor: root.panning ? MouseCursor.grabbing : MouseCursor.default;
         pointer-event(e) => {
             if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
-                PlayerUi.trim-seek(clamp(self.mouse-x / self.width, 0, 1));
+                root.panning = false;
+                root.last-x = self.mouse-x;
+            }
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                if !root.panning {
+                    PlayerUi.trim-seek(clamp(root.vs + self.mouse-x / self.width * root.vw, 0, 1));
+                }
+                root.panning = false;
             }
         }
         moved => {
             if self.pressed {
-                PlayerUi.trim-seek(clamp(self.mouse-x / self.width, 0, 1));
+                if !root.panning && abs(self.mouse-x - self.pressed-x) > 4px {
+                    root.panning = true;
+                }
+                if root.panning {
+                    PlayerUi.trim-pan((root.last-x - self.mouse-x) / self.width);
+                }
+                root.last-x = self.mouse-x;
             }
+        }
+        scroll-event(e) => {
+            if e.modifiers.control {
+                if e.delta-y != 0px {
+                    PlayerUi.trim-zoom(e.delta-y > 0 ? 0.8 : 1.25, clamp(self.mouse-x / self.width, 0, 1));
+                }
+                return accept;
+            }
+            PlayerUi.trim-pan(-(abs(e.delta-x) > abs(e.delta-y) ? e.delta-x : e.delta-y) / self.width);
+            accept
         }
     }
     Rectangle {
         x: root.track-x;
         y: thumbs.y;
-        width: max(0px, root.sx - root.track-x);
+        width: max(0px, root.csx - root.track-x);
         height: thumbs.height;
         background: #000000B8;
     }
     Rectangle {
-        x: root.ex;
+        x: root.cex;
         y: thumbs.y;
-        width: max(0px, root.track-x + root.track-w - root.ex);
+        width: max(0px, root.track-x + root.track-w - root.cex);
         height: thumbs.height;
         background: #000000B8;
     }
     Rectangle {
-        x: root.sx;
+        x: root.csx;
         y: 0px;
-        width: max(0px, root.ex - root.sx);
+        width: max(0px, root.cex - root.csx);
         height: 4px;
         background: Theme.primary;
     }
     Rectangle {
-        x: root.sx;
+        x: root.csx;
         y: parent.height - 4px;
-        width: max(0px, root.ex - root.sx);
+        width: max(0px, root.cex - root.csx);
         height: 4px;
         background: Theme.primary;
     }
-    Rectangle {
-        x: root.track-x + root.track-w * PlayerUi.trim-playhead - 1px;
+    if root.px >= root.track-x - 1px && root.px <= root.track-x + root.track-w + 1px: Rectangle {
+        x: root.px - 1px;
         y: -5px;
         width: 2px;
         height: parent.height + 10px;
         border-radius: 1px;
         background: #FFFFFF;
     }
-    TrimHandle {
-        side: 0;
-        x: root.sx - self.width;
+    Rectangle {
+        width: parent.width;
         height: parent.height;
-        active: PlayerUi.trim-active == 0;
-        grab => { PlayerUi.trim-select(0); }
-        drag(d) => { PlayerUi.trim-drag(0, clamp((root.sx + d - root.track-x) / root.track-w, 0, 1)); }
+        clip: true;
+        TrimHandle {
+            side: 0;
+            x: root.sx - self.width;
+            height: parent.height;
+            visible: self.x > -self.width && self.x < parent.width;
+            active: PlayerUi.trim-active == 0;
+            grab => { PlayerUi.trim-select(0); }
+            drag(d) => { PlayerUi.trim-drag-view(0, (root.sx + d - root.track-x) / root.track-w); }
+            release => { PlayerUi.trim-drag-end(); }
+        }
+        TrimHandle {
+            side: 1;
+            x: root.ex;
+            height: parent.height;
+            visible: self.x > -self.width && self.x < parent.width;
+            active: PlayerUi.trim-active == 1;
+            grab => { PlayerUi.trim-select(1); }
+            drag(d) => { PlayerUi.trim-drag-view(1, (root.ex + d - root.track-x) / root.track-w); }
+            release => { PlayerUi.trim-drag-end(); }
+        }
     }
-    TrimHandle {
-        side: 1;
-        x: root.ex;
+}
+
+component TrimOverview inherits Rectangle {
+    private property <float> vs: clamp(PlayerUi.trim-view-start, 0, 1);
+    private property <float> vw: clamp(PlayerUi.trim-view-span, 0, 1);
+    height: 12px;
+    border-radius: 3px;
+    background: #FFFFFF1A;
+    Rectangle {
+        x: parent.width * clamp(PlayerUi.trim-start, 0, 1);
+        width: max(2px, parent.width * (clamp(PlayerUi.trim-end, 0, 1) - clamp(PlayerUi.trim-start, 0, 1)));
+        y: 2px;
+        height: parent.height - 4px;
+        border-radius: 2px;
+        background: Theme.primary.with-alpha(0.75);
+    }
+    Rectangle {
+        x: min(parent.width * root.vs, parent.width - self.width);
+        width: max(6px, parent.width * root.vw);
         height: parent.height;
-        active: PlayerUi.trim-active == 1;
-        grab => { PlayerUi.trim-select(1); }
-        drag(d) => { PlayerUi.trim-drag(1, clamp((root.ex + d - root.track-x) / root.track-w, 0, 1)); }
+        border-radius: 3px;
+        border-width: 1.5px;
+        border-color: #FFFFFF;
+        background: #FFFFFF14;
+    }
+    Rectangle {
+        x: parent.width * clamp(PlayerUi.trim-playhead, 0, 1) - 1px;
+        y: -2px;
+        width: 2px;
+        height: parent.height + 4px;
+        background: #FFFFFF;
+    }
+    TouchArea {
+        enabled: PlayerUi.trim-ready;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                PlayerUi.trim-overview(clamp(self.mouse-x / self.width, 0, 1));
+            }
+        }
+        moved => {
+            if self.pressed {
+                PlayerUi.trim-overview(clamp(self.mouse-x / self.width, 0, 1));
+            }
+        }
+        scroll-event(e) => {
+            PlayerUi.trim-pan(-(abs(e.delta-x) > abs(e.delta-y) ? e.delta-x : e.delta-y) / self.width);
+            accept
+        }
     }
 }
 
@@ -462,7 +568,7 @@ component TrimTime inherits Rectangle {
 }
 
 component TrimPanel inherits Rectangle {
-    height: 186px;
+    height: 204px;
     background: #000000E6;
     TouchArea { }
     Rectangle {
@@ -501,12 +607,17 @@ component TrimPanel inherits Rectangle {
         y: 60px;
         width: parent.width - 32px;
     }
+    TrimOverview {
+        x: 34px;
+        y: 130px;
+        width: parent.width - 68px;
+    }
     Rectangle {
         x: 16px;
-        y: 126px;
+        y: 144px;
         width: parent.width - 32px;
         height: 56px;
-        FilledButton {
+        cancel := FilledButton {
             x: Dir.rtl ? parent.width - self.width : 0px;
             y: (parent.height - self.height) / 2;
             width: self.min-width;
@@ -515,6 +626,35 @@ component TrimPanel inherits Rectangle {
             container: #FFFFFF1F;
             ink: #FFFFFF;
             clicked => { PlayerUi.trim-cancel(); }
+        }
+        HorizontalLayout {
+            x: Dir.rtl ? cancel.x - 12px - self.preferred-width : cancel.x + cancel.width + 12px;
+            width: self.preferred-width;
+            height: parent.height;
+            spacing: 4px;
+            alignment: center;
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                size: 34px;
+                glyph-size: 18px;
+                filled: true;
+                enabled: PlayerUi.trim-ready && PlayerUi.trim-zoom-out;
+                container: #FFFFFF14;
+                commands: "M 5 11 L 19 11 L 19 13 L 5 13 Z";
+                label: "-";
+                clicked => { PlayerUi.trim-zoom(1.6, 0.5); }
+            }
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                size: 34px;
+                glyph-size: 18px;
+                filled: true;
+                enabled: PlayerUi.trim-ready && PlayerUi.trim-zoom-in;
+                container: #FFFFFF14;
+                commands: "M 11 5 L 13 5 L 13 11 L 19 11 L 19 13 L 13 13 L 13 19 L 11 19 L 11 13 L 5 13 L 5 11 L 11 11 Z";
+                label: "+";
+                clicked => { PlayerUi.trim-zoom(0.625, 0.5); }
+            }
         }
         HorizontalLayout {
             x: (parent.width - self.preferred-width) / 2;
@@ -645,6 +785,14 @@ export component PlayerPage inherits Rectangle {
                     PlayerUi.trim-select(PlayerUi.trim-active == 0 ? 1 : 0);
                     return accept;
                 }
+                if e.text == "+" || e.text == "=" {
+                    PlayerUi.trim-zoom(0.625, 0.5);
+                    return accept;
+                }
+                if e.text == "-" || e.text == "_" {
+                    PlayerUi.trim-zoom(1.6, 0.5);
+                    return accept;
+                }
                 if e.text == Key.UpArrow || e.text == Key.DownArrow {
                     return accept;
                 }
@@ -683,7 +831,7 @@ export component PlayerPage inherits Rectangle {
     video := Rectangle {
         y: PlayerUi.trim ? 60px : 0px;
         width: parent.width;
-        height: PlayerUi.trim ? max(0px, parent.height - 60px - 186px) : parent.height;
+        height: PlayerUi.trim ? max(0px, parent.height - 60px - 204px) : parent.height;
         if PlayerUi.has-video: Image {
             width: parent.width;
             height: parent.height;

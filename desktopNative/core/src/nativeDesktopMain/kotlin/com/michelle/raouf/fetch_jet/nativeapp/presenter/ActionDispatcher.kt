@@ -452,9 +452,13 @@ private fun Presenter.rowQuickAction(id: String) {
 internal fun Presenter.openDownloadedFile(fullPath: String, taskId: String) {
     if (local.value.hiddenOpen) {
         if (!headless && playHiddenTask(taskId)) return
+        if (task(taskId)?.let { readPdf(it) } == true) return
         return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(taskId))
     }
-    task(taskId)?.let { if (!headless && playTask(it)) return }
+    task(taskId)?.let {
+        if (!headless && playTask(it)) return
+        if (readPdf(it)) return
+    }
     scope.launch(Dispatchers.IO) {
         if (!pathResolver.fileExists(fullPath)) {
             local.update { it.copy(missingFileTaskId = taskId) }

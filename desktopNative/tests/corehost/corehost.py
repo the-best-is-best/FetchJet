@@ -319,6 +319,8 @@ def refuse_in_tests(action_type, fields):
     reason = None
     if action_type in ("DownloadTools", "PlayerLibraryDownload") or (action_type == "SettingClick" and key in ("tools", "updateCheck", "playerLibrary")):
         reason = "it downloads from the internet"
+    elif action_type == "SettingClick" and key == "pdfLibrary" and not os.environ.get("FETCHJET_PDFIUM_URL"):
+        reason = "it downloads from the internet"
     elif action_type == "SetWhenDone" and fields.get("index", 0) != 0:
         reason = "it can put the PC to sleep or shut it down"
     elif action_type == "SettingPick" and key == "whenDone" and fields.get("index", 0) != 0:

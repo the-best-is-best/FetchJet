@@ -986,6 +986,43 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
                 )
             )
         }
+        rows.divider()
+        val pdfMode = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode
+        rows.add(
+            pickerRow(
+                "pdfReader",
+                s.pdfModeTitle,
+                s.pdfModeHint,
+                listOf(s.playerModeAsk, s.pdfModeOn, s.playerModeOff),
+                when {
+                    pdfMode.isOn() -> 2
+                    pdfMode.isOff() -> 3
+                    else -> 1
+                },
+                below = true,
+            )
+        )
+        if (pdfMode.isOn() && !com.michelle.raouf.fetch_jet.feature.pdf_reader.isPdfLibraryReady()) {
+            val pdfium = v.isDownloadingYtDlp && v.toolDownloadName == "PDFium"
+            rows.add(noteRow(s.pdfAskText, ToneCode.MUTED))
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 8,
+                    bottom = 14,
+                    buttons = listOf(
+                        button(
+                            "pdfLibrary",
+                            if (pdfium) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("PDFium", (it * 100).toInt()) } ?: s.mediaDownloadingTool("PDFium")
+                            else s.pdfAskDownload,
+                            filled = true,
+                            enabled = !v.isDownloadingYtDlp,
+                            busy = pdfium,
+                        )
+                    ),
+                )
+            )
+        }
         if (v.toolsDirectoryPath.isNotBlank()) {
             rows.divider()
             rows.add(
