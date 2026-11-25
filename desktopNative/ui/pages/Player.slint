@@ -487,35 +487,24 @@ component TrimStrip inherits Rectangle {
 component TrimOverview inherits Rectangle {
     private property <float> vs: clamp(PlayerUi.trim-view-start, 0, 1);
     private property <float> vw: clamp(PlayerUi.trim-view-span, 0, 1);
-    height: 12px;
-    border-radius: 3px;
-    background: #FFFFFF1A;
+    height: 10px;
     Rectangle {
-        x: parent.width * clamp(PlayerUi.trim-start, 0, 1);
-        width: max(2px, parent.width * (clamp(PlayerUi.trim-end, 0, 1) - clamp(PlayerUi.trim-start, 0, 1)));
-        y: 2px;
-        height: parent.height - 4px;
+        y: (parent.height - self.height) / 2;
+        height: 4px;
         border-radius: 2px;
-        background: Theme.primary.with-alpha(0.75);
-    }
-    Rectangle {
-        x: min(parent.width * root.vs, parent.width - self.width);
-        width: max(6px, parent.width * root.vw);
-        height: parent.height;
-        border-radius: 3px;
-        border-width: 1.5px;
-        border-color: #FFFFFF;
         background: #FFFFFF14;
     }
-    Rectangle {
-        x: parent.width * clamp(PlayerUi.trim-playhead, 0, 1) - 1px;
-        y: -2px;
-        width: 2px;
-        height: parent.height + 4px;
-        background: #FFFFFF;
+    thumb := Rectangle {
+        x: min(parent.width * root.vs, parent.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: max(24px, parent.width * root.vw);
+        height: area.has-hover || area.pressed ? 8px : 6px;
+        border-radius: self.height / 2;
+        background: area.pressed ? #FFFFFFB3 : area.has-hover ? #FFFFFF8C : #FFFFFF59;
     }
-    TouchArea {
+    area := TouchArea {
         enabled: PlayerUi.trim-ready;
+        mouse-cursor: default;
         pointer-event(e) => {
             if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
                 PlayerUi.trim-overview(clamp(self.mouse-x / self.width, 0, 1));
@@ -606,6 +595,11 @@ component TrimPanel inherits Rectangle {
         x: 16px;
         y: 60px;
         width: parent.width - 32px;
+    }
+    if PlayerUi.trim-view-span < 0.999: TrimOverview {
+        x: 34px;
+        y: 131px;
+        width: parent.width - 68px;
     }
     Rectangle {
         x: 16px;

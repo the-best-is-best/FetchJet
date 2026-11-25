@@ -353,6 +353,11 @@ struct FJTrimTimeline: View {
                     .onChange(of: geo.size.width) { _, w in setWidth(w) }
             }
             .frame(height: stripHeight + inset * 2)
+            if viewport.endMs - viewport.startMs < viewport.durationMs * 0.999 {
+                FJTrimOverview(model: model, viewport: viewport)
+                    .frame(height: 14)
+                    .padding(.horizontal, handle)
+            }
         }
         .environment(\.layoutDirection, .leftToRight)
         .onChange(of: viewport.startMs) { _, _ in refreshThumbs() }
@@ -666,20 +671,13 @@ struct FJTrimOverview: View {
     private func draw(_ context: GraphicsContext, _ size: CGSize) {
         let d = viewport.durationMs
         let px: (Double) -> CGFloat = { CGFloat(min(max($0 / d, 0), 1)) * size.width }
-        let barHeight: CGFloat = 6
-        let barY = (size.height - barHeight) / 2
-        context.fill(Path(roundedRect: CGRect(x: 0, y: barY, width: size.width, height: barHeight), cornerRadius: 3),
-                     with: .color(Color.white.opacity(0.15)))
-        let sx = px(Double(model.startMs))
-        let ex = px(Double(model.endMs))
-        context.fill(Path(roundedRect: CGRect(x: sx, y: barY, width: max(ex - sx, 2), height: barHeight), cornerRadius: 3),
-                     with: .color(FJTheme.color.primary.opacity(0.85)))
-        let vw = min(max(px(viewport.endMs) - px(viewport.startMs), 6), size.width)
+        let track: CGFloat = 4
+        context.fill(Path(roundedRect: CGRect(x: 0, y: (size.height - track) / 2, width: size.width, height: track), cornerRadius: track / 2),
+                     with: .color(Color.white.opacity(0.08)))
+        let thumb: CGFloat = 6
+        let vw = min(max(px(viewport.endMs) - px(viewport.startMs), 24), size.width)
         let vx = min(px(viewport.startMs), size.width - vw)
-        let frame = CGRect(x: vx, y: 1, width: vw, height: size.height - 2)
-        context.fill(Path(roundedRect: frame, cornerRadius: 4), with: .color(Color.white.opacity(0.08)))
-        context.stroke(Path(roundedRect: frame, cornerRadius: 4), with: .color(.white.opacity(0.9)), lineWidth: 1.5)
-        let hx = px(Double(model.playheadMs))
-        context.fill(Path(CGRect(x: hx - 1, y: 0, width: 2, height: size.height)), with: .color(.white))
+        context.fill(Path(roundedRect: CGRect(x: vx, y: (size.height - thumb) / 2, width: vw, height: thumb), cornerRadius: thumb / 2),
+                     with: .color(Color.white.opacity(0.35)))
     }
 }

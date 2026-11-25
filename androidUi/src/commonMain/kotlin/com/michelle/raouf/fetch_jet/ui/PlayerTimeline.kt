@@ -533,16 +533,39 @@ private fun TrimOverview(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            if (state.ready) com.michelle.raouf.fetch_jet.utils.ltr(
-                "${MediaPlayback.formatTime(state.offsetMs.toLong())} – ${MediaPlayback.formatTime((state.offsetMs + state.visibleMs).toLong())}  /  ${MediaPlayback.formatTime(state.totalMs.toLong())}"
-            ) else "",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 12.sp,
-            fontFamily = FontFamily.Monospace,
-            maxLines = 1,
-            modifier = Modifier.weight(1f)
-        )
+        Canvas(
+            modifier = Modifier.weight(1f).fillMaxHeight()
+                .pointerInput(state) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        fun jump(x: Float) {
+                            if (state.ready && size.width > 0) state.centerOn(x / size.width * state.totalMs)
+                        }
+                        down.consume()
+                        jump(down.position.x)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            if (change.positionChanged()) {
+                                change.consume()
+                                jump(change.position.x)
+                            }
+                        }
+                    }
+                }
+        ) {
+            if (!state.ready || state.visibleMs >= state.totalMs * 0.999f) return@Canvas
+            val total = state.totalMs.toFloat()
+            val w = size.width
+            val cy = size.height / 2f
+            val track = 4.dp.toPx()
+            drawRoundRect(Color(0x14FFFFFF), Offset(0f, cy - track / 2f), Size(w, track), CornerRadius(track / 2f))
+            val thumb = 6.dp.toPx()
+            val tw = (state.visibleMs / total * w).coerceIn(24.dp.toPx(), w)
+            val tx = (state.offsetMs / total * w).coerceIn(0f, w - tw)
+            drawRoundRect(Color(0x59FFFFFF), Offset(tx, cy - thumb / 2f), Size(tw, thumb), CornerRadius(thumb / 2f))
+        }
         TrimZoomButton("−") { state.zoomBy(0.5f, state.trackPx / 2f) }
         TrimZoomButton("+") { state.zoomBy(2f, state.trackPx / 2f) }
     }
