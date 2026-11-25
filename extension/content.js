@@ -305,14 +305,21 @@
     }
     return "";
   }
-  function canvaPageOf(f) {
+  function canvaPageInfo(f) {
     for (let e = f.parentElement, i = 0; e && i < 40; e = e.parentElement, i++) {
       if (e.getAttribute && e.getAttribute("role") === "group") {
-        const m = /(\d+)/.exec(e.getAttribute("aria-label") || "");
-        if (m) return Number(m[1]);
+        const label = e.getAttribute("aria-label") || "";
+        const m = /(\d+)/.exec(label);
+        if (m) return { n: Number(m[1]), title: label.replace(/^[^,،]*\d+\s*[,،]?\s*/, "").trim() };
       }
     }
-    return 0;
+    return { n: 0, title: "" };
+  }
+  const canvaPageOf = (f) => canvaPageInfo(f).n;
+  function canvaVideoFigure(v) {
+    const p = canvaPageInfo(v);
+    const base = (p.title || document.title.replace(/\s+[-–]\s+[^-–]*$/, "") || "Canva").replace(/[\\/:*?"<>|]+/g, " ").trim();
+    return { el: v, name: `${base}${p.n ? ` - ${p.n}` : ""}.mp4`, page: p.n, synthetic: true };
   }
   let canvaSent = "", canvaPicked = null, canvaClickAt = 0, canvaHover = null, canvaHoverLeft = 0, canvaPlaying = null, canvaVideo = null;
   function canvaScope(el) {
@@ -458,7 +465,8 @@
     const videos = all.filter((f) => !CANVA_AUDIO_NAME.test(f.name));
     const shown = videos.filter((f) => canvaShown(f.el));
     if (shown.length === 1) return shown[0];
-    return !shown.length && videos.length === 1 ? videos[0] : null;
+    if (!shown.length && videos.length === 1) return videos[0];
+    return canvaVideoFigure(v);
   }
   const canvaSeen = new WeakMap();
   const canvaHooked = new WeakSet();
@@ -516,6 +524,7 @@
   }
   function placeCanva() {
     const figs = onCanvaDesign() ? canvaFigureEls() : [];
+    if (canvaPlaying && canvaPlaying.synthetic && canvaPlaying.el.isConnected && !figs.some((f) => f.name === canvaPlaying.name && f.page === canvaPlaying.page)) figs.push(canvaPlaying);
     const targets = [];
     if (canvaHover && (!canvaHoverLeft || Date.now() - canvaHoverLeft < 1500)) targets.push(canvaHover);
     if (canvaPicked) targets.push(canvaPicked);
