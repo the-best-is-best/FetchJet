@@ -27,8 +27,8 @@ internal object PlayerLibraryPin {
     const val VERSION = "0.42.0"
     const val REPOSITORY = "the-best-is-best/fetchjet-tools"
     const val RELEASE_TAG = "libmpv-$VERSION"
-    const val WINDOWS_X64_SHA256 = "ecdd46e7d604e493227aca10e669063ce8825cb90e7a687d80ae671e274528c3"
-    const val LINUX_X64_SHA256 = ""
+    const val WINDOWS_X64_SHA256 = "60318691d95a8d21c4b575ec377d45ec40ef111ddd5932889ab19bfef466a252"
+    const val LINUX_X64_SHA256 = "fca7eb8c622938c7d07d6a8107d645383eb00922a74c9c48b9db9452415fd62b"
     const val MACOS_ARM64_SHA256 = "53944aff2a7ece0baeec869c5e2aa67037ff093e2122fb5f526c01c46518fde5"
 }
 
