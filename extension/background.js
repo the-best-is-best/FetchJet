@@ -1405,6 +1405,8 @@ const CANVA_PAGE = /^https:\/\/([\w-]+\.)?canva\.(com|cn)\/design\/([\w-]+)/i;
 const CANVA_ORIGIN = /canva\.(com|cn)|canva-apps\.com|canvausercontent\.com/i;
 const CANVA_PREVIEW = /thumb|poster|preview|sprite|storyboard|filmstrip|waveform|placeholder|image-resize|document-image/i;
 const CANVA_PLAY_WINDOW = 8000;
+const CANVA_PAIR_MS = 1500;
+const CANVA_FILE_EXTS = new Set(["mp4", "m4v", "mov", "webm", "mkv", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav", "weba"]);
 const CANVA_AUDIO_EXTS = new Set(["mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav", "weba"]);
 const CANVA_TYPE_EXT = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "video/x-matroska": "mkv", "video/x-m4v": "m4v", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac", "audio/webm": "weba" };
 
@@ -1431,7 +1433,10 @@ function canvaTokens(url, design = "") {
   for (const m of text.matchAll(/(?:^|[^A-Za-z0-9_-])([VM][A-Z][A-Za-z0-9_-]{9})(?=$|[^A-Za-z0-9_-])/g)) out.add(m[1]);
   let path = "";
   try { path = decodeURIComponent(new URL(url).pathname); } catch (_) {}
-  for (const seg of path.split(/[/:]/)) if (/^[A-Za-z0-9_-]{16,}$/.test(seg) && /\d/.test(seg) && /[a-z]/i.test(seg)) out.add(seg);
+  for (const part of path.split(/[/:]/)) {
+    const seg = part.replace(/\.[A-Za-z0-9]{2,5}$/, "");
+    if (/^[A-Za-z0-9_-]{16,}$/.test(seg) && /\d/.test(seg) && /[a-z]/i.test(seg)) out.add(seg);
+  }
   if (design) out.delete(design);
   return [...out].slice(0, 12);
 }
@@ -1482,6 +1487,16 @@ function canvaClips(state) {
     }
   };
   groupBy(f => f.tokens || []);
+  const firsts = [...new Set(files.map(f => find(f.key)))].map(root => {
+    const mine = members(root);
+    return { root, v: mine.some(f => !f.audio), a: mine.some(f => f.audio), first: Math.min(...mine.map(f => f.first || Infinity)) };
+  }).filter(g => isFinite(g.first));
+  for (const g of firsts.filter(x => x.v && !x.a)) {
+    const near = firsts.filter(x => x !== g && Math.abs(x.first - g.first) <= CANVA_PAIR_MS);
+    if (near.length !== 1 || !near[0].a || near[0].v) continue;
+    if (firsts.some(x => x !== g && x !== near[0] && Math.abs(x.first - near[0].first) <= CANVA_PAIR_MS)) continue;
+    join(g.root, near[0].root);
+  }
   groupBy(f => { const last = (f.dir || "").split("/").pop(); return last.length >= 8 && /\d/.test(last) ? [f.dir] : []; });
   const clips = [];
   for (const root of new Set(files.map(f => find(f.key)))) {
@@ -1535,13 +1550,13 @@ async function addCanvaMedia(details, pageUrl) {
   const save = async (note) => { logCanva(state, details, note); all[details.tabId] = state; await sessionSet(CANVA_KEY, all); };
   let host = "", path = "";
   try { const u = new URL(url); host = u.hostname; path = u.pathname; } catch (_) { return; }
-  if (/^(image|text|font)\//.test(ctype) || /json|javascript/.test(ctype)) return save("not media");
-  if (ctype.startsWith("video/mp2t") || ctype.includes("iso.segment") || /\.(m4s|ts|cmfv|cmfa)$/i.test(path)) return save("segment");
   const ext = extensionOf(url);
+  if (!/^media\.canva\.(com|cn)$/i.test(host) || !/^\/v2\/files\//i.test(path) || !CANVA_FILE_EXTS.has(ext) || /^(image|text|font)\//.test(ctype)) {
+    if ((state.log || []).some(x => x.url === stripQuery(url))) return;
+    return save("ignored");
+  }
   const tokens = canvaTokens(url, design);
-  const stream = ext === "m3u8" || ext === "mpd" || ctype.includes("mpegurl") || ctype.includes("dash+xml");
-  const media = /^(video|audio)\//.test(ctype) || stream || MEDIA_EXTS.has(ext);
-  if (!media && !(tokens.length && (!ctype || /octet-stream/.test(ctype)))) return save("not media");
+  const stream = false;
   const range = /\/(\d+)\s*$/.exec(header(headers, "content-range"));
   const size = range ? parseInt(range[1], 10) : details.statusCode === 200 ? (parseInt(header(headers, "content-length"), 10) || 0) : 0;
   if (!stream && size > 0 && size < 512 * 1024) return save("small");
@@ -1559,7 +1574,7 @@ async function addCanvaMedia(details, pageUrl) {
     const keys = Object.keys(state.files);
     if (keys.length >= 80) delete state.files[keys[0]];
     state.next = (state.next || 0) + 1;
-    state.files[key] = { ...file, order: state.next, hits: [now] };
+    state.files[key] = { ...file, order: state.next, hits: [now], first: now };
   } else {
     shown = false;
     old.hits = [...(old.hits || []).filter(t => now - t < 60000).slice(-29), now];
@@ -1581,11 +1596,13 @@ async function addCanvaFigures(tab, figures, play, bind) {
     const all = await sessionGet(CANVA_KEY);
     const state = canvaState(all, tab.id, design, tab.url);
     const cleanIds = (ids) => (Array.isArray(ids) ? ids : []).map(String).filter(i => i.length >= 8 && i.length <= 64 && i !== design).slice(0, 12);
-    for (const f of (Array.isArray(figures) ? figures : []).slice(0, 200)) {
+    const list = Array.isArray(figures) ? figures : [];
+    if (list.length) state.figures.forEach(g => { g.visible = false; });
+    for (const f of list.slice(0, 200)) {
       const name = String((f && f.name) || "").trim().slice(0, 200);
       if (!name) continue;
       const page = Number(f.page) || 0;
-      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: f.box || null };
+      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: f.box || null, visible: !!f.visible };
       const same = state.figures.find(g => g.name === name && (!page || !g.page || g.page === page));
       if (same) {
         same.page = same.page || page;
@@ -1593,14 +1610,15 @@ async function addCanvaFigures(tab, figures, play, bind) {
         if (fig.thumb) same.thumb = fig.thumb;
         if (fig.duration) same.duration = fig.duration;
         if (fig.box) same.box = fig.box;
+        same.visible = fig.visible;
       } else state.figures.push(fig);
     }
     if (state.figures.length > 300) state.figures = state.figures.slice(-300);
-    if (play && play.name) {
+    if (play && (play.name || play.at)) {
       const at = Number(play.at) || Date.now();
       const since = Math.min(at, Number(play.since) || at - 3000);
-      state.plays = [...(state.plays || []).slice(-19), { name: String(play.name).slice(0, 200), page: Number(play.page) || 0, ids: cleanIds(play.ids), since, at, key: "" }];
-      const fig = state.figures.find(g => g.name === play.name && (!play.page || !g.page || g.page === Number(play.page)));
+      state.plays = [...(state.plays || []).slice(-19), { name: String(play.name || "").slice(0, 200), page: Number(play.page) || 0, ids: cleanIds(play.ids), since, at, key: "" }];
+      const fig = play.name ? state.figures.find(g => g.name === play.name && (!play.page || !g.page || g.page === Number(play.page))) : null;
       if (fig && play.duration) fig.duration = Number(play.duration) || fig.duration;
     }
     if (bind && bind.key && bind.name && state.files[bind.key]) {
@@ -1637,11 +1655,23 @@ function canvaItems(state, tabTitle, pageUrl) {
   }
   const plays = (state.plays || []).filter(p => p.key).sort((a, b) => a.at - b.at);
   const clipOf = (key) => clips.find(c => c.keys.includes(key));
-  for (const p of plays) { const c = clipOf(p.key); if (c) take(c, figureOf(p.name, p.page)); }
+  for (const p of plays) { const c = clipOf(p.key); if (c && p.name) take(c, figureOf(p.name, p.page)); }
   for (const c of clips) {
     if (named.has(c.key) || !c.serverName) continue;
     const base = stripExt(c.serverName).toLowerCase();
     take(c, figures.find(g => stripExt(g.name).toLowerCase() === base) || { name: c.serverName, page: 0, ids: [] });
+  }
+  const shownFree = () => figures.filter(g => g.visible && !used.has(figKey(g)) && !CANVA_AUDIO_EXTS.has(nameExt(g.name)));
+  const lastPlay = (state.plays || []).slice(-1)[0];
+  const lastClip = lastPlay && lastPlay.key ? clipOf(lastPlay.key) : null;
+  if (lastClip && lastClip.video && !named.has(lastClip.key)) {
+    const shown = shownFree();
+    if (new Set(shown.map(figKey)).size === 1) take(lastClip, shown[0]);
+  }
+  const leftVideos = clips.filter(c => !named.has(c.key) && c.video);
+  if (leftVideos.length === 1) {
+    const shown = shownFree();
+    if (new Set(shown.map(figKey)).size === 1) take(leftVideos[0], shown[0]);
   }
   const left = clips.filter(c => !named.has(c.key));
   if (left.length === 1) {
@@ -1710,10 +1740,10 @@ async function canvaReport(tabId) {
     extension: EXT_VERSION, page: stripQuery((tab && tab.url) || ""), appMerges,
     captures: state.log || [],
     files: canvaClips(state.files ? state : { files: {} }).map(c => ({
-      key: c.key, keys: c.keys, tokens: c.tokens, video: c.video ? { url: stripQuery(c.video.url), size: c.video.size, ext: c.video.ext, preview: c.video.preview } : null,
+      key: c.key, keys: c.keys, tokens: c.tokens, first: Math.min(...c.keys.map(k => (state.files[k] || {}).first || Infinity)), video: c.video ? { url: stripQuery(c.video.url), size: c.video.size, ext: c.video.ext, preview: c.video.preview } : null,
       audio: c.audio ? { url: stripQuery(c.audio.url), size: c.audio.size, ext: c.audio.ext, preview: c.audio.preview } : null
     })),
-    figures: (state.figures || []).map(g => ({ label: g.name, page: g.page, thumb: stripQuery(g.thumb), ids: g.ids, duration: g.duration, box: g.box })),
+    figures: (state.figures || []).map(g => ({ label: g.name, page: g.page, thumb: stripQuery(g.thumb), ids: g.ids, duration: g.duration, box: g.box, visible: !!g.visible })),
     plays: (state.plays || []).map(p => ({ name: p.name, page: p.page, since: p.since, at: p.at, key: p.key })),
     pairs: state.pairs || {}, binds: state.binds || {}
   };
