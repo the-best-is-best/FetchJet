@@ -5,6 +5,7 @@ import os
 import queue
 import re
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -343,14 +344,38 @@ def pinned_libmpv_sha():
     source = os.path.join(REPO, "sharedLogic", "src", "nativeDesktopMain", "kotlin", "com", "michelle", "raouf", "fetch_jet",
                           "feature", "media_extractor", "PlayerLibrary.nativeDesktop.kt")
     with open(source, encoding="utf-8") as handle:
-        found = re.search(r'WINDOWS_X64_SHA256 = "([0-9a-f]*)"', handle.read())
+        key = "MACOS_ARM64_SHA256" if ON_MAC else "LINUX_X64_SHA256" if ON_LINUX else "WINDOWS_X64_SHA256"
+        found = re.search(key + r' = "([0-9a-f]*)"', handle.read())
     return found.group(1) if found else ""
+
+
+MAC_APP_EXE = os.path.join(REPO, "desktopNative", "build-mac", "package", "stage", "FetchJet.app", "Contents", "MacOS", "FetchJet")
+
+
+def run_window(deskrun, timeout_ms, after_ms, capture, app_command, env):
+    if not ON_MAC:
+        command = [deskrun, "--timeout", str(timeout_ms), "--after", str(after_ms), "--capture", capture, "--"] + app_command
+        result = subprocess.run(command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                timeout=timeout_ms / 1000 + 60)
+        return (result.stdout + result.stderr).strip()
+    process = subprocess.Popen(app_command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+    try:
+        output, _ = process.communicate(timeout=timeout_ms / 1000)
+    except subprocess.TimeoutExpired:
+        process.terminate()
+        try:
+            output, _ = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            output, _ = process.communicate()
+    return output.decode("utf-8", "replace").strip()
 
 
 def install_libmpv(home, source):
     tools = os.path.join(home, "tools")
     os.makedirs(tools, exist_ok=True)
-    shutil.copy2(source, os.path.join(tools, "libmpv-2.dll"))
+    name = "libmpv.2.dylib" if ON_MAC else "libmpv.so.2" if ON_LINUX else "libmpv-2.dll"
+    shutil.copy2(source, os.path.join(tools, name))
     with open(os.path.join(tools, "libmpv.sha256"), "w", encoding="utf-8") as handle:
         handle.write(pinned_libmpv_sha())
 

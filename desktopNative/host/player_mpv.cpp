@@ -561,13 +561,11 @@ namespace fjhost::player {
             const std::string choice = g_sub_choice;
             bool by_file = choice.compare(0, 5, "file:") == 0;
             std::string chosen = by_file ? choice.substr(5) : std::string();
-            bool found = false;
             for (const auto &file: g_sub_files) {
-                bool pick = by_file && same_path(file.path, chosen);
-                found = found || pick;
-                command_async({"sub-add", file.path.c_str(), pick ? "select" : "auto"});
+                if (!(by_file && same_path(file.path, chosen)))
+                    command_async({"sub-add", file.path.c_str(), "auto"});
             }
-            if (by_file && !found && !chosen.empty())
+            if (by_file && !chosen.empty())
                 command_async({"sub-add", chosen.c_str(), "select"});
             if (choice == "off")
                 set("sid", "no");

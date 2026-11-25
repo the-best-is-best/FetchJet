@@ -7,11 +7,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, REPO, install_libmpv
+from corehost import Core, CheckFailed, REPO, install_libmpv, run_window, ON_MAC, MAC_APP_EXE
 from test_compress import install_ffmpeg, serve_folder, select, FFMPEG_SOURCE
 
 MEDIA = os.environ.get("FJ_CUT_MEDIA", "E:/tools/mpv-spike/media")
-EXE = os.environ.get("FJ_PLAYER_EXE", os.path.join(REPO, "desktopNative", "build-release", "Release", "FetchJet.exe"))
+EXE = os.environ.get("FJ_PLAYER_EXE", MAC_APP_EXE if ON_MAC else os.path.join(REPO, "desktopNative", "build-release", "Release", "FetchJet.exe"))
 LIBMPV = os.environ.get("FJ_PLAYER_LIBMPV", "E:/tools/mpv-subs/dist/libmpv-2.dll")
 DESKRUN = os.path.join(REPO, "desktopNative", "tools", "shot", "build", "Release", "deskrun.exe")
 OUT = os.environ.get("FJ_SHOT_OUT", "")
@@ -267,16 +267,14 @@ def run_app(core, name, steps, capture_after=None):
     total = 500 * len(steps) + 6000
     after = capture_after if capture_after else total - 2000
     capture = os.path.join(OUT or core.work, name + ".bmp")
-    command = [DESKRUN, "--timeout", str(total + 4000), "--after", str(after), "--capture", capture, "--",
-               EXE, "--home", core.home, "--downloads", core.downloads, "--no-bridge", "--no-focus", "--no-auto-downloads", "--script", script]
-    result = subprocess.run(command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=total / 1000 + 60)
-    print("  " + (result.stdout + result.stderr).strip().replace("\n", "\n  ")[-600:])
+    output = run_window(DESKRUN, total + 4000, after, capture, [EXE, "--home", core.home, "--downloads", core.downloads, "--no-bridge", "--no-focus", "--no-auto-downloads", "--script", script], env)
+    print("  " + output.replace("\n", "\n  ")[-600:])
     print("  screenshot: " + capture)
     return open(log, encoding="utf-8", errors="replace").read() if os.path.exists(log) else ""
 
 
 def host_part(core, audio):
-    missing = [p for p in [EXE, DESKRUN, LIBMPV] if not os.path.isfile(p)]
+    missing = [p for p in ([EXE, LIBMPV] if ON_MAC else [EXE, DESKRUN, LIBMPV]) if not os.path.isfile(p)]
     if missing:
         print("SKIP the player window part, missing: " + ", ".join(missing))
         return
