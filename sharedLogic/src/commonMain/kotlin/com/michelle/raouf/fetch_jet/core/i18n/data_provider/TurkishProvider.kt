@@ -1219,6 +1219,8 @@ object TurkishProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Zaman çizelgesi için mp4 veya mov dosyası gerekir"
     override val videoCutSaved = "Klip kaydedildi"
     override val videoCutNeedsTools = "Kesmek için medya araçları (FFmpeg) gerekir. Ayarlar > Medya araçları bölümünden indirin."
+    override val audioCutTitle = "Sesi kes"
+    override val audioCutOnTimelineHint = "Ses dalgası üzerinde başlangıcı ve bitişi taşıyın, tuttuğunuz kısmı dinleyin."
     override val audioExtractTitle = "Sesi çıkar"
     override val audioExtractRunning = "Ses çıkarılıyor…"
     override val audioExtractDone = "Ses kaydedildi"

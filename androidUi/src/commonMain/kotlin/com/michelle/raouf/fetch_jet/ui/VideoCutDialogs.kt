@@ -120,7 +120,7 @@ private fun CutDialogFrame(
 @Composable
 private fun VideoCutChooserDialog(ui: VideoCutUi, onEvent: (DashboardUiEvent) -> Unit) {
     val s = LocalizationManager.Strings
-    CutDialogFrame(LocalizationManager.Strings.videoCutTitle, ui.fileName, { onEvent(DashboardUiEvent.OnDismissVideoCut) }) {
+    CutDialogFrame(VideoCut.title(ui.isAudio), ui.fileName, { onEvent(DashboardUiEvent.OnDismissVideoCut) }) {
         CutChoiceCard(
             icon = "⏱",
             title = LocalizationManager.Strings.videoCutByTime,
@@ -130,7 +130,7 @@ private fun VideoCutChooserDialog(ui: VideoCutUi, onEvent: (DashboardUiEvent) ->
         CutChoiceCard(
             icon = "🎞",
             title = LocalizationManager.Strings.videoCutOnTimeline,
-            hint = if (ui.timelineAvailable) LocalizationManager.Strings.videoCutOnTimelineHint
+            hint = if (ui.timelineAvailable) VideoCut.timelineHint(ui.isAudio)
             else LocalizationManager.Strings.videoCutTimelineNeedsMp4,
             enabled = ui.timelineAvailable,
             onClick = { onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE)) }

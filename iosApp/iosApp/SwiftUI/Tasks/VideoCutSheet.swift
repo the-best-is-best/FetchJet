@@ -82,7 +82,7 @@ private struct VideoCutHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(store.strings.videoCutTitle, systemImage: "scissors")
+            Label(VideoCut.shared.title(audio: page.isAudio), systemImage: "scissors")
                 .font(FJTheme.font.headline)
                 .foregroundStyle(FJTheme.color.onSurface)
             Text(page.fileName)
@@ -119,7 +119,7 @@ private struct VideoCutChooser: View {
                     store.send(DashboardUiEventOnVideoCutModeChosen(mode: .time))
                 }
                 card(icon: "film.stack", title: s.videoCutOnTimeline,
-                     hint: timeline ? s.videoCutOnTimelineHint : s.videoCutTimelineNeedsMp4, enabled: timeline) {
+                     hint: timeline ? VideoCut.shared.timelineHint(audio: page.isAudio) : s.videoCutTimelineNeedsMp4, enabled: timeline) {
                     store.send(DashboardUiEventOnVideoCutModeChosen(mode: .timeline))
                 }
             }

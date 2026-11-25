@@ -61,6 +61,7 @@ data class VideoClipDto(
 data class VideoCutDto(
     val open: Boolean = false,
     val needsTools: Boolean = false,
+    val audio: Boolean = false,
     val chooser: Boolean = false,
     val timeline: Boolean = false,
     val clipsOnly: Boolean = false,

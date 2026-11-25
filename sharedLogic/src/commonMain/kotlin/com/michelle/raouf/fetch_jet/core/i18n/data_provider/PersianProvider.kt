@@ -1224,6 +1224,8 @@ object PersianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "خط زمانی به فایل mp4 یا mov نیاز دارد"
     override val videoCutSaved = "کلیپ ذخیره شد"
     override val videoCutNeedsTools = "برش به ابزارهای رسانه (FFmpeg) نیاز دارد. آن‌ها را از تنظیمات > ابزارهای رسانه دانلود کنید."
+    override val audioCutTitle = "برش صدا"
+    override val audioCutOnTimelineHint = "ابتدا و انتها را روی موج صدا جابه‌جا کنید و بخشی را که نگه می‌دارید بشنوید."
     override val audioExtractTitle = "استخراج صدا"
     override val audioExtractRunning = "در حال استخراج صدا…"
     override val audioExtractDone = "صدا ذخیره شد"

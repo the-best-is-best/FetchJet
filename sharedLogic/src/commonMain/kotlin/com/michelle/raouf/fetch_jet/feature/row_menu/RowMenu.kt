@@ -86,6 +86,9 @@ object RowMenu {
         add(RowMenuEntry.DELETE)
     }
 
+    fun label(entry: RowMenuEntry, s: AppLocalization, task: DownloadTask): String =
+        if (entry == RowMenuEntry.CUT && VideoCut.isAudio(task)) s.audioCutTitle else label(entry, s)
+
     fun label(entry: RowMenuEntry, s: AppLocalization): String = when (entry) {
         RowMenuEntry.OPEN -> s.rowMenuOpen
         RowMenuEntry.OPEN_FOLDER -> s.rowMenuOpenFolder

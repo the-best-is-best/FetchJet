@@ -82,6 +82,8 @@ private object FilmstripCache {
     val frameMs = HashMap<String, Double>()
 }
 
+private const val AUDIO_STEP_MS = 10.0
+
 private class VideoInfo(val durationMs: Long, val frameMs: Double)
 
 private fun readVideoInfo(path: String): VideoInfo {
@@ -167,7 +169,12 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
         }
     }
     var info by remember(path) { mutableStateOf(VideoInfo(ui.durationMs, 1000.0 / 30.0)) }
+    val audio = ui.isAudio
     LaunchedEffect(path) {
+        if (audio) {
+            info = VideoInfo(ui.durationMs, AUDIO_STEP_MS)
+            return@LaunchedEffect
+        }
         val read = withContext(Dispatchers.IO) { readVideoInfo(path) }
         info = VideoInfo(if (ui.durationMs > 0L) ui.durationMs else read.durationMs, read.frameMs)
     }
@@ -268,7 +275,7 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
             ) {
                 PlayerGlyphButton(PlayerGlyph.CLOSE, 24, onClick = close)
                 Column(modifier = Modifier.weight(1f).padding(horizontal = 6.dp)) {
-                    Text(s.videoCutOnTimeline, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(if (audio) s.audioCutTitle else s.videoCutOnTimeline, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     Text(
                         ui.fileName,
                         color = Color.White.copy(alpha = 0.65f),
@@ -288,8 +295,10 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                     modifier = Modifier.padding(end = 6.dp)
                 ) { Text("✂ ${s.videoCutApply}", fontWeight = FontWeight.Bold) }
             }
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                AndroidView(
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (audio) {
+                    Text("♪", color = Color.White.copy(alpha = 0.35f), fontSize = 96.sp)
+                } else AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
                         PlayerView(ctx).apply {
@@ -309,7 +318,12 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                 contentAlignment = Alignment.Center
             ) {
                 val count = (maxWidth.value / 52f).toInt().coerceIn(6, 24)
-                val frames = rememberFilmstrip(path, duration, count)
+                val frames = if (audio) emptyList() else rememberFilmstrip(path, duration, count)
+                val bars = (maxWidth.value / 4f).toInt().coerceIn(40, 240)
+                var wave by remember(path, bars) { mutableStateOf<List<Float>?>(if (audio) emptyList() else null) }
+                if (audio) LaunchedEffect(path, bars, duration) {
+                    if (duration > 0L) wave = com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.waveform(path, bars, duration)
+                }
                 Column(
                     modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -348,6 +362,7 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                         endMs = if (end > 0L) end else duration,
                         positionMs = position,
                         frames = frames,
+                        wave = wave,
                         selected = selected,
                         minLengthMs = minLength,
                         onSelect = { selected = it; seek(if (it == TrimHandle.START) start else lastKeptFrame(end)) },

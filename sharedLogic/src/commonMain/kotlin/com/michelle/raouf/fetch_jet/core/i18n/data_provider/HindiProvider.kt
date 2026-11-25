@@ -1218,6 +1218,8 @@ object HindiProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "टाइमलाइन के लिए mp4 या mov फ़ाइल चाहिए"
     override val videoCutSaved = "क्लिप सहेजी गई"
     override val videoCutNeedsTools = "काटने के लिए मीडिया टूल (FFmpeg) चाहिए। इन्हें सेटिंग्स > मीडिया टूल में डाउनलोड करें।"
+    override val audioCutTitle = "ऑडियो काटें"
+    override val audioCutOnTimelineHint = "साउंड वेव पर शुरुआत और अंत खिसकाएँ और रखा जाने वाला हिस्सा सुनें।"
     override val audioExtractTitle = "ऑडियो निकालें"
     override val audioExtractRunning = "ऑडियो निकाला जा रहा है…"
     override val audioExtractDone = "ऑडियो सहेजा गया"

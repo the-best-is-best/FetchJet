@@ -1224,6 +1224,8 @@ object IndonesianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Linimasa memerlukan file mp4 atau mov"
     override val videoCutSaved = "Klip disimpan"
     override val videoCutNeedsTools = "Memotong butuh alat media (FFmpeg). Unduh di Pengaturan > Alat media."
+    override val audioCutTitle = "Potong audio"
+    override val audioCutOnTimelineHint = "Geser awal dan akhir pada gelombang suara dan dengarkan bagian yang disimpan."
     override val audioExtractTitle = "Ekstrak audio"
     override val audioExtractRunning = "Mengekstrak audio…"
     override val audioExtractDone = "Audio disimpan"

@@ -1254,6 +1254,8 @@ object RussianProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "Для шкалы времени нужен файл mp4 или mov"
     override val videoCutSaved = "Фрагмент сохранён"
     override val videoCutNeedsTools = "Для обрезки нужны медиаинструменты (FFmpeg). Скачайте их в Настройки > Медиаинструменты."
+    override val audioCutTitle = "Обрезать аудио"
+    override val audioCutOnTimelineHint = "Передвиньте начало и конец по звуковой волне и прослушайте оставляемую часть."
     override val audioExtractTitle = "Извлечь звук"
     override val audioExtractRunning = "Извлечение звука…"
     override val audioExtractDone = "Звук сохранён"

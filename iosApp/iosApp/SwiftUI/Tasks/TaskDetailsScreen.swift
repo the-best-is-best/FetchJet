@@ -449,7 +449,7 @@ private struct TaskDetailsContent: View {
             if canCut || canCompress || canSubtitles {
                 LazyVGrid(columns: tileColumns, spacing: 8) {
                     if canCut {
-                        TaskDetailButton(text: s.videoCutTitle, primary: false, icon: "scissors") {
+                        TaskDetailButton(text: VideoCut.shared.title(audio: VideoCut.shared.isAudio(task: task)), primary: false, icon: "scissors") {
                             store.send(DashboardUiEventOnVideoCutClicked(taskId: task.id))
                         }
                     }

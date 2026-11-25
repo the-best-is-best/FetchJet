@@ -509,7 +509,8 @@ data class VideoCutUi(
     val stopping: Boolean = false,
     val clipsOnly: Boolean = false,
     val outputExtension: String = "",
-    val lastClipPath: String = ""
+    val lastClipPath: String = "",
+    val isAudio: Boolean = false
 ) {
     val lengthMs: Long
         get() = (endMs - startMs).coerceAtLeast(0L)

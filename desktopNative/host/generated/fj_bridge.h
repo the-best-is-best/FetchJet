@@ -656,6 +656,7 @@ inline VideoCutDto parse_VideoCutDto(const fj::Json &j) {
     VideoCutDto d{};
     d.open = fj::flag(j, "open");
     d.needsTools = fj::flag(j, "needsTools");
+    d.audio = fj::flag(j, "audio");
     d.chooser = fj::flag(j, "chooser");
     d.timeline = fj::flag(j, "timeline");
     d.clipsOnly = fj::flag(j, "clipsOnly");
@@ -2257,6 +2258,8 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_videoCutTimelineNeedsMp4(next());
     tr.set_videoCutSaved(next());
     tr.set_videoCutNeedsTools(next());
+    tr.set_audioCutTitle(next());
+    tr.set_audioCutOnTimelineHint(next());
     tr.set_audioExtractTitle(next());
     tr.set_audioExtractRunning(next());
     tr.set_audioExtractDone(next());

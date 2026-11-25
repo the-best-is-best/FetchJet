@@ -32,12 +32,13 @@ internal fun Presenter.openRowMenu(id: String) {
     val entries = rowMenuEntries(id)
     if (entries.isEmpty()) return closeRowMenu()
     rowMenuTask.value = id
+    val task = task(id) ?: return closeRowMenu()
     val extracting = id in vm.uiState.value.audioExtracting
     val rows = entries.map { entry ->
         val running = entry == RowMenuEntry.EXTRACT_AUDIO && extracting
         entry.section to RowMenuItemDto(
             entry.ordinal,
-            if (running) s.audioExtractRunning else RowMenu.label(entry, s),
+            if (running) s.audioExtractRunning else RowMenu.label(entry, s, task),
             entry.danger,
             disabled = running,
         )

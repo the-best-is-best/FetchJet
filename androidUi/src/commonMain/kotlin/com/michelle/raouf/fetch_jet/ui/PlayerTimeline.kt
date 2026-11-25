@@ -112,7 +112,8 @@ internal fun TrimTimeline(
     onDragFinished: () -> Unit,
     onScrub: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    stripHeight: Dp = 60.dp
+    stripHeight: Dp = 60.dp,
+    wave: List<Float>? = null
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val total = durationMs.coerceAtLeast(1L)
@@ -152,7 +153,23 @@ internal fun TrimTimeline(
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF1C1C24))
             ) {
-                if (frames.isEmpty()) {
+                if (wave != null) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        if (wave.isNotEmpty()) {
+                            val step = size.width / wave.size
+                            val bar = (step * 0.6f).coerceAtLeast(1f)
+                            val mid = size.height / 2f
+                            wave.forEachIndexed { i, v ->
+                                val h = (v.coerceIn(0f, 1f) * size.height * 0.9f).coerceAtLeast(1.5f)
+                                drawRect(
+                                    Color(0xFF8FA3C8),
+                                    topLeft = androidx.compose.ui.geometry.Offset(i * step + (step - bar) / 2f, mid - h / 2f),
+                                    size = androidx.compose.ui.geometry.Size(bar, h)
+                                )
+                            }
+                        }
+                    }
+                } else if (frames.isEmpty()) {
                     Spacer(Modifier.fillMaxSize())
                 } else {
                     frames.forEach { frame ->

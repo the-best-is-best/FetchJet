@@ -314,7 +314,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String, clips: Li
                 (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: "")
         )
     }
-    if (!busy && VideoCut.canCut(task)) mediaTools += DetailToolDto(DetailToolCode.CUT.ordinal, "✂", strings.videoCutTitle)
+    if (!busy && VideoCut.canCut(task)) mediaTools += DetailToolDto(DetailToolCode.CUT.ordinal, "✂", VideoCut.title(VideoCut.isAudio(task)))
     if (!busy && task.canAddSubtitles()) mediaTools += DetailToolDto(DetailToolCode.SUBTITLES.ordinal, "💬", strings.subtitlesAddButton)
 
     val chunks = task.displayChunks()

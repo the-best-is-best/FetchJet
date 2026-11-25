@@ -1537,6 +1537,10 @@
     "Boolean"
    ],
    [
+    "audio",
+    "Boolean"
+   ],
+   [
     "chooser",
     "Boolean"
    ],
@@ -5140,6 +5144,8 @@
   "videoCutTimelineNeedsMp4",
   "videoCutSaved",
   "videoCutNeedsTools",
+  "audioCutTitle",
+  "audioCutOnTimelineHint",
   "audioExtractTitle",
   "audioExtractRunning",
   "audioExtractDone",

@@ -38,6 +38,7 @@ internal fun buildVideoCut(page: VideoCutUi?, known: List<CutClip>): VideoCutDto
     val bad = !VideoCut.isValidRange(page.startMs, page.endMs, page.durationMs)
     return VideoCutDto(
         open = true,
+        audio = page.isAudio,
         chooser = page.mode == null && !page.clipsOnly,
         timeline = page.mode == VideoCutMode.TIMELINE,
         clipsOnly = page.clipsOnly,

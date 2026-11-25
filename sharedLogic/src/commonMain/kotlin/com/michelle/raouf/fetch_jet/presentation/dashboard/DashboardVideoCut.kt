@@ -99,6 +99,7 @@ private fun DashboardViewModel.openVideoCut(taskId: String) {
                 fileName = task.fileName,
                 sourcePath = source,
                 reading = true,
+                isAudio = VideoCut.isAudio(task),
                 clips = clipsFor(taskId)
             )
         )
@@ -130,6 +131,7 @@ private fun DashboardViewModel.showVideoClips(taskId: String) {
                 fileName = task.fileName,
                 sourcePath = VideoCut.sourcePath(task),
                 clipsOnly = true,
+                isAudio = VideoCut.isAudio(task),
                 clips = clipsFor(taskId)
             )
         )

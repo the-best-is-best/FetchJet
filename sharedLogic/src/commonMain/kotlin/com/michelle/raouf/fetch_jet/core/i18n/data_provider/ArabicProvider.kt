@@ -1237,6 +1237,8 @@ object ArabicProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "الخط الزمني يحتاج ملف mp4 أو mov"
     override val videoCutSaved = "تم حفظ المقطع"
     override val videoCutNeedsTools = "القص محتاج أدوات الوسائط (FFmpeg). نزّلها من الإعدادات ← أدوات الوسائط."
+    override val audioCutTitle = "قص الصوت"
+    override val audioCutOnTimelineHint = "حرّك البداية والنهاية على موجة الصوت واسمع الجزء اللي هتحتفظ بيه."
     override val audioExtractTitle = "استخراج الصوت"
     override val audioExtractRunning = "جارٍ استخراج الصوت…"
     override val audioExtractDone = "تم حفظ الصوت"

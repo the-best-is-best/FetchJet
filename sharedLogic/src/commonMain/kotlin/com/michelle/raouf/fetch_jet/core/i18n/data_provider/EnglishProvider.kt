@@ -1219,6 +1219,8 @@ object EnglishProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "The timeline needs an mp4 or mov file"
     override val videoCutSaved = "Clip saved"
     override val videoCutNeedsTools = "Cutting needs the media tools (FFmpeg). Download them in Settings > Media tools."
+    override val audioCutTitle = "Cut audio"
+    override val audioCutOnTimelineHint = "Move the start and the end on the sound wave and listen to the part you keep."
     override val audioExtractTitle = "Extract audio"
     override val audioExtractRunning = "Extracting audio…"
     override val audioExtractDone = "Audio saved"

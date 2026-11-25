@@ -1235,6 +1235,8 @@ object JapaneseProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "タイムラインには mp4 または mov ファイルが必要です"
     override val videoCutSaved = "クリップを保存しました"
     override val videoCutNeedsTools = "切り取りにはメディアツール（FFmpeg）が必要です。設定 > メディアツール からダウンロードしてください。"
+    override val audioCutTitle = "音声をカット"
+    override val audioCutOnTimelineHint = "波形の上で開始と終了を動かし、残す部分を聴けます。"
     override val audioExtractTitle = "音声を抽出"
     override val audioExtractRunning = "音声を抽出しています…"
     override val audioExtractDone = "音声を保存しました"

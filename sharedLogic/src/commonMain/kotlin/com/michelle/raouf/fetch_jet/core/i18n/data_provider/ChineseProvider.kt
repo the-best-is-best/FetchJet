@@ -1166,6 +1166,8 @@ object ChineseProvider : AppLocalization {
     override val videoCutTimelineNeedsMp4 = "时间轴需要 mp4 或 mov 文件"
     override val videoCutSaved = "片段已保存"
     override val videoCutNeedsTools = "剪切需要媒体工具（FFmpeg）。请在 设置 > 媒体工具 中下载。"
+    override val audioCutTitle = "剪切音频"
+    override val audioCutOnTimelineHint = "在声波上移动开始和结束位置，试听要保留的部分。"
     override val audioExtractTitle = "提取音频"
     override val audioExtractRunning = "正在提取音频…"
     override val audioExtractDone = "音频已保存"

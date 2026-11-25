@@ -682,7 +682,7 @@ internal fun DownloadTaskItem(
                 if (onShare != null) add(DetailTool("📲", LocalizationManager.Strings.sysDeviceSendTitle, onShare))
             }
             val mediaTools = buildList {
-                if (onCut != null) add(DetailTool("✂", LocalizationManager.Strings.videoCutTitle, onCut))
+                if (onCut != null) add(DetailTool("✂", com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.title(com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.isAudio(task)), onCut))
                 if (onCompress != null) add(
                     DetailTool(
                         "🗜",

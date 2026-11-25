@@ -58,7 +58,10 @@ class VideoCutTest {
     fun onlyFinishedVideosThatAreNotClipsCanBeCut() {
         assertTrue(VideoCut.canCut(task("a.mp4")))
         assertTrue(VideoCut.canCut(task("a.webm")))
-        assertFalse(VideoCut.canCut(task("a.mp3")))
+        assertTrue(VideoCut.canCut(task("a.mp3")))
+        assertTrue(VideoCut.canCut(task("a.m4a")))
+        assertFalse(VideoCut.canCut(task("a.mp3", from = "src")))
+        assertFalse(VideoCut.canCut(task("a.zip")))
         assertFalse(VideoCut.canCut(task("a.mp4", DownloadStatus.PAUSED)))
         assertFalse(VideoCut.canCut(task("a.mp4").copy(hidden = true)))
         assertFalse(VideoCut.canCut(task("a.mp4", from = "src")))
@@ -192,6 +195,48 @@ class VideoCutTest {
             Thread.sleep(500)
             assertFalse(clip.exists())
             assertFalse(File(dir, "clip.part.mp4").exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+    @Test
+    fun peaksAreNormalised() {
+        val pcm = ByteArray(8)
+        listOf(0, 1000, -16000, 8000).forEachIndexed { i, v -> pcm[2 * i] = (v and 0xff).toByte(); pcm[2 * i + 1] = (v shr 8).toByte() }
+        assertEquals(listOf(0.0625f, 1f), VideoCut.peaksOf(pcm, 2))
+        assertTrue(VideoCut.peaksOf(ByteArray(0), 10).isEmpty())
+    }
+
+    private fun audioMs(file: File): Long {
+        val out = run("-hide_banner", "-i", file.path, "-map", "0:a:0", "-f", "null", "-")
+        val t = Regex("""time=(\d+):(\d+):(\d+)\.(\d+)""").findAll(out).last().groupValues
+        return ((t[1].toLong() * 60 + t[2].toLong()) * 60 + t[3].toLong()) * 1000 + t[4].padEnd(3, '0').take(3).toLong()
+    }
+
+    @Test
+    fun audioCutKeepsTheFormat() = runBlocking {
+        if (ffmpeg == null) return@runBlocking
+        val dir = workDir()
+        try {
+            for ((name, codec) in listOf("a.mp3" to listOf("-c:a", "libmp3lame"), "a.m4a" to listOf("-c:a", "aac"), "a.wav" to listOf("-c:a", "pcm_s16le"), "a.opus" to listOf("-c:a", "libopus"))) {
+                val source = File(dir, name)
+                run(*(listOf("-hide_banner", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=10") + codec + source.path).toTypedArray())
+                val duration = VideoCut.durationMs(source.path)
+                assertTrue(abs(duration - 10_000L) < 120L, "$name duration $duration")
+                val ext = name.substringAfterLast('.')
+                assertEquals(ext, VideoCut.outputExtension(source.path, source.name))
+                val clip = File(dir, VideoCut.clipName(source.name, 2_000, 5_500, ext))
+                assertTrue(VideoCut.cut(source.path, clip.path, 2_000, 5_500, {}, duration), name)
+                assertFalse(File(dir, clip.nameWithoutExtension + ".part.$ext").exists())
+                val len = audioMs(clip)
+                assertTrue(abs(len - 3_500L) < 80L, "$name clip $len")
+                val tail = File(dir, "tail.$ext")
+                assertTrue(VideoCut.cut(source.path, tail.path, 8_000, duration, {}, duration))
+                assertTrue(abs(audioMs(tail) - 2_000L) < 80L, "$name tail")
+                val wave = VideoCut.waveform(source.path, 50, duration)
+                assertEquals(50, wave.size)
+                assertEquals(1f, wave.max())
+            }
         } finally {
             dir.deleteRecursively()
         }

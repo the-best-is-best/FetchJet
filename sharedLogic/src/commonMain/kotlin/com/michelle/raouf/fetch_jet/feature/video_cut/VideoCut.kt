@@ -101,7 +101,16 @@ object VideoCut {
                 task.engineType != EngineType.BITTORRENT &&
                 task.postProcessLabel == null &&
                 !isClip(task) &&
-                MediaPlayback.isVideoName(task.fileName)
+                (MediaPlayback.isVideoName(task.fileName) || MediaPlayback.isAudioName(task.fileName))
+
+    fun isAudio(task: DownloadTask): Boolean = isAudioName(task.fileName)
+
+    fun isAudioName(name: String): Boolean = MediaPlayback.isAudioName(name)
+
+    fun title(audio: Boolean): String = if (audio) LocalizationManager.Strings.audioCutTitle else LocalizationManager.Strings.videoCutTitle
+
+    fun timelineHint(audio: Boolean): String =
+        if (audio) LocalizationManager.Strings.audioCutOnTimelineHint else LocalizationManager.Strings.videoCutOnTimelineHint
 
     fun isClip(task: DownloadTask): Boolean = task.cutFromTaskId.isNotBlank()
 
@@ -212,11 +221,14 @@ object VideoCut {
     )
 
     suspend fun durationMs(input: String): Long {
-        PlatformVideoCutter.durationMs(input)?.takeIf { it > 0L }?.let { return it }
-        val head = packetSpan(input, listOf("-copyts", "-i", input, "-map", "0:v:0", "-c", "copy", "-frames:v", "16"))
-        val tail = packetSpan(input, listOf("-sseof", "-5", "-copyts", "-i", input, "-map", "0:v:0", "-c", "copy"))
+        val audio = isAudioName(input)
+        if (!audio) PlatformVideoCutter.durationMs(input)?.takeIf { it > 0L }?.let { return it }
+        val stream = if (audio) "0:a:0" else "0:v:0"
+        val frames = if (audio) listOf("-frames:a", "16") else listOf("-frames:v", "16")
+        val head = packetSpan(input, listOf("-copyts", "-i", input, "-map", stream, "-c", "copy") + frames)
+        val tail = packetSpan(input, listOf("-sseof", "-5", "-copyts", "-i", input, "-map", stream, "-c", "copy"))
         if (head != null && tail != null && tail.second > head.first) return tail.second - head.first
-        return streamCopyMs(input)
+        return streamCopyMs(input, audio)
     }
 
     private suspend fun packetSpan(input: String, args: List<String>): Pair<Long, Long>? {
@@ -247,12 +259,12 @@ object VideoCut {
         return first * 1000L * num / den to end * 1000L * num / den
     }
 
-    private suspend fun streamCopyMs(input: String): Long {
+    private suspend fun streamCopyMs(input: String, audio: Boolean = false): Long {
         val progress = progressFile()
         val ok = runLocalFfmpeg(
             listOf(
                 "-y", "-nostdin", "-v", "error", "-progress", progress.toString(),
-                "-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy", "-f", "null", "-"
+                "-i", input, "-map", if (audio) "0:a:0" else "0:v:0", "-map", "0:a:0?", "-c", "copy", "-f", "null", "-"
             )
         )
         val reached = readOutTimeMs(progress)
@@ -262,6 +274,7 @@ object VideoCut {
 
     suspend fun outputExtension(input: String, sourceName: String): String {
         val ext = sourceName.substringAfterLast('.', "").lowercase()
+        if (isAudioName(sourceName)) return ext.ifEmpty { "m4a" }
         PlatformVideoCutter.outputExtension(ext)?.let { return it }
         return encodePlan(input, ext)?.extension ?: "mp4"
     }
@@ -315,6 +328,7 @@ object VideoCut {
         sourceDurationMs: Long = 0L
     ): Boolean {
         if (startMs < 0L || endMs - startMs < MIN_LENGTH_MS) return false
+        if (isAudioName(output)) return cutAudio(input, output, startMs, endMs, onProgress, sourceDurationMs)
         PlatformVideoCutter.cut(input, output, startMs, endMs, onProgress)?.let { return it }
         val ext = output.substringAfterLast('.', "").lowercase()
         val plan = encodePlan(input, ext)?.takeIf { it.extension == ext } ?: return false
@@ -358,6 +372,131 @@ object VideoCut {
                 if (!ok) withContext(NonCancellable) { deleteWhenFree(partial) }
             }
         }
+    }
+
+    private val AUDIO_ENCODE = mapOf(
+        "mp3" to listOf("-c:a", "libmp3lame", "-q:a", "2"),
+        "m4a" to listOf("-c:a", "aac", "-b:a", "192k"),
+        "aac" to listOf("-c:a", "aac", "-b:a", "192k"),
+        "opus" to listOf("-c:a", "libopus", "-b:a", "160k"),
+        "ogg" to listOf("-c:a", "libvorbis", "-q:a", "6"),
+        "oga" to listOf("-c:a", "libvorbis", "-q:a", "6"),
+        "weba" to listOf("-c:a", "libopus", "-b:a", "160k"),
+        "flac" to listOf("-c:a", "flac"),
+        "wav" to listOf("-c:a", "pcm_s16le"),
+        "mka" to listOf("-c:a", "libopus", "-b:a", "160k")
+    )
+
+    private val AUDIO_FORMAT = mapOf("m4a" to "ipod", "aac" to "adts", "weba" to "webm", "oga" to "ogg", "opus" to "ogg", "mka" to "matroska")
+
+    private suspend fun cutAudio(
+        input: String,
+        output: String,
+        startMs: Long,
+        endMs: Long,
+        onProgress: (VideoCutProgress) -> Unit,
+        sourceDurationMs: Long
+    ): Boolean {
+        val ext = output.substringAfterLast('.', "").lowercase()
+        val toEnd = sourceDurationMs > 0L && endMs >= sourceDurationMs
+        val lengthMs = (if (toEnd) sourceDurationMs else endMs) - startMs
+        val eta = CutEta()
+        onProgress(eta.update(0f))
+        val copy = listOf("-c:a", "copy")
+        val encode = AUDIO_ENCODE[ext]
+        val order = if (ext == "mp3" && startMs > 0L && encode != null) listOf(encode, copy) else listOfNotNull(copy, encode)
+        return order.any { runAudioCut(input, output, ext, startMs, endMs, toEnd, lengthMs, it, eta, onProgress) }
+    }
+
+    private suspend fun runAudioCut(
+        input: String,
+        output: String,
+        ext: String,
+        startMs: Long,
+        endMs: Long,
+        toEnd: Boolean,
+        lengthMs: Long,
+        codec: List<String>,
+        eta: CutEta,
+        onProgress: (VideoCutProgress) -> Unit
+    ): Boolean = coroutineScope {
+        val progress = progressFile()
+        val partial = output.substringBeforeLast('.') + ".part.$ext"
+        val args = buildList {
+            addAll(listOf("-y", "-nostdin", "-v", "error", "-progress", progress.toString(), "-i", input))
+            if (startMs > 0L) addAll(listOf("-ss", seconds(startMs)))
+            if (!toEnd) addAll(listOf("-t", seconds(endMs - startMs)))
+            addAll(listOf("-map", "0:a:0", "-vn", "-sn", "-dn", "-map_metadata", "0", "-map_chapters", "-1"))
+            addAll(codec)
+            AUDIO_FORMAT[ext]?.let { addAll(listOf("-f", it)) }
+            if (ext == "m4a") addAll(listOf("-movflags", "+faststart"))
+            add(partial)
+        }
+        val watcher = launch {
+            while (isActive) {
+                delay(400)
+                val reached = readOutTimeMs(progress)
+                onProgress(eta.update(if (lengthMs > 0L) reached.toFloat() / lengthMs else 0f))
+            }
+        }
+        var ok = false
+        try {
+            ok = runLocalFfmpeg(args, CUT_TIMEOUT_MS)
+            val made = partial.toPath()
+            ok = ok && (AppFileSystem.metadataOrNull(made)?.size ?: 0L) > 0L &&
+                    runCatching { AppFileSystem.atomicMove(made, output.toPath()) }.isSuccess
+            if (ok) onProgress(eta.update(1f))
+            ok
+        } finally {
+            watcher.cancel()
+            runCatching { AppFileSystem.delete(progress) }
+            if (!ok) withContext(NonCancellable) { deleteWhenFree(partial) }
+        }
+    }
+
+    suspend fun waveform(input: String, bars: Int, durationMs: Long = 0L): List<Float> {
+        if (bars <= 0) return emptyList()
+        val raw = progressFile().toString() + ".raw"
+        val rate = when {
+            durationMs > 3 * 60 * 60 * 1000L -> 400
+            durationMs > 30 * 60 * 1000L -> 1000
+            else -> 4000
+        }
+        return try {
+            val ok = runLocalFfmpeg(
+                listOf(
+                    "-y", "-nostdin", "-v", "error", "-i", input, "-map", "0:a:0", "-vn",
+                    "-ac", "1", "-ar", rate.toString(), "-c:a", "pcm_s16le", "-f", "s16le", raw
+                ),
+                10L * 60 * 1000
+            )
+            if (!ok) emptyList() else peaksOf(AppFileSystem.read(raw.toPath()) { readByteArray() }, bars)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            emptyList()
+        } finally {
+            runCatching { AppFileSystem.delete(raw.toPath()) }
+        }
+    }
+
+    fun peaksOf(pcm: ByteArray, bars: Int): List<Float> {
+        val samples = pcm.size / 2
+        if (samples == 0 || bars <= 0) return emptyList()
+        val out = FloatArray(bars)
+        for (b in 0 until bars) {
+            val from = (b.toLong() * samples / bars).toInt().coerceAtMost(samples - 1)
+            val to = ((b + 1).toLong() * samples / bars).toInt().coerceIn(from + 1, samples)
+            var peak = 0
+            for (i in from until to) {
+                val v = (pcm[2 * i].toInt() and 0xff) or (pcm[2 * i + 1].toInt() shl 8)
+                val a = if (v < 0) -v else v
+                if (a > peak) peak = a
+            }
+            out[b] = (peak / 32768f).coerceIn(0f, 1f)
+        }
+        val top = out.maxOrNull()?.takeIf { it > 0f } ?: return out.toList()
+        return out.map { it / top }
     }
 
     suspend fun deleteWhenFree(path: String) {

@@ -108,7 +108,7 @@ export component VideoCutDialog inherits Rectangle {
                         size: 20px;
                     }
                     T {
-                        text: Tr.videoCutTitle;
+                        text: Core.audioCompress.cut.audio ? Tr.audioCutTitle : Tr.videoCutTitle;
                         line: 30px;
                         tracking: 0px;
                         font-size: 22px;
@@ -152,7 +152,7 @@ export component VideoCutDialog inherits Rectangle {
                         selected: false;
                         icon: "🎞️";
                         title: Tr.videoCutOnTimeline;
-                        lines: [Core.audioCompress.cut.timelineOff ? Tr.videoCutTimelineNeedsMp4 : Tr.videoCutOnTimelineHint];
+                        lines: [Core.audioCompress.cut.timelineOff ? Tr.videoCutTimelineNeedsMp4 : Core.audioCompress.cut.audio ? Tr.audioCutOnTimelineHint : Tr.videoCutOnTimelineHint];
                         clicked => { Act.videoCutChoose(true); }
                     }
                 }

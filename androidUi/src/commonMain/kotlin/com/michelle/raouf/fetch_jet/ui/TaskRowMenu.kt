@@ -88,7 +88,7 @@ internal fun TaskRowMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            RowMenu.label(entry, strings),
+                            RowMenu.label(entry, strings, task),
                             color = if (entry.danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                         )
                     },

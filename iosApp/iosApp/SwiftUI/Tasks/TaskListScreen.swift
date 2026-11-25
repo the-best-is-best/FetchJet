@@ -419,7 +419,7 @@ struct TaskListScreen: View {
                         menuPicked = true
                         actions.pick(task, entry)
                     } label: {
-                        Text(RowMenu.shared.label(entry: entry, s: s))
+                        Text(RowMenu.shared.label(entry: entry, s: s, task: task))
                     }
                     .disabled(entry.name == "EXTRACT_AUDIO" && store.state.audioExtracting.contains(task.id))
                 }
