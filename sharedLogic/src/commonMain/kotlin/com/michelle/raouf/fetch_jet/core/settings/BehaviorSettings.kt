@@ -54,16 +54,27 @@ object BehaviorSettings {
         _groupByFolder.value = on; write("groupByFolder", on.toString())
     }
 
-    private val _desktopPlayer = MutableStateFlow(read("desktopPlayer")?.takeIf { it in DESKTOP_PLAYER_MODES } ?: "ask")
+    val PLAYER_MODES: List<String> get() = listOf("ask", "on", "off")
 
-    val desktopPlayer: StateFlow<String> = _desktopPlayer.asStateFlow()
+    private fun defaultPlayerMode(): String =
+        if (com.michelle.raouf.fetch_jet.feature.backup.devicePlatformId() in setOf("android", "ios")) "on" else "ask"
 
-    val DESKTOP_PLAYER_MODES: List<String> get() = listOf("ask", "on", "off")
+    private val _inAppPlayer = MutableStateFlow(
+        (read("inAppPlayer") ?: read("desktopPlayer"))?.takeIf { it in PLAYER_MODES } ?: defaultPlayerMode()
+    )
 
-    fun setDesktopPlayer(mode: String) {
-        if (mode !in DESKTOP_PLAYER_MODES) return
-        _desktopPlayer.value = mode; write("desktopPlayer", mode)
+    val inAppPlayer: StateFlow<String> = _inAppPlayer.asStateFlow()
+
+    fun setInAppPlayer(mode: String) {
+        if (mode !in PLAYER_MODES) return
+        _inAppPlayer.value = mode; write("inAppPlayer", mode)
     }
+
+    val desktopPlayer: StateFlow<String> get() = inAppPlayer
+
+    val DESKTOP_PLAYER_MODES: List<String> get() = PLAYER_MODES
+
+    fun setDesktopPlayer(mode: String) = setInAppPlayer(mode)
 
     private val _videoPlaysEverywhere =
         MutableStateFlow(read("videoPlaysEverywhere")?.toBooleanStrictOrNull() ?: false)

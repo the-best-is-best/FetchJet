@@ -1200,6 +1200,7 @@ object PersianProvider : AppLocalization {
     override val videoCutByTimeHint = "زمان شروع و پایان کلیپ را بنویسید."
     override val videoCutOnTimeline = "برش روی خط زمانی"
     override val videoCutOnTimelineHint = "شروع و پایان را روی ویدیو جابه‌جا کنید و بخشی را که نگه می‌دارید ببینید."
+    override val videoCutNeedsPlayerLibrary = "برش روی خط زمانی به کتابخانه پخش‌کننده نیاز دارد (حدود ۶ تا ۹ مگابایت). اکنون دانلود شود؟"
     override val videoCutFrom = "از"
     override val videoCutTo = "تا"
     override val videoCutDuration = "مدت"

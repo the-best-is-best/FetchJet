@@ -145,6 +145,7 @@ class DashboardViewModel(
     init {
 
         observeQueue()
+        attachHiddenPlayback()
         scope.launch {
             HiddenWork.state.collect { w ->
                 _uiState.update { it.copy(hidden = it.hidden.copy(workDone = w.done, workTotal = w.total, workFraction = w.fraction)) }
@@ -802,7 +803,7 @@ class DashboardViewModel(
             is DashboardUiEvent.OnHideTargets, DashboardUiEvent.OnHiddenNoticeShown, is DashboardUiEvent.OnAddHiddenToggled, DashboardUiEvent.OnHiddenAddDownload, is DashboardUiEvent.OnUnhideTasks,
             DashboardUiEvent.OnUnhideAll, is DashboardUiEvent.OnHiddenSetPin, is DashboardUiEvent.OnHiddenUnlock,
             DashboardUiEvent.OnHiddenLock, DashboardUiEvent.OnHiddenCover, DashboardUiEvent.OnHiddenReauth, is DashboardUiEvent.OnHiddenChangePin, is DashboardUiEvent.OnHiddenRemoveLock,
-            is DashboardUiEvent.OnHiddenOpenFile, DashboardUiEvent.OnHiddenClosePlayer, DashboardUiEvent.OnHiddenEncryptNoticeAccepted,
+            is DashboardUiEvent.OnHiddenOpenFile, is DashboardUiEvent.OnHiddenPlayClicked, DashboardUiEvent.OnHiddenGroupPlayClicked, DashboardUiEvent.OnHiddenClosePlayer, DashboardUiEvent.OnHiddenEncryptNoticeAccepted,
             DashboardUiEvent.OnHiddenEncryptNoticeDismissed, DashboardUiEvent.OnHiddenShowRecoveryCode,
             DashboardUiEvent.OnHiddenRecoveryCodeShown, is DashboardUiEvent.OnHiddenRestoreWithCode,
             DashboardUiEvent.OnHiddenForgotPin, is DashboardUiEvent.OnHiddenResetPin, DashboardUiEvent.OnHiddenResetCancel -> handleHiddenEvent(event)

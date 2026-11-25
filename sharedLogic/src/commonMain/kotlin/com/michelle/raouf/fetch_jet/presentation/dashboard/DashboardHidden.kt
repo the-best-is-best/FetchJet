@@ -117,7 +117,14 @@ internal fun DashboardViewModel.handleHiddenEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnHiddenOpenFile -> openHiddenFile(event.taskId)
 
-        DashboardUiEvent.OnHiddenClosePlayer -> HiddenMedia.cleanup(queueRepository.pathResolver)
+        is DashboardUiEvent.OnHiddenPlayClicked -> if (_uiState.value.hidden.unlocked) playHidden(event.taskId)
+
+        DashboardUiEvent.OnHiddenGroupPlayClicked -> if (_uiState.value.hidden.unlocked) playHiddenGroup()
+
+        DashboardUiEvent.OnHiddenClosePlayer -> {
+            closeHiddenPlayer()
+            HiddenMedia.cleanup(queueRepository.pathResolver)
+        }
 
         DashboardUiEvent.OnHiddenEncryptNoticeAccepted -> {
             val hadKey = HiddenStore.hasRecoveryKey()
@@ -409,6 +416,7 @@ private fun DashboardViewModel.reauthHidden() {
 
 private fun DashboardViewModel.coverHidden() {
     if (!_uiState.value.hidden.unlocked) return
+    closeHiddenPlayer()
     HiddenMedia.cleanup(queueRepository.pathResolver)
     val hiddenIds = queueRepository.allTasksFlow.value.filter { it.hidden }.mapTo(HashSet()) { it.id }
     _uiState.update { it.withoutHiddenDialogs(hiddenIds).let { s -> s.copy(hidden = s.hidden.copy(covered = true)) } }
@@ -424,6 +432,7 @@ private fun DashboardUiState.withoutHiddenDialogs(hiddenIds: Set<String>): Dashb
 
 internal fun DashboardViewModel.lockHidden() {
     HiddenStore.cancelPinReset()
+    closeHiddenPlayer()
     HiddenMedia.cleanup(queueRepository.pathResolver)
     val hiddenIds = queueRepository.allTasksFlow.value.filter { it.hidden }.mapTo(HashSet()) { it.id }
     _uiState.update {

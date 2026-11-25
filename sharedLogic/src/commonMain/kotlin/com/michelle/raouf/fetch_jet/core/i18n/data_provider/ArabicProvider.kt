@@ -1213,6 +1213,7 @@ object ArabicProvider : AppLocalization {
     override val videoCutByTimeHint = "اكتب وقت بداية المقطع ونهايته."
     override val videoCutOnTimeline = "القص على الخط الزمني"
     override val videoCutOnTimelineHint = "حرّك البداية والنهاية على الفيديو وشاهد الجزء الذي ستحتفظ به."
+    override val videoCutNeedsPlayerLibrary = "القص على الخط الزمني يحتاج مكتبة المشغل (حوالي 6 إلى 9 ميجابايت). هل تريد تنزيلها الآن؟"
     override val videoCutFrom = "من"
     override val videoCutTo = "إلى"
     override val videoCutDuration = "المدة"

@@ -3,12 +3,14 @@ package com.michelle.raouf.fetch_jet.feature.media_player
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import okio.ByteString.Companion.encodeUtf8
 
 data class PlayerItem(
     val taskId: String,
     val title: String,
     val path: String,
-    val isVideo: Boolean
+    val isVideo: Boolean,
+    val hidden: Boolean = false
 )
 
 data class PlaybackQueue(val items: List<PlayerItem>, val index: Int, val groupKey: String = "") {
@@ -33,9 +35,9 @@ object MediaPlayback {
     fun isVideoName(name: String): Boolean = name.substringAfterLast('.', "").lowercase() in VIDEO
     fun isAudioName(name: String): Boolean = name.substringAfterLast('.', "").lowercase() in AUDIO
 
-    fun canPlay(task: DownloadTask): Boolean =
+    fun canPlay(task: DownloadTask, allowHidden: Boolean = false): Boolean =
         task.status == DownloadStatus.COMPLETED &&
-                !task.hidden &&
+                (allowHidden || !task.hidden) &&
                 task.engineType != EngineType.BITTORRENT &&
                 (isVideoName(task.fileName) || isAudioName(task.fileName))
 
@@ -52,21 +54,20 @@ object MediaPlayback {
     fun queueFor(
         start: DownloadTask,
         all: List<DownloadTask>,
+        allowHidden: Boolean = false,
         decode: (String) -> String = { it }
     ): PlaybackQueue {
         val group = when {
             start.playlistId.isNotEmpty() -> all.filter { it.playlistId == start.playlistId }
             else -> listOf(start)
         }
-        val playable = group.filter { canPlay(it) }.ifEmpty { listOf(start) }
-        val items = playable.map {
-            PlayerItem(it.id, titleOf(it), pathOf(it, decode), isVideoName(it.fileName))
-        }
+        val playable = group.filter { canPlay(it, allowHidden) }.ifEmpty { listOf(start) }
+        val items = playable.map { itemOf(it, decode, allowHidden) }
         val index = playable.indexOfFirst { it.id == start.id }.coerceAtLeast(0)
-        return PlaybackQueue(items, index, start.playlistId)
+        return PlaybackQueue(items, index, if (allowHidden) hiddenGroupKey(start.playlistId) else start.playlistId)
     }
 
-    fun hasPlayable(tasks: List<DownloadTask>): Boolean = tasks.any { canPlay(it) }
+    fun hasPlayable(tasks: List<DownloadTask>, allowHidden: Boolean = false): Boolean = tasks.any { canPlay(it, allowHidden) }
 
     /**
      * The queue for a whole group: its finished audio / video files in list order, starting at the
@@ -76,15 +77,27 @@ object MediaPlayback {
     fun queueForGroup(
         groupKey: String,
         tasks: List<DownloadTask>,
+        allowHidden: Boolean = false,
         decode: (String) -> String = { it }
     ): PlaybackQueue? {
-        val playable = tasks.filter { canPlay(it) }
+        val playable = tasks.filter { canPlay(it, allowHidden) }
         if (playable.isEmpty()) return null
-        val items = playable.map { PlayerItem(it.id, titleOf(it), pathOf(it, decode), isVideoName(it.fileName)) }
-        val last = PlayerProgress.lastPlayed(groupKey)
+        val items = playable.map { itemOf(it, decode, allowHidden) }
+        val key = if (allowHidden) hiddenGroupKey(groupKey) else groupKey
+        val last = PlayerProgress.lastPlayed(key)
         val index = playable.indexOfFirst { it.id == last }.coerceAtLeast(0)
-        return PlaybackQueue(items, index, groupKey)
+        return PlaybackQueue(items, index, key)
     }
+
+    fun hiddenGroupKey(groupKey: String): String =
+        if (groupKey.isEmpty() || groupKey.startsWith(HIDDEN_KEY_PREFIX)) groupKey
+        else HIDDEN_KEY_PREFIX + groupKey.encodeUtf8().sha256().hex()
+
+    private const val HIDDEN_KEY_PREFIX = "h:"
+
+    private fun itemOf(task: DownloadTask, decode: (String) -> String, allowHidden: Boolean): PlayerItem =
+        if (allowHidden && task.hidden) PlayerItem(task.id, titleOf(task), "", isVideoName(task.fileName), hidden = true)
+        else PlayerItem(task.id, titleOf(task), pathOf(task, decode), isVideoName(task.fileName))
 
     fun titleOf(task: DownloadTask): String = task.fileName.substringBeforeLast('.')
 

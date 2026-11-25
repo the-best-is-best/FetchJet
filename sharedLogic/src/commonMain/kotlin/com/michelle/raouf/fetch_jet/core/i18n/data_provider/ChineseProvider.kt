@@ -1142,6 +1142,7 @@ object ChineseProvider : AppLocalization {
     override val videoCutByTimeHint = "输入片段的开始和结束时间。"
     override val videoCutOnTimeline = "在时间轴上剪切"
     override val videoCutOnTimelineHint = "在视频上移动开始和结束位置，并观看要保留的部分。"
+    override val videoCutNeedsPlayerLibrary = "在时间轴上剪切需要播放器库（约 6 到 9 MB）。现在下载吗？"
     override val videoCutFrom = "从"
     override val videoCutTo = "到"
     override val videoCutDuration = "时长"

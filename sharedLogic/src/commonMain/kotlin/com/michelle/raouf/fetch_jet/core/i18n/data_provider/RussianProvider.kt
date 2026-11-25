@@ -1230,6 +1230,7 @@ object RussianProvider : AppLocalization {
     override val videoCutByTimeHint = "Введите начало и конец фрагмента."
     override val videoCutOnTimeline = "Обрезать на шкале времени"
     override val videoCutOnTimelineHint = "Передвиньте начало и конец на видео и посмотрите оставляемую часть."
+    override val videoCutNeedsPlayerLibrary = "Для обрезки на шкале времени нужна библиотека плеера (около 6–9 МБ). Скачать сейчас?"
     override val videoCutFrom = "С"
     override val videoCutTo = "До"
     override val videoCutDuration = "Длительность"

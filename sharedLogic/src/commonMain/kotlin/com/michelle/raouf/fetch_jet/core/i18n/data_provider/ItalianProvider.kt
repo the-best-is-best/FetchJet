@@ -1234,6 +1234,7 @@ object ItalianProvider : AppLocalization {
     override val videoCutByTimeHint = "Scrivi dove inizia e finisce la clip."
     override val videoCutOnTimeline = "Taglia sulla timeline"
     override val videoCutOnTimelineHint = "Sposta l'inizio e la fine sul video e guarda la parte che tieni."
+    override val videoCutNeedsPlayerLibrary = "Il taglio sulla timeline richiede la libreria del lettore (circa 6-9 MB). Scaricarla ora?"
     override val videoCutFrom = "Da"
     override val videoCutTo = "A"
     override val videoCutDuration = "Durata"

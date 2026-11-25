@@ -8,11 +8,15 @@ import com.michelle.raouf.fetch_jet.core.security.Secrets
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.queue_manager.HiddenWork
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import okio.Path
 import okio.Path.Companion.toPath
+import kotlin.coroutines.coroutineContext
 
 data class HiddenOpening(val taskId: String, val fraction: Float)
 
@@ -135,16 +139,27 @@ object HiddenMedia {
         val folder = tempRoot(pathResolver).toPath() / Secrets.randomHex(8)
         val safeName = pathResolver.sanitizeFileName(info.name).ifBlank { "video" }
         val out = folder / safeName
+        val job = coroutineContext[Job]
+        val steps = percentSteps(onProgress)
         try {
             AppFileSystem.createDirectories(folder)
-            HiddenCrypt.decrypt(src, out, info.key, percentSteps(onProgress))
+            HiddenCrypt.decrypt(src, out, info.key) { done, total ->
+                job?.ensureActive()
+                steps(done, total)
+            }
             out.toString()
+        } catch (e: CancellationException) {
+            runCatching { AppFileSystem.deleteRecursively(folder) }
+            throw e
         } catch (t: Throwable) {
             AppLog.e("Hidden: opening failed (${t::class.simpleName}: ${t.message})")
             runCatching { AppFileSystem.deleteRecursively(folder) }
             null
         }
     }
+
+    internal fun isPlayCopy(path: String, pathResolver: PathResolver = PathResolver()): Boolean =
+        path.replace('\\', '/').startsWith(tempRoot(pathResolver) + "/")
 
     fun cleanup(pathResolver: PathResolver = PathResolver()) {
         runCatching {

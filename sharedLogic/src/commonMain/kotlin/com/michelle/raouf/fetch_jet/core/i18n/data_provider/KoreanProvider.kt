@@ -1131,6 +1131,7 @@ object KoreanProvider : AppLocalization {
     override val videoCutByTimeHint = "클립의 시작과 끝을 입력하세요."
     override val videoCutOnTimeline = "타임라인에서 자르기"
     override val videoCutOnTimelineHint = "동영상에서 시작과 끝을 옮기고 남길 부분을 확인하세요."
+    override val videoCutNeedsPlayerLibrary = "타임라인에서 자르려면 플레이어 라이브러리(약 6~9MB)가 필요합니다. 지금 다운로드할까요?"
     override val videoCutFrom = "시작"
     override val videoCutTo = "끝"
     override val videoCutDuration = "길이"

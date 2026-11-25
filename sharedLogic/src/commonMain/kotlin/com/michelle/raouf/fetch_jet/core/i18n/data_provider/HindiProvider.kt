@@ -1194,6 +1194,7 @@ object HindiProvider : AppLocalization {
     override val videoCutByTimeHint = "लिखें कि क्लिप कहाँ से शुरू और कहाँ खत्म होती है।"
     override val videoCutOnTimeline = "टाइमलाइन पर काटें"
     override val videoCutOnTimelineHint = "वीडियो पर शुरुआत और अंत खिसकाएँ और रखा जाने वाला हिस्सा देखें।"
+    override val videoCutNeedsPlayerLibrary = "टाइमलाइन पर काटने के लिए प्लेयर लाइब्रेरी चाहिए (लगभग 6 से 9 MB)। अभी डाउनलोड करें?"
     override val videoCutFrom = "से"
     override val videoCutTo = "तक"
     override val videoCutDuration = "अवधि"

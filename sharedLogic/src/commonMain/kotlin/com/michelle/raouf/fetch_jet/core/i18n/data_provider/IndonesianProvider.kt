@@ -1200,6 +1200,7 @@ object IndonesianProvider : AppLocalization {
     override val videoCutByTimeHint = "Ketik awal dan akhir klip."
     override val videoCutOnTimeline = "Potong di linimasa"
     override val videoCutOnTimelineHint = "Geser awal dan akhir pada video dan tonton bagian yang disimpan."
+    override val videoCutNeedsPlayerLibrary = "Memotong di linimasa memerlukan pustaka pemutar (sekitar 6 sampai 9 MB). Unduh sekarang?"
     override val videoCutFrom = "Dari"
     override val videoCutTo = "Sampai"
     override val videoCutDuration = "Durasi"

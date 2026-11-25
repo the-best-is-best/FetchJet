@@ -346,6 +346,36 @@ class DashboardHiddenTest {
     }
 
     @Test
+    fun aHiddenVideoPlaysInTheAppPlayerAndLockingClosesItAndDeletesTheCopy() = runBlocking {
+        val temp = File(home, "tmp-play").also { it.mkdirs() }
+        com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.tempOverride = temp.absolutePath
+        val requests = com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests
+        val playback = com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback
+        try {
+            val id = add("clip.mp4")
+            vm.onEvent(DashboardUiEvent.OnHideTargets(listOf(id)))
+            waitFor("hidden") { task(id)?.hidden == true && HiddenFiles.isPrivate(repo.pathResolver, task(id)!!.destinationPath) }
+            assertNull(vm.hiddenQueueFor(id))
+            vm.onEvent(DashboardUiEvent.OnHiddenPlayClicked(id))
+            assertNull(requests.queue.value)
+            unlock()
+            val queue = vm.hiddenQueueFor(id)!!
+            assertTrue(queue.current.hidden && queue.current.path.isEmpty())
+            vm.onEvent(DashboardUiEvent.OnHiddenPlayClicked(id))
+            assertEquals(listOf(id), requests.queue.value?.items?.map { it.taskId })
+            val path = playback.prepare(id) {}!!
+            assertTrue(File(path).readBytes().contentEquals(payload))
+            vm.onEvent(DashboardUiEvent.OnHiddenLock)
+            assertNull(requests.queue.value)
+            assertFalse(File(path).exists())
+            assertNull(playback.prepare(id) {})
+        } finally {
+            requests.close()
+            com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.tempOverride = null
+        }
+    }
+
+    @Test
     fun theNoticeSurvivesLockingTheScreen() {
         unlock()
         vm.reportHiddenMove(HiddenMoveReport(failed = 1))

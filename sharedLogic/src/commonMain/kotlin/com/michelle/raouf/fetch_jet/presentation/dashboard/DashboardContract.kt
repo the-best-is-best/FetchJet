@@ -771,6 +771,8 @@ sealed interface DashboardUiEvent {
     data class OnHiddenRemoveLock(val pin: String) : DashboardUiEvent
     data class OnHiddenOpenFile(val taskId: String) : DashboardUiEvent
     data object OnHiddenClosePlayer : DashboardUiEvent
+    data class OnHiddenPlayClicked(val taskId: String) : DashboardUiEvent
+    data object OnHiddenGroupPlayClicked : DashboardUiEvent
     data object OnHiddenEncryptNoticeAccepted : DashboardUiEvent
     data object OnHiddenEncryptNoticeDismissed : DashboardUiEvent
     data object OnHiddenShowRecoveryCode : DashboardUiEvent

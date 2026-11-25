@@ -1045,6 +1045,7 @@ interface AppLocalization : LocalizationProvider {
     val videoCutByTimeHint: String
     val videoCutOnTimeline: String
     val videoCutOnTimelineHint: String
+    val videoCutNeedsPlayerLibrary: String
     val videoCutFrom: String
     val videoCutTo: String
     val videoCutDuration: String

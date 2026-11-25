@@ -1195,6 +1195,7 @@ object TurkishProvider : AppLocalization {
     override val videoCutByTimeHint = "Klibin başladığı ve bittiği yeri yazın."
     override val videoCutOnTimeline = "Zaman çizelgesinde kes"
     override val videoCutOnTimelineHint = "Videoda başlangıcı ve bitişi taşıyın, saklayacağınız kısmı izleyin."
+    override val videoCutNeedsPlayerLibrary = "Zaman çizelgesinde kesmek için oynatıcı kitaplığı gerekir (yaklaşık 6-9 MB). Şimdi indirilsin mi?"
     override val videoCutFrom = "Başlangıç"
     override val videoCutTo = "Bitiş"
     override val videoCutDuration = "Süre"

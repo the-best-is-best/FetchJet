@@ -1211,6 +1211,7 @@ object JapaneseProvider : AppLocalization {
     override val videoCutByTimeHint = "クリップの開始と終了の時間を入力します。"
     override val videoCutOnTimeline = "タイムラインでカット"
     override val videoCutOnTimelineHint = "動画上で開始と終了を動かし、残す部分を確認します。"
+    override val videoCutNeedsPlayerLibrary = "タイムラインでのカットにはプレーヤーライブラリ（約 6〜9 MB）が必要です。今すぐダウンロードしますか？"
     override val videoCutFrom = "開始"
     override val videoCutTo = "終了"
     override val videoCutDuration = "長さ"
