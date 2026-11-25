@@ -266,6 +266,7 @@ data class DashboardUiState(
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
+    val videoCut: VideoCutUi? = null,
     val subtitlesPage: SubtitlesUi? = null,
     /** Saved playlists (shown as one row each in the downloads list). */
     val playlists: Map<String, com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord> = emptyMap(),
@@ -281,7 +282,8 @@ data class DashboardUiState(
     /** The folder page that is open (its downloads instead of the whole list); a folder key, null = none. */
     val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
-    val audioCopyCounts: Map<String, Int> = emptyMap()
+    val audioCopyCounts: Map<String, Int> = emptyMap(),
+    val videoClips: Map<String, List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip>> = emptyMap()
 ) {
     /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
     val grabShape: Boolean
@@ -484,6 +486,35 @@ data class AudioCompressUi(
     val nothingToGain: Boolean
         get() = !reading && durationMs > 0L &&
                 firstLevel > com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.LEVELS.size
+}
+
+data class VideoCutUi(
+    val taskId: String,
+    val fileName: String,
+    val durationMs: Long = 0,
+    val mode: com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode? = null,
+    val startMs: Long = 0,
+    val endMs: Long = 0,
+    val running: Boolean = false,
+    val progress: Float = 0f,
+    val elapsedMs: Long = 0,
+    val etaMs: Long = -1,
+    val failed: Boolean = false,
+    val message: String = "",
+    val clips: List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip> = emptyList(),
+    val timelineAvailable: Boolean = true,
+    val sourcePath: String = "",
+    val reading: Boolean = false,
+    val stopping: Boolean = false,
+    val clipsOnly: Boolean = false,
+    val outputExtension: String = "",
+    val lastClipPath: String = ""
+) {
+    val lengthMs: Long
+        get() = (endMs - startMs).coerceAtLeast(0L)
+    val canStart: Boolean
+        get() = mode != null && !running && !reading && durationMs > 0L &&
+                com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.isValidRange(startMs, endMs, durationMs)
 }
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -774,6 +805,22 @@ sealed interface DashboardUiEvent {
     data class OnAudioCompressDeleteCopy(val path: String) : DashboardUiEvent
 
     data object OnDismissAudioCompress : DashboardUiEvent
+
+    data class OnVideoCutClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnVideoCutModeChosen(val mode: com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode) : DashboardUiEvent
+
+    data class OnVideoCutRangeChanged(val startMs: Long, val endMs: Long) : DashboardUiEvent
+
+    data object OnVideoCutStartClicked : DashboardUiEvent
+
+    data object OnVideoCutCancelClicked : DashboardUiEvent
+
+    data object OnDismissVideoCut : DashboardUiEvent
+
+    data class OnVideoCutDeleteClip(val path: String) : DashboardUiEvent
+
+    data class OnVideoCutShowClips(val taskId: String) : DashboardUiEvent
 
     /** Open the "Send to device" sheet for a task. */
     data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent

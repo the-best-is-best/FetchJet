@@ -54,6 +54,17 @@ object BehaviorSettings {
         _groupByFolder.value = on; write("groupByFolder", on.toString())
     }
 
+    private val _desktopPlayer = MutableStateFlow(read("desktopPlayer")?.takeIf { it in DESKTOP_PLAYER_MODES } ?: "ask")
+
+    val desktopPlayer: StateFlow<String> = _desktopPlayer.asStateFlow()
+
+    val DESKTOP_PLAYER_MODES: List<String> get() = listOf("ask", "on", "off")
+
+    fun setDesktopPlayer(mode: String) {
+        if (mode !in DESKTOP_PLAYER_MODES) return
+        _desktopPlayer.value = mode; write("desktopPlayer", mode)
+    }
+
     private val _videoPlaysEverywhere =
         MutableStateFlow(read("videoPlaysEverywhere")?.toBooleanStrictOrNull() ?: false)
 

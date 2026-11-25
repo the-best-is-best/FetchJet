@@ -891,6 +891,17 @@ interface AppLocalization : LocalizationProvider {
     val playerAllFinished: String
     val playerStartOver: String
     val playerPlayAll: String
+    val playerAskTitle: String
+    val playerAskText: String
+    val playerAskDownload: String
+    val playerAskSystem: String
+    val playerAskRemember: String
+    val playerAskLater: String
+    val playerModeTitle: String
+    val playerModeHint: String
+    val playerModeAsk: String
+    val playerModeOn: String
+    val playerModeOff: String
     val playlistCheckNew: String
     val playlistBack: String
     val playlistDeleteAll: String
@@ -1029,6 +1040,25 @@ interface AppLocalization : LocalizationProvider {
     val audioCompressHigherQuality: String
     val audioCompressSmallerFile: String
     val audioCompressNothing: String
+    val videoCutTitle: String
+    val videoCutByTime: String
+    val videoCutByTimeHint: String
+    val videoCutOnTimeline: String
+    val videoCutOnTimelineHint: String
+    val videoCutFrom: String
+    val videoCutTo: String
+    val videoCutDuration: String
+    val videoCutPlayRange: String
+    val videoCutApply: String
+    val videoCutRunning: String
+    val videoCutElapsed: String
+    val videoCutLeft: String
+    val videoCutStopping: String
+    val videoCutFailed: String
+    val videoCutClips: String
+    val videoCutDeleteClip: String
+    val videoCutTimelineNeedsMp4: String
+    val videoCutSaved: String
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String

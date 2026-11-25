@@ -162,6 +162,7 @@ class DashboardViewModel(
         refreshToolStatus()
         autoUpdateTools()
         observeAudioCopies()
+        observeVideoClips()
         observeAddFolder()
 
         // Time-of-day speed schedule: flip the global limit at window boundaries. The ticker
@@ -831,6 +832,15 @@ class DashboardViewModel(
             DashboardUiEvent.OnAudioCompressStartClicked,
             is DashboardUiEvent.OnAudioCompressDeleteCopy,
             DashboardUiEvent.OnDismissAudioCompress -> handleAudioCompressEvent(event)
+
+            is DashboardUiEvent.OnVideoCutClicked,
+            is DashboardUiEvent.OnVideoCutModeChosen,
+            is DashboardUiEvent.OnVideoCutRangeChanged,
+            DashboardUiEvent.OnVideoCutStartClicked,
+            DashboardUiEvent.OnVideoCutCancelClicked,
+            DashboardUiEvent.OnDismissVideoCut,
+            is DashboardUiEvent.OnVideoCutDeleteClip,
+            is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
 
             is DashboardUiEvent.OnSubtitlesClicked,
             is DashboardUiEvent.OnSubtitleTrackToggled,

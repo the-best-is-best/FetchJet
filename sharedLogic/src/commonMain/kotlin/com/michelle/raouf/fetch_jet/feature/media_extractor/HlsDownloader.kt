@@ -491,4 +491,4 @@ object HlsDownloader {
 }
 
 /** Runs the platform's ffmpeg on local files only (no network). true = exit code 0. */
-expect suspend fun runLocalFfmpeg(args: List<String>): Boolean
+expect suspend fun runLocalFfmpeg(args: List<String>, timeoutMs: Long = 30L * 60 * 1000): Boolean

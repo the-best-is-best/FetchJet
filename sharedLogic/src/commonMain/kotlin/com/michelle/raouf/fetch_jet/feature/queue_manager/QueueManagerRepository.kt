@@ -1308,6 +1308,11 @@ class QueueManagerRepository(
         torrentEngine.updateFilePriority(taskId, fileIndex, priority)
     }
 
+    fun addFinishedFile(task: DownloadTask): DownloadTask {
+        val done = task.copy(status = DownloadStatus.COMPLETED, engineType = EngineType.HTTP_DIRECT)
+        return httpEngine.enqueueTask(done)
+    }
+
     /** Makes a saved download one of a playlist's videos. */
     fun setPlaylist(taskId: String, playlistId: String, playlistTitle: String) {
         val pending = pendingTasks.value[taskId]

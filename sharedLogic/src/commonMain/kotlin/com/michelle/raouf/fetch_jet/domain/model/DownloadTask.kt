@@ -109,7 +109,10 @@ data class DownloadTask(
     /** Result of the checksum check: true = matched, false = mismatch, null = not checked yet. */
     val checksumVerified: Boolean? = null,
     val scanResult: String? = null,
-    val hidden: Boolean = false
+    val hidden: Boolean = false,
+    val cutFromTaskId: String = "",
+    val cutStartMs: Long = 0L,
+    val cutEndMs: Long = 0L
 )
 
 const val STEP_PREPARING_FILE = "Preparing file"
