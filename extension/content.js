@@ -893,7 +893,7 @@
       el("div", { class: "wrap" },
         el("div", { class: "btn", id: "main", title: byKind(video, "btnTitle") },
           el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownload") })),
-          ...(ON_IOS || isCanvaAnchor(video) ? [] : [el("span", { class: "go", id: "go", title: fjT("openInApp"), role: "button", "aria-label": fjT("openInApp") }, arrowIcon())]),
+          ...(ON_IOS ? [] : [el("span", { class: "go", id: "go", title: fjT("openInApp"), role: "button", "aria-label": fjT("openInApp") }, arrowIcon())]),
           el("span", { class: "count", id: "count" }),
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
@@ -992,7 +992,6 @@
     return row;
   }
   function pageInAppRow(b) {
-    if (isCanvaAnchor(b.video)) return null;
     if (!ON_IOS && itemsOf(b).some((i) => i.kind === "openApp")) return null;
     const row = el("div", { class: "item" }, el("span", { class: "num", text: "↗" }),
       el("div", { class: "body" }, el("div", { class: "t", text: fjT(ON_IOS ? "openPageInApp" : "itemOpenApp") }), el("div", { class: "s", text: fjT(ON_IOS ? "openPageInAppSub" : "itemOpenAppSub") })));
@@ -1044,7 +1043,7 @@
     box.appendChild(el("div", { class: "head", title, text: title }));
     if (file) box.appendChild(file);
     const files = usable.filter(m => m.kind === "media" && !m.stream);
-    if (files.length >= 2 && !isCanvaAnchor(b.video)) {
+    if (files.length >= 2) {
       const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: fjT("downloadAllFiles", { n: files.length }) })));
       row.addEventListener("click", () => files.forEach((m, i) => setTimeout(() => download(b, m), i * 300)));
       box.appendChild(row);
