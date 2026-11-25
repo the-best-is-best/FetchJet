@@ -76,6 +76,24 @@ internal fun MediaToolsPage(
                     onSelect = { com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.set(it) }
                 )
             }
+            SettingDivider()
+            val pdfMode by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPdf.collectAsState()
+            SettingRow(LocalizationManager.Strings.pdfModeTitle, LocalizationManager.Strings.pdfModeHint)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+            ) {
+                val pdfOff = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.OFF
+                val pdfOn = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.ON
+                SegmentedPicker(
+                    options = listOf(pdfOn, pdfOff),
+                    selected = if (pdfMode == pdfOff) pdfOff else pdfOn,
+                    label = { if (it == pdfOff) LocalizationManager.Strings.playerModeOff else LocalizationManager.Strings.pdfModeOn },
+                    onSelect = { com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.set(it) }
+                )
+            }
         }
         if (showTools) {
             SettingsGroup(title = LocalizationManager.Strings.mediaToolsGroup) {

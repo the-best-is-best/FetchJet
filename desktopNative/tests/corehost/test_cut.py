@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -15,6 +16,8 @@ EXE = PLAYER_EXE
 LIBMPV = PLAYER_LIBMPV
 OUT = os.environ.get("FJ_SHOT_OUT", "")
 MP3_FRAME = 1152.0 / 44100.0
+LONG_DIR = os.environ.get("FJ_CUT_LONG", os.path.join(tempfile.gettempdir(), "fj-cut-long"))
+FONT = "C\\:/Windows/Fonts/arial.ttf" if os.name == "nt" else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 
 def make_song(folder):
@@ -165,12 +168,27 @@ def run():
         print("FAILED: " + str(failure))
         print(cut_page(core))
         print(core.log_text()[-3000:])
+    longs = None
+    if audio and os.environ.get("FJ_CUT_SKIP_LONG") != "1":
+        try:
+            longs = long_media(core)
+        except CheckFailed as failure:
+            print("FAILED: " + str(failure))
     crash = core.crash_text()
     core.check("no entries in native-crash.log", crash == "", crash[:1500])
     core.shutdown()
     if audio:
         try:
             host_part(core, audio)
+        except CheckFailed as failure:
+            print("FAILED: " + str(failure))
+    if audio and longs:
+        try:
+            long_video_part(core, longs, audio["key"])
+        except CheckFailed as failure:
+            print("FAILED: " + str(failure))
+        try:
+            long_audio_part(core, longs, audio["key"])
         except CheckFailed as failure:
             print("FAILED: " + str(failure))
     print("%d checks, %d failed" % (core.checks, len(core.failures)))
@@ -297,6 +315,7 @@ def host_part(core, audio):
     first = found[0]
     print("    " + str(first))
     core.check("the timeline opens in audio mode", first.get("audio") == "1", first)
+    core.check("a 30 s song fills the strip (view = whole song)", near(first, "view", 0) and near(first, "span", 30, 0.2) and first.get("zoomout") == "0", first)
     core.check("audio steps are 10 ms (100 per second)", first.get("fps") == "100.000", first)
     core.check("the sound wave is loaded", int(first.get("wave", "0")) >= 40, first)
     core.check("no filmstrip for audio", first.get("thumbs") == "0/0", first)
@@ -346,6 +365,210 @@ def host_part(core, audio):
         loaded, total = nudge.get("thumbs", "0/0").split("/")
         core.check("the filmstrip is there", int(total) >= 4 and int(loaded) >= 1, nudge)
         core.check("a video nudge is one frame", nudge.get("s") == "1", nudge)
+        core.check("a short video fills the strip (no zoom out, view from 0)", near(nudge, "view", 0) and nudge.get("zoomout") == "0"
+                   and float(nudge.get("span", "0")) < 120, nudge)
+
+
+def near(state, key, wanted, tolerance=0.01):
+    try:
+        return abs(float(state.get(key, "nan")) - wanted) <= tolerance
+    except ValueError:
+        return False
+
+
+def num(state, key):
+    try:
+        return float(state.get(key, "nan"))
+    except ValueError:
+        return float("nan")
+
+
+def make_long_video():
+    os.makedirs(LONG_DIR, exist_ok=True)
+    path = os.path.join(LONG_DIR, "long60.mp4")
+    if os.path.isfile(path) and os.path.getsize(path) > 1000000:
+        return path
+    text = "drawtext=fontfile='%s':text='%%{pts\\:hms}':x=8:y=8:fontsize=30:fontcolor=white:box=1:boxcolor=black" % FONT
+    subprocess.run([FFMPEG_SOURCE, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=320x180:r=10:d=3600",
+                    "-f", "lavfi", "-i", "sine=f=330:d=3600:sample_rate=22050", "-vf", text, "-c:v", "libx264", "-preset", "ultrafast",
+                    "-crf", "36", "-g", "50", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-shortest", path + ".part.mp4"],
+                   check=True, stdin=subprocess.DEVNULL, timeout=900)
+    os.replace(path + ".part.mp4", path)
+    return path
+
+
+def make_long_song():
+    os.makedirs(LONG_DIR, exist_ok=True)
+    path = os.path.join(LONG_DIR, "long40.mp3")
+    if os.path.isfile(path) and os.path.getsize(path) > 100000:
+        return path
+    subprocess.run([FFMPEG_SOURCE, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=f=440:d=2400:sample_rate=22050",
+                    "-af", "volume='if(lt(mod(t,60),30),1,0.05)':eval=frame", "-c:a", "libmp3lame", "-b:a", "48k", "-ac", "1", path + ".part.mp3"],
+                   check=True, stdin=subprocess.DEVNULL, timeout=600)
+    os.replace(path + ".part.mp3", path)
+    return path
+
+
+def long_media(core):
+    print("long media: a 60 minute video and a 40 minute mp3")
+    make_long_video()
+    make_long_song()
+    server = serve_folder(LONG_DIR)
+    try:
+        port = server.server_address[1]
+        core.debug("addDirect", {"url": "http://127.0.0.1:%d/long60.mp4" % port, "fileName": "long60.mp4"})
+        video = core.wait_task("COMPLETED", timeout=300, file_name="long60.mp4")
+        core.debug("addDirect", {"url": "http://127.0.0.1:%d/long40.mp3" % port, "fileName": "long40.mp3"})
+        song = core.wait_task("COMPLETED", timeout=300, file_name="long40.mp3")
+    finally:
+        server.shutdown()
+    core.pump(3.0)
+    return {"video": video, "song": song}
+
+
+def by_command(found):
+    out = {}
+    for state in found:
+        out.setdefault(state["command"], []).append(state)
+    return out
+
+
+def open_steps(task, key, settle):
+    return [{"type": "RowMenu", "id": task["id"]}, {"type": "RowMenuPick", "key": key}, *wait(2),
+            {"type": "VideoCutChoose", "timeline": True}, *wait(settle)]
+
+
+def new_files(core, pattern, before):
+    after = set(glob.glob(os.path.join(core.downloads, "**", pattern), recursive=True))
+    return sorted(after - before)
+
+
+def long_video_part(core, longs, key):
+    missing = [p for p in [EXE, *window_runner(), LIBMPV] if not os.path.isfile(p)]
+    if missing:
+        print("SKIP the long video part, missing: " + ", ".join(missing))
+        return
+    install_libmpv(core.home, LIBMPV)
+    video = longs["video"]
+    duration = 3600.0
+    print("player window: the timeline of a 60 minute video")
+    before = set(glob.glob(os.path.join(core.downloads, "**", "*.mp4"), recursive=True))
+    steps = [*open_steps(video, key, 12), {"player": "opened"},
+             {"player": "trimpan", "value": 0.5}, {"player": "trimzoom", "value": 0.001},
+             {"player": "trimzoom", "value": 1000}, {"player": "trimzoom", "value": 120.0 / duration},
+             {"player": "trimselect", "value": 0}, {"player": "trimoverview", "value": 0.75}, *wait(1), {"player": "atfortyfive"},
+             {"player": "trimdragview", "value": 0.5}, {"player": "trimdragend"},
+             {"player": "trimselect", "value": 1}, {"player": "trimoverview", "value": 0.75},
+             {"player": "trimdragview", "value": 1.03}, *wait(2), {"player": "edge"}, {"player": "trimdragend"}, {"player": "edgeend"},
+             {"player": "trimoverview", "value": 0.75}, {"player": "trimdragview", "value": (2710.0 - 2640.0) / 120.0}, {"player": "trimdragend"},
+             {"player": "trimpan", "value": 5}, {"player": "trimnudge", "value": 1}, {"player": "trimnudge", "value": -1},
+             {"player": "trimzoom", "value": 0.001}, {"player": "trimplay"}, *wait(12), {"player": "playing"}, *wait(12),
+             {"player": "trimapply"}, *wait(14)]
+    log = run_app(core, "cut-long-video", steps)
+    found = trim_lines(log)
+    by = by_command(found)
+    core.check("long video trim lines were logged", len(found) >= 20, len(found))
+    if len(found) < 20:
+        print(log[-3000:])
+        return
+    first = by.get("opened", [{}])[0]
+    print("    opened: " + str(first))
+    core.check("the default view shows about 120 s", near(first, "span", 120) and near(first, "view", 0), first)
+    core.check("the strip is much wider than the view (can zoom out)", first.get("zoomout") == "1" and first.get("zoomin") == "1", first)
+    core.check("about one thumbnail per 64 px", 0 < num(first, "tile") <= 16 and num(first, "strip") / (120 / num(first, "tile")) < 140, first)
+    loaded, total = (first.get("thumbs", "0/0").split("/") + ["0"])[:2]
+    core.check("thumbnails for the view and one view of margin", int(total) >= 10 and int(total) <= 80 and int(loaded) >= 4, first)
+    pan = by.get("trimpan", [{}])[0]
+    core.check("pan by half a view moves 60 s", near(pan, "view", 60), pan)
+    zooms = by.get("trimzoom", [])
+    core.check("zoom in stops at 5 s per view", len(zooms) >= 3 and near(zooms[0], "span", 5) and zooms[0].get("zoomin") == "0", zooms[:1])
+    core.check("zoom out stops at the whole clip", len(zooms) >= 3 and near(zooms[1], "span", duration, 0.5) and near(zooms[1], "view", 0)
+               and zooms[1].get("zoomout") == "0", zooms[1:2])
+    core.check("zoom back to 120 s", len(zooms) >= 3 and near(zooms[2], "span", 120, 0.05), zooms[2:3])
+    at45 = by.get("atfortyfive", [{}])[0]
+    core.check("the overview click shows minute 45 in the middle", near(at45, "view", 2640, 0.05), at45)
+    core.check("thumbnails follow the view", int(at45.get("thumbs", "0/0").split("/")[1]) >= 10 and int(at45.get("made", "0")) > int(first.get("made", "0")), at45)
+    start = by.get("trimdragview", [{}])[0]
+    core.check("the start handle dragged on the content lands on 45:00", start.get("s") == "27000" and near(start, "view", 2640, 0.05), start)
+    selected = by.get("trimselect", [{}, {}])[-1]
+    core.check("selecting the end handle scrolls it into view", num(selected, "view") + num(selected, "span") >= duration - 0.01, selected)
+    edge = by.get("edge", [{}])[0]
+    core.check("dragging past the edge keeps scrolling", edge.get("edge") == "1" and num(edge, "view") > 2650, edge)
+    core.check("and the handle moves with it", int(edge.get("e", "0")) > 27600 and abs(int(edge.get("e", "0")) / 10.0 - (num(edge, "view") + num(edge, "span"))) < 1.0, edge)
+    edge_end = by.get("edgeend", [{}])[0]
+    core.check("the scroll stops on release", edge_end.get("edge") == "0", edge_end)
+    end = by.get("trimdragview", [{}])[-1]
+    core.check("the end handle lands on 45:10", end.get("e") == "27100", end)
+    nudges = by.get("trimnudge", [])
+    core.check("a nudge scrolls the handle into view", len(nudges) == 2 and num(nudges[0], "view") <= 2710.1 <= num(nudges[0], "view") + num(nudges[0], "span")
+               and nudges[0].get("e") == "27101" and nudges[1].get("e") == "27100", nudges)
+    playing = by.get("playing", [{}])[0]
+    core.check("the view follows the playhead in Play the part", near(playing, "span", 5) and num(playing, "view") > 2701 and
+               num(playing, "view") <= num(playing, "pos") <= num(playing, "view") + num(playing, "span") and playing.get("range") == "1", playing)
+    made = [p for p in new_files(core, "*.mp4", before)]
+    core.check("the long timeline cut made one new mp4", len(made) == 1, made)
+    if made:
+        fps, frames = measure(made[0])
+        length = frames / fps if fps else 0
+        print("    clip from 45:00: fps=%s frames=%d length=%.3f s" % (fps, frames, length))
+        core.check("the clip from minute 45 is 10 s within one frame", fps > 0 and abs(length - 10.0) <= 1.0 / fps + 1e-6, "%.3f" % length)
+
+    print("player window: screenshots of the long video timeline")
+    run_app(core, "cut-long-default", [*open_steps(video, key, 16)], capture_after=500 * 20 + 2500)
+    run_app(core, "cut-long-zoomed", [*open_steps(video, key, 8), {"player": "trimzoom", "value": 0.1}, *wait(10)],
+            capture_after=500 * 22 + 2500)
+    run_app(core, "cut-long-45", [*open_steps(video, key, 8), {"player": "trimoverview", "value": 0.75}, {"player": "trimseek", "value": 2700},
+                                  *wait(12)], capture_after=500 * 25 + 2500)
+
+
+def long_audio_part(core, longs, key):
+    missing = [p for p in [EXE, *window_runner(), LIBMPV] if not os.path.isfile(p)]
+    if missing:
+        print("SKIP the long audio part, missing: " + ", ".join(missing))
+        return
+    song = longs["song"]
+    duration = 2400.0
+    print("player window: the timeline of a 40 minute mp3")
+    before = set(glob.glob(os.path.join(core.downloads, "**", "*.mp3"), recursive=True))
+    steps = [*open_steps(song, key, 16), {"player": "opened"},
+             {"player": "trimpan", "value": 1}, {"player": "trimzoom", "value": 1000}, {"player": "trimzoom", "value": 0.0001},
+             {"player": "trimzoom", "value": 120.0 / 5.0},
+             {"player": "trimselect", "value": 0}, {"player": "trimoverview", "value": 0.75}, {"player": "trimdragview", "value": 0.5},
+             {"player": "trimdragend"}, {"player": "trimselect", "value": 1}, {"player": "trimoverview", "value": 0.75},
+             {"player": "trimdragview", "value": (1810.0 - 1740.0) / 120.0}, {"player": "trimdragend"}, *wait(2),
+             {"player": "trimapply"}, *wait(12)]
+    log = run_app(core, "cut-long-audio", steps)
+    found = trim_lines(log)
+    by = by_command(found)
+    core.check("long audio trim lines were logged", len(found) >= 10, len(found))
+    if len(found) < 10:
+        print(log[-3000:])
+        return
+    first = by.get("opened", [{}])[0]
+    print("    opened: " + str(first))
+    core.check("the long song opens with about 120 s in view", near(first, "span", 120) and near(first, "view", 0) and first.get("audio") == "1", first)
+    core.check("the wave is fetched once at 20 bars a second, at most 4000", int(first.get("wave", "0")) >= 3990, first)
+    core.check("only the visible slice is drawn", 0 < int(first.get("slice", "0")) <= 600, first)
+    pan = by.get("trimpan", [{}])[0]
+    core.check("pan one view", near(pan, "view", 120), pan)
+    zooms = by.get("trimzoom", [])
+    whole = zooms[0] if zooms else {}
+    core.check("whole song in view: bars grouped, few drawn", near(whole, "span", duration, 0.5) and int(whole.get("group", "0")) > 1
+               and int(whole.get("slice", "0")) <= num(whole, "strip") / 2, whole)
+    core.check("zoom in stops at 5 s", len(zooms) >= 2 and near(zooms[1], "span", 5) and zooms[1].get("group") == "1", zooms[1:2])
+    start = by.get("trimdragview", [{}])[0]
+    core.check("audio start handle at 30:00, in the middle of the view", abs(int(start.get("s", "0")) / 100.0 - (num(start, "view") + 60)) <= 0.011
+               and abs(int(start.get("s", "0")) / 100.0 - 1800) < 0.1, start)
+    end = by.get("trimdragview", [{}])[-1]
+    core.check("audio end handle 10 s later", int(end.get("e", "0")) - int(end.get("s", "0")) == 1000, end)
+    made = new_files(core, "*.mp3", before)
+    core.check("the long audio cut made one new mp3", len(made) == 1, made)
+    if made:
+        length = audio_length(made[0])
+        print("    audio clip from 30:00: %.4f s" % length)
+        core.check("the audio clip is 10 s within one mp3 frame", abs(length - 10.0) <= 1152.0 / 22050.0 + 1e-3, "%.4f" % length)
+    run_app(core, "cut-long-audio-shot", [*open_steps(song, key, 14), {"player": "trimoverview", "value": 0.75}, *wait(3)],
+            capture_after=500 * 22 + 2500)
 
 
 if __name__ == "__main__":

@@ -1,251 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="1024dp"
     android:height="1024dp"
-    android:viewportWidth="1024"
-    android:viewportHeight="1024">
-
-    <!-- Deep Obsidian Rounded Squircle Background -->
-    <path android:pathData="M 240,0 L 784,0 C 916.5,0 1024,107.5 1024,240 L 1024,784 C 1024,916.5 916.5,1024 784,1024 L 240,1024 C 107.5,1024 0,916.5 0,784 L 0,240 C 0,107.5 107.5,0 240,0 Z">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M24,0 L84,0 A24,24 0 0,1 108,24 L108,84 A24,24 0 0,1 84,108 L24,108 A24,24 0 0,1 0,84 L0,24 A24,24 0 0,1 24,0 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="1024"
-                android:endY="1024"
-                android:startX="0"
-                android:startY="0"
-                android:type="linear">
-                <item
-                    android:color="#FF080D1A"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FF0B1326"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF060A14"
-                    android:offset="1.0" />
+            <gradient android:type="radial" android:centerX="54" android:centerY="32.4" android:gradientRadius="86.4">
+                <item android:offset="0" android:color="#FF1D2A5C" />
+                <item android:offset="1" android:color="#FF0A0F22" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Outer Speed Orbital Ring -->
-    <path
-        android:pathData="M 512,120 A 392,392 0 1 0 512,904 A 392,392 0 1 0 512,120 Z"
-        android:strokeWidth="2.5"
-        android:strokeColor="#2500E5FF" />
-
-    <!-- Left Supersonic Contrail (Parallel HTTP Streams - Neon Cyan) -->
-    <path android:pathData="M 426,120 L 466,120 L 476,370 L 436,370 Z">
+    <path android:pathData="M29,44 L79,44 A12,12 0 0,1 91,56 L91,84 A12,12 0 0,1 79,96 L29,96 A12,12 0 0,1 17,84 L17,56 A12,12 0 0,1 29,44 Z"
+        android:strokeWidth="6">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="450"
-                android:endY="370"
-                android:startX="446"
-                android:startY="120"
-                android:type="linear">
-                <item
-                    android:color="#0000E5FF"
-                    android:offset="0.0" />
-                <item
-                    android:color="#8000E5FF"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF00E5FF"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="17" android:startY="44" android:endX="17" android:endY="96">
+                <item android:offset="0" android:color="#FF16244A" />
+                <item android:offset="1" android:color="#FF0D1530" />
+            </gradient>
+        </aapt:attr>
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="17" android:startY="44" android:endX="65.923" android:endY="113.622">
+                <item android:offset="0" android:color="#FF22E3FF" />
+                <item android:offset="1" android:color="#FF8B7CFF" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Left Outer Secondary Contrail -->
-    <path android:pathData="M 346,180 L 376,180 L 416,350 L 386,350 Z">
+    <path android:pathData="M48,60 L48,82 Q48,86 51.5,84 L68,74 Q71,72 68,70 L51.5,58 Q48,56 48,60 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="396"
-                android:endY="350"
-                android:startX="361"
-                android:startY="180"
-                android:type="linear">
-                <item
-                    android:color="#000284C7"
-                    android:offset="0.0" />
-                <item
-                    android:color="#9000E5FF"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="48" android:startY="57.333" android:endX="74.564" android:endY="78.228">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FF9EE9FF" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Right Supersonic Contrail (Swarm & Media Streams - Electric Violet) -->
-    <path android:pathData="M 558,120 L 598,120 L 588,370 L 548,370 Z">
+    <path android:pathData="M54,60.35 L23.2,29.55 L40.8,33.95 L49.05,11.95 L54,16.35 Z"
+        android:fillAlpha="0.35">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="574"
-                android:endY="370"
-                android:startX="578"
-                android:startY="120"
-                android:type="linear">
-                <item
-                    android:color="#00818CF8"
-                    android:offset="0.0" />
-                <item
-                    android:color="#80818CF8"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF818CF8"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="23.2" android:startY="11.95" android:endX="67.045" android:endY="39.851">
+                <item android:offset="0" android:color="#FF2FF3FF" />
+                <item android:offset="0.6" android:color="#FF0EA5E9" />
+                <item android:offset="1" android:color="#FF0B4A7A" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Right Outer Secondary Contrail -->
-    <path android:pathData="M 648,180 L 678,180 L 638,350 L 608,350 Z">
+    <path android:pathData="M54,60.35 L84.8,29.55 L67.2,33.95 L58.95,11.95 L54,16.35 Z"
+        android:fillAlpha="0.35">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="628"
-                android:endY="350"
-                android:startX="663"
-                android:startY="180"
-                android:type="linear">
-                <item
-                    android:color="#00818CF8"
-                    android:offset="0.0" />
-                <item
-                    android:color="#90C084FC"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="84.8" android:startY="11.95" android:endX="40.955" android:endY="39.851">
+                <item android:offset="0" android:color="#FFB4BCFF" />
+                <item android:offset="0.6" android:color="#FF6366F1" />
+                <item android:offset="1" android:color="#FF312E81" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- FetchJet Left Delta Wing (Sleek Swept Aerodynamic Facet) -->
-    <path android:pathData="M 512,740 L 210,430 L 380,480 L 460,340 L 512,370 Z">
+    <path android:pathData="M54,8.65 L49.05,30.65 L51.25,30.65 L54,60.35 L56.75,30.65 L58.95,30.65 Z"
+        android:fillAlpha="0.35">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="512"
-                android:endY="740"
-                android:startX="210"
-                android:startY="340"
-                android:type="linear">
-                <item
-                    android:color="#FF00F2FE"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FF0284C7"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF0C3D60"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="49.05" android:startY="8.65" android:endX="49.05" android:endY="60.35">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FF7DD3FC" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- FetchJet Right Delta Wing (Sleek Swept Aerodynamic Facet) -->
-    <path android:pathData="M 512,740 L 814,430 L 644,480 L 564,340 L 512,370 Z">
+    <path android:pathData="M54,58 L26,30 L42,34 L49.5,14 L54,18 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="512"
-                android:endY="740"
-                android:startX="814"
-                android:startY="340"
-                android:type="linear">
-                <item
-                    android:color="#FF818CF8"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FF4F46E5"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF2C2F63"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="26" android:startY="14" android:endX="65.859" android:endY="39.365">
+                <item android:offset="0" android:color="#FF2FF3FF" />
+                <item android:offset="0.6" android:color="#FF0EA5E9" />
+                <item android:offset="1" android:color="#FF0B4A7A" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Central Supersonic Thrust Spine (The Sharp Downward Vector) -->
-    <path android:pathData="M 512,330 L 465,470 L 485,470 L 512,740 L 539,470 L 559,470 Z">
+    <path android:pathData="M54,58 L82,30 L66,34 L58.5,14 L54,18 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="512"
-                android:endY="740"
-                android:startX="512"
-                android:startY="330"
-                android:type="linear">
-                <item
-                    android:color="#FFFFFFFF"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FF38BDF8"
-                    android:offset="0.4" />
-                <item
-                    android:color="#FF00E5FF"
-                    android:offset="0.8" />
-                <item
-                    android:color="#FF0284C7"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="82" android:startY="14" android:endX="42.141" android:endY="39.365">
+                <item android:offset="0" android:color="#FFB4BCFF" />
+                <item android:offset="0.6" android:color="#FF6366F1" />
+                <item android:offset="1" android:color="#FF312E81" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Cockpit Canopy / Energy Core (Luminous Diamond Core) -->
-    <path android:pathData="M 512,380 L 536,460 L 512,540 L 488,460 Z">
+    <path android:pathData="M54,11 L49.5,31 L51.5,31 L54,58 L56.5,31 L58.5,31 Z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="512"
-                android:endY="540"
-                android:startX="512"
-                android:startY="380"
-                android:type="linear">
-                <item
-                    android:color="#FFFFFFFF"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FFBAE6FD"
-                    android:offset="0.5" />
-                <item
-                    android:color="#FF00E5FF"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="49.5" android:startY="11" android:endX="49.5" android:endY="58">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FF7DD3FC" />
             </gradient>
         </aapt:attr>
     </path>
-
-    <!-- Supersonic Bow Shockwave 1 (Primary Arc Beneath Jet) -->
-    <path android:pathData="M 310,770 C 420,860 604,860 714,770 L 730,795 C 610,895 414,895 294,795 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="730"
-                android:endY="895"
-                android:startX="294"
-                android:startY="770"
-                android:type="linear">
-                <item
-                    android:color="#FF00E5FF"
-                    android:offset="0.0" />
-                <item
-                    android:color="#FF818CF8"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Supersonic Bow Shockwave 2 (Secondary Tapered Echo Arc) -->
-    <path android:pathData="M 370,845 C 450,910 574,910 654,845 L 666,865 C 580,935 444,935 358,865 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="666"
-                android:endY="935"
-                android:startX="358"
-                android:startY="845"
-                android:type="linear">
-                <item
-                    android:color="#6000E5FF"
-                    android:offset="0.0" />
-                <item
-                    android:color="#60818CF8"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Nose Tip Plasma Pulse Dot -->
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 512,746 A 10,10 0 1 0 512,766 A 10,10 0 1 0 512,746 Z" />
 </vector>

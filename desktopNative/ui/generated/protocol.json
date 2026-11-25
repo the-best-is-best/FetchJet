@@ -265,7 +265,8 @@
    "DUPLICATE",
    "FILE_CONFLICT",
    "MAIN_DOWNLOADER",
-   "PLAYER_LIBRARY"
+   "PLAYER_LIBRARY",
+   "PDF_READER"
   ],
   "BadgeToneCode": [
    "OTHER",
@@ -374,7 +375,9 @@
    "OPEN_PLAYER",
    "PLAYER_PATH",
    "PLAYER_PREPARING",
-   "CLOSE_PLAYER"
+   "CLOSE_PLAYER",
+   "OPEN_PDF",
+   "CLOSE_PDF"
   ],
   "SideFilterCode": [
    "ALL",

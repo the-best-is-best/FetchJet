@@ -319,7 +319,7 @@ internal fun playerCall(name: String, args: String): String {
             val bars = obj["bars"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
             val durationMs = obj["durationMs"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
             if (path.isEmpty() || bars <= 0) return ""
-            val peaks = runBlocking { VideoCut.waveform(path, bars.coerceAtMost(2000), durationMs) }
+            val peaks = runBlocking { VideoCut.waveform(path, bars.coerceAtMost(4000), durationMs) }
             return UiJson.encodeToString(peaks)
         }
         else -> return ""

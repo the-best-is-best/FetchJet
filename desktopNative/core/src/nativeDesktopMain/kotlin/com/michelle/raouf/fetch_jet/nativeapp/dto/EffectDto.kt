@@ -12,6 +12,8 @@ enum class EffectKind {
     PLAYER_PATH,
     PLAYER_PREPARING,
     CLOSE_PLAYER,
+    OPEN_PDF,
+    CLOSE_PDF,
 }
 
 @Serializable
