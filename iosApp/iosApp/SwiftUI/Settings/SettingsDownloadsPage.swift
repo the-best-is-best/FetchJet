@@ -154,6 +154,7 @@ struct SettingsFilesPage: View {
                 ) { store.send(DashboardUiEventOnExtractArchivesChanged(on: $0)) }
             }
             SettingsPlayerModeCard()
+            SettingsPdfModeCard()
             SettingsSiteFoldersCard()
         }
     }
@@ -440,6 +441,29 @@ struct SettingsPlayerModeCard: View {
                 onSelect: { value in
                     PlayerMode.shared.set(mode: value)
                     mode = PlayerMode.shared.current()
+                }
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
+        }
+    }
+}
+
+struct SettingsPdfModeCard: View {
+    @EnvironmentObject var store: FJStore
+    @State private var mode = PdfMode.shared.current()
+
+    var body: some View {
+        let s = store.strings
+        SettingsGroupBox {
+            SettingsRow(title: s.pdfModeTitle, subtitle: s.pdfModeHint)
+            SettingsSegments(
+                options: ["on", "off"],
+                selected: mode == "off" ? "off" : "on",
+                label: { $0 == "off" ? s.playerModeOff : s.pdfModeOn },
+                onSelect: { value in
+                    PdfMode.shared.set(mode: value)
+                    mode = PdfMode.shared.current()
                 }
             )
             .padding(.horizontal, 16)

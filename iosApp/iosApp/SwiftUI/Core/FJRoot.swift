@@ -77,6 +77,12 @@ struct FJRoot: View {
         )) { target in
             FJPlayerScreen(queue: target.queue) { player.queue = nil }.environmentObject(store)
         }
+        .fullScreenCover(item: Binding(
+            get: { store.pdf },
+            set: { if $0 == nil { store.pdf = nil } }
+        )) { target in
+            FJPdfReaderScreen(target: target) { store.pdf = nil }.environmentObject(store)
+        }
         .overlay(alignment: .bottom) { FJToastHost() }
         .modifier(HiddenRootGuard())
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)

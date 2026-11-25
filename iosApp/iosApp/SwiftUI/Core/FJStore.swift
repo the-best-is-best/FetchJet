@@ -16,6 +16,7 @@ final class FJStore: ObservableObject {
     @Published var toast: FJToast?
     @Published var selectedTaskId: String?
     @Published var missingFileTaskId: String?
+    @Published var pdf: FJPdfTarget?
     private(set) var lastEffect: DashboardUiEffect?
     var onEffect: ((DashboardUiEffect) -> Void)?
     private var watchers: [IosCancelable] = []
@@ -124,6 +125,13 @@ final class FJStore: ObservableObject {
             }
             return
         }
+        if PdfReader.shared.canRead(task: task), !PdfMode.shared.isOff() {
+            let path = PdfReader.shared.pathOf(task: task)
+            if FileManager.default.fileExists(atPath: path) {
+                pdf = FJPdfTarget(path: path, title: PdfReader.shared.titleOf(task: task), task: task, hidden: false)
+                return
+            }
+        }
         if host.inAppPlayerOn(), let queue = host.playbackQueue(task: task) {
             FJPlayer.shared.queue = queue
             return
@@ -142,7 +150,11 @@ final class FJStore: ObservableObject {
             UIPasteboard.general.string = c.text
         }
         if let h = effect as? DashboardUiEffectOpenHiddenFile {
-            if host.openDownloadedFile(fullPath: h.path) {
+            if PdfReader.shared.isPdfName(name: h.path), !PdfMode.shared.isOff(),
+               FileManager.default.fileExists(atPath: h.path) {
+                let name = (h.path as NSString).lastPathComponent
+                pdf = FJPdfTarget(path: h.path, title: (name as NSString).deletingPathExtension, task: nil, hidden: true)
+            } else if host.openDownloadedFile(fullPath: h.path) {
                 watchHiddenPreview()
             } else {
                 showToast(strings.fileMissingTitle)
