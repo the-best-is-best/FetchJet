@@ -328,7 +328,12 @@ class MediaStreamDownloader(
 
                 // yt-dlp failed (or a merge failed): the cache may still hold an intermediate
                 // file like "name.f137.mp4". Do NOT pick it up as the finished download.
-                if (!success) {
+                val sectionFailedInFfmpeg = !success && !useOwnHls && isClipping &&
+                        MediaToolErrors.last(cacheDir)?.contains("ffmpeg", ignoreCase = true) == true
+                if (sectionFailedInFfmpeg) {
+                    com.michelle.raouf.fetch_jet.core.log.AppLog.e("clip: ffmpeg could not fetch the section (${MediaToolErrors.last(cacheDir)}), downloading the whole video to cut it")
+                }
+                if (!success && !sectionFailedInFfmpeg) {
                     if (useOwnHls) throw Exception("HLS: ${lastHlsError ?: "the stream could not be downloaded"}")
                     throw Exception(
                         MediaToolErrors.last(cacheDir)
@@ -339,6 +344,7 @@ class MediaStreamDownloader(
 
                 val hlsClipOffset = hlsClipOffsetsMs.value[taskId]
                 val foundCachePath = try {
+                    if (sectionFailedInFfmpeg) throw SectionDownloadUnusable(cacheTargetPath)
                     (if (hlsOutputPath != cacheTargetPath && AppFileSystem.exists(hlsOutputPath)) hlsOutputPath
                     else findFinishedFileInCache(cacheDir, cacheTargetPath, fileName))
                         ?.let { convertAudioIfNeeded(taskId, it, fileName, cacheDir) }
