@@ -26,10 +26,11 @@ import okio.use
 internal object PlayerLibraryPin {
     const val VERSION = "0.42.0"
     const val REPOSITORY = "the-best-is-best/fetchjet-tools"
-    const val RELEASE_TAG = "libmpv-$VERSION"
-    const val WINDOWS_X64_SHA256 = "60318691d95a8d21c4b575ec377d45ec40ef111ddd5932889ab19bfef466a252"
-    const val LINUX_X64_SHA256 = "fca7eb8c622938c7d07d6a8107d645383eb00922a74c9c48b9db9452415fd62b"
-    const val MACOS_ARM64_SHA256 = "53944aff2a7ece0baeec869c5e2aa67037ff093e2122fb5f526c01c46518fde5"
+    const val BUILD = "1"
+    const val RELEASE_TAG = "libmpv-$VERSION-$BUILD"
+    const val WINDOWS_X64_SHA256 = "3a5c5baaa1636997c96e2a66f4d7f0e16ae2656dd54410387e1a07ca5ae035bc"
+    const val LINUX_X64_SHA256 = "aaea068d908f84b53da0c0c036f5ae026331a15ad00f941d54f949bfe78d5b3e"
+    const val MACOS_ARM64_SHA256 = "e40a2597528eac520ad1a3cf864bff2be54a78c3ab2660ed207d01ca091fe3c7"
 }
 
 internal class PlayerLibraryAsset(val fileName: String, val url: String, val sha256: String)
@@ -66,8 +67,19 @@ fun getExistingPlayerLibrary(): String? =
 private fun nextToExecutable(): Boolean =
     DesktopOs.join(DesktopApp.exeDir, playerLibraryAsset().fileName).let { isFilePath(it) }
 
+private fun installedShaFile(): String = DesktopOs.join(getToolsDir(), "libmpv.sha256")
+
+private fun installedSha(): String =
+    runCatching { AppFileSystem.read(installedShaFile().toPath()) { readUtf8() }.trim().lowercase() }.getOrDefault("")
+
+fun isPlayerLibraryOutdated(): Boolean {
+    if (getExistingPlayerLibrary() == null) return false
+    val pinned = playerLibraryAsset().sha256
+    return pinned.isNotEmpty() && installedSha() != pinned
+}
+
 fun isPlayerLibraryReady(): Boolean =
-    getExistingPlayerLibrary() != null || nextToExecutable() || systemPlayerLibraryPaths.any { isFilePath(it) }
+    (getExistingPlayerLibrary() != null && !isPlayerLibraryOutdated()) || nextToExecutable() || systemPlayerLibraryPaths.any { isFilePath(it) }
 
 fun isPlayerLibraryAvailable(): Boolean = isPlayerLibraryReady() || playerLibraryAsset().sha256.isNotEmpty()
 
@@ -87,6 +99,7 @@ internal suspend fun installPlayerLibrary(toolsDir: String, onProgress: (ToolDow
             AppFileSystem.sink(unpacked.toPath()).buffer().use { out -> out.writeAll(input) }
         }
         check(DesktopOs.move(unpacked, target, replace = true)) { "could not replace ${asset.fileName} (is it in use?)" }
+        AppFileSystem.write(installedShaFile().toPath()) { writeUtf8(asset.sha256) }
     } finally {
         DesktopOs.deleteFile(download)
         DesktopOs.deleteFile(unpacked)
