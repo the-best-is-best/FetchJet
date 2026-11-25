@@ -118,6 +118,7 @@ namespace fjhost::player {
         bool g_failed = false;
         int g_width = 960;
         int g_height = 540;
+        bool g_controls_on = true;
         long g_label_second = -1;
         std::atomic<unsigned> g_generation{0};
         std::atomic<bool> g_event_posted{false};
@@ -504,7 +505,8 @@ namespace fjhost::player {
             if (!g_mpv)
                 return;
             double scale = std::max(1.0f, ui().window().scale_factor());
-            double margin = std::max(22.0, 120.0 * scale * 720.0 / double(std::max(g_height, 16)));
+            double lift = g_controls_on ? 120.0 : 24.0;
+            double margin = std::max(22.0, lift * scale * 720.0 / double(std::max(g_height, 16)));
             set("sub-margin-y", std::to_string(int(std::lround(margin))).c_str());
         }
 
@@ -1696,6 +1698,10 @@ namespace fjhost::player {
             g_trim.strip_w = w;
             g_trim.strip_h = h;
             start_thumbs();
+        });
+        p.on_controls_shown([](bool on) {
+            g_controls_on = on;
+            sub_margin();
         });
         p.on_sub_menu([] { publish_subs(); });
         p.on_sub_pick([](int key) { sub_pick(key); });

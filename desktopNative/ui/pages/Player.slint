@@ -43,6 +43,7 @@ export global PlayerUi {
     callback hold-end();
     callback start-over();
     callback surface-size(int, int);
+    callback controls-shown(bool);
     in property <[RowMenuItemDto]> sub-items;
     in property <int> sub-checked: -1;
     in property <bool> sub-on;
@@ -602,6 +603,7 @@ export component PlayerPage inherits Rectangle {
     }
     background: #000000;
     init => { keys.focus(); }
+    changed controls-on => { PlayerUi.controls-shown(self.controls-on); }
     changed width => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
     changed height => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
     hide-timer := Timer {
