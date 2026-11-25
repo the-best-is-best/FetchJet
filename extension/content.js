@@ -258,6 +258,86 @@
   const DRIVE_PLAYER = !TOP && ancestorHost(false) === "drive.google.com";
   const siteHidden = () => !!SITE && (settings.hiddenSites || []).includes(SITE);
   const buttonOff = () => !settingsReady || !settings.enabled || settings.pagePanel === false || siteHidden() || DRIVE_PLAYER;
+  const CANVA_HOST = /(^|\.)canva\.(com|cn)$/i;
+  const onCanvaDesign = () => CANVA_HOST.test(location.hostname) && /^\/design\//i.test(location.pathname);
+  const canvaPage = () => onCanvaDesign() || (!TOP && CANVA_HOST.test(SITE));
+  const isCanvaAnchor = (v) => !!v && v.tagName !== "VIDEO" && canvaPage();
+  const CANVA_FILE = /^(.*?\.(?:mp4|m4v|mov|webm|mkv|avi|wmv|mpe?g|3gp|mp3|m4a|wav|aac|ogg|oga|flac))(?=$|[\s,;)\]])/i;
+  function canvaName(f) {
+    let name = (f.getAttribute("aria-label") || "").trim();
+    if (!name) name = (f.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean).map((id) => { const e = document.getElementById(id); return e ? e.textContent || "" : ""; }).join(" ").trim();
+    if (!name) name = (f.getAttribute("title") || "").trim();
+    if (!name) { const c = f.querySelector("figcaption"); name = c ? (c.textContent || "").trim() : ""; }
+    const m = CANVA_FILE.exec(name);
+    return m ? m[1].trim() : "";
+  }
+  function canvaIds(root) {
+    const ids = new Set();
+    const re = /(?:^|[/=:])(V[A-Z][A-Za-z0-9_-]{9})(?=$|[/?&#.:])/g;
+    for (const e of [root, ...root.querySelectorAll("*")].slice(0, 300)) {
+      for (const a of e.attributes || []) {
+        const v = String(a.value || "");
+        if (v.length > 4000) continue;
+        re.lastIndex = 0;
+        let m;
+        while ((m = re.exec(v))) ids.add(m[1]);
+      }
+    }
+    return [...ids].slice(0, 8);
+  }
+  function canvaFigureEls() {
+    const out = [];
+    for (const f of document.querySelectorAll('figure, [role="figure"]')) { const name = canvaName(f); if (name) out.push({ el: f, name }); }
+    return out;
+  }
+  let canvaSent = "", canvaPicked = null, canvaClickAt = 0;
+  function reportCanva(play) {
+    if (!onCanvaDesign()) return;
+    const figures = canvaFigureEls().map(({ el, name }) => ({ name, ids: canvaIds(el) }));
+    const key = JSON.stringify(figures);
+    if (!play && (!figures.length || key === canvaSent)) return;
+    canvaSent = key;
+    try { api.runtime.sendMessage({ action: "canvaFigures", figures, play: play || null }).catch(() => {}); } catch (_) {}
+  }
+  function canvaFigureOf(v) {
+    const all = canvaFigureEls();
+    for (const f of all) if (f.el.contains(v)) return f;
+    const r = v.getBoundingClientRect();
+    let best = null, area = 0;
+    for (const f of all) {
+      const q = f.el.getBoundingClientRect();
+      const a = Math.max(0, Math.min(r.right, q.right) - Math.max(r.left, q.left)) * Math.max(0, Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top));
+      if (a > area) { best = f; area = a; }
+    }
+    if (best && area >= 0.3 * r.width * r.height) return best;
+    return canvaPicked && canvaPicked.el.isConnected ? canvaPicked : null;
+  }
+  addEventListener("pointerdown", (e) => {
+    if (!e.isTrusted || !onCanvaDesign()) return;
+    canvaClickAt = Date.now();
+    for (const n of e.composedPath ? e.composedPath() : []) {
+      if (!n || !n.getAttribute || !(n.tagName === "FIGURE" || n.getAttribute("role") === "figure")) continue;
+      const name = canvaName(n);
+      if (name) { canvaPicked = { el: n, name }; break; }
+    }
+  }, true);
+  document.addEventListener("play", (e) => {
+    const v = e.target;
+    if (!onCanvaDesign() || !v || v.tagName !== "VIDEO") return;
+    const f = canvaFigureOf(v);
+    if (!f) return;
+    const at = Date.now();
+    reportCanva({ name: f.name, ids: canvaIds(f.el), duration: v.duration || 0, at, since: at - canvaClickAt < 15000 ? canvaClickAt : at - 3000 });
+  }, true);
+  function placeCanva() {
+    const it = onCanvaDesign() ? items.find((i) => i.canva && i.playing && i.figure) : null;
+    const f = it ? canvaFigureEls().find((x) => x.name === it.figure) : null;
+    for (const [v, b] of bubbles) if (!f || v !== f.el) { b.host.remove(); bubbles.delete(v); }
+    if (!f) return;
+    const b = bubbles.get(f.el) || makeBubble(f.el);
+    if (!b.own || b.own[0].url !== it.url || b.own[0].fileName !== it.fileName) { b.own = [it]; renderOne(b); }
+    if (!b.dismissed) placeOne(b);
+  }
   function hideSite() {
     if (!SITE) return;
     const hiddenSites = [...new Set([...(settings.hiddenSites || []), SITE])];
@@ -474,6 +554,7 @@
   // Tell the background which video page is being watched, so it asks yt-dlp for the qualities.
   function watchVideos() {
     if (!settings.enabled) return;
+    if (canvaPage()) { reportCanva(); return; }
     checkDrm();
     const v = biggestVideo();
     if (!v) return;
@@ -597,7 +678,7 @@
     return svg;
   }
 
-  const isAudioAnchor = (v) => (v.tagName !== "VIDEO" && v !== fileHero) || isZoomMedia(v);
+  const isAudioAnchor = (v) => (v.tagName !== "VIDEO" && v !== fileHero && !isCanvaAnchor(v)) || isZoomMedia(v);
   const byKind = (v, key) => fjT(key + (isFileAnchor(v) ? "File" : isAudioAnchor(v) ? "Audio" : "Video"));
 
   let drag = null;
@@ -613,7 +694,7 @@
       el("div", { class: "wrap" },
         el("div", { class: "btn", id: "main", title: byKind(video, "btnTitle") },
           el("span", { class: "part", id: "grab" }, icon(), spin, el("span", { id: "label", text: byKind(video, "btnDownload") })),
-          ...(ON_IOS ? [] : [el("span", { class: "go", id: "go", title: fjT("openInApp"), role: "button", "aria-label": fjT("openInApp") }, arrowIcon())]),
+          ...(ON_IOS || isCanvaAnchor(video) ? [] : [el("span", { class: "go", id: "go", title: fjT("openInApp"), role: "button", "aria-label": fjT("openInApp") }, arrowIcon())]),
           el("span", { class: "count", id: "count" }),
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
@@ -712,6 +793,7 @@
     return row;
   }
   function pageInAppRow(b) {
+    if (isCanvaAnchor(b.video)) return null;
     if (!ON_IOS && itemsOf(b).some((i) => i.kind === "openApp")) return null;
     const row = el("div", { class: "item" }, el("span", { class: "num", text: "↗" }),
       el("div", { class: "body" }, el("div", { class: "t", text: fjT(ON_IOS ? "openPageInApp" : "itemOpenApp") }), el("div", { class: "s", text: fjT(ON_IOS ? "openPageInAppSub" : "itemOpenAppSub") })));
@@ -938,6 +1020,7 @@
 
   function place() {
     if (buttonOff()) return;
+    if (canvaPage()) return placeCanva();
     const all = allVideos();
     const seen = all.filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100 && !covered(v); });
     const vids = distinct(seen);
@@ -1041,7 +1124,7 @@
       return false;
     }
     if (request && request.action === "openPanel") {
-      const v = buttonOff() ? null : biggestVideo();
+      const v = buttonOff() || canvaPage() ? null : biggestVideo();
       if (!v) return false;
       let b = bubbles.get(v) || makeBubble(v);
       b.dismissed = false; layer().appendChild(b.host); b.open = true;
