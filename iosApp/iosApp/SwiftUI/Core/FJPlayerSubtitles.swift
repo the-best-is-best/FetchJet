@@ -9,6 +9,18 @@ struct FJSubtitleTrack: Identifiable {
     let option: AVMediaSelectionOption
 }
 
+final class FJLegibleReceiver: NSObject, AVPlayerItemLegibleOutputPushDelegate {
+    var onText: ((String) -> Void)?
+
+    func legibleOutput(_ output: AVPlayerItemLegibleOutput, didOutputAttributedStrings strings: [NSAttributedString],
+                       nativeSampleBuffers nativeSamples: [Any], forItemTime itemTime: CMTime) {
+        let line = strings.map { $0.string.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        onText?(line)
+    }
+}
+
 final class FJSubtitles: ObservableObject {
     @Published private(set) var tracks: [FJSubtitleTrack] = []
     @Published private(set) var files: [SubtitleFile] = []
@@ -23,6 +35,7 @@ final class FJSubtitles: ObservableObject {
     private var cues: [SubtitleCue] = []
     private var observer: Any?
     private var token = 0
+    private let receiver = FJLegibleReceiver()
 
     static let fileTypes: [UTType] = ["srt", "vtt", "ass", "ssa"].compactMap { UTType(filenameExtension: $0) } + [.plainText]
 
@@ -42,6 +55,14 @@ final class FJSubtitles: ObservableObject {
         cues = []
         text = ""
         failed = false
+        let output = AVPlayerItemLegibleOutput()
+        output.suppressesPlayerRendering = true
+        output.setDelegate(receiver, queue: .main)
+        item.add(output)
+        receiver.onText = { [weak self] line in
+            guard let self, current == self.token, self.choice is SubtitleChoiceTrack else { return }
+            if line != self.text { self.text = line }
+        }
         let language = PlayerSubtitles.shared.appLanguage()
         files = entry.hidden ? [] : PlayerSubtitles.shared.sideFiles(videoPath: path, preferredLanguage: language)
         if observer == nil {
@@ -133,27 +154,47 @@ final class FJSubtitles: ObservableObject {
 
 struct FJSubtitleOverlay: View {
     @ObservedObject var subtitles: FJSubtitles
-    let raised: Bool
+    let videoSize: CGSize
+    let barTop: CGFloat?
 
     var body: some View {
-        VStack {
-            Spacer()
-            if !subtitles.text.isEmpty {
-                Text(subtitles.text)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .shadow(color: .black, radius: 1, x: 1, y: 1)
-                    .shadow(color: .black, radius: 2)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, raised ? 150 : 36)
+        GeometryReader { geo in
+            let bottom = textBottom(geo)
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                if !subtitles.text.isEmpty {
+                    Text(subtitles.text)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .shadow(color: .black, radius: 1, x: 1, y: 1)
+                        .shadow(color: .black, radius: 2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.horizontal, 24)
+                }
             }
+            .frame(width: geo.size.width, height: max(bottom - 8, 0))
+            .animation(.easeOut(duration: 0.2), value: bottom)
         }
         .allowsHitTesting(false)
-        .animation(.easeOut(duration: 0.15), value: raised)
+    }
+
+    private func textBottom(_ geo: GeometryProxy) -> CGFloat {
+        let insets = geo.safeAreaInsets
+        let full = CGSize(width: geo.size.width + insets.leading + insets.trailing,
+                          height: geo.size.height + insets.top + insets.bottom)
+        var videoBottom = full.height
+        if videoSize.width > 0, videoSize.height > 0 {
+            let scale = min(full.width / videoSize.width, full.height / videoSize.height)
+            videoBottom = (full.height + videoSize.height * scale) / 2
+        }
+        var bottom = min(videoBottom - insets.top, geo.size.height)
+        if let barTop, barTop.isFinite {
+            bottom = min(bottom, barTop - geo.frame(in: .global).minY)
+        }
+        return max(bottom, 0)
     }
 }
 

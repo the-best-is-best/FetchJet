@@ -29,6 +29,7 @@ final class FJPlayerModel: ObservableObject {
     @Published var failed = false
     @Published var finished = false
     @Published var preparing = false
+    @Published var videoSize: CGSize = .zero
     let subtitles = FJSubtitles()
     private var prepareJob: Kotlinx_coroutines_coreJob?
     private var preparedId: String?
@@ -38,6 +39,7 @@ final class FJPlayerModel: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
     private var rateObserver: NSKeyValueObservation?
+    private var sizeObserver: NSKeyValueObservation?
     private var rewindTimer: Timer?
     private var hideTask: Task<Void, Never>?
     private var wasPlayingBeforeHold = false
@@ -123,6 +125,14 @@ final class FJPlayerModel: ObservableObject {
         let playerItem = AVPlayerItem(url: URL(fileURLWithPath: path))
         if item.isVideo {
             subtitles.attach(player: player, item: playerItem, entry: item, path: path)
+        }
+        videoSize = .zero
+        sizeObserver = playerItem.observe(\.presentationSize, options: [.new]) { [weak self] it, _ in
+            let size = it.presentationSize
+            DispatchQueue.main.async {
+                guard let self, size != self.videoSize else { return }
+                self.videoSize = size
+            }
         }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = NotificationCenter.default.addObserver(
@@ -316,6 +326,7 @@ struct FJPlayerScreen: View {
     @State private var showQueue = false
     @State private var pickingSubtitle = false
     @State private var dragging: Double?
+    @State private var barTop: CGFloat = .infinity
 
     init(queue: PlaybackQueue, onClose: @escaping () -> Void) {
         self.queue = queue
@@ -357,7 +368,8 @@ struct FJPlayerScreen: View {
             .ignoresSafeArea()
 
             if model.item.isVideo {
-                FJSubtitleOverlay(subtitles: model.subtitles, raised: model.controls)
+                FJSubtitleOverlay(subtitles: model.subtitles, videoSize: model.videoSize,
+                                  barTop: model.controls ? barTop : nil)
             }
             if model.hold != 0 {
                 Text(model.hold > 0 ? "▶▶  2x" : "◀◀  2x")
@@ -487,6 +499,7 @@ struct FJPlayerScreen: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 6)
             .background(Color.black.opacity(0.55))
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { barTop = $0 }
         }
     }
 
