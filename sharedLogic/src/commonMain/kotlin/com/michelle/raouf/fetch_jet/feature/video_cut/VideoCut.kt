@@ -327,7 +327,7 @@ object VideoCut {
                 addAll(listOf("-y", "-nostdin", "-v", "error", "-progress", progress.toString()))
                 if (startMs > 0L) addAll(listOf("-ss", seconds(startMs)))
                 addAll(listOf("-accurate_seek", "-i", input))
-                if (!toEnd) addAll(listOf("-t", seconds(endMs - startMs)))
+                if (!toEnd) addAll(listOf("-t", seconds(endMs - startMs - 1L)))
                 addAll(listOf("-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-map_metadata", "0", "-map_chapters", "-1"))
                 addAll(listOf("-vf", "setpts=PTS-STARTPTS", "-af", "asetpts=PTS-STARTPTS"))
                 addAll(plan.videoArgs)
