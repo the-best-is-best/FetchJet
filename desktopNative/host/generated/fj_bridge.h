@@ -2112,6 +2112,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_playerAskLater(next());
     tr.set_playerModeTitle(next());
     tr.set_playerModeHint(next());
+    tr.set_playerModeHintShort(next());
     tr.set_playerModeAsk(next());
     tr.set_playerModeOn(next());
     tr.set_playerModeOff(next());
