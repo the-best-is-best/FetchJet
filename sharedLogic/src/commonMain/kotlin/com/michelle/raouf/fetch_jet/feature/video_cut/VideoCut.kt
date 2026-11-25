@@ -329,6 +329,7 @@ object VideoCut {
                 addAll(listOf("-accurate_seek", "-i", input))
                 if (!toEnd) addAll(listOf("-t", seconds(endMs - startMs)))
                 addAll(listOf("-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-map_metadata", "0", "-map_chapters", "-1"))
+                addAll(listOf("-vf", "setpts=PTS-STARTPTS", "-af", "asetpts=PTS-STARTPTS"))
                 addAll(plan.videoArgs)
                 addAll(plan.audioArgs)
                 if (ext in FASTSTART) addAll(listOf("-movflags", "+faststart"))
