@@ -86,6 +86,19 @@ internal fun openDownloadedFile(fullPath: String, taskId: String) {
         com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(queue)
         return
     }
+    if (task != null && com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfReader.canRead(task) &&
+        !com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.isOff()
+    ) {
+        com.michelle.raouf.fetch_jet.ui.PdfRequests.open(
+            com.michelle.raouf.fetch_jet.ui.PdfOpen(
+                path = fullPath,
+                title = com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(task.fileName),
+                task = task,
+                hidden = false
+            )
+        )
+        return
+    }
     if (!resolver.openFile(fullPath)) {
         resolver.openFileLocation(fullPath)
     }
@@ -243,7 +256,19 @@ fun App(
             when (effect) {
                 is DashboardUiEffect.ShowToast -> snackbarHostState.showSnackbar(effect.text)
                 is DashboardUiEffect.CopyText -> effectClipboard.setText(androidx.compose.ui.text.AnnotatedString(effect.text))
-                is DashboardUiEffect.OpenHiddenFile -> {
+                is DashboardUiEffect.OpenHiddenFile -> if (
+                    com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfReader.isPdfName(effect.path) &&
+                    !com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.isOff()
+                ) {
+                    com.michelle.raouf.fetch_jet.ui.PdfRequests.open(
+                        com.michelle.raouf.fetch_jet.ui.PdfOpen(
+                            path = effect.path,
+                            title = effect.path.substringAfterLast('/'),
+                            task = null,
+                            hidden = true
+                        )
+                    )
+                } else {
                     val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
                     flow.playerOut = true
                     flow.leftAt = null
@@ -1025,6 +1050,37 @@ fun App(
                         com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
                         if (hiddenQueue) viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
                     }
+                }
+            }
+            val pdfRequest by com.michelle.raouf.fetch_jet.ui.PdfRequests.current.collectAsState()
+            pdfRequest?.let { pdf ->
+                if (pdf.hidden && (!state.hidden.unlocked || state.hidden.covered)) {
+                    LaunchedEffect(pdf) {
+                        com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                        viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
+                } else {
+                    com.michelle.raouf.fetch_jet.ui.PdfReaderScreen(
+                        request = pdf,
+                        onClose = {
+                            com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                            if (pdf.hidden) viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                        },
+                        onOpenOutside = {
+                            com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                            if (pdf.hidden) {
+                                val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
+                                flow.playerOut = true
+                                flow.leftAt = null
+                            }
+                            if (!pathResolver.openFile(pdf.path)) {
+                                if (pdf.hidden) {
+                                    com.michelle.raouf.fetch_jet.ui.HiddenFlow.playerOut = false
+                                    viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                                } else pathResolver.openFileLocation(pdf.path)
+                            }
+                        }
+                    )
                 }
             }
             if (state.hidden.unlocked && state.hidden.covered) {
