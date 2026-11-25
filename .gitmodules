@@ -1,3 +1,6 @@
 [submodule "packages/kmp-localization"]
 	path = packages/kmp-localization
 	url = https://github.com/the-best-is-best/mobile-kmp-localization.git
+[submodule "tools/fetchjet-tools"]
+	path = tools/fetchjet-tools
+	url = https://github.com/the-best-is-best/fetchjet-tools.git

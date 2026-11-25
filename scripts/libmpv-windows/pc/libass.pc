@@ -1,8 +1,0 @@
-prefix=/clang64
-includedir=${prefix}/include
-libdir=${prefix}/lib
-Name: libass
-Description: libass static
-Version: 0.17.5
-Libs: -L${libdir} -Wl,-Bstatic -lass -lfribidi -lunibreak -lfontconfig -lfreetype -lharfbuzz -lgraphite2 -lbz2 -lpng16 -lz -lbrotlidec -lbrotlicommon -lexpat -lglib-2.0 -lpcre2-8 -lintl -liconv -lc++ -lc++abi -lunwind -Wl,-Bdynamic -lm -lgdi32 -lusp10 -lrpcrt4 -luser32 -ldwrite -lws2_32 -lole32 -lwinmm -lshlwapi -luuid
-Cflags: -I${includedir}

@@ -25,7 +25,7 @@ import okio.use
 
 internal object PlayerLibraryPin {
     const val VERSION = "0.42.0"
-    const val REPOSITORY = "the-best-is-best/FetchJet"
+    const val REPOSITORY = "the-best-is-best/fetchjet-tools"
     const val RELEASE_TAG = "libmpv-$VERSION"
     const val WINDOWS_X64_SHA256 = "ecdd46e7d604e493227aca10e669063ce8825cb90e7a687d80ae671e274528c3"
     const val LINUX_X64_SHA256 = ""
