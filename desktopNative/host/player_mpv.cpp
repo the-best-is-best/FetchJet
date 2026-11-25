@@ -142,6 +142,8 @@ namespace fjhost::player {
         long long g_sub_entry = -1;
         long long g_sub_loaded_entry = -1;
         std::string g_sub_opened;
+        std::string g_sub_enforce;
+        int g_sub_expect = 0;
         int g_sub_tick = 0;
         slint::Timer g_notice_timer;
 
@@ -524,6 +526,8 @@ namespace fjhost::player {
             g_sub_apply = false;
             g_sub_want_entry = -1;
             g_sub_opened.clear();
+            g_sub_enforce.clear();
+            g_sub_expect = 0;
         }
 
         void sub_prepare(const Item &item) {
@@ -561,12 +565,19 @@ namespace fjhost::player {
             const std::string choice = g_sub_choice;
             bool by_file = choice.compare(0, 5, "file:") == 0;
             std::string chosen = by_file ? choice.substr(5) : std::string();
+            int adds = 0;
             for (const auto &file: g_sub_files) {
-                if (!(by_file && same_path(file.path, chosen)))
+                if (!(by_file && same_path(file.path, chosen))) {
                     command_async({"sub-add", file.path.c_str(), "auto"});
+                    adds++;
+                }
             }
-            if (by_file && !chosen.empty())
+            if (by_file && !chosen.empty()) {
                 command_async({"sub-add", chosen.c_str(), "select"});
+                adds++;
+            }
+            g_sub_enforce = adds > 0 ? choice : std::string();
+            g_sub_expect = adds;
             if (choice == "off")
                 set("sid", "no");
             else if (choice.compare(0, 6, "track:") == 0)
@@ -587,11 +598,38 @@ namespace fjhost::player {
             if (!g_mpv || path.empty())
                 return;
             g_sub_opened = path;
+            g_sub_enforce.clear();
             command_tagged(ReplySubOpen, {"sub-add", path.c_str(), "select"});
         }
 
         std::string node_text(const mpv_node &node) {
             return node.format == MPV_FORMAT_STRING && node.u.string ? std::string(node.u.string) : std::string();
+        }
+
+        void enforce_sub_choice() {
+            if (g_sub_enforce.empty())
+                return;
+            int external = 0;
+            for (const auto &track: g_sub_tracks)
+                if (track.external)
+                    external++;
+            if (external < g_sub_expect)
+                return;
+            const std::string choice = g_sub_enforce;
+            g_sub_enforce.clear();
+            if (choice.compare(0, 5, "file:") == 0) {
+                for (const auto &track: g_sub_tracks) {
+                    if (track.external && same_path(track.file, choice.substr(5))) {
+                        if (!track.selected)
+                            set("sid", std::to_string(track.id).c_str());
+                        return;
+                    }
+                }
+            } else if (choice == "off") {
+                set("sid", "no");
+            } else if (choice.compare(0, 6, "track:") == 0) {
+                set("sid", choice.substr(6).c_str());
+            }
         }
 
         void read_tracks(const mpv_node *node) {
@@ -637,6 +675,7 @@ namespace fjhost::player {
                 int ra = rank(a), rb = rank(b);
                 return ra != rb ? ra < rb : a.id < b.id;
             });
+            enforce_sub_choice();
             publish_subs();
         }
 
@@ -662,6 +701,7 @@ namespace fjhost::player {
         void sub_pick(int key) {
             if (!g_mpv || g_items.empty())
                 return;
+            g_sub_enforce.clear();
             if (key == kSubOpen) {
                 open_sub_dialog();
                 return;
