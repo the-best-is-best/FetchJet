@@ -929,6 +929,10 @@
    [
     "inPlaylist",
     "Boolean"
+   ],
+   [
+    "tag",
+    "String"
    ]
   ],
   "ClipChipDto": [

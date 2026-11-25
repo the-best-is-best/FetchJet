@@ -5,6 +5,7 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.forLanguages
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isFile
 import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitlesFoundFor
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
@@ -418,8 +419,9 @@ internal fun DashboardViewModel.addPlaylist(
             )
         }
         for (entry in selected) {
-            val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
-            var fileName = if (name.endsWith(
+            val courseFile = playlist.fromBrowser && entry.isFile
+            val name = queueRepository.pathResolver.sanitizeFileName(if (courseFile) entry.fileName else entry.title)
+            var fileName = if (courseFile || name.endsWith(
                     ".$playlistExt",
                     ignoreCase = true
                 )
@@ -435,11 +437,11 @@ internal fun DashboardViewModel.addPlaylist(
             usedNames.add(fileName.lowercase())
             // A course the extension read (Udemy) lists the lectures' own streams: an HLS
             // playlist goes to the own HLS engine (best rendition), a file is a plain download.
-            val hls = playlist.fromBrowser &&
+            val hls = playlist.fromBrowser && !courseFile &&
                     com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(
                         entry.url
                     )
-            val file =
+            val file = courseFile ||
                 playlist.fromBrowser && !hls && engineForDirectFile(entry.url) == EngineType.HTTP_DIRECT
             val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
                 index = 0,

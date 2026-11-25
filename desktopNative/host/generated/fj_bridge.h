@@ -455,6 +455,7 @@ inline PlaylistRowDto parse_PlaylistRowDto(const fj::Json &j) {
     d.before = fj::flag(j, "before");
     d.unavailable = fj::flag(j, "unavailable");
     d.inPlaylist = fj::flag(j, "inPlaylist");
+    d.tag = fj::text(j, "tag");
     return d;
 }
 

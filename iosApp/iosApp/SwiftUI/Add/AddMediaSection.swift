@@ -488,7 +488,7 @@ struct AddPlaylistCard: View {
                                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                                 }
                                 VStack(alignment: .leading, spacing: 0) {
-                                    Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
+                                    Text(PlaylistKt.shownName(entry, fromBrowser: playlist.fromBrowser))
                                         .font(.fj(12))
                                         .foregroundStyle(FJTheme.color.onSurface)
                                         .lineLimit(1)
@@ -510,6 +510,14 @@ struct AddPlaylistCard: View {
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                if PlaylistKt.isFile(entry) {
+                                    Text(PlaylistKt.fileTag(entry))
+                                        .font(.fj(9, .bold))
+                                        .foregroundStyle(FJTheme.hex(0x38BDF8))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(FJTheme.hex(0x38BDF8).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+                                }
                                 if !playlist.fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
                                     Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
                                         .font(.fj(11))

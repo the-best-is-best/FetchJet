@@ -882,6 +882,21 @@ component PlaylistCard inherits SectionCard {
                                 line: 14px;
                             }
                         }
+                        if entry.tag != "": Rectangle {
+                            width: file-tag.preferred-width + 14px;
+                            height: 22px;
+                            border-radius: 6px;
+                            background: #38BDF8.with-alpha(0.15);
+                            file-tag := Text {
+                                text: entry.tag;
+                                color: #38BDF8;
+                                font-family: Theme.font;
+                                font-size: 10px;
+                                font-weight: 700;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
                         if entry.size != "" || entry.sizeBusy: T {
                             width: 72px;
                             text: entry.size != "" ? entry.size : "…";
