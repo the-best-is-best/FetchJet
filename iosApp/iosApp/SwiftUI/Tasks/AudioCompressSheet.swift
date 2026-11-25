@@ -8,7 +8,7 @@ struct AudioCompressButton: View {
     var body: some View {
         let count = store.state.audioCopyCounts[task.id]?.intValue ?? 0
         let title = store.strings.audioCompressTitle + (count > 0 ? " (\(count))" : "")
-        TaskDetailButton(text: title, primary: false) {
+        TaskDetailButton(text: title, primary: false, icon: "arrow.down.right.and.arrow.up.left") {
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
         }
         .sheet(isPresented: Binding(

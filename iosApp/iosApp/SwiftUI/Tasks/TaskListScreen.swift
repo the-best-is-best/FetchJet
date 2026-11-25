@@ -410,7 +410,7 @@ struct TaskListScreen: View {
     @ViewBuilder
     private func rowMenu(_ task: DownloadTask) -> some View {
         let s = store.strings
-        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, selectEntry: true))
+        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, canCut: true, selectEntry: true))
         ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
             if entry.dividerBefore { Divider() }
             Button(role: entry.danger ? ButtonRole.destructive : nil) {
@@ -1247,6 +1247,8 @@ struct TaskRowActions {
             store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
         case "COMPRESS":
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
+        case "CUT":
+            store.send(DashboardUiEventOnVideoCutClicked(taskId: task.id))
         case "SUBTITLES":
             showDetails(task)
             store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
