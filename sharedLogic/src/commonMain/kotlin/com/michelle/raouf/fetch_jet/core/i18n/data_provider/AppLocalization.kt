@@ -900,6 +900,13 @@ interface AppLocalization : LocalizationProvider {
     val playerModeTitle: String
     val playerModeHint: String
     val playerModeHintShort: String
+    val playerSubtitles: String
+    val playerSubtitlesOff: String
+    val playerSubtitlesOpenFile: String
+    val playerSubtitlesTrack: String
+    val playerSubtitlesInVideo: String
+    val playerSubtitlesFiles: String
+    val playerSubtitlesFailed: String
     val playerModeAsk: String
     val playerModeOn: String
     val playerModeOff: String

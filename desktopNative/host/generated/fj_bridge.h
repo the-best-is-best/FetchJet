@@ -2118,6 +2118,13 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_playerModeTitle(next());
     tr.set_playerModeHint(next());
     tr.set_playerModeHintShort(next());
+    tr.set_playerSubtitles(next());
+    tr.set_playerSubtitlesOff(next());
+    tr.set_playerSubtitlesOpenFile(next());
+    tr.set_playerSubtitlesTrack(next());
+    tr.set_playerSubtitlesInVideo(next());
+    tr.set_playerSubtitlesFiles(next());
+    tr.set_playerSubtitlesFailed(next());
     tr.set_playerModeAsk(next());
     tr.set_playerModeOn(next());
     tr.set_playerModeOff(next());
