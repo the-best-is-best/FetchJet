@@ -160,6 +160,7 @@ namespace fjhost::player {
             int strip_w = 0;
             int strip_h = 0;
             bool thumbs_started = false;
+            bool audio = false;
         };
 
         struct ThumbJob {
@@ -180,6 +181,7 @@ namespace fjhost::player {
         std::shared_ptr<ThumbJob> g_thumb_job;
         std::atomic<unsigned> g_thumb_tag{0};
         int g_thumbs_loaded = 0;
+        std::shared_ptr<slint::VectorModel<float>> g_wave;
 
         void drain_events();
 
@@ -1342,10 +1344,47 @@ namespace fjhost::player {
             g_thumb_job.reset();
         }
 
+        std::vector<float> parse_peaks(const std::string &text) {
+            std::vector<float> out;
+            fj::Json json;
+            std::string error;
+            if (text.empty() || !fj::parse_json(text, json, error))
+                return out;
+            for (const auto &entry: json.items)
+                out.push_back(float(std::clamp(entry.number, 0.0, 1.0)));
+            return out;
+        }
+
+        void start_wave() {
+            g_trim.thumbs_started = true;
+            int bars = std::clamp(g_trim.strip_w / 4, 40, 400);
+            cancel_thumbs();
+            g_wave = std::make_shared<slint::VectorModel<float>>();
+            ui().global<PlayerUi>().set_trim_wave(g_wave);
+            unsigned tag = g_thumb_tag.load();
+            std::string args = "{\"path\":" + quote(g_items[g_index].path) + ",\"bars\":" + std::to_string(bars) +
+                               ",\"durationMs\":" + std::to_string(std::llround(g_duration * 1000.0)) + "}";
+            trim_log("trim wave " + std::to_string(bars) + " bars");
+            std::thread([tag, args] {
+                std::vector<float> peaks = parse_peaks(core_call("player.waveform", args));
+                slint::invoke_from_event_loop([tag, peaks] {
+                    if (tag != g_thumb_tag.load() || !g_wave)
+                        return;
+                    g_wave = std::make_shared<slint::VectorModel<float>>(peaks);
+                    ui().global<PlayerUi>().set_trim_wave(g_wave);
+                    trim_log("trim wave loaded " + std::to_string(peaks.size()));
+                });
+            }).detach();
+        }
+
         void start_thumbs() {
             if (!g_trim.on || !g_trim.ready || g_trim.thumbs_started || g_duration <= 0 || g_trim.strip_w <= 0 || g_trim.strip_h <= 0)
                 return;
-            if (g_items.empty() || !g_items[g_index].video)
+            if (g_items.empty())
+                return;
+            if (g_trim.audio)
+                return start_wave();
+            if (!g_items[g_index].video)
                 return;
             g_trim.thumbs_started = true;
             int height = std::clamp(g_trim.strip_h, 16, 240);
@@ -1468,8 +1507,10 @@ namespace fjhost::player {
             if (!g_trim.on || g_trim.ready || g_duration <= 0)
                 return;
             g_trim.ready = true;
-            g_trim.fps_guess = true;
-            g_trim.fps = 30;
+            g_trim.audio = !g_items.empty() && !g_items[g_index].video;
+            g_trim.fps_guess = !g_trim.audio;
+            g_trim.fps = g_trim.audio ? 100 : 30;
+            ui().global<PlayerUi>().set_trim_audio(g_trim.audio);
             trim_frames();
             g_trim.s = trim_index(double(g_trim.start_ms) / 1000.0);
             g_trim.e = g_trim.end_ms > 0 ? trim_index(double(g_trim.end_ms) / 1000.0) : g_trim.frames;
@@ -1683,6 +1724,9 @@ namespace fjhost::player {
         g_thumbs = std::make_shared<slint::VectorModel<slint::Image>>();
         g_thumbs_loaded = 0;
         p.set_trim_thumbs(g_thumbs);
+        g_wave.reset();
+        p.set_trim_wave(std::make_shared<slint::VectorModel<float>>());
+        p.set_trim_audio(false);
         p.set_trim_playhead(0);
         p.set_trim_ready(false);
         publish_trim();
@@ -1712,6 +1756,7 @@ namespace fjhost::player {
         cancel_thumbs();
         g_trim = Trim();
         g_thumbs.reset();
+        g_wave.reset();
         stop_engine();
         set_opening(false, 0);
         g_preparing.clear();
@@ -1730,6 +1775,8 @@ namespace fjhost::player {
         p.set_trim(false);
         p.set_trim_ready(false);
         p.set_trim_thumbs(std::make_shared<slint::VectorModel<slint::Image>>());
+        p.set_trim_wave(std::make_shared<slint::VectorModel<float>>());
+        p.set_trim_audio(false);
         p.set_open(false);
         p.set_playing(false);
         clear_frame();
@@ -1856,10 +1903,11 @@ namespace fjhost::player {
                 }
             }
             if (g_trim.on)
-                std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu\n",
+                std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu audio=%d wave=%zu\n",
                              g_trim.ready ? 1 : 0, g_trim.fps, g_trim.fps_guess ? "?" : "", g_trim.frames, g_trim.s, g_trim.e,
                              precise_label(trim_time(g_trim.s)).c_str(), precise_label(trim_time(g_trim.e)).c_str(), g_trim.active,
-                             g_trim.range ? 1 : 0, g_thumbs_loaded, g_thumbs ? size_t(g_thumbs->row_count()) : size_t(0));
+                             g_trim.range ? 1 : 0, g_thumbs_loaded, g_thumbs ? size_t(g_thumbs->row_count()) : size_t(0), g_trim.audio ? 1 : 0,
+                             g_wave ? size_t(g_wave->row_count()) : size_t(0));
             std::fclose(file);
         }
     }

@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.presenter
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryOutdated
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDialogDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ChoiceDialogKind
 import com.tbib.kmp_localization.LocalizationManager
@@ -14,6 +15,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import com.michelle.raouf.fetch_jet.feature.media_extractor.ensurePlayerLibrary
 import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable
@@ -30,6 +32,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenGroupQueue
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenQueueFor
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
+import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import kotlinx.serialization.Serializable
@@ -79,7 +82,7 @@ private val preparing = MutableStateFlow<Preparing?>(null)
 internal fun Presenter.openPlayer(queue: PlaybackQueue, tasks: List<DownloadTask>) {
     when {
         isPlayerLibraryReady() -> pushPlayerEffect(queue, tasks)
-        PlayerMode.isOn() -> vm.ensurePlayerLibrary { pushPlayerEffect(queue, tasks) }
+        PlayerMode.isOn() || isPlayerLibraryOutdated() -> vm.ensurePlayerLibrary { pushPlayerEffect(queue, tasks) }
         else -> playerAsk.value = PlayerAsk(queue, tasks)
     }
 }
@@ -90,6 +93,11 @@ internal fun Presenter.openTrimPlayer(task: DownloadTask, trim: PlayerTrim) {
     if (isPlayerLibraryReady()) {
         vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
         pushPlayerEffect(queue, tasks, trim)
+    } else if (isPlayerLibraryOutdated()) {
+        vm.ensurePlayerLibrary {
+            vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
+            pushPlayerEffect(queue, tasks, trim)
+        }
     } else {
         playerAsk.value = PlayerAsk(queue, tasks, trim = trim)
     }
@@ -305,6 +313,14 @@ internal fun playerCall(name: String, args: String): String {
             val choice = SubtitleChoice.decode(obj["choice"]?.jsonPrimitive?.content.orEmpty()) ?: return ""
             if (obj["hidden"]?.jsonPrimitive?.content == "true" || isHiddenTask(id)) return ""
             PlayerSubtitles.remember(id, choice)
+        }
+        "waveform" -> {
+            val path = obj["path"]?.jsonPrimitive?.content.orEmpty()
+            val bars = obj["bars"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+            val durationMs = obj["durationMs"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
+            if (path.isEmpty() || bars <= 0) return ""
+            val peaks = runBlocking { VideoCut.waveform(path, bars.coerceAtMost(2000), durationMs) }
+            return UiJson.encodeToString(peaks)
         }
         else -> return ""
     }

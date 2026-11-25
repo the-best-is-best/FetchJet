@@ -8,7 +8,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from corehost import Core, CheckFailed, REPO
+from corehost import Core, CheckFailed, REPO, install_libmpv
 from test_hidden import add_and_wait, open_hidden, pin_alert, type_pin, visible_names
 
 PORT = int(os.environ.get("FJ_PLAYER_SUBS_PORT", "18269"))
@@ -179,9 +179,7 @@ def host_part(core, ids, paths):
     if missing:
         print("SKIP the player window part, missing: " + ", ".join(missing))
         return
-    tools = os.path.join(core.home, "tools")
-    os.makedirs(tools, exist_ok=True)
-    shutil.copy2(LIBMPV, os.path.join(tools, "libmpv-2.dll"))
+    install_libmpv(core.home, LIBMPV)
     movie = ids["movie.mp4"]
     folder = paths["movie.mp4"].rsplit("/", 1)[0]
     extra = folder + "/extra.srt"

@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import queue
+import re
 import shutil
 import sys
 import threading
@@ -336,6 +337,22 @@ def sha256_of_file(path):
                 break
             digest.update(block)
     return digest.hexdigest()
+
+
+def pinned_libmpv_sha():
+    source = os.path.join(REPO, "sharedLogic", "src", "nativeDesktopMain", "kotlin", "com", "michelle", "raouf", "fetch_jet",
+                          "feature", "media_extractor", "PlayerLibrary.nativeDesktop.kt")
+    with open(source, encoding="utf-8") as handle:
+        found = re.search(r'WINDOWS_X64_SHA256 = "([0-9a-f]*)"', handle.read())
+    return found.group(1) if found else ""
+
+
+def install_libmpv(home, source):
+    tools = os.path.join(home, "tools")
+    os.makedirs(tools, exist_ok=True)
+    shutil.copy2(source, os.path.join(tools, "libmpv-2.dll"))
+    with open(os.path.join(tools, "libmpv.sha256"), "w", encoding="utf-8") as handle:
+        handle.write(pinned_libmpv_sha())
 
 
 def http_text(url, timeout=10):

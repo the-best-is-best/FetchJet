@@ -53,6 +53,8 @@ export global PlayerUi {
     in property <bool> trim;
     in property <bool> trim-ready;
     in property <[image]> trim-thumbs;
+    in property <bool> trim-audio;
+    in property <[float]> trim-wave;
     in property <float> trim-start;
     in property <float> trim-end: 1;
     in property <float> trim-playhead;
@@ -335,8 +337,18 @@ component TrimStrip inherits Rectangle {
         y: 4px;
         width: root.track-w;
         height: parent.height - 8px;
-        background: #FFFFFF14;
+        background: PlayerUi.trim-audio ? #1C1C24 : #FFFFFF14;
         clip: true;
+        if PlayerUi.trim-audio: Rectangle {
+            private property <length> step: parent.width / max(PlayerUi.trim-wave.length, 1);
+            for peak[i] in PlayerUi.trim-wave: Rectangle {
+                x: i * parent.step + parent.step * 0.2;
+                width: max(1px, parent.step * 0.6);
+                height: max(1.5px, clamp(peak, 0, 1) * parent.height * 0.9);
+                y: (parent.height - self.height) / 2;
+                background: #8FA3C8;
+            }
+        }
         for img[i] in PlayerUi.trim-thumbs: Image {
             x: i * parent.width / max(PlayerUi.trim-thumbs.length, 1);
             width: parent.width / max(PlayerUi.trim-thumbs.length, 1) + 1px;
@@ -514,7 +526,7 @@ component TrimPanel inherits Rectangle {
                 filled: true;
                 enabled: PlayerUi.trim-ready;
                 container: #FFFFFF14;
-                label: "-1";
+                label: PlayerUi.trim-audio ? "-10 ms" : "-1";
                 clicked => { PlayerUi.trim-nudge(PlayerUi.trim-active, -1); }
             }
             PBtn {
@@ -533,7 +545,7 @@ component TrimPanel inherits Rectangle {
                 filled: true;
                 enabled: PlayerUi.trim-ready;
                 container: #FFFFFF14;
-                label: "+1";
+                label: PlayerUi.trim-audio ? "+10 ms" : "+1";
                 clicked => { PlayerUi.trim-nudge(PlayerUi.trim-active, 1); }
             }
         }
@@ -895,7 +907,7 @@ export component PlayerPage inherits Rectangle {
                 }
             }
             if PlayerUi.trim: Text {
-                text: Tr.videoCutTitle;
+                text: PlayerUi.trim-audio ? Tr.audioCutTitle : Tr.videoCutTitle;
                 color: Theme.primary;
                 font-family: Theme.font;
                 font-size: 16px;
