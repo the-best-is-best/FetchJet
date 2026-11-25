@@ -1026,6 +1026,7 @@ object EnglishProvider : AppLocalization {
     override val playerAskLater = "You can change this later in Settings > Media tools."
     override val playerModeTitle = "In-app player"
     override val playerModeHint = "How finished video and audio open. The in-app player is downloaded once, the first time it is used."
+    override val playerModeHintShort = "How finished video and audio open."
     override val playerModeAsk = "Ask me"
     override val playerModeOn = "In-app player"
     override val playerModeOff = "System app"

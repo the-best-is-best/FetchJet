@@ -1031,6 +1031,7 @@ object PersianProvider : AppLocalization {
     override val playerAskLater = "بعداً می‌توانید این را در تنظیمات > ابزارهای رسانه تغییر دهید."
     override val playerModeTitle = "پخش‌کننده داخلی"
     override val playerModeHint = "نحوه باز شدن ویدیو و صداهای کامل‌شده. پخش‌کننده داخلی اولین بار که استفاده شود یک بار دانلود می‌شود."
+    override val playerModeHintShort = "نحوه باز شدن ویدیو و صداهای کامل‌شده."
     override val playerModeAsk = "از من بپرس"
     override val playerModeOn = "پخش‌کننده داخلی"
     override val playerModeOff = "برنامه سیستم"

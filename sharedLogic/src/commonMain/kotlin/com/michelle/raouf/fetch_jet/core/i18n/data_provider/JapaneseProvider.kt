@@ -1030,6 +1030,7 @@ object JapaneseProvider : AppLocalization {
     override val playerAskLater = "あとで 設定 > メディアツール で変更できます。"
     override val playerModeTitle = "アプリ内プレーヤー"
     override val playerModeHint = "完了した動画と音声の開き方。アプリ内プレーヤーは初回使用時に一度だけダウンロードされます。"
+    override val playerModeHintShort = "完了した動画と音声の開き方。"
     override val playerModeAsk = "確認する"
     override val playerModeOn = "アプリ内プレーヤー"
     override val playerModeOff = "システムのアプリ"

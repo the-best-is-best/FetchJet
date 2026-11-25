@@ -1043,6 +1043,7 @@ object RussianProvider : AppLocalization {
     override val playerAskLater = "Это можно изменить позже в Настройки > Медиаинструменты."
     override val playerModeTitle = "Встроенный плеер"
     override val playerModeHint = "Как открываются готовые видео и аудио. Встроенный плеер скачивается один раз при первом использовании."
+    override val playerModeHintShort = "Как открываются готовые видео и аудио."
     override val playerModeAsk = "Спрашивать"
     override val playerModeOn = "Встроенный плеер"
     override val playerModeOff = "Системное приложение"

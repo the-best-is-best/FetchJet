@@ -1034,6 +1034,7 @@ object IndonesianProvider : AppLocalization {
     override val playerAskLater = "Anda bisa mengubahnya nanti di Pengaturan > Alat media."
     override val playerModeTitle = "Pemutar dalam aplikasi"
     override val playerModeHint = "Cara video dan audio yang selesai dibuka. Pemutar dalam aplikasi diunduh sekali, saat pertama dipakai."
+    override val playerModeHintShort = "Cara video dan audio yang selesai dibuka."
     override val playerModeAsk = "Tanya saya"
     override val playerModeOn = "Pemutar dalam aplikasi"
     override val playerModeOff = "Aplikasi sistem"

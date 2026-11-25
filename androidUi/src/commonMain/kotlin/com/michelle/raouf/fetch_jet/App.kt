@@ -75,11 +75,14 @@ internal fun openDownloadedFile(fullPath: String, taskId: String) {
     val all = com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
         .allTasksFlow.value
     val task = all.firstOrNull { it.id == taskId }
-    if (task != null && com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task)) {
+    if (task != null && com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task) &&
+        !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff()
+    ) {
         val queue = com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.queueFor(
             task,
-            all
-        ) { com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(it) }
+            all,
+            decode = { com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(it) }
+        )
         com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(queue)
         return
     }
@@ -1011,8 +1014,17 @@ fun App(
             }
             val playerQueue by com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.queue.collectAsState()
             playerQueue?.let { q ->
-                com.michelle.raouf.fetch_jet.ui.MediaPlayerScreen(q) {
-                    com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
+                val hiddenQueue = q.items.any { it.hidden }
+                if (hiddenQueue && (!state.hidden.unlocked || state.hidden.covered)) {
+                    LaunchedEffect(q) {
+                        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
+                        viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
+                } else {
+                    com.michelle.raouf.fetch_jet.ui.MediaPlayerScreen(q) {
+                        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
+                        if (hiddenQueue) viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
                 }
             }
             if (state.hidden.unlocked && state.hidden.covered) {

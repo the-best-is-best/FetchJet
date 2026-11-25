@@ -1042,6 +1042,7 @@ object ArabicProvider : AppLocalization {
     override val playerAskLater = "تقدر تغيّر ده بعدين من الإعدادات ← أدوات الوسائط."
     override val playerModeTitle = "المشغّل الداخلي"
     override val playerModeHint = "إزاي الفيديو والصوت اللي خلصوا بيتفتحوا. المشغّل الداخلي بيتنزّل مرة واحدة أول ما تستخدمه."
+    override val playerModeHintShort = "الفيديو والصوت اللي خلصوا بيتفتحوا إزاي."
     override val playerModeAsk = "اسألني"
     override val playerModeOn = "المشغّل الداخلي"
     override val playerModeOff = "برنامج النظام"

@@ -1070,6 +1070,7 @@ object GermanProvider : AppLocalization {
     override val playerAskLater = "Das lässt sich später unter Einstellungen > Medienwerkzeuge ändern."
     override val playerModeTitle = "Integrierter Player"
     override val playerModeHint = "Wie fertige Videos und Audios geöffnet werden. Der integrierte Player wird beim ersten Gebrauch einmal heruntergeladen."
+    override val playerModeHintShort = "Wie fertige Videos und Audios geöffnet werden."
     override val playerModeAsk = "Fragen"
     override val playerModeOn = "Integrierter Player"
     override val playerModeOff = "System-App"

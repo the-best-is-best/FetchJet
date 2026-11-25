@@ -978,6 +978,7 @@ object KoreanProvider : AppLocalization {
     override val playerAskLater = "나중에 설정 > 미디어 도구에서 바꿀 수 있습니다."
     override val playerModeTitle = "앱 내 플레이어"
     override val playerModeHint = "완료된 동영상과 오디오를 여는 방식입니다. 앱 내 플레이어는 처음 쓸 때 한 번 내려받습니다."
+    override val playerModeHintShort = "완료된 동영상과 오디오를 여는 방식입니다."
     override val playerModeAsk = "물어보기"
     override val playerModeOn = "앱 내 플레이어"
     override val playerModeOff = "시스템 앱"

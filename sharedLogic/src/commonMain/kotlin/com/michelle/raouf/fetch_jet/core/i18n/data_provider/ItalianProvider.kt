@@ -1048,6 +1048,7 @@ object ItalianProvider : AppLocalization {
     override val playerAskLater = "Puoi cambiarlo più tardi in Impostazioni > Strumenti multimediali."
     override val playerModeTitle = "Lettore integrato"
     override val playerModeHint = "Come si aprono video e audio completati. Il lettore integrato viene scaricato una volta, al primo uso."
+    override val playerModeHintShort = "Come si aprono video e audio completati."
     override val playerModeAsk = "Chiedimi"
     override val playerModeOn = "Lettore integrato"
     override val playerModeOff = "App di sistema"

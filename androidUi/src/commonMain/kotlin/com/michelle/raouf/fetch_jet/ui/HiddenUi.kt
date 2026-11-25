@@ -74,6 +74,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskListItem
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenItems
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenGroupCanPlay
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockedText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWrongPinText
@@ -494,9 +495,11 @@ private fun HiddenGroupPageHeader(
     onBack: () -> Unit,
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
-    onUnhide: () -> Unit
+    onUnhide: () -> Unit,
+    onPlay: (() -> Unit)?
 ) {
     GroupPageHeader(title, summary, path, onBack) {
+        if (onPlay != null) PlayGroupButton(onPlay)
         PauseResumeAllButtons(canPause, canResume, onPauseAll, onResumeAll)
         OutlinedButton(onClick = onUnhide, shape = RoundedCornerShape(10.dp)) {
             Text(LocalizationManager.Strings.hiddenUnhide, fontSize = 12.sp)
@@ -529,6 +532,11 @@ internal fun HiddenScreen(
     var dialog by remember { mutableStateOf(HiddenDialog.NONE) }
     val lockType = state.storedLockType()
     val lockTexts = hiddenLockTexts(lockType)
+    val playerMode by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPlayer.collectAsState()
+    val playPage: (() -> Unit)? =
+        if (playerMode != com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.OFF && state.hiddenGroupCanPlay()) {
+            { viewModel.onEvent(DashboardUiEvent.OnHiddenGroupPlayClicked) }
+        } else null
     SecureWindowEffect(true)
     DisposableEffect(Unit) { onDispose { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
     LaunchedEffect(rowKeys) {
@@ -647,7 +655,8 @@ internal fun HiddenScreen(
                     onUnhide = {
                         viewModel.onEvent(DashboardUiEvent.OnUnhideGroup(playlistId = openPlaylist.id))
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
-                    }
+                    },
+                    onPlay = playPage
                 )
             } else if (openFolder != null) {
                 HiddenGroupPageHeader(
@@ -662,7 +671,8 @@ internal fun HiddenScreen(
                     onUnhide = {
                         viewModel.onEvent(DashboardUiEvent.OnUnhideGroup(folder = openFolder.folder))
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
-                    }
+                    },
+                    onPlay = playPage
                 )
             }
         }
@@ -732,7 +742,7 @@ internal fun HiddenScreen(
                                 options = RowMenuOptions(selectEntry = true),
                                 onDismiss = { menuTaskId = null },
                                 onPicked = { menuTaskId = null },
-                                onOpen = { viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id)) },
+                                onOpen = { viewModel.onEvent(DashboardUiEvent.OnHiddenPlayClicked(task.id)) },
                                 onOpenFolder = {},
                                 onSelect = { checked = checked + task.id },
                                 onDetails = { detailsId = task.id }
@@ -742,7 +752,7 @@ internal fun HiddenScreen(
                             when (action) {
                                 RowAction.PAUSE -> if (task.canResume() == false) detailsId = task.id else viewModel.onEvent(DashboardUiEvent.OnPauseClicked(task.id))
                                 RowAction.RESUME, RowAction.START_NOW -> viewModel.onEvent(DashboardUiEvent.OnResumeClicked(task.id))
-                                RowAction.OPEN -> viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id))
+                                RowAction.OPEN -> viewModel.onEvent(DashboardUiEvent.OnHiddenPlayClicked(task.id))
                                 RowAction.NONE -> {}
                             }
                         },

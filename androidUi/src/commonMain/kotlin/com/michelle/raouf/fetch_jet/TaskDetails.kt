@@ -626,7 +626,9 @@ internal fun DownloadTaskItem(
                 when {
                     isCompleted -> {
                         DetailPrimaryButton(
-                            (if (com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task)) "▶  " else "↗  ") +
+                            (if (com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task, allowHidden = true) &&
+                                !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff()
+                            ) "▶  " else "↗  ") +
                                     LocalizationManager.Strings.detailsOpenFile,
                             m
                         ) { if (task.hidden && onOpenHidden != null) onOpenHidden() else openDownloadedFile(fullPath, task.id) }
@@ -1017,7 +1019,7 @@ internal fun TaskDetailsPane(
                 } else null,
                 extractingAudio = task.id in uiState.audioExtracting,
                 onOpenHidden = if (task.hidden) {
-                    { viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id)) }
+                    { viewModel.onEvent(DashboardUiEvent.OnHiddenPlayClicked(task.id)) }
                 } else null,
                 compressedCopies = compressedCopies,
                 onCut = if (com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.canCut(task)) {

@@ -899,6 +899,7 @@ interface AppLocalization : LocalizationProvider {
     val playerAskLater: String
     val playerModeTitle: String
     val playerModeHint: String
+    val playerModeHintShort: String
     val playerModeAsk: String
     val playerModeOn: String
     val playerModeOff: String

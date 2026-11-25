@@ -240,7 +240,7 @@ internal fun GroupPageHeader(
 }
 
 @Composable
-private fun PlayGroupButton(onClick: () -> Unit) {
+internal fun PlayGroupButton(onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, shape = RoundedCornerShape(10.dp)) {
         Text("▶ " + LocalizationManager.Strings.playerPlayAll, fontSize = 12.sp)
     }

@@ -989,6 +989,7 @@ object ChineseProvider : AppLocalization {
     override val playerAskLater = "之后可以在 设置 > 媒体工具 中更改。"
     override val playerModeTitle = "内置播放器"
     override val playerModeHint = "已完成的视频和音频如何打开。内置播放器在第一次使用时下载一次。"
+    override val playerModeHintShort = "已完成的视频和音频如何打开。"
     override val playerModeAsk = "询问我"
     override val playerModeOn = "内置播放器"
     override val playerModeOff = "系统应用"

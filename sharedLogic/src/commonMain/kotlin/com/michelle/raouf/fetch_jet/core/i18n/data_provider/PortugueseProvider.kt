@@ -1051,6 +1051,7 @@ object PortugueseProvider : AppLocalization {
     override val playerAskLater = "Você pode mudar isso depois em Configurações > Ferramentas de mídia."
     override val playerModeTitle = "Reprodutor integrado"
     override val playerModeHint = "Como vídeos e áudios concluídos são abertos. O reprodutor integrado é baixado uma vez, no primeiro uso."
+    override val playerModeHintShort = "Como vídeos e áudios concluídos são abertos."
     override val playerModeAsk = "Perguntar"
     override val playerModeOn = "Reprodutor integrado"
     override val playerModeOff = "App do sistema"

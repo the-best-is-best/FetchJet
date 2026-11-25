@@ -1020,6 +1020,7 @@ object HindiProvider : AppLocalization {
     override val playerAskLater = "आप इसे बाद में सेटिंग्स > मीडिया टूल में बदल सकते हैं।"
     override val playerModeTitle = "इन-ऐप प्लेयर"
     override val playerModeHint = "पूरे हुए वीडियो और ऑडियो कैसे खुलें। इन-ऐप प्लेयर पहली बार इस्तेमाल पर एक बार डाउनलोड होता है।"
+    override val playerModeHintShort = "पूरे हुए वीडियो और ऑडियो कैसे खुलें।"
     override val playerModeAsk = "मुझसे पूछें"
     override val playerModeOn = "इन-ऐप प्लेयर"
     override val playerModeOff = "सिस्टम ऐप"

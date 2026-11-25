@@ -488,12 +488,15 @@ internal fun TaskListArea(
                     .onFocusChanged { searchHasFocus = it.hasFocus }
             )
         }
+    val playerMode by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPlayer.collectAsState()
     fun playGroup(groupKey: String, groupTasks: List<DownloadTask>): (() -> Unit)? =
-        if (!com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(groupTasks)) null
+        if (playerMode == com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.OFF ||
+            !com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(groupTasks)
+        ) null
         else {
             {
                 com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
-                    .queueForGroup(groupKey, groupTasks) { decodeUnicodeText(it) }
+                    .queueForGroup(groupKey, groupTasks, decode = { decodeUnicodeText(it) })
                     ?.let { com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(it) }
             }
         }

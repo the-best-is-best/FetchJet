@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,8 +79,14 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue
 import com.michelle.raouf.fetch_jet.feature.media_player.PlayerProgress
 import com.tbib.kmp_localization.LocalizationManager
+import com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
@@ -154,12 +162,15 @@ internal fun PlayerGlyphButton(
 internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val hiddenQueue = remember(queue) { queue.items.any { it.hidden } }
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
             setSeekParameters(SeekParameters.CLOSEST_SYNC)
-            setMediaItems(queue.items.map { MediaItem.fromUri(Uri.fromFile(File(it.path))) }, queue.index, 0L)
-            prepare()
-            playWhenReady = true
+            if (!hiddenQueue) {
+                setMediaItems(queue.items.map { MediaItem.fromUri(Uri.fromFile(File(it.path))) }, queue.index, 0L)
+                prepare()
+                playWhenReady = true
+            }
         }
     }
     var index by remember { mutableIntStateOf(queue.index) }
@@ -174,7 +185,50 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
     var failed by remember { mutableStateOf<String?>(null) }
     var touch by remember { mutableIntStateOf(0) }
     var finished by remember { mutableStateOf(false) }
+    var opening by remember { mutableStateOf<Float?>(null) }
+    val openJob = remember { arrayOfNulls<Job>(1) }
+    val prepared = remember { mutableSetOf<String>() }
     val current = queue.items[index.coerceIn(0, queue.items.lastIndex)]
+
+    fun openAt(target: Int, play: Boolean) {
+        val i = target.coerceIn(0, queue.items.lastIndex)
+        val item = queue.items[i]
+        openJob[0]?.cancel()
+        player.stop()
+        player.clearMediaItems()
+        prepared.filter { it != item.taskId }.forEach {
+            HiddenPlayback.release(it)
+            prepared.remove(it)
+        }
+        index = i
+        failed = null
+        finished = false
+        controls = true
+        position = 0L
+        duration = 0L
+        PlayerProgress.remember(queue.groupKey, item.taskId)
+        openJob[0] = scope.launch {
+            val path = if (item.hidden && HiddenPlayback.needsPrepare(item)) {
+                opening = 0f
+                try {
+                    withContext(Dispatchers.IO) { HiddenPlayback.prepare(item.taskId) { opening = it } }
+                        ?.also { prepared.add(item.taskId) }
+                } catch (e: CancellationException) {
+                    HiddenPlayback.release(item.taskId)
+                    throw e
+                } finally {
+                    opening = null
+                }
+            } else item.path
+            if (path.isNullOrBlank()) {
+                failed = LocalizationManager.Strings.fileMissingTitle
+                return@launch
+            }
+            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+            player.prepare()
+            player.playWhenReady = play
+        }
+    }
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
@@ -183,6 +237,7 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (hiddenQueue) return
                 index = player.currentMediaItemIndex
                 failed = null
                 finished = false
@@ -195,7 +250,9 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
 
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) duration = player.duration.coerceAtLeast(0L)
-                if (state == Player.STATE_ENDED) {
+                if (state == Player.STATE_ENDED && hiddenQueue && index < queue.items.lastIndex) {
+                    openAt(index + 1, false)
+                } else if (state == Player.STATE_ENDED) {
                     controls = true
                     finished = true
                     PlayerProgress.clear(queue.groupKey)
@@ -204,7 +261,9 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
 
             override fun onPlayerError(error: PlaybackException) {
                 failed = error.errorCodeName
-                if (player.hasNextMediaItem()) {
+                if (hiddenQueue) {
+                    if (index < queue.items.lastIndex) openAt(index + 1, true)
+                } else if (player.hasNextMediaItem()) {
                     player.seekToNextMediaItem()
                     player.prepare()
                     player.play()
@@ -215,6 +274,17 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
         onDispose {
             player.removeListener(listener)
             player.release()
+            if (hiddenQueue) {
+                val job = openJob[0]
+                job?.cancel()
+                HiddenPlayback.releaseAll()
+                if (job != null && job.isActive) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        job.join()
+                        HiddenPlayback.releaseAll()
+                    }
+                }
+            }
         }
     }
 
@@ -228,7 +298,8 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
     }
 
     LaunchedEffect(Unit) {
-        PlayerProgress.remember(queue.groupKey, queue.items[queue.index].taskId)
+        if (hiddenQueue) openAt(queue.index, true)
+        else PlayerProgress.remember(queue.groupKey, queue.items[queue.index].taskId)
     }
 
     LaunchedEffect(player) {
@@ -258,6 +329,7 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
         DisposableEffect(view) {
             val window = (view.parent as? DialogWindowProvider)?.window
             window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            if (hiddenQueue) window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
             onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         }
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -366,6 +438,17 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                 }
             }
 
+            opening?.let { fraction ->
+                Column(
+                    modifier = Modifier.align(Alignment.Center).width(240.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xCC000000)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(hiddenOpeningText(fraction), color = Color.White, fontSize = 14.sp)
+                    LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+
             failed?.let {
                 Text(
                     it,
@@ -438,7 +521,8 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             PlayerGlyphButton(PlayerGlyph.PREVIOUS, 28, enabled = index > 0) {
-                                player.seekToPreviousMediaItem(); touch++
+                                if (hiddenQueue) openAt(index - 1, false) else player.seekToPreviousMediaItem()
+                                touch++
                             }
                             Box(
                                 modifier = Modifier.padding(horizontal = 8.dp).size(60.dp).clip(CircleShape)
@@ -458,7 +542,8 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                                 }
                             }
                             PlayerGlyphButton(PlayerGlyph.NEXT, 28, enabled = index < queue.items.lastIndex) {
-                                player.seekToNextMediaItem(); touch++
+                                if (hiddenQueue) openAt(index + 1, false) else player.seekToNextMediaItem()
+                                touch++
                             }
                         }
                         Box(modifier = Modifier.size(64.dp))
@@ -488,8 +573,11 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                             .background(MaterialTheme.colorScheme.primary)
                             .clickable {
                                 finished = false
-                                player.seekTo(0, 0L)
-                                player.play()
+                                if (hiddenQueue) openAt(0, true)
+                                else {
+                                    player.seekTo(0, 0L)
+                                    player.play()
+                                }
                             }.padding(horizontal = 14.dp, vertical = 10.dp)
                     )
                 }
@@ -512,7 +600,7 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                             val active = i == index
                             Row(
                                 modifier = Modifier.fillMaxWidth().clickable {
-                                    player.seekTo(i, 0L)
+                                    if (hiddenQueue) openAt(i, false) else player.seekTo(i, 0L)
                                     showQueue = false
                                 }.background(
                                     if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent

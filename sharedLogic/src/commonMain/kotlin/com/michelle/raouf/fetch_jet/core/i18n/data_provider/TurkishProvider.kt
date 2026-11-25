@@ -1029,6 +1029,7 @@ object TurkishProvider : AppLocalization {
     override val playerAskLater = "Bunu daha sonra Ayarlar > Medya araçları bölümünden değiştirebilirsiniz."
     override val playerModeTitle = "Uygulama içi oynatıcı"
     override val playerModeHint = "Tamamlanan video ve seslerin nasıl açılacağı. Uygulama içi oynatıcı ilk kullanımda bir kez indirilir."
+    override val playerModeHintShort = "Tamamlanan video ve seslerin nasıl açılacağı."
     override val playerModeAsk = "Bana sor"
     override val playerModeOn = "Uygulama içi oynatıcı"
     override val playerModeOff = "Sistem uygulaması"
