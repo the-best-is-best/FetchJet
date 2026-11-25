@@ -910,6 +910,17 @@ interface AppLocalization : LocalizationProvider {
     val playerModeAsk: String
     val playerModeOn: String
     val playerModeOff: String
+    val pdfModeTitle: String
+    val pdfModeHint: String
+    val pdfModeOn: String
+    val pdfAskTitle: String
+    val pdfAskText: String
+    val pdfAskDownload: String
+    val pdfPage: String
+    val pdfGoToPage: String
+    val pdfFitWidth: String
+    val pdfOpenFailed: String
+    val pdfPasswordProtected: String
     val playlistCheckNew: String
     val playlistBack: String
     val playlistDeleteAll: String

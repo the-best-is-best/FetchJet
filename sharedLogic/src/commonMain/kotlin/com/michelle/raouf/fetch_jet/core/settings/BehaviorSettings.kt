@@ -70,6 +70,15 @@ object BehaviorSettings {
         _inAppPlayer.value = mode; write("inAppPlayer", mode)
     }
 
+    private val _inAppPdf = MutableStateFlow(read("inAppPdf")?.takeIf { it in PLAYER_MODES } ?: defaultPlayerMode())
+
+    val inAppPdf: StateFlow<String> = _inAppPdf.asStateFlow()
+
+    fun setInAppPdf(mode: String) {
+        if (mode !in PLAYER_MODES) return
+        _inAppPdf.value = mode; write("inAppPdf", mode)
+    }
+
     val desktopPlayer: StateFlow<String> get() = inAppPlayer
 
     val DESKTOP_PLAYER_MODES: List<String> get() = PLAYER_MODES
