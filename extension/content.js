@@ -327,11 +327,16 @@
     return { n: 0, title: "" };
   }
   const canvaPageOf = (f) => canvaPageInfo(f).n;
+  const canvaVideoFigs = new WeakMap();
   function canvaVideoFigure(v) {
+    const kept = canvaVideoFigs.get(v);
+    if (kept && kept.page) return kept;
     const p = canvaPageInfo(v);
-    if (!p.n) return null;
+    if (kept && !p.n) return kept;
     const base = (p.title || document.title.replace(/\s+[-–]\s+[^-–]*$/, "") || "Canva").replace(/[\\/:*?"<>|]+/g, " ").trim();
-    return { el: v, name: `${base}${p.n ? ` - ${p.n}` : ""}.mp4`, page: p.n, synthetic: true };
+    const fig = { el: v, name: `${base}${p.n ? ` - ${p.n}` : ""}.mp4`, page: p.n, synthetic: true };
+    canvaVideoFigs.set(v, fig);
+    return fig;
   }
   let canvaSent = "", canvaPicked = null, canvaClickAt = 0, canvaHover = null, canvaHoverLeft = 0, canvaPlaying = null, canvaVideo = null;
   function canvaScope(el) {
@@ -497,7 +502,8 @@
     const at = Date.now();
     const since = at - canvaClickAt < 15000 ? canvaClickAt : at - (polled ? 5000 : 3000);
     const duration = v.duration > 0 && isFinite(v.duration) ? v.duration : 0;
-    reportCanva({ play: { name: f ? f.name : "", page: f ? f.page : 0, ids: f ? canvaInfo(f).ids : [], duration, at, since } });
+    const named = f && !(f.synthetic && !f.page);
+    reportCanva({ play: { name: named ? f.name : "", page: named ? f.page : 0, ids: f && !f.synthetic ? canvaInfo(f).ids : [], duration, at, since } });
     place();
   }
   function canvaWatch() {
