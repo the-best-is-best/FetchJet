@@ -4,6 +4,8 @@ import android.net.Uri
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -70,6 +73,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -77,7 +81,11 @@ import androidx.media3.ui.PlayerView
 import com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue
+import com.michelle.raouf.fetch_jet.feature.media_player.PlayerItem
 import com.michelle.raouf.fetch_jet.feature.media_player.PlayerProgress
+import com.michelle.raouf.fetch_jet.feature.media_player.PlayerSubtitles
+import com.michelle.raouf.fetch_jet.feature.media_player.SubtitleChoice
+import com.michelle.raouf.fetch_jet.feature.media_player.SubtitleFile
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.feature.media_player.HiddenPlayback
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
@@ -91,7 +99,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
-internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST }
+internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST, SUBTITLES }
 
 internal fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: Float) {
     val w = size.width
@@ -139,6 +147,16 @@ internal fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: 
                 drawLine(color, Offset(w * 0.34f, y), Offset(w * 0.82f, y), stroke, StrokeCap.Round)
             }
         }
+
+        PlayerGlyph.SUBTITLES -> {
+            drawRoundRect(
+                color, Offset(w * 0.1f, h * 0.2f), androidx.compose.ui.geometry.Size(w * 0.8f, h * 0.6f),
+                androidx.compose.ui.geometry.CornerRadius(stroke * 1.6f), style = Stroke(stroke)
+            )
+            drawLine(color, Offset(w * 0.26f, h * 0.44f), Offset(w * 0.46f, h * 0.44f), stroke, StrokeCap.Round)
+            drawLine(color, Offset(w * 0.56f, h * 0.44f), Offset(w * 0.74f, h * 0.44f), stroke, StrokeCap.Round)
+            drawLine(color, Offset(w * 0.26f, h * 0.6f), Offset(w * 0.62f, h * 0.6f), stroke, StrokeCap.Round)
+        }
     }
 }
 
@@ -163,11 +181,20 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hiddenQueue = remember(queue) { queue.items.any { it.hidden } }
+    val extraSubs = remember {
+        mutableStateMapOf<String, List<SubtitleFile>>().apply {
+            if (!hiddenQueue) queue.items.forEach { item ->
+                AndroidSubtitles.savedContentFile(context, item)?.let { put(item.taskId, listOf(it)) }
+            }
+        }
+    }
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
             setSeekParameters(SeekParameters.CLOSEST_SYNC)
             if (!hiddenQueue) {
-                setMediaItems(queue.items.map { MediaItem.fromUri(Uri.fromFile(File(it.path))) }, queue.index, 0L)
+                setMediaItems(queue.items.map {
+                    AndroidSubtitles.mediaItem(it.path, AndroidSubtitles.sideFilesOf(it) + extraSubs[it.taskId].orEmpty())
+                }, queue.index, 0L)
                 prepare()
                 playWhenReady = true
             }
@@ -189,6 +216,67 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
     val openJob = remember { arrayOfNulls<Job>(1) }
     val prepared = remember { mutableSetOf<String>() }
     val current = queue.items[index.coerceIn(0, queue.items.lastIndex)]
+    var subMenu by remember { mutableStateOf(false) }
+    var subNotice by remember { mutableStateOf<String?>(null) }
+    var tracks by remember { mutableStateOf(Tracks.EMPTY) }
+    val pendingSub = remember { arrayOfNulls<SubtitleChoice>(1) }
+    val sideSubs = remember(current.taskId) { AndroidSubtitles.sideFilesOf(current) }
+    val subFiles = sideSubs + extraSubs[current.taskId].orEmpty().filter { e -> sideSubs.none { it.path == e.path } }
+
+    fun filesFor(item: PlayerItem): List<SubtitleFile> {
+        val side = if (item.taskId == current.taskId) sideSubs else AndroidSubtitles.sideFilesOf(item)
+        return side + extraSubs[item.taskId].orEmpty().filter { e -> side.none { it.path == e.path } }
+    }
+
+    fun tryPendingSub() {
+        val choice = pendingSub[0] ?: return
+        if (player.currentTracks.isEmpty) return
+        pendingSub[0] = null
+        AndroidSubtitles.apply(player, choice)
+    }
+
+    fun startSubtitles(item: PlayerItem, applyNow: Boolean) {
+        val choice = AndroidSubtitles.initialChoice(item, filesFor(item))
+        AndroidSubtitles.reset(player, choice == SubtitleChoice.Off)
+        pendingSub[0] = choice?.takeIf { it != SubtitleChoice.Off }
+        if (applyNow) tryPendingSub()
+    }
+
+    fun pickSubtitle(choice: SubtitleChoice) {
+        val item = current
+        if (choice is SubtitleChoice.File && !AndroidSubtitles.hasFile(player.currentMediaItem, choice.path)) {
+            val i = player.currentMediaItemIndex
+            val now = player.currentMediaItem ?: return
+            val pos = player.currentPosition
+            val list = (0 until player.mediaItemCount).map {
+                if (it == i) AndroidSubtitles.withFiles(now, filesFor(item)) else player.getMediaItemAt(it)
+            }
+            player.setMediaItems(list, i, pos)
+            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+            pendingSub[0] = choice
+        } else if (!AndroidSubtitles.apply(player, choice)) {
+            pendingSub[0] = choice
+        }
+        if (!item.hidden) PlayerSubtitles.remember(item.taskId, choice)
+    }
+
+    val resumeAfterPick = remember { booleanArrayOf(false) }
+    val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val resume = resumeAfterPick[0]
+        resumeAfterPick[0] = false
+        if (uri != null) {
+            val name = AndroidSubtitles.displayNameOf(context, uri) ?: uri.lastPathSegment.orEmpty()
+            if (AndroidSubtitles.mimeFor(name) == null || !AndroidSubtitles.canRead(context, uri)) {
+                subNotice = LocalizationManager.Strings.playerSubtitlesFailed
+            } else {
+                if (!current.hidden) AndroidSubtitles.keepAccess(context, uri)
+                val file = SubtitleFile(uri.toString(), name)
+                extraSubs[current.taskId] = extraSubs[current.taskId].orEmpty().filter { it.path != file.path } + file
+                pickSubtitle(SubtitleChoice.File(file.path))
+            }
+        }
+        if (resume) player.play()
+    }
 
     fun openAt(target: Int, play: Boolean) {
         val i = target.coerceIn(0, queue.items.lastIndex)
@@ -224,7 +312,8 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                 failed = LocalizationManager.Strings.fileMissingTitle
                 return@launch
             }
-            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+            startSubtitles(item, false)
+            player.setMediaItem(AndroidSubtitles.mediaItem(path, filesFor(item)))
             player.prepare()
             player.playWhenReady = play
         }
@@ -241,11 +330,19 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                 index = player.currentMediaItemIndex
                 failed = null
                 finished = false
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                    queue.items.getOrNull(index)?.let { startSubtitles(it, false) }
+                }
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
                     player.pause()
                     controls = true
                 }
                 queue.items.getOrNull(index)?.let { PlayerProgress.remember(queue.groupKey, it.taskId) }
+            }
+
+            override fun onTracksChanged(newTracks: Tracks) {
+                tracks = newTracks
+                tryPendingSub()
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -299,7 +396,17 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
 
     LaunchedEffect(Unit) {
         if (hiddenQueue) openAt(queue.index, true)
-        else PlayerProgress.remember(queue.groupKey, queue.items[queue.index].taskId)
+        else {
+            PlayerProgress.remember(queue.groupKey, queue.items[queue.index].taskId)
+            startSubtitles(queue.items[queue.index], true)
+        }
+    }
+
+    LaunchedEffect(subNotice) {
+        if (subNotice != null) {
+            delay(3000)
+            subNotice = null
+        }
     }
 
     LaunchedEffect(player) {
@@ -310,15 +417,15 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
         }
     }
 
-    LaunchedEffect(controls, playing, touch, showQueue, speedMenu, hold) {
-        if (controls && playing && !showQueue && !speedMenu && hold == 0) {
+    LaunchedEffect(controls, playing, touch, showQueue, speedMenu, hold, subMenu) {
+        if (controls && playing && !showQueue && !speedMenu && !subMenu && hold == 0) {
             delay(3500)
             controls = false
         }
     }
 
     BackHandler {
-        if (showQueue) showQueue = false else onClose()
+        if (subMenu) subMenu = false else if (showQueue) showQueue = false else onClose()
     }
 
     Dialog(
@@ -345,8 +452,10 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT
                             )
+                            AndroidSubtitles.style(subtitleView)
                         }
-                    }
+                    },
+                    update = { it.subtitleView?.setBottomPaddingFraction(if (controls) 0.2f else 0.06f) }
                 )
             } else {
                 Column(
@@ -546,7 +655,9 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                                 touch++
                             }
                         }
-                        Box(modifier = Modifier.size(64.dp))
+                        Box(modifier = Modifier.size(64.dp), contentAlignment = Alignment.Center) {
+                            if (current.isVideo) PlayerGlyphButton(PlayerGlyph.SUBTITLES, 26) { subMenu = true }
+                        }
                     }
                 }
             }
@@ -581,6 +692,39 @@ internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit)
                             }.padding(horizontal = 14.dp, vertical = 10.dp)
                     )
                 }
+            }
+
+            subNotice?.let {
+                Text(
+                    it,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 64.dp, start = 16.dp, end = 16.dp)
+                        .clip(RoundedCornerShape(12.dp)).background(Color(0xCC000000)).padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+
+            if (subMenu) {
+                PlayerSubtitleSheet(
+                    tracks = AndroidSubtitles.embeddedTracks(tracks),
+                    files = subFiles,
+                    selected = AndroidSubtitles.selected(tracks),
+                    onPick = {
+                        pickSubtitle(it)
+                        subMenu = false
+                    },
+                    onOpenFile = {
+                        subMenu = false
+                        resumeAfterPick[0] = player.isPlaying
+                        try {
+                            subPicker.launch(arrayOf("*/*"))
+                        } catch (_: Throwable) {
+                            resumeAfterPick[0] = false
+                            subNotice = LocalizationManager.Strings.playerSubtitlesFailed
+                        }
+                    },
+                    onDismiss = { subMenu = false }
+                )
             }
 
             if (showQueue) {
