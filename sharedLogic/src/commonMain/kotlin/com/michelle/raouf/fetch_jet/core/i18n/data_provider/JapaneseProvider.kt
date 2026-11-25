@@ -1233,7 +1233,7 @@ object JapaneseProvider : AppLocalization {
     override val audioExtractDone = "音声を保存しました"
     override val audioExtractFailed = "音声を抽出できませんでした"
     override val audioExtractNoAudio = "この動画には音声がありません"
-    override val rowMenuSectionOpen = "開く"
+    override val rowMenuSectionOpen = "メイン"
     override val rowMenuSectionMedia = "メディア"
     override val rowMenuSectionDownload = "ダウンロード"
     override val rowMenuSectionManage = "管理"

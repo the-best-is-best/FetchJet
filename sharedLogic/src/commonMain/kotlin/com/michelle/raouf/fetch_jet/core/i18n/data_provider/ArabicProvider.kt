@@ -1235,7 +1235,7 @@ object ArabicProvider : AppLocalization {
     override val audioExtractDone = "تم حفظ الصوت"
     override val audioExtractFailed = "تعذّر استخراج الصوت"
     override val audioExtractNoAudio = "هذا الفيديو بدون صوت"
-    override val rowMenuSectionOpen = "فتح"
+    override val rowMenuSectionOpen = "رئيسي"
     override val rowMenuSectionMedia = "الوسائط"
     override val rowMenuSectionDownload = "التنزيل"
     override val rowMenuSectionManage = "الإدارة"

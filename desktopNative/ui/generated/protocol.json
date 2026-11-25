@@ -1231,6 +1231,26 @@
     "String"
    ],
    [
+    "minChipHidden",
+    "Boolean"
+   ],
+   [
+    "quick5Hidden",
+    "Boolean"
+   ],
+   [
+    "quick15Hidden",
+    "Boolean"
+   ],
+   [
+    "quick30Hidden",
+    "Boolean"
+   ],
+   [
+    "quick60Hidden",
+    "Boolean"
+   ],
+   [
     "valid",
     "Boolean"
    ],

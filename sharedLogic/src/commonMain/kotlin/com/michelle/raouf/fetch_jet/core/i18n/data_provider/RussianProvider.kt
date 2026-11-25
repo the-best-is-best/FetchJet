@@ -1252,7 +1252,7 @@ object RussianProvider : AppLocalization {
     override val audioExtractDone = "Звук сохранён"
     override val audioExtractFailed = "Не удалось извлечь звук"
     override val audioExtractNoAudio = "В этом видео нет звука"
-    override val rowMenuSectionOpen = "Открыть"
+    override val rowMenuSectionOpen = "Главное"
     override val rowMenuSectionMedia = "Медиа"
     override val rowMenuSectionDownload = "Загрузка"
     override val rowMenuSectionManage = "Управление"

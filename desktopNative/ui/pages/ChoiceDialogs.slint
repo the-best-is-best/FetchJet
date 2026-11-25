@@ -507,7 +507,7 @@ export component ClipPickerDialog inherits Rectangle {
                 HBox {
                     spacing: 6px;
                     alignment: start;
-                    SmallChip {
+                    if !Core.clipPicker.quick5Hidden: SmallChip {
                         label: "+5m";
                         border-radius: 16px;
                         pad: 12px;
@@ -516,7 +516,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(0); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick15Hidden: SmallChip {
                         label: "+15m";
                         border-radius: 16px;
                         pad: 12px;
@@ -525,7 +525,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(1); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick30Hidden: SmallChip {
                         label: "+30m";
                         border-radius: 16px;
                         pad: 12px;
@@ -534,7 +534,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(2); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick60Hidden: SmallChip {
                         label: "+1h";
                         border-radius: 16px;
                         pad: 12px;
@@ -552,7 +552,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(4); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.minChipHidden: SmallChip {
                         label: Core.clipPicker.minChip;
                         border-radius: 16px;
                         pad: 12px;

@@ -1222,7 +1222,7 @@ object IndonesianProvider : AppLocalization {
     override val audioExtractDone = "Audio disimpan"
     override val audioExtractFailed = "Tidak dapat mengekstrak audio"
     override val audioExtractNoAudio = "Video ini tidak memiliki audio"
-    override val rowMenuSectionOpen = "Buka"
+    override val rowMenuSectionOpen = "Utama"
     override val rowMenuSectionMedia = "Media"
     override val rowMenuSectionDownload = "Unduhan"
     override val rowMenuSectionManage = "Kelola"

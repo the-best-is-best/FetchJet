@@ -128,6 +128,11 @@ data class ClipPickerDto(
     val error: String = "",
     val endChip: String = "",
     val minChip: String = "",
+    val minChipHidden: Boolean = false,
+    val quick5Hidden: Boolean = false,
+    val quick15Hidden: Boolean = false,
+    val quick30Hidden: Boolean = false,
+    val quick60Hidden: Boolean = false,
     val valid: Boolean = false,
     val applyLabel: String = "",
 )

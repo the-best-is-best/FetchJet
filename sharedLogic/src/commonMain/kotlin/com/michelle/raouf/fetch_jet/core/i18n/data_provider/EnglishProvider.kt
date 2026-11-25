@@ -1217,7 +1217,7 @@ object EnglishProvider : AppLocalization {
     override val audioExtractDone = "Audio saved"
     override val audioExtractFailed = "Could not extract the audio"
     override val audioExtractNoAudio = "This video has no audio"
-    override val rowMenuSectionOpen = "Open"
+    override val rowMenuSectionOpen = "Main"
     override val rowMenuSectionMedia = "Media"
     override val rowMenuSectionDownload = "Download"
     override val rowMenuSectionManage = "Manage"

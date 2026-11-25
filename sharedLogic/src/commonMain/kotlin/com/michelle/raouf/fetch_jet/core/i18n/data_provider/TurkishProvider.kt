@@ -1217,7 +1217,7 @@ object TurkishProvider : AppLocalization {
     override val audioExtractDone = "Ses kaydedildi"
     override val audioExtractFailed = "Ses çıkarılamadı"
     override val audioExtractNoAudio = "Bu videoda ses yok"
-    override val rowMenuSectionOpen = "Aç"
+    override val rowMenuSectionOpen = "Ana"
     override val rowMenuSectionMedia = "Medya"
     override val rowMenuSectionDownload = "İndirme"
     override val rowMenuSectionManage = "Yönet"

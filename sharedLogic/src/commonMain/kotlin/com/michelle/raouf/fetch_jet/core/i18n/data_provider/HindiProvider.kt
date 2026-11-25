@@ -1216,7 +1216,7 @@ object HindiProvider : AppLocalization {
     override val audioExtractDone = "ऑडियो सहेजा गया"
     override val audioExtractFailed = "ऑडियो नहीं निकाला जा सका"
     override val audioExtractNoAudio = "इस वीडियो में ऑडियो नहीं है"
-    override val rowMenuSectionOpen = "खोलें"
+    override val rowMenuSectionOpen = "मुख्य"
     override val rowMenuSectionMedia = "मीडिया"
     override val rowMenuSectionDownload = "डाउनलोड"
     override val rowMenuSectionManage = "प्रबंधित करें"

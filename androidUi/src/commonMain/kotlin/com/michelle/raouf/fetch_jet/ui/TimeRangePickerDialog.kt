@@ -269,6 +269,7 @@ fun TimeRangePickerDialog(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    if (maxDurationSeconds <= 0L || maxDurationSeconds > 300L) {
                     FilterChip(
                         selected = false,
                         onClick = {
@@ -283,6 +284,8 @@ fun TimeRangePickerDialog(
                         label = { Text("+5m", fontSize = 11.sp) },
                         shape = RoundedCornerShape(16.dp)
                     )
+                    }
+                    if (maxDurationSeconds <= 0L || maxDurationSeconds > 900L) {
                     FilterChip(
                         selected = false,
                         onClick = {
@@ -297,6 +300,8 @@ fun TimeRangePickerDialog(
                         label = { Text("+15m", fontSize = 11.sp) },
                         shape = RoundedCornerShape(16.dp)
                     )
+                    }
+                    if (maxDurationSeconds <= 0L || maxDurationSeconds > 1800L) {
                     FilterChip(
                         selected = false,
                         onClick = {
@@ -311,6 +316,8 @@ fun TimeRangePickerDialog(
                         label = { Text("+30m", fontSize = 11.sp) },
                         shape = RoundedCornerShape(16.dp)
                     )
+                    }
+                    if (maxDurationSeconds <= 0L || maxDurationSeconds > 3600L) {
                     FilterChip(
                         selected = false,
                         onClick = {
@@ -325,12 +332,14 @@ fun TimeRangePickerDialog(
                         label = { Text("+1h", fontSize = 11.sp) },
                         shape = RoundedCornerShape(16.dp)
                     )
+                    }
                     if (maxDurationSeconds > 0) {
                         val maxH = (maxDurationSeconds / 3600).toInt()
                         val maxM = ((maxDurationSeconds % 3600) / 60).toInt()
+                        val maxS = (maxDurationSeconds % 60).toInt()
                         val endFormatted = "${maxH.toString().padStart(2, '0')}:${
                             maxM.toString().padStart(2, '0')
-                        }"
+                        }:${maxS.toString().padStart(2, '0')}"
                         FilterChip(
                             selected = false,
                             onClick = {
@@ -350,6 +359,7 @@ fun TimeRangePickerDialog(
                             )
                         )
                     }
+                    if (maxDurationSeconds <= 0L || minTimeSeconds <= 0L || (minTimeSeconds / 60 + 1) * 60 < maxDurationSeconds) {
                     FilterChip(
                         selected = false,
                         onClick = {
@@ -371,6 +381,7 @@ fun TimeRangePickerDialog(
                         },
                         shape = RoundedCornerShape(16.dp)
                     )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))

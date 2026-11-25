@@ -394,7 +394,8 @@ private fun buildClipPicker(p: ClipPicker): ClipPickerDto {
     val endChip = if (p.maxSeconds > 0) {
         val maxH = (p.maxSeconds / 3600).toInt()
         val maxM = ((p.maxSeconds % 3600) / 60).toInt()
-        strings.pickerEndOfVideo("${maxH.toString().padStart(2, '0')}:${maxM.toString().padStart(2, '0')}")
+        val maxS = (p.maxSeconds % 60).toInt()
+        strings.pickerEndOfVideo("${maxH.toString().padStart(2, '0')}:${maxM.toString().padStart(2, '0')}:${maxS.toString().padStart(2, '0')}")
     } else ""
     return ClipPickerDto(
         open = true,
@@ -416,6 +417,11 @@ private fun buildClipPicker(p: ClipPicker): ClipPickerDto {
             else -> ""
         },
         endChip = endChip,
+        minChipHidden = p.maxSeconds > 0L && p.minSeconds > 0L && (p.minSeconds / 60 + 1) * 60 >= p.maxSeconds,
+        quick5Hidden = p.maxSeconds in 1L..300L,
+        quick15Hidden = p.maxSeconds in 1L..900L,
+        quick30Hidden = p.maxSeconds in 1L..1800L,
+        quick60Hidden = p.maxSeconds in 1L..3600L,
         minChip = if (p.minSeconds > 0L) strings.pickerMin(formatSecondsToHhMm(p.minSeconds + 60L)) else "00:00",
         valid = valid,
         applyLabel = if (valid) strings.pickerApply(p.formatted) else strings.pickerInvalidTime,

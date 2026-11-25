@@ -548,6 +548,11 @@ inline ClipPickerDto parse_ClipPickerDto(const fj::Json &j) {
     d.error = fj::text(j, "error");
     d.endChip = fj::text(j, "endChip");
     d.minChip = fj::text(j, "minChip");
+    d.minChipHidden = fj::flag(j, "minChipHidden");
+    d.quick5Hidden = fj::flag(j, "quick5Hidden");
+    d.quick15Hidden = fj::flag(j, "quick15Hidden");
+    d.quick30Hidden = fj::flag(j, "quick30Hidden");
+    d.quick60Hidden = fj::flag(j, "quick60Hidden");
     d.valid = fj::flag(j, "valid");
     d.applyLabel = fj::text(j, "applyLabel");
     return d;

@@ -1164,7 +1164,7 @@ object ChineseProvider : AppLocalization {
     override val audioExtractDone = "音频已保存"
     override val audioExtractFailed = "无法提取音频"
     override val audioExtractNoAudio = "此视频没有音频"
-    override val rowMenuSectionOpen = "打开"
+    override val rowMenuSectionOpen = "主要"
     override val rowMenuSectionMedia = "媒体"
     override val rowMenuSectionDownload = "下载"
     override val rowMenuSectionManage = "管理"

@@ -1153,7 +1153,7 @@ object KoreanProvider : AppLocalization {
     override val audioExtractDone = "오디오가 저장되었습니다"
     override val audioExtractFailed = "오디오를 추출할 수 없습니다"
     override val audioExtractNoAudio = "이 동영상에는 오디오가 없습니다"
-    override val rowMenuSectionOpen = "열기"
+    override val rowMenuSectionOpen = "기본"
     override val rowMenuSectionMedia = "미디어"
     override val rowMenuSectionDownload = "다운로드"
     override val rowMenuSectionManage = "관리"

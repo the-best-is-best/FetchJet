@@ -1222,7 +1222,7 @@ object PersianProvider : AppLocalization {
     override val audioExtractDone = "صدا ذخیره شد"
     override val audioExtractFailed = "استخراج صدا ممکن نشد"
     override val audioExtractNoAudio = "این ویدیو صدا ندارد"
-    override val rowMenuSectionOpen = "باز کردن"
+    override val rowMenuSectionOpen = "اصلی"
     override val rowMenuSectionMedia = "رسانه"
     override val rowMenuSectionDownload = "دانلود"
     override val rowMenuSectionManage = "مدیریت"
