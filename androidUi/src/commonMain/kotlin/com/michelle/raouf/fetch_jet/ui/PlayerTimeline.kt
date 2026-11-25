@@ -533,60 +533,15 @@ private fun TrimOverview(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Canvas(
-            modifier = Modifier.weight(1f).fillMaxHeight()
-                .pointerInput(state) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        fun jump(x: Float) {
-                            if (state.ready && size.width > 0) state.centerOn(x / size.width * state.totalMs)
-                        }
-                        down.consume()
-                        jump(down.position.x)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            if (change.positionChanged()) {
-                                change.consume()
-                                jump(change.position.x)
-                            }
-                        }
-                    }
-                }
-        ) {
-            if (!state.ready) return@Canvas
-            val total = state.totalMs.toFloat()
-            val w = size.width
-            val cy = size.height / 2f
-            val barH = 6.dp.toPx()
-            val r = CornerRadius(barH / 2f)
-            fun xs(ms: Float): Float = (ms / total * w).coerceIn(0f, w)
-            drawRoundRect(Color(0x33FFFFFF), Offset(0f, cy - barH / 2f), Size(w, barH), r)
-            val k0 = xs(startMs.toFloat())
-            val k1 = xs(endMs.toFloat())
-            drawRoundRect(accent.copy(alpha = 0.85f), Offset(k0, cy - barH / 2f), Size((k1 - k0).coerceAtLeast(2f), barH), r)
-            val frameH = size.height - 6.dp.toPx()
-            val wx0 = xs(state.offsetMs)
-            val ww = (state.visibleMs / total * w).coerceAtLeast(4.dp.toPx())
-            val stroke = 1.5.dp.toPx()
-            drawRoundRect(
-                Color.White,
-                Offset(wx0.coerceAtMost(w - ww) + stroke / 2f, cy - frameH / 2f),
-                Size(ww - stroke, frameH),
-                CornerRadius(3.dp.toPx()),
-                style = Stroke(stroke)
-            )
-            drawCircle(Color.White, 3.5.dp.toPx(), Offset(xs(positionMs.toFloat()), cy))
-        }
         Text(
-            MediaPlayback.formatTime(state.visibleMs.toLong()),
+            if (state.ready) com.michelle.raouf.fetch_jet.utils.ltr(
+                "${MediaPlayback.formatTime(state.offsetMs.toLong())} – ${MediaPlayback.formatTime((state.offsetMs + state.visibleMs).toLong())}  /  ${MediaPlayback.formatTime(state.totalMs.toLong())}"
+            ) else "",
             color = Color.White.copy(alpha = 0.7f),
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontFamily = FontFamily.Monospace,
             maxLines = 1,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(58.dp)
+            modifier = Modifier.weight(1f)
         )
         TrimZoomButton("−") { state.zoomBy(0.5f, state.trackPx / 2f) }
         TrimZoomButton("+") { state.zoomBy(2f, state.trackPx / 2f) }

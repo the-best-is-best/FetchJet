@@ -353,9 +353,6 @@ struct FJTrimTimeline: View {
                     .onChange(of: geo.size.width) { _, w in setWidth(w) }
             }
             .frame(height: stripHeight + inset * 2)
-            FJTrimOverview(model: model, viewport: viewport)
-                .frame(height: 22)
-                .padding(.horizontal, handle)
         }
         .environment(\.layoutDirection, .leftToRight)
         .onChange(of: viewport.startMs) { _, _ in refreshThumbs() }
