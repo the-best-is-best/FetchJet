@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 1023
+internal const val TR_COUNT = 1054
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -765,6 +765,17 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.playerAllFinished,
     s.playerStartOver,
     s.playerPlayAll,
+    s.playerAskTitle,
+    s.playerAskText,
+    s.playerAskDownload,
+    s.playerAskSystem,
+    s.playerAskRemember,
+    s.playerAskLater,
+    s.playerModeTitle,
+    s.playerModeHint,
+    s.playerModeAsk,
+    s.playerModeOn,
+    s.playerModeOff,
     s.playlistCheckNew,
     s.playlistBack,
     s.playlistDeleteAll,
@@ -873,6 +884,26 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.audioCompressHigherQuality,
     s.audioCompressSmallerFile,
     s.audioCompressNothing,
+    s.videoCutTitle,
+    s.videoCutByTime,
+    s.videoCutByTimeHint,
+    s.videoCutOnTimeline,
+    s.videoCutOnTimelineHint,
+    s.videoCutFrom,
+    s.videoCutTo,
+    s.videoCutDuration,
+    s.videoCutPlayRange,
+    s.videoCutApply,
+    s.videoCutRunning,
+    s.videoCutElapsed,
+    s.videoCutLeft,
+    s.videoCutStopping,
+    s.videoCutFailed,
+    s.videoCutClips,
+    s.videoCutDeleteClip,
+    s.videoCutTimelineNeedsMp4,
+    s.videoCutSaved,
+    s.videoCutNeedsTools,
     s.sysDeviceSendTitle,
     s.sysDeviceNoDevices,
     s.sysDeviceSearching,

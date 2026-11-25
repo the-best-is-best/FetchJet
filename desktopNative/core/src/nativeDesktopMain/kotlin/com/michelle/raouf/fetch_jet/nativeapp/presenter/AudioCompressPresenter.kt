@@ -86,8 +86,13 @@ private fun buildAudioCompress(page: AudioCompressUi?): AudioCompressDto {
 
 internal fun Presenter.startAudioCompress() {
     scope.launch {
-        combine(vm.uiState.map { it.audioCompress }.distinctUntilChanged(), AppLanguage.current) { page, _ ->
-            buildAudioCompress(page)
+        combine(
+            vm.uiState.map { it.audioCompress }.distinctUntilChanged(),
+            vm.uiState.map { state -> state.videoCut to state.videoCut?.let { state.videoClips[it.taskId] }.orEmpty() }
+                .distinctUntilChanged(),
+            AppLanguage.current,
+        ) { page, cut, _ ->
+            buildAudioCompress(page).copy(cut = buildVideoCut(cut.first, cut.second))
         }.collect { audioCompress.publish(it) }
     }
 }

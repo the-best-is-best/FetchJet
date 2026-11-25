@@ -257,6 +257,8 @@ export struct ChoiceDialogDto {
     secondaryLabel: string,
     secondaryDanger: bool,
     cancelLabel: string,
+    checkLabel: string,
+    checked: bool,
 }
 
 export struct AddTorrentDto {
@@ -301,6 +303,43 @@ export struct AudioCopyDto {
     size: string,
 }
 
+export struct VideoClipDto {
+    path: string,
+    name: string,
+    nameRtl: bool,
+    size: string,
+    range: string,
+}
+
+export struct VideoCutDto {
+    open: bool,
+    needsTools: bool,
+    chooser: bool,
+    timeline: bool,
+    clipsOnly: bool,
+    reading: bool,
+    timelineOff: bool,
+    fileName: string,
+    fileNameRtl: bool,
+    duration: string,
+    start: string,
+    startFriendly: string,
+    end: string,
+    endFriendly: string,
+    length: string,
+    rangeError: bool,
+    canStart: bool,
+    running: bool,
+    stopping: bool,
+    progress: float,
+    percent: string,
+    elapsed: string,
+    timeLeft: string,
+    failed: bool,
+    message: string,
+    clips: [VideoClipDto],
+}
+
 export struct AudioCompressDto {
     open: bool,
     fileName: string,
@@ -336,6 +375,7 @@ export struct AudioCompressDto {
     channelOptions: [string],
     channelPick: int,
     progressText: string,
+    cut: VideoCutDto,
 }
 
 export struct ChipDto {
@@ -348,6 +388,12 @@ export struct LinkDto {
     label: string,
     url: string,
     note: string,
+}
+
+export struct DetailToolDto {
+    code: int,
+    icon: string,
+    label: string,
 }
 
 export struct DetailsDto {
@@ -402,6 +448,9 @@ export struct DetailsDto {
     canSubtitles: bool,
     compressLabel: string,
     removeLabel: string,
+    fileTools: [DetailToolDto],
+    mediaTools: [DetailToolDto],
+    clips: [VideoClipDto],
 }
 
 export struct PieceDto {
@@ -850,6 +899,7 @@ export global ChoiceDialogKind {
     out property <int> duplicate: 1;
     out property <int> file-conflict: 2;
     out property <int> main-downloader: 3;
+    out property <int> player-library: 4;
 }
 
 export global BadgeToneCode {
@@ -915,6 +965,17 @@ export global DetailActionCode {
     out property <int> pause: 3;
     out property <int> start-now: 4;
     out property <int> resume: 5;
+}
+
+export global DetailToolCode {
+    out property <int> none: 0;
+    out property <int> secondary: 1;
+    out property <int> extract: 2;
+    out property <int> share: 3;
+    out property <int> play: 4;
+    out property <int> compress: 5;
+    out property <int> cut: 6;
+    out property <int> subtitles: 7;
 }
 
 export global PieceStateCode {

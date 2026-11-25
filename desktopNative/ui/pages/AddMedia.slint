@@ -288,7 +288,7 @@ component QualitiesCard inherits SectionCard {
     }
 }
 
-component OptionCard inherits Rectangle {
+export component OptionCard inherits Rectangle {
     in property <bool> selected;
     in property <string> icon;
     in property <string> title;
@@ -457,7 +457,7 @@ export component SubtitlesCard inherits SectionCard {
     }
 }
 
-component TimeCard inherits Rectangle {
+export component TimeCard inherits Rectangle {
     in property <string> label;
     in property <string> time;
     in property <string> friendly;

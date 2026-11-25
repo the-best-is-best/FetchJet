@@ -925,6 +925,9 @@ fun App(
             state.audioCompress?.let { page ->
                 com.michelle.raouf.fetch_jet.ui.AudioCompressDialog(page) { viewModel.onEvent(it) }
             }
+            state.videoCut?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.VideoCutHost(page) { viewModel.onEvent(it) }
+            }
             if (state.deviceShareTaskId != null) {
                 com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
             }

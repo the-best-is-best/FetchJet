@@ -69,6 +69,7 @@ internal fun Presenter.pickRowMenu(key: Int) {
         RowMenuEntry.RESUME -> vm.onEvent(DashboardUiEvent.OnResumeClicked(id))
         RowMenuEntry.EXTRACT -> vm.onEvent(DashboardUiEvent.OnExtractTaskClicked(id))
         RowMenuEntry.COMPRESS -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(id))
+        RowMenuEntry.CUT -> vm.onEvent(DashboardUiEvent.OnVideoCutClicked(id))
         RowMenuEntry.SUBTITLES -> vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(id))
         RowMenuEntry.SEND_TO_DEVICE -> vm.onEvent(DashboardUiEvent.OnShareTaskClicked(id))
         RowMenuEntry.COPY_LINK -> vm.onEvent(DashboardUiEvent.OnCopyTaskLink(id))

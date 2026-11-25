@@ -1209,6 +1209,7 @@ object EnglishProvider : AppLocalization {
     override val videoCutDeleteClip = "Delete clip"
     override val videoCutTimelineNeedsMp4 = "The timeline needs an mp4 or mov file"
     override val videoCutSaved = "Clip saved"
+    override val videoCutNeedsTools = "Cutting needs the media tools (FFmpeg). Download them in Settings > Media tools."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Send to device"

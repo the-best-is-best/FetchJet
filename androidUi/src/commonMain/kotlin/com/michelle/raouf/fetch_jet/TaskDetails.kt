@@ -85,6 +85,10 @@ internal fun DownloadTaskItem(
     onExtract: (() -> Unit)? = null,
     onOpenHidden: (() -> Unit)? = null,
     compressedCopies: Int = 0,
+    onCut: (() -> Unit)? = null,
+    clips: List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip> = emptyList(),
+    onPlayClip: (com.michelle.raouf.fetch_jet.feature.video_cut.CutClip) -> Unit = {},
+    onDeleteClip: (com.michelle.raouf.fetch_jet.feature.video_cut.CutClip) -> Unit = {},
     torrentSection: (@Composable () -> Unit)? = null
 ) {
     val rawDisplayName =
@@ -607,7 +611,6 @@ internal fun DownloadTaskItem(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Actions: two equal buttons, then the red one across the full width.
             val running =
                 task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING
             val canFolder = pathResolver.isOpenFolderSupported() && !task.hidden
@@ -616,24 +619,25 @@ internal fun DownloadTaskItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val m = Modifier.weight(1f).height(42.dp)
+                val m = Modifier.weight(1f).height(46.dp)
                 when {
                     isCompleted -> {
                         DetailPrimaryButton(
-                            LocalizationManager.Strings.detailsOpenFile,
+                            (if (com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task)) "▶  " else "↗  ") +
+                                    LocalizationManager.Strings.detailsOpenFile,
                             m
                         ) { if (task.hidden && onOpenHidden != null) onOpenHidden() else openDownloadedFile(fullPath, task.id) }
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
                     }
 
                     running -> {
-                        DetailPrimaryButton(LocalizationManager.Strings.pause, m, pauseClicked)
+                        DetailPrimaryButton("⏸  ${LocalizationManager.Strings.pause}", m, pauseClicked)
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
@@ -641,101 +645,147 @@ internal fun DownloadTaskItem(
 
                     task.waitingInQueue -> {
                         DetailPrimaryButton(
-                            LocalizationManager.Strings.detailsStartNow,
+                            "▶  ${LocalizationManager.Strings.detailsStartNow}",
                             m,
                             onResume
                         )
-                        DetailSecondaryButton(LocalizationManager.Strings.pause, m, onPause)
+                        DetailSecondaryButton("⏸  ${LocalizationManager.Strings.pause}", m, onPause)
                     }
 
                     else -> {
+                        val failed = task.status == DownloadStatus.ERROR
                         DetailPrimaryButton(
-                            if (task.status == DownloadStatus.ERROR) LocalizationManager.Strings.retry else LocalizationManager.Strings.resume,
+                            if (failed) "↻  ${LocalizationManager.Strings.retry}" else "▶  ${LocalizationManager.Strings.resume}",
                             m,
                             onResume
                         )
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
                     }
                 }
             }
-            if (onExtract != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onExtract,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.extractNow,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+
+            val fileTools = buildList {
+                if (onExtract != null) add(DetailTool("📦", LocalizationManager.Strings.extractNow, onExtract))
+                if (onShare != null) add(DetailTool("📲", LocalizationManager.Strings.sysDeviceSendTitle, onShare))
             }
-            if (onSubtitles != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onSubtitles,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.subtitlesAddButton,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            if (onCompress != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onCompress,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
+            val mediaTools = buildList {
+                if (onCut != null) add(DetailTool("✂", LocalizationManager.Strings.videoCutTitle, onCut))
+                if (onCompress != null) add(
+                    DetailTool(
+                        "🗜",
                         LocalizationManager.Strings.audioCompressTitle +
                                 if (compressedCopies > 0) " ($compressedCopies)" else "",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        onCompress
                     )
-                }
+                )
+                if (onSubtitles != null) add(DetailTool("💬", LocalizationManager.Strings.subtitlesAddButton, onSubtitles))
             }
-            if (onShare != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onShare,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.sysDeviceSendTitle,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+            if (fileTools.isNotEmpty()) {
+                DetailGroupLabel(LocalizationManager.Strings.detailsChipFile)
+                DetailToolGrid(fileTools)
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            if (mediaTools.isNotEmpty()) {
+                DetailGroupLabel(LocalizationManager.Strings.sectionMedia)
+                DetailToolGrid(mediaTools)
+            }
+            if (clips.isNotEmpty()) {
+                DetailGroupLabel("${LocalizationManager.Strings.videoCutClips} (${clips.size})")
+                com.michelle.raouf.fetch_jet.ui.VideoClipsSection(
+                    clips = clips,
+                    onPlay = onPlayClip,
+                    onDelete = onDeleteClip
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            androidx.compose.material3.HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = onCancel,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.06f),
                     contentColor = MaterialTheme.colorScheme.error
                 ),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
+                modifier = Modifier.fillMaxWidth().height(46.dp)
             ) {
                 Text(
-                    if (isCompleted) LocalizationManager.Strings.detailsRemoveFromList else LocalizationManager.Strings.detailsCancelDownload,
+                    "🗑  " + if (isCompleted) LocalizationManager.Strings.detailsRemoveFromList else LocalizationManager.Strings.detailsCancelDownload,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+    }
+}
+
+internal class DetailTool(val icon: String, val label: String, val onClick: () -> Unit)
+
+@Composable
+internal fun DetailGroupLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.8.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 18.dp, bottom = 8.dp, start = 2.dp)
+    )
+}
+
+@Composable
+internal fun DetailToolGrid(tools: List<DetailTool>) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val columns = when {
+            maxWidth >= 640.dp -> 4
+            maxWidth >= 420.dp -> 3
+            else -> 2
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            tools.chunked(columns).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { tool -> DetailToolButton(tool, Modifier.weight(1f)) }
+                    repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DetailToolButton(tool: DetailTool, modifier: Modifier) {
+    Surface(
+        onClick = tool.onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.height(64.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(tool.icon, fontSize = 18.sp)
+            Text(
+                tool.label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -882,6 +932,7 @@ internal fun TaskDetailsPane(
     compressedCopies: Int = 0
 ) {
     val torrentDetails = viewModel.uiState.collectAsState().value.torrentDetails
+    val clips = viewModel.uiState.collectAsState().value.videoClips[task.id].orEmpty()
     val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
         Row(
@@ -949,7 +1000,16 @@ internal fun TaskDetailsPane(
                     { viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id)) }
                 } else null,
                 compressedCopies = compressedCopies,
-                torrentSection = if (task.engineType == EngineType.BITTORRENT) {
+                onCut = if (com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.canCut(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnVideoCutClicked(task.id)) }
+                } else null,
+                clips = clips,
+                onPlayClip = { com.michelle.raouf.fetch_jet.ui.openClip(it.path) },
+                onDeleteClip = {
+                    viewModel.onEvent(DashboardUiEvent.OnVideoCutShowClips(task.id))
+                    viewModel.onEvent(DashboardUiEvent.OnVideoCutDeleteClip(it.path))
+                },
+                torrentSection =if (task.engineType == EngineType.BITTORRENT) {
                     {
                         com.michelle.raouf.fetch_jet.ui.TorrentDetailsSection(
                             taskId = task.id,

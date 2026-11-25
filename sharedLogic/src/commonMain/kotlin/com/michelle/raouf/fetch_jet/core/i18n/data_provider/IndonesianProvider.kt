@@ -1214,6 +1214,7 @@ object IndonesianProvider : AppLocalization {
     override val videoCutDeleteClip = "Hapus klip"
     override val videoCutTimelineNeedsMp4 = "Linimasa memerlukan file mp4 atau mov"
     override val videoCutSaved = "Klip disimpan"
+    override val videoCutNeedsTools = "Memotong butuh alat media (FFmpeg). Unduh di Pengaturan > Alat media."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Kirim ke perangkat"

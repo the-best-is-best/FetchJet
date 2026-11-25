@@ -17,7 +17,11 @@ import kotlinx.coroutines.launch
 internal fun Presenter.startChoices() {
     val source = vm.uiState.map { it.duplicateTaskAlert to it.fileConflictAlert }.distinctUntilChanged()
     scope.launch {
-        combine(source, AppLanguage.current, mainSetupAsk) { pair, _, setup -> Triple(pair.first, pair.second, setup) }.collect { (duplicate, conflict, setup) ->
+        combine(source, AppLanguage.current, mainSetupAsk, playerAsk) { pair, _, setup, player -> listOf(pair.first, pair.second, setup, player) }.collect { values ->
+            val duplicate = values[0] as com.michelle.raouf.fetch_jet.domain.model.DownloadTask?
+            val conflict = values[1] as com.michelle.raouf.fetch_jet.presentation.dashboard.FileConflictData?
+            val setup = values[2] as com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?
+            val player = values[3] as PlayerAsk?
             val strings = LocalizationManager.Strings
             val list = ArrayList<ChoiceDialogDto>(3)
             if (duplicate != null) {
@@ -70,6 +74,7 @@ internal fun Presenter.startChoices() {
                 )
             }
             if (setup != null) list += mainDownloaderDialog(setup)
+            if (player != null) list += playerAskDialog(player)
             choices.publish(list)
         }
     }
@@ -83,6 +88,7 @@ internal fun Presenter.choicePrimary(kind: Int) {
         }
 
         ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupAccept()
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAskDownload()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -92,6 +98,7 @@ internal fun Presenter.choiceSecondary(kind: Int) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnRestartDuplicateClicked)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnConfirmOverwriteClicked)
         ChoiceDialogKind.MAIN_DOWNLOADER -> Unit
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAskSystem()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -101,6 +108,14 @@ internal fun Presenter.choiceDismiss(kind: Int) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnDismissDuplicateDialog)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnDismissFileConflictDialog)
         ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupDecline()
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAsk.value = null
         ChoiceDialogKind.NONE, null -> Unit
+    }
+}
+
+internal fun Presenter.choiceCheck(kind: Int, checked: Boolean) {
+    when (ChoiceDialogKind.entries.getOrNull(kind)) {
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAsk.value = playerAsk.value?.copy(remember = checked)
+        else -> Unit
     }
 }

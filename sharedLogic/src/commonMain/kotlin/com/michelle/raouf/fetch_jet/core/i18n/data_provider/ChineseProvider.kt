@@ -1156,6 +1156,7 @@ object ChineseProvider : AppLocalization {
     override val videoCutDeleteClip = "删除片段"
     override val videoCutTimelineNeedsMp4 = "时间轴需要 mp4 或 mov 文件"
     override val videoCutSaved = "片段已保存"
+    override val videoCutNeedsTools = "剪切需要媒体工具（FFmpeg）。请在 设置 > 媒体工具 中下载。"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "发送到设备"

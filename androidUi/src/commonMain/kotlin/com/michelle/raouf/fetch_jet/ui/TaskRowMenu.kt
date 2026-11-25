@@ -64,6 +64,7 @@ internal fun TaskRowMenu(
                         RowMenuEntry.RESUME -> viewModel.onEvent(DashboardUiEvent.OnResumeClicked(task.id))
                         RowMenuEntry.EXTRACT -> viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id))
                         RowMenuEntry.COMPRESS -> viewModel.onEvent(DashboardUiEvent.OnAudioCompressClicked(task.id))
+                        RowMenuEntry.CUT -> viewModel.onEvent(DashboardUiEvent.OnVideoCutClicked(task.id))
                         RowMenuEntry.SUBTITLES -> viewModel.onEvent(DashboardUiEvent.OnSubtitlesClicked(task.id))
                         RowMenuEntry.SEND_TO_DEVICE -> viewModel.onEvent(DashboardUiEvent.OnShareTaskClicked(task.id))
                         RowMenuEntry.COPY_LINK -> viewModel.onEvent(DashboardUiEvent.OnCopyTaskLink(task.id))

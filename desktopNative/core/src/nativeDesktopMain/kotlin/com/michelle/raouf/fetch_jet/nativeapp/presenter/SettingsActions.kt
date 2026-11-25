@@ -209,6 +209,11 @@ internal fun Presenter.settingPick(id: String, index: Int) {
             if (mode != vm.uiState.value.themeMode) vm.onEvent(DashboardUiEvent.OnThemeModeChanged(mode))
         }
 
+        id == "desktopPlayer" -> com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.DESKTOP_PLAYER_MODES.getOrNull(index)?.let {
+            com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setDesktopPlayer(it)
+            settingsPoke()
+        }
+
         id == "speedUnit" -> SPEED_UNITS.getOrNull(index)?.let { vm.onEvent(DashboardUiEvent.OnSpeedDisplayUnitChanged(it)) }
         id == "whenDone" -> WhenDoneAction.entries.getOrNull(index)?.let { WhenDone.choose(it) }
         id == "stopRatio" -> STOP_RATIOS.getOrNull(index)?.let {

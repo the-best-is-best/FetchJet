@@ -25,7 +25,13 @@ internal fun DashboardViewModel.observeVideoClips() {
             .distinctUntilChanged()
             .collect { clipTasks ->
                 val clips = clipTasks.map { it.cutFromTaskId }.distinct().associateWith { VideoCut.clipsOf(it, clipTasks) }
-                _uiState.update { it.copy(videoClips = clips) }
+                _uiState.update { state ->
+                    val page = state.videoCut
+                    state.copy(
+                        videoClips = clips,
+                        videoCut = page?.copy(clips = clips[page.taskId].orEmpty())
+                    )
+                }
             }
     }
 }
@@ -179,6 +185,7 @@ private fun DashboardViewModel.startVideoCut() {
                             failed = !ok && !cancelled,
                             message = when {
                                 ok -> LocalizationManager.Strings.videoCutSaved
+                                !cancelled && !state.isFfmpegInstalled -> LocalizationManager.Strings.videoCutNeedsTools
                                 !cancelled -> LocalizationManager.Strings.videoCutFailed
                                 else -> ""
                             },
@@ -193,15 +200,17 @@ private fun DashboardViewModel.startVideoCut() {
 }
 
 private fun DashboardViewModel.deleteVideoClip(path: String) {
-    val page = _uiState.value.videoCut ?: return
-    val clip = page.clips.firstOrNull { it.path == path } ?: return
-    val owned = task(clip.taskId)?.takeIf { it.cutFromTaskId == page.taskId } ?: return
+    val state = _uiState.value
+    val clip = state.videoCut?.clips?.firstOrNull { it.path == path }
+        ?: state.videoClips.values.flatten().firstOrNull { it.path == path }
+        ?: return
+    val owned = task(clip.taskId)?.takeIf { it.cutFromTaskId.isNotEmpty() } ?: return
     scope.launch {
         queueRepository.removeTask(owned.id, deleteFile = true)
         if (AudioCompress.copyOf(path) != null) AudioCompress.delete(path)
-        _uiState.update { state ->
-            val current = state.videoCut?.takeIf { it.taskId == page.taskId } ?: return@update state
-            state.copy(videoCut = current.copy(clips = current.clips.filter { it.path != path }))
+        _uiState.update { current ->
+            val page = current.videoCut ?: return@update current
+            current.copy(videoCut = page.copy(clips = page.clips.filter { it.path != path }))
         }
     }
 }

@@ -1209,6 +1209,7 @@ object TurkishProvider : AppLocalization {
     override val videoCutDeleteClip = "Klibi sil"
     override val videoCutTimelineNeedsMp4 = "Zaman çizelgesi için mp4 veya mov dosyası gerekir"
     override val videoCutSaved = "Klip kaydedildi"
+    override val videoCutNeedsTools = "Kesmek için medya araçları (FFmpeg) gerekir. Ayarlar > Medya araçları bölümünden indirin."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Cihaza gönder"

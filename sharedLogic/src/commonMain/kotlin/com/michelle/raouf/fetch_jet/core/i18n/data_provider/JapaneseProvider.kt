@@ -1225,6 +1225,7 @@ object JapaneseProvider : AppLocalization {
     override val videoCutDeleteClip = "クリップを削除"
     override val videoCutTimelineNeedsMp4 = "タイムラインには mp4 または mov ファイルが必要です"
     override val videoCutSaved = "クリップを保存しました"
+    override val videoCutNeedsTools = "切り取りにはメディアツール（FFmpeg）が必要です。設定 > メディアツール からダウンロードしてください。"
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "デバイスに送信"

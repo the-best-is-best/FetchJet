@@ -177,6 +177,14 @@ internal fun Presenter.dispatch(action: UiAction) {
         UiAction.AudioCompressStart -> vm.onEvent(DashboardUiEvent.OnAudioCompressStartClicked)
         is UiAction.AudioCompressDelete -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteCopy(action.path))
         UiAction.AudioCompressDismiss -> vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)
+        is UiAction.DetailsTool -> detailsTool(action.code)
+        is UiAction.VideoCutChoose -> videoCutChoose(action.timeline)
+        is UiAction.VideoCutPickTime -> videoCutPickTime(action.end)
+        UiAction.VideoCutStart -> vm.onEvent(DashboardUiEvent.OnVideoCutStartClicked)
+        UiAction.VideoCutCancel -> vm.onEvent(DashboardUiEvent.OnVideoCutCancelClicked)
+        UiAction.VideoCutDismiss -> vm.onEvent(DashboardUiEvent.OnDismissVideoCut)
+        is UiAction.VideoCutDeleteClip -> videoCutDeleteClip(action.path)
+        is UiAction.VideoCutApply -> videoCutApply(action.startMs, action.endMs)
         UiAction.DetailsSubtitles -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(it)) }
         is UiAction.SubtitlesToggle -> vm.onEvent(DashboardUiEvent.OnSubtitleTrackToggled(action.key, action.selected))
         UiAction.SubtitlesAdd -> vm.onEvent(DashboardUiEvent.OnSubtitlesAddClicked)
@@ -325,6 +333,7 @@ internal fun Presenter.dispatch(action: UiAction) {
 
         is UiAction.SetPlaylistOldestFirst -> vm.onEvent(DashboardUiEvent.OnPlaylistOldestFirst(action.on))
         UiAction.UseSingleVideo -> vm.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo)
+        is UiAction.ChoiceCheck -> choiceCheck(action.kind, action.checked)
         is UiAction.ChoicePrimary -> choicePrimary(action.kind)
         is UiAction.ChoiceSecondary -> choiceSecondary(action.kind)
         is UiAction.ChoiceDismiss -> choiceDismiss(action.kind)

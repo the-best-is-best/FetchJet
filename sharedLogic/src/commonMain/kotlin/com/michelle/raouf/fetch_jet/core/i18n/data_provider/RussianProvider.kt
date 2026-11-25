@@ -1244,6 +1244,7 @@ object RussianProvider : AppLocalization {
     override val videoCutDeleteClip = "Удалить фрагмент"
     override val videoCutTimelineNeedsMp4 = "Для шкалы времени нужен файл mp4 или mov"
     override val videoCutSaved = "Фрагмент сохранён"
+    override val videoCutNeedsTools = "Для обрезки нужны медиаинструменты (FFmpeg). Скачайте их в Настройки > Медиаинструменты."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "Отправить на устройство"

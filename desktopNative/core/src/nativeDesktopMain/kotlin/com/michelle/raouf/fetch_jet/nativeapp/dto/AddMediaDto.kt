@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 enum class MediaStateCode { HIDDEN, COURSE_READING, INSPECTING, ERROR, ENGINE_MISSING, PLAYLIST, NOT_INSPECTED, QUALITIES }
 
-enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT, MAIN_DOWNLOADER }
+enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT, MAIN_DOWNLOADER, PLAYER_LIBRARY }
 
 enum class BadgeToneCode { OTHER, COMPLETED, RUNNING, PAUSED, ERROR }
 
@@ -162,4 +162,6 @@ data class ChoiceDialogDto(
     val secondaryLabel: String = "",
     val secondaryDanger: Boolean = false,
     val cancelLabel: String = "",
+    val checkLabel: String = "",
+    val checked: Boolean = false,
 )

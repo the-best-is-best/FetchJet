@@ -1214,6 +1214,7 @@ object PersianProvider : AppLocalization {
     override val videoCutDeleteClip = "حذف کلیپ"
     override val videoCutTimelineNeedsMp4 = "خط زمانی به فایل mp4 یا mov نیاز دارد"
     override val videoCutSaved = "کلیپ ذخیره شد"
+    override val videoCutNeedsTools = "برش به ابزارهای رسانه (FFmpeg) نیاز دارد. آن‌ها را از تنظیمات > ابزارهای رسانه دانلود کنید."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "ارسال به دستگاه"

@@ -949,6 +949,18 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
                 )
             )
         }
+        rows.divider()
+        val modes = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.DESKTOP_PLAYER_MODES
+        rows.add(
+            pickerRow(
+                "desktopPlayer",
+                s.playerModeTitle,
+                s.playerModeHint,
+                listOf(s.playerModeAsk, s.playerModeOn, s.playerModeOff),
+                modes.indexOf(com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.desktopPlayer.value) + 1,
+                below = true,
+            )
+        )
         if (v.toolsDirectoryPath.isNotBlank()) {
             rows.divider()
             rows.add(

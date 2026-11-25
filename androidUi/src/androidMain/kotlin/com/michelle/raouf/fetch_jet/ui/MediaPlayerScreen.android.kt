@@ -83,9 +83,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
-private enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST }
+internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST }
 
-private fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: Float) {
+internal fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: Float) {
     val w = size.width
     val h = size.height
     fun triangle(left: Float, right: Float): Path = Path().apply {
@@ -135,7 +135,7 @@ private fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: F
 }
 
 @Composable
-private fun PlayerGlyphButton(
+internal fun PlayerGlyphButton(
     kind: PlayerGlyph,
     sizeDp: Int,
     enabled: Boolean = true,

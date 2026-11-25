@@ -505,7 +505,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             playlistCanPause = (openGroup ?: openFolderGroup)?.canPause == true,
             playlistCanResume = (openGroup ?: openFolderGroup)?.canResume == true,
             playlistCanCheck = openGroup?.record?.url?.isNotBlank() == true,
-            playlistCanPlay = !hiddenScreen && (openGroup ?: openFolderGroup)?.let { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(it.tasks) } == true,
+            playlistCanPlay = !hiddenScreen && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.desktopPlayer.value != "off" && (openGroup ?: openFolderGroup)?.let { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(it.tasks) } == true,
             playlistLanguagesShown = openGroup != null && !openGroup.isPage && slice.playlistLanguages?.playlistId == openGroup.id,
             playlistLanguagesBusy = slice.playlistLanguages?.let { it.reading || it.adding } == true,
             playlistLanguagesNote = slice.playlistLanguages?.let { page ->

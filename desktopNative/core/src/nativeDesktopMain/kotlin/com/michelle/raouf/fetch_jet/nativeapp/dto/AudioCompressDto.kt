@@ -45,4 +45,44 @@ data class AudioCompressDto(
     val channelOptions: List<String> = emptyList(),
     val channelPick: Int = 0,
     val progressText: String = "",
+    val cut: VideoCutDto = VideoCutDto(),
+)
+
+@Serializable
+data class VideoClipDto(
+    val path: String = "",
+    val name: String = "",
+    val nameRtl: Boolean = false,
+    val size: String = "",
+    val range: String = "",
+)
+
+@Serializable
+data class VideoCutDto(
+    val open: Boolean = false,
+    val needsTools: Boolean = false,
+    val chooser: Boolean = false,
+    val timeline: Boolean = false,
+    val clipsOnly: Boolean = false,
+    val reading: Boolean = false,
+    val timelineOff: Boolean = false,
+    val fileName: String = "",
+    val fileNameRtl: Boolean = false,
+    val duration: String = "",
+    val start: String = "",
+    val startFriendly: String = "",
+    val end: String = "",
+    val endFriendly: String = "",
+    val length: String = "",
+    val rangeError: Boolean = false,
+    val canStart: Boolean = false,
+    val running: Boolean = false,
+    val stopping: Boolean = false,
+    val progress: Float = 0f,
+    val percent: String = "",
+    val elapsed: String = "",
+    val timeLeft: String = "",
+    val failed: Boolean = false,
+    val message: String = "",
+    val clips: List<VideoClipDto> = emptyList(),
 )

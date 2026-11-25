@@ -92,6 +92,7 @@ internal data class ClipPicker(
     val hoursRev: Int = 0,
     val minutesRev: Int = 0,
     val secondsRev: Int = 0,
+    val forCut: Boolean = false,
 ) {
     val total: Long get() = hours * 3600L + minutes * 60L + seconds
 
@@ -519,6 +520,7 @@ internal fun Presenter.clipPickerApply() {
     val below = p.minSeconds > 0L && p.total <= p.minSeconds
     if (exceeds || below) return
     clipPicker.value = ClipPicker()
+    if (p.forCut) return videoCutPicked(p.which, p.total)
     if (p.which == 1) vm.onEvent(DashboardUiEvent.OnClipStartTimeChanged(p.formatted))
     else vm.onEvent(DashboardUiEvent.OnClipEndTimeChanged(p.formatted))
 }

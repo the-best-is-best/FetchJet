@@ -160,6 +160,7 @@ export global Act {
     callback groupOpenFolderOnDisk();
     callback setPlaylistOldestFirst(on: bool);
     callback useSingleVideo();
+    callback choiceCheck(kind: int, checked: bool);
     callback choicePrimary(kind: int);
     callback choiceSecondary(kind: int);
     callback choiceDismiss(kind: int);
@@ -172,4 +173,12 @@ export global Act {
     callback hiddenLock();
     callback hiddenRecoveryCode();
     callback hiddenRestore();
+    callback detailsTool(code: int);
+    callback videoCutChoose(timeline: bool);
+    callback videoCutPickTime(end: bool);
+    callback videoCutStart();
+    callback videoCutCancel();
+    callback videoCutDismiss();
+    callback videoCutDeleteClip(path: string);
+    callback videoCutApply(startMs: int, endMs: int);
 }

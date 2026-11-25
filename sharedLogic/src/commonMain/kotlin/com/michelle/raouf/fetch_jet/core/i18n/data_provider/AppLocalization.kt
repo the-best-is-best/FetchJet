@@ -1059,6 +1059,7 @@ interface AppLocalization : LocalizationProvider {
     val videoCutDeleteClip: String
     val videoCutTimelineNeedsMp4: String
     val videoCutSaved: String
+    val videoCutNeedsTools: String
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String

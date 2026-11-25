@@ -643,6 +643,10 @@ sealed interface UiAction {
     data object UseSingleVideo : UiAction
 
     @Serializable
+    @SerialName("ChoiceCheck")
+    data class ChoiceCheck(val kind: Int = 0, val checked: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("ChoicePrimary")
     data class ChoicePrimary(val kind: Int = 0) : UiAction
 
@@ -689,4 +693,36 @@ sealed interface UiAction {
     @Serializable
     @SerialName("HiddenRestore")
     data object HiddenRestore : UiAction
+
+    @Serializable
+    @SerialName("DetailsTool")
+    data class DetailsTool(val code: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutChoose")
+    data class VideoCutChoose(val timeline: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutPickTime")
+    data class VideoCutPickTime(val end: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutStart")
+    data object VideoCutStart : UiAction
+
+    @Serializable
+    @SerialName("VideoCutCancel")
+    data object VideoCutCancel : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDismiss")
+    data object VideoCutDismiss : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDeleteClip")
+    data class VideoCutDeleteClip(val path: String = "") : UiAction
+
+    @Serializable
+    @SerialName("VideoCutApply")
+    data class VideoCutApply(val startMs: Int = 0, val endMs: Int = 0) : UiAction
 }

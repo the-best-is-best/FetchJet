@@ -1,0 +1,305 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { Gap } from "../widgets/Kit.slint";
+import { OptionCard, TimeCard } from "AddMedia.slint";
+import { Core, VideoClipDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component Caption inherits T {
+    line: 20px;
+    tracking: 0.1px;
+    font-weight: 600;
+    color: Theme.on-surface-variant;
+}
+
+export component ClipRow inherits Rectangle {
+    in property <VideoClipDto> data;
+    in property <bool> enabled: true;
+    height: 56px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Theme.outline-variant;
+    VerticalLayout {
+        x: Dir.rtl ? del.width + 22px : 12px;
+        width: parent.width - del.width - 34px;
+        height: parent.height;
+        alignment: center;
+        T {
+            text: root.data.name;
+            line: 20px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        T {
+            text: root.data.size + "  ·  " + root.data.range;
+            line: 16px;
+            font-size: 12px;
+            color: Theme.on-surface-variant;
+            overflow: elide;
+        }
+    }
+    del := OutlinedButton {
+        x: Dir.rtl ? 10px : parent.width - self.width - 10px;
+        y: (parent.height - self.height) / 2;
+        width: self.min-width;
+        height: 34px;
+        pad: 14px;
+        border-radius: 9px;
+        text: Tr.videoCutDeleteClip;
+        ink: Theme.error;
+        line: Theme.error.with-alpha(0.45);
+        enabled: root.enabled;
+        clicked => { Act.videoCutDeleteClip(root.data.path); }
+    }
+}
+
+export component VideoCutDialog inherits Rectangle {
+    private property <bool> editing: !Core.audioCompress.cut.chooser && !Core.audioCompress.cut.clipsOnly && !Core.audioCompress.cut.running;
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => {
+            if !Core.audioCompress.cut.running {
+                Act.videoCutDismiss();
+            }
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                if !Core.audioCompress.cut.running {
+                    Act.videoCutDismiss();
+                }
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: max(280px, min(520px, root.width - 48px));
+        height: min(content.preferred-height, root.height - 48px);
+        border-radius: 18px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
+        clip: true;
+        TouchArea {
+            clicked => { keys.focus(); }
+        }
+        Flickable {
+            content-width: self.width;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                padding: 24px;
+                spacing: 10px;
+                HBox {
+                    height: 30px;
+                    spacing: 8px;
+                    cross-axis-alignment: center;
+                    EmojiIcon {
+                        glyph: "✂️";
+                        size: 20px;
+                    }
+                    T {
+                        text: Tr.videoCutTitle;
+                        line: 30px;
+                        tracking: 0px;
+                        font-size: 22px;
+                        font-weight: 700;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                }
+                HBox {
+                    height: 20px;
+                    spacing: 8px;
+                    T {
+                        text: Core.audioCompress.cut.fileName;
+                        line: 20px;
+                        color: Theme.on-surface-variant;
+                        horizontal-alignment: Dir.rtl || Core.audioCompress.cut.fileNameRtl ? TextHorizontalAlignment.right : TextHorizontalAlignment.left;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                    if Core.audioCompress.cut.duration != "": T {
+                        text: Core.audioCompress.cut.duration;
+                        line: 20px;
+                        font-weight: 600;
+                        color: Theme.on-surface-variant;
+                    }
+                }
+                if Core.audioCompress.cut.chooser: GridLayout {
+                    spacing: 10px;
+                    OptionCard {
+                        row: 0;
+                        col: Dir.rtl ? 1 : 0;
+                        selected: false;
+                        icon: "⏱️";
+                        title: Tr.videoCutByTime;
+                        lines: [Tr.videoCutByTimeHint];
+                        clicked => { Act.videoCutChoose(false); }
+                    }
+                    OptionCard {
+                        row: 0;
+                        col: Dir.rtl ? 0 : 1;
+                        selected: false;
+                        icon: "🎞️";
+                        title: Tr.videoCutOnTimeline;
+                        lines: [Core.audioCompress.cut.timelineOff ? Tr.videoCutTimelineNeedsMp4 : Tr.videoCutOnTimelineHint];
+                        clicked => { Act.videoCutChoose(true); }
+                    }
+                }
+                if root.editing: GridLayout {
+                    spacing: 10px;
+                    TimeCard {
+                        row: 0;
+                        col: Dir.rtl ? 1 : 0;
+                        label: Tr.videoCutFrom;
+                        time: Core.audioCompress.cut.start;
+                        friendly: Core.audioCompress.cut.startFriendly;
+                        has-error: Core.audioCompress.cut.rangeError;
+                        clicked => { Act.videoCutPickTime(false); }
+                    }
+                    TimeCard {
+                        row: 0;
+                        col: Dir.rtl ? 0 : 1;
+                        label: Tr.videoCutTo;
+                        time: Core.audioCompress.cut.end;
+                        friendly: Core.audioCompress.cut.endFriendly;
+                        has-error: Core.audioCompress.cut.rangeError;
+                        clicked => { Act.videoCutPickTime(true); }
+                    }
+                }
+                if root.editing && Core.audioCompress.cut.length != "": HBox {
+                    height: 22px;
+                    spacing: 6px;
+                    Caption {
+                        text: Tr.videoCutDuration;
+                    }
+                    T {
+                        text: Core.audioCompress.cut.length;
+                        line: 20px;
+                        font-weight: 700;
+                        color: Theme.primary;
+                        horizontal-stretch: 1;
+                    }
+                }
+                if root.editing && Core.audioCompress.cut.reading: LinearProgress {
+                    indeterminate: true;
+                }
+                if root.editing && !Core.audioCompress.cut.timelineOff: OutlinedButton {
+                    text: Tr.videoCutOnTimeline;
+                    height: 40px;
+                    border-radius: 10px;
+                    font-weight: 600;
+                    ink: Theme.primary;
+                    line: Theme.primary.with-alpha(0.45);
+                    clicked => { Act.videoCutChoose(true); }
+                }
+                if Core.audioCompress.cut.running: HBox {
+                    height: 22px;
+                    spacing: 6px;
+                    T {
+                        text: Core.audioCompress.cut.stopping ? Tr.videoCutStopping : Tr.videoCutRunning;
+                        line: 22px;
+                        font-weight: 600;
+                        horizontal-stretch: 1;
+                    }
+                    T {
+                        text: Core.audioCompress.cut.percent;
+                        line: 22px;
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: Theme.primary;
+                    }
+                }
+                if Core.audioCompress.cut.running: LinearProgress {
+                    value: Core.audioCompress.cut.progress;
+                    height: 6px;
+                }
+                if Core.audioCompress.cut.running: HBox {
+                    height: 20px;
+                    spacing: 6px;
+                    Caption {
+                        text: Tr.videoCutElapsed + " " + Core.audioCompress.cut.elapsed;
+                        horizontal-stretch: 1;
+                    }
+                    Caption {
+                        text: Tr.videoCutLeft + " " + Core.audioCompress.cut.timeLeft;
+                        horizontal-alignment: Dir.end;
+                    }
+                }
+                if Core.audioCompress.cut.failed: Text {
+                    text: Core.audioCompress.cut.needsTools ? Tr.videoCutNeedsTools : Tr.videoCutFailed;
+                    color: Theme.error;
+                    font-family: Theme.font;
+                    font-size: 13px;
+                    horizontal-alignment: Dir.start;
+                    wrap: word-wrap;
+                }
+                if !Core.audioCompress.cut.failed && !Core.audioCompress.cut.running && Core.audioCompress.cut.message != "": HBox {
+                    height: 22px;
+                    spacing: 6px;
+                    cross-axis-alignment: center;
+                    EmojiIcon {
+                        glyph: "✅";
+                        size: 14px;
+                    }
+                    T {
+                        text: Tr.videoCutSaved;
+                        line: 22px;
+                        font-weight: 600;
+                        color: Theme.status-completed;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                }
+                if Core.audioCompress.cut.clips.length > 0: Caption {
+                    text: Tr.videoCutClips;
+                }
+                for clip in Core.audioCompress.cut.clips: ClipRow {
+                    data: clip;
+                    enabled: !Core.audioCompress.cut.running;
+                }
+                Gap {
+                    size: 4px;
+                }
+                HBox {
+                    height: 44px;
+                    spacing: 8px;
+                    alignment: end;
+                    cross-axis-alignment: center;
+                    if Core.audioCompress.cut.running: OutlinedButton {
+                        text: Tr.cancel;
+                        border-radius: 10px;
+                        ink: Theme.error;
+                        line: Theme.error.with-alpha(0.45);
+                        enabled: !Core.audioCompress.cut.stopping;
+                        clicked => { Act.videoCutCancel(); }
+                    }
+                    if !Core.audioCompress.cut.running: OutlinedButton {
+                        text: root.editing ? Tr.cancel : Tr.close;
+                        border-radius: 10px;
+                        ink: Theme.on-surface;
+                        line: Theme.outline;
+                        clicked => { Act.videoCutDismiss(); }
+                    }
+                    if root.editing: FilledButton {
+                        text: Tr.videoCutApply;
+                        enabled: Core.audioCompress.cut.canStart;
+                        border-radius: 10px;
+                        font-weight: 700;
+                        clicked => { Act.videoCutStart(); }
+                    }
+                }
+            }
+        }
+    }
+}

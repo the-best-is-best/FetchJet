@@ -264,7 +264,8 @@
    "NONE",
    "DUPLICATE",
    "FILE_CONFLICT",
-   "MAIN_DOWNLOADER"
+   "MAIN_DOWNLOADER",
+   "PLAYER_LIBRARY"
   ],
   "BadgeToneCode": [
    "OTHER",
@@ -330,6 +331,16 @@
    "PAUSE",
    "START_NOW",
    "RESUME"
+  ],
+  "DetailToolCode": [
+   "NONE",
+   "SECONDARY",
+   "EXTRACT",
+   "SHARE",
+   "PLAY",
+   "COMPRESS",
+   "CUT",
+   "SUBTITLES"
   ],
   "PieceStateCode": [
    "IDLE",
@@ -1322,6 +1333,14 @@
    [
     "cancelLabel",
     "String"
+   ],
+   [
+    "checkLabel",
+    "String"
+   ],
+   [
+    "checked",
+    "Boolean"
    ]
   ],
   "AddTorrentDto": [
@@ -1462,6 +1481,134 @@
     "String"
    ]
   ],
+  "VideoClipDto": [
+   [
+    "path",
+    "String"
+   ],
+   [
+    "name",
+    "String"
+   ],
+   [
+    "nameRtl",
+    "Boolean"
+   ],
+   [
+    "size",
+    "String"
+   ],
+   [
+    "range",
+    "String"
+   ]
+  ],
+  "VideoCutDto": [
+   [
+    "open",
+    "Boolean"
+   ],
+   [
+    "needsTools",
+    "Boolean"
+   ],
+   [
+    "chooser",
+    "Boolean"
+   ],
+   [
+    "timeline",
+    "Boolean"
+   ],
+   [
+    "clipsOnly",
+    "Boolean"
+   ],
+   [
+    "reading",
+    "Boolean"
+   ],
+   [
+    "timelineOff",
+    "Boolean"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "fileNameRtl",
+    "Boolean"
+   ],
+   [
+    "duration",
+    "String"
+   ],
+   [
+    "start",
+    "String"
+   ],
+   [
+    "startFriendly",
+    "String"
+   ],
+   [
+    "end",
+    "String"
+   ],
+   [
+    "endFriendly",
+    "String"
+   ],
+   [
+    "length",
+    "String"
+   ],
+   [
+    "rangeError",
+    "Boolean"
+   ],
+   [
+    "canStart",
+    "Boolean"
+   ],
+   [
+    "running",
+    "Boolean"
+   ],
+   [
+    "stopping",
+    "Boolean"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "percent",
+    "String"
+   ],
+   [
+    "elapsed",
+    "String"
+   ],
+   [
+    "timeLeft",
+    "String"
+   ],
+   [
+    "failed",
+    "Boolean"
+   ],
+   [
+    "message",
+    "String"
+   ],
+   [
+    "clips",
+    "List<VideoClipDto>"
+   ]
+  ],
   "AudioCompressDto": [
    [
     "open",
@@ -1598,6 +1745,10 @@
    [
     "progressText",
     "String"
+   ],
+   [
+    "cut",
+    "VideoCutDto"
    ]
   ],
   "ChipDto": [
@@ -1625,6 +1776,20 @@
    ],
    [
     "note",
+    "String"
+   ]
+  ],
+  "DetailToolDto": [
+   [
+    "code",
+    "Int"
+   ],
+   [
+    "icon",
+    "String"
+   ],
+   [
+    "label",
     "String"
    ]
   ],
@@ -1832,6 +1997,18 @@
    [
     "removeLabel",
     "String"
+   ],
+   [
+    "fileTools",
+    "List<DetailToolDto>"
+   ],
+   [
+    "mediaTools",
+    "List<DetailToolDto>"
+   ],
+   [
+    "clips",
+    "List<VideoClipDto>"
    ]
   ],
   "PieceDto": [
@@ -3930,6 +4107,16 @@
    ]
   ],
   "UseSingleVideo": [],
+  "ChoiceCheck": [
+   [
+    "kind",
+    "Int"
+   ],
+   [
+    "checked",
+    "Boolean"
+   ]
+  ],
   "ChoicePrimary": [
    [
     "kind",
@@ -3956,7 +4143,44 @@
   "HiddenRemovePin": [],
   "HiddenLock": [],
   "HiddenRecoveryCode": [],
-  "HiddenRestore": []
+  "HiddenRestore": [],
+  "DetailsTool": [
+   [
+    "code",
+    "Int"
+   ]
+  ],
+  "VideoCutChoose": [
+   [
+    "timeline",
+    "Boolean"
+   ]
+  ],
+  "VideoCutPickTime": [
+   [
+    "end",
+    "Boolean"
+   ]
+  ],
+  "VideoCutStart": [],
+  "VideoCutCancel": [],
+  "VideoCutDismiss": [],
+  "VideoCutDeleteClip": [
+   [
+    "path",
+    "String"
+   ]
+  ],
+  "VideoCutApply": [
+   [
+    "startMs",
+    "Int"
+   ],
+   [
+    "endMs",
+    "Int"
+   ]
+  ]
  },
  "tr": [
   "languageName",
@@ -4718,6 +4942,17 @@
   "playerAllFinished",
   "playerStartOver",
   "playerPlayAll",
+  "playerAskTitle",
+  "playerAskText",
+  "playerAskDownload",
+  "playerAskSystem",
+  "playerAskRemember",
+  "playerAskLater",
+  "playerModeTitle",
+  "playerModeHint",
+  "playerModeAsk",
+  "playerModeOn",
+  "playerModeOff",
   "playlistCheckNew",
   "playlistBack",
   "playlistDeleteAll",
@@ -4826,6 +5061,26 @@
   "audioCompressHigherQuality",
   "audioCompressSmallerFile",
   "audioCompressNothing",
+  "videoCutTitle",
+  "videoCutByTime",
+  "videoCutByTimeHint",
+  "videoCutOnTimeline",
+  "videoCutOnTimelineHint",
+  "videoCutFrom",
+  "videoCutTo",
+  "videoCutDuration",
+  "videoCutPlayRange",
+  "videoCutApply",
+  "videoCutRunning",
+  "videoCutElapsed",
+  "videoCutLeft",
+  "videoCutStopping",
+  "videoCutFailed",
+  "videoCutClips",
+  "videoCutDeleteClip",
+  "videoCutTimelineNeedsMp4",
+  "videoCutSaved",
+  "videoCutNeedsTools",
   "sysDeviceSendTitle",
   "sysDeviceNoDevices",
   "sysDeviceSearching",

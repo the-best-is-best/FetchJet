@@ -1227,6 +1227,7 @@ object ArabicProvider : AppLocalization {
     override val videoCutDeleteClip = "حذف المقطع"
     override val videoCutTimelineNeedsMp4 = "الخط الزمني يحتاج ملف mp4 أو mov"
     override val videoCutSaved = "تم حفظ المقطع"
+    override val videoCutNeedsTools = "القص محتاج أدوات الوسائط (FFmpeg). نزّلها من الإعدادات ← أدوات الوسائط."
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     override val sysDeviceSendTitle = "ابعت لجهاز"
