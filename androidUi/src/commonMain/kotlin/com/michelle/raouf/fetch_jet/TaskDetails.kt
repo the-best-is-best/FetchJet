@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -83,6 +84,8 @@ internal fun DownloadTaskItem(
     onCompress: (() -> Unit)? = null,
     onSubtitles: (() -> Unit)? = null,
     onExtract: (() -> Unit)? = null,
+    onExtractAudio: (() -> Unit)? = null,
+    extractingAudio: Boolean = false,
     onOpenHidden: (() -> Unit)? = null,
     compressedCopies: Int = 0,
     onCut: (() -> Unit)? = null,
@@ -670,6 +673,10 @@ internal fun DownloadTaskItem(
 
             val fileTools = buildList {
                 if (onExtract != null) add(DetailTool("📦", LocalizationManager.Strings.extractNow, onExtract))
+                if (onExtractAudio != null) add(
+                    if (extractingAudio) DetailTool("🎵", LocalizationManager.Strings.audioExtractRunning, {}, busy = true)
+                    else DetailTool("🎵", LocalizationManager.Strings.audioExtractTitle, onExtractAudio)
+                )
                 if (onShare != null) add(DetailTool("📲", LocalizationManager.Strings.sysDeviceSendTitle, onShare))
             }
             val mediaTools = buildList {
@@ -726,7 +733,7 @@ internal fun DownloadTaskItem(
     }
 }
 
-internal class DetailTool(val icon: String, val label: String, val onClick: () -> Unit)
+internal class DetailTool(val icon: String, val label: String, val onClick: () -> Unit, val busy: Boolean = false)
 
 @Composable
 internal fun DetailGroupLabel(text: String) {
@@ -766,6 +773,7 @@ internal fun DetailToolGrid(tools: List<DetailTool>) {
 internal fun DetailToolButton(tool: DetailTool, modifier: Modifier) {
     Surface(
         onClick = tool.onClick,
+        enabled = !tool.busy,
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
@@ -776,12 +784,19 @@ internal fun DetailToolButton(tool: DetailTool, modifier: Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(tool.icon, fontSize = 18.sp)
+            if (tool.busy) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(tool.icon, fontSize = 18.sp)
+            }
             Text(
                 tool.label,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (tool.busy) 0.6f else 1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
@@ -931,8 +946,9 @@ internal fun TaskDetailsPane(
     fillHeight: Boolean = true,
     compressedCopies: Int = 0
 ) {
-    val torrentDetails = viewModel.uiState.collectAsState().value.torrentDetails
-    val clips = viewModel.uiState.collectAsState().value.videoClips[task.id].orEmpty()
+    val uiState = viewModel.uiState.collectAsState().value
+    val torrentDetails = uiState.torrentDetails
+    val clips = uiState.videoClips[task.id].orEmpty()
     val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
         Row(
@@ -996,6 +1012,10 @@ internal fun TaskDetailsPane(
                 onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
                 } else null,
+                onExtractAudio = if (com.michelle.raouf.fetch_jet.feature.audio_extract.AudioExtract.canExtract(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnExtractAudioClicked(task.id)) }
+                } else null,
+                extractingAudio = task.id in uiState.audioExtracting,
                 onOpenHidden = if (task.hidden) {
                     { viewModel.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id)) }
                 } else null,

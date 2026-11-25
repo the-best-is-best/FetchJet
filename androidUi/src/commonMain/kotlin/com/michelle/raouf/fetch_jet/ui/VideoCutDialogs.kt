@@ -363,7 +363,10 @@ internal fun VideoClipsSection(
                     modifier = Modifier.clickable { onPlay(clip) }.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("🎞", fontSize = 16.sp)
+                    Text(
+                        if (com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.isAudioName(clip.name)) "🎵" else "🎞",
+                        fontSize = 16.sp
+                    )
                     Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
                         Text(
                             clip.name,
