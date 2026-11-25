@@ -161,28 +161,11 @@ actual suspend fun downloadMediaWithPlatformTool(
         }
     }
 
-    if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
-        val s = clipStart?.trim()?.ifBlank { null } ?: "0"
-        val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        if (clipByCutting) {
-            // Full-speed download, then a local stream-copy cut by FetchJet's own yt-dlp plugin
-            // (see CutPlugin.kt; yt-dlp's "--remove-chapters *a-b" crashes in 2026.x).
-            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
-            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
-            if (pluginDir != null) {
-                rawArgs.add("--plugin-dirs"); rawArgs.add(pluginDir)
-                rawArgs.add("--use-postprocessor"); rawArgs.add(
-                    cutPluginArg(
-                        parseTimeToSeconds(s),
-                        endSec
-                    )
-                )
-            } else {
-                rawArgs.add("--download-sections"); rawArgs.add("*$s-$e")
-            }
-        } else {
-            rawArgs.add("--download-sections")
-            rawArgs.add("*$s-$e")
+    clipSectionArgs(clipStart, clipEnd, clipByCutting).takeIf { it.isNotEmpty() }?.let { section ->
+        rawArgs.addAll(section)
+        if (!isAudio && hasFfmpeg) {
+            rawArgs.add("--merge-output-format")
+            rawArgs.add("mp4")
         }
     }
 

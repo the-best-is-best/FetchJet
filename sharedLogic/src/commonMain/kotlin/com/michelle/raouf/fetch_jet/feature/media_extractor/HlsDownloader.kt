@@ -272,7 +272,8 @@ object HlsDownloader {
         onPostProcess: ((String, Float) -> Unit)? = null,
         /** Clip: only the parts between these seconds are fetched (null = whole video). */
         clipStartSec: Double? = null,
-        clipEndSec: Double? = null
+        clipEndSec: Double? = null,
+        onClipOffset: (Double) -> Unit = {}
     ): Boolean = withContext(Dispatchers.Default) {
         val fs = AppFileSystem
         val dir = workDir.toPath()
@@ -423,22 +424,12 @@ object HlsDownloader {
         fs.write(localPlaylist) { writeUtf8(local) }
 
         onPostProcess?.invoke("Joining ${total} parts into MP4…", -1f)
-        val trim = buildList {
-            if (clipStartSec != null || clipEndSec != null) {
-                val ss = ((clipStartSec ?: 0.0) - clipOffsetSec).coerceAtLeast(0.0)
-                if (ss > 0.0) {
-                    add("-ss"); add(ss.toString())
-                }
-                if (clipEndSec != null) {
-                    add("-to"); add((clipEndSec - clipOffsetSec).coerceAtLeast(ss + 0.1).toString())
-                }
-            }
-        }
+        onClipOffset(clipOffsetSec)
         val input = listOf(
             "-y", "-hide_banner", "-loglevel", "error",
             "-allowed_extensions", "ALL", "-protocol_whitelist", "file,crypto,data",
             "-i", localPlaylist.toString()
-        ) + trim
+        )
         val ok = runLocalFfmpeg(
             input + listOf(
                 "-c",

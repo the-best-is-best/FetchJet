@@ -11,6 +11,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.update
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -95,7 +96,8 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnHls(
     clipStartSec = initialTask.clipStart?.takeIf { it.isNotBlank() }
         ?.let { parseTimeToSecondsOrNull(it) },
     clipEndSec = initialTask.clipEnd?.takeIf { it.isNotBlank() }
-        ?.let { parseTimeToSecondsOrNull(it) }
+        ?.let { parseTimeToSecondsOrNull(it) },
+    onClipOffset = { offset -> hlsClipOffsetsMs.update { it + (taskId to (offset * 1000.0).toLong()) } }
 )
 
 internal suspend fun MediaStreamDownloader.downloadWithYtDlp(

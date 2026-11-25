@@ -122,28 +122,7 @@ actual suspend fun downloadMediaWithPlatformTool(
         command.add("--remux-video"); command.add("mp4")
         command.add("--hls-prefer-ffmpeg")
     }
-    if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
-        val s = clipStart?.trim()?.ifBlank { null } ?: "0"
-        val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        if (clipByCutting) {
-            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
-            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
-            if (pluginDir != null) {
-                command.add("--plugin-dirs"); command.add(pluginDir)
-                command.add("--use-postprocessor"); command.add(
-                    cutPluginArg(
-                        parseTimeToSeconds(s),
-                        endSec
-                    )
-                )
-            } else {
-                command.add("--download-sections"); command.add("*$s-$e")
-            }
-        } else {
-            command.add("--download-sections")
-            command.add("*$s-$e")
-        }
-    }
+    command.addAll(clipSectionArgs(clipStart, clipEnd, clipByCutting))
     command.add("-o")
     val isScript = fileName.matches(
         Regex(

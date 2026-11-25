@@ -881,7 +881,7 @@ class QueueManagerRepository(
         forcedEngineType: EngineType? = null,
         clipStart: String? = null,
         clipEnd: String? = null,
-        /** Clip: whole video at full speed, then a local cut (see CutPlugin.kt). Off = only the
+        /** Clip: whole video at full speed, then a local cut (see MediaClipCut.kt). Off = only the
          *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
         clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap(),
