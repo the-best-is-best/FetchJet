@@ -50,6 +50,7 @@ namespace ChoiceDialogKind {
     inline constexpr int FileConflict = 2;
     inline constexpr int MainDownloader = 3;
     inline constexpr int PlayerLibrary = 4;
+    inline constexpr int PdfReader = 5;
 }
 
 namespace BadgeToneCode {
@@ -164,6 +165,8 @@ namespace EffectKind {
     inline constexpr int PlayerPath = 6;
     inline constexpr int PlayerPreparing = 7;
     inline constexpr int ClosePlayer = 8;
+    inline constexpr int OpenPdf = 9;
+    inline constexpr int ClosePdf = 10;
 }
 
 namespace SideFilterCode {

@@ -18,13 +18,15 @@ import { SubtitlesDialog } from "pages/SubtitlesPage.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
 import { ShortcutsDialog } from "pages/Shortcuts.slint";
 import { PlayerPage, PlayerUi } from "pages/Player.slint";
+import { PdfPage, PdfUi } from "pages/PdfReader.slint";
 import { PairingCode } from "generated/dto.slint";
 import { Core } from "generated/dto.slint";
 import { Tr } from "generated/tr.slint";
 import { Act } from "generated/actions.slint";
 export * from "generated/dto.slint";
 export { Theme, Dir, Tr, Act, Emoji }
-export { PlayerUi, PlayerRow } from "pages/Player.slint";
+export { PlayerUi, PlayerRow, TrimTile } from "pages/Player.slint";
+export { PdfUi, PdfPageRow } from "pages/PdfReader.slint";
 
 component DetailsSheet inherits Rectangle {
     in-out property <bool> expanded: false;
@@ -83,7 +85,7 @@ export component AppWindow inherits Window {
     private property <length> panel: root.details-side ? 340px : 0px;
     private property <bool> overlay-open: Core.chrome.settingsOpen || Core.add.visible || Core.clipPicker.open || Core.deviceSheet.open
         || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.audioCompress.cut.open || Core.subtitlesPage.open || Core.updateDialog.open
-        || Core.alerts.length > 0 || Core.choices.length > 0 || PlayerUi.open;
+        || Core.alerts.length > 0 || Core.choices.length > 0 || PlayerUi.open || PdfUi.open;
     changed overlay-open => {
         if !root.overlay-open {
             list.focus();
@@ -182,4 +184,5 @@ export component AppWindow inherits Window {
         host-width: root.width;
     }
     if PlayerUi.open: PlayerPage { }
+    if PdfUi.open: PdfPage { }
 }

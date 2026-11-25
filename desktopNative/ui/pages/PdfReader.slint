@@ -1,0 +1,379 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox } from "../widgets/Base.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { FilledButton } from "../widgets/Buttons.slint";
+import { ScrollBar } from "../widgets/Scroll.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { Spinner } from "../widgets/Kit.slint";
+import { Tr } from "../generated/tr.slint";
+import { PBtn } from "Player.slint";
+
+export struct PdfPageRow { top: float, left: float, width: float, height: float, image: image, ready: bool }
+
+export global PdfUi {
+    in-out property <bool> open;
+    in property <string> title;
+    in property <[PdfPageRow]> pages;
+    in property <float> content-width;
+    in property <float> content-height;
+    in property <int> page;
+    in property <int> count;
+    in property <string> page-label;
+    in property <string> zoom-label;
+    in property <bool> fit;
+    in property <bool> loading;
+    in property <string> error;
+    in property <bool> error-system;
+    in property <int> jump-tick;
+    in property <float> jump-x;
+    in property <float> jump-y;
+    in property <int> goto-tick;
+    in property <bool> goto-bad;
+    callback close();
+    callback zoom(int);
+    callback fit-width();
+    callback viewport(float, float, float, float);
+    callback go-to(string);
+    callback step(int);
+    callback edge(bool);
+    callback system();
+}
+
+component PageChip inherits Rectangle {
+    in property <string> text;
+    in property <string> label;
+    callback clicked();
+    width: max(64px, t.preferred-width + 24px);
+    height: 36px;
+    border-radius: 18px;
+    background: #FFFFFF1F;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Rectangle {
+        border-radius: parent.border-radius;
+        background: #FFFFFF.with-alpha(ta.pressed ? 0.10 : ta.has-hover ? 0.08 : 0);
+    }
+    t := Text {
+        text: root.text;
+        color: #FFFFFF;
+        font-family: Theme.font;
+        font-size: 14px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component PdfPage inherits Rectangle {
+    private property <bool> going: false;
+    private property <length> bar: 60px;
+    private property <length> line: 60px;
+    function report() {
+        PdfUi.viewport(-fl.viewport-x / 1px, -fl.viewport-y / 1px, fl.width / 1px, fl.height / 1px);
+    }
+    function scroll-by(dx: length, dy: length) {
+        fl.viewport-x = -clamp(-fl.viewport-x + dx, 0px, max(0px, fl.viewport-width - fl.width));
+        fl.viewport-y = -clamp(-fl.viewport-y + dy, 0px, max(0px, fl.viewport-height - fl.height));
+    }
+    function apply-jump() {
+        fl.viewport-x = -clamp(PdfUi.jump-x * 1px, 0px, max(0px, fl.viewport-width - fl.width));
+        fl.viewport-y = -clamp(PdfUi.jump-y * 1px, 0px, max(0px, fl.viewport-height - fl.height));
+    }
+    function open-goto() {
+        root.going = true;
+        goto-field.set-text("");
+        goto-field.focus-field();
+    }
+    function close-goto() {
+        root.going = false;
+        keys.focus();
+    }
+    background: #1B1F27;
+    init => { keys.focus(); }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                PdfUi.close();
+                return accept;
+            }
+            if e.modifiers.control && (e.text == "=" || e.text == "+") {
+                PdfUi.zoom(1);
+                return accept;
+            }
+            if e.modifiers.control && (e.text == "-" || e.text == "_") {
+                PdfUi.zoom(-1);
+                return accept;
+            }
+            if e.modifiers.control && e.text == "0" {
+                PdfUi.fit-width();
+                return accept;
+            }
+            if e.modifiers.control && (e.text == "g" || e.text == "G") {
+                root.open-goto();
+                return accept;
+            }
+            if e.text == Key.PageDown || e.text == " " {
+                root.scroll-by(0px, fl.height - root.line);
+                return accept;
+            }
+            if e.text == Key.PageUp {
+                root.scroll-by(0px, -(fl.height - root.line));
+                return accept;
+            }
+            if e.text == Key.Home {
+                PdfUi.edge(false);
+                return accept;
+            }
+            if e.text == Key.End {
+                PdfUi.edge(true);
+                return accept;
+            }
+            if e.text == Key.DownArrow {
+                root.scroll-by(0px, root.line);
+                return accept;
+            }
+            if e.text == Key.UpArrow {
+                root.scroll-by(0px, -root.line);
+                return accept;
+            }
+            if e.text == Key.LeftArrow || e.text == Key.RightArrow {
+                if fl.viewport-width > fl.width + 1px {
+                    root.scroll-by(e.text == Key.LeftArrow ? -root.line : root.line, 0px);
+                } else {
+                    PdfUi.step((e.text == Key.RightArrow) != Dir.rtl ? 1 : -1);
+                }
+                return accept;
+            }
+            reject
+        }
+    }
+    fl := Flickable {
+        y: root.bar;
+        x: Dir.rtl ? 12px : 0px;
+        width: parent.width - 12px;
+        height: parent.height - root.bar;
+        mouse-drag-pan-enabled: false;
+        viewport-width: max(self.width, PdfUi.content-width * 1px);
+        viewport-height: max(self.height, PdfUi.content-height * 1px);
+        changed viewport-x => { root.report(); }
+        changed viewport-y => { root.report(); }
+        changed width => { root.report(); }
+        changed height => { root.report(); }
+        init => {
+            root.report();
+            root.apply-jump();
+            root.report();
+        }
+        for p in PdfUi.pages: Rectangle {
+            x: p.left * 1px;
+            y: p.top * 1px;
+            width: p.width * 1px;
+            height: p.height * 1px;
+            background: #FFFFFF;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: #00000066;
+            if p.ready: Image {
+                width: parent.width;
+                height: parent.height;
+                source: p.image;
+                image-fit: fill;
+            }
+        }
+    }
+    changed width => { root.report(); }
+    private property <int> jump: PdfUi.jump-tick;
+    changed jump => {
+        root.apply-jump();
+        root.report();
+    }
+    private property <int> goto: PdfUi.goto-tick;
+    changed goto => {
+        if PdfUi.goto-bad {
+            goto-field.select-all();
+        } else {
+            root.close-goto();
+        }
+    }
+    TouchArea {
+        y: fl.y;
+        x: fl.x;
+        width: fl.width;
+        height: fl.height;
+        scroll-event(e) => {
+            if e.modifiers.control {
+                if e.delta-y > 0 {
+                    PdfUi.zoom(1);
+                } else if e.delta-y < 0 {
+                    PdfUi.zoom(-1);
+                }
+                return accept;
+            }
+            reject
+        }
+        clicked => {
+            if root.going {
+                root.close-goto();
+            }
+            keys.focus();
+        }
+    }
+    ScrollBar {
+        x: Dir.rtl ? 0 : parent.width - self.width;
+        y: fl.y;
+        height: fl.height;
+        content-size: fl.viewport-height;
+        page-size: fl.height;
+        offset <=> fl.viewport-y;
+    }
+    if PdfUi.loading && PdfUi.error == "": Spinner {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        size: 48px;
+        stroke: 2.5px;
+        ink: #FFFFFF;
+    }
+    if PdfUi.error != "": VerticalLayout {
+        y: root.bar;
+        height: parent.height - root.bar;
+        alignment: center;
+        spacing: 16px;
+        padding: 24px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 96px;
+                height: 96px;
+                border-radius: 20px;
+                background: #FFFFFF14;
+                Path {
+                    x: 24px;
+                    y: 24px;
+                    width: 48px;
+                    height: 48px;
+                    viewbox-width: 24;
+                    viewbox-height: 24;
+                    commands: "M 12 3 L 22 20 L 2 20 Z M 12 9 L 12 14 M 12 17 L 12 17.01";
+                    stroke: Theme.error;
+                    stroke-width: 2px;
+                    stroke-line-cap: round;
+                    stroke-line-join: round;
+                    fill: transparent;
+                }
+            }
+        }
+        Text {
+            text: PdfUi.error;
+            color: #FFFFFF;
+            font-family: Theme.font;
+            font-size: 16px;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+        if PdfUi.error-system: HorizontalLayout {
+            alignment: center;
+            FilledButton {
+                height: 40px;
+                pad: 20px;
+                text: Tr.playerAskSystem;
+                clicked => { PdfUi.system(); }
+            }
+        }
+    }
+    Rectangle {
+        y: 0;
+        width: parent.width;
+        height: root.bar;
+        background: #000000CC;
+        TouchArea { }
+        HBox {
+            x: 8px;
+            width: parent.width - 16px;
+            height: parent.height;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            PBtn {
+                commands: "M 5 5 L 19 19 M 19 5 L 5 19";
+                label: Tr.cancel;
+                clicked => { PdfUi.close(); }
+            }
+            ElideText {
+                text: PdfUi.title;
+                font-size: 16px;
+                font-weight: 600;
+                ink: #FFFFFF;
+                behind: #000000;
+                tracking: 0.1px;
+                height: 60px;
+            }
+            if PdfUi.count > 0 && !root.going: PageChip {
+                text: PdfUi.page-label;
+                label: Tr.pdfGoToPage;
+                clicked => { root.open-goto(); }
+            }
+            goto-field := TextField {
+                visible: root.going;
+                width: root.going ? 120px : 0px;
+                height: 40px;
+                horizontal-stretch: 0;
+                centered: true;
+                ltr: true;
+                placeholder: Tr.pdfPage;
+                has-error: PdfUi.goto-bad;
+                accepted(text) => { PdfUi.go-to(text); }
+                escaped => { root.close-goto(); }
+            }
+            if PdfUi.count > 0: PBtn {
+                commands: "M 6 12 L 18 12";
+                size: 40px;
+                glyph-size: 22px;
+                label: "-";
+                clicked => { PdfUi.zoom(-1); }
+            }
+            if PdfUi.count > 0: Text {
+                text: PdfUi.zoom-label;
+                min-width: 52px;
+                color: #FFFFFFCC;
+                font-family: Theme.font;
+                font-size: 14px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            if PdfUi.count > 0: PBtn {
+                commands: "M 6 12 L 18 12 M 12 6 L 12 18";
+                size: 40px;
+                glyph-size: 22px;
+                label: "+";
+                clicked => { PdfUi.zoom(1); }
+            }
+            if PdfUi.count > 0: Rectangle {
+                width: fit-text.preferred-width + 28px;
+                height: 36px;
+                border-radius: 18px;
+                background: PdfUi.fit ? Theme.primary.with-alpha(0.22) : #FFFFFF1F;
+                accessible-role: button;
+                accessible-label: Tr.pdfFitWidth;
+                accessible-action-default => { PdfUi.fit-width(); }
+                fit-ta := TouchArea {
+                    clicked => { PdfUi.fit-width(); }
+                }
+                Rectangle {
+                    border-radius: parent.border-radius;
+                    background: #FFFFFF.with-alpha(fit-ta.pressed ? 0.10 : fit-ta.has-hover ? 0.08 : 0);
+                }
+                fit-text := Text {
+                    text: Tr.pdfFitWidth;
+                    color: PdfUi.fit ? Theme.primary : #FFFFFF;
+                    font-family: Theme.font;
+                    font-size: 14px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

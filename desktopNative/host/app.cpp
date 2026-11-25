@@ -1,5 +1,6 @@
 #include "app_host.h"
 #include "emoji_files.h"
+#include "pdf_reader.h"
 #include "player_mpv.h"
 
 #include <chrono>
@@ -126,6 +127,12 @@ namespace fjhost {
                     case fjgen::EffectKind::ClosePlayer:
                         player::close();
                         break;
+                    case fjgen::EffectKind::OpenPdf:
+                        pdf::open(plain(effect.text));
+                        break;
+                    case fjgen::EffectKind::ClosePdf:
+                        pdf::close();
+                        break;
                     default:
                         break;
                 }
@@ -216,6 +223,16 @@ namespace fjhost {
                     const fj::Json *name = json.find("player");
                     const fj::Json *value = json.find("value");
                     player::debug(name ? name->text : "", value ? value->number : 0.0);
+                }
+                return;
+            }
+            if (line.compare(0, 7, "{\"pdf\":") == 0) {
+                fj::Json json;
+                std::string error;
+                if (fj::parse_json(line, json, error)) {
+                    const fj::Json *name = json.find("pdf");
+                    const fj::Json *value = json.find("value");
+                    pdf::debug(name ? name->text : "", value ? value->number : 0.0);
                 }
                 return;
             }
@@ -388,6 +405,7 @@ namespace fjhost {
             return;
         }
         player::close();
+        pdf::close();
         lock_hidden();
         ui().hide();
         g_shown = false;
@@ -433,6 +451,7 @@ namespace fjhost {
         auto &window = ui();
         register_fonts();
         player::wire();
+        pdf::wire();
         window.global<Emoji>().on_icon([](slint::SharedString glyph, int size, int) { return emoji_icon(glyph, size); });
         window.global<Emoji>().set_ready(true);
         window.on_resized([] { repaint_soon(); });
@@ -472,6 +491,7 @@ namespace fjhost {
         g_running = false;
         os::remove_tray();
         player::shutdown();
+        pdf::shutdown();
         g_core.shutdown();
         g_ui.reset();
         os::release_instance(instance);

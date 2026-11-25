@@ -15,7 +15,10 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -164,27 +167,49 @@ namespace fjhost::player {
             int strip_h = 0;
             bool thumbs_started = false;
             bool audio = false;
+            double view_start = 0;
+            double view_span = 0;
+            int drag_handle = -1;
+            double drag_pos = 0;
+            bool follow = false;
+        };
+
+        struct ThumbTile {
+            int level = 0;
+            long index = 0;
+            double at = 0;
         };
 
         struct ThumbJob {
             std::atomic<bool> cancel{false};
-            std::atomic<int> next{0};
+            std::mutex lock;
+            std::deque<ThumbTile> pending;
+            int running = 0;
             std::string ffmpeg;
             std::string input;
             std::string folder;
-            double duration = 0;
-            int count = 0;
             int width = 0;
             int height = 0;
             unsigned tag = 0;
         };
 
         Trim g_trim;
-        std::shared_ptr<slint::VectorModel<slint::Image>> g_thumbs;
+        std::shared_ptr<slint::VectorModel<TrimTile>> g_thumbs;
+        std::vector<std::pair<int, long>> g_thumb_keys;
+        std::map<std::pair<int, long>, slint::Image> g_tile_cache;
+        int g_tile_level = 0;
+        long g_tile_from = 1;
+        long g_tile_to = 0;
         std::shared_ptr<ThumbJob> g_thumb_job;
         std::atomic<unsigned> g_thumb_tag{0};
+        std::atomic<int> g_thumb_made{0};
         int g_thumbs_loaded = 0;
+        std::vector<float> g_wave_all;
         std::shared_ptr<slint::VectorModel<float>> g_wave;
+        long g_wave_from = 1;
+        long g_wave_to = 0;
+        int g_wave_group = 0;
+        slint::Timer g_edge_timer;
 
         void drain_events();
 
@@ -195,6 +220,8 @@ namespace fjhost::player {
         void publish_trim();
 
         void publish_playhead();
+
+        void publish_view();
 
         void trim_check_range();
 
@@ -909,6 +936,10 @@ namespace fjhost::player {
                                     g_trim.e = std::min(g_trim.e, g_trim.frames);
                                     g_trim.s = std::min(g_trim.s, g_trim.e - 1);
                                     publish_trim();
+                                    g_tile_from = 1;
+                                    g_tile_to = 0;
+                                    g_wave_group = 0;
+                                    publish_view();
                                 }
                             }
                         } else if (event->reply_userdata == ObsPause && prop->format == MPV_FORMAT_FLAG) {
@@ -1346,16 +1377,25 @@ namespace fjhost::player {
 #endif
         }
 
+        bool thumb_next(const std::shared_ptr<ThumbJob> &job, ThumbTile &tile) {
+            std::lock_guard<std::mutex> guard(job->lock);
+            if (job->cancel.load() || job->pending.empty()) {
+                job->running--;
+                return false;
+            }
+            tile = job->pending.front();
+            job->pending.pop_front();
+            return true;
+        }
+
         void thumb_worker(std::shared_ptr<ThumbJob> job) {
-            for (;;) {
-                int i = job->next.fetch_add(1);
-                if (i >= job->count || job->cancel.load())
-                    return;
-                double at = (double(i) + 0.5) * job->duration / double(job->count);
-                std::string out = job->folder + "/thumb-" + std::to_string(job->tag) + "-" + std::to_string(i) + ".rgb";
+            ThumbTile tile;
+            while (thumb_next(job, tile)) {
+                std::string out = job->folder + "/thumb-" + std::to_string(job->tag) + "-" + std::to_string(tile.level + 64) + "-" +
+                                  std::to_string(tile.index) + ".rgb";
                 std::string size = std::to_string(job->width) + ":" + std::to_string(job->height);
                 std::vector<std::string> args = {job->ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "2",
-                                                 "-ss", number_text(at), "-i", job->input, "-an", "-sn", "-dn", "-frames:v", "1",
+                                                 "-ss", number_text(tile.at), "-i", job->input, "-an", "-sn", "-dn", "-frames:v", "1",
                                                  "-vf", "scale=" + size + ":force_original_aspect_ratio=increase,crop=" + size,
                                                  "-pix_fmt", "rgb24", "-f", "rawvideo", "-y", out};
                 bool ran = run_tool(args, job->cancel);
@@ -1366,13 +1406,28 @@ namespace fjhost::player {
                     continue;
                 unsigned tag = job->tag;
                 int w = job->width, h = job->height;
-                slint::invoke_from_event_loop([tag, i, w, h, pixels] {
-                    if (tag != g_thumb_tag.load() || !g_thumbs || i >= int(g_thumbs->row_count()))
+                slint::invoke_from_event_loop([tag, tile, w, h, pixels] {
+                    if (tag != g_thumb_tag.load())
                         return;
                     slint::SharedPixelBuffer<slint::Rgb8Pixel> buffer{uint32_t(w), uint32_t(h)};
                     std::copy(pixels.begin(), pixels.end(), reinterpret_cast<uint8_t *>(buffer.begin()));
-                    g_thumbs->set_row_data(size_t(i), slint::Image(buffer));
-                    g_thumbs_loaded++;
+                    slint::Image image(buffer);
+                    g_tile_cache[{tile.level, tile.index}] = image;
+                    g_thumb_made++;
+                    if (!g_thumbs)
+                        return;
+                    for (size_t row = 0; row < g_thumb_keys.size(); row++) {
+                        if (g_thumb_keys[row] != std::make_pair(tile.level, tile.index))
+                            continue;
+                        auto data = g_thumbs->row_data(row);
+                        if (!data)
+                            break;
+                        TrimTile entry = *data;
+                        entry.img = image;
+                        g_thumbs->set_row_data(row, entry);
+                        g_thumbs_loaded++;
+                        break;
+                    }
                 });
             }
         }
@@ -1382,6 +1437,21 @@ namespace fjhost::player {
             if (g_thumb_job)
                 g_thumb_job->cancel = true;
             g_thumb_job.reset();
+            g_edge_timer.stop();
+        }
+
+        void reset_tiles() {
+            cancel_thumbs();
+            g_tile_cache.clear();
+            g_thumb_keys.clear();
+            g_tile_from = 1;
+            g_tile_to = 0;
+            g_thumbs_loaded = 0;
+            g_thumb_made = 0;
+            g_wave_all.clear();
+            g_wave_from = 1;
+            g_wave_to = 0;
+            g_wave_group = 0;
         }
 
         std::vector<float> parse_peaks(const std::string &text) {
@@ -1395,12 +1465,57 @@ namespace fjhost::player {
             return out;
         }
 
+        double view_min_span() {
+            return std::min(5.0, g_duration);
+        }
+
+        void view_clamp() {
+            if (g_duration <= 0)
+                return;
+            g_trim.view_span = std::clamp(g_trim.view_span, view_min_span(), g_duration);
+            g_trim.view_start = std::clamp(g_trim.view_start, 0.0, std::max(0.0, g_duration - g_trim.view_span));
+        }
+
+        void publish_wave() {
+            if (!g_trim.audio || g_wave_all.empty() || g_trim.strip_w <= 0 || g_duration <= 0)
+                return;
+            long total = long(g_wave_all.size());
+            double bar_s = g_duration / double(total);
+            double px_per_bar = double(g_trim.strip_w) / g_trim.view_span * bar_s;
+            double gap_px = std::max(2.0, double(std::max(g_trim.strip_h, 16)) / 13.0);
+            int group = std::max(1, int(std::ceil(gap_px / std::max(px_per_bar, 1e-9) - 1e-9)));
+            long first = long(std::floor(g_trim.view_start / bar_s));
+            long last = long(std::ceil((g_trim.view_start + g_trim.view_span) / bar_s));
+            if (group == g_wave_group && first >= g_wave_from && last <= g_wave_to && g_wave)
+                return;
+            long margin = long(std::ceil(g_trim.view_span * 0.5 / bar_s));
+            long from = std::max(0L, (first - margin) / group * group);
+            long to = std::min(total, last + margin);
+            std::vector<float> slice;
+            slice.reserve(size_t((to - from) / group + 1));
+            for (long b = from; b < to; b += group) {
+                float peak = 0;
+                for (long k = b; k < std::min(to, b + group); k++)
+                    peak = std::max(peak, g_wave_all[size_t(k)]);
+                slice.push_back(peak);
+            }
+            g_wave_group = group;
+            g_wave_from = from;
+            g_wave_to = to;
+            g_wave = std::make_shared<slint::VectorModel<float>>(slice);
+            auto &p = ui().global<PlayerUi>();
+            p.set_trim_wave_first(float(double(from) * bar_s / g_duration));
+            p.set_trim_wave_step(float(double(group) * bar_s / g_duration));
+            p.set_trim_wave(g_wave);
+        }
+
         void start_wave() {
             g_trim.thumbs_started = true;
-            int bars = std::clamp(g_trim.strip_w / 4, 40, 400);
+            int bars = std::max(std::clamp(g_trim.strip_w / 4, 40, 400), int(std::min(4000.0, std::round(g_duration * 20.0))));
             cancel_thumbs();
-            g_wave = std::make_shared<slint::VectorModel<float>>();
-            ui().global<PlayerUi>().set_trim_wave(g_wave);
+            g_wave_all.clear();
+            g_wave.reset();
+            ui().global<PlayerUi>().set_trim_wave(std::make_shared<slint::VectorModel<float>>());
             unsigned tag = g_thumb_tag.load();
             std::string args = "{\"path\":" + quote(g_items[g_index].path) + ",\"bars\":" + std::to_string(bars) +
                                ",\"durationMs\":" + std::to_string(std::llround(g_duration * 1000.0)) + "}";
@@ -1408,52 +1523,186 @@ namespace fjhost::player {
             std::thread([tag, args] {
                 std::vector<float> peaks = parse_peaks(core_call("player.waveform", args));
                 slint::invoke_from_event_loop([tag, peaks] {
-                    if (tag != g_thumb_tag.load() || !g_wave)
+                    if (tag != g_thumb_tag.load() || !g_trim.on)
                         return;
-                    g_wave = std::make_shared<slint::VectorModel<float>>(peaks);
-                    ui().global<PlayerUi>().set_trim_wave(g_wave);
+                    g_wave_all = peaks;
+                    g_wave_group = 0;
+                    publish_wave();
                     trim_log("trim wave loaded " + std::to_string(peaks.size()));
                 });
             }).detach();
         }
 
-        void start_thumbs() {
-            if (!g_trim.on || !g_trim.ready || g_trim.thumbs_started || g_duration <= 0 || g_trim.strip_w <= 0 || g_trim.strip_h <= 0)
-                return;
-            if (g_items.empty())
-                return;
-            if (g_trim.audio)
-                return start_wave();
-            if (!g_items[g_index].video)
-                return;
-            g_trim.thumbs_started = true;
-            int height = std::clamp(g_trim.strip_h, 16, 240);
-            int count = std::clamp(int(std::lround(double(g_trim.strip_w) / (double(height) * 16.0 / 9.0))), 4, 40);
-            int width = std::max(8, (g_trim.strip_w + count - 1) / count);
-            cancel_thumbs();
-            std::vector<slint::Image> empty(static_cast<size_t>(count));
-            g_thumbs = std::make_shared<slint::VectorModel<slint::Image>>(empty);
-            g_thumbs_loaded = 0;
-            ui().global<PlayerUi>().set_trim_thumbs(g_thumbs);
+        void thumb_spawn(const std::shared_ptr<ThumbJob> &job) {
+            unsigned workers = std::clamp(std::thread::hardware_concurrency() / 4, 1u, 3u);
+            std::lock_guard<std::mutex> guard(job->lock);
+            while (job->running < int(workers) && job->running < int(job->pending.size())) {
+                job->running++;
+                std::thread(thumb_worker, job).detach();
+            }
+        }
+
+        std::shared_ptr<ThumbJob> thumb_job() {
+            if (g_thumb_job)
+                return g_thumb_job;
             std::string home = home_folder();
             if (home.empty())
-                return;
+                return nullptr;
             make_folder(home + "cache");
             make_folder(home + "cache/player-thumbs");
             auto job = std::make_shared<ThumbJob>();
             job->ffmpeg = find_ffmpeg();
             job->input = g_items[g_index].path;
             job->folder = home + "cache/player-thumbs";
-            job->duration = g_duration;
-            job->count = count;
-            job->width = width;
-            job->height = height;
+            job->height = std::clamp(g_trim.strip_h, 16, 240);
+            job->width = std::clamp(int(std::lround(double(job->height) * 1.6)), 16, 384);
             job->tag = g_thumb_tag.load();
             g_thumb_job = job;
-            trim_log("trim thumbs " + std::to_string(count) + " of " + std::to_string(width) + "x" + std::to_string(height) + " with " + job->ffmpeg);
-            unsigned workers = std::clamp(std::thread::hardware_concurrency() / 4, 1u, 3u);
-            for (unsigned i = 0; i < workers; i++)
-                std::thread(thumb_worker, job).detach();
+            trim_log("trim thumbs " + std::to_string(job->width) + "x" + std::to_string(job->height) + " with " + job->ffmpeg);
+            return job;
+        }
+
+        bool cached_tile(int level, double at, slint::Image &out) {
+            for (int d = 1; d <= 3; d++) {
+                for (int k: {level - d, level + d}) {
+                    double size = std::ldexp(1.0, k);
+                    auto found = g_tile_cache.find({k, long(std::floor(at / size))});
+                    if (found != g_tile_cache.end()) {
+                        out = found->second;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        void publish_tiles() {
+            if (!g_trim.on || !g_trim.ready || g_trim.audio || g_duration <= 0 || g_trim.strip_w <= 0 || g_trim.strip_h <= 0)
+                return;
+            if (g_items.empty() || !g_items[g_index].video)
+                return;
+            g_trim.thumbs_started = true;
+            double want = double(std::clamp(g_trim.strip_h, 16, 240)) * 64.0 / 52.0 / double(g_trim.strip_w) * g_trim.view_span;
+            int level = int(std::lround(std::log2(std::max(want, 1e-3))));
+            double size = std::ldexp(1.0, level);
+            long count = std::max(1L, long(std::ceil(g_duration / size - 1e-9)));
+            long first = long(std::floor(g_trim.view_start / size));
+            long last = std::min(count - 1, long(std::floor((g_trim.view_start + g_trim.view_span) / size)));
+            if (level == g_tile_level && first >= g_tile_from && last <= g_tile_to && g_thumbs)
+                return;
+            long margin = long(std::ceil(g_trim.view_span / size));
+            long from = std::max(0L, first - margin);
+            long to = std::min(count - 1, last + margin);
+            if (g_tile_cache.size() > 3000) {
+                for (auto it = g_tile_cache.begin(); it != g_tile_cache.end();)
+                    it = it->first.first == level ? std::next(it) : g_tile_cache.erase(it);
+            }
+            std::vector<TrimTile> rows;
+            g_thumb_keys.clear();
+            g_thumbs_loaded = 0;
+            std::vector<ThumbTile> missing;
+            for (long i = from; i <= to; i++) {
+                double at = double(i) * size;
+                double len = std::min(size, g_duration - at);
+                TrimTile row;
+                row.at = float(at / g_duration);
+                row.len = float(len / g_duration);
+                auto exact = g_tile_cache.find({level, i});
+                if (exact != g_tile_cache.end()) {
+                    row.img = exact->second;
+                    g_thumbs_loaded++;
+                } else {
+                    cached_tile(level, at + len / 2, row.img);
+                    missing.push_back({level, i, at + len / 2});
+                }
+                rows.push_back(row);
+                g_thumb_keys.push_back({level, i});
+            }
+            g_tile_level = level;
+            g_tile_from = from;
+            g_tile_to = to;
+            g_thumbs = std::make_shared<slint::VectorModel<TrimTile>>(rows);
+            ui().global<PlayerUi>().set_trim_thumbs(g_thumbs);
+            double view_end = g_trim.view_start + g_trim.view_span;
+            double middle = g_trim.view_start + g_trim.view_span / 2;
+            std::stable_sort(missing.begin(), missing.end(), [&](const ThumbTile &a, const ThumbTile &b) {
+                bool va = a.at + size / 2 >= g_trim.view_start && a.at - size / 2 <= view_end;
+                bool vb = b.at + size / 2 >= g_trim.view_start && b.at - size / 2 <= view_end;
+                if (va != vb)
+                    return va;
+                return std::fabs(a.at - middle) < std::fabs(b.at - middle);
+            });
+            auto job = thumb_job();
+            if (!job)
+                return;
+            {
+                std::lock_guard<std::mutex> guard(job->lock);
+                job->pending.assign(missing.begin(), missing.end());
+            }
+            thumb_spawn(job);
+        }
+
+        void publish_view() {
+            if (!g_trim.on || !g_trim.ready || g_duration <= 0)
+                return;
+            view_clamp();
+            auto &p = ui().global<PlayerUi>();
+            p.set_trim_view_start(float(g_trim.view_start / g_duration));
+            p.set_trim_view_span(float(g_trim.view_span / g_duration));
+            p.set_trim_zoom_in(g_trim.view_span > view_min_span() + 1e-6);
+            p.set_trim_zoom_out(g_trim.view_span < g_duration - 1e-6);
+            if (g_trim.audio)
+                publish_wave();
+            else
+                publish_tiles();
+        }
+
+        void view_pan(double view_fraction) {
+            g_trim.view_start += view_fraction * g_trim.view_span;
+            publish_view();
+        }
+
+        void view_zoom(double factor, double anchor) {
+            if (g_duration <= 0 || factor <= 0)
+                return;
+            anchor = std::clamp(anchor, 0.0, 1.0);
+            double at = g_trim.view_start + anchor * g_trim.view_span;
+            g_trim.view_span = std::clamp(g_trim.view_span * factor, view_min_span(), g_duration);
+            g_trim.view_start = at - anchor * g_trim.view_span;
+            publish_view();
+        }
+
+        void view_center(double fraction) {
+            g_trim.view_start = std::clamp(fraction, 0.0, 1.0) * g_duration - g_trim.view_span / 2;
+            publish_view();
+        }
+
+        void view_show(double seconds) {
+            double margin = g_trim.view_span * 0.08;
+            if (seconds < g_trim.view_start + margin)
+                g_trim.view_start = seconds - margin;
+            else if (seconds > g_trim.view_start + g_trim.view_span - margin)
+                g_trim.view_start = seconds - g_trim.view_span + margin;
+            else
+                return;
+            publish_view();
+        }
+
+        void start_thumbs() {
+            if (!g_trim.on || !g_trim.ready || g_duration <= 0 || g_trim.strip_w <= 0 || g_trim.strip_h <= 0 || g_items.empty())
+                return;
+            if (g_trim.audio) {
+                if (!g_trim.thumbs_started)
+                    start_wave();
+                else
+                    publish_wave();
+                return;
+            }
+            if (!g_items[g_index].video)
+                return;
+            g_tile_from = 1;
+            g_tile_to = 0;
+            publish_tiles();
         }
 
         double trim_time(long b) {
@@ -1511,8 +1760,18 @@ namespace fjhost::player {
         }
 
         void publish_playhead() {
-            if (g_trim.on)
-                ui().global<PlayerUi>().set_trim_playhead(g_duration > 0 ? float(std::clamp(g_position / g_duration, 0.0, 1.0)) : 0.0f);
+            if (!g_trim.on)
+                return;
+            ui().global<PlayerUi>().set_trim_playhead(g_duration > 0 ? float(std::clamp(g_position / g_duration, 0.0, 1.0)) : 0.0f);
+            if (!g_trim.ready || g_duration <= 0)
+                return;
+            bool inside = g_position >= g_trim.view_start && g_position <= g_trim.view_start + g_trim.view_span;
+            if (!g_paused && g_trim.follow && !inside) {
+                g_trim.view_start = g_position - g_trim.view_span * 0.05;
+                publish_view();
+                inside = true;
+            }
+            g_trim.follow = inside;
         }
 
         void trim_seek(double seconds) {
@@ -1559,12 +1818,16 @@ namespace fjhost::player {
                 g_trim.e = g_trim.frames;
             g_trim.s = std::clamp(g_trim.s, 0L, g_trim.frames - 1);
             g_trim.e = std::clamp(g_trim.e, g_trim.s + 1, g_trim.frames);
+            g_trim.view_span = std::min(120.0, g_duration);
+            g_trim.view_start = trim_time(g_trim.s) - g_trim.view_span * 0.08;
+            view_clamp();
             trim_seek(trim_shown(0));
             publish_trim();
+            publish_view();
             start_thumbs();
         }
 
-        void trim_move(int handle, long index) {
+        void trim_move(int handle, long index, bool show = true) {
             if (!g_trim.ready)
                 return;
             if (g_trim.range)
@@ -1576,6 +1839,8 @@ namespace fjhost::player {
                 g_trim.e = std::clamp(index, g_trim.s + 1, g_trim.frames);
             trim_seek(trim_shown(g_trim.active));
             publish_trim();
+            if (show)
+                view_show(trim_time(g_trim.active == 0 ? g_trim.s : g_trim.e));
         }
 
         void trim_drag(int handle, float fraction) {
@@ -1583,6 +1848,53 @@ namespace fjhost::player {
                 return;
             trim_refresh_fps();
             trim_move(handle, trim_index(std::clamp(double(fraction), 0.0, 1.0) * g_duration));
+        }
+
+        constexpr double kEdge = 0.04;
+
+        void trim_edge_tick() {
+            if (!g_trim.ready || g_trim.drag_handle < 0) {
+                g_edge_timer.stop();
+                return;
+            }
+            double pos = g_trim.drag_pos;
+            double depth = pos < kEdge ? kEdge - pos : pos > 1 - kEdge ? pos - (1 - kEdge) : 0;
+            if (depth <= 0) {
+                g_edge_timer.stop();
+                return;
+            }
+            double step = std::clamp(0.004 + depth * 0.25, 0.004, 0.06);
+            view_pan(pos < kEdge ? -step : step);
+            double at = g_trim.view_start + std::clamp(pos, 0.0, 1.0) * g_trim.view_span;
+            trim_move(g_trim.drag_handle, trim_index(at), false);
+        }
+
+        void trim_drag_view(int handle, double pos) {
+            if (!g_trim.ready || g_duration <= 0)
+                return;
+            trim_refresh_fps();
+            g_trim.drag_handle = handle == 1 ? 1 : 0;
+            g_trim.drag_pos = pos;
+            double at = g_trim.view_start + std::clamp(pos, 0.0, 1.0) * g_trim.view_span;
+            trim_move(g_trim.drag_handle, trim_index(at), false);
+            if ((pos < kEdge || pos > 1 - kEdge) && !g_edge_timer.running())
+                g_edge_timer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(30), [] { trim_edge_tick(); });
+        }
+
+        void trim_drag_end() {
+            g_trim.drag_handle = -1;
+            g_edge_timer.stop();
+        }
+
+        void trim_select(int handle) {
+            if (!g_trim.ready)
+                return;
+            if (g_trim.range)
+                trim_stop_range(false);
+            g_trim.active = handle == 1 ? 1 : 0;
+            trim_seek(trim_shown(g_trim.active));
+            publish_trim();
+            view_show(trim_time(g_trim.active == 0 ? g_trim.s : g_trim.e));
         }
 
         void trim_nudge(int handle, long frames) {
@@ -1610,8 +1922,10 @@ namespace fjhost::player {
                 return;
             }
             trim_refresh_fps();
+            view_show(trim_time(g_trim.s));
             trim_seek(trim_time(g_trim.s));
             g_trim.range = true;
+            g_trim.follow = true;
             set("pause", "no");
             g_paused = false;
             publish_state();
@@ -1710,7 +2024,20 @@ namespace fjhost::player {
         p.on_hold_start([](bool forward) { begin_hold(forward); });
         p.on_hold_end([] { end_hold(); });
         p.on_start_over([] { load_item(0, true); });
-        p.on_trim_drag([](int handle, float fraction) { trim_drag(handle, fraction); });
+        p.on_trim_drag_view([](int handle, float pos) { trim_drag_view(handle, double(pos)); });
+        p.on_trim_drag_end([] { trim_drag_end(); });
+        p.on_trim_pan([](float fraction) {
+            if (g_trim.ready)
+                view_pan(double(fraction));
+        });
+        p.on_trim_zoom([](float factor, float anchor) {
+            if (g_trim.ready)
+                view_zoom(double(factor), double(anchor));
+        });
+        p.on_trim_overview([](float fraction) {
+            if (g_trim.ready)
+                view_center(double(fraction));
+        });
         p.on_trim_seek([](float fraction) {
             if (!g_trim.ready)
                 return;
@@ -1718,15 +2045,7 @@ namespace fjhost::player {
                 trim_stop_range(false);
             trim_seek(std::clamp(double(fraction), 0.0, 1.0) * g_duration);
         });
-        p.on_trim_select([](int handle) {
-            if (!g_trim.ready)
-                return;
-            if (g_trim.range)
-                trim_stop_range(false);
-            g_trim.active = handle == 1 ? 1 : 0;
-            trim_seek(trim_shown(g_trim.active));
-            publish_trim();
-        });
+        p.on_trim_select([](int handle) { trim_select(handle); });
         p.on_trim_nudge([](int handle, int frames) { trim_nudge(handle, frames); });
         p.on_trim_step([](int handle, int ms) { trim_step(handle, ms); });
         p.on_trim_play_range([] { trim_play_range(); });
@@ -1764,11 +2083,12 @@ namespace fjhost::player {
         g_index = std::clamp(g_index, 0, int(g_items.size()) - 1);
         g_speed = 1.0f;
         auto &p = ui().global<PlayerUi>();
-        cancel_thumbs();
-        g_thumbs = std::make_shared<slint::VectorModel<slint::Image>>();
-        g_thumbs_loaded = 0;
+        reset_tiles();
+        g_thumbs = std::make_shared<slint::VectorModel<TrimTile>>();
         p.set_trim_thumbs(g_thumbs);
         g_wave.reset();
+        p.set_trim_view_start(0);
+        p.set_trim_view_span(1);
         p.set_trim_wave(std::make_shared<slint::VectorModel<float>>());
         p.set_trim_audio(false);
         p.set_trim_playhead(0);
@@ -1797,7 +2117,7 @@ namespace fjhost::player {
             return;
         g_open = false;
         keep_awake(false);
-        cancel_thumbs();
+        reset_tiles();
         g_trim = Trim();
         g_thumbs.reset();
         g_wave.reset();
@@ -1818,7 +2138,7 @@ namespace fjhost::player {
         p.set_notice(slint::SharedString());
         p.set_trim(false);
         p.set_trim_ready(false);
-        p.set_trim_thumbs(std::make_shared<slint::VectorModel<slint::Image>>());
+        p.set_trim_thumbs(std::make_shared<slint::VectorModel<TrimTile>>());
         p.set_trim_wave(std::make_shared<slint::VectorModel<float>>());
         p.set_trim_audio(false);
         p.set_open(false);
@@ -1910,6 +2230,23 @@ namespace fjhost::player {
         } else if (name == "trimselect") {
             g_trim.active = int(value) == 1 ? 1 : 0;
             publish_trim();
+            view_show(trim_time(g_trim.active == 0 ? g_trim.s : g_trim.e));
+        } else if (name == "trimpan") {
+            if (g_trim.ready)
+                view_pan(value);
+        } else if (name == "trimzoom") {
+            if (g_trim.ready)
+                view_zoom(value, 0.5);
+        } else if (name == "trimoverview") {
+            if (g_trim.ready)
+                view_center(value);
+        } else if (name == "trimdragview") {
+            trim_drag_view(g_trim.active, value);
+        } else if (name == "trimdragend") {
+            trim_drag_end();
+        } else if (name == "trimseek") {
+            if (g_trim.ready)
+                trim_seek(value);
         } else if (name == "trimplay") {
             trim_play_range();
         } else if (name == "trimapply") {
@@ -1947,11 +2284,14 @@ namespace fjhost::player {
                 }
             }
             if (g_trim.on)
-                std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu audio=%d wave=%zu\n",
+                std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu audio=%d wave=%zu"
+                                   " view=%.3f span=%.3f zoomin=%d zoomout=%d strip=%d tile=%g made=%d slice=%zu group=%d pos=%.3f edge=%d\n",
                              g_trim.ready ? 1 : 0, g_trim.fps, g_trim.fps_guess ? "?" : "", g_trim.frames, g_trim.s, g_trim.e,
                              precise_label(trim_time(g_trim.s)).c_str(), precise_label(trim_time(g_trim.e)).c_str(), g_trim.active,
                              g_trim.range ? 1 : 0, g_thumbs_loaded, g_thumbs ? size_t(g_thumbs->row_count()) : size_t(0), g_trim.audio ? 1 : 0,
-                             g_wave ? size_t(g_wave->row_count()) : size_t(0));
+                             g_wave_all.size(), g_trim.view_start, g_trim.view_span, g_trim.view_span > view_min_span() + 1e-6 ? 1 : 0,
+                             g_trim.view_span < g_duration - 1e-6 ? 1 : 0, g_trim.strip_w, std::ldexp(1.0, g_tile_level), g_thumb_made.load(),
+                             g_wave ? size_t(g_wave->row_count()) : size_t(0), g_wave_group, g_position, g_edge_timer.running() ? 1 : 0);
             std::fclose(file);
         }
     }
