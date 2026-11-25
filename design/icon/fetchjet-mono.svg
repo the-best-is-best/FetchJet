@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="1024" height="1024">
+  <g id="art">
+    <rect id="screen-frame" x="17" y="44" width="74" height="52" rx="12" fill="none" stroke="#ffffff" stroke-width="6"/>
+    <path id="play-button" d="M48 60 L48 82 Q48 86 51.5 84 L68 74 Q71 72 68 70 L51.5 58 Q48 56 48 60 Z" fill="#ffffff"/>
+    <path id="jet" d="M54 58 L26 30 L42 34 L49.5 14 L54 18 Z M54 58 L82 30 L66 34 L58.5 14 L54 18 Z" fill="#ffffff"/>
+  </g>
+</svg>
