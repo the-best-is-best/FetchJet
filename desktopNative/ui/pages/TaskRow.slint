@@ -256,7 +256,6 @@ export component TaskRow inherits Rectangle {
     height: (root.is-header ? 32px : root.wide ? 68px : root.data.completed ? 75px : 90px) + 6px;
 
     row-menu := RowMenuPopup {
-        private property <length> tall: Core.rowMenu.length * 38px + 30px;
         x: Dir.rtl ? max(0px, root.menu-x - self.width) : min(root.menu-x, root.width - self.width);
         y: root.absolute-position.y + root.menu-y + self.tall <= Screen.height - 12px ? root.menu-y
             : max(-root.absolute-position.y + 12px, root.menu-y - self.tall);

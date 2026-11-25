@@ -5,6 +5,9 @@ import com.michelle.raouf.fetch_jet.domain.model.canResume
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions
+import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuSection
+import com.michelle.raouf.fetch_jet.feature.row_menu.section
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 import com.michelle.raouf.fetch_jet.nativeapp.dto.RowMenuItemDto
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.tbib.kmp_localization.LocalizationManager
@@ -29,9 +32,28 @@ internal fun Presenter.openRowMenu(id: String) {
     val entries = rowMenuEntries(id)
     if (entries.isEmpty()) return closeRowMenu()
     rowMenuTask.value = id
-    val items = entries.map { RowMenuItemDto(it.ordinal, RowMenu.label(it, s), it.danger, it.dividerBefore) }.toMutableList()
-    if (!inHidden) items.add((items.size - 1).coerceAtLeast(0), RowMenuItemDto(HIDE_KEY, s.hiddenHide))
-    rowMenu.publish(items)
+    val extracting = id in vm.uiState.value.audioExtracting
+    val rows = entries.map { entry ->
+        val running = entry == RowMenuEntry.EXTRACT_AUDIO && extracting
+        entry.section to RowMenuItemDto(
+            entry.ordinal,
+            if (running) s.audioExtractRunning else RowMenu.label(entry, s),
+            entry.danger,
+            disabled = running,
+        )
+    }.toMutableList()
+    if (!inHidden) rows.add((rows.size - 1).coerceAtLeast(0), RowMenuSection.MANAGE to RowMenuItemDto(HIDE_KEY, s.hiddenHide))
+    rowMenu.publish(rows.mapIndexed { index, (section, item) ->
+        val starts = index == 0 || rows[index - 1].first != section
+        item.copy(divider = starts && index > 0, header = if (starts) sectionLabel(section, s) else "")
+    })
+}
+
+private fun sectionLabel(section: RowMenuSection, s: AppLocalization): String = when (section) {
+    RowMenuSection.OPEN -> s.rowMenuSectionOpen
+    RowMenuSection.MEDIA -> s.rowMenuSectionMedia
+    RowMenuSection.DOWNLOAD -> s.rowMenuSectionDownload
+    RowMenuSection.MANAGE -> s.rowMenuSectionManage
 }
 
 private fun Presenter.menuRows(id: String): Set<String> {
@@ -70,6 +92,8 @@ internal fun Presenter.pickRowMenu(key: Int) {
         RowMenuEntry.EXTRACT -> vm.onEvent(DashboardUiEvent.OnExtractTaskClicked(id))
         RowMenuEntry.COMPRESS -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(id))
         RowMenuEntry.CUT -> vm.onEvent(DashboardUiEvent.OnVideoCutClicked(id))
+        RowMenuEntry.EXTRACT_AUDIO ->
+            if (id !in vm.uiState.value.audioExtracting) vm.onEvent(DashboardUiEvent.OnExtractAudioClicked(id))
         RowMenuEntry.SUBTITLES -> vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(id))
         RowMenuEntry.SEND_TO_DEVICE -> vm.onEvent(DashboardUiEvent.OnShareTaskClicked(id))
         RowMenuEntry.COPY_LINK -> vm.onEvent(DashboardUiEvent.OnCopyTaskLink(id))

@@ -126,6 +126,7 @@ namespace DetailToolCode {
     inline constexpr int Compress = 5;
     inline constexpr int Cut = 6;
     inline constexpr int Subtitles = 7;
+    inline constexpr int ExtractAudio = 8;
 }
 
 namespace PieceStateCode {
@@ -735,6 +736,7 @@ inline DetailToolDto parse_DetailToolDto(const fj::Json &j) {
     d.code = fj::integer(j, "code");
     d.icon = fj::text(j, "icon");
     d.label = fj::text(j, "label");
+    d.disabled = fj::flag(j, "disabled");
     return d;
 }
 
@@ -1023,6 +1025,8 @@ inline RowMenuItemDto parse_RowMenuItemDto(const fj::Json &j) {
     d.label = fj::text(j, "label");
     d.danger = fj::flag(j, "danger");
     d.divider = fj::flag(j, "divider");
+    d.header = fj::text(j, "header");
+    d.disabled = fj::flag(j, "disabled");
     return d;
 }
 
@@ -2236,6 +2240,15 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_videoCutTimelineNeedsMp4(next());
     tr.set_videoCutSaved(next());
     tr.set_videoCutNeedsTools(next());
+    tr.set_audioExtractTitle(next());
+    tr.set_audioExtractRunning(next());
+    tr.set_audioExtractDone(next());
+    tr.set_audioExtractFailed(next());
+    tr.set_audioExtractNoAudio(next());
+    tr.set_rowMenuSectionOpen(next());
+    tr.set_rowMenuSectionMedia(next());
+    tr.set_rowMenuSectionDownload(next());
+    tr.set_rowMenuSectionManage(next());
     tr.set_sysDeviceSendTitle(next());
     tr.set_sysDeviceNoDevices(next());
     tr.set_sysDeviceSearching(next());

@@ -340,7 +340,8 @@
    "PLAY",
    "COMPRESS",
    "CUT",
-   "SUBTITLES"
+   "SUBTITLES",
+   "EXTRACT_AUDIO"
   ],
   "PieceStateCode": [
    "IDLE",
@@ -1791,6 +1792,10 @@
    [
     "label",
     "String"
+   ],
+   [
+    "disabled",
+    "Boolean"
    ]
   ],
   "DetailsDto": [
@@ -2690,6 +2695,14 @@
    ],
    [
     "divider",
+    "Boolean"
+   ],
+   [
+    "header",
+    "String"
+   ],
+   [
+    "disabled",
     "Boolean"
    ]
   ],
@@ -5081,6 +5094,15 @@
   "videoCutTimelineNeedsMp4",
   "videoCutSaved",
   "videoCutNeedsTools",
+  "audioExtractTitle",
+  "audioExtractRunning",
+  "audioExtractDone",
+  "audioExtractFailed",
+  "audioExtractNoAudio",
+  "rowMenuSectionOpen",
+  "rowMenuSectionMedia",
+  "rowMenuSectionDownload",
+  "rowMenuSectionManage",
   "sysDeviceSendTitle",
   "sysDeviceNoDevices",
   "sysDeviceSearching",

@@ -6,7 +6,7 @@ enum class ToneCode { ON_SURFACE, MUTED, PRIMARY, COMPLETED, PAUSED, ERROR, TORR
 
 enum class DetailActionCode { NONE, OPEN_FILE, OPEN_FOLDER, PAUSE, START_NOW, RESUME }
 
-enum class DetailToolCode { NONE, SECONDARY, EXTRACT, SHARE, PLAY, COMPRESS, CUT, SUBTITLES }
+enum class DetailToolCode { NONE, SECONDARY, EXTRACT, SHARE, PLAY, COMPRESS, CUT, SUBTITLES, EXTRACT_AUDIO }
 
 enum class PieceStateCode { IDLE, COMPLETED, ACTIVE, WAITING }
 
@@ -87,6 +87,7 @@ data class DetailToolDto(
     val code: Int = 0,
     val icon: String = "",
     val label: String = "",
+    val disabled: Boolean = false,
 )
 
 @Serializable

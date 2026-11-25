@@ -11,7 +11,7 @@ from test_bridge import ALERT
 
 PORT = int(os.environ.get("FJ_ROWMENU_PORT", "18264"))
 BASE = "http://127.0.0.1:%d" % PORT
-KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "CUT", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "UNHIDE", "DELETE"]
+KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "CUT", "EXTRACT_AUDIO", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "UNHIDE", "DELETE"]
 KEY = {name: index for index, name in enumerate(KEYS)}
 
 
@@ -44,8 +44,13 @@ def labels(core):
     return [(r.get("label", ""), r.get("danger", False), r.get("divider", False)) for r in core.rows("rowMenu") if r.get("key", 0) < len(KEYS)]
 
 
+def layout(core):
+    return [(r.get("key", 0), r.get("header", ""), r.get("divider", False)) for r in core.rows("rowMenu")]
+
+
 def run():
     core = Core("rowmenu")
+    s = core.strings()
     site = os.path.join(core.work, "site")
     make_site(site)
     server = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1", "--directory", site],
@@ -56,10 +61,14 @@ def run():
         print("a finished plain file")
         plain = add_and_wait(core, BASE + "/plain.bin", "plain.bin")
         entries = menu(core, plain["id"])
-        core.check("open, folder, send, copy, details, delete", entries == ["OPEN", "OPEN_FOLDER", "SEND_TO_DEVICE", "COPY_LINK", "DETAILS", "DELETE"], entries)
+        core.check("grouped: open, folder, details, send, copy, delete", entries == ["OPEN", "OPEN_FOLDER", "DETAILS", "SEND_TO_DEVICE", "COPY_LINK", "DELETE"], entries)
         shown = labels(core)
         core.check("the labels are filled and only delete is red", all(l for l, _, _ in shown) and [d for _, d, _ in shown] == [False] * 5 + [True], shown)
-        core.check("a line before send and before delete", [v for _, _, v in shown] == [False, False, True, False, False, True], shown)
+        rows = layout(core)
+        core.check("seven rows with hide before delete", len(rows) == 7 and rows[5][0] == 100 and rows[6][0] == KEY["DELETE"], rows)
+        core.check("a header at the start of each section", [h for _, h, _ in rows] == [s["rowMenuSectionOpen"], "", "", s["rowMenuSectionDownload"], "", s["rowMenuSectionManage"], ""], rows)
+        core.check("a line before each section but the first", [v for _, _, v in rows] == [False, False, False, True, False, True, False], rows)
+        core.check("headers and lines are not rows of their own", all(k == 100 or k < len(KEYS) for k, _, _ in rows), rows)
         core.check("no pause or resume on a finished file", "PAUSE" not in entries and "RESUME" not in entries)
 
         print("pick: details, copy link, delete")
@@ -97,6 +106,10 @@ def run():
         song = add_and_wait(core, BASE + "/song.mp3", "song.mp3")
         entries = menu(core, song["id"])
         core.check("an mp3 offers compress, not extract", "COMPRESS" in entries and "EXTRACT" not in entries, entries)
+        core.check("an mp3 offers no extract audio", "EXTRACT_AUDIO" not in entries, entries)
+        rows = layout(core)
+        heads = [h for _, h, _ in rows if h]
+        core.check("the media section has its header", s["rowMenuSectionMedia"] in heads and heads == [s["rowMenuSectionOpen"], s["rowMenuSectionMedia"], s["rowMenuSectionDownload"], s["rowMenuSectionManage"]], heads)
         core.action("RowMenuClose")
         core.pump(0.2)
         core.check("close empties the menu", core.rows("rowMenu") == [])

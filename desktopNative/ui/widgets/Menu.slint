@@ -192,10 +192,34 @@ export component PickMenu inherits PopupWindow {
 
 export component RowMenuPopup inherits PopupWindow {
     in property <[RowMenuItemDto]> items;
+    private property <bool> compact: Screen.height < 640px;
+    private property <length> row-h: root.compact ? 32px : 38px;
+    private property <length> head-h: root.compact ? 20px : 24px;
+    private property <int> current: -1;
+    out property <length> tall: min(list.preferred-height, Screen.height - 24px);
     callback picked(key: int);
     width: clamp(measure.preferred-width + 40px, 180px, 300px);
+    height: root.tall;
     close-policy: PopupClosePolicy.close-on-click-outside;
     forward-focus: keys;
+    pure function wrap(i: int) -> int {
+        i < 0 ? root.items.length - 1 : i >= root.items.length ? 0 : i
+    }
+    function step(d: int) {
+        if root.items.length == 0 {
+            return;
+        }
+        root.current = root.wrap(root.current < 0 && d < 0 ? -1 : root.current + d);
+        if root.items[root.current].disabled {
+            root.current = root.wrap(root.current + d);
+        }
+    }
+    function choose() {
+        if root.current >= 0 && root.current < root.items.length && !root.items[root.current].disabled {
+            root.picked(root.items[root.current].key);
+            root.close();
+        }
+    }
     Rectangle {
         background: Theme.surface-container;
         border-radius: 8px;
@@ -206,11 +230,19 @@ export component RowMenuPopup inherits PopupWindow {
     }
     measure := VerticalLayout {
         visible: false;
-        for item in root.items: Text {
-            text: item.label;
-            font-family: Theme.font;
-            font-size: 14px;
-            font-weight: 500;
+        for item in root.items: VerticalLayout {
+            Text {
+                text: item.label;
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            Text {
+                text: item.header;
+                font-family: Theme.font;
+                font-size: 11px;
+                font-weight: 600;
+            }
         }
     }
     keys := FocusScope {
@@ -219,52 +251,115 @@ export component RowMenuPopup inherits PopupWindow {
                 root.close();
                 return accept;
             }
+            if e.text == Key.DownArrow || e.text == Key.Tab {
+                root.step(1);
+                return accept;
+            }
+            if e.text == Key.UpArrow || e.text == Key.Backtab {
+                root.step(-1);
+                return accept;
+            }
+            if e.text == Key.Home {
+                root.current = -1;
+                root.step(1);
+                return accept;
+            }
+            if e.text == Key.End {
+                root.current = 0;
+                root.step(-1);
+                return accept;
+            }
+            if e.text == Key.Return || e.text == " " {
+                root.choose();
+                return accept;
+            }
             reject
         }
-        VerticalLayout {
-            padding-top: 6px;
-            padding-bottom: 6px;
-            for item in root.items: VerticalLayout {
-                if item.divider: Rectangle {
-                    height: 9px;
-                    Rectangle {
-                        x: 8px;
-                        width: parent.width - 16px;
-                        height: 1px;
-                        background: Theme.outline-variant.with-alpha(0.5);
-                    }
-                }
-                Rectangle {
-                    height: 38px;
-                    accessible-role: button;
-                    accessible-label: item.label;
-                    accessible-action-default => {
-                        root.picked(item.key);
-                        root.close();
-                    }
-                    ta := TouchArea {
-                        clicked => {
-                            root.picked(item.key);
-                            root.close();
+        flick := Flickable {
+            content-width: self.width;
+            content-height: list.preferred-height;
+            list := VerticalLayout {
+                width: flick.width;
+                padding-top: 6px;
+                padding-bottom: 6px;
+                for item[i] in root.items: VerticalLayout {
+                    if item.divider: Rectangle {
+                        height: 9px;
+                        Rectangle {
+                            x: 8px;
+                            width: parent.width - 16px;
+                            height: 1px;
+                            background: Theme.outline-variant.with-alpha(0.5);
                         }
                     }
-                    Text {
-                        x: 16px;
-                        width: parent.width - 32px;
-                        text: item.label;
-                        color: item.danger ? Theme.error : Theme.on-surface;
-                        font-family: Theme.font;
-                        font-size: 14px;
-                        font-weight: 500;
-                        letter-spacing: Dir.rtl ? 0px : 0.1px;
-                        horizontal-alignment: Dir.start;
-                        vertical-alignment: center;
-                        overflow: elide;
+                    if item.header != "": Rectangle {
+                        height: root.head-h;
+                        Text {
+                            x: 16px;
+                            width: parent.width - 32px;
+                            text: item.header;
+                            color: Theme.on-surface-variant;
+                            font-family: Theme.font;
+                            font-size: 11px;
+                            font-weight: 600;
+                            letter-spacing: Dir.rtl ? 0px : 0.5px;
+                            horizontal-alignment: Dir.start;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
                     }
-                    Hover {
-                        ink: item.danger ? Theme.error : Theme.on-surface;
-                        hovered: ta.has-hover;
-                        pressed: ta.pressed;
+                    cell := Rectangle {
+                        private property <bool> on: i == root.current;
+                        private property <length> top: parent.y + self.y;
+                        changed on => {
+                            if self.on && self.top + flick.content-y < 0px {
+                                flick.content-y = -self.top;
+                            } else if self.on && self.top + self.height + flick.content-y > flick.height {
+                                flick.content-y = flick.height - self.top - self.height;
+                            }
+                        }
+                        height: root.row-h;
+                        accessible-role: button;
+                        accessible-label: item.label;
+                        accessible-enabled: !item.disabled;
+                        accessible-action-default => {
+                            if !item.disabled {
+                                root.picked(item.key);
+                                root.close();
+                            }
+                        }
+                        ta := TouchArea {
+                            enabled: !item.disabled;
+                            changed has-hover => {
+                                if self.has-hover {
+                                    root.current = i;
+                                } else if root.current == i {
+                                    root.current = -1;
+                                }
+                            }
+                            clicked => {
+                                root.picked(item.key);
+                                root.close();
+                            }
+                        }
+                        Text {
+                            x: 16px;
+                            width: parent.width - 32px;
+                            text: item.label;
+                            color: item.disabled ? Theme.on-surface-variant.with-alpha(0.6) : item.danger ? Theme.error : Theme.on-surface;
+                            font-family: Theme.font;
+                            font-size: 14px;
+                            font-weight: 500;
+                            letter-spacing: Dir.rtl ? 0px : 0.1px;
+                            horizontal-alignment: Dir.start;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                        Hover {
+                            ink: item.danger ? Theme.error : Theme.on-surface;
+                            hovered: cell.on && !item.disabled;
+                            pressed: ta.pressed;
+                        }
                     }
                 }
             }

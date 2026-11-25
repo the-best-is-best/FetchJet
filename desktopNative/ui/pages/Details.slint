@@ -674,13 +674,19 @@ component ToolButton inherits Rectangle {
     in property <DetailToolDto> data;
     accessible-role: button;
     accessible-label: root.data.label;
-    accessible-action-default => { Act.detailsTool(root.data.code); }
+    accessible-enabled: !root.data.disabled;
+    accessible-action-default => {
+        if !root.data.disabled {
+            Act.detailsTool(root.data.code);
+        }
+    }
     height: 40px;
     border-radius: 10px;
     border-width: 1px;
     border-color: Theme.outline-variant.with-alpha(0.7);
     background: Theme.surface-variant.with-alpha(0.5);
     ta := TouchArea {
+        enabled: !root.data.disabled;
         clicked => { Act.detailsTool(root.data.code); }
     }
     HBox {
@@ -698,13 +704,14 @@ component ToolButton inherits Rectangle {
             tracking: 0.1px;
             font-size: 13px;
             font-weight: 600;
+            color: root.data.disabled ? Theme.on-surface-variant.with-alpha(0.6) : Theme.on-surface;
             overflow: elide;
         }
     }
     Hover {
         border-radius: 10px;
-        hovered: ta.has-hover;
-        pressed: ta.pressed;
+        hovered: ta.has-hover && !root.data.disabled;
+        pressed: ta.pressed && !root.data.disabled;
     }
 }
 

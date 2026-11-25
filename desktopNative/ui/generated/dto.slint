@@ -394,6 +394,7 @@ export struct DetailToolDto {
     code: int,
     icon: string,
     label: string,
+    disabled: bool,
 }
 
 export struct DetailsDto {
@@ -654,6 +655,8 @@ export struct RowMenuItemDto {
     label: string,
     danger: bool,
     divider: bool,
+    header: string,
+    disabled: bool,
 }
 
 export struct SettingsSectionDto {
@@ -976,6 +979,7 @@ export global DetailToolCode {
     out property <int> compress: 5;
     out property <int> cut: 6;
     out property <int> subtitles: 7;
+    out property <int> extract-audio: 8;
 }
 
 export global PieceStateCode {

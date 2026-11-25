@@ -3,7 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.generated
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 
-internal const val TR_COUNT = 1054
+internal const val TR_COUNT = 1063
 
 internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.languageName,
@@ -904,6 +904,15 @@ internal fun trValues(s: AppLocalization): List<String> = listOf(
     s.videoCutTimelineNeedsMp4,
     s.videoCutSaved,
     s.videoCutNeedsTools,
+    s.audioExtractTitle,
+    s.audioExtractRunning,
+    s.audioExtractDone,
+    s.audioExtractFailed,
+    s.audioExtractNoAudio,
+    s.rowMenuSectionOpen,
+    s.rowMenuSectionMedia,
+    s.rowMenuSectionDownload,
+    s.rowMenuSectionManage,
     s.sysDeviceSendTitle,
     s.sysDeviceNoDevices,
     s.sysDeviceSearching,

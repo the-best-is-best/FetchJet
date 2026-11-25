@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.presenter
 import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
 import com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+import com.michelle.raouf.fetch_jet.feature.audio_extract.AudioExtract
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
@@ -105,7 +106,7 @@ internal fun Presenter.startDetails() {
         else ui.selectedTaskId?.let { id -> state.findTask(id) }?.let { task -> task to state.videoClips[task.id].orEmpty() }
     }.distinctUntilChanged().throttleLatest(HOME_PERIOD_MS)
     val unit = combine(vm.uiState, AppLanguage.current) { state, language ->
-        Triple(state.speedDisplayUnit, language, state.audioCopyCounts)
+        Triple(state.speedDisplayUnit, language, state.audioCopyCounts to state.audioExtracting)
     }
         .distinctUntilChanged()
     scope.launch {
@@ -293,6 +294,14 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String, clips: Li
     }
     if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
         fileTools += DetailToolDto(DetailToolCode.EXTRACT.ordinal, "📦", strings.extractNow)
+    }
+    if (AudioExtract.canExtract(task)) {
+        val extracting = task.id in vm.uiState.value.audioExtracting
+        fileTools += DetailToolDto(
+            DetailToolCode.EXTRACT_AUDIO.ordinal, if (extracting) "⏳" else "🎵",
+            if (extracting) strings.audioExtractRunning else strings.audioExtractTitle,
+            disabled = extracting,
+        )
     }
     if (task.canSendToDevice()) fileTools += DetailToolDto(DetailToolCode.SHARE.ordinal, "📲", strings.sysDeviceSendTitle)
     val mediaTools = ArrayList<DetailToolDto>(4)
@@ -512,6 +521,8 @@ internal fun Presenter.detailsTool(code: Int) {
         DetailToolCode.COMPRESS -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(id))
         DetailToolCode.CUT -> vm.onEvent(DashboardUiEvent.OnVideoCutClicked(id))
         DetailToolCode.SUBTITLES -> vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(id))
+        DetailToolCode.EXTRACT_AUDIO ->
+            if (id !in vm.uiState.value.audioExtracting && AudioExtract.canExtract(task)) vm.onEvent(DashboardUiEvent.OnExtractAudioClicked(id))
         DetailToolCode.NONE, null -> Unit
     }
 }

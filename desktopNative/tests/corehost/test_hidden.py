@@ -21,7 +21,7 @@ KIND = {name: index for index, name in enumerate(ENUMS["RowKind"])}
 STATE = {name: index for index, name in enumerate(ENUMS["MediaStateCode"])}
 LIST = "https://www.youtube.com/playlist?list=PLgrow"
 TITLE = "Learning Kotlin - full course"
-KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "UNHIDE", "DELETE"]
+KEYS = ["OPEN", "OPEN_FOLDER", "PAUSE", "RESUME", "EXTRACT", "COMPRESS", "CUT", "EXTRACT_AUDIO", "SUBTITLES", "SEND_TO_DEVICE", "COPY_LINK", "SELECT", "DETAILS", "UNHIDE", "DELETE"]
 
 
 def make_site(folder):
