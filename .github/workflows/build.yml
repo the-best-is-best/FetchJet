@@ -214,29 +214,23 @@ jobs:
       # yt-dlp for Android is git-ignored (binary); fetch the official release so the APK
       # built from a clean checkout has a working media engine.
       - name: Bundle yt-dlp into the Android app
+        env:
+          YTDLP_VERSION: "2026.11.23"
+          YTDLP_SHA256: e8665ed64d6b9172773e812f891fb707a0cb1ee8d9ef4fc1acb00cabee4c5256
         run: |
           mkdir -p androidApp/src/main/assets androidApp/src/main/res/raw
-          curl -fsSL -o androidApp/src/main/assets/ytdlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+          curl -fsSL -o androidApp/src/main/assets/ytdlp "https://github.com/yt-dlp/yt-dlp/releases/download/$YTDLP_VERSION/yt-dlp"
+          echo "$YTDLP_SHA256  androidApp/src/main/assets/ytdlp" | sha256sum -c -
           cp androidApp/src/main/assets/ytdlp androidApp/src/main/res/raw/ytdlp
           ls -la androidApp/src/main/assets/ytdlp
 
+      # ffmpeg for Android is built in fetchjet-tools; the androidApp fetchFfmpeg task downloads the
+      # release pinned in tools-pins/ffmpeg-android.txt and checks its sha256 before the build.
       - name: Cache ffmpeg for Android
-        id: ffmpeg-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: androidApp/ffmpeg-libs
-          key: android-ffmpeg-${{ runner.os }}-${{ hashFiles('scripts/android-ffmpeg/**') }}
-
-      - name: Build ffmpeg for Android
-        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            /c/msys64/usr/bin/bash.exe scripts/android-ffmpeg/build-all.sh
-          else
-            bash scripts/android-ffmpeg/build-linux.sh
-          fi
-          ls -l androidApp/ffmpeg-libs/*
+          key: ffmpeg-android-${{ hashFiles('tools-pins/ffmpeg-android.txt') }}
 
       - name: Build Android Release APK and Bundle
         env:
@@ -739,8 +733,7 @@ jobs:
     environment: release-build
     # `secrets` cannot be read inside a step `if:`; expose it as env and test that instead.
     env:
-      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      HAS_AMO: ${{ secrets.AMO_JWT_ISSUER != '' }}
       EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
     steps:
       - name: Checkout repository
@@ -781,9 +774,12 @@ jobs:
       # no review, nobody sees it on AMO). The app installs it when the store is behind the
       # version the app needs. Same add-on ID as the store listing, so it is one extension.
       - name: Sign the Firefox build unlisted (attached to the release)
-        if: ${{ needs.plan.outputs.release == 'true' && env.AMO_JWT_ISSUER != '' }}
+        if: ${{ needs.plan.outputs.release == 'true' && env.HAS_AMO == 'true' }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
-          npx --yes web-ext@8 sign --channel unlisted \
+          npx --yes web-ext@8.10.0 sign --channel unlisted \
             --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
           rm -f build/extension/*.xpi
@@ -794,13 +790,16 @@ jobs:
       # the store copy is <version>.1: higher than the unlisted one above, and once approved it
       # replaces it on its own.
       - name: Submit the Firefox version to addons.mozilla.org
-        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.AMO_JWT_ISSUER != '' && needs.plan.outputs.stores == 'true' }}
+        if: ${{ needs.plan.outputs.release == 'true' && steps.ext.outputs.changed == 'true' && env.HAS_AMO == 'true' && needs.plan.outputs.stores == 'true' }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
           rm -rf build/extension/firefox-listed
           cp -r build/extension/firefox build/extension/firefox-listed
           sed -i -E 's/("version": *")([^"]*)"/\1\2.1"/' build/extension/firefox-listed/manifest.json
           grep '"version"' build/extension/firefox-listed/manifest.json
-          npx --yes web-ext@8 sign --channel listed --approval-timeout 0 \
+          npx --yes web-ext@8.10.0 sign --channel listed --approval-timeout 0 \
             --source-dir build/extension/firefox-listed --artifacts-dir build/extension/signed-listed \
             --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
 

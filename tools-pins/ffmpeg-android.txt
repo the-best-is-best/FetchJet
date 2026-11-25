@@ -1,0 +1,6 @@
+# ffmpeg for the Android app, built in fetchjet-tools (ffmpeg-android/) and put in the APK by the
+# androidApp task fetchFfmpeg. A new build there: change tag, file and sha256 here.
+repo=the-best-is-best/fetchjet-tools
+tag=ffmpeg-android-7.1.1-1
+file=ffmpeg-android-7.1.1.zip
+sha256=bdbe3c5482e63d3db5429b2c7d8c3f1430c4fc93707efe77df81d55580bfc625

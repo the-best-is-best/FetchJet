@@ -3,6 +3,8 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.File
+import java.net.URI
+import java.security.MessageDigest
 import java.nio.charset.StandardCharsets
 import java.util.zip.ZipFile as JavaZipFile
 
@@ -18,6 +20,65 @@ buildscript {
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+}
+
+abstract class FetchFfmpegTask : DefaultTask() {
+    @get:InputFile
+    abstract val pinFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val pin = pinFile.get().asFile.readLines()
+            .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') }
+            .associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
+        val repo = pin["repo"] ?: throw GradleException("tools-pins/ffmpeg-android.txt: repo= missing")
+        val tag = pin["tag"] ?: throw GradleException("tools-pins/ffmpeg-android.txt: tag= missing")
+        val file = pin["file"] ?: throw GradleException("tools-pins/ffmpeg-android.txt: file= missing")
+        val sha = pin["sha256"]?.lowercase() ?: throw GradleException("tools-pins/ffmpeg-android.txt: sha256= missing")
+        val out = outputDir.get().asFile
+        val marker = File(out, ".pin")
+        val wanted = "$tag $sha"
+        val abis = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        val complete = abis.all { abi -> listOf("libffmpeg.so", "libffprobe.so").all { File(out, "$abi/$it").isFile } }
+        if (complete && marker.isFile && marker.readText().trim() == wanted) return
+        val zip = File(temporaryDir, file)
+        val url = "https://github.com/$repo/releases/download/$tag/$file"
+        logger.lifecycle("ffmpeg for Android: downloading $url")
+        URI(url).toURL().openStream().use { i -> zip.outputStream().use { o -> i.copyTo(o) } }
+        val digest = MessageDigest.getInstance("SHA-256")
+        zip.inputStream().use { i ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val n = i.read(buffer)
+                if (n < 0) break
+                digest.update(buffer, 0, n)
+            }
+        }
+        val got = digest.digest().joinToString("") { "%02x".format(it) }
+        if (got != sha) {
+            zip.delete()
+            throw GradleException("ffmpeg for Android: $file has sha256 $got, tools-pins/ffmpeg-android.txt expects $sha")
+        }
+        abis.forEach { File(out, it).deleteRecursively() }
+        JavaZipFile(zip).use { z ->
+            z.entries().asSequence().filter { !it.isDirectory }.forEach { e ->
+                val name = e.name.removePrefix("./")
+                val abi = name.substringBefore('/')
+                val lib = name.substringAfter('/')
+                if (abi !in abis || lib !in listOf("libffmpeg.so", "libffprobe.so")) return@forEach
+                val dest = File(out, "$abi/$lib")
+                dest.parentFile.mkdirs()
+                z.getInputStream(e).use { i -> dest.outputStream().use { o -> i.copyTo(o) } }
+            }
+        }
+        zip.delete()
+        val missing = abis.flatMap { abi -> listOf("libffmpeg.so", "libffprobe.so").map { File(out, "$abi/$it") } }.filter { !it.isFile }
+        if (missing.isNotEmpty()) throw GradleException("ffmpeg for Android: $file has no ${missing.joinToString { it.path }}")
+        marker.writeText(wanted)
+    }
 }
 
 abstract class SlimPythonTask : DefaultTask() {
@@ -110,20 +171,12 @@ abstract class SlimPythonTask : DefaultTask() {
     }
 }
 
-val ffmpegLibFiles: List<File> = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64").flatMap { abi ->
-    listOf("libffmpeg.so", "libffprobe.so").map { File(projectDir, "ffmpeg-libs/$abi/$it") }
+val fetchFfmpeg = tasks.register<FetchFfmpegTask>("fetchFfmpeg") {
+    pinFile.set(rootProject.layout.projectDirectory.file("tools-pins/ffmpeg-android.txt"))
+    outputDir.set(layout.projectDirectory.dir("ffmpeg-libs"))
 }
 tasks.matching { it.name == "preBuild" }.configureEach {
-    val needed = ffmpegLibFiles
-    doFirst {
-        val missing = needed.filter { !it.exists() }
-        if (missing.isNotEmpty()) {
-            throw GradleException(
-                "Missing ffmpeg binaries: ${missing.joinToString { it.path }}. " +
-                        "Build them with scripts/android-ffmpeg/build-all.sh"
-            )
-        }
-    }
+    dependsOn(fetchFfmpeg)
 }
 
 val slimPython = tasks.register<SlimPythonTask>("slimPython") {
