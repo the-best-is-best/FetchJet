@@ -313,11 +313,23 @@
         if (m) return { n: Number(m[1]), title: label.replace(/^[^,،]*\d+\s*[,،]?\s*/, "").trim() };
       }
     }
+    const r = f.getBoundingClientRect ? f.getBoundingClientRect() : null;
+    if (r && r.width > 0 && r.height > 0) {
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (const g of document.querySelectorAll('[role="group"][aria-label]')) {
+        const label = g.getAttribute("aria-label") || "";
+        const m = /^\D{0,12}?(\d+)\s*[,،]/.exec(label);
+        if (!m) continue;
+        const q = g.getBoundingClientRect();
+        if (cx >= q.left && cx <= q.right && cy >= q.top && cy <= q.bottom) return { n: Number(m[1]), title: label.slice(m[0].length).trim() };
+      }
+    }
     return { n: 0, title: "" };
   }
   const canvaPageOf = (f) => canvaPageInfo(f).n;
   function canvaVideoFigure(v) {
     const p = canvaPageInfo(v);
+    if (!p.n) return null;
     const base = (p.title || document.title.replace(/\s+[-–]\s+[^-–]*$/, "") || "Canva").replace(/[\\/:*?"<>|]+/g, " ").trim();
     return { el: v, name: `${base}${p.n ? ` - ${p.n}` : ""}.mp4`, page: p.n, synthetic: true };
   }

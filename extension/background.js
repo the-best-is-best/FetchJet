@@ -1688,7 +1688,7 @@ function canvaNaming(state) {
   }
   const plays = (state.plays || []).filter(p => p.key).sort((a, b) => a.at - b.at);
   const clipOf = (key) => clips.find(c => c.keys.includes(key));
-  for (const p of plays) { const c = clipOf(p.key); if (c && p.name) take(c, figureOf(p.name, p.page)); }
+  for (const p of plays.slice().reverse()) { const c = clipOf(p.key); if (c && p.name) take(c, figureOf(p.name, p.page)); }
   for (const c of clips) for (const k of c.keys) { const r = state.remembered && state.remembered[k]; if (r) take(c, figureOf(r.name, r.page)); }
   for (const c of clips) {
     if (named.has(c.key) || !c.serverName) continue;
