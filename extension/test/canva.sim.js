@@ -384,6 +384,15 @@ async function realReportTests() {
   await bg.response(REAL.audio, 206, track("application/octet-stream", REAL.audioTotal));
   const items = (await bg.sandbox.itemsForTab(7)).items;
   check("report: two videos starting with one audio: not paired by guess", items.length === 3 && !items.some((i) => i.audioUrl), items.map((i) => i.label));
+
+  const real2 = await loadBackground("x - Canva", true);
+  const v6 = ifs("V", "6sq4GTlD76HZmd7HYncTiMvIOihsKYw9jGpYn8euBgk", "x.MP4"), a6 = ifs("V", "ca8wZDqAg3R1-l0w-VNzTQivmBe1hXZz3QvtrYl4E8o", "x.M4A"), s8 = ifs("V", "So89IgU0Ys77OrTNfUB-4UVJC0Jd-lcp9aIm0KUAEBQ", "x.MP4");
+  real2.setClock(216500); await real2.response(v6, 206, track("video/mp4", 15440230));
+  real2.setClock(216504); await real2.response(a6, 206, track("application/octet-stream", 1543616));
+  real2.setClock(217032); await real2.response(s8, 206, track("video/mp4", 3273318));
+  const items2 = (await real2.sandbox.itemsForTab(7)).items;
+  const paired = items2.find((i) => i.audioUrl);
+  check("report 2: audio 4 ms from one video and 528 ms from another is paired with the near one", items2.length === 2 && paired && paired.url === v6 && paired.audioUrl === a6, items2.map((i) => [i.url, i.audioUrl]));
 }
 
 function makeReportPage(mode, videoRect) {

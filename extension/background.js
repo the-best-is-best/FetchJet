@@ -1512,11 +1512,19 @@ function canvaClips(state) {
     const mine = members(root);
     return { root, v: mine.some(f => !f.audio), a: mine.some(f => f.audio), first: Math.min(...mine.map(f => f.first || Infinity)) };
   }).filter(g => isFinite(g.first));
+  const nearest = (g, want) => {
+    const near = firsts.filter(x => x !== g && want(x) && Math.abs(x.first - g.first) <= CANVA_PAIR_MS)
+      .sort((x, y) => Math.abs(x.first - g.first) - Math.abs(y.first - g.first));
+    if (!near.length) return null;
+    const best = Math.abs(near[0].first - g.first);
+    const rival = firsts.filter(x => x !== g && x !== near[0] && (x.v !== near[0].v || x.a !== near[0].a ? false : true) && Math.abs(x.first - g.first) <= CANVA_PAIR_MS)
+      .map(x => Math.abs(x.first - g.first));
+    return rival.some(d => d < best + 200) ? null : near[0];
+  };
   for (const g of firsts.filter(x => x.v && !x.a)) {
-    const near = firsts.filter(x => x !== g && Math.abs(x.first - g.first) <= CANVA_PAIR_MS);
-    if (near.length !== 1 || !near[0].a || near[0].v) continue;
-    if (firsts.some(x => x !== g && x !== near[0] && Math.abs(x.first - near[0].first) <= CANVA_PAIR_MS)) continue;
-    join(g.root, near[0].root);
+    const a = nearest(g, x => x.a && !x.v);
+    if (!a || nearest(a, x => x.v && !x.a) !== g) continue;
+    join(g.root, a.root);
   }
   groupBy(f => { const last = (f.dir || "").split("/").pop(); return last.length >= 8 && /\d/.test(last) ? [f.dir] : []; });
   const clips = [];
