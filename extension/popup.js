@@ -104,6 +104,13 @@ function mediaRow(it, hero) {
   if (subText) { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = subText; name.appendChild(sub); }
   const size = document.createElement("span"); size.className = "size"; size.dir = "ltr";
   size.textContent = it.kind === "media" && !it.stream ? human(it.size) : "";
+  if (it.thumb) {
+    const img = document.createElement("img");
+    img.src = it.thumb; img.alt = ""; img.referrerPolicy = "no-referrer";
+    img.style.cssText = "flex:0 0 auto;width:34px;height:34px;object-fit:cover;border-radius:6px;background:var(--line)";
+    img.addEventListener("error", () => img.remove());
+    row.append(img);
+  }
   row.append(badge, name, size);
   if (!it.disabled) {
     const btn = document.createElement("button");
@@ -250,7 +257,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const r = await send({ action: "sendDetectedMedia", tabId: currentTab.id });
     if (r && r.ok) flash(r.count === 1 ? fjT("popupItemsSentOne") : fjT("popupItemsSent", { n: r.count })); else flash(fjT("popupCouldNotSend"), true);
   });
-  $("clearMediaBtn").addEventListener("click", async () => { await send({ action: "clearDetectedMedia", tabId: currentTab.id }); loadMedia(); });
+  $("clearMediaBtn").addEventListener("click", async (e) => {
+    if (e.shiftKey) {
+      const text = JSON.stringify(await send({ action: "canvaReport", tabId: currentTab.id }), null, 1);
+      try { await navigator.clipboard.writeText(text); } catch (_) {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+      }
+      flash(fjT("popupCanvaCopied"));
+      return;
+    }
+    await send({ action: "clearDetectedMedia", tabId: currentTab.id }); loadMedia();
+  });
   $("resolveBtn").addEventListener("click", async () => {
     if (!currentTab || !isWebPage(currentTab.url)) return;
     $("resolveBtn").textContent = fjT("popupWorking");

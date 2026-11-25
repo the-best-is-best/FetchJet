@@ -271,33 +271,70 @@
     const m = CANVA_FILE.exec(name);
     return m ? m[1].trim() : "";
   }
-  function canvaIds(root) {
-    const ids = new Set();
-    const re = /(?:^|[/=:])(V[A-Z][A-Za-z0-9_-]{9})(?=$|[/?&#.:])/g;
-    for (const e of [root, ...root.querySelectorAll("*")].slice(0, 300)) {
-      for (const a of e.attributes || []) {
-        const v = String(a.value || "");
-        if (v.length > 4000) continue;
-        re.lastIndex = 0;
-        let m;
-        while ((m = re.exec(v))) ids.add(m[1]);
-      }
-    }
-    return [...ids].slice(0, 8);
-  }
-  function canvaFigureEls() {
-    const out = [];
-    for (const f of document.querySelectorAll('figure, [role="figure"]')) { const name = canvaName(f); if (name) out.push({ el: f, name }); }
+  function canvaTokens(text, out) {
+    let s = String(text || "");
+    for (let i = 0; i < 2; i++) { try { s = decodeURIComponent(s); } catch (_) { break; } }
+    for (const m of s.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)) out.add(m[0].toLowerCase());
+    for (const m of s.matchAll(/(?:^|[^A-Za-z0-9_-])([VM][A-Z][A-Za-z0-9_-]{9})(?=$|[^A-Za-z0-9_-])/g)) out.add(m[1]);
+    for (const seg of s.split(/[/:?&=#"'(), ]/)) if (/^[A-Za-z0-9_-]{16,}$/.test(seg) && /\d/.test(seg) && /[a-z]/i.test(seg)) out.add(seg);
     return out;
   }
-  let canvaSent = "", canvaPicked = null, canvaClickAt = 0;
-  function reportCanva(play) {
+  const canvaNodes = (root) => [root, ...root.querySelectorAll("*")].slice(0, 300);
+  function canvaIds(root) {
+    const ids = new Set();
+    for (const e of canvaNodes(root)) {
+      for (const a of e.attributes || []) {
+        if (!/^(src|srcset|href|xlink:href|poster|style|data-[\w-]+)$/i.test(a.name)) continue;
+        const v = String(a.value || "");
+        if (v.length <= 4000) canvaTokens(v, ids);
+      }
+    }
+    return [...ids].slice(0, 12);
+  }
+  function canvaThumb(root) {
+    for (const e of canvaNodes(root)) {
+      const src = e.tagName === "IMG" ? (e.getAttribute("src") || "") : "";
+      if (/^https:/i.test(src)) return src;
+      const m = /url\(\s*["']?(https:[^"')]+)/i.exec((e.getAttribute && e.getAttribute("style")) || "");
+      if (m) return m[1];
+    }
+    return "";
+  }
+  function canvaPageOf(f) {
+    for (let e = f.parentElement, i = 0; e && i < 40; e = e.parentElement, i++) {
+      if (e.getAttribute && e.getAttribute("role") === "group") {
+        const m = /(\d+)/.exec(e.getAttribute("aria-label") || "");
+        if (m) return Number(m[1]);
+      }
+    }
+    return 0;
+  }
+  const canvaDurations = new Map();
+  function canvaFigureEls() {
+    const out = [];
+    for (const f of document.querySelectorAll('figure, [role="figure"]')) { const name = canvaName(f); if (name) out.push({ el: f, name, page: canvaPageOf(f) }); }
+    return out;
+  }
+  function canvaFigureIn(path) {
+    for (const n of path) {
+      if (!n || !n.getAttribute || !(n.tagName === "FIGURE" || n.getAttribute("role") === "figure")) continue;
+      const name = canvaName(n);
+      if (name) return { el: n, name, page: canvaPageOf(n) };
+    }
+    return null;
+  }
+  function canvaInfo(f) {
+    const r = f.el.getBoundingClientRect();
+    return { name: f.name, page: f.page, ids: canvaIds(f.el), thumb: canvaThumb(f.el), duration: canvaDurations.get(f.el) || 0, box: [r.left, r.top, r.width, r.height].map(Math.round) };
+  }
+  let canvaSent = "", canvaPicked = null, canvaClickAt = 0, canvaHover = null, canvaHoverLeft = 0, canvaPlaying = null;
+  function reportCanva(extra) {
     if (!onCanvaDesign()) return;
-    const figures = canvaFigureEls().map(({ el, name }) => ({ name, ids: canvaIds(el) }));
-    const key = JSON.stringify(figures);
-    if (!play && (!figures.length || key === canvaSent)) return;
+    const figures = canvaFigureEls().map(canvaInfo);
+    const key = JSON.stringify(figures.map((f) => [f.name, f.page, f.ids, f.thumb, f.duration]));
+    if (!extra && (!figures.length || key === canvaSent)) return;
     canvaSent = key;
-    try { api.runtime.sendMessage({ action: "canvaFigures", figures, play: play || null }).catch(() => {}); } catch (_) {}
+    try { api.runtime.sendMessage({ action: "canvaFigures", figures, ...(extra || {}) }).catch(() => {}); } catch (_) {}
   }
   function canvaFigureOf(v) {
     const all = canvaFigureEls();
@@ -315,28 +352,54 @@
   addEventListener("pointerdown", (e) => {
     if (!e.isTrusted || !onCanvaDesign()) return;
     canvaClickAt = Date.now();
-    for (const n of e.composedPath ? e.composedPath() : []) {
-      if (!n || !n.getAttribute || !(n.tagName === "FIGURE" || n.getAttribute("role") === "figure")) continue;
-      const name = canvaName(n);
-      if (name) { canvaPicked = { el: n, name }; break; }
-    }
+    const f = canvaFigureIn(e.composedPath ? e.composedPath() : []);
+    if (f) canvaPicked = f;
+  }, true);
+  addEventListener("mouseover", (e) => {
+    if (!onCanvaDesign()) return;
+    const path = e.composedPath ? e.composedPath() : [];
+    for (const b of bubbles.values()) if (path.includes(b.host)) { canvaHoverLeft = 0; return; }
+    const f = canvaFigureIn(path);
+    if (!f) { if (canvaHover && !canvaHoverLeft) canvaHoverLeft = Date.now(); return; }
+    const changed = !canvaHover || canvaHover.el !== f.el || canvaHoverLeft;
+    canvaHover = f; canvaHoverLeft = 0;
+    if (changed) place();
   }, true);
   document.addEventListener("play", (e) => {
     const v = e.target;
     if (!onCanvaDesign() || !v || v.tagName !== "VIDEO") return;
     const f = canvaFigureOf(v);
     if (!f) return;
+    if (v.duration > 0 && isFinite(v.duration)) canvaDurations.set(f.el, v.duration);
+    canvaPlaying = f;
     const at = Date.now();
-    reportCanva({ name: f.name, ids: canvaIds(f.el), duration: v.duration || 0, at, since: at - canvaClickAt < 15000 ? canvaClickAt : at - 3000 });
+    reportCanva({ play: { name: f.name, page: f.page, ids: canvaIds(f.el), duration: canvaDurations.get(f.el) || 0, at, since: at - canvaClickAt < 15000 ? canvaClickAt : at - 3000 } });
+    place();
   }, true);
+  function canvaItemsFor(f) {
+    const mine = items.filter((i) => i.canva && i.figure === f.name && (!i.page || !f.page || i.page === f.page));
+    if (mine.length) return mine.map((i) => ({ ...i, title: f.name }));
+    const free = items.filter((i) => i.canva && !i.figure && !i.disabled).map((i) => ({ ...i, title: f.name, bindTo: { name: f.name, page: f.page } }));
+    return free.length ? free : [{ label: fjT("itemCanvaWait"), sub: fjT("itemCanvaWaitSub"), disabled: true, title: f.name }];
+  }
   function placeCanva() {
-    const it = onCanvaDesign() ? items.find((i) => i.canva && i.playing && i.figure) : null;
-    const f = it ? canvaFigureEls().find((x) => x.name === it.figure) : null;
-    for (const [v, b] of bubbles) if (!f || v !== f.el) { b.host.remove(); bubbles.delete(v); }
-    if (!f) return;
-    const b = bubbles.get(f.el) || makeBubble(f.el);
-    if (!b.own || b.own[0].url !== it.url || b.own[0].fileName !== it.fileName) { b.own = [it]; renderOne(b); }
-    if (!b.dismissed) placeOne(b);
+    const figs = onCanvaDesign() ? canvaFigureEls() : [];
+    const want = new Set();
+    const hovered = canvaHover && (!canvaHoverLeft || Date.now() - canvaHoverLeft < 1500) ? canvaHover.el : null;
+    for (const el of [hovered, canvaPicked && canvaPicked.el, canvaPlaying && canvaPlaying.el]) if (el) want.add(el);
+    for (const b of bubbles.values()) if (b.open) want.add(b.video);
+    const playingItem = items.find((i) => i.canva && i.playing && i.figure);
+    const playingFig = playingItem ? figs.find((x) => x.name === playingItem.figure && (!playingItem.page || !x.page || x.page === playingItem.page)) : null;
+    if (playingFig) want.add(playingFig.el);
+    for (const [v, b] of bubbles) if (!want.has(v) || !figs.some((f) => f.el === v)) { b.host.remove(); bubbles.delete(v); }
+    for (const f of figs) {
+      if (!want.has(f.el)) continue;
+      const b = bubbles.get(f.el) || makeBubble(f.el);
+      const own = canvaItemsFor(f);
+      const sig = JSON.stringify(own.map((i) => [i.url, i.fileName, i.sub, i.label]));
+      if (b.canvaSig !== sig) { b.canvaSig = sig; b.own = own; renderOne(b); }
+      if (!b.dismissed) placeOne(b);
+    }
   }
   function hideSite() {
     if (!SITE) return;
@@ -845,7 +908,7 @@
     box.appendChild(el("div", { class: "head", title, text: title }));
     if (file) box.appendChild(file);
     const files = usable.filter(m => m.kind === "media" && !m.stream);
-    if (files.length >= 2) {
+    if (files.length >= 2 && !isCanvaAnchor(b.video)) {
       const row = el("div", { class: "item" }, el("span", { class: "num", text: "⇊" }), el("div", { class: "body" }, el("div", { class: "t all", text: fjT("downloadAllFiles", { n: files.length }) })));
       row.addEventListener("click", () => files.forEach((m, i) => setTimeout(() => download(b, m), i * 300)));
       box.appendChild(row);
@@ -890,7 +953,14 @@
     });
   }
 
-  const download = (b, m) => sendOne(b, { action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } });
+  const download = (b, m) => {
+    if (m.bindTo) {
+      const base = sanitizeTitle(String(m.bindTo.name).replace(/\.[a-z0-9]{2,5}$/i, "")) || "video";
+      try { api.runtime.sendMessage({ action: "canvaFigures", figures: [], bind: { key: m.clipKey, name: m.bindTo.name, page: m.bindTo.page } }).catch(() => {}); } catch (_) {}
+      m = { ...m, fileName: `${base}.${m.ext || "mp4"}`, bindTo: undefined };
+    }
+    sendOne(b, { action: "downloadItem", item: { ...m, title: m.title || cleanTitle() } });
+  };
   function sendOne(b, msg) {
     api.runtime.sendMessage(msg).then((res) => {
       if (!res || !res.ok) {
@@ -919,7 +989,8 @@
     if (b.dismissed) return;
     const fs = document.fullscreenElement || document.webkitFullscreenElement;
     const r = b.video.getBoundingClientRect();
-    const onScreen = r.bottom > 0 && r.top < innerHeight && r.width >= 200 && r.height >= 100 && b.video.isConnected &&
+    const small = isCanvaAnchor(b.video);
+    const onScreen = r.bottom > 0 && r.top < innerHeight && r.width >= (small ? 48 : 200) && r.height >= (small ? 32 : 100) && b.video.isConnected &&
       !(fs && fs.tagName === "VIDEO") && (!fs || fs.contains(b.video) || fs.shadowRoot);
     b.host.style.display = onScreen ? "block" : "none";
     if (!onScreen) return;
