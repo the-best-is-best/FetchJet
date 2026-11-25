@@ -468,7 +468,7 @@ object VideoCut {
 
     suspend fun waveform(input: String, bars: Int, durationMs: Long = 0L): List<Float> {
         if (bars <= 0) return emptyList()
-        val raw = progressFile().toString() + ".raw"
+        val raw = progressFile().toString() + ".wav"
         val rate = when {
             durationMs > 3 * 60 * 60 * 1000L -> 400
             durationMs > 30 * 60 * 1000L -> 1000
@@ -478,11 +478,11 @@ object VideoCut {
             val ok = runLocalFfmpeg(
                 listOf(
                     "-y", "-nostdin", "-v", "error", "-i", input, "-map", "0:a:0", "-vn",
-                    "-ac", "1", "-ar", rate.toString(), "-c:a", "pcm_s16le", "-f", "s16le", raw
+                    "-ac", "1", "-ar", rate.toString(), "-c:a", "pcm_s16le", "-f", "wav", raw
                 ),
                 10L * 60 * 1000
             )
-            if (!ok) emptyList() else peaksOf(AppFileSystem.read(raw.toPath()) { readByteArray() }, bars)
+            if (!ok) emptyList() else peaksOf(wavData(AppFileSystem.read(raw.toPath()) { readByteArray() }), bars)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Throwable) {
@@ -490,6 +490,22 @@ object VideoCut {
         } finally {
             runCatching { AppFileSystem.delete(raw.toPath()) }
         }
+    }
+
+    fun wavData(wav: ByteArray): ByteArray {
+        var i = 12
+        while (i + 8 <= wav.size) {
+            val id = wav.decodeToString(i, i + 4)
+            val size = (wav[i + 4].toInt() and 0xff) or ((wav[i + 5].toInt() and 0xff) shl 8) or
+                    ((wav[i + 6].toInt() and 0xff) shl 16) or ((wav[i + 7].toInt() and 0xff) shl 24)
+            if (id == "data") {
+                val end = if (size <= 0 || i + 8 + size > wav.size) wav.size else i + 8 + size
+                return wav.copyOfRange(i + 8, end)
+            }
+            if (size < 0) break
+            i += 8 + size + (size and 1)
+        }
+        return ByteArray(0)
     }
 
     fun peaksOf(pcm: ByteArray, bars: Int): List<Float> {

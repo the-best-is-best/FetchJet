@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,8 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,11 +65,17 @@ import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.VideoCutUi
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -111,11 +116,11 @@ private fun readVideoInfo(path: String): VideoInfo {
     }
 }
 
-private fun scaled(r: MediaMetadataRetriever, timeUs: Long): Bitmap? {
+private fun scaled(r: MediaMetadataRetriever, timeUs: Long, option: Int): Bitmap? {
     val bmp = if (Build.VERSION.SDK_INT >= 27) {
-        r.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 192, 108)
+        r.getScaledFrameAtTime(timeUs, option, 192, 108)
     } else {
-        r.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)?.let { full ->
+        r.getFrameAtTime(timeUs, option)?.let { full ->
             val h = 108
             val w = (full.width * h / full.height.coerceAtLeast(1)).coerceAtLeast(1)
             Bitmap.createScaledBitmap(full, w, h, true).also { if (it != full) full.recycle() }
@@ -124,35 +129,55 @@ private fun scaled(r: MediaMetadataRetriever, timeUs: Long): Bitmap? {
     return bmp
 }
 
-@Composable
-private fun rememberFilmstrip(path: String, durationMs: Long, count: Int): List<ImageBitmap?> {
-    val frames = remember(path, durationMs, count) {
-        mutableStateListOf<ImageBitmap?>().apply {
-            repeat(count) { i -> add(FilmstripCache.frames.get("$path|$count|$i")?.asImageBitmap()) }
+private class FilmstripSource(val path: String) {
+    val version = mutableIntStateOf(0)
+    val requests = MutableStateFlow<TrimFrameRange?>(null)
+
+    fun key(tileMs: Long, index: Long): String = "$path|$tileMs|$index"
+
+    fun frame(tileMs: Long, index: Long): ImageBitmap? {
+        version.intValue
+        FilmstripCache.frames.get(key(tileMs, index))?.let { return it.asImageBitmap() }
+        val mid = index * tileMs + tileMs / 2
+        for (other in TRIM_TILE_LEVELS) {
+            if (other == tileMs) continue
+            FilmstripCache.frames.get(key(other, mid / other))?.let { return it.asImageBitmap() }
         }
+        return null
     }
-    LaunchedEffect(path, durationMs, count) {
-        if (durationMs <= 0L || count <= 0 || frames.all { it != null }) return@LaunchedEffect
+}
+
+@Composable
+private fun rememberFilmstrip(path: String, durationMs: Long, enabled: Boolean): FilmstripSource {
+    val source = remember(path) { FilmstripSource(path) }
+    LaunchedEffect(source, durationMs, enabled) {
+        if (!enabled || durationMs <= 0L) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             val r = MediaMetadataRetriever()
             try {
                 r.setDataSource(path)
-                for (i in 0 until count) {
-                    if (!isActive) break
-                    if (frames[i] != null) continue
-                    val timeUs = ((i + 0.5) * durationMs / count * 1000.0).toLong()
-                    val bmp = runCatching { scaled(r, timeUs) }.getOrNull() ?: continue
-                    FilmstripCache.frames.put("$path|$count|$i", bmp)
-                    val image = bmp.asImageBitmap()
-                    withContext(Dispatchers.Main) { frames[i] = image }
+                source.requests.filterNotNull().collectLatest { range ->
+                    val option = if (range.tileMs < 15_000L) MediaMetadataRetriever.OPTION_CLOSEST
+                    else MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                    for (i in range.order()) {
+                        currentCoroutineContext().ensureActive()
+                        val key = source.key(range.tileMs, i)
+                        if (FilmstripCache.frames.get(key) != null) continue
+                        val ms = (i * range.tileMs + range.tileMs / 2).coerceAtMost((durationMs - 1L).coerceAtLeast(0L))
+                        val bmp = runCatching { scaled(r, ms * 1000L, option) }.getOrNull() ?: continue
+                        FilmstripCache.frames.put(key, bmp)
+                        withContext(Dispatchers.Main) { source.version.intValue++ }
+                    }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Throwable) {
             } finally {
                 runCatching { r.release() }
             }
         }
     }
-    return frames
+    return source
 }
 
 @Composable
@@ -191,6 +216,7 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
     var selected by remember { mutableStateOf(TrimHandle.START) }
     var playing by remember { mutableStateOf(false) }
     var rangePlay by remember { mutableStateOf(false) }
+    val timeline = rememberTrimTimelineState()
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
@@ -250,10 +276,18 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
         if (selected == TrimHandle.START) {
             val next = frameStart(frameIndex(start) + dir)
             setHandle(TrimHandle.START, next.coerceIn(0L, (end - minLength).coerceAtLeast(0L)))
+            timeline.reveal(start)
         } else {
             val next = if (end >= duration && dir > 0) duration else frameStart(frameIndex(end) + dir)
             setHandle(TrimHandle.END, next.coerceIn((start + minLength).coerceAtMost(duration), duration))
+            timeline.reveal(end)
         }
+    }
+
+    fun choose(handle: TrimHandle) {
+        selected = handle
+        seek(if (handle == TrimHandle.START) start else lastKeptFrame(end))
+        timeline.reveal(if (handle == TrimHandle.START) start else end)
     }
 
     BackHandler { close() }
@@ -313,16 +347,15 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                     }
                 )
             }
-            BoxWithConstraints(
+            Box(
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF101016)).navigationBarsPadding(),
                 contentAlignment = Alignment.Center
             ) {
-                val count = (maxWidth.value / 52f).toInt().coerceIn(6, 24)
-                val frames = if (audio) emptyList() else rememberFilmstrip(path, duration, count)
-                val bars = (maxWidth.value / 4f).toInt().coerceIn(40, 240)
-                var wave by remember(path, bars) { mutableStateOf<List<Float>?>(if (audio) emptyList() else null) }
+                val filmstrip = rememberFilmstrip(path, duration, !audio)
+                val bars = (duration / 1000L * 20L).coerceIn(40L, 4000L).toInt()
+                var wave by remember(path) { mutableStateOf<List<Float>?>(if (audio) emptyList() else null) }
                 if (audio) LaunchedEffect(path, bars, duration) {
-                    if (duration > 0L) wave = com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.waveform(path, bars, duration)
+                    if (duration > 0L) wave = VideoCut.waveform(path, bars, duration)
                 }
                 Column(
                     modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -357,15 +390,18 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                         }
                     }
                     TrimTimeline(
+                        state = timeline,
                         durationMs = duration,
                         startMs = start,
                         endMs = if (end > 0L) end else duration,
                         positionMs = position,
-                        frames = frames,
                         wave = wave,
+                        frameAt = if (audio) null else filmstrip::frame,
+                        onNeedFrames = { filmstrip.requests.value = it },
+                        following = playing,
                         selected = selected,
                         minLengthMs = minLength,
-                        onSelect = { selected = it; seek(if (it == TrimHandle.START) start else lastKeptFrame(end)) },
+                        onSelect = { choose(it) },
                         onHandleMoved = { handle, ms -> setHandle(handle, ms) },
                         onDragFinished = {},
                         onScrub = { ms ->
@@ -384,7 +420,7 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                         startMs = start,
                         endMs = end,
                         selected = selected,
-                        onSelect = { selected = it; seek(if (it == TrimHandle.START) start else lastKeptFrame(end)) },
+                        onSelect = { choose(it) },
                         onNudge = { nudge(it) }
                     )
                 }
