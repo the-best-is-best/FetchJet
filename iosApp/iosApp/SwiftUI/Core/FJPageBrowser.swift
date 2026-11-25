@@ -31,6 +31,18 @@ final class FJPageBrowser: ObservableObject {
     }
 }
 
+private final class FJWeakScriptHandler: NSObject, WKScriptMessageHandler {
+    weak var target: WKScriptMessageHandler?
+
+    init(_ target: WKScriptMessageHandler) {
+        self.target = target
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     @Published var mediaUrl: String = ""
     @Published var title: String = ""
@@ -92,8 +104,9 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
         config.websiteDataStore = .default()
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
-        config.userContentController.add(self, name: "fjMedia")
-        config.userContentController.add(self, name: "fjLogin")
+        let handler = FJWeakScriptHandler(self)
+        config.userContentController.add(handler, name: "fjMedia")
+        config.userContentController.add(handler, name: "fjLogin")
         config.userContentController.addUserScript(
             WKUserScript(source: Self.finder, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
@@ -102,7 +115,21 @@ final class FJPageBrowserModel: NSObject, ObservableObject, WKScriptMessageHandl
         webView.allowsBackForwardNavigationGestures = true
     }
 
+    deinit {
+        webView.configuration.userContentController.removeAllScriptMessageHandlers()
+    }
+
+    func shutDown() {
+        webView.stopLoading()
+        webView.pauseAllMediaPlayback()
+        webView.configuration.userContentController.removeAllScriptMessageHandlers()
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.loadHTMLString("", baseURL: nil)
+    }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame else { return }
         if message.name == "fjLogin" {
             loginTyped = true
             return
@@ -329,6 +356,7 @@ struct FJPageBrowserSheet: View {
             typed = url.absoluteString
             model.onSent = close
         }
+        .onDisappear { model.shutDown() }
         .onChange(of: model.address) { _, value in
             if !value.isEmpty { typed = value }
         }
