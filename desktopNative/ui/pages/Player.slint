@@ -5,6 +5,8 @@ import { FilledButton } from "../widgets/Buttons.slint";
 import { ListView } from "../widgets/Scroll.slint";
 import { Tr } from "../generated/tr.slint";
 import { Spinner } from "../widgets/Kit.slint";
+import { RowMenuPopup } from "../widgets/Menu.slint";
+import { RowMenuItemDto } from "../generated/dto.slint";
 
 export struct PlayerRow { title: string, video: bool, active: bool }
 
@@ -41,6 +43,13 @@ export global PlayerUi {
     callback hold-end();
     callback start-over();
     callback surface-size(int, int);
+    in property <[RowMenuItemDto]> sub-items;
+    in property <int> sub-checked: -1;
+    in property <bool> sub-on;
+    in property <int> sub-menu-tick;
+    in property <string> notice;
+    callback sub-menu();
+    callback sub-pick(int);
     in property <bool> trim;
     in property <bool> trim-ready;
     in property <[image]> trim-thumbs;
@@ -545,12 +554,29 @@ export component PlayerPage inherits Rectangle {
     private property <bool> shown: true;
     private property <bool> list-open: false;
     private property <bool> speed-open: false;
+    private property <bool> subs-open: false;
+    private property <int> sub-tick: PlayerUi.sub-menu-tick;
+    changed sub-tick => { root.open-subs(); }
+    changed subs-open => {
+        if !self.subs-open {
+            keys.focus();
+            root.wake();
+        }
+    }
+    function open-subs() {
+        root.wake();
+        root.speed-open = false;
+        root.list-open = false;
+        PlayerUi.sub-menu();
+        root.subs-open = true;
+        sub-menu.show();
+    }
     private property <bool> holding: false;
     private property <bool> suppress: false;
     private property <bool> held: false;
     private property <length> down-x: 0px;
     private property <length> down-y: 0px;
-    private property <bool> controls-on: PlayerUi.trim || root.shown || !PlayerUi.playing || PlayerUi.finished || PlayerUi.failed || PlayerUi.opening || root.list-open || root.speed-open;
+    private property <bool> controls-on: PlayerUi.trim || root.shown || !PlayerUi.playing || PlayerUi.finished || PlayerUi.failed || PlayerUi.opening || root.list-open || root.speed-open || root.subs-open;
     pure function two(n: int) -> string {
         return (n < 10 ? "0" : "") + n;
     }
@@ -568,7 +594,7 @@ export component PlayerPage inherits Rectangle {
     changed height => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
     hide-timer := Timer {
         interval: 3500ms;
-        running: PlayerUi.playing && root.shown && !root.list-open && !root.speed-open && !PlayerUi.finished && !PlayerUi.failed;
+        running: PlayerUi.playing && root.shown && !root.list-open && !root.speed-open && !root.subs-open && !PlayerUi.finished && !PlayerUi.failed;
         triggered => { root.shown = false; }
     }
     hold-timer := Timer {
@@ -615,6 +641,8 @@ export component PlayerPage inherits Rectangle {
                     root.list-open = false;
                 } else if root.speed-open {
                     root.speed-open = false;
+                } else if root.subs-open {
+                    root.subs-open = false;
                 } else {
                     PlayerUi.close();
                 }
@@ -756,6 +784,7 @@ export component PlayerPage inherits Rectangle {
                     root.holding = true;
                     root.list-open = false;
                     root.speed-open = false;
+                    root.subs-open = false;
                 }
                 if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                     root.holding = false;
@@ -809,6 +838,25 @@ export component PlayerPage inherits Rectangle {
                 font-weight: 700;
                 vertical-alignment: center;
             }
+        }
+    }
+    if PlayerUi.notice != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: PlayerUi.hold != 0 ? 116px : 72px;
+        width: min(notice-text.preferred-width + 32px, parent.width - 32px);
+        height: 36px;
+        border-radius: 18px;
+        background: #000000CC;
+        notice-text := Text {
+            x: 16px;
+            width: parent.width - 32px;
+            text: PlayerUi.notice;
+            color: #FFFFFF;
+            font-family: Theme.font;
+            font-size: 14px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
         }
     }
     if root.speed-open: TouchArea {
@@ -1078,6 +1126,31 @@ export component PlayerPage inherits Rectangle {
             }
             Rectangle {
                 width: 72px;
+                height: 40px;
+                if PlayerUi.has-video: PBtn {
+                    x: Dir.rtl ? 0px : parent.width - self.width;
+                    y: (parent.height - self.height) / 2;
+                    size: 40px;
+                    glyph-size: 22px;
+                    commands: PlayerUi.sub-on
+                        ? "M 3 6 Q 3 4 5 4 L 19 4 Q 21 4 21 6 L 21 18 Q 21 20 19 20 L 5 20 Q 3 20 3 18 Z M 6 15 L 11 15 M 13 15 L 18 15 M 6 11 L 9 11 M 11 11 L 18 11"
+                        : "M 3 6 Q 3 4 5 4 L 19 4 Q 21 4 21 6 L 21 18 Q 21 20 19 20 L 5 20 Q 3 20 3 18 Z M 6 15 L 11 15 M 13 15 L 18 15";
+                    container: PlayerUi.sub-on ? #FFFFFF26 : transparent;
+                    label: Tr.playerSubtitles;
+                    clicked => { root.open-subs(); }
+                }
+                sub-menu := RowMenuPopup {
+                    x: Dir.rtl ? 0px : parent.width - self.width;
+                    y: -self.tall - 8px;
+                    items: PlayerUi.sub-items;
+                    checkable: true;
+                    checked-key: PlayerUi.sub-checked;
+                    picked(key) => {
+                        root.subs-open = false;
+                        PlayerUi.sub-pick(key);
+                    }
+                    active-changed(on) => { root.subs-open = on; }
+                }
             }
         }
     }

@@ -192,13 +192,19 @@ export component PickMenu inherits PopupWindow {
 
 export component RowMenuPopup inherits PopupWindow {
     in property <[RowMenuItemDto]> items;
+    in property <bool> checkable;
+    in property <int> checked-key: -1;
+    out property <bool> active: keys.has-focus;
+    callback active-changed(bool);
+    changed active => { root.active-changed(self.active); }
     private property <bool> compact: Screen.height < 640px;
     private property <length> row-h: root.compact ? 32px : 38px;
     private property <length> head-h: root.compact ? 20px : 24px;
     private property <int> current: -1;
     out property <length> tall: min(list.preferred-height, Screen.height - 24px);
     callback picked(key: int);
-    width: clamp(measure.preferred-width + 40px, 180px, 300px);
+    private property <length> mark: root.checkable ? 24px : 0px;
+    width: clamp(measure.preferred-width + 40px + root.mark, 180px, 300px);
     height: root.tall;
     close-policy: PopupClosePolicy.close-on-click-outside;
     forward-focus: keys;
@@ -342,14 +348,25 @@ export component RowMenuPopup inherits PopupWindow {
                                 root.close();
                             }
                         }
+                        private property <bool> checked: root.checkable && item.key == root.checked-key;
+                        if root.checkable: Text {
+                            x: Dir.rtl ? parent.width - 16px - root.mark : 16px;
+                            width: root.mark;
+                            text: cell.checked ? "✓" : "";
+                            color: Theme.primary;
+                            font-family: Theme.symbol-font;
+                            font-size: 14px;
+                            horizontal-alignment: Dir.start;
+                            vertical-alignment: center;
+                        }
                         Text {
-                            x: 16px;
-                            width: parent.width - 32px;
+                            x: Dir.rtl ? 16px : 16px + root.mark;
+                            width: parent.width - 32px - root.mark;
                             text: item.label;
-                            color: item.disabled ? Theme.on-surface-variant.with-alpha(0.6) : item.danger ? Theme.error : Theme.on-surface;
+                            color: item.disabled ? Theme.on-surface-variant.with-alpha(0.6) : item.danger ? Theme.error : cell.checked ? Theme.primary : Theme.on-surface;
                             font-family: Theme.font;
                             font-size: 14px;
-                            font-weight: 500;
+                            font-weight: cell.checked ? 700 : 500;
                             letter-spacing: Dir.rtl ? 0px : 0.1px;
                             horizontal-alignment: Dir.start;
                             vertical-alignment: center;

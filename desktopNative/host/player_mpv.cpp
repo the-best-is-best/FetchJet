@@ -66,8 +66,30 @@ namespace fjhost::player {
         };
 
         enum Observed : uint64_t {
-            ObsPosition = 1, ObsDuration, ObsPause, ObsEof
+            ObsPosition = 1, ObsDuration, ObsPause, ObsEof, ObsTracks
         };
+
+        enum Reply : uint64_t {
+            ReplyLoad = 100, ReplySubOpen
+        };
+
+        struct SubFile {
+            std::string path;
+            std::string label;
+        };
+
+        struct SubTrack {
+            long long id = 0;
+            std::string title;
+            std::string lang;
+            std::string file;
+            bool external = false;
+            bool selected = false;
+        };
+
+        const int kSubOff = 0;
+        const int kSubOpen = 1;
+        const int kSubFirst = 1000;
 
         const double kRewindSpeed = 2.0;
         const float kSpeeds[] = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f};
@@ -110,6 +132,17 @@ namespace fjhost::player {
         bool g_had_hidden = false;
         int g_loaded = 0;
         bool g_prepare_deferred = false;
+        std::vector<SubFile> g_sub_files;
+        std::vector<SubTrack> g_sub_tracks;
+        std::string g_sub_choice;
+        bool g_sub_apply = false;
+        int g_load_replies = 0;
+        long long g_sub_want_entry = -1;
+        long long g_sub_entry = -1;
+        long long g_sub_loaded_entry = -1;
+        std::string g_sub_opened;
+        int g_sub_tick = 0;
+        slint::Timer g_notice_timer;
 
         struct Trim {
             bool on = false;
@@ -371,8 +404,284 @@ namespace fjhost::player {
             g_api.command_async(g_mpv, 0, args.data());
         }
 
+        void command_tagged(uint64_t tag, std::initializer_list<const char *> words) {
+            if (!g_mpv)
+                return;
+            std::vector<const char *> args(words);
+            args.push_back(nullptr);
+            g_api.command_async(g_mpv, tag, args.data());
+        }
+
         void set(const char *name, const char *value) {
             command_async({"set", name, value});
+        }
+
+        std::string path_key(const std::string &path) {
+            std::string out = path;
+            for (auto &c: out) {
+                if (c == '\\')
+                    c = '/';
+#ifdef _WIN32
+                else if (c >= 'A' && c <= 'Z')
+                    c = char(c - 'A' + 'a');
+#endif
+            }
+            return out;
+        }
+
+        bool same_path(const std::string &a, const std::string &b) {
+            return !a.empty() && path_key(a) == path_key(b);
+        }
+
+        std::string file_name(const std::string &path) {
+            size_t slash = path.find_last_of("/\\");
+            return slash == std::string::npos ? path : path.substr(slash + 1);
+        }
+
+        std::string sub_label(const SubTrack &track) {
+            auto &tr = ui().global<Tr>();
+            if (track.external) {
+                for (const auto &file: g_sub_files)
+                    if (same_path(file.path, track.file))
+                        return file.label;
+                if (!track.file.empty())
+                    return file_name(track.file);
+            }
+            if (!track.title.empty())
+                return track.title;
+            if (!track.lang.empty())
+                return track.lang;
+            return plain(tr.get_playerSubtitlesTrack()) + " " + std::to_string(track.id);
+        }
+
+        int sub_checked() {
+            for (int i = 0; i < int(g_sub_tracks.size()); i++)
+                if (g_sub_tracks[i].selected)
+                    return kSubFirst + i;
+            return kSubOff;
+        }
+
+        void publish_subs() {
+            auto &p = ui().global<PlayerUi>();
+            auto &tr = ui().global<Tr>();
+            auto items = std::make_shared<slint::VectorModel<RowMenuItemDto>>();
+            RowMenuItemDto off{};
+            off.key = kSubOff;
+            off.label = tr.get_playerSubtitlesOff();
+            off.header = tr.get_playerSubtitles();
+            items->push_back(off);
+            for (int pass = 0; pass < 2; pass++) {
+                bool first = true;
+                for (int i = 0; i < int(g_sub_tracks.size()); i++) {
+                    const SubTrack &track = g_sub_tracks[i];
+                    if (track.external != (pass == 1))
+                        continue;
+                    RowMenuItemDto row{};
+                    row.key = kSubFirst + i;
+                    row.label = slint::SharedString(sub_label(track));
+                    if (first) {
+                        row.divider = true;
+                        row.header = pass == 0 ? tr.get_playerSubtitlesInVideo() : tr.get_playerSubtitlesFiles();
+                        first = false;
+                    }
+                    items->push_back(row);
+                }
+            }
+            RowMenuItemDto open{};
+            open.key = kSubOpen;
+            open.label = tr.get_playerSubtitlesOpenFile();
+            open.divider = true;
+            items->push_back(open);
+            p.set_sub_items(items);
+            int checked = sub_checked();
+            p.set_sub_checked(checked);
+            p.set_sub_on(checked != kSubOff);
+        }
+
+        void sub_margin() {
+            if (!g_mpv)
+                return;
+            double scale = std::max(1.0f, ui().window().scale_factor());
+            double margin = std::max(22.0, 120.0 * scale * 720.0 / double(std::max(g_height, 16)));
+            set("sub-margin-y", std::to_string(int(std::lround(margin))).c_str());
+        }
+
+        void show_notice(const std::string &text) {
+            ui().global<PlayerUi>().set_notice(slint::SharedString(text));
+            g_notice_timer.start(slint::TimerMode::SingleShot, std::chrono::milliseconds(3000), [] {
+                ui().global<PlayerUi>().set_notice(slint::SharedString());
+            });
+        }
+
+        void sub_reset() {
+            g_sub_files.clear();
+            g_sub_tracks.clear();
+            g_sub_choice.clear();
+            g_sub_apply = false;
+            g_sub_want_entry = -1;
+            g_sub_opened.clear();
+        }
+
+        void sub_prepare(const Item &item) {
+            sub_reset();
+            publish_subs();
+            sub_margin();
+            if (g_trim.on) {
+                set("sid", "no");
+                return;
+            }
+            set("sid", "auto");
+            std::string reply = core_call("player.subtitles", "{\"id\":" + quote(item.id) + ",\"path\":" + quote(item.path) +
+                                                              ",\"hidden\":" + (item.hidden ? "true" : "false") + "}");
+            fj::Json json;
+            std::string error;
+            if (!reply.empty() && fj::parse_json(reply, json, error)) {
+                if (const fj::Json *files = json.find("files")) {
+                    for (const auto &entry: files->items) {
+                        SubFile file;
+                        if (auto *v = entry.find("path")) file.path = v->text;
+                        if (auto *v = entry.find("label")) file.label = v->text;
+                        if (!file.path.empty())
+                            g_sub_files.push_back(file);
+                    }
+                }
+                if (auto *v = json.find("choice")) g_sub_choice = v->text;
+            }
+            g_sub_apply = true;
+        }
+
+        void sub_apply() {
+            if (!g_sub_apply || g_sub_want_entry < 0 || g_sub_loaded_entry != g_sub_want_entry)
+                return;
+            g_sub_apply = false;
+            const std::string choice = g_sub_choice;
+            bool by_file = choice.compare(0, 5, "file:") == 0;
+            std::string chosen = by_file ? choice.substr(5) : std::string();
+            bool found = false;
+            for (const auto &file: g_sub_files) {
+                bool pick = by_file && same_path(file.path, chosen);
+                found = found || pick;
+                command_async({"sub-add", file.path.c_str(), pick ? "select" : "auto"});
+            }
+            if (by_file && !found && !chosen.empty())
+                command_async({"sub-add", chosen.c_str(), "select"});
+            if (choice == "off")
+                set("sid", "no");
+            else if (choice.compare(0, 6, "track:") == 0)
+                set("sid", choice.substr(6).c_str());
+        }
+
+        void sub_remember(const std::string &choice) {
+            g_sub_choice = choice;
+            if (g_items.empty() || g_index < 0 || g_index >= int(g_items.size()))
+                return;
+            const Item &item = g_items[g_index];
+            if (item.hidden)
+                return;
+            core_call("player.subtitle", "{\"id\":" + quote(item.id) + ",\"choice\":" + quote(choice) + ",\"hidden\":false}");
+        }
+
+        void sub_add_file(const std::string &path) {
+            if (!g_mpv || path.empty())
+                return;
+            g_sub_opened = path;
+            command_tagged(ReplySubOpen, {"sub-add", path.c_str(), "select"});
+        }
+
+        std::string node_text(const mpv_node &node) {
+            return node.format == MPV_FORMAT_STRING && node.u.string ? std::string(node.u.string) : std::string();
+        }
+
+        void read_tracks(const mpv_node *node) {
+            g_sub_tracks.clear();
+            if (node && node->format == MPV_FORMAT_NODE_ARRAY && node->u.list) {
+                for (int i = 0; i < node->u.list->num; i++) {
+                    const mpv_node &entry = node->u.list->values[i];
+                    if (entry.format != MPV_FORMAT_NODE_MAP || !entry.u.list)
+                        continue;
+                    SubTrack track;
+                    std::string type;
+                    for (int k = 0; k < entry.u.list->num; k++) {
+                        std::string key = entry.u.list->keys[k] ? entry.u.list->keys[k] : "";
+                        const mpv_node &value = entry.u.list->values[k];
+                        if (key == "type")
+                            type = node_text(value);
+                        else if (key == "id" && value.format == MPV_FORMAT_INT64)
+                            track.id = value.u.int64;
+                        else if (key == "title")
+                            track.title = node_text(value);
+                        else if (key == "lang")
+                            track.lang = node_text(value);
+                        else if (key == "external-filename")
+                            track.file = node_text(value);
+                        else if (key == "external" && value.format == MPV_FORMAT_FLAG)
+                            track.external = value.u.flag != 0;
+                        else if (key == "selected" && value.format == MPV_FORMAT_FLAG)
+                            track.selected = value.u.flag != 0;
+                    }
+                    if (type == "sub")
+                        g_sub_tracks.push_back(track);
+                }
+            }
+            auto rank = [](const SubTrack &track) {
+                if (!track.external)
+                    return 0;
+                for (int i = 0; i < int(g_sub_files.size()); i++)
+                    if (same_path(g_sub_files[i].path, track.file))
+                        return 1 + i;
+                return 1 + int(g_sub_files.size());
+            };
+            std::stable_sort(g_sub_tracks.begin(), g_sub_tracks.end(), [&rank](const SubTrack &a, const SubTrack &b) {
+                int ra = rank(a), rb = rank(b);
+                return ra != rb ? ra < rb : a.id < b.id;
+            });
+            publish_subs();
+        }
+
+        void open_sub_dialog() {
+            if (g_items.empty())
+                return;
+            std::string title = plain(ui().global<Tr>().get_playerSubtitlesOpenFile());
+            std::string name = plain(ui().global<Tr>().get_playerSubtitles());
+            std::string id = g_items[g_index].id;
+            unsigned generation = g_generation.load();
+            std::thread([title, name, id, generation] {
+                std::string path = os::pick_path(false, title, "", name, "*.srt;*.vtt;*.ass;*.ssa");
+                if (path.empty())
+                    return;
+                slint::invoke_from_event_loop([path, id, generation] {
+                    if (generation != g_generation.load() || !g_open || g_items.empty() || g_items[g_index].id != id)
+                        return;
+                    sub_add_file(path);
+                });
+            }).detach();
+        }
+
+        void sub_pick(int key) {
+            if (!g_mpv || g_items.empty())
+                return;
+            if (key == kSubOpen) {
+                open_sub_dialog();
+                return;
+            }
+            if (key == kSubOff) {
+                set("sid", "no");
+                sub_remember("off");
+                return;
+            }
+            int index = key - kSubFirst;
+            if (index < 0 || index >= int(g_sub_tracks.size()))
+                return;
+            const SubTrack &track = g_sub_tracks[index];
+            std::string id = std::to_string(track.id);
+            set("sid", id.c_str());
+            sub_remember(track.external && !track.file.empty() ? "file:" + track.file : "track:" + id);
+        }
+
+        void show_sub_menu() {
+            publish_subs();
+            g_sub_tick++;
+            ui().global<PlayerUi>().set_sub_menu_tick(g_sub_tick);
         }
 
         std::string number_text(double value) {
@@ -492,8 +801,10 @@ namespace fjhost::player {
                 set_opening(true, 0);
             } else {
                 set_opening(false, 0);
+                sub_prepare(item);
                 g_loaded++;
-                command_async({"loadfile", item.path.c_str(), "replace"});
+                g_load_replies++;
+                command_tagged(ReplyLoad, {"loadfile", item.path.c_str(), "replace"});
             }
             remember();
             publish_item();
@@ -561,6 +872,8 @@ namespace fjhost::player {
                         } else if (event->reply_userdata == ObsPause && prop->format == MPV_FORMAT_FLAG) {
                             g_paused = *static_cast<int *>(prop->data) != 0;
                             publish_state();
+                        } else if (event->reply_userdata == ObsTracks && prop->format == MPV_FORMAT_NODE) {
+                            read_tracks(static_cast<mpv_node *>(prop->data));
                         } else if (event->reply_userdata == ObsEof && prop->format == MPV_FORMAT_FLAG) {
                             if (*static_cast<int *>(prop->data) != 0 && !g_finished) {
                                 if (g_trim.on)
@@ -573,6 +886,40 @@ namespace fjhost::player {
                     }
                     case MPV_EVENT_PLAYBACK_RESTART:
                         g_seek_pending = false;
+                        break;
+                    case MPV_EVENT_COMMAND_REPLY: {
+                        auto *reply = static_cast<mpv_event_command *>(event->data);
+                        if (event->reply_userdata == ReplyLoad) {
+                            g_load_replies = std::max(0, g_load_replies - 1);
+                            if (g_load_replies == 0 && event->error >= 0 && reply && reply->result.format == MPV_FORMAT_NODE_MAP &&
+                                reply->result.u.list) {
+                                for (int k = 0; k < reply->result.u.list->num; k++) {
+                                    const char *key = reply->result.u.list->keys[k];
+                                    const mpv_node &value = reply->result.u.list->values[k];
+                                    if (key && std::string(key) == "playlist_entry_id" && value.format == MPV_FORMAT_INT64)
+                                        g_sub_want_entry = value.u.int64;
+                                }
+                                sub_apply();
+                            }
+                        } else if (event->reply_userdata == ReplySubOpen) {
+                            std::string path = g_sub_opened;
+                            g_sub_opened.clear();
+                            if (event->error >= 0 && !path.empty())
+                                sub_remember("file:" + path);
+                            else
+                                show_notice(plain(ui().global<Tr>().get_playerSubtitlesFailed()));
+                        }
+                        break;
+                    }
+                    case MPV_EVENT_START_FILE: {
+                        auto *start = static_cast<mpv_event_start_file *>(event->data);
+                        if (start)
+                            g_sub_entry = start->playlist_entry_id;
+                        break;
+                    }
+                    case MPV_EVENT_FILE_LOADED:
+                        g_sub_loaded_entry = g_sub_entry;
+                        sub_apply();
                         break;
                     case MPV_EVENT_END_FILE: {
                         auto *end = static_cast<mpv_event_end_file *>(event->data);
@@ -654,6 +1001,8 @@ namespace fjhost::player {
                     {"input-default-bindings", "no"},
                     {"input-vo-keyboard", "no"},
                     {"osc", "no"},
+                    {"sub-auto", "no"},
+                    {"video-timing-offset", "0"},
                     {"terminal", "no"}};
             for (const auto &option: options)
                 g_api.set_option_string(g_mpv, option[0], option[1]);
@@ -686,6 +1035,7 @@ namespace fjhost::player {
             g_api.observe_property(g_mpv, ObsDuration, "duration", MPV_FORMAT_DOUBLE);
             g_api.observe_property(g_mpv, ObsPause, "pause", MPV_FORMAT_FLAG);
             g_api.observe_property(g_mpv, ObsEof, "eof-reached", MPV_FORMAT_FLAG);
+            g_api.observe_property(g_mpv, ObsTracks, "track-list", MPV_FORMAT_NODE);
             g_api.set_wakeup_callback(g_mpv, on_wakeup, nullptr);
             return true;
         }
@@ -705,6 +1055,9 @@ namespace fjhost::player {
             }
             g_event_posted = false;
             g_frame_posted = false;
+            g_load_replies = 0;
+            g_sub_entry = -1;
+            g_sub_loaded_entry = -1;
 #ifndef __APPLE__
             unload_library();
 #endif
@@ -1303,9 +1656,12 @@ namespace fjhost::player {
             g_trim.strip_h = h;
             start_thumbs();
         });
+        p.on_sub_menu([] { publish_subs(); });
+        p.on_sub_pick([](int key) { sub_pick(key); });
         p.on_surface_size([](int w, int h) {
             g_width = std::clamp(w, 16, 2560);
             g_height = std::clamp(h, 16, 1440);
+            sub_margin();
             if (g_open && g_render) {
                 g_force_render = true;
                 post_frame();
@@ -1362,11 +1718,15 @@ namespace fjhost::player {
         g_release_after_end.clear();
         g_loaded = 0;
         g_prepare_deferred = false;
+        sub_reset();
+        g_notice_timer.stop();
         if (g_had_hidden) {
             g_had_hidden = false;
             send_action("{\"type\":\"PlayerClosed\"}");
         }
         auto &p = ui().global<PlayerUi>();
+        publish_subs();
+        p.set_notice(slint::SharedString());
         p.set_trim(false);
         p.set_trim_ready(false);
         p.set_trim_thumbs(std::make_shared<slint::VectorModel<slint::Image>>());
@@ -1465,6 +1825,13 @@ namespace fjhost::player {
             trim_apply();
         } else if (name == "trimcancel") {
             close();
+        } else if (name == "submenu") {
+            show_sub_menu();
+        } else if (name == "subpick") {
+            sub_pick(int(value));
+        } else if (name == "subopen") {
+            if (const char *file = std::getenv("FJ_PLAYER_SUB_FILE"))
+                sub_add_file(file);
         }
         const char *path = std::getenv("FJ_PLAYER_LOG");
         if (!path)
@@ -1474,6 +1841,20 @@ namespace fjhost::player {
                          name.c_str(), value, g_open ? 1 : 0, g_index, g_items.size(), g_position, g_duration,
                          g_paused ? 1 : 0, double(g_speed), g_hold, g_finished ? 1 : 0, g_failed ? 1 : 0, g_preparing.c_str(),
                          g_items.empty() ? 0 : (g_items[g_index].hidden ? 1 : 0), g_items.empty() ? "" : g_items[g_index].path.c_str());
+            if (name.compare(0, 3, "sub") == 0) {
+                std::fprintf(file, "  subs checked=%d on=%d choice=%s files=%zu notice=%s\n", sub_checked(), sub_checked() != kSubOff ? 1 : 0,
+                             g_sub_choice.c_str(), g_sub_files.size(), plain(ui().global<PlayerUi>().get_notice()).c_str());
+                for (int i = 0; i < int(g_sub_tracks.size()); i++)
+                    std::fprintf(file, "  sub key=%d id=%lld external=%d selected=%d label=%s file=%s\n", kSubFirst + i, g_sub_tracks[i].id,
+                                 g_sub_tracks[i].external ? 1 : 0, g_sub_tracks[i].selected ? 1 : 0, sub_label(g_sub_tracks[i]).c_str(),
+                                 g_sub_tracks[i].file.c_str());
+                auto items = ui().global<PlayerUi>().get_sub_items();
+                for (size_t i = 0; i < items->row_count(); i++) {
+                    auto row = *items->row_data(i);
+                    std::fprintf(file, "  menu key=%d header=%s label=%s divider=%d\n", row.key, plain(row.header).c_str(), plain(row.label).c_str(),
+                                 row.divider ? 1 : 0);
+                }
+            }
             if (g_trim.on)
                 std::fprintf(file, "  trim ready=%d fps=%.3f%s frames=%ld s=%ld e=%ld start=%s end=%s active=%d range=%d thumbs=%d/%zu\n",
                              g_trim.ready ? 1 : 0, g_trim.fps, g_trim.fps_guess ? "?" : "", g_trim.frames, g_trim.s, g_trim.e,

@@ -22,6 +22,8 @@ import com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
 import com.michelle.raouf.fetch_jet.feature.media_player.PlaybackQueue
 import com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode
 import com.michelle.raouf.fetch_jet.feature.media_player.PlayerProgress
+import com.michelle.raouf.fetch_jet.feature.media_player.PlayerSubtitles
+import com.michelle.raouf.fetch_jet.feature.media_player.SubtitleChoice
 import com.michelle.raouf.fetch_jet.nativeapp.channels.UiJson
 import com.michelle.raouf.fetch_jet.nativeapp.dto.EffectKind
 import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
@@ -37,6 +39,12 @@ import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 private data class PlayerItemJson(val id: String, val title: String, val path: String, val video: Boolean, val hidden: Boolean = false)
+
+@Serializable
+private data class SubtitleFileJson(val path: String, val label: String)
+
+@Serializable
+private data class SubtitlesJson(val files: List<SubtitleFileJson>, val choice: String)
 
 @Serializable
 private data class PlayerQueueJson(val items: List<PlayerItemJson>, val index: Int, val groupKey: String)
@@ -291,7 +299,28 @@ internal fun playerCall(name: String, args: String): String {
         }
         "remember" -> PlayerProgress.remember(key, obj["id"]?.jsonPrimitive?.content.orEmpty())
         "clear" -> PlayerProgress.clear(key)
+        "subtitles" -> return playerSubtitles(obj["id"]?.jsonPrimitive?.content.orEmpty(), obj["path"]?.jsonPrimitive?.content.orEmpty(), obj["hidden"]?.jsonPrimitive?.content == "true")
+        "subtitle" -> {
+            val id = obj["id"]?.jsonPrimitive?.content.orEmpty()
+            val choice = SubtitleChoice.decode(obj["choice"]?.jsonPrimitive?.content.orEmpty()) ?: return ""
+            if (obj["hidden"]?.jsonPrimitive?.content == "true" || isHiddenTask(id)) return ""
+            PlayerSubtitles.remember(id, choice)
+        }
         else -> return ""
     }
     return "ok"
+}
+
+private fun isHiddenTask(id: String): Boolean {
+    if (id.isEmpty()) return true
+    val state = com.michelle.raouf.fetch_jet.nativeapp.NativeApp.presenter.vm.uiState.value
+    return state.hidden.tasks.any { it.id == id }
+}
+
+private fun playerSubtitles(id: String, path: String, hidden: Boolean): String {
+    val language = PlayerSubtitles.appLanguage()
+    val secret = hidden || isHiddenTask(id)
+    val files = if (secret) emptyList() else PlayerSubtitles.sideFiles(path, language)
+    val choice = PlayerSubtitles.initialChoice(id, files, language, remember = !secret)
+    return UiJson.encodeToString(SubtitlesJson(files.map { SubtitleFileJson(it.path, it.label) }, choice?.encode().orEmpty()))
 }
