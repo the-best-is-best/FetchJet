@@ -222,13 +222,11 @@ final class FJPlayerModel: ObservableObject {
             level = next
             return
         }
-        levelClear = Task { [weak self] in
+        levelClear = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 600_000_000)
-            await MainActor.run {
-                guard let self, !Task.isCancelled else { return }
-                self.level = nil
-                self.scheduleHide()
-            }
+            guard let self, !Task.isCancelled else { return }
+            self.level = nil
+            self.scheduleHide()
         }
     }
 
@@ -273,12 +271,10 @@ final class FJPlayerModel: ObservableObject {
     func scheduleHide() {
         hideTask?.cancel()
         guard controls, canHide else { return }
-        hideTask = Task { [weak self] in
+        hideTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await MainActor.run {
-                guard let self, !Task.isCancelled, self.canHide else { return }
-                self.controls = false
-            }
+            guard let self, !Task.isCancelled, self.canHide else { return }
+            self.controls = false
         }
     }
 

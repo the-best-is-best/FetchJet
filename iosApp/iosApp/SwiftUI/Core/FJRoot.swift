@@ -75,7 +75,9 @@ struct FJRoot: View {
             get: { player.queue.map(FJPlayerTarget.init) },
             set: { if $0 == nil { player.queue = nil } }
         )) { target in
-            FJPlayerScreen(queue: target.queue) { player.queue = nil }.environmentObject(store)
+            FJPlayerScreen(queue: target.queue) { player.queue = nil }
+                .environmentObject(store)
+                .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
         }
         .fullScreenCover(item: Binding(
             get: { store.pdf },
