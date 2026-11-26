@@ -25,7 +25,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.displayCutoutPadding
-import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -790,9 +789,6 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                     }
                 }
             )
-
-            Box(Modifier.align(Alignment.CenterStart).width(48.dp).height(200.dp).systemGestureExclusion())
-            Box(Modifier.align(Alignment.CenterEnd).width(48.dp).height(200.dp).systemGestureExclusion())
 
             swipe?.let { kind ->
                 Column(

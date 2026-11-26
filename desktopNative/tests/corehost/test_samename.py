@@ -105,12 +105,31 @@ def existing_name(core):
                task["fileName"] == "1MB.bin" and sha256_of_file(existing) == sha, task["fileName"])
 
 
+def while_running(core):
+    sha = server_sha256("2MB.bin")
+    print("a second download of the same name while the first still runs: it gets a numbered name")
+    for key in ("k=800", "k=801"):
+        core.action("ShowAddDialog", show=True)
+        core.action("SetUrl", text=SERVER + "/file/2MB.bin?%s&throttle=250" % key)
+        core.pump(0.6)
+        core.action("StartDownload")
+        core.wait_for("the download " + key, lambda: core.task(url_part=key) is not None, 20)
+    first = core.task(url_part="k=800")
+    second = core.task(url_part="k=801")
+    core.check("the first keeps the name, the second is numbered", first["fileName"] == "2MB.bin" and second["fileName"] == "2MB (1).bin",
+               (first["fileName"], second["fileName"]))
+    first = core.wait_task("COMPLETED", timeout=60, url_part="k=800")
+    second = core.wait_task("COMPLETED", timeout=60, url_part="k=801")
+    paths = [os.path.join(t["destinationPath"], t["fileName"]) for t in (first, second)]
+    core.check("both files are on disk, whole and apart", paths[0] != paths[1] and all(os.path.isfile(p) and sha256_of_file(p) == sha for p in paths))
+
+
 def run():
     server_reset()
     core = Core("samename")
     try:
         core.pump(0.8)
-        for body in (link_list, served, two_folders, existing_name):
+        for body in (link_list, served, two_folders, existing_name, while_running):
             body(core)
             clear(core)
     except CheckFailed as failure:

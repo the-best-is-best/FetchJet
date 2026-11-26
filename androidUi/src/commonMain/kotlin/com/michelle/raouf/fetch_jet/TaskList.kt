@@ -6,6 +6,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -1039,27 +1040,7 @@ internal fun SelectionBar(
     val label: @Composable (String, Color) -> Unit = { text, color ->
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, softWrap = false)
     }
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-    val narrow = maxWidth < 560.dp
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
-        Text(
-            s.homeSelectedCount(count),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        androidx.compose.material3.TextButton(
-            onClick = { onCheckAll(!allChecked) },
-            modifier = Modifier.height(34.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp)
-        ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+    val actions: @Composable () -> Unit = {
         if (onExport != null) {
             OutlinedButton(onClick = onExport, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
                 label(s.homeExport, Color.Unspecified)
@@ -1071,13 +1052,8 @@ internal fun SelectionBar(
             }
         }
         if (onMerge != null) {
-            androidx.compose.material3.Button(
-                onClick = onMerge,
-                shape = shape,
-                contentPadding = if (narrow) PaddingValues(horizontal = 8.dp) else padding,
-                modifier = Modifier.height(34.dp).semantics { contentDescription = s.mergeVideos }
-            ) {
-                label(if (narrow) "⧉" else "⧉ ${s.mergeVideos}", MaterialTheme.colorScheme.onPrimary)
+            androidx.compose.material3.Button(onClick = onMerge, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
+                label("⧉ ${s.mergeVideos}", MaterialTheme.colorScheme.onPrimary)
             }
         }
         if (onDelete != null) {
@@ -1095,5 +1071,53 @@ internal fun SelectionBar(
             }
         }
     }
+    val head: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
+        Text(
+            s.homeSelectedCount(count),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        androidx.compose.material3.TextButton(
+            onClick = { onCheckAll(!allChecked) },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 560.dp) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
+                Text(s.homeSelectedCount(count), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                Row(
+                    modifier = Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.TextButton(
+                        onClick = { onCheckAll(!allChecked) },
+                        modifier = Modifier.height(34.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+                    actions()
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                head()
+                actions()
+            }
+        }
     }
 }
