@@ -778,6 +778,7 @@ jobs:
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          NODE_OPTIONS: --network-family-autoselection-attempt-timeout=5000
         run: |
           npx --yes web-ext@8.10.0 sign --channel unlisted \
             --source-dir build/extension/firefox --artifacts-dir build/extension/signed \
@@ -794,6 +795,7 @@ jobs:
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          NODE_OPTIONS: --network-family-autoselection-attempt-timeout=5000
         run: |
           rm -rf build/extension/firefox-listed
           cp -r build/extension/firefox build/extension/firefox-listed
