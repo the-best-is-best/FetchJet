@@ -178,6 +178,11 @@ internal fun PlayerGlyphButton(
 
 @Composable
 internal actual fun MediaPlayerScreen(queue: PlaybackQueue, onClose: () -> Unit) {
+    androidx.compose.runtime.key(queue) { MediaPlayerContent(queue, onClose) }
+}
+
+@Composable
+private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hiddenQueue = remember(queue) { queue.items.any { it.hidden } }

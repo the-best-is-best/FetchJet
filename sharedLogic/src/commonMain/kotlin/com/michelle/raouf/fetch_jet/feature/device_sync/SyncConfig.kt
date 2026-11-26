@@ -14,6 +14,7 @@ internal const val DEVICE_SYNC_NO_BROADCAST_ENV = "FETCHJET_SYNC_NO_BROADCAST"
 
 internal const val SYNC_CHUNK = 64 * 1024
 internal const val SYNC_MAX_FRAME = 64 * 1024 * 1024
+internal const val SYNC_MAX_CONTROL_FRAME = 256 * 1024
 internal const val SYNC_MAX_DATAGRAM = 2048
 internal const val SYNC_MAX_INBOUND = 16
 

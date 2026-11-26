@@ -46,6 +46,8 @@ data class AudioCompressDto(
     val channelPick: Int = 0,
     val progressText: String = "",
     val cut: VideoCutDto = VideoCutDto(),
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false,
 )
 
 @Serializable
@@ -86,4 +88,6 @@ data class VideoCutDto(
     val failed: Boolean = false,
     val message: String = "",
     val clips: List<VideoClipDto> = emptyList(),
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false,
 )

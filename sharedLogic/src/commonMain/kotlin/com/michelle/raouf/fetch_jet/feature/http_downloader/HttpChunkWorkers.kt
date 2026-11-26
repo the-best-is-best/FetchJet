@@ -235,7 +235,6 @@ internal suspend fun HttpChunkDownloader.downloadParallelChunks(
     // Never report a short file as finished.
     val assembledSize = AppFileSystem.metadataOrNull(destOkioPath)?.size ?: 0L
     if (totalLength > 0 && assembledSize != totalLength) {
-        deleteParts()
         throw Exception("Assembled file is $assembledSize bytes, expected $totalLength (a piece is missing)")
     }
 

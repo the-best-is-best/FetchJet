@@ -650,7 +650,7 @@ internal fun DownloadTaskItem(
 
                     task.waitingInQueue -> {
                         DetailPrimaryButton(
-                            "▶  ${LocalizationManager.Strings.detailsStartNow}",
+                            "⬇  ${LocalizationManager.Strings.detailsStartNow}",
                             m,
                             onResume
                         )
@@ -660,7 +660,7 @@ internal fun DownloadTaskItem(
                     else -> {
                         val failed = task.status == DownloadStatus.ERROR
                         DetailPrimaryButton(
-                            if (failed) "↻  ${LocalizationManager.Strings.retry}" else "▶  ${LocalizationManager.Strings.resume}",
+                            if (failed) "↻  ${LocalizationManager.Strings.retry}" else "⬇  ${LocalizationManager.Strings.resume}",
                             m,
                             onResume
                         )

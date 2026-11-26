@@ -894,6 +894,7 @@ fun App(
                     },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissRemoveDialog) },
                     count = if (state.removeConfirmationTaskId != null) 1 else state.removeConfirmationTaskIds.size,
+                    derivedCount = state.removeDerivedCount,
                     secure = removeIds.any { it in hiddenIds }
                 )
             }

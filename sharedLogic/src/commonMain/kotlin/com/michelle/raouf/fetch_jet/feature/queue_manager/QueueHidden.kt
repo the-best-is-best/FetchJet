@@ -99,8 +99,14 @@ internal fun QueueManagerRepository.moveTaskFiles(
     var result = main
     if (task.engineType == EngineType.BITTORRENT) {
         magnetHexInfoHash(task.url)?.let { hash ->
-            val part = HiddenFiles.move("$from/.$hash.parts".toPath(), "$to/.$hash.parts".toPath())
-            if (part.leftBehind()) result = HiddenMove.COPIED_SOURCE_KEPT
+            val source = "$from/.$hash.parts".toPath()
+            val target = "$to/.$hash.parts".toPath()
+            if (AppFileSystem.exists(target)) {
+                if (AppFileSystem.exists(source)) result = HiddenMove.COPIED_SOURCE_KEPT
+            } else {
+                val part = HiddenFiles.move(source, target)
+                if (part.leftBehind()) result = HiddenMove.COPIED_SOURCE_KEPT
+            }
         }
     } else if (main != HiddenMove.NOTHING_TO_MOVE && (task.subtitleTracks.isNotEmpty() || task.subtitlesFromPage)) {
         val base = name.substringBeforeLast('.', name)

@@ -249,7 +249,7 @@ fun PlaylistSelectionCard(
                             }
                             if (entry.durationSeconds > 0L) {
                                 Text(
-                                    text = clock(entry.durationSeconds),
+                                    text = clockText(entry.durationSeconds),
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(start = 6.dp, end = 4.dp)
@@ -473,14 +473,6 @@ internal fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
             )
         }
     }
-}
-
-private fun clock(sec: Long): String {
-    val h = sec / 3600
-    val m = (sec % 3600) / 60
-    val s = sec % 60
-    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
-    else "$m:${s.toString().padStart(2, '0')}"
 }
 
 /** Connections for a direct download: Auto (app setting) or a fixed count. */

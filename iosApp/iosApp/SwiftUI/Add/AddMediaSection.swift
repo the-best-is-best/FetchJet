@@ -26,8 +26,7 @@ struct AddMediaSection: View {
                 AddPlaylistCard(playlist: playlist)
                 if s.subtitlesOffered { AddSubtitlesCard() }
             } else if s.inspectedMediaQualities.isEmpty {
-                let ext = (s.inputUrl.components(separatedBy: "?").first ?? "").components(separatedBy: ".").last?.lowercased() ?? ""
-                let isAudio = ["mp3", "m4a", "flac", "wav", "aac", "ogg", "opus"].contains(ext)
+                let isAudio = MediaExtensions.shared.isAudio(name: s.inputUrl.components(separatedBy: "?").first ?? "")
                 AddOutlineButton(
                     label: isAudio ? "🎵 \(strings.inspectAudioFormats)" : "🎬 \(strings.inspectVideoQuality)",
                     enabled: !s.inputUrl.isEmpty

@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.audio_compress
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -94,12 +95,7 @@ object AudioCompress {
     val SAMPLE_RATES: List<Int> = listOf(0, 48000, 44100, 32000, 24000, 22050, 16000)
     val CHANNELS: List<Int> = listOf(0, 1, 2)
 
-    private val AUDIO_EXTENSIONS = setOf(
-        "m4a", "mp3", "opus", "ogg", "oga", "wav", "flac", "aac", "wma", "weba", "mka", "aiff", "aif"
-    )
-
-    fun isAudioFile(name: String): Boolean =
-        name.substringAfterLast('.', "").lowercase() in AUDIO_EXTENSIONS
+    fun isAudioFile(name: String): Boolean = MediaExtensions.isAudio(name)
 
     fun canCompress(task: DownloadTask): Boolean =
         task.status == DownloadStatus.COMPLETED &&

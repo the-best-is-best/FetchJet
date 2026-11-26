@@ -88,31 +88,26 @@ internal class BridgeServer(
         val key = MediaUrls.canonical(url)
         cachedInspection(key)?.let { return it }
         val gate = cacheLock.withLock { inspectGates.getOrPut(key) { Mutex() } }
-        return gate.withLock {
-            cachedInspection(key) ?: run {
-                val fresh = QueueManagerRepository.getInstance().inspectMediaQualities(url, headers)
-                if (fresh.any { !it.formatId.isNullOrBlank() }) cacheLock.withLock {
-                    inspectCache.remove(key)
-                    inspectCache[key] = currentEpochMs() to fresh
-                    while (inspectCache.size > 40) inspectCache.remove(inspectCache.keys.first())
-                }
-                fresh
-            }
+        return try {
+            gate.withLock { inspectOnce(key, url, headers) }
+        } finally {
+            cacheLock.withLock { if (!gate.isLocked && inspectGates[key] === gate) inspectGates.remove(key) }
         }
     }
 
-    private fun isTrusted(request: HttpRequest): Boolean {
-        val rawHost = request.header("Host")?.lowercase()
-        val host = when {
-            rawHost == null -> null
-            rawHost.startsWith("[") -> rawHost.substringBefore("]") + "]"
-            else -> rawHost.substringBefore(':')
+    private suspend fun inspectOnce(key: String, url: String, headers: Map<String, String>): List<MediaQualityEntry> =
+        cachedInspection(key) ?: run {
+            val fresh = QueueManagerRepository.getInstance().inspectMediaQualities(url, headers)
+            if (fresh.any { !it.formatId.isNullOrBlank() }) cacheLock.withLock {
+                inspectCache.remove(key)
+                inspectCache[key] = currentEpochMs() to fresh
+                while (inspectCache.size > 40) inspectCache.remove(inspectCache.keys.first())
+            }
+            fresh
         }
-        if (host != null && host !in setOf("localhost", "127.0.0.1", "[::1]")) return false
-        val origin = request.header("Origin") ?: return true
-        return origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://") ||
-            origin.startsWith("extension://")
-    }
+
+    private fun isTrusted(request: HttpRequest): Boolean =
+        BridgePairing.isLocalRequest(request.header("Host"), request.header("Origin"))
 
     private fun reply(
         request: HttpRequest,
@@ -145,14 +140,6 @@ internal class BridgeServer(
         if (BridgePairing.isPaired(request.header(BridgePairing.TOKEN_HEADER))) {
             noteBrowser(request)
             return null
-        }
-        val origin = request.header("Origin")
-        if (BridgePairing.isLegacyAllowed(origin)) return null
-        if (origin != null && BridgePairing.isExtensionOrigin(origin) && !BridgePairing.isBlocked(origin) &&
-            request.header("X-FetchJet-Pairing").isNullOrBlank()
-        ) {
-            scope.launch { BridgePairing.ask(origin, legacy = true) }
-            showAndFocus()
         }
         return reply(request, 401, "pairing required")
     }
@@ -217,7 +204,7 @@ internal class BridgeServer(
     }
 
     private suspend fun handle(request: HttpRequest): HttpReply {
-        val route = KNOWN_PATHS.filter { request.path.startsWith(it) }.maxByOrNull { it.length }
+        val route = KNOWN_PATHS.firstOrNull { request.path == it || (it == "/api" && request.path.startsWith(AutomationApi.PREFIX)) }
             ?: return HttpReply(404, "<h1>404 Not Found</h1>No context found for request", "text/html; charset=UTF-8")
         return when (route) {
             "/ping" -> ping(request)
@@ -290,8 +277,7 @@ internal class BridgeServer(
         if (request.method != "POST" || request.header("X-FetchJet").isNullOrBlank() ||
             origin == null || !BridgePairing.isExtensionOrigin(origin)
         ) return reply(request, 403, "forbidden")
-        showAndFocus()
-        val allowed = BridgePairing.ask(origin, legacy = false)
+        val allowed = BridgePairing.ask(origin, onShown = showAndFocus)
         if (!allowed) return reply(request, 403, "refused")
         noteBrowser(request)
         return reply(request, 200, """{"token":"${BridgePairing.token}"}""", JSON)
@@ -377,7 +363,8 @@ internal class BridgeServer(
         }
         val url = values["url"].orEmpty()
         if (url.isBlank() || !isAllowedUrl(url)) return reply(request, 400, "unsupported url")
-        ExternalDownloadBridge.dispatch(url, values["cookie"].orEmpty())
+        val cookie = request.header("X-FetchJet-Cookie")?.trim().orEmpty().take(16 * 1024).filter { it != '\r' && it != '\n' }
+        ExternalDownloadBridge.dispatch(url, cookie)
         showAndFocus()
         return reply(request, 200, "OK")
     }

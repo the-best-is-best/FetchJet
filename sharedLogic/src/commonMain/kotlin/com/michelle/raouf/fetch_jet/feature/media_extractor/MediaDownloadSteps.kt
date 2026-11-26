@@ -416,6 +416,7 @@ suspend fun MediaStreamDownloader.addSubtitlesToFinished(
     try {
         val result = fetchSubtitlesInto(tracks, tempDir, task.requestHeaders, if (task.embedSubtitles) "srt" else task.subtitleFormat, onTrackDone)
         if (result.files.isEmpty()) return SubtitleAddResult(emptyList(), result.refused, result.failed, task.embedSubtitles)
+        result.files.forEach { (_, file) -> SubtitleShift.shiftFile(file, task) }
         val embedded = task.embedSubtitles && embedSubtitleFiles(videoPath, result.files, tempDir)
         val added = if (embedded) result.files.map { it.first } else placeSubtitleFilesBeside(videoPath, result.files)
         val notPlaced = result.files.map { it.first }.filter { it !in added }

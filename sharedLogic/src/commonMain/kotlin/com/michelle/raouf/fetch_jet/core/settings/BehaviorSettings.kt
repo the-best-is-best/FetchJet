@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.core.settings
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -334,9 +335,8 @@ object BehaviorSettings {
 
 /** Which sub-folder a download goes to when "Sort into folders" is on. */
 object FileCategory {
-    private val video =
-        setOf("mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "ts", "3gp")
-    private val music = setOf("mp3", "m4a", "aac", "ogg", "opus", "flac", "wav", "wma", "aiff")
+    private val video = MediaExtensions.VIDEO
+    private val music = MediaExtensions.AUDIO
     private val archives =
         setOf("zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz", "zst", "iso", "img", "cab")
     private val documents = setOf(

@@ -952,7 +952,7 @@ internal fun ListToolbar(
             modifier = Modifier.height(34.dp)
         ) {
             Text(
-                "▶  ${LocalizationManager.Strings.homeResumeAll}",
+                "⬇  ${LocalizationManager.Strings.homeResumeAll}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )

@@ -49,7 +49,7 @@ async function loadBackground(title, merges) {
   };
   chrome.storage = { local: { get: async () => ({ settings: { notifications: false } }), set: async () => {} }, session, onChanged: { addListener() {} } };
   chrome.permissions = { contains: async () => true };
-  chrome.runtime = { getManifest: () => ({ version: "9.9.9" }), onMessage: { addListener(fn) { log.handlers.push(fn); } }, onInstalled: { addListener() {} }, onStartup: { addListener() {} }, lastError: null, getURL: (p) => p };
+  chrome.runtime = { getManifest: () => ({ version: "9.9.9" }), onMessage: { addListener(fn) { log.handlers.push(fn); } }, onInstalled: { addListener() {} }, onStartup: { addListener() {} }, lastError: null, getURL: (p) => "chrome-extension://fj/" + p };
   const tab = { id: 7, url: PAGE, title };
   chrome.tabs = {
     get: async (id) => (id === 7 ? tab : null),
@@ -82,15 +82,17 @@ async function loadBackground(title, merges) {
     for (const fn of log.headers) fn({ tabId: 7, frameId: 0, url, statusCode: status, responseHeaders, initiator: "https://www.canva.com", type: "xmlhttprequest" });
     await settle();
   };
-  const ask = async (request) => {
+  const POPUP = { url: "chrome-extension://fj/popup.html" };
+  const ask = async (request, sender = { tab, frameId: 0, url: PAGE }) => {
     const r = await new Promise((resolve) => {
-      const x = log.handlers[0](request, { tab }, resolve);
+      const x = log.handlers[0](request, sender, resolve);
       if (x && typeof x.then === "function") x.then(resolve);
     });
     await settle();
     return r;
   };
-  return { sandbox, log, store, tab, response, ask, settle, setClock: (t) => { clock = t; } };
+  const askPopup = (request) => ask(request, POPUP);
+  return { sandbox, log, store, tab, response, ask, askPopup, settle, setClock: (t) => { clock = t; } };
 }
 
 const track = (mime, total) => ({ "content-type": mime, "content-range": `bytes 0-65535/${total}`, "content-length": 65536 });
@@ -152,7 +154,17 @@ async function backgroundTests() {
   items = (await bg.sandbox.itemsForTab(7)).items;
   check("bg: two clips fetched after one Play: none marked playing", !items.some((i) => i.playing), items.map((i) => [i.label, i.playing]));
 
-  const report = await bg.ask({ action: "canvaReport", tabId: 7 });
+  const refused = await bg.ask({ action: "canvaReport", tabId: 7 });
+  check("bg: a page cannot ask for the report", refused && refused.ok === false && refused.reason === "not allowed", refused);
+  const saved = await bg.ask({ action: "saveSettings", settings: { enabled: false } });
+  check("bg: a page cannot change the settings", saved && saved.reason === "not allowed", saved);
+  const framed = await bg.ask({ action: "canvaFigures", figures: [{ name: "x.mp4", page: 1 }] }, { tab: bg.tab, frameId: 3, url: "https://evil.example/" });
+  check("bg: figures from a frame are refused", framed && framed.ok === false, framed);
+  check("bg: a bad box is dropped", bg.sandbox.canvaBox([1, 2, "x", 4]) === null && bg.sandbox.canvaBox({ length: 4 }) === null && JSON.stringify(bg.sandbox.canvaBox([1, 2, 3, 4])) === "[1,2,3,4]");
+  const bridge = ["http://127.0.0.1:28450/add", "http://localhost:28450/x", "http://localhost.:28450/x", "http://[::1]:28450/x", "http://0.0.0.0:28450/x", "http://127.1.2.3:28450/x", "http://2130706433:28450/x", "http://app.localhost:28450/x"];
+  check("bg: the app's own port is never a download", bridge.every(u => !bg.sandbox.isValidDownloadUrl(u)), bridge.filter(u => bg.sandbox.isValidDownloadUrl(u)));
+  check("bg: other ports and hosts still are", bg.sandbox.isValidDownloadUrl("http://127.0.0.1:8080/a.zip") && bg.sandbox.isValidDownloadUrl("https://example.com/28450/127.0.0.1:28450.zip"));
+  const report = await bg.askPopup({ action: "canvaReport", tabId: 7 });
   check("bg: report has the captures without query values", report && report.captures.length >= 9 && report.captures.every((x) => !/csig=AAAA|osig=BBBB/.test(x.url)) && report.captures.some((x) => /\?csig&exp&osig$/.test(x.url)), report && report.captures.slice(0, 2));
   check("bg: report has mime / range / initiator / type / frame", report.captures.some((x) => x.mime === "audio/mp4" && /bytes 0-65535/.test(x.range) && x.initiator === "https://www.canva.com" && x.type === "xmlhttprequest" && x.frameId === 0));
   check("bg: report has the figures with page and stripped thumbnail", report.figures.length === 3 && report.figures[1].page === 7 && report.figures[0].thumb.endsWith("p.jpg?csig"), report.figures);
@@ -471,7 +483,7 @@ async function clearKeepsNameTests() {
   await realReport(bg);
   let it = ((await bg.sandbox.itemsForTab(7)).items)[0] || {};
   check("clear: named before Clear", it.fileName === NAME_A && it.audioUrl === REAL.audio, it.fileName);
-  await bg.ask({ action: "clearDetectedMedia", tabId: 7 });
+  await bg.askPopup({ action: "clearDetectedMedia", tabId: 7 });
   check("clear: the list is empty after Clear", (await bg.sandbox.itemsForTab(7)).items.length === 0);
   bg.setClock(REAL.t0 + 70000);
   await bg.response(REAL.video, 206, { "content-type": "video/mp4", "content-range": "bytes 1500000-1799999/2837360" });

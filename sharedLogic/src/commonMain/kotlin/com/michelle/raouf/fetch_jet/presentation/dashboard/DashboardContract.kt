@@ -179,6 +179,7 @@ data class DashboardUiState(
 
     val removeConfirmationTaskId: String? = null,
     val removeConfirmationTaskIds: List<String> = emptyList(),
+    val removeDerivedCount: Int = 0,
     /** A browser-sent file link the user just dismissed; asks "download it in the browser instead?" */
     val browserFallbackUrl: String? = null,
     /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
@@ -256,6 +257,7 @@ data class DashboardUiState(
     val speedPresetHighUnit: String = "MB/s",
     /** The task whose "Send to device" sheet is open (null = closed). */
     val deviceShareTaskId: String? = null,
+    val deviceShareCanDelete: Boolean = true,
     /** Devices found on the LAN running FetchJet. */
     val discoveredDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice> = emptyList(),
     val pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
@@ -475,7 +477,9 @@ data class AudioCompressUi(
     val progress: Float = 0f,
     val failed: Boolean = false,
     val copies: List<com.michelle.raouf.fetch_jet.feature.audio_compress.CompressedCopy> = emptyList(),
-    val formats: List<String> = listOf(com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.OUTPUT_EXTENSION)
+    val formats: List<String> = listOf(com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.OUTPUT_EXTENSION),
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false
 ) {
     val format: String
         get() = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.formatFor(settings, fileName, formats)
@@ -510,7 +514,9 @@ data class VideoCutUi(
     val clipsOnly: Boolean = false,
     val outputExtension: String = "",
     val lastClipPath: String = "",
-    val isAudio: Boolean = false
+    val isAudio: Boolean = false,
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false
 ) {
     val lengthMs: Long
         get() = (endMs - startMs).coerceAtLeast(0L)
@@ -809,6 +815,10 @@ sealed interface DashboardUiEvent {
     data class OnAudioCompressDeleteCopy(val path: String) : DashboardUiEvent
 
     data object OnDismissAudioCompress : DashboardUiEvent
+
+    data class OnAudioCompressDeleteOriginalChanged(val on: Boolean) : DashboardUiEvent
+
+    data class OnVideoCutDeleteOriginalChanged(val on: Boolean) : DashboardUiEvent
 
     data class OnVideoCutClicked(val taskId: String) : DashboardUiEvent
 

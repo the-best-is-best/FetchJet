@@ -858,6 +858,63 @@ class QueueManagerRepository(
                 com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported &&
                 com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path)
 
+    private fun putOnEngine(task: DownloadTask) {
+        when (task.engineType) {
+            EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task)
+            EngineType.BITTORRENT -> Unit
+            EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task)
+        }
+    }
+
+    /** Removes the tasks with their clips and compressed copies (the list's Remove). */
+    suspend fun removeTasksWithDerived(taskIds: List<String>, deleteFile: Boolean) {
+        val copies = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.let { it.load(); it.counts.value }
+        val plan = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.removalPlan(taskIds, allTasksFlow.value, copies)
+        (taskIds.distinct() + plan.clipIds).forEach { removeTask(it, deleteFile) }
+        plan.copies.forEach { (owner, paths) ->
+            paths.forEach { path ->
+                if (deleteFile) {
+                    val gone = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.deleteToTrash.value &&
+                            com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported &&
+                            com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path)
+                    if (!gone) runCatching { AppFileSystem.delete(path.toPath()) }
+                }
+                com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.remove(owner, path)
+            }
+        }
+    }
+
+    /** A clip that replaces the file it was cut from: it takes the source's link and the source goes. */
+    suspend fun promoteClip(clip: DownloadTask, sourceId: String): DownloadTask? {
+        val source = allTasksFlow.value.firstOrNull { it.id == sourceId } ?: return null
+        val promoted = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.promotedClip(clip, source)
+        if (promoted.engineType != clip.engineType) {
+            when (clip.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.cancel(clip.id)
+                EngineType.BITTORRENT -> Unit
+                EngineType.MEDIA_STREAM -> mediaEngine.cancel(clip.id)
+            }
+        }
+        putOnEngine(promoted)
+        removeTask(source.id, deleteFile = true)
+        return promoted
+    }
+
+    /** The compressed copy takes the original's place in the same task; the original file goes. */
+    fun replaceWithCompressed(taskId: String, copyPath: String): DownloadTask? {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return null
+        val copy = copyPath.toPath()
+        val bytes = AppFileSystem.metadataOrNull(copy)?.size ?: return null
+        val old = "${task.destinationPath.trimEnd('/', '\\')}/${task.fileName}"
+        if (old.toPath() != copy && AppFileSystem.exists(old.toPath())) {
+            if (!trashInsteadOfDelete(task, old)) runCatching { AppFileSystem.delete(old.toPath()) }
+        }
+        val changed = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.compressedSource(task, copy.name, bytes)
+        putOnEngine(changed)
+        com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.remove(taskId, copyPath)
+        return changed
+    }
+
     internal fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
         val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
@@ -1139,23 +1196,28 @@ class QueueManagerRepository(
                 when (task.engineType) {
                     EngineType.HTTP_DIRECT, EngineType.MEDIA_STREAM -> {
                         // 1. Delete destination files
-                        if (task.destinationPath.isNotBlank() && effectiveFileName.isNotBlank()) {
+                        if (task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
                             val destDir = task.destinationPath
+                            val finalFile = "$destDir/${task.fileName}"
                             val filePathsToCheck = mutableListOf(
-                                "$destDir/$effectiveFileName",
-                                "$destDir/$effectiveFileName.part",
-                                "$destDir/$effectiveFileName.ytdl",
-                                "$destDir/$effectiveFileName.temp"
+                                "$destDir/${task.fileName}.part",
+                                "$destDir/${task.fileName}.ytdl",
+                                "$destDir/${task.fileName}.temp"
                             )
                             for (i in 0..16) {
-                                filePathsToCheck.add("$destDir/$effectiveFileName.part$i")
+                                filePathsToCheck.add("$destDir/${task.fileName}.part$i")
+                            }
+                            try {
+                                val okPath = finalFile.toPath()
+                                if (ownsDestinationFile(task, AppFileSystem.metadataOrNull(okPath)?.size)) {
+                                    if (!trashInsteadOfDelete(task, finalFile)) AppFileSystem.delete(okPath)
+                                }
+                            } catch (_: Exception) {
                             }
                             for (p in filePathsToCheck) {
                                 try {
                                     val okPath = p.toPath()
-                                    if (AppFileSystem.exists(okPath)) {
-                                        if (p != filePathsToCheck.first() || !trashInsteadOfDelete(task, p)) AppFileSystem.delete(okPath)
-                                    }
+                                    if (AppFileSystem.exists(okPath)) AppFileSystem.delete(okPath)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -1201,7 +1263,10 @@ class QueueManagerRepository(
                     }
 
                     EngineType.BITTORRENT -> {
-                        if (task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
+                        val hash = magnetHexInfoHash(task.url)
+                        val partFile = if (hash != null && task.destinationPath.isNotBlank()) "${task.destinationPath}/.$hash.parts".toPath() else null
+                        val wroteFiles = torrentWroteFiles(task, partFile != null && AppFileSystem.exists(partFile))
+                        if (wroteFiles && task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
                             val dirPath = "${task.destinationPath}/${task.fileName}".toPath()
                             if (AppFileSystem.exists(dirPath)) {
                                 try {
@@ -1210,7 +1275,7 @@ class QueueManagerRepository(
                                 }
                             }
                         }
-                        for (fileEntry in task.torrentFiles) {
+                        if (wroteFiles) for (fileEntry in task.torrentFiles) {
                             val filePathStr =
                                 "${task.destinationPath}/${if (fileEntry.path.startsWith("${task.fileName}/")) fileEntry.path else "${task.fileName}/${fileEntry.path}"}"
                             val filePathObj = filePathStr.toPath()
@@ -1221,9 +1286,7 @@ class QueueManagerRepository(
                                 }
                             }
                         }
-                        val hash = magnetHexInfoHash(task.url)
-                        if (hash != null && task.destinationPath.isNotBlank()) {
-                            val partFile = "${task.destinationPath}/.$hash.parts".toPath()
+                        if (partFile != null) {
                             try {
                                 if (AppFileSystem.exists(partFile)) AppFileSystem.delete(partFile)
                             } catch (_: Exception) {

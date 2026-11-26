@@ -14,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -430,29 +432,38 @@ object HlsDownloader {
             "-allowed_extensions", "ALL", "-protocol_whitelist", "file,crypto,data",
             "-i", localPlaylist.toString()
         )
-        val ok = runLocalFfmpeg(
-            input + listOf(
-                "-c",
-                "copy",
-                "-bsf:a",
-                "aac_adtstoasc",
-                "-movflags",
-                "+faststart",
-                outputFile
-            )
-        )
-        if (!ok) {
-            // Without the bitstream filter (streams that are not AAC-in-TS).
-            val ok2 = runLocalFfmpeg(input + listOf("-c", "copy", outputFile))
-            if (!ok2) throw Exception("ffmpeg could not join the parts")
+        val joined = try {
+            runLocalFfmpeg(
+                input + listOf(
+                    "-c",
+                    "copy",
+                    "-bsf:a",
+                    "aac_adtstoasc",
+                    "-movflags",
+                    "+faststart",
+                    outputFile
+                )
+            ) ||
+                    // Without the bitstream filter (streams that are not AAC-in-TS).
+                    runLocalFfmpeg(input + listOf("-c", "copy", outputFile))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.e("HLS: ffmpeg join failed: ${e.message}")
+            false
         }
-        // Segments are no longer needed.
+        // A pause kills ffmpeg too: keep the segments then, Resume joins them again.
+        currentCoroutineContext().ensureActive()
+        if (!joined && isCancelled()) return@withContext false
+        // Joined, or ffmpeg refused these segments (a retry fetches them fresh): the segments,
+        // AES keys and local playlist are no longer needed.
         try {
             fs.list(dir)
                 .filter { it.name.startsWith("seg") || it.name.startsWith("key") || it.name == "local.m3u8" }
                 .forEach { fs.delete(it) }
         } catch (_: Exception) {
         }
+        if (!joined) throw Exception("ffmpeg could not join the parts")
         true
     }
 

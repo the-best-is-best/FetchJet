@@ -12,6 +12,9 @@ import com.michelle.raouf.fetch_jet.domain.model.sizeMark
 import com.michelle.raouf.fetch_jet.domain.model.isAllAudio
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
 import com.michelle.raouf.fetch_jet.feature.media_extractor.AUDIO_CONVERT_FORMATS
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipRangeCheck
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
+import com.michelle.raouf.fetch_jet.feature.media_extractor.checkClipRange
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
 import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
@@ -40,41 +43,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-internal class ClipCheck(
-    val fullHhMm: String,
-    val startSec: Long,
-    val endSec: Long,
-    val startError: Boolean,
-    val endError: Boolean,
-    val valid: Boolean,
-    val message: String?,
-)
-
-internal fun clipCheck(enabled: Boolean, start: String, end: String, durationSeconds: Long): ClipCheck {
-    val full = if (durationSeconds > 0) formatSecondsToHhMm(durationSeconds) else "00:10:00"
-    val startSec = parseHhMmToSeconds(start.ifBlank { "00:00" })
-    val endSec = parseHhMmToSeconds(end.ifBlank { full })
-    val startAfterEnd = enabled && startSec >= endSec
-    val endExceeds = enabled && durationSeconds > 0L && endSec > durationSeconds
-    val startExceeds = enabled && durationSeconds > 0L && startSec >= durationSeconds
-    val strings = LocalizationManager.Strings
-    val message = when {
-        !enabled -> null
-        startAfterEnd -> strings.clipStartAfterEnd(start.ifBlank { "00:00" }, end.ifBlank { full })
-        endExceeds -> strings.clipEndExceedsVideo(end.ifBlank { full }, full)
-        startExceeds -> strings.clipStartExceedsVideo(full)
-        else -> null
-    }
-    return ClipCheck(
-        fullHhMm = full,
-        startSec = startSec,
-        endSec = endSec,
-        startError = startAfterEnd || startExceeds,
-        endError = startAfterEnd || endExceeds,
-        valid = !enabled || (!startAfterEnd && !endExceeds && !startExceeds),
-        message = message,
-    )
-}
+internal fun clipCheck(enabled: Boolean, start: String, end: String, durationSeconds: Long): ClipRangeCheck =
+    checkClipRange(enabled, start, end, durationSeconds)
 
 internal fun clockText(totalSeconds: Long): String {
     val t = totalSeconds.coerceAtLeast(0L)
@@ -96,8 +66,11 @@ internal data class ClipPicker(
     val minutesRev: Int = 0,
     val secondsRev: Int = 0,
     val forCut: Boolean = false,
+    val capped: Boolean = false,
 ) {
     val total: Long get() = hours * 3600L + minutes * 60L + seconds
+
+    val hasMax: Boolean get() = capped || maxSeconds > 0L
 
     fun withTotal(value: Long): ClipPicker {
         val t = value.coerceIn(0L, 359_999L)
@@ -183,7 +156,12 @@ internal fun Presenter.startAddMedia() {
     }
     scope.launch {
         slices.map { it.visible }.distinctUntilChanged().collect { visible ->
-            if (!visible) clipPicker.value = ClipPicker()
+            if (!visible && !clipPicker.value.forCut) clipPicker.value = ClipPicker()
+        }
+    }
+    scope.launch {
+        vm.uiState.map { it.videoCut != null }.distinctUntilChanged().collect { open ->
+            if (!open && clipPicker.value.forCut) clipPicker.value = ClipPicker()
         }
     }
 }
@@ -262,9 +240,9 @@ private fun Presenter.publishMedia(s: MediaSlice) {
     else if (allAudio) strings.availableAudioFormats else strings.availableQualities
     val check = clipCheck(s.clipEnabled, s.clipStart, s.clipEnd, s.duration)
     val startDisplay = s.clipStart.ifBlank { "00:00" }
-    val endDisplay = s.clipEnd.ifBlank { check.fullHhMm }
+    val endDisplay = s.clipEnd.ifBlank { check.fullText }
     val chips = buildList {
-        if (s.duration > 0) add(ClipChipDto(strings.fullMediaChip(isAnyAudio, clockText(s.duration)), "00:00", check.fullHhMm))
+        if (s.duration > 0) add(ClipChipDto(strings.fullMediaChip(isAnyAudio, clockText(s.duration)), "00:00", check.fullText))
         if (s.duration <= 0L || s.duration >= 300L) add(ClipChipDto(strings.clipFirst5Min, "00:00:00", "00:05:00"))
         if (s.duration <= 0L || s.duration >= 900L) add(ClipChipDto(strings.clipFirst15Min, "00:00:00", "00:15:00"))
         if (s.duration <= 0L || s.duration >= 1800L) add(ClipChipDto(strings.clipFirst30Min, "00:00:00", "00:30:00"))
@@ -387,7 +365,7 @@ private fun buildClipPicker(p: ClipPicker): ClipPickerDto {
     if (p.which == 0) return ClipPickerDto()
     val strings = LocalizationManager.Strings
     val total = p.total
-    val exceeds = p.maxSeconds > 0L && total > p.maxSeconds
+    val exceeds = p.hasMax && total > p.maxSeconds
     val below = p.minSeconds > 0L && total <= p.minSeconds
     val valid = !exceeds && !below
     val summary = buildList {
@@ -410,7 +388,7 @@ private fun buildClipPicker(p: ClipPicker): ClipPickerDto {
         hoursRev = p.hoursRev,
         minutesRev = p.minutesRev,
         secondsRev = p.secondsRev,
-        upEnabled = p.maxSeconds <= 0L || total < p.maxSeconds,
+        upEnabled = !p.hasMax || total < p.maxSeconds,
         hoursDownEnabled = p.hours > 0,
         minutesDownEnabled = p.minutes > 0 || p.hours > 0,
         secondsDownEnabled = total > 0,
@@ -422,10 +400,10 @@ private fun buildClipPicker(p: ClipPicker): ClipPickerDto {
         },
         endChip = endChip,
         minChipHidden = p.maxSeconds > 0L && p.minSeconds > 0L && (p.minSeconds / 60 + 1) * 60 >= p.maxSeconds,
-        quick5Hidden = p.maxSeconds in 1L..300L,
-        quick15Hidden = p.maxSeconds in 1L..900L,
-        quick30Hidden = p.maxSeconds in 1L..1800L,
-        quick60Hidden = p.maxSeconds in 1L..3600L,
+        quick5Hidden = p.hasMax && p.maxSeconds <= 300L,
+        quick15Hidden = p.hasMax && p.maxSeconds <= 900L,
+        quick30Hidden = p.hasMax && p.maxSeconds <= 1800L,
+        quick60Hidden = p.hasMax && p.maxSeconds <= 3600L,
         minChip = if (p.minSeconds > 0L) strings.pickerMin(formatSecondsToHhMm(p.minSeconds + 60L)) else "00:00",
         valid = valid,
         applyLabel = if (valid) strings.pickerApply(p.formatted) else strings.pickerInvalidTime,
@@ -436,22 +414,17 @@ internal fun Presenter.clipPickerOpen(end: Boolean) {
     val state = vm.uiState.value
     val check = clipCheck(state.isClipRangeEnabled, state.clipStartTime, state.clipEndTime, state.mediaDurationSeconds)
     val duration = state.mediaDurationSeconds
-    val initial = if (end) state.clipEndTime.ifBlank { check.fullHhMm } else state.clipStartTime.ifBlank { "00:00" }
-    val parts = initial.split(":")
-    val maxForStart = if (check.endSec > 0L) {
-        if (duration > 0L) minOf(duration, check.endSec - 1L) else check.endSec - 1L
-    } else duration
+    val initial = ClipTime.wholeSeconds(if (end) check.endText else check.startText)
+    val startCapped = !end && (check.endSec > 0L || duration > 0L)
     clipPicker.value = ClipPicker(
         which = if (end) 2 else 1,
-        hours = (parts.getOrNull(0)?.toIntOrNull() ?: 0).coerceAtLeast(0),
-        minutes = (parts.getOrNull(1)?.toIntOrNull() ?: 0).coerceIn(0, 59),
-        seconds = (parts.getOrNull(2)?.toIntOrNull() ?: 0).coerceIn(0, 59),
-        maxSeconds = if (end) duration else maxForStart.coerceAtLeast(0L),
+        maxSeconds = if (end) duration else if (check.endSec > 0L) check.maxStartSec.coerceAtLeast(0L) else duration,
         minSeconds = if (end) check.startSec else 0L,
         hoursRev = clipPicker.value.hoursRev + 1,
         minutesRev = clipPicker.value.minutesRev + 1,
         secondsRev = clipPicker.value.secondsRev + 1,
-    )
+        capped = startCapped,
+    ).withTotal(initial)
 }
 
 internal fun Presenter.clipPickerType(field: Int, text: String) {
@@ -480,19 +453,19 @@ internal fun Presenter.clipPickerStep(field: Int, up: Boolean) {
         when (ClipPickerField.entries.getOrNull(field)) {
             ClipPickerField.HOURS -> if (up) {
                 val next = (p.hours + 1) * 3600L + p.minutes * 60L + p.seconds
-                if (max in 1..next) p.withTotal(max) else p.copy(hours = p.hours + 1)
+                if (p.hasMax && next >= max) p.withTotal(max) else p.copy(hours = p.hours + 1)
             } else if (p.hours > 0) p.copy(hours = p.hours - 1) else p
 
             ClipPickerField.MINUTES -> if (up) {
                 val next = total + 60L
-                if (max in 1..next) p.withTotal(max)
+                if (p.hasMax && next >= max) p.withTotal(max)
                 else if (p.minutes < 59) p.copy(minutes = p.minutes + 1) else p.copy(minutes = 0, hours = p.hours + 1)
             } else if (p.minutes > 0) p.copy(minutes = p.minutes - 1)
             else if (p.hours > 0) p.copy(hours = p.hours - 1, minutes = 59) else p
 
             ClipPickerField.SECONDS -> if (up) {
                 val next = total + 1L
-                if (max in 1..next) p.withTotal(max) else p.withTotal(total + 1L)
+                if (p.hasMax && next >= max) p.withTotal(max) else p.withTotal(total + 1L)
             } else if (total > 0) p.withTotal(total - 1L) else p
 
             null -> p
@@ -505,7 +478,7 @@ internal fun Presenter.clipPickerQuick(code: Int) {
         val max = p.maxSeconds
         fun plusMinutes(add: Int): ClipPicker {
             val targetSec = (p.hours * 60 + p.minutes + add) * 60L
-            return if (max in 1..targetSec) p.withTotal(max) else p.withTotal(targetSec)
+            return if (p.hasMax && targetSec >= max) p.withTotal(max) else p.withTotal(targetSec)
         }
         when (code) {
             0 -> plusMinutes(5)
@@ -513,10 +486,10 @@ internal fun Presenter.clipPickerQuick(code: Int) {
             2 -> plusMinutes(30)
             3 -> {
                 val targetSec = (p.hours * 60 + p.minutes + 60) * 60L
-                if (max in 1..targetSec) p.withTotal(max) else p.copy(hours = p.hours + 1)
+                if (p.hasMax && targetSec >= max) p.withTotal(max) else p.copy(hours = p.hours + 1)
             }
 
-            4 -> if (max > 0) p.withTotal(max) else p
+            4 -> if (p.hasMax) p.withTotal(max) else p
             5 -> if (p.minSeconds > 0L) p.withTotal((p.minSeconds / 60 + 1) * 60) else p.withTotal(0L)
             else -> p
         }.rewritten()
@@ -526,7 +499,7 @@ internal fun Presenter.clipPickerQuick(code: Int) {
 internal fun Presenter.clipPickerApply() {
     val p = clipPicker.value
     if (p.which == 0) return
-    val exceeds = p.maxSeconds > 0L && p.total > p.maxSeconds
+    val exceeds = p.hasMax && p.total > p.maxSeconds
     val below = p.minSeconds > 0L && p.total <= p.minSeconds
     if (exceeds || below) return
     clipPicker.value = ClipPicker()

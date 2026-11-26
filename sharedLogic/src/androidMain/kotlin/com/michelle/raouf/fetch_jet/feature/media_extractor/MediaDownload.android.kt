@@ -81,7 +81,7 @@ actual suspend fun downloadMediaWithPlatformTool(
             } ?: false)
 
     val outputTemplate = File(outDir, "$cleanName.%(ext)s").absolutePath
-    request.addOption("-o", outputTemplate)
+    request.addOption("-o", File(outDir, cleanName).absolutePath.replace("%", "%%") + ".%(ext)s")
     ytDlpHeaderArgs(requestHeaders, url).chunked(2).forEach { (k, v) -> request.addOption(k, v) }
     request.addOption("--no-playlist") // a watch?v=...&list=... link is one video, not the whole mix
 

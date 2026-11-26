@@ -149,10 +149,25 @@ function isArchiveOrgDirectoryOrDetails(url) {
   } catch (_) { return false; }
 }
 
+function relatedHosts(a, b) {
+  return !!a && !!b && (a === b || a.endsWith("." + b) || b.endsWith("." + a));
+}
+
+const LOOPBACK_HOSTS = new Set(["localhost", "0.0.0.0", "[::]", "[::1]"]);
+
+function isAppBridgeUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase().replace(/\.$/, "");
+    const loopback = LOOPBACK_HOSTS.has(host) || host.endsWith(".localhost") || /^127\.\d+\.\d+\.\d+$/.test(host) || /^\[::ffff:(7f[0-9a-f]{2}:[0-9a-f]{1,4}|0:0)\]$/.test(host);
+    return loopback && Number(u.port) === FETCHJET_PORT;
+  } catch (_) { return false; }
+}
+
 function isValidDownloadUrl(url) {
   if (!url || typeof url !== "string") return false;
-  if (url.includes("fetchjet_fallback=1") || url.includes("kortex_fallback=1")) return false;
-  if (url.includes(`localhost:${FETCHJET_PORT}`) || url.includes(`127.0.0.1:${FETCHJET_PORT}`)) return false;
+  if (url.includes("fetchjet_fallback=1")) return false;
+  if (isAppBridgeUrl(url)) return false;
   const lower = url.toLowerCase();
   if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("magnet:") || /^ftps?:\/\//.test(lower))) return false;
   if (isArchiveOrgDirectoryOrDetails(url)) return false;
@@ -282,14 +297,21 @@ async function appFetch(path, init = {}, timeoutMs = 0) {
   const send = async () => {
     const controller = new AbortController();
     const t = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
-    if (init.signal) init.signal.addEventListener("abort", () => controller.abort());
+    const onAbort = () => controller.abort();
+    if (init.signal) {
+      if (init.signal.aborted) controller.abort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
     try {
       return await fetch(`${FETCHJET_BASE}${path}`, {
         ...init,
         headers: await appHeaders(init.headers || {}),
         signal: controller.signal
       });
-    } finally { if (t) clearTimeout(t); }
+    } finally {
+      if (t) clearTimeout(t);
+      if (init.signal) init.signal.removeEventListener("abort", onAbort);
+    }
   };
   const res = await send();
   if (res.status !== 401) return res;
@@ -365,8 +387,6 @@ async function cookieStoreOf(from) {
   } catch (_) { return null; }
 }
 
-const siteOf = (host) => String(host || "").toLowerCase().split(".").slice(-2).join(".");
-
 async function pageCookieFallback(url, from) {
   if (!ON_IOS) return "";
   try {
@@ -375,7 +395,7 @@ async function pageCookieFallback(url, from) {
     if (tabId == null) return "";
     const res = await api.tabs.sendMessage(tabId, { action: "pageCookie" }, { frameId: 0 });
     if (!res || !res.cookie || !res.page) return "";
-    return siteOf(new URL(res.page).hostname) === siteOf(new URL(url).hostname) ? res.cookie : "";
+    return hostOf(res.page) && hostOf(res.page) === hostOf(url) ? res.cookie : "";
   } catch (_) { return ""; }
 }
 
@@ -418,39 +438,24 @@ async function postJson(path, body, timeoutMs = 2500) {
   }, timeoutMs);
 }
 
-/** Sends one link; compatible with older app builds that only know GET /download. */
-let lastDeliverPairing = false;
-
+/** Sends one link: { ok, pairing } (pairing: the app answered 401). */
 async function deliverOne(request) {
-  lastDeliverPairing = false;
   try {
     // With a chosen quality the app may have to re-run yt-dlp when its cache expired.
     const res = await postJson("/add", request, request.formatId ? 90000 : 2500);
-    if (res.status === 409) return false; // quality gone: the caller re-inspects
-    if (res.ok) return true;
-    if (res.status === 401) { lastDeliverPairing = true; return false; }
-    if (res.status === 404) {
-      const legacy = `/download?url=${encodeURIComponent(request.url)}&cookie=${encodeURIComponent(request.cookie || "")}`;
-      const r2 = await appFetch(legacy, { method: "GET" });
-      if (r2.status === 401) lastDeliverPairing = true;
-      return r2.ok;
-    }
-    return false;
-  } catch (_) { return false; }
+    return { ok: res.ok, pairing: res.status === 401 };
+  } catch (_) { return { ok: false, pairing: false }; }
 }
 
 async function deliverBatch(requests) {
-  lastDeliverPairing = false;
   try {
     const res = await postJson("/links", requests, 5000);
-    if (res.ok) return true;
-    if (res.status === 401) { lastDeliverPairing = true; return false; }
     if (res.status === 404) { // old app: one by one
       for (const r of requests) await deliverOne(r);
-      return true;
+      return { ok: true, pairing: false };
     }
-    return false;
-  } catch (_) { return false; }
+    return { ok: res.ok, pairing: res.status === 401 };
+  } catch (_) { return { ok: false, pairing: false }; }
 }
 
 // The browser asks "Open FetchJet?" the first time an extension opens fetchjet:// (the answer
@@ -502,8 +507,15 @@ function iosSessionPage(request) {
   } catch (_) { return ""; }
 }
 
+function iosRequest(request) {
+  if (!request || !request.cookie || relatedHosts(hostOf(request.url), hostOf(request.referer))) return request;
+  const { cookie, ...rest } = request;
+  return rest;
+}
+
 function openAppWith(payload, tabId = null) {
-  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(payload)), tabId);
+  const clean = Array.isArray(payload) ? payload.map(iosRequest) : iosRequest(payload);
+  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(clean)), tabId);
 }
 
 async function openAppAt(url, tabId = null) {
@@ -575,8 +587,9 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
     } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
   }
 
-  if (await deliverOne(request)) return { ok: true };
-  if (lastDeliverPairing) {
+  const sent = await deliverOne(request);
+  if (sent.ok) return { ok: true };
+  if (sent.pairing) {
     if (!quiet) await notify(fjT("errNeedsPairing"));
     return { ok: false, reason: "pairing required" };
   }
@@ -590,8 +603,8 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   if (await waitForApp()) {
     // The launcher may already have passed the URL on the command line; /add is idempotent
     // enough (duplicate check in the app) that re-sending with cookies is the safer choice.
-    const ok = await deliverOne(request);
-    return ok ? { ok } : { ok, reason: lastDeliverPairing ? "pairing required" : "" };
+    const again = await deliverOne(request);
+    return again.ok ? { ok: true } : { ok: false, reason: again.pairing ? "pairing required" : "" };
   }
   return { ok: false, reason: "app did not start" };
 }
@@ -627,13 +640,13 @@ async function sendBatchToFetchJet(items, referer = "", group = "", from = null)
       return { ok: false, reason: "app not running", count: 0 };
     }
   }
-  const ok = await deliverBatch(requests);
-  if (!ok && lastDeliverPairing) {
+  const sent = await deliverBatch(requests);
+  if (!sent.ok && sent.pairing) {
     await notify(fjT("errNeedsPairing"));
     return { ok: false, reason: "pairing required", count: 0 };
   }
-  if (ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
-  return { ok, count: requests.length };
+  if (sent.ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
+  return { ok: sent.ok, count: requests.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -892,7 +905,7 @@ async function sniffMedia(details) {
   if (!settings.enabled || !settings.captureMedia) return;
   const url = details.url;
   if (!isValidDownloadUrl(url) || SKIP_MEDIA_HOSTS.test(hostOf(url))) return;
-  if (CANVA_ORIGIN.test(`${details.initiator || ""} ${details.originUrl || ""} ${details.documentUrl || ""} ${url}`) &&
+  if ([details.initiator, details.originUrl, details.documentUrl, url].some(u => CANVA_ORIGIN.test(hostOf(u || ""))) &&
     !/^(image|text|font)\/|json|javascript|css|html/.test(header(details.responseHeaders, "content-type").toLowerCase())) {
     let tabUrl = "";
     try { tabUrl = ((await api.tabs.get(details.tabId)) || {}).url || ""; } catch (_) {}
@@ -1039,14 +1052,16 @@ async function addYoutubeStream(tabId, stream, sk) {
 }
 
 /** GET /inspect on the app: yt-dlp qualities of a page as popup items. */
-async function inspectWithApp(pageUrl, from = null) {
+async function inspectWithApp(pageUrl, from = null, withCookies = true) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 90000);
   try {
     // The page's cookies and referer travel with the request: sites that need a login (Udemy,
     // Vimeo private videos...) then answer yt-dlp exactly like they answer the browser.
     const headers = { "X-FetchJet-Referer": pageUrl };
-    try { const c = await cookieHeaderFor(pageUrl, from || tabsResolving(pageUrl)); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    if (withCookies) {
+      try { const c = await cookieHeaderFor(pageUrl, from || tabsResolving(pageUrl)); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    }
     const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
     if (res.status === 401) return { resolveError: fjT("errNeedsPairing"), needsPairing: true };
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
@@ -1162,7 +1177,10 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
   resolving.set(tabId, page);
   await setTabState(RES_KEY, tabId, { page, resolving: true });
   pushToTab(tabId);
-  const change = await inspectWithApp(page);
+  // Cookies only for the tab's own site: a frame can name any link without a click.
+  let tabUrl = "";
+  try { tabUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) {}
+  const change = await inspectWithApp(page, null, relatedHosts(hostOf(page), hostOf(tabUrl)));
   if (resolving.get(tabId) === page) resolving.delete(tabId);
   const now = await tabState(RES_KEY, tabId);
   if (now && now.page === page) {
@@ -1270,6 +1288,8 @@ async function udemyCourseForTab(tabId) {
  * (null when it has none; `drm` when it is protected).
  */
 async function readUdemyCourseInPage(slug, part) {
+  const pageHost = String(location.hostname || "").toLowerCase();
+  if (pageHost !== "udemy.com" && !pageHost.endsWith(".udemy.com")) return { error: "not a Udemy page" };
   const headers = { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" };
   const get = async (path) => {
     const r = await fetch(path.startsWith("http") ? path : location.origin + path, { credentials: "include", headers });
@@ -1359,7 +1379,14 @@ async function readUdemyCourseInPage(slug, part) {
       catch (_) { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${plainQuery}`); }
     }
     let items = page.results || [];
-    while (page.next) { page = await get(page.next); items = items.concat(page.results || []); }
+    const pagesSeen = new Set();
+    while (page.next && pagesSeen.size < 50) {
+      const next = new URL(page.next, location.origin);
+      if (next.origin !== location.origin || pagesSeen.has(next.href)) break;
+      pagesSeen.add(next.href);
+      page = await get(next.href);
+      items = items.concat(page.results || []);
+    }
     const FILE_TYPES = ["E-Book", "File", "Presentation", "Audio", "SourceCode"];
     const lectures = [];
     for (const e of items) {
@@ -1374,6 +1401,12 @@ async function readUdemyCourseInPage(slug, part) {
   } catch (e) {
     return { error: (e && e.message) || "error" };
   }
+}
+
+const UDEMY_HOSTS = /(^|\.)(udemy\.com|udemycdn\.com)$/i;
+
+function udemyLink(url) {
+  try { const u = new URL(url); return u.protocol === "https:" && UDEMY_HOSTS.test(u.hostname); } catch (_) { return false; }
 }
 
 function udemyFileName(number, name, fileName, url) {
@@ -1402,7 +1435,7 @@ async function courseProgressToApp(courseUrl, referer, extra, from = null) {
 
 const CANVA_KEY = "fetchjet_canva_by_tab";
 const CANVA_PAGE = /^https:\/\/([\w-]+\.)?canva\.(com|cn)\/design\/([\w-]+)/i;
-const CANVA_ORIGIN = /canva\.(com|cn)|canva-apps\.com|canvausercontent\.com/i;
+const CANVA_ORIGIN = /(^|\.)(canva\.(com|cn)|canva-apps\.com|canvausercontent\.com)$/i;
 const CANVA_PREVIEW = /thumb|poster|preview|sprite|storyboard|filmstrip|waveform|placeholder|image-resize|document-image/i;
 const CANVA_PLAY_WINDOW = 8000;
 const CANVA_PAIR_MS = 1500;
@@ -1620,6 +1653,12 @@ async function addCanvaMedia(details, pageUrl) {
   if (shown) pushToTab(details.tabId);
 }
 
+function canvaBox(box) {
+  if (!Array.isArray(box) || box.length !== 4) return null;
+  const nums = box.map(Number);
+  return nums.every(n => Number.isFinite(n) && Math.abs(n) <= 100000) ? nums : null;
+}
+
 async function addCanvaFigures(tab, figures, play, bind) {
   const design = canvaDesign(tab && tab.url);
   if (!design) return { ok: false };
@@ -1634,7 +1673,7 @@ async function addCanvaFigures(tab, figures, play, bind) {
       const name = String((f && f.name) || "").trim().slice(0, 200);
       if (!name) continue;
       const page = Number(f.page) || 0;
-      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: f.box || null, boxFrom: String(f.boxFrom || "").slice(0, 20), visible: !!f.visible };
+      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: canvaBox(f.box), boxFrom: String(f.boxFrom || "").slice(0, 20), visible: !!f.visible };
       const same = state.figures.find(g => g.name === name && (!page || !g.page || g.page === page));
       if (same) {
         same.page = same.page || page;
@@ -1882,13 +1921,14 @@ async function downloadItem(item, tab) {
       part.forEach((r, k) => {
         if (!r) return;
         const number = String(i + k + 1).padStart(3, "0");
-        if (r.url) entries.push({ title: `${number} - ${r.title}`, url: r.url });
+        if (r.url) { if (udemyLink(r.url)) entries.push({ title: `${number} - ${r.title}`, url: r.url }); }
         else if (r.drm) drm++;
-        if (r.file && r.file.url) {
+        if (r.file && udemyLink(r.file.url)) {
           const fileName = udemyFileName(number, r.title, r.file.name, r.file.url);
           entries.push({ title: fileName, url: r.file.url, fileName });
         }
         for (const res of r.resources || []) {
+          if (!res || !udemyLink(res.url)) continue;
           const fileName = udemyFileName(number, res.name, res.name, res.url);
           entries.push({ title: fileName, url: res.url, fileName });
         }
@@ -2203,16 +2243,41 @@ async function askingTab(request, sender) {
   } catch (_) { return null; }
 }
 
+function fromExtensionPage(sender) {
+  if (!sender || (sender.id && sender.id !== api.runtime.id)) return false;
+  const base = api.runtime.getURL("");
+  return !!base && typeof sender.url === "string" && sender.url.startsWith(base);
+}
+
+/** Only the popup and the options page may ask for these (they act on any tab or on the settings). */
+const EXTENSION_PAGE_ACTIONS = new Set(["saveSettings", "sendDetectedMedia", "collectAndSendLinks", "clearDetectedMedia", "canvaReport", "resolveTab", "checkStatus"]);
+
+async function hideSiteFor(tab) {
+  const site = hostOf((tab && tab.url) || "");
+  if (!site) return { ok: false };
+  await serial(async () => {
+    const settings = await getSettings();
+    const hiddenSites = settings.hiddenSites || [];
+    if (!hiddenSites.includes(site)) await saveSettings({ hiddenSites: [...hiddenSites, site] });
+  });
+  return { ok: true };
+}
+
 api.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const own = fromExtensionPage(sender);
+  if (!own && (!sender || !sender.tab || EXTENSION_PAGE_ACTIONS.has(request && request.action))) {
+    sendResponse({ ok: false, reason: "not allowed" });
+    return false;
+  }
+  if (!own && request && request.tabId != null) request = { ...request, tabId: undefined };
   (async () => {
     switch (request && request.action) {
-      case "sendToFetchJet":
-      case "sendToKortex": {
+      case "sendToFetchJet": {
         const referer = request.referer || (sender.tab && sender.tab.url) || "";
         return sendToFetchJet({ url: request.url, referer, fileName: request.fileName || "", from: await askingTab(request, sender) }, "message");
       }
-      case "sendBatch":
-        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "", sender.tab ? await tabGroupName(sender.tab) : "", await askingTab(request, sender));
+      case "hideSite":
+        return hideSiteFor(sender.tab);
       case "sendDetectedMedia":
         return sendDetectedMedia(request.tabId);
       case "collectAndSendLinks": {
@@ -2252,10 +2317,6 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return getSettings();
       case "saveSettings":
         return saveSettings(request.settings || {});
-      case "getDetectedMedia": {
-        const all = await sessionGet(MEDIA_KEY);
-        return { items: Object.values(all[request.tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0)) };
-      }
       case "getItems": {
         const tabId = request.tabId != null ? request.tabId : (sender.tab && sender.tab.id);
         if (tabId != null) { try { const t = await api.tabs.get(tabId); ensureYoutubeResolved(tabId, t.url); } catch (_) {} }
@@ -2292,7 +2353,7 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       case "resolveVideo":
         return resolveVideo(request, sender.tab || null);
       case "canvaFigures":
-        if (!sender.tab || sender.tab.id == null) return { ok: false };
+        if (!sender.tab || sender.tab.id == null || (sender.frameId || 0) !== 0) return { ok: false };
         return addCanvaFigures(sender.tab, request.figures, request.play || null, request.bind || null);
       case "canvaReport":
         return canvaReport(request.tabId != null ? request.tabId : (sender.tab && sender.tab.id));
@@ -2302,10 +2363,6 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         for (const url of (request.urls || []).slice(0, 20)) {
           await sniffMedia({ tabId: sender.tab.id, statusCode: 200, url, responseHeaders: [], documentUrl: sender.url || "" });
         }
-        return { ok: true };
-      }
-      case "openPanel": {
-        try { await api.tabs.sendMessage(request.tabId, { action: "openPanel" }); } catch (_) {}
         return { ok: true };
       }
       case "clearDetectedMedia":

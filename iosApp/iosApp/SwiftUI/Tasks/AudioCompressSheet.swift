@@ -140,6 +140,12 @@ struct AudioCompressSheet: View {
                         .font(FJTheme.font.callout)
                         .foregroundStyle(FJTheme.color.error)
                 }
+                if page.canDeleteOriginal && !page.nothingToGain {
+                    FJDialogCheckRow(title: s.deleteOriginalAfterCompress, checked: Binding(
+                        get: { page.deleteOriginal },
+                        set: { store.send(DashboardUiEventOnAudioCompressDeleteOriginalChanged(on: $0)) }))
+                    .disabled(page.running)
+                }
                 if !page.copies.isEmpty {
                     copiesSection(s)
                 }

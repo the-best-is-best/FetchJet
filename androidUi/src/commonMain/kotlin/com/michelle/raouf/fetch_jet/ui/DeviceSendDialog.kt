@@ -215,7 +215,7 @@ fun DeviceSendSheet(
                         ) { mode = SendMode.TRANSFER_AND_CONTINUE }
                     }
 
-                    Row(
+                    if (state.deviceShareCanDelete) Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { deleteAfter = !deleteAfter },
@@ -320,7 +320,7 @@ fun DeviceSendSheet(
                 onClick = {
                     val id = selectedId ?: return@Button
                     onEvent(
-                        DashboardUiEvent.OnSendToDeviceClicked(taskId, id, mode, deleteAfter)
+                        DashboardUiEvent.OnSendToDeviceClicked(taskId, id, mode, deleteAfter && state.deviceShareCanDelete)
                     )
                 }
             ) {

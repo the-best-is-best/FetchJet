@@ -497,7 +497,7 @@ export component DeviceSheet inherits Overlay {
                 selected: Core.deviceSheet.transfer;
                 clicked => { Act.deviceSetMode(true); }
             }
-            if !Core.deviceSheet.searching: Rectangle {
+            if !Core.deviceSheet.searching && !Core.deviceSheet.deleteBlocked: Rectangle {
                 height: 48px;
                 tick := TouchArea {
                     clicked => { Act.deviceSetDeleteAfter(!Core.deviceSheet.deleteAfter); }

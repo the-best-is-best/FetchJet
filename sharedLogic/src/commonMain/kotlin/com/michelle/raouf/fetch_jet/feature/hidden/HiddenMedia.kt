@@ -5,6 +5,7 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.log.AppLog
 import com.michelle.raouf.fetch_jet.core.security.SecretBox
 import com.michelle.raouf.fetch_jet.core.security.Secrets
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.feature.queue_manager.HiddenWork
@@ -23,11 +24,6 @@ data class HiddenOpening(val taskId: String, val fraction: Float)
 object HiddenMedia {
     const val PLAY_FOLDER = "hidden_play"
 
-    private val extensions = setOf(
-        "mp4", "mkv", "webm", "avi", "mov", "m4v", "ts", "m2ts", "mts", "mpg", "mpeg", "wmv", "flv", "3gp", "3g2", "ogv",
-        "mp3", "m4a", "flac", "wav", "aac", "ogg", "oga", "opus", "wma", "weba", "mka", "aiff", "aif", "amr", "ac3", "m4b"
-    )
-
     @kotlin.concurrent.Volatile
     internal var tempOverride: String? = null
 
@@ -36,7 +32,7 @@ object HiddenMedia {
 
     internal val triedIds = MutableStateFlow<Set<String>>(emptySet())
 
-    fun isMedia(fileName: String): Boolean = fileName.substringAfterLast('.', "").lowercase() in extensions
+    fun isMedia(fileName: String): Boolean = MediaExtensions.isMedia(fileName)
 
     fun encryptable(task: DownloadTask): Boolean = task.engineType != EngineType.BITTORRENT && isMedia(task.fileName)
 

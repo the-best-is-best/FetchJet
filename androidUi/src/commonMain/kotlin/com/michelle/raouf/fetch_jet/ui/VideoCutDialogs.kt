@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -215,6 +217,9 @@ private fun VideoCutTimeDialog(ui: VideoCutUi, onEvent: (DashboardUiEvent) -> Un
         )
         if (error != null) Text("⚠️ $error", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
         CutMessage(ui)
+        if (ui.canDeleteOriginal) {
+            DeleteOriginalRow(s.deleteOriginalAfterCut, ui.deleteOriginal) { onEvent(DashboardUiEvent.OnVideoCutDeleteOriginalChanged(it)) }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
@@ -342,6 +347,27 @@ internal fun CutMessage(ui: VideoCutUi, dark: Boolean = false) {
             modifier = Modifier.weight(1f)
         )
         if (saved && ui.lastClipPath.isNotBlank()) TextButton(onClick = { openClip(ui.lastClipPath) }) { Text("▶ ${LocalizationManager.Strings.playerPlayAll}", color = if (dark) androidx.compose.ui.graphics.Color.White else colors.primary) }
+    }
+}
+
+@Composable
+internal fun DeleteOriginalRow(label: String, checked: Boolean, dark: Boolean = false, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = if (dark) CheckboxDefaults.colors(uncheckedColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f))
+            else CheckboxDefaults.colors()
+        )
+        Text(
+            label,
+            fontSize = 13.sp,
+            color = if (dark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

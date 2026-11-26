@@ -31,7 +31,9 @@ def run():
         token = (answer.json() or {}).get("token", "")
         core.check("paired", len(token) >= 32, (answer.status, answer.body[:60]))
         local = {"X-FetchJet": "1", "X-FetchJet-Token": token}
-        request(core, "GET", "/api/automation?on=1", local)
+        import test_automation
+        test_bridge.PORT = PORT
+        test_automation.cli(core, ["automation", "on"], port=PORT)
 
         open(outside, "w").write("keep me")
         names = {

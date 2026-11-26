@@ -106,10 +106,8 @@ object AutomationApi {
         if (!BridgePairing.isPaired(token)) return error(401, "pairing required")
         val name = path.removePrefix("/api").trim('/')
         if (name == "automation") {
-            when (query["on"]) {
-                "1" -> BridgePairing.setAutomation(true)
-                "0" -> BridgePairing.setAutomation(false)
-            }
+            if (query["on"] == "1") return error(403, "turn automation on in FetchJet itself (Settings or the command line)")
+            if (query["on"] == "0" && BridgePairing.automationOn) BridgePairing.setAutomation(false)
             return AutomationReply(200, buildJsonObject { put("automation", BridgePairing.automationOn) }.toString())
         }
         if (!BridgePairing.automationOn) return error(403, "automation is off")

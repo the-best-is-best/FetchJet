@@ -58,6 +58,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.window.SecureFlagPolicy
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -85,14 +89,24 @@ private object FilmstripCache {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
     val frameMs = HashMap<String, Double>()
+
+    fun clear() {
+        frames.evictAll()
+        synchronized(frameMs) { frameMs.clear() }
+    }
+}
+
+private fun fileCacheId(path: String): String {
+    val f = File(path)
+    return "$path|${f.length()}|${f.lastModified()}"
 }
 
 private const val AUDIO_STEP_MS = 10.0
 
 private class VideoInfo(val durationMs: Long, val frameMs: Double)
 
-private fun readVideoInfo(path: String): VideoInfo {
-    FilmstripCache.frameMs[path]?.let { cached ->
+private fun readVideoInfo(path: String, cacheId: String): VideoInfo {
+    synchronized(FilmstripCache.frameMs) { FilmstripCache.frameMs[cacheId] }?.let { cached ->
         return VideoInfo(-1L, cached)
     }
     val r = MediaMetadataRetriever()
@@ -107,7 +121,7 @@ private fun readVideoInfo(path: String): VideoInfo {
             fps > 1f -> (1000.0 / fps).coerceIn(5.0, 200.0)
             else -> 1000.0 / 30.0
         }
-        FilmstripCache.frameMs[path] = frame
+        synchronized(FilmstripCache.frameMs) { FilmstripCache.frameMs[cacheId] = frame }
         VideoInfo(duration, frame)
     } catch (_: Throwable) {
         VideoInfo(0L, 1000.0 / 30.0)
@@ -129,11 +143,11 @@ private fun scaled(r: MediaMetadataRetriever, timeUs: Long, option: Int): Bitmap
     return bmp
 }
 
-private class FilmstripSource(val path: String) {
+private class FilmstripSource(val path: String, val cacheId: String) {
     val version = mutableIntStateOf(0)
     val requests = MutableStateFlow<TrimFrameRange?>(null)
 
-    fun key(tileMs: Long, index: Long): String = "$path|$tileMs|$index"
+    fun key(tileMs: Long, index: Long): String = "$cacheId|$tileMs|$index"
 
     fun frame(tileMs: Long, index: Long): ImageBitmap? {
         version.intValue
@@ -148,8 +162,8 @@ private class FilmstripSource(val path: String) {
 }
 
 @Composable
-private fun rememberFilmstrip(path: String, durationMs: Long, enabled: Boolean): FilmstripSource {
-    val source = remember(path) { FilmstripSource(path) }
+private fun rememberFilmstrip(path: String, cacheId: String, durationMs: Long, enabled: Boolean): FilmstripSource {
+    val source = remember(cacheId) { FilmstripSource(path, cacheId) }
     LaunchedEffect(source, durationMs, enabled) {
         if (!enabled || durationMs <= 0L) return@LaunchedEffect
         withContext(Dispatchers.IO) {
@@ -185,6 +199,12 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
     val s = LocalizationManager.Strings
     val context = LocalContext.current
     val close = { onEvent(DashboardUiEvent.OnDismissVideoCut) }
+    val cacheId = remember(path) { fileCacheId(path) }
+    val hidden = remember(ui.taskId) {
+        com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance().allTasksFlow.value
+            .firstOrNull { it.id == ui.taskId }?.hidden == true
+    }
+    DisposableEffect(Unit) { onDispose { FilmstripCache.clear() } }
     val player = remember(path) {
         ExoPlayer.Builder(context).build().apply {
             setSeekParameters(SeekParameters.EXACT)
@@ -200,7 +220,7 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
             info = VideoInfo(ui.durationMs, AUDIO_STEP_MS)
             return@LaunchedEffect
         }
-        val read = withContext(Dispatchers.IO) { readVideoInfo(path) }
+        val read = withContext(Dispatchers.IO) { readVideoInfo(path, cacheId) }
         info = VideoInfo(if (ui.durationMs > 0L) ui.durationMs else read.durationMs, read.frameMs)
     }
     var playerDuration by remember { mutableLongStateOf(0L) }
@@ -234,6 +254,15 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
             player.removeListener(listener)
             player.release()
         }
+    }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, player) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) player.pause()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(player) {
@@ -294,7 +323,11 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
 
     Dialog(
         onDismissRequest = close,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+            securePolicy = if (hidden) SecureFlagPolicy.SecureOn else SecureFlagPolicy.Inherit
+        )
     ) {
         val view = LocalView.current
         DisposableEffect(view) {
@@ -351,11 +384,11 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                 modifier = Modifier.fillMaxWidth().background(Color(0xFF101016)).navigationBarsPadding(),
                 contentAlignment = Alignment.Center
             ) {
-                val filmstrip = rememberFilmstrip(path, duration, !audio)
+                val filmstrip = rememberFilmstrip(path, cacheId, duration, !audio)
                 val bars = (duration / 1000L * 20L).coerceIn(40L, 4000L).toInt()
                 var wave by remember(path) { mutableStateOf<List<Float>?>(if (audio) emptyList() else null) }
                 if (audio) LaunchedEffect(path, bars, duration) {
-                    if (duration > 0L) wave = VideoCut.waveform(path, bars, duration)
+                    if (duration > 0L) wave = withContext(Dispatchers.IO) { VideoCut.waveform(path, bars, duration) }
                 }
                 Column(
                     modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -413,6 +446,11 @@ internal actual fun VideoTrimScreen(ui: VideoCutUi, path: String, onEvent: (Dash
                             .systemGestureExclusion()
                     )
                     CutMessage(ui, dark = true)
+                    if (ui.canDeleteOriginal) {
+                        DeleteOriginalRow(s.deleteOriginalAfterCut, ui.deleteOriginal, dark = true) {
+                            onEvent(DashboardUiEvent.OnVideoCutDeleteOriginalChanged(it))
+                        }
+                    }
                     TrimNudgeRow(
                         startLabel = s.videoCutFrom,
                         endLabel = s.videoCutTo,

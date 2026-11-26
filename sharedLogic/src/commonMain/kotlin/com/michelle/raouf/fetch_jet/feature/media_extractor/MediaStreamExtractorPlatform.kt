@@ -19,7 +19,9 @@ fun ytDlpHeaderArgs(headers: Map<String, String>, url: String = ""): List<String
         host.endsWith("youtube.com") || host.endsWith("youtu.be") || host.endsWith("googlevideo.com")
     headers.forEach { (k, v) ->
         if (youtube && k.equals("Cookie", true)) return@forEach
-        if (k.isNotBlank() && v.isNotBlank() && !k.contains(':') && !v.contains('\n')) {
+        if (k.isNotBlank() && v.isNotBlank() && !k.contains(':') &&
+            !k.contains('\n') && !k.contains('\r') && !v.contains('\n') && !v.contains('\r')
+        ) {
             add("--add-headers"); add("$k:$v")
         }
     }

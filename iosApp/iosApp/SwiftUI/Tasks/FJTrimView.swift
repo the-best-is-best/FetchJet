@@ -191,6 +191,8 @@ struct FJTrimView: View {
     @StateObject private var model: FJTrimModel
     let message: String?
     let failed: Bool
+    let deleteOriginalTitle: String?
+    @Binding var deleteOriginal: Bool
     let onCut: (Int64, Int64) -> Void
     let onClose: () -> Void
 
@@ -199,12 +201,15 @@ struct FJTrimView: View {
 
     init(path: String, durationMs: Int64, audio: Bool = false, title: String = "", startMs: Int64, endMs: Int64,
          message: String? = nil, failed: Bool = false,
+         deleteOriginalTitle: String? = nil, deleteOriginal: Binding<Bool> = .constant(false),
          onCut: @escaping (Int64, Int64) -> Void, onClose: @escaping () -> Void) {
         _model = StateObject(wrappedValue: FJTrimModel(path: path, durationMs: durationMs, audio: audio, startMs: startMs, endMs: endMs))
         self.audio = audio
         self.title = title
         self.message = message
         self.failed = failed
+        self.deleteOriginalTitle = deleteOriginalTitle
+        self._deleteOriginal = deleteOriginal
         self.onCut = onCut
         self.onClose = onClose
     }
@@ -257,6 +262,10 @@ struct FJTrimView: View {
                 }
                 labels(s)
                 FJTrimTimeline(model: model)
+                if let title = deleteOriginalTitle {
+                    FJDialogCheckRow(title: title, checked: $deleteOriginal)
+                        .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
+                }
                 controls(s)
             }
             .padding(.horizontal, 16)

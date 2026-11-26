@@ -569,7 +569,7 @@
     const hiddenSites = [...new Set([...(settings.hiddenSites || []), SITE])];
     settings = { ...settings, hiddenSites };
     removeAll();
-    try { api.runtime.sendMessage({ action: "saveSettings", settings: { hiddenSites } }).catch(() => {}); } catch (_) {}
+    try { api.runtime.sendMessage({ action: "hideSite" }).catch(() => {}); } catch (_) {}
   }
 
   // Where the user dragged the button, per site: [x, y] as parts of the video's width / height.

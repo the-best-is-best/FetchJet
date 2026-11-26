@@ -199,7 +199,11 @@ class Core:
         return data.get("rows", [])
 
     def strings(self):
+        deadline = time.time() + 10
         data = self.snapshot("tr") or {}
+        while not data.get("values") and time.time() < deadline:
+            time.sleep(0.05)
+            data = self.snapshot("tr") or {}
         return dict(zip(PROTOCOL["tr"], data.get("values", [])))
 
     def fixture(self, path, extra=None):

@@ -38,8 +38,7 @@ import com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry
 import com.michelle.raouf.fetch_jet.domain.model.SubtitleTrack
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
-import com.michelle.raouf.fetch_jet.utils.formatSecondsToHhMm
-import com.michelle.raouf.fetch_jet.utils.parseHhMmToSeconds
+import com.michelle.raouf.fetch_jet.feature.media_extractor.checkClipRange
 import com.tbib.kmp_localization.LocalizationManager
 
 @Composable
@@ -190,55 +189,22 @@ fun AddDownloadModalDialog(
     val showEndTimePickerState = remember { mutableStateOf(false) }
     var showEndTimePicker by showEndTimePickerState
 
-    val fullVideoDurationHhMm = remember(mediaDurationSeconds) {
-        if (mediaDurationSeconds > 0) formatSecondsToHhMm(mediaDurationSeconds) else "00:10:00"
+    val clipRange = remember(isClipRangeEnabled, clipStartTime, clipEndTime, mediaDurationSeconds) {
+        checkClipRange(isClipRangeEnabled, clipStartTime, clipEndTime, mediaDurationSeconds)
     }
-
-    val currentStartSec =
-        remember(clipStartTime) { parseHhMmToSeconds(clipStartTime.ifBlank { "00:00" }) }
-    val currentEndSec = remember(
-        clipEndTime,
-        fullVideoDurationHhMm
-    ) { parseHhMmToSeconds(clipEndTime.ifBlank { fullVideoDurationHhMm }) }
-
-    val isStartAfterEnd = isClipRangeEnabled && currentStartSec >= currentEndSec
-    val isEndExceedingVideo =
-        isClipRangeEnabled && mediaDurationSeconds > 0L && currentEndSec > mediaDurationSeconds
-    val isStartExceedingVideo =
-        isClipRangeEnabled && mediaDurationSeconds > 0L && currentStartSec >= mediaDurationSeconds
-    val isClipRangeValid =
-        !isClipRangeEnabled || (!isStartAfterEnd && !isEndExceedingVideo && !isStartExceedingVideo)
-
-    val clipValidationErrorMessage = when {
-        !isClipRangeEnabled -> null
-        isStartAfterEnd -> LocalizationManager.Strings.clipStartAfterEnd(
-            clipStartTime.ifBlank { "00:00" },
-            clipEndTime.ifBlank { fullVideoDurationHhMm })
-
-        isEndExceedingVideo -> LocalizationManager.Strings.clipEndExceedsVideo(
-            clipEndTime.ifBlank { fullVideoDurationHhMm },
-            fullVideoDurationHhMm
-        )
-
-        isStartExceedingVideo -> LocalizationManager.Strings.clipStartExceedsVideo(
-            fullVideoDurationHhMm
-        )
-        else -> null
-    }
+    val fullVideoDurationHhMm = clipRange.fullText
+    val currentStartSec = clipRange.startSec
+    val isStartAfterEnd = clipRange.startAfterEnd || clipRange.startInvalid || clipRange.endInvalid
+    val isEndExceedingVideo = clipRange.endExceeds
+    val isStartExceedingVideo = clipRange.startExceeds
+    val isClipRangeValid = clipRange.valid
+    val clipValidationErrorMessage = clipRange.message
 
     if (showStartTimePicker) {
-        val maxForStart = if (currentEndSec > 0L) {
-            if (mediaDurationSeconds > 0L) minOf(
-                mediaDurationSeconds,
-                currentEndSec - 1L
-            ) else currentEndSec - 1L
-        } else {
-            mediaDurationSeconds
-        }
         TimeRangePickerDialog(
             title = "⏱️ ${LocalizationManager.Strings.setStartTimeTitle}",
             initialHhMm = clipStartTime.ifBlank { "00:00" },
-            maxDurationSeconds = maxForStart.coerceAtLeast(0L),
+            maxDurationSeconds = clipRange.maxStartSec.coerceAtLeast(0L),
             minTimeSeconds = 0L,
             onTimeSelected = { selected ->
                 onClipStartTimeChanged(selected)

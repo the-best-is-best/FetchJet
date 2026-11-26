@@ -4,6 +4,8 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
+import com.michelle.raouf.fetch_jet.feature.media_extractor.checkClipRange
 import com.michelle.raouf.fetch_jet.feature.media_extractor.forLanguages
 import com.michelle.raouf.fetch_jet.feature.media_extractor.isFile
 import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitlesFoundFor
@@ -51,33 +53,29 @@ internal fun DashboardViewModel.addDownload(
 
     val isClippingActive =
         currentState.isClipRangeEnabled && currentState.detectedEngine == EngineType.MEDIA_STREAM
-    val clipStartSec =
-        if (isClippingActive && currentState.clipStartTime.isNotBlank()) parseHhMmToSeconds(
-            currentState.clipStartTime
-        ) else 0L
-    val clipEndSec =
-        if (isClippingActive && currentState.clipEndTime.isNotBlank()) parseHhMmToSeconds(
-            currentState.clipEndTime
-        ) else currentState.mediaDurationSeconds
-    val mediaDur = currentState.mediaDurationSeconds
-    val fullEndHhMm = if (mediaDur > 0L) formatSecondsToHhMm(mediaDur) else ""
-    val isClipEndAtEnd = currentState.clipEndTime.isBlank() ||
-            (fullEndHhMm.isNotBlank() && currentState.clipEndTime == fullEndHhMm) ||
-            (mediaDur > 0L && clipEndSec >= mediaDur)
+    val clipRange = checkClipRange(
+        isClippingActive, currentState.clipStartTime, currentState.clipEndTime, currentState.mediaDurationSeconds
+    )
 
     if (isClippingActive) {
-        if (mediaDur > 0L && !isClipEndAtEnd && clipEndSec > mediaDur) {
+        if (clipRange.startInvalid || clipRange.endInvalid) {
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.invalidTimeRange) }
+            return
+        }
+        if (clipRange.endExceeds) {
             _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipEndExceedsDuration) }
             return
         }
-        if (clipEndSec > 0L && clipStartSec >= clipEndSec) {
+        if (clipRange.startAfterEnd || clipRange.startExceeds) {
             _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipStartAfterEnd) }
             return
         }
     }
 
-    val isActualSubClip =
-        isClippingActive && (clipStartSec > 0L || (!isClipEndAtEnd && clipEndSec in 1 until mediaDur) || (mediaDur == 0L && clipEndSec > 0L))
+    val isActualSubClip = clipRange.isSubClip
+    val isClipEndAtEnd = clipRange.endAtEnd
+    val clipStartArg = if (isActualSubClip && clipRange.startMs > 0L) ClipTime.formatMs(clipRange.startMs) else null
+    val clipEndArg = if (isActualSubClip && !isClipEndAtEnd) ClipTime.formatMs(clipRange.endMs) else null
 
     val allTasks = queueRepository.visibleTasksFlow.value
 
@@ -112,12 +110,8 @@ internal fun DashboardViewModel.addDownload(
             state = currentState,
             url = url,
             qualities = selectedQualities,
-            clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipStartTime
-            ) else null,
-            clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipEndTime
-            ) else null,
+            clipStart = clipStartArg,
+            clipEnd = clipEndArg,
             clipByCutting = isActualSubClip && currentState.clipFastMode
         )
         return
@@ -181,12 +175,8 @@ internal fun DashboardViewModel.addDownload(
             maxDownloadSpeedBytesPerSec = currentState.selectedDownloadSpeedLimitBytes,
             maxUploadSpeedBytesPerSec = currentState.selectedUploadSpeedLimitBytes,
             forcedEngineType = currentState.detectedEngine,
-            clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipStartTime
-            ) else null,
-            clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipEndTime
-            ) else null,
+            clipStart = clipStartArg,
+            clipEnd = clipEndArg,
             clipByCutting = isActualSubClip && currentState.clipFastMode,
             requestHeaders = headersForLink(url),
             scheduledAtMs = currentState.scheduleStartMs,

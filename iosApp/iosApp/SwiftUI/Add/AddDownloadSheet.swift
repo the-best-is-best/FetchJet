@@ -98,7 +98,6 @@ struct AddValidity {
 
     @MainActor
     init(state s: DashboardUiState, store: FJStore) {
-        let strings = store.strings
         showsLinkList = !s.linkList.isEmpty
         isUrlValid = !s.inputUrl.trimmingCharacters(in: .whitespaces).isEmpty
         let listInspecting = showsLinkList && s.linkList.contains { $0.isSelected && $0.isBeingInspected }
@@ -121,28 +120,17 @@ struct AddValidity {
         inlineError = s.errorMessage ?? (cardShowsTorrentError ? nil : s.inspectError) ?? (cardShowsMediaError ? nil : s.inspectMediaError)
         hasActiveError = activeError != nil
 
-        let dur = s.mediaDurationSeconds
-        fullDurationHhMm = dur > 0 ? store.host.formatSecondsToHhMm(totalSeconds: dur) : "00:10:00"
-        let startText = s.clipStartTime.isEmpty ? "00:00" : s.clipStartTime
-        let endText = s.clipEndTime.isEmpty ? fullDurationHhMm : s.clipEndTime
-        startSec = store.host.parseHhMmToSeconds(hhMm: startText)
-        endSec = store.host.parseHhMmToSeconds(hhMm: endText)
-        let on = s.isClipRangeEnabled
-        isStartAfterEnd = on && startSec >= endSec
-        isEndExceeding = on && dur > 0 && endSec > dur
-        isStartExceeding = on && dur > 0 && startSec >= dur
-        isClipRangeValid = !on || (!isStartAfterEnd && !isEndExceeding && !isStartExceeding)
-        if !on {
-            clipError = nil
-        } else if isStartAfterEnd {
-            clipError = strings.clipStartAfterEnd(start: startText, end: endText)
-        } else if isEndExceeding {
-            clipError = strings.clipEndExceedsVideo(end: endText, duration: fullDurationHhMm)
-        } else if isStartExceeding {
-            clipError = strings.clipStartExceedsVideo(duration: fullDurationHhMm)
-        } else {
-            clipError = nil
-        }
+        let range = store.host.clipRange(
+            enabled: s.isClipRangeEnabled, start: s.clipStartTime, end: s.clipEndTime,
+            durationSeconds: s.mediaDurationSeconds)
+        fullDurationHhMm = range.fullText
+        startSec = range.startSec
+        endSec = range.endSec
+        isStartAfterEnd = range.startAfterEnd || range.startInvalid || range.endInvalid
+        isEndExceeding = range.endExceeds
+        isStartExceeding = range.startExceeds
+        isClipRangeValid = range.valid
+        clipError = range.message
         canStart = isUrlValid && isInspectionComplete && !s.isLoading && !isInspecting && !hasActiveError && isClipRangeValid
     }
 }

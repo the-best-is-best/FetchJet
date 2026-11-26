@@ -275,6 +275,9 @@ internal object DebugCalls {
                 put("waitingInQueue", task.waitingInQueue)
                 put("resumable", task.serverSupportsResume?.toString() ?: "unknown")
                 put("checksumVerified", task.checksumVerified?.toString() ?: "unknown")
+                put("cutFrom", task.cutFromTaskId)
+                put("cutStartMs", task.cutStartMs)
+                put("cutEndMs", task.cutEndMs)
             }
         }
     }.toString()

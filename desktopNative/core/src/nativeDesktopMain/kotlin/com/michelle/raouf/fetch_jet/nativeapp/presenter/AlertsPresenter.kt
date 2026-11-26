@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 private data class VmAlerts(
     val removeId: String?,
     val removeIds: List<String>,
+    val removeDerived: Int = 0,
     val clipboardUrl: String?,
     val fallbackUrl: String?,
     val missingName: String?,
@@ -43,6 +44,7 @@ internal fun Presenter.startAlerts() {
         VmAlerts(
             removeId = state.removeConfirmationTaskId,
             removeIds = state.removeConfirmationTaskIds,
+            removeDerived = state.removeDerivedCount,
             clipboardUrl = state.clipboardOfferUrl,
             fallbackUrl = state.browserFallbackUrl,
             missingName = missing?.fileName,
@@ -119,6 +121,7 @@ private fun buildAlerts(a: VmAlerts, b: OtherAlerts, dialog: BrowserDialog?, pin
             title = strings.removeDialogTitle(count),
             titleSmall = true,
             text = strings.removeDialogMessage(count),
+            hint = com.michelle.raouf.fetch_jet.presentation.dashboard.removeDerivedText(a.removeDerived),
             checkLabel = strings.removeDialogAlsoDeleteFiles,
             confirmLabel = strings.remove,
             confirmDanger = true,

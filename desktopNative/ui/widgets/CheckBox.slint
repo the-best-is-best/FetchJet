@@ -1,4 +1,4 @@
-import { Theme } from "../theme.slint";
+import { Theme, Dir } from "../theme.slint";
 import { Hover } from "Base.slint";
 
 export component CheckBox inherits Rectangle {
@@ -58,5 +58,43 @@ export component CheckBox inherits Rectangle {
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.toggled(!root.checked); }
+    }
+}
+
+export component CheckLine inherits Rectangle {
+    in property <bool> checked;
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <color> ink: Theme.on-surface;
+    callback toggled(checked: bool);
+    height: 40px;
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.toggled(!root.checked); }
+    }
+    Rectangle {
+        x: Dir.rtl ? parent.width - 32px : 0px;
+        y: (parent.height - 24px) / 2;
+        width: 32px;
+        height: 24px;
+        CheckBox {
+            x: 4px;
+            checked: root.checked;
+            enabled: root.enabled;
+            label: root.text;
+            toggled(on) => { root.toggled(on); }
+        }
+    }
+    Text {
+        x: Dir.rtl ? 0px : 40px;
+        width: parent.width - 40px;
+        height: parent.height;
+        text: root.text;
+        color: root.enabled ? root.ink : root.ink.with-alpha(0.5);
+        font-family: Theme.font;
+        font-size: 13px;
+        vertical-alignment: center;
+        horizontal-alignment: Dir.start;
+        overflow: elide;
     }
 }

@@ -81,6 +81,8 @@ private fun buildAudioCompress(page: AudioCompressUi?): AudioCompressDto {
         failed = page.failed,
         canStart = !page.running && !page.reading && !nothing,
         copies = page.copies.map { AudioCopyDto(it.path, it.name, formatBytes(it.bytes)) },
+        canDeleteOriginal = page.canDeleteOriginal,
+        deleteOriginal = page.deleteOriginal,
     )
 }
 

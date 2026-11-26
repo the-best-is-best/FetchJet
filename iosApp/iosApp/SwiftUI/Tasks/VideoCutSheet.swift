@@ -58,6 +58,10 @@ struct VideoCutSheet: View {
                     endMs: page.endMs > 0 ? page.endMs : page.durationMs,
                     message: page.message,
                     failed: page.failed,
+                    deleteOriginalTitle: page.canDeleteOriginal ? store.strings.deleteOriginalAfterCut : nil,
+                    deleteOriginal: Binding(
+                        get: { page.deleteOriginal },
+                        set: { store.send(DashboardUiEventOnVideoCutDeleteOriginalChanged(on: $0)) }),
                     onCut: { start, end in
                         store.send(DashboardUiEventOnVideoCutRangeChanged(startMs: start, endMs: end))
                         store.send(DashboardUiEventOnVideoCutStartClicked.shared)
@@ -245,6 +249,11 @@ private struct VideoCutTimeView: View {
                     VideoCutMessage(text: page.message.isEmpty ? store.strings.videoCutFailed : page.message,
                                     error: page.failed, clipPath: page.lastClipPath)
                 }
+                if page.canDeleteOriginal {
+                    FJDialogCheckRow(title: s.deleteOriginalAfterCut, checked: Binding(
+                        get: { page.deleteOriginal },
+                        set: { store.send(DashboardUiEventOnVideoCutDeleteOriginalChanged(on: $0)) }))
+                }
                 HStack(spacing: 10) {
                     FJDialogButton(title: s.cancel, kind: .outlined, fill: true) {
                         store.send(DashboardUiEventOnDismissVideoCut.shared)
@@ -417,8 +426,7 @@ struct VideoCutClipsSection: View {
 
 
     private func isAudio(_ clip: CutClip) -> Bool {
-        let ext = (clip.path as NSString).pathExtension.lowercased()
-        return ["m4a", "mp3", "opus", "ogg", "oga", "flac", "wav", "mka", "ac3", "aac"].contains(ext)
+        MediaExtensions.shared.isAudio(name: clip.path)
     }
 
     private func clipLine(_ clip: CutClip) -> String {

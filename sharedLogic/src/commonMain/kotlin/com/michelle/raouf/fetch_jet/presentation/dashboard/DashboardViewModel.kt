@@ -832,6 +832,7 @@ class DashboardViewModel(
             is DashboardUiEvent.OnAudioCompressSettingsChanged,
             DashboardUiEvent.OnAudioCompressStartClicked,
             is DashboardUiEvent.OnAudioCompressDeleteCopy,
+            is DashboardUiEvent.OnAudioCompressDeleteOriginalChanged,
             DashboardUiEvent.OnDismissAudioCompress -> handleAudioCompressEvent(event)
 
             is DashboardUiEvent.OnVideoCutClicked,
@@ -841,6 +842,7 @@ class DashboardViewModel(
             DashboardUiEvent.OnVideoCutCancelClicked,
             DashboardUiEvent.OnDismissVideoCut,
             is DashboardUiEvent.OnVideoCutDeleteClip,
+            is DashboardUiEvent.OnVideoCutDeleteOriginalChanged,
             is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
 
             is DashboardUiEvent.OnExtractAudioClicked -> extractAudio(event.taskId)

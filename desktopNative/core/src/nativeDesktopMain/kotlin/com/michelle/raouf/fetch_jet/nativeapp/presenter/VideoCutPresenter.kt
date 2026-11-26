@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
 import com.michelle.raouf.fetch_jet.feature.video_cut.CutClip
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode
@@ -10,12 +11,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.VideoCutUi
 import com.tbib.kmp_localization.LocalizationManager
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 
-private fun cutClock(ms: Long): String {
-    val t = ms.coerceAtLeast(0L)
-    val base = formatSecondsToHhMm(t / 1000L)
-    val rest = t % 1000L
-    return if (rest == 0L) base else base + "." + rest.toString().padStart(3, '0')
-}
+private fun cutClock(ms: Long): String = ClipTime.formatMs(ms)
 
 private fun cutLength(ms: Long): String {
     val t = ms.coerceAtLeast(0L)
@@ -64,6 +60,8 @@ internal fun buildVideoCut(page: VideoCutUi?, known: List<CutClip>): VideoCutDto
         needsTools = page.failed && page.message == LocalizationManager.Strings.videoCutNeedsTools,
         message = page.message,
         clips = (known + page.clips).distinctBy { it.path }.map { videoClipRow(it) },
+        canDeleteOriginal = page.canDeleteOriginal && !page.clipsOnly && !page.running,
+        deleteOriginal = page.deleteOriginal,
     )
 }
 
@@ -90,6 +88,7 @@ internal fun Presenter.videoCutPickTime(end: Boolean) {
         minutesRev = clipPicker.value.minutesRev + 1,
         secondsRev = clipPicker.value.secondsRev + 1,
         forCut = true,
+        capped = !end,
     ).withTotal(initial)
 }
 

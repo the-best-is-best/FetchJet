@@ -115,7 +115,7 @@ internal class SyncReceiver(private val engine: DeviceSyncEngine) {
         val writer = files.writer(path)
         try {
             while (true) {
-                val (type, chunk) = connection.readFrame(engine.timing.idleMs)
+                val (type, chunk) = connection.readFrame(engine.timing.idleMs, SYNC_MAX_FRAME)
                     ?: throw IllegalStateException("stream ended")
                 if (type == T_FILE_END) break
                 if (type != T_FILE_CHUNK) throw IllegalStateException("unexpected frame")

@@ -116,7 +116,8 @@ actual suspend fun downloadMediaWithPlatformTool(
                 !it.contains('+') && (it.contains("audio") || it.contains("ba") || it == "140" || it == "251")
             } ?: false)
 
-    val outputTemplate = "$destinationDir/$cleanName.%(ext)s"
+    val templateName = if (cleanName == "%(title)s") cleanName else cleanName.replace("%", "%%")
+    val outputTemplate = "${destinationDir.replace("%", "%%")}/$templateName.%(ext)s"
 
     val rawArgs = mutableListOf<String>()
     rawArgs.add("-o")
@@ -199,6 +200,7 @@ actual suspend fun downloadMediaWithPlatformTool(
         rawArgs.add("--cookies")
         rawArgs.add(cookiePath)
     }
+    rawArgs.add("--")
     rawArgs.add(url)
 
     // Progress is read the clip way (ffmpeg "time=") only in section mode; a cut-afterwards

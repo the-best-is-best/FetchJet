@@ -23,10 +23,11 @@ internal fun frameBytes(type: Byte, body: ByteArray): ByteArray {
     return out
 }
 
-internal suspend fun SyncConnection.readFrame(timeoutMs: Long): SyncFrame? {
+/** [maxLength] stays small for every frame read before the peer proved its key; only file chunks get [SYNC_MAX_FRAME]. */
+internal suspend fun SyncConnection.readFrame(timeoutMs: Long, maxLength: Int = SYNC_MAX_CONTROL_FRAME): SyncFrame? {
     val head = read(5, timeoutMs) ?: return null
     val length = intAt(head, 1)
-    if (length < 0 || length > SYNC_MAX_FRAME) return null
+    if (length < 0 || length > maxLength) return null
     val body = if (length == 0) ByteArray(0) else read(length, timeoutMs) ?: return null
     return SyncFrame(head[0], body)
 }

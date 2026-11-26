@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
 
 /**
  * Filters by tab, then sorts. Unfinished downloads always come before completed ones
@@ -77,38 +78,4 @@ internal fun DashboardViewModel.filterByTab(
 
 }
 
-internal fun DashboardViewModel.formatSecondsToHhMm(totalSeconds: Long): String {
-    // HH:MM:SS - the seconds matter: a 4:37 video used to get an end time of 00:04,
-    // cutting the last 37 seconds off every "full video" clip.
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return "${hours.toString().padStart(2, '0')}:${
-        minutes.toString().padStart(2, '0')
-    }:${seconds.toString().padStart(2, '0')}"
-}
-
-internal fun DashboardViewModel.normalizeHhMmForYtDlp(hhMm: String): String {
-    val parts = hhMm.split(":")
-    if (parts.size == 2) {
-        val h = parts[0].padStart(2, '0')
-        val m = parts[1].padStart(2, '0')
-        return "$h:$m:00"
-    }
-    if (parts.size == 3) {
-        val h = parts[0].padStart(2, '0')
-        val m = parts[1].padStart(2, '0')
-        val s = parts[2].padStart(2, '0')
-        return "$h:$m:$s"
-    }
-    return hhMm
-}
-
-internal fun DashboardViewModel.parseHhMmToSeconds(hhMm: String): Long {
-    if (hhMm.isBlank()) return 0L
-    val parts = hhMm.split(":")
-    val h = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-    val m = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-    val s = parts.getOrNull(2)?.toLongOrNull() ?: 0L
-    return (h * 3600L + m * 60L + s).coerceAtLeast(0L)
-}
+internal fun DashboardViewModel.formatSecondsToHhMm(totalSeconds: Long): String = ClipTime.format(totalSeconds)

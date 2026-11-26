@@ -251,5 +251,5 @@ internal fun PauseResumeAllButtons(canPause: Boolean, canResume: Boolean, onPaus
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
     OutlinedButton(onClick = onPauseAll, enabled = canPause, shape = shape) { Text("⏸ " + s.homePauseAll, fontSize = 12.sp) }
-    OutlinedButton(onClick = onResumeAll, enabled = canResume, shape = shape) { Text("▶ " + s.homeResumeAll, fontSize = 12.sp) }
+    OutlinedButton(onClick = onResumeAll, enabled = canResume, shape = shape) { Text("⬇ " + s.homeResumeAll, fontSize = 12.sp) }
 }

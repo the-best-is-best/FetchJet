@@ -27,12 +27,14 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.SecureFlagPolicy
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
+import com.michelle.raouf.fetch_jet.presentation.dashboard.removeDerivedText
 
 @Composable
 fun RemoveConfirmationDialog(
     onConfirm: (deleteFile: Boolean) -> Unit,
     onDismiss: () -> Unit,
     count: Int = 1,
+    derivedCount: Int = 0,
     secure: Boolean = false
 ) {
     var deleteFile by remember { mutableStateOf(false) }
@@ -56,6 +58,14 @@ fun RemoveConfirmationDialog(
                     text = LocalizationManager.Strings.removeDialogMessage(count),
                     style = MaterialTheme.typography.bodyMedium
                 )
+
+                if (derivedCount > 0) {
+                    Text(
+                        text = removeDerivedText(derivedCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 Row(
                     modifier = Modifier

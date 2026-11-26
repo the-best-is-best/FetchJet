@@ -685,6 +685,8 @@ inline VideoCutDto parse_VideoCutDto(const fj::Json &j) {
     d.failed = fj::flag(j, "failed");
     d.message = fj::text(j, "message");
     d.clips = fj::struct_model<VideoClipDto>(j, "clips", parse_VideoClipDto);
+    d.canDeleteOriginal = fj::flag(j, "canDeleteOriginal");
+    d.deleteOriginal = fj::flag(j, "deleteOriginal");
     return d;
 }
 
@@ -725,6 +727,8 @@ inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
     d.channelPick = fj::integer(j, "channelPick");
     d.progressText = fj::text(j, "progressText");
     d.cut = parse_VideoCutDto(fj::child(j, "cut"));
+    d.canDeleteOriginal = fj::flag(j, "canDeleteOriginal");
+    d.deleteOriginal = fj::flag(j, "deleteOriginal");
     return d;
 }
 
@@ -872,6 +876,7 @@ inline DeviceSheetDto parse_DeviceSheetDto(const fj::Json &j) {
     d.canTransfer = fj::flag(j, "canTransfer");
     d.transfer = fj::flag(j, "transfer");
     d.deleteAfter = fj::flag(j, "deleteAfter");
+    d.deleteBlocked = fj::flag(j, "deleteBlocked");
     d.manualShown = fj::flag(j, "manualShown");
     d.manualIp = fj::text(j, "manualIp");
     d.manualRev = fj::integer(j, "manualRev");
@@ -2273,6 +2278,10 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_videoCutTimelineNeedsMp4(next());
     tr.set_videoCutSaved(next());
     tr.set_videoCutNeedsTools(next());
+    tr.set_deleteOriginalAfterCut(next());
+    tr.set_deleteOriginalAfterCompress(next());
+    tr.set_audioCompressSaved(next());
+    tr.set_removeAlsoDerived(next());
     tr.set_audioCutTitle(next());
     tr.set_audioCutOnTimelineHint(next());
     tr.set_audioExtractTitle(next());
@@ -2510,6 +2519,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_audioCompressSetFormat([send](int index) { fj::ActionWriter w("AudioCompressSetFormat"); w.add("index", index); send(w.finish()); });
     act.on_audioCompressDelete([send](slint::SharedString path) { fj::ActionWriter w("AudioCompressDelete"); w.add("path", path); send(w.finish()); });
     act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
+    act.on_audioCompressDeleteOriginal([send](bool on) { fj::ActionWriter w("AudioCompressDeleteOriginal"); w.add("on", on); send(w.finish()); });
     act.on_detailsSubtitles([send]() { fj::ActionWriter w("DetailsSubtitles"); send(w.finish()); });
     act.on_subtitlesToggle([send](slint::SharedString key, bool selected) { fj::ActionWriter w("SubtitlesToggle"); w.add("key", key); w.add("selected", selected); send(w.finish()); });
     act.on_subtitlesAdd([send]() { fj::ActionWriter w("SubtitlesAdd"); send(w.finish()); });
@@ -2627,6 +2637,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_videoCutDismiss([send]() { fj::ActionWriter w("VideoCutDismiss"); send(w.finish()); });
     act.on_videoCutDeleteClip([send](slint::SharedString path) { fj::ActionWriter w("VideoCutDeleteClip"); w.add("path", path); send(w.finish()); });
     act.on_videoCutApply([send](int startMs, int endMs) { fj::ActionWriter w("VideoCutApply"); w.add("startMs", startMs); w.add("endMs", endMs); send(w.finish()); });
+    act.on_videoCutDeleteOriginal([send](bool on) { fj::ActionWriter w("VideoCutDeleteOriginal"); w.add("on", on); send(w.finish()); });
 }
 
 }

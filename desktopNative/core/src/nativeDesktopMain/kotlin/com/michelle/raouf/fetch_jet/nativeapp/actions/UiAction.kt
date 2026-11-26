@@ -275,6 +275,10 @@ sealed interface UiAction {
     data object AudioCompressDismiss : UiAction
 
     @Serializable
+    @SerialName("AudioCompressDeleteOriginal")
+    data class AudioCompressDeleteOriginal(val on: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("DetailsSubtitles")
     data object DetailsSubtitles : UiAction
 
@@ -741,4 +745,8 @@ sealed interface UiAction {
     @Serializable
     @SerialName("VideoCutApply")
     data class VideoCutApply(val startMs: Int = 0, val endMs: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDeleteOriginal")
+    data class VideoCutDeleteOriginal(val on: Boolean = false) : UiAction
 }

@@ -368,14 +368,8 @@ internal fun QuickTimeChip(
 }
 
 /** 42:44 / 1:05:09 - a clock reading, so 42 minutes is never shown as "00:42". */
-internal fun clockText(totalSeconds: Long): String {
-    val t = totalSeconds.coerceAtLeast(0L)
-    val h = t / 3600
-    val m = (t % 3600) / 60
-    val s = t % 60
-    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
-    else "$m:${s.toString().padStart(2, '0')}"
-}
+internal fun clockText(totalSeconds: Long): String =
+    com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.formatTime(totalSeconds.coerceAtLeast(0L) * 1000L)
 
 /** One of the two clip download choices: a card, highlighted when chosen. */
 @Composable

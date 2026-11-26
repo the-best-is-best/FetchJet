@@ -721,13 +721,6 @@ internal fun TorrentPage(
 internal fun folderName(path: String): String =
     path.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\').ifBlank { path }
 
-internal fun limitText(bytes: Long): String =
-    if (bytes >= 1024L * 1024L) {
-        val mb = bytes.toDouble() / (1024.0 * 1024.0)
-        (if (mb == mb.toLong().toDouble()) mb.toLong()
-            .toString() else ((mb * 10).toLong() / 10.0).toString()) + " MB/s"
-    } else "${bytes / 1024L} KB/s"
-
 // ---------------------------------------------------------------- browser extension
 
 /**

@@ -6,7 +6,9 @@ import { ListView } from "../widgets/Scroll.slint";
 import { Tr } from "../generated/tr.slint";
 import { Spinner } from "../widgets/Kit.slint";
 import { RowMenuPopup } from "../widgets/Menu.slint";
-import { RowMenuItemDto } from "../generated/dto.slint";
+import { RowMenuItemDto, Core } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { CheckLine } from "../widgets/CheckBox.slint";
 
 export struct PlayerRow { title: string, video: bool, active: bool }
 
@@ -557,7 +559,7 @@ component TrimTime inherits Rectangle {
 }
 
 component TrimPanel inherits Rectangle {
-    height: 204px;
+    height: 204px + (Core.audioCompress.cut.canDeleteOriginal ? 36px : 0px);
     background: #000000E6;
     TouchArea { }
     Rectangle {
@@ -595,6 +597,16 @@ component TrimPanel inherits Rectangle {
         x: 16px;
         y: 60px;
         width: parent.width - 32px;
+    }
+    if Core.audioCompress.cut.canDeleteOriginal: CheckLine {
+        x: 16px;
+        y: 202px;
+        width: parent.width - 32px;
+        height: 32px;
+        ink: #FFFFFF;
+        text: Tr.deleteOriginalAfterCut;
+        checked: Core.audioCompress.cut.deleteOriginal;
+        toggled(on) => { Act.videoCutDeleteOriginal(on); }
     }
     if PlayerUi.trim-view-span < 0.999: TrimOverview {
         x: 34px;
@@ -820,7 +832,7 @@ export component PlayerPage inherits Rectangle {
     video := Rectangle {
         y: PlayerUi.trim ? 60px : 0px;
         width: parent.width;
-        height: PlayerUi.trim ? max(0px, parent.height - 60px - 204px) : parent.height;
+        height: PlayerUi.trim ? max(0px, parent.height - 60px - 204px - (Core.audioCompress.cut.canDeleteOriginal ? 36px : 0px)) : parent.height;
         if PlayerUi.has-video: Image {
             width: parent.width;
             height: parent.height;

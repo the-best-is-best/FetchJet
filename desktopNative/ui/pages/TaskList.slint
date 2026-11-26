@@ -111,7 +111,7 @@ component ListToolbar inherits Rectangle {
             clicked => { Act.pauseAll(); }
         }
         BarButton {
-            glyph: Dir.rtl ? "◀" : "▶";
+            glyph: "⬇";
             text: Tr.homeResumeAll;
             enabled: Core.chrome.anyResumable;
             clicked => { Act.resumeAll(); }
@@ -181,7 +181,7 @@ component PlaylistBar inherits Rectangle {
                 clicked => { Act.playlistPauseAll(); }
             }
             BarButton {
-                glyph: Dir.rtl ? "◀" : "▶";
+                glyph: "⬇";
                 text: Tr.homeResumeAll;
                 enabled: Core.chrome.playlistCanResume;
                 clicked => { Act.playlistResumeAll(); }

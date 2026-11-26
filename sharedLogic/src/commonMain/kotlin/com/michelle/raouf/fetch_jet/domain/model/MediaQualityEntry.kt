@@ -1,5 +1,7 @@
 ﻿package com.michelle.raouf.fetch_jet.domain.model
 
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
+
 data class MediaQualityEntry(
     val index: Int,
     val qualityLabel: String,
@@ -16,7 +18,7 @@ data class MediaQualityEntry(
 
 val MediaQualityEntry.isAudioOnly: Boolean
     get() = qualityLabel.contains("Audio", ignoreCase = true) ||
-            format.lowercase() in listOf("mp3", "m4a", "flac", "wav", "aac", "ogg", "opus")
+            format.lowercase() in MediaExtensions.AUDIO
 
 fun List<MediaQualityEntry>.isAllAudio(): Boolean = isNotEmpty() && all { it.isAudioOnly }
 

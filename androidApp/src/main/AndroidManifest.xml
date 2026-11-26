@@ -89,7 +89,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="content" />
-                <data android:scheme="file" />
                 <data android:host="*" />
                 <data android:mimeType="*/*" />
                 <data android:pathPattern=".*\\.torrent" />

@@ -258,6 +258,21 @@ private val PauseIcon: RowIcon = { u, tint ->
     )
 }
 
+private val DownloadIcon: RowIcon = { u, tint ->
+    val wide = 2.4f
+    fun line(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(
+        tint,
+        androidx.compose.ui.geometry.Offset(x1 * u, y1 * u),
+        androidx.compose.ui.geometry.Offset(x2 * u, y2 * u),
+        wide * u,
+        androidx.compose.ui.graphics.StrokeCap.Round
+    )
+    line(12f, 4f, 12f, 15f)
+    line(7f, 10f, 12f, 15f)
+    line(17f, 10f, 12f, 15f)
+    line(5f, 20f, 19f, 20f)
+}
+
 private val OpenIcon: RowIcon = { u, tint ->
     val rtl = layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl
     fun x(v: Float) = if (rtl) 24f - v else v
@@ -341,7 +356,7 @@ private fun QuickActionButton(action: RowAction, sizeDp: Int, play: Boolean = fa
     }
     val icon: RowIcon = when (action) {
         RowAction.PAUSE -> PauseIcon
-        RowAction.RESUME, RowAction.START_NOW -> PlayIcon
+        RowAction.RESUME, RowAction.START_NOW -> DownloadIcon
         RowAction.OPEN -> if (play) PlayIcon else OpenIcon
         RowAction.NONE -> PlayIcon
     }

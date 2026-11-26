@@ -33,14 +33,16 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
 
             }
 
-            _uiState.update { it.copy(removeConfirmationTaskId = taskId) }
+            val extra = removalExtraCount(listOf(taskId))
+            _uiState.update { it.copy(removeConfirmationTaskId = taskId, removeDerivedCount = extra) }
 
         }
 
         is DashboardUiEvent.OnExportLinksClicked -> exportLinks(event.taskIds)
         is DashboardUiEvent.OnRemoveSelectedClicked -> {
             if (event.taskIds.isNotEmpty()) {
-                _uiState.update { it.copy(removeConfirmationTaskIds = event.taskIds) }
+                val extra = removalExtraCount(event.taskIds)
+                _uiState.update { it.copy(removeConfirmationTaskIds = event.taskIds, removeDerivedCount = extra) }
             }
         }
 
@@ -51,22 +53,15 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
 
             if (taskId != null) {
 
-                _uiState.update { it.copy(removeConfirmationTaskId = null) }
+                _uiState.update { it.copy(removeConfirmationTaskId = null, removeDerivedCount = 0) }
 
-                scope.launch { queueRepository.removeTask(taskId, event.deleteFile) }
+                scope.launch { queueRepository.removeTasksWithDerived(listOf(taskId), event.deleteFile) }
 
             }
 
             if (taskIds.isNotEmpty()) {
-                _uiState.update { it.copy(removeConfirmationTaskIds = emptyList()) }
-                scope.launch {
-                    taskIds.forEach {
-                        queueRepository.removeTask(
-                            it,
-                            event.deleteFile
-                        )
-                    }
-                }
+                _uiState.update { it.copy(removeConfirmationTaskIds = emptyList(), removeDerivedCount = 0) }
+                scope.launch { queueRepository.removeTasksWithDerived(taskIds, event.deleteFile) }
             }
 
         }
@@ -174,7 +169,8 @@ internal fun DashboardViewModel.handleTaskEvent(event: DashboardUiEvent) {
             _uiState.update {
                 it.copy(
                     removeConfirmationTaskId = null,
-                    removeConfirmationTaskIds = emptyList()
+                    removeConfirmationTaskIds = emptyList(),
+                    removeDerivedCount = 0
                 )
             }
 
@@ -277,3 +273,15 @@ internal fun DashboardViewModel.exportLinks(taskIds: List<String>) {
         }
     }
 }
+
+internal fun DashboardViewModel.removalExtraCount(taskIds: List<String>): Int {
+    com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.load()
+    return com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.removalPlan(
+        taskIds,
+        queueRepository.allTasksFlow.value,
+        com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.counts.value
+    ).extraCount
+}
+
+fun removeDerivedText(count: Int): String =
+    if (count <= 0) "" else LocalizationManager.Strings.removeAlsoDerived.replace("{n}", count.toString())

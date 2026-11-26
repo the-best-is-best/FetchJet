@@ -1080,6 +1080,10 @@ interface AppLocalization : LocalizationProvider {
     val videoCutTimelineNeedsMp4: String
     val videoCutSaved: String
     val videoCutNeedsTools: String
+    val deleteOriginalAfterCut: String
+    val deleteOriginalAfterCompress: String
+    val audioCompressSaved: String
+    val removeAlsoDerived: String
     val audioCutTitle: String
     val audioCutOnTimelineHint: String
     val audioExtractTitle: String

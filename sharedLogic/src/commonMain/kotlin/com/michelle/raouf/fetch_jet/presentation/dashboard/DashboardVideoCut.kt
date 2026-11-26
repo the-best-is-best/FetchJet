@@ -3,6 +3,8 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore
+import com.michelle.raouf.fetch_jet.feature.derived.DerivedItems
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.tbib.kmp_localization.LocalizationManager
@@ -32,7 +34,30 @@ internal fun DashboardViewModel.observeVideoClips() {
                         videoCut = page?.copy(clips = clips[page.taskId].orEmpty())
                     )
                 }
+                refreshDeleteOriginal()
             }
+    }
+}
+
+internal fun DashboardViewModel.derivedCount(taskId: String): Int {
+    AudioCopiesStore.load()
+    return DerivedItems.count(taskId, queueRepository.allTasksFlow.value, AudioCopiesStore.counts.value)
+}
+
+internal fun DashboardViewModel.refreshDeleteOriginal() {
+    _uiState.update { state ->
+        val cut = state.videoCut
+        val compress = state.audioCompress
+        state.copy(
+            videoCut = cut?.let { page ->
+                val can = derivedCount(page.taskId) == 0
+                if (page.running || page.canDeleteOriginal == can) page else page.copy(canDeleteOriginal = can, deleteOriginal = page.deleteOriginal && can)
+            },
+            audioCompress = compress?.let { page ->
+                val can = derivedCount(page.taskId) == 0
+                if (page.running || page.canDeleteOriginal == can) page else page.copy(canDeleteOriginal = can, deleteOriginal = page.deleteOriginal && can)
+            }
+        )
     }
 }
 
@@ -70,6 +95,10 @@ internal fun DashboardViewModel.handleVideoCutEvent(event: DashboardUiEvent) {
 
         is DashboardUiEvent.OnVideoCutDeleteClip -> deleteVideoClip(event.path)
 
+        is DashboardUiEvent.OnVideoCutDeleteOriginalChanged -> updateVideoCut { page ->
+            if (page.running || page.clipsOnly || !page.canDeleteOriginal) page else page.copy(deleteOriginal = event.on)
+        }
+
         else -> Unit
     }
 }
@@ -100,7 +129,8 @@ private fun DashboardViewModel.openVideoCut(taskId: String) {
                 sourcePath = source,
                 reading = true,
                 isAudio = VideoCut.isAudio(task),
-                clips = clipsFor(taskId)
+                clips = clipsFor(taskId),
+                canDeleteOriginal = derivedCount(taskId) == 0
             )
         )
     }
@@ -149,11 +179,13 @@ private fun DashboardViewModel.startVideoCut() {
     val output = AudioCompress.freePath(
         task.destinationPath.trimEnd('/', '\\'), VideoCut.clipName(task.fileName, startMs, endMs, extension)
     )
+    val replaceSource = page.deleteOriginal && page.canDeleteOriginal && derivedCount(task.id) == 0
     updateVideoCut {
         it.copy(running = true, stopping = false, progress = 0f, elapsedMs = 0L, etaMs = -1L, failed = false, message = "", lastClipPath = "")
     }
     videoCutJob = scope.launch {
         var ok = false
+        var replaced = false
         try {
             ok = VideoCut.cut(source, output, startMs, endMs, { step ->
                 _uiState.update { state ->
@@ -163,9 +195,12 @@ private fun DashboardViewModel.startVideoCut() {
             }, sourceDurationMs = page.durationMs)
             if (ok) {
                 val bytes = AppFileSystem.metadataOrNull(output.toPath())?.size ?: 0L
-                queueRepository.addFinishedFile(
+                val clip = queueRepository.addFinishedFile(
                     VideoCut.clipTask(queueRepository.generateUniqueTaskId(), task, output, startMs, endMs, bytes)
                 )
+                if (replaceSource) withContext(NonCancellable) {
+                    replaced = queueRepository.promoteClip(clip, task.id) != null
+                }
             }
         } catch (e: CancellationException) {
             ok = false
@@ -176,6 +211,13 @@ private fun DashboardViewModel.startVideoCut() {
             withContext(NonCancellable) {
                 val cancelled = _uiState.value.videoCut?.stopping == true
                 if (!ok) VideoCut.deleteWhenFree(output)
+                if (replaced) {
+                    _uiState.update { state ->
+                        if (state.videoCut?.taskId == page.taskId) state.copy(videoCut = null) else state
+                    }
+                    _uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.videoCutSaved))
+                    return@withContext
+                }
                 _uiState.update { state ->
                     val current = state.videoCut?.takeIf { it.taskId == page.taskId } ?: return@update state
                     state.copy(

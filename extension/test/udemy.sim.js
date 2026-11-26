@@ -52,6 +52,9 @@ const lectures = {
 
 const apiLog = [];
 let strict = false;
+let pageHost = "www.udemy.com";
+let foreign = false;
+let loopNext = false;
 async function udemyFetch(url) {
   const u = new URL(url);
   apiLog.push(u.pathname + u.search);
@@ -61,7 +64,7 @@ async function udemyFetch(url) {
   if (/^\/api-2\.0\/courses\/(my-course|77)\/$/.test(u.pathname)) return json({ id: COURSE, title: "My Course" });
   if (u.pathname === `/api-2.0/courses/${COURSE}/subscriber-curriculum-items/`) {
     const wantsRes = (u.searchParams.get("fields[lecture]") || "").includes("supplementary_assets");
-    return json({ results: curriculum.map(e => wantsRes ? e : { ...e, supplementary_assets: undefined }), next: null });
+    return json({ results: curriculum.map(e => wantsRes ? e : { ...e, supplementary_assets: undefined }), next: loopNext ? url : null });
   }
   if ((m = new RegExp(`^/api-2\\.0/users/me/subscribed-courses/${COURSE}/lectures/(\\d+)/supplementary-assets/(\\d+)/$`).exec(u.pathname))) {
     if (m[2] === "903") return json({ id: 903, filename: "starter-code.zip", download_urls: { SourceCode: [{ file: `${CDN}/code/z?sig=g` }] } });
@@ -69,6 +72,7 @@ async function udemyFetch(url) {
   }
   if ((m = new RegExp(`^/api-2\\.0/users/me/subscribed-courses/${COURSE}/lectures/(\\d+)/$`).exec(u.pathname))) {
     const d = lectures[m[1]];
+    if (foreign && m[1] === "19") return json({ ...d, asset: { asset_type: "Video", stream_urls: { Video: [{ type: "video/mp4", file: "https://evil.example/720.mp4", label: "720" }] } } });
     return d ? json(d) : json({}, 404);
   }
   return json({}, 404);
@@ -90,7 +94,7 @@ function load() {
   chrome.scripting = {
     executeScript: async ({ func, args, world }) => {
       const page = { console, URL, Promise, JSON, Error, String, Object, Array, encodeURIComponent, fetch: udemyFetch,
-        location: { origin: ORIGIN }, document: { documentElement: { innerHTML: `<div data-course-id="${COURSE}"></div>` } } };
+        location: { origin: ORIGIN, hostname: pageHost }, document: { documentElement: { innerHTML: `<div data-course-id="${COURSE}"></div>` } } };
       vm.createContext(page);
       const fn = vm.runInContext("(" + func.toString() + ")", page);
       log.world = world;
@@ -164,6 +168,22 @@ function load() {
   const list2 = (old.log.adds.find(b => b.playlist) || { playlist: { entries: [] } }).playlist.entries;
   check("API refuses the new fields: still sent", r2 && r2.ok === true, r2);
   check("API refuses the new fields: the videos are still there", list2.some(e => e.url === `${CDN}/intro/index.m3u8?sig=a`) && list2.some(e => e.url === `${CDN}/old/720.mp4?sig=f`), list2);
+
+  strict = false;
+  foreign = true;
+  loopNext = true;
+  const other = load();
+  const r3 = await other.sandbox.downloadItem({ kind: "course" }, { id: 5, url: `${ORIGIN}/course/my-course/learn/lecture/11#overview`, title: "Udemy" });
+  const list3 = (other.log.adds.find(b => b.playlist) || { playlist: { entries: [] } }).playlist.entries;
+  check("a repeating next page ends the reading", r3 && r3.ok === true, r3);
+  check("a link outside Udemy is dropped", list3.length > 0 && !list3.some(e => /evil\.example/.test(e.url)), list3);
+  foreign = false;
+  loopNext = false;
+
+  pageHost = "evil.example";
+  const fake = load();
+  const r4 = await fake.sandbox.downloadItem({ kind: "course" }, { id: 5, url: `${ORIGIN}/course/my-course/learn/lecture/11#overview`, title: "Udemy" });
+  check("not a Udemy page: nothing read", r4 && r4.ok === false && !fake.log.adds.some(b => b.playlist), r4);
 
   console.log(failed ? failed + " FAILED" : "all ok");
   process.exit(failed ? 1 : 0);

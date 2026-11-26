@@ -46,7 +46,10 @@ class YTDLRequest {
         val commandList: MutableList<String> = ArrayList()
         commandList.addAll(options.buildOptions())
         commandList.addAll(customCommandList)
-        commandList.addAll(urls)
+        if (urls.isNotEmpty()) {
+            commandList.add("--")
+            commandList.addAll(urls)
+        }
         return commandList
     }
 }

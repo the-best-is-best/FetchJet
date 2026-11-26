@@ -410,7 +410,7 @@ private struct TaskDetailsContent: View {
                 } else if running {
                     TaskDetailButton(text: s.pause, primary: true, icon: "pause.fill") { pauseClicked() }
                 } else if task.waitingInQueue {
-                    TaskDetailButton(text: s.detailsStartNow, primary: true, icon: "play.fill") {
+                    TaskDetailButton(text: s.detailsStartNow, primary: true, icon: "arrow.down.to.line") {
                         store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
                     }
                     TaskDetailButton(text: s.pause, primary: false, icon: "pause") {
@@ -418,7 +418,7 @@ private struct TaskDetailsContent: View {
                     }
                 } else {
                     TaskDetailButton(text: task.status == .error ? s.retry : s.resume, primary: true,
-                                     icon: task.status == .error ? "arrow.clockwise" : "play.fill") {
+                                     icon: task.status == .error ? "arrow.clockwise" : "arrow.down.to.line") {
                         store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
                     }
                 }

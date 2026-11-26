@@ -197,7 +197,12 @@ internal actual fun PdfReaderScreen(request: PdfOpen, onClose: () -> Unit, onOpe
     var load by remember { mutableStateOf<PdfLoad>(PdfLoad.Loading) }
 
     LaunchedEffect(request.path) {
+        if (load != PdfLoad.Loading) {
+            load = PdfLoad.Loading
+            cache.clear()
+        }
         load = withContext(dispatcher) {
+            opened.getAndSet(null)?.close()
             openDocument(request.path).also { if (it is PdfLoad.Ready) opened.set(it.doc) }
         }
     }

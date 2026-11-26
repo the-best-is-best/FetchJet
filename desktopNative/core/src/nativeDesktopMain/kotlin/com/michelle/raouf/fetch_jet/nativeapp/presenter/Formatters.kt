@@ -1,5 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
 import kotlin.math.round
 
 internal fun ltr(text: String): String = if (text.isEmpty()) text else "⁦$text⁩"
@@ -116,23 +117,9 @@ internal fun decodeUnicodeText(input: String): String {
     }
 }
 
-internal fun formatSecondsToHhMm(totalSeconds: Long): String {
-    val s = if (totalSeconds < 0L) 0L else totalSeconds
-    val hours = s / 3600
-    val minutes = (s % 3600) / 60
-    val seconds = s % 60
-    return "${hours.toString().padStart(2, '0')}:${
-        minutes.toString().padStart(2, '0')
-    }:${seconds.toString().padStart(2, '0')}"
-}
+internal fun formatSecondsToHhMm(totalSeconds: Long): String = ClipTime.format(totalSeconds)
 
-internal fun parseHhMmToSeconds(hhMm: String): Long {
-    val parts = hhMm.split(":")
-    val h = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-    val m = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-    val s = parts.getOrNull(2)?.let { it.toLongOrNull() ?: it.replace(',', '.').toDoubleOrNull()?.toLong() } ?: 0L
-    return (h * 3600L + m * 60L + s).coerceAtLeast(0L)
-}
+internal fun parseHhMmToSeconds(hhMm: String): Long = ClipTime.wholeSeconds(hhMm)
 
 internal fun formatSecondsToDisplayFriendly(totalSeconds: Long): String {
     val s = if (totalSeconds < 0L) 0L else totalSeconds

@@ -68,6 +68,7 @@ export global Act {
     callback audioCompressSetFormat(index: int);
     callback audioCompressDelete(path: string);
     callback audioCompressDismiss();
+    callback audioCompressDeleteOriginal(on: bool);
     callback detailsSubtitles();
     callback subtitlesToggle(key: string, selected: bool);
     callback subtitlesAdd();
@@ -185,4 +186,5 @@ export global Act {
     callback videoCutDismiss();
     callback videoCutDeleteClip(path: string);
     callback videoCutApply(startMs: int, endMs: int);
+    callback videoCutDeleteOriginal(on: bool);
 }

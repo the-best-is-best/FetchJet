@@ -464,8 +464,10 @@ object UpdateManager {
                 if (!verifyUpdateSignature(part.toString(), sig)) {
                     throw Exception("the release file signature is not valid")
                 }
+                val sigFile = dir / sigAsset.name
                 if (AppFileSystem.exists(target)) AppFileSystem.delete(target)
                 AppFileSystem.atomicMove(part, target)
+                AppFileSystem.write(sigFile) { writeUtf8(sig) }
             }
             ok.onSuccess {
                 _state.update {

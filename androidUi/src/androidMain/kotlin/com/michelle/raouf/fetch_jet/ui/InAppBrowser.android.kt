@@ -69,8 +69,9 @@ import com.michelle.raouf.fetch_jet.core.network.NetworkSettings
 import com.michelle.raouf.fetch_jet.core.network.SiteLogin
 import com.tbib.kmp_localization.LocalizationManager
 
-private const val FINDER = """
+private fun finderScript(token: String) = """
 (function () {
+  if (window !== window.top) return;
   var last = "";
   function look() {
     var found = "";
@@ -81,7 +82,7 @@ private const val FINDER = """
     }
     if (found !== last) {
       last = found;
-      try { FJMedia.found(found); } catch (e) {}
+      try { FJMedia.found("$token", found); } catch (e) {}
     }
   }
   setInterval(look, 700);
@@ -96,12 +97,16 @@ private const val FINDER = """
 })();
 """
 
-private class MediaBridge(private val onFound: (String) -> Unit) {
+private class MediaBridge(private val token: String, private val onFound: (String) -> Unit) {
     private val main = Handler(Looper.getMainLooper())
 
     @JavascriptInterface
-    fun found(url: String) {
-        main.post { onFound(url) }
+    fun found(token: String, url: String) {
+        if (token != this.token) return
+        val clean = url.trim()
+        if (clean.isNotEmpty() && !clean.startsWith("http://", true) && !clean.startsWith("https://", true)) return
+        if (clean.length > 8192 || clean.any { it < ' ' }) return
+        main.post { onFound(clean) }
     }
 }
 
@@ -203,6 +208,9 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
     var canForward by remember { mutableStateOf(false) }
     var media by remember { mutableStateOf("") }
     val loginTyped = remember { booleanArrayOf(false) }
+    val mediaToken = remember { java.util.UUID.randomUUID().toString() }
+    val finder = remember(mediaToken) { finderScript(mediaToken) }
+    val popups = remember { mutableListOf<WebView>() }
 
     fun rememberSession(view: WebView) {
         val page = view.url.orEmpty()
@@ -293,7 +301,7 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
                             settings.setSupportMultipleWindows(true)
                             CookieManager.getInstance().setAcceptCookie(true)
                             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                            addJavascriptInterface(MediaBridge { media = it }, "FJMedia")
+                            addJavascriptInterface(MediaBridge(mediaToken) { media = it }, "FJMedia")
                             addJavascriptInterface(LoginBridge { loginTyped[0] = true }, "FJLogin")
                             setDownloadListener { url, _, contentDisposition, mimeType, _ ->
                                 send(this, url, URLUtil.guessFileName(url, contentDisposition, mimeType))
@@ -315,7 +323,7 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
                                     address = TextFieldValue(url)
                                     canBack = view.canGoBack()
                                     canForward = view.canGoForward()
-                                    view.evaluateJavascript(FINDER, null)
+                                    view.evaluateJavascript(finder, null)
                                     if (loginTyped[0]) {
                                         view.evaluateJavascript("document.querySelector('input[type=password]') === null") { gone ->
                                             if (gone == "true") rememberSession(view)
@@ -330,11 +338,21 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
 
                                 override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
                                     val popup = WebView(view.context)
+                                    popups.add(popup)
+                                    fun dispose(v: WebView) {
+                                        if (popups.remove(v)) v.post { v.destroy() }
+                                    }
                                     popup.webViewClient = object : WebViewClient() {
                                         override fun shouldOverrideUrlLoading(v: WebView, request: WebResourceRequest): Boolean {
-                                            view.loadUrl(request.url.toString())
-                                            v.destroy()
+                                            val scheme = request.url.scheme?.lowercase()
+                                            if (scheme == "http" || scheme == "https") view.loadUrl(request.url.toString())
+                                            dispose(v)
                                             return true
+                                        }
+                                    }
+                                    popup.webChromeClient = object : WebChromeClient() {
+                                        override fun onCloseWindow(window: WebView) {
+                                            dispose(window)
                                         }
                                     }
                                     (resultMsg.obj as WebView.WebViewTransport).webView = popup
@@ -346,7 +364,12 @@ internal actual fun InAppBrowser(startUrl: String, onClose: () -> Unit) {
                             loadUrl(browserAddressToUrl(startUrl).ifEmpty { "https://www.google.com" })
                         }
                     },
-                    onRelease = { it.destroy(); holder[0] = null }
+                    onRelease = {
+                        popups.toList().forEach { p -> p.destroy() }
+                        popups.clear()
+                        it.destroy()
+                        holder[0] = null
+                    }
                 )
                 BrowserDownloadButton(
                     ready = media.isNotEmpty(),

@@ -1642,6 +1642,14 @@
    [
     "clips",
     "List<VideoClipDto>"
+   ],
+   [
+    "canDeleteOriginal",
+    "Boolean"
+   ],
+   [
+    "deleteOriginal",
+    "Boolean"
    ]
   ],
   "AudioCompressDto": [
@@ -1784,6 +1792,14 @@
    [
     "cut",
     "VideoCutDto"
+   ],
+   [
+    "canDeleteOriginal",
+    "Boolean"
+   ],
+   [
+    "deleteOriginal",
+    "Boolean"
    ]
   ],
   "ChipDto": [
@@ -2209,6 +2225,10 @@
    ],
    [
     "deleteAfter",
+    "Boolean"
+   ],
+   [
+    "deleteBlocked",
     "Boolean"
    ],
    [
@@ -3669,6 +3689,12 @@
    ]
   ],
   "AudioCompressDismiss": [],
+  "AudioCompressDeleteOriginal": [
+   [
+    "on",
+    "Boolean"
+   ]
+  ],
   "DetailsSubtitles": [],
   "SubtitlesToggle": [
    [
@@ -4240,6 +4266,12 @@
    [
     "endMs",
     "Int"
+   ]
+  ],
+  "VideoCutDeleteOriginal": [
+   [
+    "on",
+    "Boolean"
    ]
   ]
  },
@@ -5162,6 +5194,10 @@
   "videoCutTimelineNeedsMp4",
   "videoCutSaved",
   "videoCutNeedsTools",
+  "deleteOriginalAfterCut",
+  "deleteOriginalAfterCompress",
+  "audioCompressSaved",
+  "removeAlsoDerived",
   "audioCutTitle",
   "audioCutOnTimelineHint",
   "audioExtractTitle",

@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.feature.media_player
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
 import okio.ByteString.Companion.encodeUtf8
 
 data class PlayerItem(
@@ -25,15 +26,12 @@ data class PlaybackQueue(val items: List<PlayerItem>, val index: Int, val groupK
 }
 
 object MediaPlayback {
-    private val VIDEO = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts", "flv")
-    private val AUDIO = setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "oga", "opus", "weba", "mka")
-
     val SPEEDS: List<Float> = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
     const val HOLD_SPEED = 2f
     const val SKIP_MS = 10_000L
 
-    fun isVideoName(name: String): Boolean = name.substringAfterLast('.', "").lowercase() in VIDEO
-    fun isAudioName(name: String): Boolean = name.substringAfterLast('.', "").lowercase() in AUDIO
+    fun isVideoName(name: String): Boolean = MediaExtensions.isPlayableVideo(name)
+    fun isAudioName(name: String): Boolean = MediaExtensions.isPlayableAudio(name)
 
     fun canPlay(task: DownloadTask, allowHidden: Boolean = false): Boolean =
         task.status == DownloadStatus.COMPLETED &&

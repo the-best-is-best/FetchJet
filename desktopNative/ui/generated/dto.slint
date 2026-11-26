@@ -345,6 +345,8 @@ export struct VideoCutDto {
     failed: bool,
     message: string,
     clips: [VideoClipDto],
+    canDeleteOriginal: bool,
+    deleteOriginal: bool,
 }
 
 export struct AudioCompressDto {
@@ -383,6 +385,8 @@ export struct AudioCompressDto {
     channelPick: int,
     progressText: string,
     cut: VideoCutDto,
+    canDeleteOriginal: bool,
+    deleteOriginal: bool,
 }
 
 export struct ChipDto {
@@ -512,6 +516,7 @@ export struct DeviceSheetDto {
     canTransfer: bool,
     transfer: bool,
     deleteAfter: bool,
+    deleteBlocked: bool,
     manualShown: bool,
     manualIp: string,
     manualRev: int,

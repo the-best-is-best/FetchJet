@@ -4,6 +4,7 @@ import { FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { Gap } from "../widgets/Kit.slint";
+import { CheckLine } from "../widgets/CheckBox.slint";
 import { OptionCard, TimeCard } from "AddMedia.slint";
 import { Core, VideoClipDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
@@ -260,6 +261,11 @@ export component VideoCutDialog inherits Rectangle {
                         horizontal-stretch: 1;
                         overflow: elide;
                     }
+                }
+                if root.editing && Core.audioCompress.cut.canDeleteOriginal: CheckLine {
+                    text: Tr.deleteOriginalAfterCut;
+                    checked: Core.audioCompress.cut.deleteOriginal;
+                    toggled(on) => { Act.videoCutDeleteOriginal(on); }
                 }
                 if Core.audioCompress.cut.clips.length > 0: Caption {
                     text: Tr.videoCutClips;

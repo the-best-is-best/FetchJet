@@ -37,7 +37,7 @@ internal object MacUpdater {
 
     fun installAndExit(installerPath: String) {
         val app = checkNotNull(appBundle) { "FetchJet.app not found" }
-        val folder = installerPath.substringBeforeLast('/', "").ifEmpty { DesktopOs.tempDir() }
+        val folder = checkUpdateFileBeforeInstall(installerPath)
         val script = "$folder/fetchjet-update.sh"
         val log = "$folder/fetchjet-update.log"
         val pid = getpid()
@@ -54,7 +54,7 @@ internal object MacUpdater {
               hdiutil detach -quiet "${dollar}MNT"
             fi
             rmdir "${dollar}MNT" 2>/dev/null
-            rm -f ${q(installerPath)}
+            rm -f ${q(installerPath)} ${q("$installerPath.sig")}
             rm -rf ${q("$app.new")}
             xattr -dr com.apple.quarantine ${q(app)} 2>/dev/null
             open ${q(app)}

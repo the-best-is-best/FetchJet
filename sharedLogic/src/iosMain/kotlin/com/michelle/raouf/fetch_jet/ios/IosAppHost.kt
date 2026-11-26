@@ -100,6 +100,8 @@ class IosAppHost {
     fun formatSecondsToHhMm(totalSeconds: Long): String =
         com.michelle.raouf.fetch_jet.ios.formatSecondsToHhMm(totalSeconds)
     fun parseHhMmToSeconds(hhMm: String): Long = com.michelle.raouf.fetch_jet.ios.parseHhMmToSeconds(hhMm)
+    fun clipRange(enabled: Boolean, start: String, end: String, durationSeconds: Long) =
+        com.michelle.raouf.fetch_jet.feature.media_extractor.checkClipRange(enabled, start, end, durationSeconds)
     fun formatSecondsToDisplayFriendly(totalSeconds: Long): String =
         com.michelle.raouf.fetch_jet.ios.formatSecondsToDisplayFriendly(totalSeconds)
 

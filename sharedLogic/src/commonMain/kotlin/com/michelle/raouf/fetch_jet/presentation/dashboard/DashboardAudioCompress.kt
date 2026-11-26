@@ -4,6 +4,8 @@ import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompressSettings
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -14,6 +16,7 @@ internal fun DashboardViewModel.observeAudioCopies() {
         AudioCopiesStore.load()
         AudioCopiesStore.counts.collect { all ->
             _uiState.update { it.copy(audioCopyCounts = all.mapValues { (_, paths) -> paths.size }) }
+            refreshDeleteOriginal()
         }
     }
 }
@@ -42,6 +45,11 @@ internal fun DashboardViewModel.handleAudioCompressEvent(event: DashboardUiEvent
             _uiState.update { state ->
                 state.copy(audioCompress = state.audioCompress?.copy(copies = AudioCopiesStore.copies(page.taskId)))
             }
+        }
+
+        is DashboardUiEvent.OnAudioCompressDeleteOriginalChanged -> _uiState.update { state ->
+            val page = state.audioCompress ?: return@update state
+            if (page.running || !page.canDeleteOriginal) state else state.copy(audioCompress = page.copy(deleteOriginal = event.on))
         }
 
         DashboardUiEvent.OnDismissAudioCompress -> _uiState.update { state ->
@@ -81,7 +89,8 @@ private fun DashboardViewModel.openAudioCompress(taskId: String) {
                 reading = bytes != null,
                 failed = bytes == null,
                 settings = lastAudioSettings,
-                copies = AudioCopiesStore.copies(taskId)
+                copies = AudioCopiesStore.copies(taskId),
+                canDeleteOriginal = derivedCount(taskId) == 0
             )
         )
     }
@@ -105,6 +114,7 @@ private fun DashboardViewModel.startAudioCompress() {
     val output = AudioCompress.freePath(
         task.destinationPath.trimEnd('/', '\\'), AudioCompress.outputName(task.fileName, encode, page.format)
     )
+    val replaceSource = page.deleteOriginal && page.canDeleteOriginal && derivedCount(task.id) == 0
     _uiState.update { it.copy(audioCompress = page.copy(running = true, progress = 0f, failed = false)) }
     scope.launch {
         val ok = runCatching {
@@ -117,6 +127,13 @@ private fun DashboardViewModel.startAudioCompress() {
             }
         }.getOrDefault(false)
         if (ok) AudioCopiesStore.add(page.taskId, output)
+        if (ok && replaceSource && queueRepository.replaceWithCompressed(page.taskId, output) != null) {
+            _uiState.update { state ->
+                if (state.audioCompress?.taskId == page.taskId) state.copy(audioCompress = null) else state
+            }
+            _uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.audioCompressSaved))
+            return@launch
+        }
         _uiState.update { state ->
             val current = state.audioCompress?.takeIf { it.taskId == page.taskId } ?: return@update state
             state.copy(

@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.video_cut
 
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
+import com.michelle.raouf.fetch_jet.core.util.MediaExtensions
 import com.michelle.raouf.fetch_jet.core.util.currentEpochMs
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
@@ -105,7 +106,7 @@ object VideoCut {
 
     fun isAudio(task: DownloadTask): Boolean = isAudioName(task.fileName)
 
-    fun isAudioName(name: String): Boolean = MediaPlayback.isAudioName(name)
+    fun isAudioName(name: String): Boolean = MediaExtensions.isAudio(name)
 
     fun title(audio: Boolean): String = if (audio) LocalizationManager.Strings.audioCutTitle else LocalizationManager.Strings.videoCutTitle
 

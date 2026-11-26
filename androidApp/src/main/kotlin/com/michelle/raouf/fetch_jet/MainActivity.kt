@@ -43,6 +43,15 @@ class MainActivity : ComponentActivity() {
         cb?.invoke(uri)
     }
 
+    private var textPickCallback: ((Uri?) -> Unit)? = null
+    private val textPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val cb = textPickCallback
+        textPickCallback = null
+        cb?.invoke(uri)
+    }
+
     private var authResult: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
     private val authLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -90,7 +99,6 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
-        PathResolver.appContext = applicationContext
         com.michelle.raouf.fetch_jet.core.more.MoreLinks.systemShare = { text ->
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
@@ -126,11 +134,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.launcher = { onResult ->
-            torrentPickCallback = onResult
+            textPickCallback = onResult
             try {
-                torrentPicker.launch(arrayOf("application/octet-stream", "application/json", "text/*"))
+                textPicker.launch(arrayOf("application/octet-stream", "application/json", "text/*"))
             } catch (_: Throwable) {
-                torrentPickCallback = null
+                textPickCallback = null
                 onResult(null)
             }
         }
@@ -205,15 +213,15 @@ class MainActivity : ComponentActivity() {
         }
         val target = when (uri.scheme?.lowercase()) {
             "magnet" -> uri.toString()
-            // From the browser extension: fetchjet://download?url=<encoded link>
-            "fetchjet" -> uri.getQueryParameter("url")?.takeIf {
-                it.startsWith("http://", true) || it.startsWith(
-                    "https://",
-                    true
-                ) || it.startsWith("magnet:", true) ||
-                        com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it)
+            // Any web page can open fetchjet://download?url=<link>: only the link is taken, so it
+            // always opens the Add dialog (no "direct", no pre-chosen format, no cookie).
+            "fetchjet" -> uri.takeIf { it.host.equals("download", true) }?.getQueryParameter("url")?.trim()?.takeIf {
+                it.length <= 8192 && it.none { c -> c < ' ' } &&
+                        (it.startsWith("http://", true) || it.startsWith("https://", true) ||
+                                it.startsWith("magnet:", true) ||
+                                com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it))
             }
-            "content", "file" ->
+            "content" ->
                 com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.copyTorrentToCache(
                     applicationContext, uri
                 )
@@ -221,7 +229,9 @@ class MainActivity : ComponentActivity() {
             "http", "https" -> uri.toString()
             else -> null
         } ?: return
-        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(target)
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(
+            com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest(url = target, direct = false)
+        )
     }
 
     private fun requestPermissionsIfNeeded() {
@@ -275,8 +285,11 @@ class MainActivity : ComponentActivity() {
     private fun requestBatteryOptimizationExemptionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
+                val prefs = getSharedPreferences("fetchjet_prompts", MODE_PRIVATE)
+                if (prefs.getBoolean("askedBatteryOptimization", false)) return
                 val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
                 if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                    prefs.edit().putBoolean("askedBatteryOptimization", true).apply()
                     val intent =
                         Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:$packageName")
