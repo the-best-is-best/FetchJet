@@ -141,6 +141,8 @@ export component VideoCutDialog inherits Rectangle {
                     OptionCard {
                         row: 0;
                         col: Dir.rtl ? 1 : 0;
+                        horizontal-stretch: 1;
+                        preferred-width: 1px;
                         selected: false;
                         icon: "⏱️";
                         title: Tr.videoCutByTime;
@@ -150,6 +152,8 @@ export component VideoCutDialog inherits Rectangle {
                     OptionCard {
                         row: 0;
                         col: Dir.rtl ? 0 : 1;
+                        horizontal-stretch: 1;
+                        preferred-width: 1px;
                         selected: false;
                         icon: "🎞️";
                         title: Tr.videoCutOnTimeline;
