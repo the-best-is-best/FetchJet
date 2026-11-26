@@ -149,6 +149,10 @@ namespace fjhost::player {
         int g_sub_expect = 0;
         int g_sub_tick = 0;
         slint::Timer g_notice_timer;
+        double g_volume = 100;
+        bool g_muted = false;
+        bool g_autoplay = true;
+        bool g_fullscreen = false;
 
         struct Trim {
             bool on = false;
@@ -766,6 +770,44 @@ namespace fjhost::player {
             return text;
         }
 
+        void publish_sound() {
+            auto &p = ui().global<PlayerUi>();
+            p.set_volume(float(g_volume));
+            p.set_muted(g_muted);
+            p.set_autoplay(g_autoplay);
+            p.set_fullscreen(g_fullscreen);
+        }
+
+        void set_volume(double value) {
+            g_volume = std::clamp(std::round(value), 0.0, 200.0);
+            set("volume", number_text(g_volume).c_str());
+            if (g_muted && g_volume > 0) {
+                g_muted = false;
+                set("mute", "no");
+            }
+            publish_sound();
+        }
+
+        void toggle_mute() {
+            g_muted = !g_muted;
+            set("mute", g_muted ? "yes" : "no");
+            publish_sound();
+        }
+
+        void set_autoplay(bool on) {
+            g_autoplay = on;
+            core_call("player.autoplay", std::string("{\"on\":\"") + (on ? "true" : "false") + "\"}");
+            publish_sound();
+        }
+
+        void set_fullscreen(bool on) {
+            if (g_fullscreen == on)
+                return;
+            g_fullscreen = on;
+            ui().window().set_fullscreen(on);
+            publish_sound();
+        }
+
         void publish_items() {
             g_model = std::make_shared<slint::VectorModel<PlayerRow>>();
             for (int i = 0; i < int(g_items.size()); i++) {
@@ -897,7 +939,7 @@ namespace fjhost::player {
 
         void end_of_item() {
             if (g_index + 1 < int(g_items.size()))
-                load_item(g_index + 1, false);
+                load_item(g_index + 1, g_autoplay);
             else
                 finish_list();
         }
@@ -1086,6 +1128,9 @@ namespace fjhost::player {
                     {"terminal", "no"}};
             for (const auto &option: options)
                 g_api.set_option_string(g_mpv, option[0], option[1]);
+            g_api.set_option_string(g_mpv, "volume-max", "200");
+            g_api.set_option_string(g_mpv, "volume", number_text(g_volume).c_str());
+            g_api.set_option_string(g_mpv, "mute", g_muted ? "yes" : "no");
             if (const char *driver = std::getenv("FJ_PLAYER_AO"))
                 g_api.set_option_string(g_mpv, "ao", driver);
             if (const char *log = std::getenv("FJ_PLAYER_MPV_LOG")) {
@@ -2039,6 +2084,10 @@ namespace fjhost::player {
                 set("speed", number_text(g_speed).c_str());
             publish_state();
         });
+        p.on_set_volume([](float value) { set_volume(double(value)); });
+        p.on_toggle_mute([] { toggle_mute(); });
+        p.on_set_autoplay([](bool on) { set_autoplay(on); });
+        p.on_toggle_fullscreen([] { set_fullscreen(!g_fullscreen); });
         p.on_hold_start([](bool forward) { begin_hold(forward); });
         p.on_hold_end([] { end_hold(); });
         p.on_start_over([] { load_item(0, true); });
@@ -2100,6 +2149,8 @@ namespace fjhost::player {
             return;
         g_index = std::clamp(g_index, 0, int(g_items.size()) - 1);
         g_speed = 1.0f;
+        g_autoplay = core_call("player.autoplay", "{}") != "false";
+        publish_sound();
         auto &p = ui().global<PlayerUi>();
         reset_tiles();
         g_thumbs = std::make_shared<slint::VectorModel<TrimTile>>();
@@ -2134,6 +2185,7 @@ namespace fjhost::player {
         if (!g_open && !g_mpv)
             return;
         g_open = false;
+        set_fullscreen(false);
         keep_awake(false);
         reset_tiles();
         g_trim = Trim();
@@ -2275,6 +2327,21 @@ namespace fjhost::player {
             trim_apply();
         } else if (name == "trimcancel") {
             close();
+        } else if (name == "queuetest") {
+            if (!g_items.empty()) {
+                Item item = g_items[g_index];
+                std::string one = "{\"id\":" + quote(item.id) + ",\"title\":" + quote(item.title) + ",\"path\":" + quote(item.path) +
+                                  ",\"video\":" + (item.video ? "true" : "false") + "}";
+                open("{\"items\":[" + one + "," + one + "],\"index\":0,\"groupKey\":\"\"}");
+            }
+        } else if (name == "autoplay") {
+            set_autoplay(value != 0);
+        } else if (name == "volume") {
+            set_volume(value);
+        } else if (name == "mute") {
+            toggle_mute();
+        } else if (name == "fullscreen") {
+            set_fullscreen(value != 0);
         } else if (name == "submenu") {
             show_sub_menu();
         } else if (name == "subpick") {
@@ -2291,6 +2358,16 @@ namespace fjhost::player {
                          name.c_str(), value, g_open ? 1 : 0, g_index, g_items.size(), g_position, g_duration,
                          g_paused ? 1 : 0, double(g_speed), g_hold, g_finished ? 1 : 0, g_failed ? 1 : 0, g_preparing.c_str(),
                          g_items.empty() ? 0 : (g_items[g_index].hidden ? 1 : 0), g_items.empty() ? "" : g_items[g_index].path.c_str());
+            double mpv_volume = -1;
+            int mpv_mute = -1;
+            if (g_mpv) {
+                g_api.get_property(g_mpv, "volume", MPV_FORMAT_DOUBLE, &mpv_volume);
+                g_api.get_property(g_mpv, "mute", MPV_FORMAT_FLAG, &mpv_mute);
+            }
+            auto &ui_player = ui().global<PlayerUi>();
+            std::fprintf(file, "  sound autoplay=%d volume=%g muted=%d mpvvolume=%g mpvmute=%d uivolume=%g uiautoplay=%d fullscreen=%d playing=%d\n",
+                         g_autoplay ? 1 : 0, g_volume, g_muted ? 1 : 0, mpv_volume, mpv_mute, double(ui_player.get_volume()),
+                         ui_player.get_autoplay() ? 1 : 0, g_fullscreen ? 1 : 0, ui_player.get_playing() ? 1 : 0);
             if (name.compare(0, 3, "sub") == 0) {
                 std::fprintf(file, "  subs checked=%d on=%d choice=%s files=%zu notice=%s\n", sub_checked(), sub_checked() != kSubOff ? 1 : 0,
                              g_sub_choice.c_str(), g_sub_files.size(), plain(ui().global<PlayerUi>().get_notice()).c_str());

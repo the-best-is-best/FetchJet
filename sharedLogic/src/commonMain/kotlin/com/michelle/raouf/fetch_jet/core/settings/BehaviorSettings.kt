@@ -71,6 +71,14 @@ object BehaviorSettings {
         _inAppPlayer.value = mode; write("inAppPlayer", mode)
     }
 
+    private val _playerAutoplay = MutableStateFlow(read("playerAutoplay")?.toBooleanStrictOrNull() ?: true)
+
+    val playerAutoplay: StateFlow<Boolean> = _playerAutoplay.asStateFlow()
+
+    fun setPlayerAutoplay(on: Boolean) {
+        _playerAutoplay.value = on; write("playerAutoplay", on.toString())
+    }
+
     private val _inAppPdf = MutableStateFlow(read("inAppPdf")?.takeIf { it in PLAYER_MODES } ?: defaultPlayerMode())
 
     val inAppPdf: StateFlow<String> = _inAppPdf.asStateFlow()

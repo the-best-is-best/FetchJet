@@ -1,6 +1,15 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import android.net.Uri
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import android.content.Context
+import android.media.AudioManager
+import android.provider.Settings
+import android.view.Window
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -10,6 +19,24 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,7 +126,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
-internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST, SUBTITLES }
+internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST, SUBTITLES, VOLUME, BRIGHTNESS }
 
 internal fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: Float) {
     val w = size.width
@@ -157,6 +184,34 @@ internal fun DrawScope.drawPlayerGlyph(kind: PlayerGlyph, color: Color, stroke: 
             drawLine(color, Offset(w * 0.56f, h * 0.44f), Offset(w * 0.74f, h * 0.44f), stroke, StrokeCap.Round)
             drawLine(color, Offset(w * 0.26f, h * 0.6f), Offset(w * 0.62f, h * 0.6f), stroke, StrokeCap.Round)
         }
+
+        PlayerGlyph.VOLUME -> {
+            val p = Path().apply {
+                moveTo(w * 0.1f, h * 0.38f); lineTo(w * 0.26f, h * 0.38f); lineTo(w * 0.48f, h * 0.18f)
+                lineTo(w * 0.48f, h * 0.82f); lineTo(w * 0.26f, h * 0.62f); lineTo(w * 0.1f, h * 0.62f); close()
+            }
+            drawPath(p, color, style = Fill)
+            listOf(0.16f, 0.3f).forEach { r ->
+                drawArc(
+                    color, -50f, 100f, false,
+                    Offset(w * 0.5f - w * r, h * 0.5f - w * r),
+                    androidx.compose.ui.geometry.Size(w * r * 2f, w * r * 2f),
+                    style = Stroke(stroke, cap = StrokeCap.Round)
+                )
+            }
+        }
+
+        PlayerGlyph.BRIGHTNESS -> {
+            val c = Offset(w * 0.5f, h * 0.5f)
+            drawCircle(color, w * 0.2f, c)
+            for (i in 0 until 8) {
+                val a = Math.toRadians(i * 45.0)
+                val dx = kotlin.math.cos(a).toFloat()
+                val dy = kotlin.math.sin(a).toFloat()
+                drawLine(color, Offset(c.x + dx * w * 0.31f, c.y + dy * w * 0.31f),
+                    Offset(c.x + dx * w * 0.44f, c.y + dy * w * 0.44f), stroke, StrokeCap.Round)
+            }
+        }
     }
 }
 
@@ -173,6 +228,20 @@ internal fun PlayerGlyphButton(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(sizeDp.dp)) { drawPlayerGlyph(kind, tint, 2.4.dp.toPx()) }
+    }
+}
+
+@Composable
+private fun MiniSwitch(on: Boolean, accent: Color) {
+    Canvas(modifier = Modifier.size(width = 28.dp, height = 16.dp)) {
+        val r = size.height / 2f
+        drawRoundRect(
+            if (on) accent else Color(0x66FFFFFF),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(r)
+        )
+        val rtl = layoutDirection == LayoutDirection.Rtl
+        val atEnd = on != rtl
+        drawCircle(Color.White, r - 2.dp.toPx(), Offset(if (atEnd) size.width - r else r, r))
     }
 }
 
@@ -214,6 +283,15 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
     var showQueue by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }
     var hold by remember { mutableStateOf(0) }
+    var wantPlay by remember { mutableStateOf(true) }
+    var seeking by remember { mutableStateOf(false) }
+    var swipe by remember { mutableStateOf<PlayerGlyph?>(null) }
+    var swiping by remember { mutableStateOf(false) }
+    var swipeLevel by remember { mutableFloatStateOf(0f) }
+    val autoplay by BehaviorSettings.playerAutoplay.collectAsState()
+    val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val dialogWindow = remember { arrayOfNulls<Window>(1) }
+    val originalBrightness = remember { arrayOfNulls<Float>(1) }
     var failed by remember { mutableStateOf<String?>(null) }
     var touch by remember { mutableIntStateOf(0) }
     var finished by remember { mutableStateOf(false) }
@@ -296,7 +374,8 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
         index = i
         failed = null
         finished = false
-        controls = true
+        controls = play
+        wantPlay = play
         position = 0L
         duration = 0L
         PlayerProgress.remember(queue.groupKey, item.taskId)
@@ -330,6 +409,14 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                 playing = isPlaying
             }
 
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                wantPlay = playWhenReady
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM && player.hasNextMediaItem()) {
+                    player.seekToNextMediaItem()
+                    controls = false
+                }
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (hiddenQueue) return
                 index = player.currentMediaItemIndex
@@ -338,9 +425,12 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                 if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                     queue.items.getOrNull(index)?.let { startSubtitles(it, false) }
                 }
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                player.pauseAtEndOfMediaItems = !BehaviorSettings.playerAutoplay.value && player.hasNextMediaItem()
+                if ((reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) &&
+                    !BehaviorSettings.playerAutoplay.value
+                ) {
                     player.pause()
-                    controls = true
+                    controls = false
                 }
                 queue.items.getOrNull(index)?.let { PlayerProgress.remember(queue.groupKey, it.taskId) }
             }
@@ -353,7 +443,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) duration = player.duration.coerceAtLeast(0L)
                 if (state == Player.STATE_ENDED && hiddenQueue && index < queue.items.lastIndex) {
-                    openAt(index + 1, false)
+                    openAt(index + 1, BehaviorSettings.playerAutoplay.value)
                 } else if (state == Player.STATE_ENDED) {
                     controls = true
                     finished = true
@@ -422,11 +512,62 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
         }
     }
 
-    LaunchedEffect(controls, playing, touch, showQueue, speedMenu, hold, subMenu) {
-        if (controls && playing && !showQueue && !speedMenu && !subMenu && hold == 0) {
-            delay(3500)
+    LaunchedEffect(controls, wantPlay, finished, touch, showQueue, speedMenu, hold, subMenu, seeking, current.isVideo) {
+        if (controls && wantPlay && !finished && current.isVideo && !showQueue && !speedMenu && !subMenu && hold == 0 && !seeking) {
+            delay(3000)
             controls = false
         }
+    }
+
+    LaunchedEffect(autoplay) {
+        if (!hiddenQueue) player.pauseAtEndOfMediaItems = !autoplay && player.hasNextMediaItem()
+    }
+
+    LaunchedEffect(swiping) {
+        if (!swiping) {
+            delay(700)
+            swipe = null
+        }
+    }
+
+    fun volumeLevel(): Float {
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        return audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
+    }
+
+    fun setVolume(level: Float): Float {
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val step = (level * max).roundToInt().coerceIn(0, max)
+        if (step != audio.getStreamVolume(AudioManager.STREAM_MUSIC)) {
+            runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0) }
+        }
+        return step.toFloat() / max
+    }
+
+    fun brightnessLevel(): Float {
+        val own = dialogWindow[0]?.attributes?.screenBrightness ?: -1f
+        if (own >= 0f) return own
+        return runCatching {
+            Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) / 255f
+        }.getOrDefault(0.5f).coerceIn(0f, 1f)
+    }
+
+    fun setBrightness(level: Float): Float {
+        val window = dialogWindow[0] ?: return level
+        val attrs = window.attributes
+        if (originalBrightness[0] == null) originalBrightness[0] = attrs.screenBrightness
+        attrs.screenBrightness = level.coerceIn(0.01f, 1f)
+        window.attributes = attrs
+        return level
+    }
+
+    fun togglePlay() {
+        if (player.playbackState == Player.STATE_ENDED) {
+            finished = false
+            player.seekTo(0L)
+            player.play()
+        } else if (player.playWhenReady) player.pause() else player.play()
+        touch++
     }
 
     BackHandler {
@@ -442,7 +583,24 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
             val window = (view.parent as? DialogWindowProvider)?.window
             window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             if (hiddenQueue) window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+            dialogWindow[0] = window
+            onDispose {
+                window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                originalBrightness[0]?.let { original ->
+                    window?.let { w -> w.attributes = w.attributes.apply { screenBrightness = original } }
+                }
+                dialogWindow[0] = null
+            }
+        }
+        val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        DisposableEffect(view, landscape) {
+            val window = (view.parent as? DialogWindowProvider)?.window
+            val bars = window?.let { WindowCompat.getInsetsController(it, view) }
+            if (landscape) {
+                bars?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                bars?.hide(WindowInsetsCompat.Type.systemBars())
+            }
+            onDispose { if (landscape) bars?.show(WindowInsetsCompat.Type.systemBars()) }
         }
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             if (current.isVideo) {
@@ -460,7 +618,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                             AndroidSubtitles.style(subtitleView)
                         }
                     },
-                    update = { it.subtitleView?.setBottomPaddingFraction(if (controls) 0.2f else 0.06f) }
+                    update = { it.subtitleView?.setBottomPaddingFraction(if (controls) 0.16f else 0.06f) }
                 )
             } else {
                 Column(
@@ -539,8 +697,67 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                             player.seekTo((player.currentPosition + delta).coerceIn(0L, player.duration.coerceAtLeast(0L)))
                         }
                     )
+                }.pointerInput(player) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val slop = viewConfiguration.touchSlop * 1.5f
+                        val right = down.position.x >= size.width / 2f
+                        var mode = 0
+                        var start = 0f
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                if (event.changes.count { it.pressed } > 1 && mode == 0) mode = -1
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                val dx = change.position.x - down.position.x
+                                val dy = change.position.y - down.position.y
+                                if (mode == 0) {
+                                    if (abs(dy) > slop && abs(dy) > abs(dx) * 2f && hold == 0) {
+                                        mode = 1
+                                        start = if (right) volumeLevel() else brightnessLevel()
+                                        swipe = if (right) PlayerGlyph.VOLUME else PlayerGlyph.BRIGHTNESS
+                                        swipeLevel = start
+                                        swiping = true
+                                    } else if (abs(dx) > slop) mode = -1
+                                }
+                                if (mode == 1) {
+                                    change.consume()
+                                    val level = (start - dy / (size.height * 0.6f)).coerceIn(0f, 1f)
+                                    swipeLevel = if (right) setVolume(level) else setBrightness(level)
+                                }
+                            }
+                        } finally {
+                            if (mode == 1) swiping = false
+                        }
+                    }
                 }
             )
+
+            swipe?.let { kind ->
+                Column(
+                    modifier = Modifier.align(Alignment.Center).width(128.dp).clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xB3000000)).padding(horizontal = 18.dp, vertical = 14.dp)
+                        .semantics {
+                            contentDescription = if (kind == PlayerGlyph.VOLUME) LocalizationManager.Strings.playerVolume
+                            else LocalizationManager.Strings.playerBrightness
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(30.dp)) { drawPlayerGlyph(kind, Color.White, 2.4.dp.toPx()) }
+                    Canvas(modifier = Modifier.fillMaxWidth().height(4.dp)) {
+                        val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+                        drawRoundRect(Color(0x4DFFFFFF), cornerRadius = r)
+                        drawRoundRect(
+                            Color.White,
+                            size = androidx.compose.ui.geometry.Size(size.width * swipeLevel, size.height),
+                            cornerRadius = r
+                        )
+                    }
+                    Text("${(swipeLevel * 100).roundToInt()}%", color = Color.White, fontSize = 13.sp)
+                }
+            }
 
             if (hold != 0) {
                 Box(
@@ -572,53 +789,94 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                 )
             }
 
-            if (controls) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
-                        .background(Color(0x99000000)).statusBarsPadding().padding(horizontal = 6.dp, vertical = 4.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        PlayerGlyphButton(PlayerGlyph.CLOSE, 24, onClick = onClose)
-                        Text(
-                            current.title,
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
-                        )
-                        if (queue.items.size > 1) {
-                            Text(
-                                "${index + 1}/${queue.items.size}",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            PlayerGlyphButton(PlayerGlyph.LIST, 24) { showQueue = true }
+            val showPause = wantPlay && !finished
+            if (swipe == null && (controls || (!showPause && opening == null))) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Row(
+                        modifier = Modifier.align(Alignment.Center),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(28.dp)
+                    ) {
+                        if (controls) {
+                            PlayerGlyphButton(PlayerGlyph.PREVIOUS, 24, enabled = index > 0) {
+                                if (hiddenQueue) openAt(index - 1, autoplay) else player.seekToPreviousMediaItem()
+                                touch++
+                            }
                         }
+                        val big = !controls
+                        Box(
+                            modifier = Modifier.size(if (big) 72.dp else 56.dp).clip(CircleShape)
+                                .background(Color(0x73000000)).clickable { togglePlay() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.size(if (big) 34.dp else 26.dp)) {
+                                drawPlayerGlyph(
+                                    if (showPause) PlayerGlyph.PAUSE else PlayerGlyph.PLAY,
+                                    Color.White,
+                                    2.4.dp.toPx()
+                                )
+                            }
+                        }
+                        if (controls) {
+                            PlayerGlyphButton(PlayerGlyph.NEXT, 24, enabled = index < queue.items.lastIndex) {
+                                if (hiddenQueue) openAt(index + 1, autoplay) else player.seekToNextMediaItem()
+                                touch++
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (controls) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
+                        .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent)))
+                        .statusBarsPadding().displayCutoutPadding()
+                        .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlayerGlyphButton(PlayerGlyph.CLOSE, 18, onClick = onClose)
+                    Text(
+                        current.title,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                    )
+                    if (queue.items.size > 1) {
+                        Text(
+                            "${index + 1}/${queue.items.size}",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 12.sp
+                        )
+                        PlayerGlyphButton(PlayerGlyph.LIST, 20) { showQueue = true }
                     }
                 }
                 Column(
                     modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
-                        .background(Color(0x99000000)).navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+                        .navigationBarsPadding().displayCutoutPadding()
+                        .padding(start = 14.dp, end = 14.dp, top = 24.dp, bottom = 2.dp)
                 ) {
                     PlayerTimeline(
                         positionMs = position,
                         durationMs = duration,
-                        onSeek = { player.seekTo(it); position = it; touch++ }
+                        onSeek = { player.seekTo(it); position = it; touch++ },
+                        onDragging = { seeking = it }
                     )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box {
                             Text(
                                 MediaPlayback.speedLabel(speed),
                                 color = Color.White,
-                                fontSize = 14.sp,
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                    .clickable { speedMenu = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp))
+                                    .clickable { speedMenu = true }.padding(horizontal = 6.dp, vertical = 6.dp)
                             )
                             DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
                                 MediaPlayback.SPEEDS.forEach { s ->
@@ -633,35 +891,39 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                                 }
                             }
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            PlayerGlyphButton(PlayerGlyph.PREVIOUS, 28, enabled = index > 0) {
-                                if (hiddenQueue) openAt(index - 1, false) else player.seekToPreviousMediaItem()
-                                touch++
-                            }
-                            Box(
-                                modifier = Modifier.padding(horizontal = 8.dp).size(60.dp).clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary).clickable {
-                                        if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
-                                        if (player.isPlaying) player.pause() else player.play()
-                                        touch++
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Canvas(modifier = Modifier.size(30.dp)) {
-                                    drawPlayerGlyph(
-                                        if (playing) PlayerGlyph.PAUSE else PlayerGlyph.PLAY,
-                                        Color.White,
-                                        2.4.dp.toPx()
-                                    )
-                                }
-                            }
-                            PlayerGlyphButton(PlayerGlyph.NEXT, 28, enabled = index < queue.items.lastIndex) {
-                                if (hiddenQueue) openAt(index + 1, false) else player.seekToNextMediaItem()
-                                touch++
-                            }
+                        Row(
+                            modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(6.dp))
+                                .toggleable(value = autoplay, role = Role.Switch) {
+                                    BehaviorSettings.setPlayerAutoplay(it)
+                                    touch++
+                                }.padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MiniSwitch(autoplay, MaterialTheme.colorScheme.primary)
+                            Text(
+                                LocalizationManager.Strings.playerAutoplay,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
                         }
-                        Box(modifier = Modifier.size(64.dp), contentAlignment = Alignment.Center) {
-                            if (current.isVideo) PlayerGlyphButton(PlayerGlyph.SUBTITLES, 26) { subMenu = true }
+                        Spacer(modifier = Modifier.weight(1f))
+                        if (current.isVideo) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { subMenu = true }
+                                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    "CC",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.border(1.5.dp, Color.White, RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -670,7 +932,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
             if (finished && (queue.items.size > 1 || queue.groupKey.isNotEmpty())) {
                 Row(
                     modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                        .padding(bottom = if (controls) 170.dp else 24.dp, start = 16.dp, end = 16.dp)
+                        .padding(bottom = if (controls) 110.dp else 24.dp, start = 16.dp, end = 16.dp)
                         .clip(RoundedCornerShape(16.dp)).background(Color(0xEE1E1E2E))
                         .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically

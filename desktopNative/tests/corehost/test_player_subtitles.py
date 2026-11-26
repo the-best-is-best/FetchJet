@@ -232,6 +232,86 @@ def host_part(core, ids, paths):
         core.check("the shown track stays the Arabic file", [t["label"] for t in selected(found[1])] == ["ar"], found[1]["tracks"])
 
 
+def sound_states(log):
+    found = []
+    command = ""
+    for line in log.splitlines():
+        if not line.startswith("  "):
+            command = line
+            continue
+        body = line.strip()
+        if body.startswith("sound "):
+            state = dict(part.split("=", 1) for part in body[6:].split(" ") if "=" in part)
+            head = dict(part.split("=", 1) for part in command.split(" ") if "=" in part)
+            state["command"] = command.split(" ", 1)[0]
+            if state["command"] != "probe":
+                continue
+            state["index"] = head.get("index", "").split("/")[0]
+            state["paused"] = head.get("paused", "")
+            found.append(state)
+    return found
+
+
+def behavior_value(core, key):
+    for path in glob.glob(os.path.join(core.home, "**", "behavior.properties"), recursive=True):
+        for line in open(path, encoding="utf-8", errors="replace"):
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip()
+    return ""
+
+
+def controls_part(core, ids, paths):
+    missing = [p for p in [EXE, *window_runner(), LIBMPV] if not os.path.isfile(p)]
+    if missing:
+        print("SKIP the player controls part, missing: " + ", ".join(missing))
+        return
+    plain, movie = ids["plain.mp4"], ids["movie.mp4"]
+
+    print("autoplay on: the next item starts by itself; off: it waits paused; volume 150% reaches mpv")
+    steps = [{"type": "RowQuickAction", "id": plain}, *wait(6), {"player": "probe"},
+             {"player": "autoplay", "value": 1}, {"player": "queuetest"}, *wait(4), {"player": "seek", "value": 4.0}, *wait(8), {"player": "probe"},
+             {"player": "autoplay", "value": 0}, {"player": "queuetest"}, *wait(4), {"player": "seek", "value": 4.0}, *wait(8), {"player": "probe"},
+             {"player": "volume", "value": 150}, *wait(2), {"player": "probe"},
+             {"player": "mute"}, *wait(2), {"player": "probe"},
+             {"player": "volume", "value": 120}, *wait(2), {"player": "probe"}, *wait(30)]
+    log = run_app(core, "controls-run1", steps, "")
+    found = sound_states(log)
+    core.check("every state step was logged", len(found) == 6, [s.get("command") for s in found])
+    if len(found) < 6:
+        print(log[-3000:])
+        return
+    start, auto_on, auto_off, loud, muted, unmuted = found
+    core.check("autoplay is on by default", start.get("autoplay") == "1" and start.get("uiautoplay") == "1", start)
+    core.check("autoplay on: the second item is playing", auto_on.get("index") == "1" and auto_on.get("paused") == "0", auto_on)
+    core.check("autoplay off: the second item is loaded paused", auto_off.get("index") == "1" and auto_off.get("paused") == "1" and auto_off.get("autoplay") == "0", auto_off)
+    core.check("autoplay off is saved in the settings", behavior_value(core, "playerAutoplay") == "false", behavior_value(core, "playerAutoplay"))
+    core.check("volume 150%: mpv and the bar", loud.get("volume") == "150" and loud.get("mpvvolume") == "150" and loud.get("uivolume") == "150", loud)
+    core.check("mute reaches mpv, the volume is kept", muted.get("muted") == "1" and muted.get("mpvmute") == "1" and muted.get("volume") == "150", muted)
+    core.check("moving the volume unmutes", unmuted.get("muted") == "0" and unmuted.get("mpvmute") == "0" and unmuted.get("mpvvolume") == "120", unmuted)
+
+    print("autoplay off is read back at the next start")
+    log = run_app(core, "controls-run2", [{"type": "RowQuickAction", "id": movie}, *wait(6), {"player": "probe"},
+                                          {"player": "autoplay", "value": 1}, *wait(1), {"player": "probe"}, *wait(30)], "")
+    found = sound_states(log)
+    core.check("both state steps were logged", len(found) == 2, found)
+    if len(found) == 2:
+        core.check("the saved autoplay off is used", found[0].get("autoplay") == "0" and found[0].get("uiautoplay") == "0", found[0])
+        core.check("autoplay back on is saved", behavior_value(core, "playerAutoplay") == "true", behavior_value(core, "playerAutoplay"))
+
+    if not OUT:
+        return
+    print("screenshots")
+    run_app(core, "player-desktop-playing", [{"type": "RowQuickAction", "id": movie}, *wait(12)], "", capture_after=2600)
+    run_app(core, "player-desktop-paused", [{"type": "RowQuickAction", "id": movie}, *wait(5), {"player": "seek", "value": 12},
+                                            *wait(2), {"player": "pause"}, *wait(6)], "")
+    run_app(core, "player-desktop-volume150", [{"type": "RowQuickAction", "id": movie}, *wait(5), {"player": "volume", "value": 150},
+                                               {"player": "seek", "value": 12}, *wait(2), {"player": "pause"}, *wait(6)], "")
+    run_app(core, "player-desktop-arabic", [{"type": "SettingPick", "id": "language", "index": 2}, *wait(2), {"type": "RowQuickAction", "id": movie},
+                                            *wait(5), {"player": "volume", "value": 150}, {"player": "seek", "value": 12}, *wait(2),
+                                            {"player": "pause"}, *wait(5), {"type": "SettingPick", "id": "language", "index": 1}, *wait(2)],
+            "", capture_after=500 * 18)
+
+
 def run():
     core = Core("player_subtitles")
     media = os.path.join(core.work, "site")
@@ -267,6 +347,7 @@ def run():
     core.shutdown()
     try:
         host_part(core, ids, paths)
+        controls_part(core, ids, paths)
     except CheckFailed as failure:
         print("FAILED: " + str(failure))
     print("%d checks, %d failed" % (core.checks, len(core.failures)))

@@ -901,6 +901,11 @@ interface AppLocalization : LocalizationProvider {
     val playerModeHint: String
     val playerModeHintShort: String
     val playerSubtitles: String
+    val playerAutoplay: String
+    val playerVolume: String
+    val playerMute: String
+    val playerBrightness: String
+    val playerFullscreen: String
     val playerSubtitlesOff: String
     val playerSubtitlesOpenFile: String
     val playerSubtitlesTrack: String

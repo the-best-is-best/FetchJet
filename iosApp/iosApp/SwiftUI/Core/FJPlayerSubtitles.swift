@@ -237,10 +237,15 @@ struct FJSubtitleMenu: View {
                 Label(s.playerSubtitlesOpenFile, systemImage: "doc.badge.plus")
             }
         } label: {
-            Image(systemName: subtitles.isChosen(SubtitleChoiceOff.shared) ? "captions.bubble" : "captions.bubble.fill")
-                .font(.title3)
-                .foregroundStyle(.white)
-                .frame(width: 64, height: 44, alignment: .trailing)
+            let on = !subtitles.isChosen(SubtitleChoiceOff.shared)
+            Text("CC")
+                .font(.caption2.weight(.heavy))
+                .foregroundStyle(on ? Color.black : Color.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(on ? Color.white : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white, lineWidth: 1.2))
+                .frame(minWidth: 44, minHeight: 36, alignment: .trailing)
         }
         .accessibilityLabel(s.playerSubtitles)
     }

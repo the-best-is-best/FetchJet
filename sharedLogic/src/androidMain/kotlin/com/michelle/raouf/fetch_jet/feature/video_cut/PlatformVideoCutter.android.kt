@@ -125,6 +125,6 @@ actual object PlatformVideoCutter {
         } finally {
             runCatching { retriever.release() }
         }
-        return (bits ?: 8_000_000L).coerceIn(2_000_000L, 80_000_000L).toInt()
+        return ((bits ?: 8_000_000L) * 3 / 2).coerceIn(250_000L, 80_000_000L).toInt()
     }
 }

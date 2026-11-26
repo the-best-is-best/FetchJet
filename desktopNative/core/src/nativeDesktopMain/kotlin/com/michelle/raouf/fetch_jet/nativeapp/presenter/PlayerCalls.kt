@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady
 import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryOutdated
@@ -307,6 +308,10 @@ internal fun playerCall(name: String, args: String): String {
         }
         "remember" -> PlayerProgress.remember(key, obj["id"]?.jsonPrimitive?.content.orEmpty())
         "clear" -> PlayerProgress.clear(key)
+        "autoplay" -> {
+            obj["on"]?.jsonPrimitive?.content?.toBooleanStrictOrNull()?.let { BehaviorSettings.setPlayerAutoplay(it) }
+            return BehaviorSettings.playerAutoplay.value.toString()
+        }
         "subtitles" -> return playerSubtitles(obj["id"]?.jsonPrimitive?.content.orEmpty(), obj["path"]?.jsonPrimitive?.content.orEmpty(), obj["hidden"]?.jsonPrimitive?.content == "true")
         "subtitle" -> {
             val id = obj["id"]?.jsonPrimitive?.content.orEmpty()

@@ -46,7 +46,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -84,33 +83,62 @@ internal fun PlayerTimeline(
     positionMs: Long,
     durationMs: Long,
     onSeek: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDragging: (Boolean) -> Unit = {}
 ) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val total = durationMs.coerceAtLeast(1L)
     val shown = dragging ?: (positionMs.coerceIn(0L, total).toFloat() / total)
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            MediaPlayback.formatTime((shown * total).toLong()),
-            color = Color.White,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        Slider(
-            value = shown,
-            onValueChange = { dragging = it },
-            onValueChangeFinished = {
-                dragging?.let { onSeek((it * total).toLong()) }
-                dragging = null
-            },
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            MediaPlayback.formatTime(durationMs),
-            color = Color.White,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(start = 8.dp)
-        )
+    val accent = MaterialTheme.colorScheme.primary
+    val totalNow by rememberUpdatedState(total)
+    val seek by rememberUpdatedState(onSeek)
+    val reportDrag by rememberUpdatedState(onDragging)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Column(modifier = modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    MediaPlayback.formatTime((shown * total).toLong()),
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 11.sp
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(MediaPlayback.formatTime(durationMs), color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
+            }
+            Canvas(
+                modifier = Modifier.fillMaxWidth().height(22.dp).pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        down.consume()
+                        fun at(x: Float): Float = if (size.width > 0) (x / size.width).coerceIn(0f, 1f) else 0f
+                        dragging = at(down.position.x)
+                        reportDrag(true)
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                if (change.positionChanged()) {
+                                    change.consume()
+                                    dragging = at(change.position.x)
+                                }
+                            }
+                        } finally {
+                            dragging?.let { seek((it * totalNow).toLong()) }
+                            dragging = null
+                            reportDrag(false)
+                        }
+                    }
+                }
+            ) {
+                val active = dragging != null
+                val track = (if (active) 5.dp else 3.dp).toPx()
+                val cy = size.height / 2f
+                val x = shown * size.width
+                drawRoundRect(Color(0x4DFFFFFF), Offset(0f, cy - track / 2f), Size(size.width, track), CornerRadius(track / 2f))
+                drawRoundRect(accent, Offset(0f, cy - track / 2f), Size(x, track), CornerRadius(track / 2f))
+                drawCircle(accent, (if (active) 8.dp else 5.dp).toPx(), Offset(x, cy))
+            }
+        }
     }
 }
 

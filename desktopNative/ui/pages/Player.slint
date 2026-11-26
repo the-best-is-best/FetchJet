@@ -48,6 +48,14 @@ export global PlayerUi {
     callback start-over();
     callback surface-size(int, int);
     callback controls-shown(bool);
+    in property <float> volume: 100;
+    in property <bool> muted;
+    in property <bool> autoplay: true;
+    in property <bool> fullscreen;
+    callback set-volume(float);
+    callback toggle-mute();
+    callback set-autoplay(bool);
+    callback toggle-fullscreen();
     in property <[RowMenuItemDto]> sub-items;
     in property <int> sub-checked: -1;
     in property <bool> sub-on;
@@ -158,14 +166,14 @@ component Seek inherits Rectangle {
     callback released(float);
     private property <float> frac: root.duration > 0 ? clamp(root.position / root.duration, 0, 1) : 0;
     private property <float> live: ta.pressed ? clamp(ta.mouse-x / max(root.width, 1px), 0, 1) : root.frac;
-    height: 28px;
+    height: 20px;
     accessible-role: slider;
     accessible-value: root.position;
     accessible-value-minimum: 0;
     accessible-value-maximum: root.duration;
     Rectangle {
         y: (parent.height - self.height) / 2;
-        height: ta.pressed || ta.has-hover ? 6px : 4px;
+        height: ta.pressed || ta.has-hover ? 5px : 3px;
         border-radius: self.height / 2;
         background: #FFFFFF40;
         Rectangle {
@@ -180,12 +188,10 @@ component Seek inherits Rectangle {
     Rectangle {
         x: clamp(root.width * root.live - self.width / 2, 0px, root.width - self.width);
         y: (parent.height - self.height) / 2;
-        width: ta.pressed || ta.has-hover ? 16px : 12px;
+        width: ta.pressed || ta.has-hover ? 14px : 10px;
         height: self.width;
         border-radius: self.width / 2;
         background: Theme.primary;
-        border-width: 2px;
-        border-color: #FFFFFF;
     }
     ta := TouchArea {
         enabled: root.duration > 0;
@@ -193,6 +199,212 @@ component Seek inherits Rectangle {
             if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                 root.released(clamp(self.mouse-x / max(root.width, 1px), 0, 1) * root.duration);
             }
+        }
+    }
+}
+
+component PSwitch inherits Rectangle {
+    in property <bool> checked;
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background: root.checked ? Theme.primary : #FFFFFF40;
+    animate background { duration: 120ms; }
+    Rectangle {
+        x: (root.checked != Dir.rtl) ? parent.width - self.width - 2px : 2px;
+        y: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background: #FFFFFF;
+        animate x { duration: 120ms; }
+    }
+}
+
+component Autoplay inherits Rectangle {
+    width: line.preferred-width + 8px;
+    height: 32px;
+    border-radius: 16px;
+    accessible-role: switch;
+    accessible-label: Tr.playerAutoplay;
+    accessible-checkable: true;
+    accessible-checked: PlayerUi.autoplay;
+    accessible-action-default => { PlayerUi.set-autoplay(!PlayerUi.autoplay); }
+    ta := TouchArea {
+        clicked => { PlayerUi.set-autoplay(!PlayerUi.autoplay); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    line := HBox {
+        x: 4px;
+        width: parent.width - 8px;
+        height: parent.height;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        PSwitch {
+            checked: PlayerUi.autoplay;
+        }
+        Text {
+            text: Tr.playerAutoplay;
+            color: #FFFFFFE6;
+            font-family: Theme.font;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component Speaker inherits Rectangle {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    accessible-role: button;
+    accessible-label: Tr.playerMute;
+    accessible-checkable: true;
+    accessible-checked: PlayerUi.muted;
+    accessible-action-default => { PlayerUi.toggle-mute(); }
+    ta := TouchArea {
+        clicked => { PlayerUi.toggle-mute(); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Path {
+        x: 7px;
+        y: 7px;
+        width: 22px;
+        height: 22px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M 3 9 L 7 9 L 12 4.5 L 12 19.5 L 7 15 L 3 15 Z";
+        fill: #FFFFFF;
+    }
+    Path {
+        x: 7px;
+        y: 7px;
+        width: 22px;
+        height: 22px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: PlayerUi.muted || PlayerUi.volume <= 0 ? "M 16 9 L 22 15 M 22 9 L 16 15"
+            : PlayerUi.volume < 50 ? "M 15.5 9 Q 17.5 12 15.5 15"
+            : "M 15.5 9 Q 17.5 12 15.5 15 M 18.5 6 Q 22.5 12 18.5 18";
+        stroke: #FFFFFF;
+        stroke-width: 2px;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: transparent;
+    }
+}
+
+component Volume inherits Rectangle {
+    private property <length> pad: 7px;
+    private property <length> span: max(root.width - 2 * root.pad, 1px);
+    private property <float> dragged;
+    private property <float> share: (ta.pressed ? root.dragged : (PlayerUi.muted ? 0 : PlayerUi.volume)) / 200;
+    private property <length> fill-to: root.pad + root.share * root.span;
+    pure function value-at(x: length) -> float {
+        Math.round(clamp(x - root.pad, 0px, root.span) / root.span * 40) * 5
+    }
+    width: 96px;
+    height: 28px;
+    accessible-role: slider;
+    accessible-label: Tr.playerVolume;
+    accessible-value: Math.round(PlayerUi.volume) + "%";
+    accessible-value-minimum: 0;
+    accessible-value-maximum: 200;
+    accessible-value-step: 5;
+    accessible-action-increment => { PlayerUi.set-volume(min(200, PlayerUi.volume + 5)); }
+    accessible-action-decrement => { PlayerUi.set-volume(max(0, PlayerUi.volume - 5)); }
+    Rectangle {
+        x: root.pad;
+        y: (parent.height - self.height) / 2;
+        width: root.span;
+        height: 3px;
+        border-radius: 1.5px;
+        background: #FFFFFF40;
+    }
+    Rectangle {
+        x: root.pad;
+        y: (parent.height - self.height) / 2;
+        width: root.fill-to - root.pad;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.primary;
+    }
+    Rectangle {
+        x: root.pad + root.span / 2 - 1px;
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 11px;
+        border-radius: 1px;
+        background: #FFFFFFCC;
+    }
+    Rectangle {
+        x: root.fill-to - self.width / 2;
+        y: (parent.height - self.height) / 2;
+        width: ta.pressed || ta.has-hover ? 14px : 10px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #FFFFFF;
+    }
+    ta := TouchArea {
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.dragged = root.value-at(self.mouse-x);
+                PlayerUi.set-volume(root.dragged);
+            }
+        }
+        moved => {
+            if self.pressed && root.value-at(self.mouse-x) != root.dragged {
+                root.dragged = root.value-at(self.mouse-x);
+                PlayerUi.set-volume(root.dragged);
+            }
+        }
+    }
+}
+
+component CcButton inherits Rectangle {
+    callback clicked();
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    accessible-role: button;
+    accessible-label: Tr.playerSubtitles;
+    accessible-action-default => { root.clicked(); }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 26px;
+        height: 18px;
+        border-radius: 4px;
+        border-width: PlayerUi.sub-on ? 0px : 1.5px;
+        border-color: #FFFFFF;
+        background: PlayerUi.sub-on ? #FFFFFF : transparent;
+        Text {
+            text: "CC";
+            color: PlayerUi.sub-on ? #000000 : #FFFFFF;
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 800;
+            horizontal-alignment: center;
+            vertical-alignment: center;
         }
     }
 }
@@ -748,7 +960,7 @@ export component PlayerPage inherits Rectangle {
     changed width => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
     changed height => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
     hide-timer := Timer {
-        interval: 3500ms;
+        interval: 3000ms;
         running: PlayerUi.playing && root.shown && !root.list-open && !root.speed-open && !root.subs-open && !PlayerUi.finished && !PlayerUi.failed;
         triggered => { root.shown = false; }
     }
@@ -806,6 +1018,8 @@ export component PlayerPage inherits Rectangle {
                     root.speed-open = false;
                 } else if root.subs-open {
                     root.subs-open = false;
+                } else if PlayerUi.fullscreen {
+                    PlayerUi.toggle-fullscreen();
                 } else {
                     PlayerUi.close();
                 }
@@ -979,6 +1193,35 @@ export component PlayerPage inherits Rectangle {
             }
         }
     }
+    if PlayerUi.has-video && !PlayerUi.playing && !PlayerUi.finished && !PlayerUi.failed && !PlayerUi.opening && !PlayerUi.trim && PlayerUi.hold == 0: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: video.y + (video.height - self.height) / 2;
+        width: 72px;
+        height: 72px;
+        border-radius: 36px;
+        background: big-ta.has-hover ? #000000B3 : #00000080;
+        border-width: 1px;
+        border-color: #FFFFFF33;
+        accessible-role: button;
+        accessible-label: ">";
+        accessible-action-default => { PlayerUi.toggle-play(); }
+        big-ta := TouchArea {
+            clicked => {
+                PlayerUi.toggle-play();
+                root.wake();
+            }
+        }
+        Path {
+            x: 25px;
+            y: 22px;
+            width: 28px;
+            height: 28px;
+            viewbox-width: 24;
+            viewbox-height: 24;
+            commands: "M 5 3 L 21 12 L 5 21 Z";
+            fill: #FFFFFF;
+        }
+    }
     if PlayerUi.hold != 0: Rectangle {
         x: (parent.width - self.width) / 2;
         y: 72px;
@@ -1029,7 +1272,7 @@ export component PlayerPage inherits Rectangle {
         y: 0;
         width: parent.width;
         height: 60px;
-        background: #000000A6;
+        background: @linear-gradient(180deg, #000000B3 0%, #00000000 100%);
         opacity: root.controls-on ? 1 : 0;
         visible: self.opacity > 0.01;
         animate opacity { duration: 150ms; }
@@ -1093,7 +1336,7 @@ export component PlayerPage inherits Rectangle {
     }
     if PlayerUi.finished && PlayerUi.count > 1 && !PlayerUi.trim: Rectangle {
         x: 16px;
-        y: parent.height - 112px - self.height - 12px;
+        y: parent.height - 112px - self.height + 8px;
         width: parent.width - 32px;
         height: 56px;
         border-radius: 14px;
@@ -1129,7 +1372,7 @@ export component PlayerPage inherits Rectangle {
         y: parent.height - self.height;
         width: parent.width;
         height: 112px;
-        background: #000000A6;
+        background: @linear-gradient(180deg, #00000000 0%, #00000099 40%, #000000D9 100%);
         opacity: root.controls-on ? 1 : 0;
         visible: self.opacity > 0.01 && !PlayerUi.trim;
         animate opacity { duration: 150ms; }
@@ -1142,60 +1385,98 @@ export component PlayerPage inherits Rectangle {
         }
         Rectangle {
             x: 16px;
-            y: 8px;
+            y: 22px;
             width: parent.width - 32px;
-            height: 28px;
+            height: 16px;
             Text {
                 x: 0px;
-                width: 56px;
+                width: parent.width / 2;
                 height: parent.height;
                 text: seek.dragging ? root.fmt(seek.dragged-s) : PlayerUi.position-label;
                 color: #FFFFFF;
                 font-family: Theme.font;
-                font-size: 13px;
-                horizontal-alignment: right;
+                font-size: 12px;
+                horizontal-alignment: left;
                 vertical-alignment: center;
             }
-            seek := Seek {
-                x: 68px;
-                width: parent.width - 136px;
-                position: PlayerUi.position-s;
-                duration: PlayerUi.duration-s;
-                released(s) => {
-                    PlayerUi.seek(s);
-                    root.wake();
-                }
-            }
             Text {
-                x: parent.width - 56px;
-                width: 56px;
+                x: parent.width / 2;
+                width: parent.width / 2;
                 height: parent.height;
                 text: PlayerUi.duration-label;
                 color: #FFFFFFB3;
                 font-family: Theme.font;
-                font-size: 13px;
-                horizontal-alignment: left;
+                font-size: 12px;
+                horizontal-alignment: right;
                 vertical-alignment: center;
             }
         }
-        HBox {
+        seek := Seek {
             x: 16px;
-            y: 44px;
+            y: 38px;
             width: parent.width - 32px;
-            height: 60px;
-            spacing: 8px;
+            position: PlayerUi.position-s;
+            duration: PlayerUi.duration-s;
+            released(s) => {
+                PlayerUi.seek(s);
+                root.wake();
+            }
+        }
+        HBox {
+            x: 10px;
+            y: 62px;
+            width: parent.width - 20px;
+            height: 44px;
+            spacing: 4px;
             cross-axis-alignment: center;
+            HorizontalLayout {
+                width: 120px;
+                spacing: 4px;
+                alignment: center;
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 36px;
+                    glyph-size: 18px;
+                    commands: "M 5 5 L 7 5 L 7 19 L 5 19 Z M 19 5 L 9 12 L 19 19 Z";
+                    filled: true;
+                    enabled: PlayerUi.index > 0;
+                    label: "<";
+                    clicked => { PlayerUi.previous(); }
+                }
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 40px;
+                    glyph-size: 22px;
+                    filled: true;
+                    commands: PlayerUi.playing ? "M 7 5 L 10 5 L 10 19 L 7 19 Z M 14 5 L 17 5 L 17 19 L 14 19 Z" : "M 7 4.5 L 19 12 L 7 19.5 Z";
+                    label: PlayerUi.playing ? "||" : ">";
+                    clicked => { PlayerUi.toggle-play(); }
+                }
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 36px;
+                    glyph-size: 18px;
+                    commands: "M 17 5 L 19 5 L 19 19 L 17 19 Z M 5 5 L 15 12 L 5 19 Z";
+                    filled: true;
+                    enabled: PlayerUi.index < PlayerUi.count - 1;
+                    label: ">";
+                    clicked => { PlayerUi.next(); }
+                }
+            }
+            Rectangle {
+                width: 6px;
+            }
             speed-box := Rectangle {
-                width: 72px;
-                height: 40px;
+                width: 46px;
+                height: 32px;
                 Rectangle {
-                    border-radius: 20px;
-                    background: #FFFFFF1F;
+                    border-radius: 16px;
+                    background: root.speed-open ? #FFFFFF26 : transparent;
                     Text {
                         text: PlayerUi.speed-label;
                         color: #FFFFFF;
                         font-family: Theme.font;
-                        font-size: 14px;
+                        font-size: 13px;
                         font-weight: 700;
                         horizontal-alignment: center;
                         vertical-alignment: center;
@@ -1253,53 +1534,26 @@ export component PlayerPage inherits Rectangle {
                     }
                 }
             }
+            Autoplay { }
             Rectangle {
                 horizontal-stretch: 1;
             }
-            HorizontalLayout {
-                spacing: 8px;
-                alignment: center;
-                PBtn {
-                    commands: "M 5 5 L 7 5 L 7 19 L 5 19 Z M 19 5 L 9 12 L 19 19 Z";
-                    filled: true;
-                    enabled: PlayerUi.index > 0;
-                    label: "<";
-                    clicked => { PlayerUi.previous(); }
-                }
-                PBtn {
-                    size: 56px;
-                    glyph-size: 28px;
-                    filled: true;
-                    container: Theme.primary;
-                    ink: Theme.on-primary;
-                    commands: PlayerUi.playing ? "M 7 5 L 10 5 L 10 19 L 7 19 Z M 14 5 L 17 5 L 17 19 L 14 19 Z" : "M 8 5 L 19 12 L 8 19 Z";
-                    label: PlayerUi.playing ? "||" : ">";
-                    clicked => { PlayerUi.toggle-play(); }
-                }
-                PBtn {
-                    commands: "M 17 5 L 19 5 L 19 19 L 17 19 Z M 5 5 L 15 12 L 5 19 Z";
-                    filled: true;
-                    enabled: PlayerUi.index < PlayerUi.count - 1;
-                    label: ">";
-                    clicked => { PlayerUi.next(); }
-                }
+            Speaker { }
+            Volume { }
+            Text {
+                width: 42px;
+                text: Math.round(PlayerUi.muted ? 0 : PlayerUi.volume) + "%";
+                color: #FFFFFFE6;
+                font-family: Theme.font;
+                font-size: 12px;
+                horizontal-alignment: Dir.rtl ? right : left;
+                vertical-alignment: center;
             }
             Rectangle {
-                horizontal-stretch: 1;
-            }
-            Rectangle {
-                width: 72px;
-                height: 40px;
-                if PlayerUi.has-video: PBtn {
-                    x: Dir.rtl ? 0px : parent.width - self.width;
-                    y: (parent.height - self.height) / 2;
-                    size: 40px;
-                    glyph-size: 22px;
-                    commands: PlayerUi.sub-on
-                        ? "M 3 6 Q 3 4 5 4 L 19 4 Q 21 4 21 6 L 21 18 Q 21 20 19 20 L 5 20 Q 3 20 3 18 Z M 6 15 L 11 15 M 13 15 L 18 15 M 6 11 L 9 11 M 11 11 L 18 11"
-                        : "M 3 6 Q 3 4 5 4 L 19 4 Q 21 4 21 6 L 21 18 Q 21 20 19 20 L 5 20 Q 3 20 3 18 Z M 6 15 L 11 15 M 13 15 L 18 15";
-                    container: PlayerUi.sub-on ? #FFFFFF26 : transparent;
-                    label: Tr.playerSubtitles;
+                width: PlayerUi.has-video ? 36px : 0px;
+                height: 36px;
+                visible: PlayerUi.has-video;
+                CcButton {
                     clicked => { root.open-subs(); }
                 }
                 sub-menu := RowMenuPopup {
@@ -1314,6 +1568,15 @@ export component PlayerPage inherits Rectangle {
                     }
                     active-changed(on) => { root.subs-open = on; }
                 }
+            }
+            PBtn {
+                size: 36px;
+                glyph-size: 20px;
+                commands: PlayerUi.fullscreen
+                    ? "M 9 4 L 9 9 L 4 9 M 15 4 L 15 9 L 20 9 M 20 15 L 15 15 L 15 20 M 9 20 L 9 15 L 4 15"
+                    : "M 4 9 L 4 4 L 9 4 M 15 4 L 20 4 L 20 9 M 20 15 L 20 20 L 15 20 M 9 20 L 4 20 L 4 15";
+                label: Tr.playerFullscreen;
+                clicked => { PlayerUi.toggle-fullscreen(); }
             }
         }
     }
