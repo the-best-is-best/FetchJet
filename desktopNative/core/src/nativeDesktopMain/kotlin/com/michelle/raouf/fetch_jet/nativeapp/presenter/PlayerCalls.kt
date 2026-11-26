@@ -83,9 +83,29 @@ private val preparing = MutableStateFlow<Preparing?>(null)
 internal fun Presenter.openPlayer(queue: PlaybackQueue, tasks: List<DownloadTask>) {
     when {
         isPlayerLibraryReady() -> pushPlayerEffect(queue, tasks)
-        PlayerMode.isOn() || isPlayerLibraryOutdated() -> vm.ensurePlayerLibrary { pushPlayerEffect(queue, tasks) }
+        PlayerMode.isOn() || isPlayerLibraryOutdated() -> waitForPlayer(PlayerAsk(queue, tasks))
         else -> playerAsk.value = PlayerAsk(queue, tasks)
     }
+}
+
+private fun Presenter.waitForPlayer(ask: PlayerAsk) {
+    val trim = ask.trim
+    waitForLibrary(
+        LibraryWait(
+            pdf = false,
+            name = ask.queue.current.title,
+            secondaryIcon = if (trim != null) "⏱️" else "↗",
+            secondaryLabel = { if (trim != null) LocalizationManager.Strings.videoCutByTime else LocalizationManager.Strings.playerAskSystem },
+            open = {
+                if (trim != null) vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
+                pushPlayerEffect(ask.queue, ask.tasks, trim)
+            },
+            other = {
+                if (trim != null) vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
+                else openWithSystemApp(ask)
+            },
+        )
+    )
 }
 
 internal fun Presenter.openTrimPlayer(task: DownloadTask, trim: PlayerTrim) {
@@ -95,10 +115,7 @@ internal fun Presenter.openTrimPlayer(task: DownloadTask, trim: PlayerTrim) {
         vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
         pushPlayerEffect(queue, tasks, trim)
     } else if (isPlayerLibraryOutdated()) {
-        vm.ensurePlayerLibrary {
-            vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
-            pushPlayerEffect(queue, tasks, trim)
-        }
+        waitForPlayer(PlayerAsk(queue, tasks, trim = trim))
     } else {
         playerAsk.value = PlayerAsk(queue, tasks, trim = trim)
     }
@@ -140,15 +157,8 @@ internal fun playerAskDialog(ask: PlayerAsk): ChoiceDialogDto {
 internal fun Presenter.playerAskDownload() {
     val ask = playerAsk.value ?: return
     playerAsk.value = null
-    if (ask.trim != null) {
-        vm.ensurePlayerLibrary {
-            vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
-            pushPlayerEffect(ask.queue, ask.tasks, ask.trim)
-        }
-        return
-    }
-    PlayerMode.set(PlayerMode.ON)
-    vm.ensurePlayerLibrary { pushPlayerEffect(ask.queue, ask.tasks) }
+    if (ask.trim == null) PlayerMode.set(PlayerMode.ON)
+    waitForPlayer(ask)
 }
 
 internal fun Presenter.playerAskSystem() {
@@ -156,6 +166,10 @@ internal fun Presenter.playerAskSystem() {
     playerAsk.value = null
     if (ask.trim != null) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
     PlayerMode.set(PlayerMode.OFF)
+    openWithSystemApp(ask)
+}
+
+private fun Presenter.openWithSystemApp(ask: PlayerAsk) {
     val task = ask.tasks.firstOrNull { it.id == ask.queue.current.taskId } ?: return
     if (ask.queue.current.hidden) return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(task.id))
     val path = taskFilePath(task)
@@ -226,6 +240,11 @@ internal fun Presenter.debugPlayHidden(taskId: String): String {
     val queue = (if (taskId.isEmpty()) vm.hiddenGroupQueue() else vm.hiddenQueueFor(taskId)) ?: return ""
     pushPlayerEffect(queue, vm.uiState.value.hidden.tasks)
     return "ok"
+}
+
+internal fun Presenter.debugPlayTask(taskId: String): String {
+    val task = vm.uiState.value.findTask(taskId) ?: return ""
+    return if (playTask(task)) "ok" else ""
 }
 
 internal fun Presenter.playerPrepare(id: String) {

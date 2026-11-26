@@ -97,7 +97,7 @@ def selected(block):
     return [t for t in block["tracks"] if t["selected"] == "1"]
 
 
-def run_app(core, name, steps, sub_file, capture_after=None):
+def run_app(core, name, steps, sub_file, capture_after=None, extra_env=None):
     script = os.path.join(core.work, name + "-script.txt")
     with open(script, "w", encoding="utf-8") as f:
         for step in steps:
@@ -106,6 +106,7 @@ def run_app(core, name, steps, sub_file, capture_after=None):
     if os.path.exists(log):
         os.remove(log)
     env = dict(os.environ, FJ_PLAYER_LOG=log, FJ_PLAYER_AO="null", FETCHJET_NO_USAGE_PING="1", FJ_PLAYER_SUB_FILE=sub_file)
+    env.update(extra_env or {})
     total = 500 * len(steps) + 6000
     after = capture_after if capture_after else total - 2000
     capture = os.path.join(OUT or core.work, name + ".bmp")
@@ -216,6 +217,10 @@ def host_part(core, ids, paths):
     order = [(m["key"], m["label"]) for m in reopened["menu"]]
     core.check("the menu keeps the side files first, then the opened file", order[3:6] == [(1002, "en"), (1003, "ar"), (1004, "extra.srt")], order)
     core.check("the Arabic pick before closing", [t["label"] for t in selected(menu)] == ["ar"], menu["tracks"])
+    cc = [b["state"].get("uion") for b in (first, ar, off, track, opened, reopened, menu)]
+    core.check("the CC button: on at open, on, off, on, on, on after reopening, on", cc == ["1", "1", "0", "1", "1", "1", "1"], cc)
+    core.check("the CC button follows the checked entry", all(b["state"].get("uichecked") == b["state"].get("checked") for b in found),
+               [(b["state"].get("uichecked"), b["state"].get("checked")) for b in found])
     store = saved(core)
     core.check("the last pick is remembered on disk", store.get(movie, "").lower().endswith("movie.ar.srt"), store)
 
@@ -227,9 +232,26 @@ def host_part(core, ids, paths):
     core.check("both subs steps were logged", len(found) == 2, [b["command"] for b in found])
     if len(found) == 2:
         core.check("the remembered Arabic file is on at open", [t["label"] for t in selected(found[0])] == ["ar"], found[0]["tracks"])
+        core.check("the CC button is filled for the remembered file", found[0]["state"].get("uion") == "1", found[0]["state"])
         core.check("the broken file shows the failure message", found[1]["state"].get("notice", "").startswith("Could not read"), found[1]["state"])
         core.check("the broken file is not remembered", saved(core).get(movie, "").lower().endswith("movie.ar.srt"), saved(core))
         core.check("the shown track stays the Arabic file", [t["label"] for t in selected(found[1])] == ["ar"], found[1]["tracks"])
+
+    print("the CC button in a queue: subtitled video, then a video with none, then back")
+    plain = ids["plain.mp4"]
+    second = json.dumps({"id": plain, "title": "plain", "path": paths["plain.mp4"], "video": True})
+    steps = [{"type": "RowQuickAction", "id": movie}, *wait(8), {"player": "queuepair"}, *wait(8), {"player": "subs"},
+             {"player": "next"}, *wait(8), {"player": "subs"},
+             {"player": "pick", "value": 0}, *wait(8), {"player": "subs"}]
+    log = run_app(core, "subs-queue", steps, "", extra_env={"FJ_PLAYER_QUEUE_NEXT": second})
+    found = blocks(log)
+    core.check("the three queue subs steps were logged", len(found) == 3, [b["command"] for b in found])
+    if len(found) == 3:
+        index = [b["command"].split(" index=", 1)[1].split("/", 1)[0] if " index=" in b["command"] else "" for b in found]
+        core.check("the queue moved: first, second, first", index == ["0", "1", "0"], index)
+        cc = [b["state"].get("uion") for b in found]
+        core.check("the CC button: filled, outlined on the video with no subtitles, filled again", cc == ["1", "0", "1"], [b["state"] for b in found])
+        core.check("the second item has no subtitle tracks", found[1]["tracks"] == [] and found[1]["state"].get("checked") == "0", found[1])
 
 
 def sound_states(log):

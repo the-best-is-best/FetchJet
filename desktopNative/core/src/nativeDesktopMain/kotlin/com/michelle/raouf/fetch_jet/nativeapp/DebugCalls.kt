@@ -22,6 +22,7 @@ import com.michelle.raouf.fetch_jet.nativeapp.presenter.BrowserDialog
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.DeviceDebug
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.showBrowserDialog
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.debugPlayHidden
+import com.michelle.raouf.fetch_jet.nativeapp.presenter.debugPlayTask
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
@@ -54,6 +55,7 @@ internal object DebugCalls {
         }
         "stats" -> stats()
         "playHidden" -> NativeApp.presenter.debugPlayHidden(text(args, "id"))
+        "playTask" -> NativeApp.presenter.debugPlayTask(text(args, "id"))
         "addDirect" -> addDirect(args)
         "testLink" -> testLink()
         "extensionSteps" -> extensionSteps(args)

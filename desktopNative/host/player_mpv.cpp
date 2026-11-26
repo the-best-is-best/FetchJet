@@ -2334,6 +2334,14 @@ namespace fjhost::player {
                                   ",\"video\":" + (item.video ? "true" : "false") + "}";
                 open("{\"items\":[" + one + "," + one + "],\"index\":0,\"groupKey\":\"\"}");
             }
+        } else if (name == "queuepair") {
+            const char *second = std::getenv("FJ_PLAYER_QUEUE_NEXT");
+            if (!g_items.empty() && second && *second) {
+                Item item = g_items[g_index];
+                std::string one = "{\"id\":" + quote(item.id) + ",\"title\":" + quote(item.title) + ",\"path\":" + quote(item.path) +
+                                  ",\"video\":" + (item.video ? "true" : "false") + "}";
+                open("{\"items\":[" + one + "," + second + "],\"index\":0,\"groupKey\":\"\"}");
+            }
         } else if (name == "autoplay") {
             set_autoplay(value != 0);
         } else if (name == "volume") {
@@ -2369,7 +2377,8 @@ namespace fjhost::player {
                          g_autoplay ? 1 : 0, g_volume, g_muted ? 1 : 0, mpv_volume, mpv_mute, double(ui_player.get_volume()),
                          ui_player.get_autoplay() ? 1 : 0, g_fullscreen ? 1 : 0, ui_player.get_playing() ? 1 : 0);
             if (name.compare(0, 3, "sub") == 0) {
-                std::fprintf(file, "  subs checked=%d on=%d choice=%s files=%zu notice=%s\n", sub_checked(), sub_checked() != kSubOff ? 1 : 0,
+                std::fprintf(file, "  subs checked=%d on=%d uion=%d uichecked=%d choice=%s files=%zu notice=%s\n", sub_checked(), sub_checked() != kSubOff ? 1 : 0,
+                             ui().global<PlayerUi>().get_sub_on() ? 1 : 0, ui().global<PlayerUi>().get_sub_checked(),
                              g_sub_choice.c_str(), g_sub_files.size(), plain(ui().global<PlayerUi>().get_notice()).c_str());
                 for (int i = 0; i < int(g_sub_tracks.size()); i++)
                     std::fprintf(file, "  sub key=%d id=%lld external=%d selected=%d label=%s file=%s\n", kSubFirst + i, g_sub_tracks[i].id,

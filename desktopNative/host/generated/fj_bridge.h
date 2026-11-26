@@ -51,6 +51,7 @@ namespace ChoiceDialogKind {
     inline constexpr int MainDownloader = 3;
     inline constexpr int PlayerLibrary = 4;
     inline constexpr int PdfReader = 5;
+    inline constexpr int LibraryDownload = 6;
 }
 
 namespace BadgeToneCode {

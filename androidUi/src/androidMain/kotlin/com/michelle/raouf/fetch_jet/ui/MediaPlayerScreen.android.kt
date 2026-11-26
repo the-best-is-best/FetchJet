@@ -8,6 +8,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.content.Context
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
 import android.provider.Settings
 import android.view.Window
 import android.view.ViewGroup
@@ -24,6 +25,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -125,6 +127,18 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+
+private fun mediaFileDurationMs(path: String): Long {
+    val r = MediaMetadataRetriever()
+    return try {
+        r.setDataSource(path)
+        r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+    } catch (_: Exception) {
+        0L
+    } finally {
+        runCatching { r.release() }
+    }
+}
 
 internal enum class PlayerGlyph { CLOSE, PLAY, PAUSE, PREVIOUS, NEXT, LIST, SUBTITLES, VOLUME, BRIGHTNESS }
 
@@ -278,6 +292,8 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
     var playing by remember { mutableStateOf(true) }
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    var fileDuration by remember { mutableLongStateOf(0L) }
+    var openedPath by remember { mutableStateOf<String?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
     var controls by remember { mutableStateOf(true) }
     var showQueue by remember { mutableStateOf(false) }
@@ -378,6 +394,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
         wantPlay = play
         position = 0L
         duration = 0L
+        openedPath = null
         PlayerProgress.remember(queue.groupKey, item.taskId)
         openJob[0] = scope.launch {
             val path = if (item.hidden && HiddenPlayback.needsPrepare(item)) {
@@ -396,6 +413,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                 failed = LocalizationManager.Strings.fileMissingTitle
                 return@launch
             }
+            openedPath = path
             startSubtitles(item, false)
             player.setMediaItem(AndroidSubtitles.mediaItem(path, filesFor(item)))
             player.prepare()
@@ -441,7 +459,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) duration = player.duration.coerceAtLeast(0L)
+                if (state == Player.STATE_READY && fileDuration <= 0L) duration = player.duration.coerceAtLeast(0L)
                 if (state == Player.STATE_ENDED && hiddenQueue && index < queue.items.lastIndex) {
                     openAt(index + 1, BehaviorSettings.playerAutoplay.value)
                 } else if (state == Player.STATE_ENDED) {
@@ -504,11 +522,43 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
         }
     }
 
+    val probePath = if (hiddenQueue) openedPath else current.path
+    LaunchedEffect(probePath) {
+        fileDuration = 0L
+        val path = probePath ?: return@LaunchedEffect
+        val ms = withContext(Dispatchers.IO) { mediaFileDurationMs(path) }
+        fileDuration = ms
+        if (ms > 0L) duration = ms
+    }
+
+    fun mediaEnded() {
+        if (hiddenQueue && index < queue.items.lastIndex) {
+            openAt(index + 1, BehaviorSettings.playerAutoplay.value)
+        } else if (!hiddenQueue && player.hasNextMediaItem()) {
+            player.seekToNextMediaItem()
+            controls = false
+        } else {
+            player.pause()
+            controls = true
+            finished = true
+            PlayerProgress.clear(queue.groupKey)
+        }
+    }
+
     LaunchedEffect(player) {
         while (isActive) {
             position = player.currentPosition.coerceAtLeast(0L)
-            if (player.duration > 0) duration = player.duration
-            delay(250)
+            val end = fileDuration
+            if (end > 0L) {
+                duration = end
+                if (position >= end && !finished && player.playWhenReady && hold == 0 && !seeking &&
+                    player.playbackState == Player.STATE_READY
+                ) {
+                    position = end
+                    mediaEnded()
+                }
+            } else if (player.duration > 0) duration = player.duration
+            delay(if (end > 0L && end - position in 0L..400L) 40L else 250L)
         }
     }
 
@@ -562,7 +612,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
     }
 
     fun togglePlay() {
-        if (player.playbackState == Player.STATE_ENDED) {
+        if (player.playbackState == Player.STATE_ENDED || finished) {
             finished = false
             player.seekTo(0L)
             player.play()
@@ -570,12 +620,19 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
         touch++
     }
 
-    BackHandler {
-        if (subMenu) subMenu = false else if (showQueue) showQueue = false else onClose()
+    fun backPressed() {
+        when {
+            speedMenu -> speedMenu = false
+            subMenu -> subMenu = false
+            showQueue -> showQueue = false
+            else -> onClose()
+        }
     }
 
+    BackHandler { backPressed() }
+
     Dialog(
-        onDismissRequest = onClose,
+        onDismissRequest = { backPressed() },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         val view = LocalView.current
@@ -694,7 +751,7 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                         },
                         onDoubleTap = { offset ->
                             val delta = if (offset.x < size.width / 2f) -MediaPlayback.SKIP_MS else MediaPlayback.SKIP_MS
-                            player.seekTo((player.currentPosition + delta).coerceIn(0L, player.duration.coerceAtLeast(0L)))
+                            player.seekTo((player.currentPosition + delta).coerceIn(0L, duration.coerceAtLeast(0L)))
                         }
                     )
                 }.pointerInput(player) {
@@ -733,6 +790,9 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                     }
                 }
             )
+
+            Box(Modifier.align(Alignment.CenterStart).width(48.dp).height(200.dp).systemGestureExclusion())
+            Box(Modifier.align(Alignment.CenterEnd).width(48.dp).height(200.dp).systemGestureExclusion())
 
             swipe?.let { kind ->
                 Column(
@@ -862,7 +922,12 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                     PlayerTimeline(
                         positionMs = position,
                         durationMs = duration,
-                        onSeek = { player.seekTo(it); position = it; touch++ },
+                        onSeek = {
+                            player.seekTo(it)
+                            position = it
+                            if (duration <= 0L || it < duration) finished = false
+                            touch++
+                        },
                         onDragging = { seeking = it }
                     )
                     Row(
@@ -915,12 +980,15 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { subMenu = true }
                                     .padding(horizontal = 6.dp, vertical = 6.dp)
                             ) {
+                                val ccOn = AndroidSubtitles.selected(tracks) != SubtitleChoice.Off
                                 Text(
                                     "CC",
-                                    color = Color.White,
+                                    color = if (ccOn) Color.Black else Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.border(1.5.dp, Color.White, RoundedCornerShape(3.dp))
+                                    modifier = Modifier
+                                        .background(if (ccOn) Color.White else Color.Transparent, RoundedCornerShape(3.dp))
+                                        .border(1.5.dp, Color.White, RoundedCornerShape(3.dp))
                                         .padding(horizontal = 4.dp)
                                 )
                             }

@@ -15,6 +15,9 @@ import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -24,6 +27,8 @@ import okio.buffer
 import okio.use
 
 internal class OnDemandAsset(val fileName: String, val url: String, val sha256: String)
+
+data class OnDemandStatus(val running: Boolean = false, val percent: Int? = null, val error: String? = null)
 
 internal class OnDemandLibrary(
     val name: String,
@@ -37,6 +42,12 @@ internal class OnDemandLibrary(
 
     @Volatile
     private var pending: (() -> Unit)? = null
+
+    @Volatile
+    private var toastOnFailure = true
+
+    private val _status = MutableStateFlow(OnDemandStatus())
+    val status: StateFlow<OnDemandStatus> = _status.asStateFlow()
 
     fun asset(): OnDemandAsset {
         val base = pinned()
@@ -104,22 +115,35 @@ internal class OnDemandLibrary(
             }
         }
 
-    fun ensure(vm: DashboardViewModel, onReady: () -> Unit) {
+    fun ensure(vm: DashboardViewModel, toast: Boolean = true, onReady: () -> Unit) {
         if (isReady()) {
             onReady()
             return
         }
         pending = onReady
+        toastOnFailure = toast
         if (running) return
         running = true
+        _status.value = OnDemandStatus(running = true)
         vm.scope.launch {
             var error: String? = null
             try {
-                error = vm.toolsMutex.withLock { download(vm::reportToolProgress) }
+                error = vm.toolsMutex.withLock {
+                    if (isReady()) null
+                    else download { progress ->
+                        vm.reportToolProgress(progress)
+                        val percent = progress.fraction?.let { (it.coerceIn(0f, 1f) * 100f).toInt() }
+                        if (percent != _status.value.percent) _status.value = OnDemandStatus(running = true, percent = percent)
+                    }
+                }
+            } catch (e: CancellationException) {
+                error = "cancelled"
+                throw e
             } finally {
                 vm._uiState.update { it.copy(isDownloadingYtDlp = false, toolDownloadName = null, toolDownloadFraction = null) }
                 running = false
                 if (error != null) pending = null
+                _status.value = OnDemandStatus(error = error)
             }
             vm.refreshToolStatus()
             val open = pending
@@ -127,7 +151,8 @@ internal class OnDemandLibrary(
             if (error == null && isReady()) {
                 open?.invoke()
             } else {
-                vm._uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.sysMediaToolsDownloadFailed))
+                if (error == null) _status.value = OnDemandStatus(error = "$name is not ready")
+                if (toastOnFailure) vm._uiEffect.emit(DashboardUiEffect.ShowToast(LocalizationManager.Strings.sysMediaToolsDownloadFailed))
             }
         }
     }

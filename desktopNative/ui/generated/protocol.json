@@ -266,7 +266,8 @@
    "FILE_CONFLICT",
    "MAIN_DOWNLOADER",
    "PLAYER_LIBRARY",
-   "PDF_READER"
+   "PDF_READER",
+   "LIBRARY_DOWNLOAD"
   ],
   "BadgeToneCode": [
    "OTHER",

@@ -225,7 +225,7 @@ component ChoiceOverlay inherits Rectangle {
             Gap {
                 size: 18px;
             }
-            Rectangle {
+            if root.data.primaryLabel != "": Rectangle {
                 height: 48px;
                 FilledButton {
                     width: parent.width;
@@ -235,7 +235,7 @@ component ChoiceOverlay inherits Rectangle {
                     clicked => { Act.choicePrimary(root.data.kind); }
                 }
             }
-            if root.data.secondaryLabel != "": Gap {
+            if root.data.secondaryLabel != "" && root.data.primaryLabel != "": Gap {
                 size: 8px;
             }
             if root.data.secondaryLabel != "": Rectangle {

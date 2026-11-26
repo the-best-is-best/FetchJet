@@ -2,8 +2,10 @@ package com.michelle.raouf.fetch_jet.feature.pdf_reader
 
 import com.michelle.raouf.fetch_jet.feature.media_extractor.OnDemandAsset
 import com.michelle.raouf.fetch_jet.feature.media_extractor.OnDemandLibrary
+import com.michelle.raouf.fetch_jet.feature.media_extractor.OnDemandStatus
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
+import kotlinx.coroutines.flow.StateFlow
 
 internal object PdfLibraryPin {
     const val VERSION = "8179"
@@ -40,4 +42,6 @@ fun isPdfLibraryOutdated(): Boolean = pdfLibrary.isOutdated()
 
 fun isPdfLibraryAvailable(): Boolean = pdfLibrary.isAvailable()
 
-fun DashboardViewModel.ensurePdfLibrary(onReady: () -> Unit) = pdfLibrary.ensure(this, onReady)
+fun DashboardViewModel.ensurePdfLibrary(toast: Boolean = true, onReady: () -> Unit) = pdfLibrary.ensure(this, toast, onReady)
+
+fun pdfLibraryStatus(): StateFlow<OnDemandStatus> = pdfLibrary.status

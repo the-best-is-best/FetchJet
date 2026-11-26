@@ -41,7 +41,7 @@ internal fun Presenter.readPdf(task: DownloadTask): Boolean {
     if (!task.hidden && !pathResolver.fileExists(taskFilePath(task))) return false
     when {
         isPdfLibraryReady() -> pushPdfEffect(task)
-        PdfMode.isOn() || isPdfLibraryOutdated() -> vm.ensurePdfLibrary { pushPdfEffect(task) }
+        PdfMode.isOn() || isPdfLibraryOutdated() -> waitForPdf(task)
         else -> pdfAsk.value = PdfAsk(task)
     }
     return true
@@ -69,7 +69,20 @@ internal fun Presenter.pdfAskDownload() {
     val ask = pdfAsk.value ?: return
     pdfAsk.value = null
     PdfMode.set(PdfMode.ON)
-    vm.ensurePdfLibrary { pushPdfEffect(ask.task) }
+    waitForPdf(ask.task)
+}
+
+private fun Presenter.waitForPdf(task: DownloadTask) {
+    waitForLibrary(
+        LibraryWait(
+            pdf = true,
+            name = task.fileName,
+            secondaryIcon = "↗",
+            secondaryLabel = { LocalizationManager.Strings.playerAskSystem },
+            open = { pushPdfEffect(task) },
+            other = { openPdfInSystemApp(task) },
+        )
+    )
 }
 
 internal fun Presenter.pdfAskSystem() {

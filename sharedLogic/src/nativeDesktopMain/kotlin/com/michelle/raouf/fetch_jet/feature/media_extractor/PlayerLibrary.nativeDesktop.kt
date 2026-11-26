@@ -2,6 +2,7 @@ package com.michelle.raouf.fetch_jet.feature.media_extractor
 
 import com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
+import kotlinx.coroutines.flow.StateFlow
 
 internal object PlayerLibraryPin {
     const val VERSION = "0.42.0"
@@ -49,4 +50,6 @@ fun isPlayerLibraryAvailable(): Boolean = playerLibrary.isAvailable()
 
 suspend fun downloadPlayerLibrary(onProgress: (ToolDownloadProgress) -> Unit = {}): String? = playerLibrary.download(onProgress)
 
-fun DashboardViewModel.ensurePlayerLibrary(onReady: () -> Unit) = playerLibrary.ensure(this, onReady)
+fun DashboardViewModel.ensurePlayerLibrary(toast: Boolean = true, onReady: () -> Unit) = playerLibrary.ensure(this, toast, onReady)
+
+fun playerLibraryStatus(): StateFlow<OnDemandStatus> = playerLibrary.status
