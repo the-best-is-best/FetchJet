@@ -197,6 +197,9 @@ internal fun Presenter.dispatch(action: UiAction) {
         UiAction.VideoMergeStart -> vm.onEvent(DashboardUiEvent.OnMergeStartClicked)
         UiAction.VideoMergeCancel -> vm.onEvent(DashboardUiEvent.OnMergeCancelClicked)
         UiAction.VideoMergeDismiss -> vm.onEvent(DashboardUiEvent.OnDismissMerge)
+        UiAction.VideoMergeSaveCopy -> vm.onEvent(DashboardUiEvent.OnMergeSaveAsCopyClicked)
+        UiAction.VideoMergeOverwrite -> vm.onEvent(DashboardUiEvent.OnMergeOverwriteClicked)
+        UiAction.VideoMergeConflictDismiss -> vm.onEvent(DashboardUiEvent.OnMergeConflictDismissed)
         UiAction.DetailsSubtitles -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(it)) }
         is UiAction.SubtitlesToggle -> vm.onEvent(DashboardUiEvent.OnSubtitleTrackToggled(action.key, action.selected))
         UiAction.SubtitlesAdd -> vm.onEvent(DashboardUiEvent.OnSubtitlesAddClicked)

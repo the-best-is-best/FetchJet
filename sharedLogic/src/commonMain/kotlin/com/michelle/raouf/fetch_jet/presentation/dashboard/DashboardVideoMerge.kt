@@ -3,7 +3,6 @@ package com.michelle.raouf.fetch_jet.presentation.dashboard
 import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
-import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.feature.video_merge.VideoMerge
 import com.tbib.kmp_localization.LocalizationManager
@@ -36,10 +35,16 @@ internal fun DashboardViewModel.handleVideoMergeEvent(event: DashboardUiEvent) {
         is DashboardUiEvent.OnMergeMoveTo -> moveMergeItem(event.from, event.to)
 
         is DashboardUiEvent.OnMergeNameChanged -> updateVideoMerge { page ->
-            if (page.running) page else page.copy(fileName = event.name, failed = false, message = "")
+            if (page.running) page else page.copy(fileName = event.name, failed = false, message = "", conflictName = "", copyName = "")
         }
 
-        DashboardUiEvent.OnMergeStartClicked -> startVideoMerge()
+        DashboardUiEvent.OnMergeStartClicked -> startVideoMerge(MergeTarget.ASK)
+
+        DashboardUiEvent.OnMergeSaveAsCopyClicked -> startVideoMerge(MergeTarget.COPY)
+
+        DashboardUiEvent.OnMergeOverwriteClicked -> startVideoMerge(MergeTarget.OVERWRITE)
+
+        DashboardUiEvent.OnMergeConflictDismissed -> updateVideoMerge { it.copy(conflictName = "", copyName = "") }
 
         DashboardUiEvent.OnMergeCancelClicked -> {
             val page = _uiState.value.videoMerge ?: return
@@ -143,20 +148,32 @@ private fun DashboardViewModel.checkMergeItems() {
     }
 }
 
-private fun DashboardViewModel.startVideoMerge() {
+private enum class MergeTarget { ASK, COPY, OVERWRITE }
+
+private fun DashboardViewModel.startVideoMerge(target: MergeTarget) {
     val page = _uiState.value.videoMerge ?: return
-    if (!page.canStart) return
+    if (target == MergeTarget.ASK && !page.canStart) return
+    if (target != MergeTarget.ASK && (!page.hasConflict || page.running)) return
     val tasks = mergeTasks(page.items.map { it.taskId })
     if (tasks.size != page.items.size || !VideoMerge.canMergeAll(tasks)) return
     val first = tasks.first()
+    val folder = first.destinationPath.trimEnd('/', '\\')
     val name = VideoMerge.withExtension(page.fileName, page.extension).ifBlank { VideoMerge.mergedName(first.fileName) }
-    val output = AudioCompress.freePath(first.destinationPath.trimEnd('/', '\\'), name)
+    val taken = AppFileSystem.exists("$folder/$name".toPath()) ||
+            queueRepository.allTasksFlow.value.any { it.destinationPath.trimEnd('/', '\\') == folder && it.fileName.equals(name, ignoreCase = true) }
+    if (target == MergeTarget.ASK && taken) {
+        val copy = queueRepository.freeNameIn(folder, name)
+        updateVideoMerge { it.copy(conflictName = name, copyName = copy) }
+        return
+    }
+    val replace = target == MergeTarget.OVERWRITE
+    val output = if (replace) "$folder/$name" else "$folder/${queueRepository.freeNameIn(folder, name)}"
     val total = page.items.sumOf { it.durationMs }
-    updateVideoMerge { it.copy(running = true, stopping = false, progress = 0f, elapsedMs = 0L, etaMs = -1L, failed = false, message = "", lastPath = "") }
+    updateVideoMerge { it.copy(running = true, stopping = false, progress = 0f, elapsedMs = 0L, etaMs = -1L, failed = false, message = "", lastPath = "", conflictName = "", copyName = "") }
     videoMergeJob = scope.launch {
         var ok = false
         try {
-            ok = VideoMerge.merge(tasks.map { VideoMerge.sourcePath(it) }, output, total) { step ->
+            ok = VideoMerge.merge(tasks.map { VideoMerge.sourcePath(it) }, output, total, replace) { step ->
                 _uiState.update { state ->
                     val current = state.videoMerge?.takeIf { it.running } ?: return@update state
                     state.copy(videoMerge = current.copy(progress = step.fraction, elapsedMs = step.elapsedMs, etaMs = step.etaMs))
@@ -164,6 +181,9 @@ private fun DashboardViewModel.startVideoMerge() {
             }
             if (ok) {
                 val bytes = AppFileSystem.metadataOrNull(output.toPath())?.size ?: 0L
+                if (replace) queueRepository.allTasksFlow.value
+                    .filter { it.destinationPath.trimEnd('/', '\\') == folder && it.fileName.equals(name, ignoreCase = true) }
+                    .forEach { queueRepository.removeTask(it.id, deleteFile = false) }
                 queueRepository.addFinishedFile(VideoMerge.mergedTask(queueRepository.generateUniqueTaskId(), first, output, bytes))
             }
         } catch (e: CancellationException) {

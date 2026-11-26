@@ -1751,6 +1751,22 @@
    [
     "message",
     "String"
+   ],
+   [
+    "conflict",
+    "Boolean"
+   ],
+   [
+    "conflictName",
+    "String"
+   ],
+   [
+    "copyName",
+    "String"
+   ],
+   [
+    "saveCopyLabel",
+    "String"
    ]
   ],
   "AudioCompressDto": [
@@ -4402,7 +4418,10 @@
   ],
   "VideoMergeStart": [],
   "VideoMergeCancel": [],
-  "VideoMergeDismiss": []
+  "VideoMergeDismiss": [],
+  "VideoMergeSaveCopy": [],
+  "VideoMergeOverwrite": [],
+  "VideoMergeConflictDismiss": []
  },
  "tr": [
   "languageName",

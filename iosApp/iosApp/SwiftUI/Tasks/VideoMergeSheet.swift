@@ -116,17 +116,21 @@ private struct VideoMergeEditView: View {
                     VideoCutMessage(text: page.message.isEmpty ? s.mergeFailed : page.message,
                                     error: page.failed, clipPath: page.lastPath)
                 }
-                HStack(spacing: 10) {
-                    if done {
-                        FJDialogButton(title: s.close, fill: true) {
-                            store.send(DashboardUiEventOnDismissMerge.shared)
-                        }
-                    } else {
-                        FJDialogButton(title: s.cancel, kind: .outlined, fill: true) {
-                            store.send(DashboardUiEventOnDismissMerge.shared)
-                        }
-                        FJDialogButton(title: s.mergeVideos, enabled: page.canStart, fill: true) {
-                            store.send(DashboardUiEventOnMergeStartClicked.shared)
+                if page.hasConflict {
+                    VideoMergeConflictView(page: page)
+                } else {
+                    HStack(spacing: 10) {
+                        if done {
+                            FJDialogButton(title: s.close, fill: true) {
+                                store.send(DashboardUiEventOnDismissMerge.shared)
+                            }
+                        } else {
+                            FJDialogButton(title: s.cancel, kind: .outlined, fill: true) {
+                                store.send(DashboardUiEventOnDismissMerge.shared)
+                            }
+                            FJDialogButton(title: s.mergeVideos, enabled: page.canStart, fill: true) {
+                                store.send(DashboardUiEventOnMergeStartClicked.shared)
+                            }
                         }
                     }
                 }
@@ -134,6 +138,66 @@ private struct VideoMergeEditView: View {
             .padding(20)
         }
         .background(FJTheme.color.surface.ignoresSafeArea())
+    }
+}
+
+private struct VideoMergeConflictView: View {
+    @EnvironmentObject var store: FJStore
+    let page: VideoMergeUi
+
+    var body: some View {
+        let s = store.strings
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Text("⚠️")
+                    .font(.fj(22))
+                    .frame(width: 44, height: 44)
+                    .background(FJTheme.color.primaryContainer.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(s.overwriteDialogTitle)
+                        .font(Font.fj(16, .bold))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                    Text(s.overwriteDialogSubtitle)
+                        .font(FJTheme.font.caption)
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                row(s.overwriteDialogFileNameLabel, page.conflictName, FJTheme.color.onSurfaceVariant, FJTheme.color.onSurface)
+                row(s.overwriteDialogNewCopyLabel, page.copyName, FJTheme.color.primary, FJTheme.color.primary)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.6)))
+            Text(s.overwriteDialogQuestion)
+                .font(.fj(12))
+                .foregroundStyle(FJTheme.color.onSurface)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                FJDialogButton(title: "📝 " + s.overwriteDialogSaveAsCopy(name: page.copyName), kind: .filled, fill: true) {
+                    store.send(DashboardUiEventOnMergeSaveAsCopyClicked.shared)
+                }
+                FJDialogButton(title: "⚠️ " + s.overwriteDialogOverwriteExisting, kind: .dangerText, fill: true) {
+                    store.send(DashboardUiEventOnMergeOverwriteClicked.shared)
+                }
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.error))
+                FJDialogButton(title: s.cancel, kind: .text, fill: true) {
+                    store.send(DashboardUiEventOnMergeConflictDismissed.shared)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(FJTheme.color.outlineVariant.opacity(0.6)))
+    }
+
+    private func row(_ label: String, _ value: String, _ labelColor: Color, _ valueColor: Color) -> some View {
+        (Text(label).font(.fj(12, .bold)).foregroundColor(labelColor)
+            + Text(" ")
+            + Text(value).font(.fj(12, .semibold)).foregroundColor(valueColor))
+            .lineLimit(2)
     }
 }
 

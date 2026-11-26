@@ -1,11 +1,13 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.feature.video_merge.VideoMerge
 import com.michelle.raouf.fetch_jet.nativeapp.dto.VideoMergeDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.VideoMergeItemDto
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.VideoMergeUi
+import com.tbib.kmp_localization.LocalizationManager
 
 private fun mergeClock(ms: Long): String = if (ms > 0L) ltr(clockText((ms + 999L) / 1000L)) else ""
 
@@ -42,6 +44,10 @@ internal fun buildVideoMerge(page: VideoMergeUi?): VideoMergeDto {
         failed = page.failed,
         saved = !page.running && page.lastPath.isNotEmpty(),
         message = page.message,
+        conflict = page.hasConflict,
+        conflictName = page.conflictName,
+        copyName = page.copyName,
+        saveCopyLabel = if (page.hasConflict) LocalizationManager.Strings.overwriteDialogSaveAsCopy(ltr(page.copyName)) else "",
     )
 }
 

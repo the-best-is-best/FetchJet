@@ -50,6 +50,24 @@ def add_finished(core, port, name):
     return core.wait_task("COMPLETED", timeout=60, file_name=name)
 
 
+def open_merge(core, ids, name):
+    check_rows(core, ids)
+    core.action("MergeChecked")
+    core.wait_for("the merge dialog", lambda: merge_page(core).get("open"), 10)
+    core.wait_for("the check", lambda: not merge_page(core).get("checking"), 60)
+    core.action("VideoMergeName", text=name)
+    core.pump(0.3)
+
+
+def close_merge(core):
+    core.action("VideoMergeDismiss")
+    core.wait_for("the dialog to close", lambda: not merge_page(core).get("open"), 10)
+
+
+def named_rows(core, name):
+    return [t for t in core.tasks() if t.get("fileName") == name]
+
+
 def run():
     core = Core("merge", before_start=install_ffmpeg)
     media = os.path.join(core.work, "media")
@@ -122,8 +140,60 @@ def run():
         print("    merged: %.3f s, parts %.3f s" % (got, total))
         core.check("merged length = sum of the parts", abs(got - total) <= 0.3, "%.3f vs %.3f" % (got, total))
 
-        core.action("VideoMergeDismiss")
-        core.wait_for("the dialog to close", lambda: not merge_page(core).get("open"), 10)
+        close_merge(core)
+
+        open_merge(core, [a["id"], b["id"]], "joined")
+        core.check("same name: can press Merge", merge_page(core).get("canStart"))
+        core.action("VideoMergeStart")
+        core.wait_for("the name question", lambda: merge_page(core).get("conflict"), 10)
+        page = merge_page(core)
+        core.check("conflict: taken name shown", page.get("conflictName") == "joined.mp4", page.get("conflictName", ""))
+        core.check("conflict: copy name shown", page.get("copyName") == "joined (1).mp4", page.get("copyName", ""))
+        core.check("conflict: save-as-copy label names the copy", "joined (1).mp4" in page.get("saveCopyLabel", ""), page.get("saveCopyLabel", ""))
+        core.check("conflict: cannot start, not running", not page.get("canStart") and not page.get("running"))
+        core.action("VideoMergeConflictDismiss")
+        core.pump(0.4)
+        page = merge_page(core)
+        core.check("Cancel clears the conflict", not page.get("conflict") and page.get("conflictName", "") == "" and page.get("open"), str(page))
+        core.check("Cancel: Merge offered again", page.get("canStart"))
+        core.action("VideoMergeStart")
+        core.wait_for("the name question again", lambda: merge_page(core).get("conflict"), 10)
+        core.action("VideoMergeName", text="joined-x")
+        core.pump(0.4)
+        core.check("typing a new name clears the conflict", not merge_page(core).get("conflict") and merge_page(core).get("canStart"))
+        core.action("VideoMergeName", text="joined")
+        core.pump(0.3)
+        core.action("VideoMergeStart")
+        core.wait_for("the name question", lambda: merge_page(core).get("conflict"), 10)
+        original_size = os.path.getsize(path)
+        original_mtime = os.path.getmtime(path)
+        core.action("VideoMergeSaveCopy")
+        core.wait_for("the copy merge", lambda: merge_page(core).get("saved") or merge_page(core).get("failed"), 120)
+        core.check("copy: merge not failed", merge_page(core).get("saved") and not merge_page(core).get("failed"), merge_page(core).get("message", ""))
+        copy_row = core.wait_task("COMPLETED", timeout=20, file_name="joined (1).mp4")
+        copy_path = os.path.join(core.downloads, "joined (1).mp4")
+        core.check("copy: new row joined (1).mp4", copy_row is not None)
+        core.check("copy: both files exist", os.path.isfile(path) and os.path.isfile(copy_path))
+        core.check("copy: original untouched", os.path.getmtime(path) == original_mtime and os.path.getsize(path) == original_size)
+        core.check("copy: original row kept", len(named_rows(core, "joined.mp4")) == 1)
+        close_merge(core)
+
+        open_merge(core, [b["id"], a["id"]], "joined")
+        core.action("VideoMergeStart")
+        core.wait_for("the name question", lambda: merge_page(core).get("conflict"), 10)
+        core.check("overwrite round: copy name skips the used one", merge_page(core).get("copyName") == "joined (2).mp4", merge_page(core).get("copyName", ""))
+        core.action("VideoMergeOverwrite")
+        core.wait_for("the overwrite merge", lambda: merge_page(core).get("saved") or merge_page(core).get("failed"), 120)
+        core.check("overwrite: merge not failed", merge_page(core).get("saved") and not merge_page(core).get("failed"), merge_page(core).get("message", ""))
+        core.pump(1.0)
+        core.check("overwrite: no (2) file", not os.path.exists(os.path.join(core.downloads, "joined (2).mp4")))
+        core.check("overwrite: no (2) row", not named_rows(core, "joined (2).mp4"))
+        core.check("overwrite: file replaced", os.path.isfile(path) and os.path.getmtime(path) != original_mtime)
+        rows = named_rows(core, "joined.mp4")
+        core.check("overwrite: one row with the name", len(rows) == 1, str(len(rows)))
+        core.check("overwrite: the row is the new one", rows and rows[0].get("id") != merged.get("id"), str(rows[:1]))
+        core.check("overwrite: the copy is kept", os.path.isfile(copy_path) and len(named_rows(core, "joined (1).mp4")) == 1)
+        close_merge(core)
 
         check_rows(core, [a["id"], wide["id"]])
         core.check("different size: Merge button still offered", chrome(core).get("canMerge"))

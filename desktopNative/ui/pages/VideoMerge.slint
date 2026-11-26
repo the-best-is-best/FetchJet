@@ -1,6 +1,6 @@
 import { Theme, Dir } from "../theme.slint";
 import { HBox, T } from "../widgets/Base.slint";
-import { FilledButton, OutlinedButton, IconButton } from "../widgets/Buttons.slint";
+import { FilledButton, OutlinedButton, TextButton, IconButton } from "../widgets/Buttons.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { Gap } from "../widgets/Kit.slint";
@@ -14,6 +14,150 @@ component Caption inherits T {
     tracking: 0.1px;
     font-weight: 600;
     color: Theme.on-surface-variant;
+}
+
+component ConflictLine inherits GridLayout {
+    in property <string> label;
+    in property <string> value;
+    in property <bool> accent;
+    spacing: 4px;
+    Text {
+        row: 0;
+        col: Dir.rtl ? 1 : 0;
+        text: root.label;
+        color: root.accent ? Theme.primary : Theme.on-surface-variant;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        vertical-alignment: top;
+        min-height: 24px;
+    }
+    Text {
+        row: 0;
+        col: Dir.rtl ? 0 : 1;
+        text: root.value;
+        color: root.accent ? Theme.primary : Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: Dir.start;
+        horizontal-stretch: 1;
+        wrap: char-wrap;
+        overflow: elide;
+        min-height: 24px;
+        max-height: 48px;
+    }
+}
+
+component MergeConflict inherits VerticalLayout {
+    spacing: 0px;
+    HBox {
+        height: 48px;
+        spacing: 12px;
+        cross-axis-alignment: center;
+        Rectangle {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: Theme.error-container.with-alpha(0.4);
+            EmojiIcon {
+                glyph: "⚠️";
+                size: 24px;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 0px;
+            T {
+                text: Tr.overwriteDialogTitle;
+                font-size: 17px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            T {
+                text: Tr.overwriteDialogSubtitle;
+                font-size: 12px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+    }
+    Gap {
+        size: 12px;
+    }
+    Rectangle {
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: Theme.outline-variant.with-alpha(0.6);
+        background: Theme.surface-variant.with-alpha(0.35);
+        VerticalLayout {
+            padding: 14px;
+            spacing: 8px;
+            ConflictLine {
+                label: Tr.overwriteDialogFileNameLabel;
+                value: Core.audioCompress.merge.conflictName;
+            }
+            ConflictLine {
+                label: Tr.overwriteDialogNewCopyLabel;
+                value: Core.audioCompress.merge.copyName;
+                accent: true;
+            }
+        }
+    }
+    Gap { }
+    Text {
+        text: Tr.overwriteDialogQuestion;
+        color: Theme.on-surface;
+        font-family: Theme.font;
+        font-size: 12px;
+        letter-spacing: Dir.rtl ? 0px : 0.5px;
+        horizontal-alignment: Dir.start;
+        wrap: word-wrap;
+        min-height: 24px;
+    }
+    Gap {
+        size: 14px;
+    }
+    Rectangle {
+        height: 48px;
+        FilledButton {
+            width: parent.width;
+            text: "📝 " + Core.audioCompress.merge.saveCopyLabel;
+            border-radius: 10px;
+            font-weight: 700;
+            clicked => { Act.videoMergeSaveCopy(); }
+        }
+    }
+    Gap {
+        size: 8px;
+    }
+    Rectangle {
+        height: 48px;
+        OutlinedButton {
+            width: parent.width;
+            text: "⚠️ " + Tr.overwriteDialogOverwriteExisting;
+            border-radius: 10px;
+            ink: Theme.error;
+            line: Theme.error;
+            clicked => { Act.videoMergeOverwrite(); }
+        }
+    }
+    Gap {
+        size: 8px;
+    }
+    Rectangle {
+        height: 48px;
+        TextButton {
+            width: parent.width;
+            text: Tr.cancel;
+            font-size: 13px;
+            ink: Theme.on-surface-variant;
+            clicked => { Act.videoMergeConflictDismiss(); }
+        }
+    }
 }
 
 component MergeRow inherits Rectangle {
@@ -90,7 +234,9 @@ export component VideoMergeDialog inherits Rectangle {
     keys := FocusScope {
         key-pressed(e) => {
             if e.text == Key.Escape {
-                if !Core.audioCompress.merge.running {
+                if Core.audioCompress.merge.conflict {
+                    Act.videoMergeConflictDismiss();
+                } else if !Core.audioCompress.merge.running {
                     Act.videoMergeDismiss();
                 }
                 return accept;
@@ -247,7 +393,8 @@ export component VideoMergeDialog inherits Rectangle {
                 Gap {
                     size: 4px;
                 }
-                HBox {
+                if Core.audioCompress.merge.conflict: MergeConflict { }
+                if !Core.audioCompress.merge.conflict: HBox {
                     height: 44px;
                     spacing: 8px;
                     alignment: end;

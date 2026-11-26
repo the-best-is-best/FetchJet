@@ -93,7 +93,16 @@ internal fun VideoMergeDialog(ui: VideoMergeUi, onEvent: (DashboardUiEvent) -> U
             }
             MergeMessage(ui)
         }
-        Row(
+        if (!ui.running && ui.hasConflict) {
+            FileOverwriteContent(
+                fileName = ui.conflictName,
+                folder = null,
+                copyName = ui.copyName,
+                onSaveAsCopy = { onEvent(DashboardUiEvent.OnMergeSaveAsCopyClicked) },
+                onOverwrite = { onEvent(DashboardUiEvent.OnMergeOverwriteClicked) },
+                onDismiss = { onEvent(DashboardUiEvent.OnMergeConflictDismissed) }
+            )
+        } else Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
         ) {

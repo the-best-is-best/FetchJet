@@ -850,6 +850,9 @@ class DashboardViewModel(
             is DashboardUiEvent.OnMergeMoveTo,
             is DashboardUiEvent.OnMergeNameChanged,
             DashboardUiEvent.OnMergeStartClicked,
+            DashboardUiEvent.OnMergeSaveAsCopyClicked,
+            DashboardUiEvent.OnMergeOverwriteClicked,
+            DashboardUiEvent.OnMergeConflictDismissed,
             DashboardUiEvent.OnMergeCancelClicked,
             DashboardUiEvent.OnDismissMerge -> handleVideoMergeEvent(event)
 

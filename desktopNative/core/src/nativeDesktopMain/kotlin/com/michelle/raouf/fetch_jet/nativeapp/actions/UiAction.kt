@@ -773,4 +773,16 @@ sealed interface UiAction {
     @Serializable
     @SerialName("VideoMergeDismiss")
     data object VideoMergeDismiss : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeSaveCopy")
+    data object VideoMergeSaveCopy : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeOverwrite")
+    data object VideoMergeOverwrite : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeConflictDismiss")
+    data object VideoMergeConflictDismiss : UiAction
 }

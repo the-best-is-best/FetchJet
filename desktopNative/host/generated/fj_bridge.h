@@ -722,6 +722,10 @@ inline VideoMergeDto parse_VideoMergeDto(const fj::Json &j) {
     d.failed = fj::flag(j, "failed");
     d.saved = fj::flag(j, "saved");
     d.message = fj::text(j, "message");
+    d.conflict = fj::flag(j, "conflict");
+    d.conflictName = fj::text(j, "conflictName");
+    d.copyName = fj::text(j, "copyName");
+    d.saveCopyLabel = fj::text(j, "saveCopyLabel");
     return d;
 }
 
@@ -2698,6 +2702,9 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_videoMergeStart([send]() { fj::ActionWriter w("VideoMergeStart"); send(w.finish()); });
     act.on_videoMergeCancel([send]() { fj::ActionWriter w("VideoMergeCancel"); send(w.finish()); });
     act.on_videoMergeDismiss([send]() { fj::ActionWriter w("VideoMergeDismiss"); send(w.finish()); });
+    act.on_videoMergeSaveCopy([send]() { fj::ActionWriter w("VideoMergeSaveCopy"); send(w.finish()); });
+    act.on_videoMergeOverwrite([send]() { fj::ActionWriter w("VideoMergeOverwrite"); send(w.finish()); });
+    act.on_videoMergeConflictDismiss([send]() { fj::ActionWriter w("VideoMergeConflictDismiss"); send(w.finish()); });
 }
 
 }

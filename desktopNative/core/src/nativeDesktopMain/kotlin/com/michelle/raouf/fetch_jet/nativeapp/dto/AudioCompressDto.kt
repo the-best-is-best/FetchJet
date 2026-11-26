@@ -123,4 +123,8 @@ data class VideoMergeDto(
     val failed: Boolean = false,
     val saved: Boolean = false,
     val message: String = "",
+    val conflict: Boolean = false,
+    val conflictName: String = "",
+    val copyName: String = "",
+    val saveCopyLabel: String = "",
 )

@@ -117,6 +117,7 @@ object VideoMerge {
         inputs: List<String>,
         output: String,
         totalDurationMs: Long,
+        replace: Boolean = false,
         onProgress: (VideoCutProgress) -> Unit
     ): Boolean {
         if (inputs.size < 2) return false
@@ -146,8 +147,9 @@ object VideoMerge {
                 }
                 ok = runLocalFfmpeg(args, MERGE_TIMEOUT_MS)
                 val made = partial.toPath()
-                ok = ok && (AppFileSystem.metadataOrNull(made)?.size ?: 0L) > 0L &&
-                        runCatching { AppFileSystem.atomicMove(made, output.toPath()) }.isSuccess
+                ok = ok && (AppFileSystem.metadataOrNull(made)?.size ?: 0L) > 0L
+                if (ok && replace && AppFileSystem.exists(output.toPath())) ok = runCatching { AppFileSystem.delete(output.toPath()) }.isSuccess
+                ok = ok && runCatching { AppFileSystem.atomicMove(made, output.toPath()) }.isSuccess
                 if (ok) onProgress(eta.update(1f))
                 ok
             } finally {

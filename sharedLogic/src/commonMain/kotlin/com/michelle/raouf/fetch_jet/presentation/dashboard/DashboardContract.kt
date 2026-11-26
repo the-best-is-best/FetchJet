@@ -546,12 +546,16 @@ data class VideoMergeUi(
     val etaMs: Long = -1,
     val failed: Boolean = false,
     val message: String = "",
-    val lastPath: String = ""
+    val lastPath: String = "",
+    val conflictName: String = "",
+    val copyName: String = ""
 ) {
+    val hasConflict: Boolean
+        get() = conflictName.isNotEmpty()
     val notSame: Boolean
         get() = items.any { it.notSame }
     val canStart: Boolean
-        get() = items.size >= 2 && !checking && !running && !notSame && fileName.isNotBlank()
+        get() = items.size >= 2 && !checking && !running && !notSame && fileName.isNotBlank() && !hasConflict
 }
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -874,6 +878,12 @@ sealed interface DashboardUiEvent {
     data class OnMergeNameChanged(val name: String) : DashboardUiEvent
 
     data object OnMergeStartClicked : DashboardUiEvent
+
+    data object OnMergeSaveAsCopyClicked : DashboardUiEvent
+
+    data object OnMergeOverwriteClicked : DashboardUiEvent
+
+    data object OnMergeConflictDismissed : DashboardUiEvent
 
     data object OnMergeCancelClicked : DashboardUiEvent
 

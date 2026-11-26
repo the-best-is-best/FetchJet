@@ -65,161 +65,181 @@ fun FileOverwriteDialog(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header with Warning Icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⚠️", fontSize = 22.sp)
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = LocalizationManager.Strings.overwriteDialogTitle,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = LocalizationManager.Strings.overwriteDialogSubtitle,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Detail Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                            alpha = 0.35f
-                        )
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(
-                                text = LocalizationManager.Strings.overwriteDialogFileNameLabel,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = data.fileName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(
-                                text = LocalizationManager.Strings.overwriteDialogFolderLabel,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = data.destinationPath,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(
-                                text = LocalizationManager.Strings.overwriteDialogNewCopyLabel,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = data.suggestedNewName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = LocalizationManager.Strings.overwriteDialogQuestion,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                FileOverwriteContent(
+                    fileName = data.fileName,
+                    folder = data.destinationPath,
+                    copyName = data.suggestedNewName,
+                    onSaveAsCopy = { onSaveAsCopy(data.suggestedNewName) },
+                    onOverwrite = onOverwrite,
+                    onDismiss = onDismiss
                 )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Action Buttons
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { onSaveAsCopy(data.suggestedNewName) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(
-                            "📝 ${LocalizationManager.Strings.overwriteDialogSaveAsCopy(data.suggestedNewName)}",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = onOverwrite,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text(
-                            "⚠️ ${LocalizationManager.Strings.overwriteDialogOverwriteExisting}",
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            LocalizationManager.Strings.cancel,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
             }
         }
+    }
+}
+
+@Composable
+internal fun FileOverwriteContent(
+    fileName: String,
+    folder: String?,
+    copyName: String,
+    onSaveAsCopy: () -> Unit,
+    onOverwrite: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("⚠️", fontSize = 22.sp)
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = LocalizationManager.Strings.overwriteDialogTitle,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = LocalizationManager.Strings.overwriteDialogSubtitle,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = 0.35f
+            )
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    text = LocalizationManager.Strings.overwriteDialogFileNameLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = fileName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (folder != null) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Text(
+                        text = LocalizationManager.Strings.overwriteDialogFolderLabel,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = folder,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    text = LocalizationManager.Strings.overwriteDialogNewCopyLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = copyName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    Text(
+        text = LocalizationManager.Strings.overwriteDialogQuestion,
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            onClick = { onSaveAsCopy() },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text(
+                "📝 ${LocalizationManager.Strings.overwriteDialogSaveAsCopy(copyName)}",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+
+        OutlinedButton(
+            onClick = onOverwrite,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text(
+                "⚠️ ${LocalizationManager.Strings.overwriteDialogOverwriteExisting}",
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                LocalizationManager.Strings.cancel,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+        }
+    }
     }
 }
