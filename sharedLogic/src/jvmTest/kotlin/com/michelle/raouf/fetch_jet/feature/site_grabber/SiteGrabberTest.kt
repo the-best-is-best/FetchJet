@@ -44,7 +44,7 @@ class SiteGrabberTest {
         assertTrue("https://example.com/gallery/notes.txt" in files)
         assertTrue("https://example.com/covers/main.jpg" in files)
         assertTrue("https://example.com/gallery/img/one-big.png" in files)
-        assertFalse("https://example.com/gallery/img/one-small.png" in files)
+        assertTrue("https://example.com/gallery/img/one-small.png" in files)
         assertTrue("https://example.com/gallery/lazy/two.webp" in files)
         assertTrue("https://example.com/gallery/clips/movie.mp4" in files)
         assertTrue("https://example.com/gallery/clips/poster.jpg" in files)
@@ -72,12 +72,89 @@ class SiteGrabberTest {
         assertEquals("https://a.com/x/y.png", PageLinks.resolve("https://a.com/x/z/", "../y.png"))
     }
 
+    @Test
+    fun theKindsOfLinksEzooAdded() {
+        val html = """<html><head><base href="https://cdn.example.com/files/">
+            <meta property="og:video" content="https://v.example.com/clip.mp4">
+            <meta name="twitter:image" content="https://v.example.com/card.png">
+            <meta name="description" content="a page about things"></head>
+            <picture><source srcset="pic-small.webp 480w, pic-big.webp 1600w"><img srcset="small.jpg 1x, big.jpg 2x"></picture>
+            <video src=movie.webm></video>
+            <a href=report.pdf>Report <a data-download-url="/get/zip9.zip">x</a>
+            <button data-file="setup.exe">Get</button> <span data-video-src='/v/talk.mp4'>t</span>
+            <div data-original-url="img/full.tiff"></div>
+            <form action="send.php"></form> <input value="12">"""
+        val scan = PageLinks.scan(html, "https://www.example.com/page")
+        val files = scan.files.toSet()
+        for (want in listOf(
+            "https://cdn.example.com/files/report.pdf",
+            "https://cdn.example.com/files/big.jpg",
+            "https://cdn.example.com/files/small.jpg",
+            "https://cdn.example.com/files/pic-small.webp",
+            "https://cdn.example.com/files/pic-big.webp",
+            "https://cdn.example.com/files/movie.webm",
+            "https://cdn.example.com/get/zip9.zip",
+            "https://cdn.example.com/files/setup.exe",
+            "https://cdn.example.com/v/talk.mp4",
+            "https://cdn.example.com/files/img/full.tiff",
+            "https://v.example.com/clip.mp4",
+            "https://v.example.com/card.png"
+        )) assertTrue(want in files, "$want missing in $files")
+        val all = scan.files + scan.pages + scan.maybeFiles
+        assertTrue(all.none { it.contains("about") || it.endsWith("/12") || it.endsWith("send.php") }, "$all")
+    }
+
+    @Test
+    fun aRefusedPageIsCountedNotRead() = runBlocking {
+        val fake = Fake(mapOf(start to "<a href='a.zip'>a</a>"), refused = setOf(start))
+        val result = SiteGrabber(fake).grab(start)
+        assertEquals(1, result.refused)
+        assertEquals(0, result.pagesRead)
+    }
+
+    @Test
+    fun aStartPageWhoseLinksAreMadeByScriptsIsCounted() = runBlocking {
+        val spa = "<html><body><div id='app'></div><a href='/'>home</a><script src='a.js'></script><script src='b.js'></script><script>boot()</script></body></html>"
+        val result = SiteGrabber(Fake(mapOf(start to spa))).grab(start)
+        assertEquals(1, result.needScript)
+    }
+
+    @Test
+    fun anAddressWithNoFileNameOnTheLastLevelIsAsked() = runBlocking {
+        val fake = Fake(
+            mapOf(start to "<a href='/media/123'>v</a><a href='/about'>a</a><a href='/p.html'>p</a><a href='https://other.org/thing'>o</a><a href='a.zip'>z</a>"),
+            probes = mapOf(
+                "https://example.com/media/123" to FileProbe("talk.mp4", 9_000L, "video/mp4"),
+                "https://example.com/about" to FileProbe(null, 100L, "text/html; charset=utf-8")
+            )
+        )
+        val result = SiteGrabber(fake).grab(start, GrabOptions(depth = 1))
+        assertEquals(setOf("a.zip", "talk.mp4"), result.files.map { it.name }.toSet())
+        assertEquals("Video", result.files.first { it.name == "talk.mp4" }.folder)
+        assertTrue("https://example.com/media/123" in fake.probed)
+        assertFalse("https://example.com/p.html" in fake.probed)
+        assertFalse("https://other.org/thing" in fake.probed)
+        assertFalse(result.reachedLimit)
+    }
+
+    @Test
+    fun guessedAddressesDoNotFillTheLimitOrTheCount() = runBlocking {
+        val many = (1..80).joinToString("") { "<a href='/post/$it'>p</a>" }
+        val fake = Fake(mapOf(start to many))
+        val counts = ArrayList<Int>()
+        val result = SiteGrabber(fake).grab(start, GrabOptions(depth = 1), onProgress = { counts.add(it.files) })
+        assertFalse(result.reachedLimit)
+        assertTrue(fake.probed.size <= 30, "${fake.probed.size}")
+        assertTrue(counts.all { it == 0 }, "$counts")
+    }
+
     private class Fake(
         val pages: Map<String, String>,
         val refused: Set<String> = emptySet(),
         val probes: Map<String, FileProbe> = emptyMap()
     ) : PageFetcher {
         val asked = ArrayList<String>()
+        val probed = ArrayList<String>()
         override suspend fun page(url: String): FetchedPage {
             asked.add(url)
             if (url in refused) return FetchedPage(403, url, "text/html", "")
@@ -85,7 +162,10 @@ class SiteGrabberTest {
             return FetchedPage(200, url, "text/html; charset=utf-8", html)
         }
 
-        override suspend fun probe(url: String): FileProbe? = probes[url]
+        override suspend fun probe(url: String): FileProbe? {
+            synchronized(probed) { probed.add(url) }
+            return probes[url]
+        }
     }
 
     private val start = "https://example.com/start"

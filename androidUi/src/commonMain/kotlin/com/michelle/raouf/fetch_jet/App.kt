@@ -963,6 +963,9 @@ fun App(
             state.videoCut?.let { page ->
                 com.michelle.raouf.fetch_jet.ui.VideoCutHost(page) { viewModel.onEvent(it) }
             }
+            state.videoMerge?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.VideoMergeDialog(page) { viewModel.onEvent(it) }
+            }
             if (state.deviceShareTaskId != null) {
                 com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
             }

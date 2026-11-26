@@ -1653,6 +1653,106 @@
     "Boolean"
    ]
   ],
+  "VideoMergeItemDto": [
+   [
+    "id",
+    "String"
+   ],
+   [
+    "name",
+    "String"
+   ],
+   [
+    "nameRtl",
+    "Boolean"
+   ],
+   [
+    "size",
+    "String"
+   ],
+   [
+    "duration",
+    "String"
+   ],
+   [
+    "notSame",
+    "Boolean"
+   ],
+   [
+    "canUp",
+    "Boolean"
+   ],
+   [
+    "canDown",
+    "Boolean"
+   ]
+  ],
+  "VideoMergeDto": [
+   [
+    "open",
+    "Boolean"
+   ],
+   [
+    "items",
+    "List<VideoMergeItemDto>"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "extension",
+    "String"
+   ],
+   [
+    "total",
+    "String"
+   ],
+   [
+    "checking",
+    "Boolean"
+   ],
+   [
+    "canStart",
+    "Boolean"
+   ],
+   [
+    "running",
+    "Boolean"
+   ],
+   [
+    "stopping",
+    "Boolean"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "percent",
+    "String"
+   ],
+   [
+    "elapsed",
+    "String"
+   ],
+   [
+    "timeLeft",
+    "String"
+   ],
+   [
+    "failed",
+    "Boolean"
+   ],
+   [
+    "saved",
+    "Boolean"
+   ],
+   [
+    "message",
+    "String"
+   ]
+  ],
   "AudioCompressDto": [
    [
     "open",
@@ -1793,6 +1893,10 @@
    [
     "cut",
     "VideoCutDto"
+   ],
+   [
+    "merge",
+    "VideoMergeDto"
    ],
    [
     "canDeleteOriginal",
@@ -2436,6 +2540,10 @@
    ],
    [
     "allChecked",
+    "Boolean"
+   ],
+   [
+    "canMerge",
     "Boolean"
    ],
    [
@@ -4274,7 +4382,27 @@
     "on",
     "Boolean"
    ]
-  ]
+  ],
+  "MergeChecked": [],
+  "VideoMergeMove": [
+   [
+    "id",
+    "String"
+   ],
+   [
+    "up",
+    "Boolean"
+   ]
+  ],
+  "VideoMergeName": [
+   [
+    "text",
+    "String"
+   ]
+  ],
+  "VideoMergeStart": [],
+  "VideoMergeCancel": [],
+  "VideoMergeDismiss": []
  },
  "tr": [
   "languageName",
@@ -5199,6 +5327,18 @@
   "videoCutDeleteClip",
   "videoCutTimelineNeedsMp4",
   "videoCutSaved",
+  "mergeVideos",
+  "mergeTitle",
+  "mergeHint",
+  "mergeFileName",
+  "mergeChecking",
+  "mergeNotSame",
+  "mergeMoveUp",
+  "mergeMoveDown",
+  "mergeSaved",
+  "mergeFailed",
+  "mergeRunning",
+  "mergeNeedsTools",
   "videoCutNeedsTools",
   "deleteOriginalAfterCut",
   "deleteOriginalAfterCompress",

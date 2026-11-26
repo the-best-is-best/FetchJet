@@ -46,6 +46,7 @@ data class AudioCompressDto(
     val channelPick: Int = 0,
     val progressText: String = "",
     val cut: VideoCutDto = VideoCutDto(),
+    val merge: VideoMergeDto = VideoMergeDto(),
     val canDeleteOriginal: Boolean = false,
     val deleteOriginal: Boolean = false,
 )
@@ -90,4 +91,36 @@ data class VideoCutDto(
     val clips: List<VideoClipDto> = emptyList(),
     val canDeleteOriginal: Boolean = false,
     val deleteOriginal: Boolean = false,
+)
+
+@Serializable
+data class VideoMergeItemDto(
+    val id: String = "",
+    val name: String = "",
+    val nameRtl: Boolean = false,
+    val size: String = "",
+    val duration: String = "",
+    val notSame: Boolean = false,
+    val canUp: Boolean = false,
+    val canDown: Boolean = false,
+)
+
+@Serializable
+data class VideoMergeDto(
+    val open: Boolean = false,
+    val items: List<VideoMergeItemDto> = emptyList(),
+    val fileName: String = "",
+    val extension: String = "",
+    val total: String = "",
+    val checking: Boolean = false,
+    val canStart: Boolean = false,
+    val running: Boolean = false,
+    val stopping: Boolean = false,
+    val progress: Float = 0f,
+    val percent: String = "",
+    val elapsed: String = "",
+    val timeLeft: String = "",
+    val failed: Boolean = false,
+    val saved: Boolean = false,
+    val message: String = "",
 )

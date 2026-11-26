@@ -35,7 +35,7 @@ internal fun Presenter.startClipboardWatcher() {
             while (true) {
                 delay(CLIPBOARD_PERIOD_MS)
                 val sequence = DesktopOs.clipboardSequence()
-                if (sequence == seen) continue
+                if (sequence != 0L && sequence == seen) continue
                 seen = sequence
                 val text = clipboardText()
                 if (text != null && text != last) {

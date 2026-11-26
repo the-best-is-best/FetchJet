@@ -54,6 +54,7 @@ data class ChromeDto(
     val selectionMode: Boolean = false,
     val selectedCountText: String = "",
     val allChecked: Boolean = false,
+    val canMerge: Boolean = false,
     val listEmpty: Boolean = false,
     val emptyTitle: String = "",
     val emptyHint: String = "",

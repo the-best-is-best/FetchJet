@@ -398,6 +398,10 @@ component SelectionBar inherits Rectangle {
             text: Tr.homeExport;
             clicked => { Act.exportChecked(); }
         }
+        if Core.chrome.canMerge: BarButton {
+            text: "🎬  " + Tr.mergeVideos;
+            clicked => { Act.mergeChecked(); }
+        }
         BarFilledButton {
             text: "🗑  " + Tr.delete;
             container: Theme.error;

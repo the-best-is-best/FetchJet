@@ -1,0 +1,281 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T } from "../widgets/Base.slint";
+import { FilledButton, OutlinedButton, IconButton } from "../widgets/Buttons.slint";
+import { LinearProgress } from "../widgets/Progress.slint";
+import { EmojiIcon } from "../widgets/Icons.slint";
+import { Gap } from "../widgets/Kit.slint";
+import { TextField } from "../widgets/TextField.slint";
+import { Core, VideoMergeItemDto } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { Tr } from "../generated/tr.slint";
+
+component Caption inherits T {
+    line: 20px;
+    tracking: 0.1px;
+    font-weight: 600;
+    color: Theme.on-surface-variant;
+}
+
+component MergeRow inherits Rectangle {
+    in property <VideoMergeItemDto> data;
+    in property <int> number;
+    height: 56px;
+    border-radius: 12px;
+    border-width: root.data.notSame ? 1.5px : 1px;
+    border-color: root.data.notSame ? Theme.error : Theme.outline-variant;
+    background: root.data.notSame ? Theme.error.with-alpha(0.08) : transparent;
+    HBox {
+        padding-start: 12px;
+        padding-end: 6px;
+        spacing: 10px;
+        cross-axis-alignment: center;
+        T {
+            text: root.number;
+            width: 18px;
+            font-weight: 700;
+            color: root.data.notSame ? Theme.error : Theme.primary;
+            horizontal-alignment: center;
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            T {
+                text: root.data.name;
+                line: 20px;
+                font-weight: 600;
+                color: root.data.notSame ? Theme.error : Theme.on-surface;
+                horizontal-alignment: Dir.rtl || root.data.nameRtl ? TextHorizontalAlignment.right : TextHorizontalAlignment.left;
+                overflow: elide;
+            }
+            T {
+                text: root.data.duration == "" ? root.data.size : root.data.size == "" ? root.data.duration : root.data.size + "  ·  " + root.data.duration;
+                line: 16px;
+                font-size: 12px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+        IconButton {
+            size: 36px;
+            glyph: "▲";
+            glyph-size: 13px;
+            label: Tr.mergeMoveUp;
+            enabled: root.data.canUp;
+            opacity: root.data.canUp ? 1 : 0.35;
+            clicked => { Act.videoMergeMove(root.data.id, true); }
+        }
+        IconButton {
+            size: 36px;
+            glyph: "▼";
+            glyph-size: 13px;
+            label: Tr.mergeMoveDown;
+            enabled: root.data.canDown;
+            opacity: root.data.canDown ? 1 : 0.35;
+            clicked => { Act.videoMergeMove(root.data.id, false); }
+        }
+    }
+}
+
+export component VideoMergeDialog inherits Rectangle {
+    private property <bool> editing: !Core.audioCompress.merge.running && !Core.audioCompress.merge.saved;
+    background: #00000099;
+    init => { keys.focus(); }
+    TouchArea {
+        clicked => {
+            if !Core.audioCompress.merge.running {
+                Act.videoMergeDismiss();
+            }
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if e.text == Key.Escape {
+                if !Core.audioCompress.merge.running {
+                    Act.videoMergeDismiss();
+                }
+                return accept;
+            }
+            if e.text == Key.Tab {
+                return accept;
+            }
+            reject
+        }
+    }
+    Rectangle {
+        width: max(280px, min(560px, root.width - 48px));
+        height: min(content.preferred-height, root.height - 48px);
+        border-radius: 18px;
+        background: Theme.surface;
+        border-width: 1px;
+        border-color: Theme.outline-variant;
+        clip: true;
+        TouchArea {
+            clicked => { keys.focus(); }
+        }
+        Flickable {
+            content-width: self.width;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                padding: 24px;
+                spacing: 10px;
+                HBox {
+                    height: 30px;
+                    spacing: 8px;
+                    cross-axis-alignment: center;
+                    EmojiIcon {
+                        glyph: "🎬";
+                        size: 20px;
+                    }
+                    T {
+                        text: Tr.mergeTitle;
+                        line: 30px;
+                        tracking: 0px;
+                        font-size: 22px;
+                        font-weight: 700;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                    if Core.audioCompress.merge.total != "": T {
+                        text: Core.audioCompress.merge.total;
+                        line: 30px;
+                        font-weight: 600;
+                        color: Theme.on-surface-variant;
+                    }
+                }
+                Text {
+                    text: Tr.mergeHint;
+                    color: Theme.on-surface-variant;
+                    font-family: Theme.font;
+                    font-size: 13px;
+                    horizontal-alignment: Dir.start;
+                    wrap: word-wrap;
+                }
+                for item[index] in Core.audioCompress.merge.items: MergeRow {
+                    data: item;
+                    number: index + 1;
+                }
+                if Core.audioCompress.merge.checking: HBox {
+                    height: 20px;
+                    Caption {
+                        text: Tr.mergeChecking;
+                        horizontal-stretch: 1;
+                    }
+                }
+                if Core.audioCompress.merge.checking: LinearProgress {
+                    indeterminate: true;
+                }
+                Gap {
+                    size: 2px;
+                }
+                Caption {
+                    text: Tr.mergeFileName;
+                }
+                TextField {
+                    leading-emoji: "📝";
+                    enabled: root.editing;
+                    has-error: root.editing && Core.audioCompress.merge.fileName == "";
+                    has-trailing: Core.audioCompress.merge.extension != "";
+                    value: Core.audioCompress.merge.fileName;
+                    edited(text) => { Act.videoMergeName(text); }
+                    if Core.audioCompress.merge.extension != "": Rectangle {
+                        width: ext.preferred-width + 12px;
+                        ext := T {
+                            text: Core.audioCompress.merge.extension;
+                            color: Theme.on-surface-variant;
+                            font-weight: 600;
+                        }
+                    }
+                }
+                if Core.audioCompress.merge.running: HBox {
+                    height: 22px;
+                    spacing: 6px;
+                    T {
+                        text: Core.audioCompress.merge.stopping ? Tr.videoCutStopping : Tr.mergeRunning;
+                        line: 22px;
+                        font-weight: 600;
+                        horizontal-stretch: 1;
+                    }
+                    T {
+                        text: Core.audioCompress.merge.percent;
+                        line: 22px;
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: Theme.primary;
+                    }
+                }
+                if Core.audioCompress.merge.running: LinearProgress {
+                    value: Core.audioCompress.merge.progress;
+                    height: 6px;
+                }
+                if Core.audioCompress.merge.running: HBox {
+                    height: 20px;
+                    spacing: 6px;
+                    Caption {
+                        text: Tr.videoCutElapsed + " " + Core.audioCompress.merge.elapsed;
+                        horizontal-stretch: 1;
+                    }
+                    Caption {
+                        text: Tr.videoCutLeft + " " + Core.audioCompress.merge.timeLeft;
+                        horizontal-alignment: Dir.end;
+                    }
+                }
+                if Core.audioCompress.merge.failed && Core.audioCompress.merge.message != "": Text {
+                    text: Core.audioCompress.merge.message;
+                    color: Theme.error;
+                    font-family: Theme.font;
+                    font-size: 13px;
+                    horizontal-alignment: Dir.start;
+                    wrap: word-wrap;
+                }
+                if Core.audioCompress.merge.saved: HBox {
+                    height: 22px;
+                    spacing: 6px;
+                    cross-axis-alignment: center;
+                    EmojiIcon {
+                        glyph: "✅";
+                        size: 14px;
+                    }
+                    T {
+                        text: Core.audioCompress.merge.message;
+                        line: 22px;
+                        font-weight: 600;
+                        color: Theme.status-completed;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                }
+                Gap {
+                    size: 4px;
+                }
+                HBox {
+                    height: 44px;
+                    spacing: 8px;
+                    alignment: end;
+                    cross-axis-alignment: center;
+                    if Core.audioCompress.merge.running: OutlinedButton {
+                        text: Tr.cancel;
+                        border-radius: 10px;
+                        ink: Theme.error;
+                        line: Theme.error.with-alpha(0.45);
+                        enabled: !Core.audioCompress.merge.stopping;
+                        clicked => { Act.videoMergeCancel(); }
+                    }
+                    if !Core.audioCompress.merge.running: OutlinedButton {
+                        text: root.editing ? Tr.cancel : Tr.close;
+                        border-radius: 10px;
+                        ink: Theme.on-surface;
+                        line: Theme.outline;
+                        clicked => { Act.videoMergeDismiss(); }
+                    }
+                    if root.editing: FilledButton {
+                        text: Tr.mergeVideos;
+                        enabled: Core.audioCompress.merge.canStart;
+                        border-radius: 10px;
+                        font-weight: 700;
+                        clicked => { Act.videoMergeStart(); }
+                    }
+                }
+            }
+        }
+    }
+}

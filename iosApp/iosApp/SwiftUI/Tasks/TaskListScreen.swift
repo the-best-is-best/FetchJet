@@ -49,6 +49,16 @@ struct TaskListScreen: View {
         return PlaylistGroupsKt.folderGroup(all: store.state.allTasks, records: store.state.playlists, folder: folder)
     }
 
+    private var canMergeChecked: Bool {
+        checked.count >= 2 && VideoMerge.shared.canMergeAll(tasks: store.state.allTasks.filter { checked.contains($0.id) })
+    }
+
+    private func mergeOrder(_ shown: [DownloadTask]) -> [String] {
+        let first = shown.map { $0.id }.filter { checked.contains($0) }
+        let seen = Set(first)
+        return first + store.state.allTasks.map { $0.id }.filter { checked.contains($0) && !seen.contains($0) }
+    }
+
     private var inGroupPage: Bool { store.state.openPlaylistId != nil || openFolderGroup != nil }
 
     private var foldHeader: Bool {
@@ -151,6 +161,10 @@ struct TaskListScreen: View {
                         onDelete: { store.send(DashboardUiEventOnRemoveSelectedClicked(taskIds: Array(checked))) },
                         onExport: { store.send(DashboardUiEventOnExportLinksClicked(taskIds: Array(checked))) },
                         onHide: { requestHide(HideTargets(taskIds: Array(checked))) },
+                        onMerge: canMergeChecked ? {
+                            store.send(DashboardUiEventOnMergeVideosClicked(taskIds: mergeOrder(tasks)))
+                            checked = []
+                        } : nil,
                         onClose: { checked = [] }
                     )
                     .padding(.bottom, 8)
@@ -533,7 +547,9 @@ struct TaskSelectionBar: View {
     var onExport: (() -> Void)? = nil
     var onHide: (() -> Void)? = nil
     var onUnhide: (() -> Void)? = nil
+    var onMerge: (() -> Void)? = nil
     let onClose: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         let s = store.strings
@@ -594,6 +610,27 @@ struct TaskSelectionBar: View {
                 .buttonStyle(.borderless)
                 .foregroundStyle(FJTheme.color.primary)
                 .accessibilityLabel(s.hiddenHide)
+            }
+            if let onMerge {
+                Button(action: onMerge) {
+                    Group {
+                        if sizeClass == .regular {
+                            Label(s.mergeVideos, systemImage: "arrow.triangle.merge")
+                        } else {
+                            Image(systemName: "arrow.triangle.merge")
+                        }
+                    }
+                    .font(.fj(12, .semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, sizeClass == .regular ? 12 : 0)
+                    .frame(minWidth: 40)
+                    .frame(height: 34)
+                    .background(FJTheme.color.primary, in: RoundedRectangle(cornerRadius: 10))
+                    .foregroundStyle(FJTheme.color.onPrimary)
+                }
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .accessibilityLabel(s.mergeVideos)
             }
             Button(action: onDelete) {
                 Label(s.delete_, systemImage: "trash")

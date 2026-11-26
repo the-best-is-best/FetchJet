@@ -67,6 +67,8 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -538,6 +540,15 @@ internal fun TaskListArea(
             }
         }
         val rowKeys = itemsOf(tasks).map { it.key }
+        val mergeTasks = remember(checkedIds, uiState.allTasks, shownOrder) {
+            if (checkedIds.size < 2 && checkedIds.none { playlistIdOfRow(it) != null || folderOfRow(it) != null }) emptyList() else {
+                val byId = uiState.allTasks.associateBy { it.id }
+                val shownIndex = shownOrder.withIndex().associate { it.value.id to it.index }
+                val allIndex = uiState.allTasks.withIndex().associate { it.value.id to it.index }
+                expandIds(checkedIds).mapNotNull { byId[it] }
+                    .sortedWith(compareBy({ shownIndex[it.id] ?: Int.MAX_VALUE }, { allIndex[it.id] ?: Int.MAX_VALUE }))
+            }
+        }
         if (selectionMode) {
             SelectionBar(
                 count = checkedIds.size,
@@ -548,7 +559,10 @@ internal fun TaskListArea(
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(expandIds(checkedIds))) },
                 onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(expandIds(checkedIds))) },
                 onHide = { requestHideKeys(checkedIds) },
-                onClose = { checkedIds = emptySet() }
+                onClose = { checkedIds = emptySet() },
+                onMerge = if (com.michelle.raouf.fetch_jet.feature.video_merge.VideoMerge.canMergeAll(mergeTasks)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnMergeVideosClicked(mergeTasks.map { it.id })) }
+                } else null
             )
         } else if (inPage && !headerInList) {
             pageHeader()
@@ -1016,7 +1030,8 @@ internal fun SelectionBar(
     onExport: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
-    onUnhide: (() -> Unit)? = null
+    onUnhide: (() -> Unit)? = null,
+    onMerge: (() -> Unit)? = null
 ) {
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
@@ -1024,6 +1039,8 @@ internal fun SelectionBar(
     val label: @Composable (String, Color) -> Unit = { text, color ->
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, softWrap = false)
     }
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val narrow = maxWidth < 560.dp
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1053,6 +1070,16 @@ internal fun SelectionBar(
                 label(s.hiddenHide, Color.Unspecified)
             }
         }
+        if (onMerge != null) {
+            androidx.compose.material3.Button(
+                onClick = onMerge,
+                shape = shape,
+                contentPadding = if (narrow) PaddingValues(horizontal = 8.dp) else padding,
+                modifier = Modifier.height(34.dp).semantics { contentDescription = s.mergeVideos }
+            ) {
+                label(if (narrow) "⧉" else "⧉ ${s.mergeVideos}", MaterialTheme.colorScheme.onPrimary)
+            }
+        }
         if (onDelete != null) {
             androidx.compose.material3.Button(
                 onClick = onDelete,
@@ -1067,5 +1094,6 @@ internal fun SelectionBar(
                 label(s.hiddenUnhide, Color.Unspecified)
             }
         }
+    }
     }
 }

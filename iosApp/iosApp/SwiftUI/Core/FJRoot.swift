@@ -59,6 +59,7 @@ struct FJRoot: View {
         .tint(FJTheme.color.primary)
         .background(AppDialogsHost())
         .background(Color.clear.modifier(FJVideoCutSheetModifier()))
+        .background(Color.clear.modifier(FJVideoMergeSheetModifier()))
         .sheet(isPresented: Binding(
             get: { store.state.isAddDialogVisible },
             set: { if !$0 { store.send(DashboardUiEventOnToggleAddDialog(show: false)) } }

@@ -220,8 +220,29 @@ namespace fjhost::os {
             target[length] = L'\0';
         }
 
+        HWND g_painted = nullptr;
+        WNDPROC g_slint_proc = nullptr;
+
+        LRESULT CALLBACK paint_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+            if (message == WM_PAINT && GetUpdateRect(window, nullptr, FALSE))
+                slint::invoke_from_event_loop([] {
+                    if (has_ui() && ui().window().is_visible())
+                        ui().invoke_repaint();
+                });
+            return CallWindowProcW(g_slint_proc, window, message, wparam, lparam);
+        }
+
+        void watch_paint(HWND window) {
+            if (!window || window == g_painted)
+                return;
+            g_slint_proc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(paint_proc)));
+            g_painted = window;
+        }
+
         HWND window_handle() {
-            return has_ui() ? ui().window().win32_hwnd() : nullptr;
+            HWND window = has_ui() ? ui().window().win32_hwnd() : nullptr;
+            watch_paint(window);
+            return window;
         }
 
         void add_tray() {

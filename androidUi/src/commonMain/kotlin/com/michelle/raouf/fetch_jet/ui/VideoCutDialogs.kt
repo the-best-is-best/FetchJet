@@ -84,7 +84,7 @@ private fun VideoClipsDialog(ui: VideoCutUi, onEvent: (DashboardUiEvent) -> Unit
 }
 
 @Composable
-private fun CutDialogFrame(
+internal fun CutDialogFrame(
     title: String,
     subtitle: String,
     onDismiss: () -> Unit,

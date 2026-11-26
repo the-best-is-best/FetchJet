@@ -478,6 +478,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             selectionMode = selectionMode,
             selectedCountText = if (selectionMode) strings.homeSelectedCount(ui.checkedIds.size) else "",
             allChecked = order.isNotEmpty() && order.all { it in ui.checkedIds },
+            canMerge = selectionMode && !hiddenScreen && canMergeChecked(ui.checkedIds),
             listEmpty = shown.isEmpty(),
             emptyTitle = if (shown.isNotEmpty()) "" else if (query.isNotBlank()) strings.homeNoDownloadsMatch(query) else if (hiddenScreen) strings.hiddenEmpty else strings.homeNoTasksInView,
             emptyHint = if (shown.isNotEmpty() || hiddenScreen && query.isBlank()) "" else if (query.isNotBlank()) strings.homeTryAnotherName else strings.homeAddDownloadToGetStarted,

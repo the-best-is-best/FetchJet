@@ -269,6 +269,7 @@ data class DashboardUiState(
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
     val videoCut: VideoCutUi? = null,
+    val videoMerge: VideoMergeUi? = null,
     val subtitlesPage: SubtitlesUi? = null,
     /** Saved playlists (shown as one row each in the downloads list). */
     val playlists: Map<String, com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord> = emptyMap(),
@@ -523,6 +524,34 @@ data class VideoCutUi(
     val canStart: Boolean
         get() = mode != null && !running && !reading && durationMs > 0L &&
                 com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.isValidRange(startMs, endMs, durationMs)
+}
+
+data class VideoMergeItem(
+    val taskId: String,
+    val fileName: String,
+    val bytes: Long,
+    val durationMs: Long = 0,
+    val notSame: Boolean = false
+)
+
+data class VideoMergeUi(
+    val items: List<VideoMergeItem>,
+    val fileName: String,
+    val extension: String,
+    val checking: Boolean = true,
+    val running: Boolean = false,
+    val stopping: Boolean = false,
+    val progress: Float = 0f,
+    val elapsedMs: Long = 0,
+    val etaMs: Long = -1,
+    val failed: Boolean = false,
+    val message: String = "",
+    val lastPath: String = ""
+) {
+    val notSame: Boolean
+        get() = items.any { it.notSame }
+    val canStart: Boolean
+        get() = items.size >= 2 && !checking && !running && !notSame && fileName.isNotBlank()
 }
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -835,6 +864,20 @@ sealed interface DashboardUiEvent {
     data class OnVideoCutDeleteClip(val path: String) : DashboardUiEvent
 
     data class OnVideoCutShowClips(val taskId: String) : DashboardUiEvent
+
+    data class OnMergeVideosClicked(val taskIds: List<String>) : DashboardUiEvent
+
+    data class OnMergeMoveClicked(val taskId: String, val up: Boolean) : DashboardUiEvent
+
+    data class OnMergeMoveTo(val from: Int, val to: Int) : DashboardUiEvent
+
+    data class OnMergeNameChanged(val name: String) : DashboardUiEvent
+
+    data object OnMergeStartClicked : DashboardUiEvent
+
+    data object OnMergeCancelClicked : DashboardUiEvent
+
+    data object OnDismissMerge : DashboardUiEvent
 
     data class OnExtractAudioClicked(val taskId: String) : DashboardUiEvent
 

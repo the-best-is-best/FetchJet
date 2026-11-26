@@ -691,6 +691,40 @@ inline VideoCutDto parse_VideoCutDto(const fj::Json &j) {
     return d;
 }
 
+inline VideoMergeItemDto parse_VideoMergeItemDto(const fj::Json &j) {
+    VideoMergeItemDto d{};
+    d.id = fj::text(j, "id");
+    d.name = fj::text(j, "name");
+    d.nameRtl = fj::flag(j, "nameRtl");
+    d.size = fj::text(j, "size");
+    d.duration = fj::text(j, "duration");
+    d.notSame = fj::flag(j, "notSame");
+    d.canUp = fj::flag(j, "canUp");
+    d.canDown = fj::flag(j, "canDown");
+    return d;
+}
+
+inline VideoMergeDto parse_VideoMergeDto(const fj::Json &j) {
+    VideoMergeDto d{};
+    d.open = fj::flag(j, "open");
+    d.items = fj::struct_model<VideoMergeItemDto>(j, "items", parse_VideoMergeItemDto);
+    d.fileName = fj::text(j, "fileName");
+    d.extension = fj::text(j, "extension");
+    d.total = fj::text(j, "total");
+    d.checking = fj::flag(j, "checking");
+    d.canStart = fj::flag(j, "canStart");
+    d.running = fj::flag(j, "running");
+    d.stopping = fj::flag(j, "stopping");
+    d.progress = fj::real(j, "progress");
+    d.percent = fj::text(j, "percent");
+    d.elapsed = fj::text(j, "elapsed");
+    d.timeLeft = fj::text(j, "timeLeft");
+    d.failed = fj::flag(j, "failed");
+    d.saved = fj::flag(j, "saved");
+    d.message = fj::text(j, "message");
+    return d;
+}
+
 inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
     AudioCompressDto d{};
     d.open = fj::flag(j, "open");
@@ -728,6 +762,7 @@ inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
     d.channelPick = fj::integer(j, "channelPick");
     d.progressText = fj::text(j, "progressText");
     d.cut = parse_VideoCutDto(fj::child(j, "cut"));
+    d.merge = parse_VideoMergeDto(fj::child(j, "merge"));
     d.canDeleteOriginal = fj::flag(j, "canDeleteOriginal");
     d.deleteOriginal = fj::flag(j, "deleteOriginal");
     return d;
@@ -952,6 +987,7 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.selectionMode = fj::flag(j, "selectionMode");
     d.selectedCountText = fj::text(j, "selectedCountText");
     d.allChecked = fj::flag(j, "allChecked");
+    d.canMerge = fj::flag(j, "canMerge");
     d.listEmpty = fj::flag(j, "listEmpty");
     d.emptyTitle = fj::text(j, "emptyTitle");
     d.emptyHint = fj::text(j, "emptyHint");
@@ -2283,6 +2319,18 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_videoCutDeleteClip(next());
     tr.set_videoCutTimelineNeedsMp4(next());
     tr.set_videoCutSaved(next());
+    tr.set_mergeVideos(next());
+    tr.set_mergeTitle(next());
+    tr.set_mergeHint(next());
+    tr.set_mergeFileName(next());
+    tr.set_mergeChecking(next());
+    tr.set_mergeNotSame(next());
+    tr.set_mergeMoveUp(next());
+    tr.set_mergeMoveDown(next());
+    tr.set_mergeSaved(next());
+    tr.set_mergeFailed(next());
+    tr.set_mergeRunning(next());
+    tr.set_mergeNeedsTools(next());
     tr.set_videoCutNeedsTools(next());
     tr.set_deleteOriginalAfterCut(next());
     tr.set_deleteOriginalAfterCompress(next());
@@ -2644,6 +2692,12 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_videoCutDeleteClip([send](slint::SharedString path) { fj::ActionWriter w("VideoCutDeleteClip"); w.add("path", path); send(w.finish()); });
     act.on_videoCutApply([send](int startMs, int endMs) { fj::ActionWriter w("VideoCutApply"); w.add("startMs", startMs); w.add("endMs", endMs); send(w.finish()); });
     act.on_videoCutDeleteOriginal([send](bool on) { fj::ActionWriter w("VideoCutDeleteOriginal"); w.add("on", on); send(w.finish()); });
+    act.on_mergeChecked([send]() { fj::ActionWriter w("MergeChecked"); send(w.finish()); });
+    act.on_videoMergeMove([send](slint::SharedString id, bool up) { fj::ActionWriter w("VideoMergeMove"); w.add("id", id); w.add("up", up); send(w.finish()); });
+    act.on_videoMergeName([send](slint::SharedString text) { fj::ActionWriter w("VideoMergeName"); w.add("text", text); send(w.finish()); });
+    act.on_videoMergeStart([send]() { fj::ActionWriter w("VideoMergeStart"); send(w.finish()); });
+    act.on_videoMergeCancel([send]() { fj::ActionWriter w("VideoMergeCancel"); send(w.finish()); });
+    act.on_videoMergeDismiss([send]() { fj::ActionWriter w("VideoMergeDismiss"); send(w.finish()); });
 }
 
 }

@@ -349,6 +349,36 @@ export struct VideoCutDto {
     deleteOriginal: bool,
 }
 
+export struct VideoMergeItemDto {
+    id: string,
+    name: string,
+    nameRtl: bool,
+    size: string,
+    duration: string,
+    notSame: bool,
+    canUp: bool,
+    canDown: bool,
+}
+
+export struct VideoMergeDto {
+    open: bool,
+    items: [VideoMergeItemDto],
+    fileName: string,
+    extension: string,
+    total: string,
+    checking: bool,
+    canStart: bool,
+    running: bool,
+    stopping: bool,
+    progress: float,
+    percent: string,
+    elapsed: string,
+    timeLeft: string,
+    failed: bool,
+    saved: bool,
+    message: string,
+}
+
 export struct AudioCompressDto {
     open: bool,
     fileName: string,
@@ -385,6 +415,7 @@ export struct AudioCompressDto {
     channelPick: int,
     progressText: string,
     cut: VideoCutDto,
+    merge: VideoMergeDto,
     canDeleteOriginal: bool,
     deleteOriginal: bool,
 }
@@ -581,6 +612,7 @@ export struct ChromeDto {
     selectionMode: bool,
     selectedCountText: string,
     allChecked: bool,
+    canMerge: bool,
     listEmpty: bool,
     emptyTitle: string,
     emptyHint: string,

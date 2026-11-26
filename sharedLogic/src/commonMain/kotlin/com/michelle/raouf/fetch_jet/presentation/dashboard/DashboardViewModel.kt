@@ -845,6 +845,14 @@ class DashboardViewModel(
             is DashboardUiEvent.OnVideoCutDeleteOriginalChanged,
             is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
 
+            is DashboardUiEvent.OnMergeVideosClicked,
+            is DashboardUiEvent.OnMergeMoveClicked,
+            is DashboardUiEvent.OnMergeMoveTo,
+            is DashboardUiEvent.OnMergeNameChanged,
+            DashboardUiEvent.OnMergeStartClicked,
+            DashboardUiEvent.OnMergeCancelClicked,
+            DashboardUiEvent.OnDismissMerge -> handleVideoMergeEvent(event)
+
             is DashboardUiEvent.OnExtractAudioClicked -> extractAudio(event.taskId)
 
             is DashboardUiEvent.OnSubtitlesClicked,
