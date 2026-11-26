@@ -308,6 +308,8 @@ fun App(
                 val isMedium = screenWidth in 680.dp..<1100.dp
                 val sidePanel = screenWidth >= 1280.dp
                 SideEffect { wideLayout = !isCompact }
+                val groupFolded = com.michelle.raouf.fetch_jet.ui.isShortScreen() &&
+                    (state.openFolder != null || state.openPlaylistId != null)
 
                 if (isCompact) {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -433,7 +435,7 @@ fun App(
                                     .padding(horizontal = 16.dp, vertical = 10.dp)
                             ) {
                                 FjTopBar(
-                                    showSearch = state.selectedTab != DashboardTab.SETTINGS,
+                                    showSearch = state.selectedTab != DashboardTab.SETTINGS && !(groupFolded && searchQuery.isEmpty()),
                                     compact = isMedium,
                                     title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else sideFilter.label,
                                     searchQuery = searchQuery,
@@ -489,7 +491,7 @@ fun App(
                                             externalSearch = searchQuery
                                         )
                                     }
-                                    QueueStatusBar(
+                                    if (!groupFolded) QueueStatusBar(
                                         tasks = state.allTasks,
                                         globalLimitBytes = state.globalDownloadSpeedLimitBytes,
                                         speedDisplayUnit = state.speedDisplayUnit

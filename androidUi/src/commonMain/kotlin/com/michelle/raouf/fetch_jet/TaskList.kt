@@ -162,6 +162,7 @@ internal fun TaskListArea(
     }
     val openFolder = if (openGroup == null) uiState.openFolder?.let { folderGroup(uiState.allTasks, records, it) } else null
     val inPage = openGroup != null || openFolder != null
+    val shortScreen = com.michelle.raouf.fetch_jet.ui.isShortScreen()
     val grouped = groupByState && !inPage
     val collapsedGroups = remember { mutableStateMapOf<String, Boolean>() }
     // Search by file name (or link) in the current view.
@@ -207,6 +208,7 @@ internal fun TaskListArea(
         if (!ids.containsAll(checkedIds)) checkedIds = checkedIds.filterTo(HashSet()) { it in ids }
     }
     val selectionMode = checkedIds.isNotEmpty()
+    val headerInList = shortScreen && inPage && !selectionMode
     var hideRequest by remember { mutableStateOf<DashboardUiEvent.OnHideTargets?>(null) }
     val sendHide: (DashboardUiEvent.OnHideTargets) -> Unit = { request ->
         viewModel.onEvent(request)
@@ -500,6 +502,41 @@ internal fun TaskListArea(
                     ?.let { com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(it) }
             }
         }
+        val pageHeader: @Composable () -> Unit = {
+            if (openGroup != null) {
+                com.michelle.raouf.fetch_jet.ui.PlaylistPageHeader(
+                    group = openGroup,
+                    languages = uiState.playlistLanguages,
+                    onBack = { viewModel.onEvent(DashboardUiEvent.OnClosePlaylist) },
+                    onCheck = { viewModel.onEvent(DashboardUiEvent.OnPlaylistCheck(openGroup.id)) },
+                    onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupPause(openGroup.id)) },
+                    onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupResume(openGroup.id)) },
+                    onDelete = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(openGroup.id)) },
+                    onHide = { requestHide(emptyList(), listOf(openGroup.id), emptyList()) },
+                    onReadLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(openGroup.id)) },
+                    onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
+                    onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
+                    onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
+                        ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } },
+                    onPlay = playGroup(openGroup.id, openGroup.tasks),
+                    compact = shortScreen
+                )
+            } else if (openFolder != null) {
+                val firstFile = openFolder.tasks.firstOrNull()
+                com.michelle.raouf.fetch_jet.ui.FolderPageHeader(
+                    group = openFolder,
+                    canOpenFolder = firstFile != null && pathResolver.isOpenFolderSupported(),
+                    onBack = { viewModel.onEvent(DashboardUiEvent.OnCloseFolderGroup) },
+                    onOpenFolder = { if (firstFile != null) pathResolver.openFileLocation(fullPathOf(firstFile)) },
+                    onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(openFolder.folder)) },
+                    onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(openFolder.folder)) },
+                    onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
+                    onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) },
+                    onPlay = playGroup(FOLDER_ROW_PREFIX + openFolder.folder, openFolder.tasks),
+                    compact = shortScreen
+                )
+            }
+        }
         val rowKeys = itemsOf(tasks).map { it.key }
         if (selectionMode) {
             SelectionBar(
@@ -513,36 +550,8 @@ internal fun TaskListArea(
                 onHide = { requestHideKeys(checkedIds) },
                 onClose = { checkedIds = emptySet() }
             )
-        } else if (openGroup != null) {
-            com.michelle.raouf.fetch_jet.ui.PlaylistPageHeader(
-                group = openGroup,
-                languages = uiState.playlistLanguages,
-                onBack = { viewModel.onEvent(DashboardUiEvent.OnClosePlaylist) },
-                onCheck = { viewModel.onEvent(DashboardUiEvent.OnPlaylistCheck(openGroup.id)) },
-                onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupPause(openGroup.id)) },
-                onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupResume(openGroup.id)) },
-                onDelete = { viewModel.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(openGroup.id)) },
-                onHide = { requestHide(emptyList(), listOf(openGroup.id), emptyList()) },
-                onReadLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(openGroup.id)) },
-                onAddLanguage = { code -> viewModel.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(openGroup.id, code)) },
-                onDismissLanguages = { viewModel.onEvent(DashboardUiEvent.OnPlaylistLanguagesDismiss) },
-                onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
-                    ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } },
-                onPlay = playGroup(openGroup.id, openGroup.tasks)
-            )
-        } else if (openFolder != null) {
-            val firstFile = openFolder.tasks.firstOrNull()
-            com.michelle.raouf.fetch_jet.ui.FolderPageHeader(
-                group = openFolder,
-                canOpenFolder = firstFile != null && pathResolver.isOpenFolderSupported(),
-                onBack = { viewModel.onEvent(DashboardUiEvent.OnCloseFolderGroup) },
-                onOpenFolder = { if (firstFile != null) pathResolver.openFileLocation(fullPathOf(firstFile)) },
-                onPauseAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupPause(openFolder.folder)) },
-                onResumeAll = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupResume(openFolder.folder)) },
-                onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
-                onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) },
-                onPlay = playGroup(FOLDER_ROW_PREFIX + openFolder.folder, openFolder.tasks)
-            )
+        } else if (inPage && !headerInList) {
+            pageHeader()
         } else if (tasks.isNotEmpty() && showToolbar) {
             ListToolbar(
                 tasks = unfinished,
@@ -578,13 +587,16 @@ internal fun TaskListArea(
             return@Column
         }
 
-        TaskRowsHeader(
-            allChecked = rowKeys.all { it in checkedIds },
-            someChecked = selectionMode,
-            onCheckAll = { all ->
-                checkedIds = if (all) rowKeys.toHashSet() else emptySet()
-            }
-        )
+        val rowsHeader: @Composable () -> Unit = {
+            TaskRowsHeader(
+                allChecked = rowKeys.all { it in checkedIds },
+                someChecked = selectionMode,
+                onCheckAll = { all ->
+                    checkedIds = if (all) rowKeys.toHashSet() else emptySet()
+                }
+            )
+        }
+        if (!headerInList) rowsHeader()
         // A download just added (dialog or extension) sits at the top: bring it into view.
         LaunchedEffect(uiState.scrollToTopSignal) {
             if (uiState.scrollToTopSignal > 0) listState.animateScrollToItem(0)
@@ -597,6 +609,12 @@ internal fun TaskListArea(
             // Phone: room so the floating add button never hides the last row.
             contentPadding = PaddingValues(top = 4.dp, bottom = if (showToolbar) 16.dp else 88.dp)
         ) {
+            if (headerInList) item(key = "page-header") {
+                Column {
+                    pageHeader()
+                    rowsHeader()
+                }
+            }
             val taskItem: @Composable (DownloadTask) -> Unit = { task ->
                 TaskRow(
                     task = task,

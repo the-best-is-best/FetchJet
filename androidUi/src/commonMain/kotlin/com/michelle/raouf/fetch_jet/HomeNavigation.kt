@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -202,11 +204,13 @@ internal fun FjSidebar(
         modifier = Modifier.width(232.dp).fillMaxHeight(),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
     ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier.fillMaxHeight().statusBarsPadding().navigationBarsPadding()
+        ) {
         Column(
             modifier = Modifier
-                .fillMaxHeight()
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .heightIn(min = maxHeight)
                 .padding(horizontal = 12.dp, vertical = 14.dp)
         ) {
             Row(
@@ -270,6 +274,7 @@ internal fun FjSidebar(
                 settingsSelected,
                 onSettings
             )
+        }
         }
     }
 }
@@ -704,11 +709,13 @@ internal fun FjRail(
         modifier = Modifier.width(84.dp).fillMaxHeight(),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
     ) {
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier.fillMaxHeight().statusBarsPadding().navigationBarsPadding()
+        ) {
         Column(
             modifier = Modifier
-                .fillMaxHeight()
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .heightIn(min = maxHeight)
                 .padding(vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -740,6 +747,7 @@ internal fun FjRail(
                 glyph = "⋯",
                 onClick = onSettings
             )
+        }
         }
     }
 }
