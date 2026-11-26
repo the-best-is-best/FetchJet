@@ -51,41 +51,17 @@ fun PlaylistPageHeader(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onDelete: () -> Unit,
+    onHide: () -> Unit,
     onReadLanguages: () -> Unit,
     onAddLanguage: (String) -> Unit,
     onDismissLanguages: () -> Unit,
     onOpenFolder: (() -> Unit)? = null,
+    onPlay: (() -> Unit)? = null,
 ) {
     val s = LocalizationManager.Strings
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val wide = maxWidth >= 720.dp
-            if (wide) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onBack) { Text("◀ " + s.playlistBack, fontSize = 13.sp) }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(group.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(group.summaryText, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    }
-                    PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onOpenFolder)
-                }
-            } else {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onBack) { Text("◀", fontSize = 14.sp) }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(group.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(group.summaryText, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onOpenFolder)
-                    }
-                }
-            }
+        GroupHeaderRow(group.title, group.summaryText, onBack) {
+            PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onHide, onOpenFolder, onPlay)
         }
         if (group.isPage) return@Column
         val record = group.record
@@ -147,18 +123,21 @@ private fun PageActions(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onDelete: () -> Unit,
+    onHide: () -> Unit,
     onOpenFolder: (() -> Unit)?,
+    onPlay: (() -> Unit)?,
 ) {
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
+    if (onPlay != null) PlayGroupButton(onPlay)
     if (onOpenFolder != null) {
         OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
     }
     if (group.record.url.isNotBlank()) {
         OutlinedButton(onClick = onCheck, shape = shape) { Text("⟳ " + (if (group.isPage) s.grabCheckNew else s.playlistCheckNew), fontSize = 12.sp) }
     }
-    OutlinedButton(onClick = onPauseAll, enabled = group.canPause, shape = shape) { Text("⏸ " + s.homePauseAll, fontSize = 12.sp) }
-    OutlinedButton(onClick = onResumeAll, enabled = group.canResume, shape = shape) { Text("▶ " + s.homeResumeAll, fontSize = 12.sp) }
+    PauseResumeAllButtons(group.canPause, group.canResume, onPauseAll, onResumeAll)
+    OutlinedButton(onClick = onHide, shape = shape) { Text("🙈 " + s.hiddenHide, fontSize = 12.sp) }
     OutlinedButton(
         onClick = onDelete,
         shape = shape,
@@ -180,56 +159,97 @@ fun FolderPageHeader(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onDelete: () -> Unit,
+    onHide: () -> Unit,
+    onPlay: (() -> Unit)? = null,
 ) {
     val s = LocalizationManager.Strings
     val actions: @Composable () -> Unit = {
         val shape = RoundedCornerShape(10.dp)
+        if (onPlay != null) PlayGroupButton(onPlay)
         if (canOpenFolder) {
             OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
         }
-        OutlinedButton(onClick = onPauseAll, enabled = group.canPause, shape = shape) { Text("⏸ " + s.homePauseAll, fontSize = 12.sp) }
-        OutlinedButton(onClick = onResumeAll, enabled = group.canResume, shape = shape) { Text("▶ " + s.homeResumeAll, fontSize = 12.sp) }
+        PauseResumeAllButtons(group.canPause, group.canResume, onPauseAll, onResumeAll)
+        OutlinedButton(onClick = onHide, shape = shape) { Text("🙈 " + s.hiddenHide, fontSize = 12.sp) }
         OutlinedButton(
             onClick = onDelete,
             shape = shape,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) { Text("🗑 " + s.folderDeleteAll, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
     }
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val wide = maxWidth >= 720.dp
-            if (wide) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onBack) { Text("◀ " + s.playlistBack, fontSize = 13.sp) }
+    GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, actions)
+}
+
+@Composable
+internal fun GroupHeaderRow(
+    title: String,
+    summary: String,
+    onBack: () -> Unit,
+    actions: @Composable () -> Unit
+) {
+    val s = LocalizationManager.Strings
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth >= 720.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onBack) { Text("◀ " + s.playlistBack, fontSize = 13.sp) }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(summary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+                actions()
+            }
+        } else {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onBack) { Text("◀", fontSize = 14.sp) }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("📁 " + group.label, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(group.summaryText, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(summary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
-                    actions()
                 }
-            } else {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onBack) { Text("◀", fontSize = 14.sp) }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("📁 " + group.label, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(group.summaryText, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) { actions() }
-                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) { actions() }
             }
         }
-        Text(
-            group.path,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-        )
     }
+}
+
+@Composable
+internal fun GroupPageHeader(
+    title: String,
+    summary: String,
+    path: String?,
+    onBack: () -> Unit,
+    actions: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        GroupHeaderRow(title, summary, onBack, actions)
+        if (path != null) {
+            Text(
+                path,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun PlayGroupButton(onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = RoundedCornerShape(10.dp)) {
+        Text("▶ " + LocalizationManager.Strings.playerPlayAll, fontSize = 12.sp)
+    }
+}
+
+@Composable
+internal fun PauseResumeAllButtons(canPause: Boolean, canResume: Boolean, onPauseAll: () -> Unit, onResumeAll: () -> Unit) {
+    val s = LocalizationManager.Strings
+    val shape = RoundedCornerShape(10.dp)
+    OutlinedButton(onClick = onPauseAll, enabled = canPause, shape = shape) { Text("⏸ " + s.homePauseAll, fontSize = 12.sp) }
+    OutlinedButton(onClick = onResumeAll, enabled = canResume, shape = shape) { Text("⬇ " + s.homeResumeAll, fontSize = 12.sp) }
 }

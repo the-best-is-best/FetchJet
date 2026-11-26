@@ -57,13 +57,18 @@ class IosHybridHttpEngine(
 
     override fun getAllTasksFlow(): StateFlow<Map<String, DownloadTask>> = merged
 
+    override fun setDestination(taskId: String, destinationPath: String, fileName: String?) {
+        foreground.setDestination(taskId, destinationPath, fileName)
+        background.setDestination(taskId, destinationPath, fileName)
+    }
+
     override fun enqueueTask(task: DownloadTask): DownloadTask {
         // Not started yet: park it with the engine the current limit implies.
-        return engineFor(task.id, create = true, url = task.url).enqueueTask(task)
+        return engineFor(task.id, create = true, url = task.url, headers = task.requestHeaders).enqueueTask(task)
     }
 
     override suspend fun start(task: DownloadTask): Result<Unit> =
-        engineFor(task.id, create = true, url = task.url).start(task)
+        engineFor(task.id, create = true, url = task.url, headers = task.requestHeaders).start(task)
 
     override suspend fun pause(taskId: String): Result<Unit> =
         engineFor(taskId, create = false).pause(taskId)
@@ -77,7 +82,7 @@ class IosHybridHttpEngine(
         return r
     }
 
-    private fun engineFor(taskId: String, create: Boolean, url: String = ""): HttpDownloadEngine {
+    private fun engineFor(taskId: String, create: Boolean, url: String = "", headers: Map<String, String> = emptyMap()): HttpDownloadEngine {
         val owner = owners[taskId] ?: run {
             // Unknown task: whichever engine already holds it (after a relaunch), else decide.
             val existing = when {
@@ -95,19 +100,29 @@ class IosHybridHttpEngine(
             val decided = existing ?: onDisk
             ?: if (create && (speedLimitProvider(taskId) > 0L ||
                         com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn ||
-                        hasSiteLogin(url))
+                        hasSiteLogin(url) ||
+                        carriesSession(headers))
             ) Owner.FOREGROUND else Owner.BACKGROUND
             owners[taskId] = decided
+            println(
+                "IosHybrid: task $taskId -> $decided (existing=$existing onDisk=$onDisk create=$create limit=${speedLimitProvider(taskId)} " +
+                        "proxy=${com.michelle.raouf.fetch_jet.core.network.NetworkSettings.proxy.value.isOn} login=${hasSiteLogin(url)} session=${carriesSession(headers)})"
+            )
             decided
         }
         return if (owner == Owner.FOREGROUND) foreground else background
     }
 
+    /** The system's background session cannot send a Cookie or Authorization of its own: such a task runs in the foreground engine. */
+    private fun carriesSession(headers: Map<String, String>): Boolean =
+        headers.any { (name, value) -> value.isNotBlank() && (name.equals("Cookie", true) || name.equals("Authorization", true)) }
+
     private fun hasSiteLogin(url: String): Boolean {
         val host = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
             .substringAfterLast('@').substringBefore(':')
         return host.isNotEmpty() &&
-                com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null
+                (com.michelle.raouf.fetch_jet.core.network.NetworkSettings.loginFor(host) != null ||
+                        com.michelle.raouf.fetch_jet.core.network.NetworkSettings.cookieFor(host) != null)
     }
 }
 

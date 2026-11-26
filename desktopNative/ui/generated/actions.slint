@@ -25,6 +25,11 @@ export global Act {
     callback playlistResumeAll();
     callback playlistRemove();
     callback playlistCheck();
+    callback playOpenGroup();
+    callback playerPrepare(id: string);
+    callback playerRelease(id: string);
+    callback playerClosed();
+    callback playerLibraryDownload();
     callback playlistReadLanguages();
     callback playlistAddLanguage(code: string);
     callback playlistLanguagesClose();
@@ -63,6 +68,7 @@ export global Act {
     callback audioCompressSetFormat(index: int);
     callback audioCompressDelete(path: string);
     callback audioCompressDismiss();
+    callback audioCompressDeleteOriginal(on: bool);
     callback detailsSubtitles();
     callback subtitlesToggle(key: string, selected: bool);
     callback subtitlesAdd();
@@ -78,6 +84,7 @@ export global Act {
     callback alertDismiss(kind: int, fromScrim: bool);
     callback alertText(kind: int, text: string);
     callback alertExtra(kind: int);
+    callback alertLink(kind: int);
     callback setSettingsSection(index: int);
     callback openMore();
     callback settingToggle(id: string, on: bool);
@@ -158,7 +165,26 @@ export global Act {
     callback groupOpenFolderOnDisk();
     callback setPlaylistOldestFirst(on: bool);
     callback useSingleVideo();
+    callback choiceCheck(kind: int, checked: bool);
     callback choicePrimary(kind: int);
     callback choiceSecondary(kind: int);
     callback choiceDismiss(kind: int);
+    callback hideChecked();
+    callback unhideChecked();
+    callback unhideAll();
+    callback unhideGroup();
+    callback hiddenChangePin();
+    callback hiddenRemovePin();
+    callback hiddenLock();
+    callback hiddenRecoveryCode();
+    callback hiddenRestore();
+    callback detailsTool(code: int);
+    callback videoCutChoose(timeline: bool);
+    callback videoCutPickTime(end: bool);
+    callback videoCutStart();
+    callback videoCutCancel();
+    callback videoCutDismiss();
+    callback videoCutDeleteClip(path: string);
+    callback videoCutApply(startMs: int, endMs: int);
+    callback videoCutDeleteOriginal(on: bool);
 }

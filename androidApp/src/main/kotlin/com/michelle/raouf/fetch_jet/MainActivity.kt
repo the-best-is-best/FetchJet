@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import android.app.KeyguardManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +43,47 @@ class MainActivity : ComponentActivity() {
         cb?.invoke(uri)
     }
 
+    private var textPickCallback: ((Uri?) -> Unit)? = null
+    private val textPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val cb = textPickCallback
+        textPickCallback = null
+        cb?.invoke(uri)
+    }
+
+    private var authResult: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
+    private val authLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        authResult?.complete(result.resultCode == RESULT_OK)
+        authResult = null
+    }
+
+    private suspend fun confirmDeviceCredential(reason: String): Boolean {
+        val keyguard = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+        if (!keyguard.isDeviceSecure) throw IllegalStateException("no screen lock")
+        @Suppress("DEPRECATION")
+        val intent = keyguard.createConfirmDeviceCredentialIntent(reason, null)
+            ?: throw IllegalStateException("no screen lock")
+        authResult?.complete(false)
+        val pending = kotlinx.coroutines.CompletableDeferred<Boolean>()
+        authResult = pending
+        authLauncher.launch(intent)
+        return pending.await()
+    }
+
+    private val deviceAuthHandler: suspend (String) -> Boolean = { reason -> confirmDeviceCredential(reason) }
+
+    override fun onDestroy() {
+        if (com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler === deviceAuthHandler) {
+            com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler = null
+        }
+        authResult?.complete(false)
+        authResult = null
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         PathResolver.appContext = applicationContext
         com.tbib.kmp_localization.LocalizationManager.start()
@@ -57,7 +99,6 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
-        PathResolver.appContext = applicationContext
         com.michelle.raouf.fetch_jet.core.more.MoreLinks.systemShare = { text ->
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
@@ -67,7 +108,9 @@ class MainActivity : ComponentActivity() {
             true
         }
         DownloadNotificationManager.setContext(applicationContext)
+        com.michelle.raouf.fetch_jet.core.security.DeviceAuth.handler = deviceAuthHandler
         com.michelle.raouf.fetch_jet.core.log.AppLog.verbose = BuildConfig.VERBOSE_LOGS
+        if (BuildConfig.DEBUG) com.michelle.raouf.fetch_jet.feature.device_sync.DeviceSyncPorts.use(28471, 28472)
         // Debug / verbose builds only: a log file and the "Save log" button. Release builds
         // have neither.
         if (BuildConfig.DEBUG || BuildConfig.VERBOSE_LOGS) com.michelle.raouf.fetch_jet.core.log.DiagnosticsLog.install()
@@ -91,11 +134,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         com.michelle.raouf.fetch_jet.core.filesystem.TextFilePicker.launcher = { onResult ->
-            torrentPickCallback = onResult
+            textPickCallback = onResult
             try {
-                torrentPicker.launch(arrayOf("text/plain", "text/*"))
+                textPicker.launch(arrayOf("application/octet-stream", "application/json", "text/*"))
             } catch (_: Throwable) {
-                torrentPickCallback = null
+                textPickCallback = null
                 onResult(null)
             }
         }
@@ -164,17 +207,21 @@ class MainActivity : ComponentActivity() {
         // Consume it: a rotation must not add the same torrent again.
         intent.data = null
         intent.action = null
+        if (uri.scheme.equals("fetchjet", true) && uri.host.equals("browse", true)) {
+            uri.getQueryParameter("url")?.let { com.michelle.raouf.fetch_jet.core.network.BrowserRequests.open(it) }
+            return
+        }
         val target = when (uri.scheme?.lowercase()) {
             "magnet" -> uri.toString()
-            // From the browser extension: fetchjet://download?url=<encoded link>
-            "fetchjet" -> uri.getQueryParameter("url")?.takeIf {
-                it.startsWith("http://", true) || it.startsWith(
-                    "https://",
-                    true
-                ) || it.startsWith("magnet:", true) ||
-                        com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it)
+            // Any web page can open fetchjet://download?url=<link>: only the link is taken, so it
+            // always opens the Add dialog (no "direct", no pre-chosen format, no cookie).
+            "fetchjet" -> uri.takeIf { it.host.equals("download", true) }?.getQueryParameter("url")?.trim()?.takeIf {
+                it.length <= 8192 && it.none { c -> c < ' ' } &&
+                        (it.startsWith("http://", true) || it.startsWith("https://", true) ||
+                                it.startsWith("magnet:", true) ||
+                                com.michelle.raouf.fetch_jet.feature.http_downloader.isFtpLink(it))
             }
-            "content", "file" ->
+            "content" ->
                 com.michelle.raouf.fetch_jet.core.filesystem.TorrentFilePicker.copyTorrentToCache(
                     applicationContext, uri
                 )
@@ -182,7 +229,9 @@ class MainActivity : ComponentActivity() {
             "http", "https" -> uri.toString()
             else -> null
         } ?: return
-        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(target)
+        com.michelle.raouf.fetch_jet.core.network.ExternalDownloadBridge.dispatch(
+            com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest(url = target, direct = false)
+        )
     }
 
     private fun requestPermissionsIfNeeded() {
@@ -236,8 +285,11 @@ class MainActivity : ComponentActivity() {
     private fun requestBatteryOptimizationExemptionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
+                val prefs = getSharedPreferences("fetchjet_prompts", MODE_PRIVATE)
+                if (prefs.getBoolean("askedBatteryOptimization", false)) return
                 val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
                 if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                    prefs.edit().putBoolean("askedBatteryOptimization", true).apply()
                     val intent =
                         Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:$packageName")

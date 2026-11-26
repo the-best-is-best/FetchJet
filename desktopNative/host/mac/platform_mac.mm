@@ -2,6 +2,7 @@
 
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <LocalAuthentication/LocalAuthentication.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 #include <dlfcn.h>
@@ -500,6 +501,30 @@ namespace fjhost::os {
             }
         });
         return chosen;
+    }
+
+    bool auth_available() {
+        @autoreleasepool {
+            LAContext *context = [[LAContext alloc] init];
+            NSError *error = nil;
+            return [context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&error] ? true : false;
+        }
+    }
+
+    bool auth_verify(const std::string &reason) {
+        __block bool granted = false;
+        dispatch_semaphore_t done = dispatch_semaphore_create(0);
+        @autoreleasepool {
+            LAContext *context = [[LAContext alloc] init];
+            [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication
+                    localizedReason:ns(reason)
+                              reply:^(BOOL success, NSError *error) {
+                                  granted = success;
+                                  dispatch_semaphore_signal(done);
+                              }];
+            dispatch_semaphore_wait(done, DISPATCH_TIME_FOREVER);
+        }
+        return granted;
     }
 
     char *copy_for_core(const std::string &text) {

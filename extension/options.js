@@ -12,7 +12,7 @@ const DEFAULT_EXTENSIONS = [
   "torrent"
 ];
 
-const BOOLS = ["enabled", "captureDownloads", "limitToListed", "captureLinks", "captureMedia", "sendCookies", "notifications", "autoLaunch", "autoResolve", "pagePanel"];
+const BOOLS = ["enabled", "captureDownloads", "limitToListed", "captureLinks", "captureMedia", "sendCookies", "notifications", "autoLaunch", "openDirectly", "autoResolve", "pagePanel"];
 
 function parseList(text, lower = true) {
   return text.split(/[\s,;]+/).map(s => s.trim().replace(/^\./, "")).filter(Boolean).map(s => lower ? s.toLowerCase() : s);
@@ -80,6 +80,10 @@ async function save() {
   setTimeout(() => { $("saved").textContent = ""; }, 2000);
 }
 
+function showExtVersion() {
+  $("extVersion").textContent = fjT("extVersion", { version: api.runtime.getManifest().version });
+}
+
 let lastStatus = null;
 function renderStatus() {
   const r = lastStatus;
@@ -95,11 +99,12 @@ function renderStatus() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  fjOnLanguage(() => { fitToBrowser(); renderStatus(); renderHidden(); });
+  fjOnLanguage(() => { fitToBrowser(); renderStatus(); renderHidden(); showExtVersion(); });
   api.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.settings && changes.settings.newValue) { hiddenSites = changes.settings.newValue.hiddenSites || []; renderHidden(); }
   });
   fitToBrowser();
+  showExtVersion();
   load();
   $("save").addEventListener("click", save);
   $("resetExt").addEventListener("click", () => { $("extensions").value = DEFAULT_EXTENSIONS.join(", "); });

@@ -6,6 +6,8 @@ enum class ToneCode { ON_SURFACE, MUTED, PRIMARY, COMPLETED, PAUSED, ERROR, TORR
 
 enum class DetailActionCode { NONE, OPEN_FILE, OPEN_FOLDER, PAUSE, START_NOW, RESUME }
 
+enum class DetailToolCode { NONE, SECONDARY, EXTRACT, SHARE, PLAY, COMPRESS, CUT, SUBTITLES, EXTRACT_AUDIO }
+
 enum class PieceStateCode { IDLE, COMPLETED, ACTIVE, WAITING }
 
 @Serializable
@@ -19,6 +21,7 @@ data class ChipDto(
 data class LinkDto(
     val label: String = "",
     val url: String = "",
+    val note: String = "",
 )
 
 @Serializable
@@ -74,6 +77,17 @@ data class DetailsDto(
     val canSubtitles: Boolean = false,
     val compressLabel: String = "",
     val removeLabel: String = "",
+    val fileTools: List<DetailToolDto> = emptyList(),
+    val mediaTools: List<DetailToolDto> = emptyList(),
+    val clips: List<VideoClipDto> = emptyList(),
+)
+
+@Serializable
+data class DetailToolDto(
+    val code: Int = 0,
+    val icon: String = "",
+    val label: String = "",
+    val disabled: Boolean = false,
 )
 
 @Serializable

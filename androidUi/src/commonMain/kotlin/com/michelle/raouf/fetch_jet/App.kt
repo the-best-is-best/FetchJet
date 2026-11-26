@@ -36,11 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenNoticeText
+import kotlin.time.Duration.Companion.seconds
 import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
@@ -57,6 +57,7 @@ import com.michelle.raouf.fetch_jet.ui.RemoveConfirmationDialog
 import com.michelle.raouf.fetch_jet.ui.SideFilter
 import com.michelle.raouf.fetch_jet.ui.clearFocusOnTapOutside
 import com.tbib.kmp_localization.LocalizationManager
+import kotlinx.coroutines.launch
 
 /** The task whose file is gone from disk: shown in [MissingFileDialog]. */
 internal val missingFileTaskId = androidx.compose.runtime.mutableStateOf<String?>(null)
@@ -69,6 +70,33 @@ internal fun openDownloadedFile(fullPath: String, taskId: String) {
     val resolver = PathResolver()
     if (!resolver.fileExists(fullPath)) {
         missingFileTaskId.value = taskId
+        return
+    }
+    val all = com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository.getInstance()
+        .allTasksFlow.value
+    val task = all.firstOrNull { it.id == taskId }
+    if (task != null && com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task) &&
+        !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff()
+    ) {
+        val queue = com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.queueFor(
+            task,
+            all,
+            decode = { com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(it) }
+        )
+        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.open(queue)
+        return
+    }
+    if (task != null && com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfReader.canRead(task) &&
+        !com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.isOff()
+    ) {
+        com.michelle.raouf.fetch_jet.ui.PdfRequests.open(
+            com.michelle.raouf.fetch_jet.ui.PdfOpen(
+                path = fullPath,
+                title = com.michelle.raouf.fetch_jet.utils.decodeUnicodeText(task.fileName),
+                task = task,
+                hidden = false
+            )
+        )
         return
     }
     if (!resolver.openFile(fullPath)) {
@@ -167,13 +195,89 @@ fun App(
         )
     }
 
+    val hiddenIds = remember(state.hidden.tasks, state.allTasks) {
+        (state.hidden.tasks + state.allTasks).filter { it.hidden }.mapTo(HashSet()) { it.id }
+    }
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
     val effectClipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val messageScope = androidx.compose.runtime.rememberCoroutineScope()
+    val showMessage: (String) -> Unit = { text -> messageScope.launch { snackbarHostState.showSnackbar(text) } }
+    val hiddenNotice = state.hidden.notice
+    LaunchedEffect(hiddenNotice) {
+        if (hiddenNotice != null) {
+            showMessage(hiddenNoticeText(hiddenNotice))
+            viewModel.onEvent(DashboardUiEvent.OnHiddenNoticeShown)
+        }
+    }
+    var backupPickerFor by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    val saveBackup = com.michelle.raouf.fetch_jet.ui.rememberBackupFileSaver(
+        text = { viewModel.uiState.value.backup.text },
+        onFinished = { failed ->
+            backupPickerFor = ""
+            if (failed) showMessage(LocalizationManager.Strings.backupFailed)
+            viewModel.onEvent(DashboardUiEvent.OnBackupWritten)
+        }
+    )
+    val backupFileName = state.backup.fileName
+    LaunchedEffect(state.backup.text != null, backupFileName) {
+        if (state.backup.text != null && backupPickerFor != backupFileName) {
+            backupPickerFor = backupFileName
+            saveBackup(backupFileName)
+        }
+    }
+    val backupNotice = state.backup.notice
+    LaunchedEffect(backupNotice) {
+        if (backupNotice != null) {
+            showMessage(com.michelle.raouf.fetch_jet.presentation.dashboard.backupNoticeText(backupNotice))
+            viewModel.onEvent(DashboardUiEvent.OnBackupNoticeShown)
+        }
+    }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+        if (viewModel.uiState.value.hidden.pinResetAllowed) viewModel.onEvent(DashboardUiEvent.OnHiddenResetCancel)
+        if (com.michelle.raouf.fetch_jet.ui.HiddenFlow.playerOut) {
+            com.michelle.raouf.fetch_jet.ui.HiddenFlow.leftAt = kotlin.time.TimeSource.Monotonic.markNow()
+        } else if (viewModel.uiState.value.hidden.unlocked) viewModel.onEvent(DashboardUiEvent.OnHiddenCover)
+    }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_START) {
+        val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
+        if (flow.playerOut) {
+            flow.playerOut = false
+            viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+            val away = flow.leftAt?.elapsedNow()
+            flow.leftAt = null
+            if (away != null && away > 30.seconds && viewModel.uiState.value.hidden.unlocked) {
+                viewModel.onEvent(DashboardUiEvent.OnHiddenCover)
+            }
+        }
+        if (viewModel.uiState.value.hidden.covered) viewModel.onEvent(DashboardUiEvent.OnHiddenReauth)
+    }
     LaunchedEffect(viewModel) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is DashboardUiEffect.ShowToast -> snackbarHostState.showSnackbar(effect.text)
                 is DashboardUiEffect.CopyText -> effectClipboard.setText(androidx.compose.ui.text.AnnotatedString(effect.text))
+                is DashboardUiEffect.OpenHiddenFile -> if (
+                    com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfReader.isPdfName(effect.path) &&
+                    !com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.isOff()
+                ) {
+                    com.michelle.raouf.fetch_jet.ui.PdfRequests.open(
+                        com.michelle.raouf.fetch_jet.ui.PdfOpen(
+                            path = effect.path,
+                            title = effect.path.substringAfterLast('/'),
+                            task = null,
+                            hidden = true
+                        )
+                    )
+                } else {
+                    val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
+                    flow.playerOut = true
+                    flow.leftAt = null
+                    if (!PathResolver().openFile(effect.path)) {
+                        flow.playerOut = false
+                        viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                        snackbarHostState.showSnackbar(LocalizationManager.Strings.fileMissingTitle)
+                    }
+                }
             }
         }
     }
@@ -249,20 +353,10 @@ fun App(
                                     showToolbar = false
                                 )
                                 // Floating "add" button (the header has no room for it).
-                                androidx.compose.material3.FloatingActionButton(
-                                    onClick = {
-                                        viewModel.onEvent(
-                                            DashboardUiEvent.OnToggleAddDialog(
-                                                true
-                                            )
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(18.dp),
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                com.michelle.raouf.fetch_jet.ui.AddFab(
+                                    onClick = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(true)) },
                                     modifier = Modifier.align(Alignment.BottomEnd)
-                                        .padding(end = 10.dp, bottom = 14.dp)
-                                ) { Text("+", fontSize = 26.sp, fontWeight = FontWeight.Bold) }
+                                )
                             }
                         }
 
@@ -786,18 +880,22 @@ fun App(
                     },
                     onEngineSelected = { viewModel.onEvent(DashboardUiEvent.OnEngineSelected(it)) },
                     onAddDownload = { viewModel.onEvent(DashboardUiEvent.OnAddDownloadClicked) },
-                    onDismiss = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(false)) }
+                    onDismiss = { viewModel.onEvent(DashboardUiEvent.OnToggleAddDialog(false)) },
+                    secure = state.addHidden
                 )
             }
 
             // Remove Confirmation Dialog
             if (state.removeConfirmationTaskId != null || state.removeConfirmationTaskIds.isNotEmpty()) {
+                val removeIds = listOfNotNull(state.removeConfirmationTaskId) + state.removeConfirmationTaskIds
                 RemoveConfirmationDialog(
                     onConfirm = { deleteFile ->
                         viewModel.onEvent(DashboardUiEvent.OnConfirmRemoveClicked(deleteFile))
                     },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissRemoveDialog) },
-                    count = if (state.removeConfirmationTaskId != null) 1 else state.removeConfirmationTaskIds.size
+                    count = if (state.removeConfirmationTaskId != null) 1 else state.removeConfirmationTaskIds.size,
+                    derivedCount = state.removeDerivedCount,
+                    secure = removeIds.any { it in hiddenIds }
                 )
             }
 
@@ -810,7 +908,8 @@ fun App(
                         viewModel.onEvent(DashboardUiEvent.OnRemoveClicked(missingId))
                         viewModel.onEvent(DashboardUiEvent.OnConfirmRemoveClicked(false))
                     },
-                    onDismiss = { missingFileTaskId.value = null }
+                    onDismiss = { missingFileTaskId.value = null },
+                    secure = missingId in hiddenIds
                 )
             }
 
@@ -854,6 +953,9 @@ fun App(
             }
             state.audioCompress?.let { page ->
                 com.michelle.raouf.fetch_jet.ui.AudioCompressDialog(page) { viewModel.onEvent(it) }
+            }
+            state.videoCut?.let { page ->
+                com.michelle.raouf.fetch_jet.ui.VideoCutHost(page) { viewModel.onEvent(it) }
             }
             if (state.deviceShareTaskId != null) {
                 com.michelle.raouf.fetch_jet.ui.DeviceSendSheet(state) { viewModel.onEvent(it) }
@@ -927,6 +1029,72 @@ fun App(
                         )
                     },
                     onDismiss = { viewModel.onEvent(DashboardUiEvent.OnDismissFileConflictDialog) }
+                )
+            }
+
+            val browserUrl by com.michelle.raouf.fetch_jet.core.network.BrowserRequests.url.collectAsState()
+            browserUrl?.let { start ->
+                com.michelle.raouf.fetch_jet.ui.InAppBrowser(start) {
+                    com.michelle.raouf.fetch_jet.core.network.BrowserRequests.close()
+                }
+            }
+            val playerQueue by com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.queue.collectAsState()
+            playerQueue?.let { q ->
+                val hiddenQueue = q.items.any { it.hidden }
+                if (hiddenQueue && (!state.hidden.unlocked || state.hidden.covered)) {
+                    LaunchedEffect(q) {
+                        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
+                        viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
+                } else {
+                    com.michelle.raouf.fetch_jet.ui.MediaPlayerScreen(q) {
+                        com.michelle.raouf.fetch_jet.feature.media_player.PlayerRequests.close()
+                        if (hiddenQueue) viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
+                }
+            }
+            val pdfRequest by com.michelle.raouf.fetch_jet.ui.PdfRequests.current.collectAsState()
+            pdfRequest?.let { pdf ->
+                if (pdf.hidden && (!state.hidden.unlocked || state.hidden.covered)) {
+                    LaunchedEffect(pdf) {
+                        com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                        viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                    }
+                } else {
+                    com.michelle.raouf.fetch_jet.ui.PdfReaderScreen(
+                        request = pdf,
+                        onClose = {
+                            com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                            if (pdf.hidden) viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                        },
+                        onOpenOutside = {
+                            com.michelle.raouf.fetch_jet.ui.PdfRequests.close()
+                            if (pdf.hidden) {
+                                val flow = com.michelle.raouf.fetch_jet.ui.HiddenFlow
+                                flow.playerOut = true
+                                flow.leftAt = null
+                            }
+                            if (!pathResolver.openFile(pdf.path)) {
+                                if (pdf.hidden) {
+                                    com.michelle.raouf.fetch_jet.ui.HiddenFlow.playerOut = false
+                                    viewModel.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+                                } else pathResolver.openFileLocation(pdf.path)
+                            }
+                        }
+                    )
+                }
+            }
+            if (state.hidden.unlocked && state.hidden.covered) {
+                com.michelle.raouf.fetch_jet.ui.HiddenCover(viewModel)
+            }
+            if (state.hidden.encryptNoticeNeeded) {
+                com.michelle.raouf.fetch_jet.ui.HiddenNoticeDialog(viewModel)
+            }
+            state.hidden.opening?.let { com.michelle.raouf.fetch_jet.ui.HiddenOpeningDialog(it) }
+            state.hidden.recoveryCode?.let { code ->
+                com.michelle.raouf.fetch_jet.ui.RecoveryCodeDialog(
+                    code = code,
+                    onClose = { viewModel.onEvent(DashboardUiEvent.OnHiddenRecoveryCodeShown) }
                 )
             }
 

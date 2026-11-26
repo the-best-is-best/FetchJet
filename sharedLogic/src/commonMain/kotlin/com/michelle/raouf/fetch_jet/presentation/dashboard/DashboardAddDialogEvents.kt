@@ -37,7 +37,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
             // Already queued, or a dialog is up: say nothing. (The watcher itself only reports a
             // text once, so copying the same link again later asks again.)
             if (s.isAddDialogVisible || s.clipboardOfferUrl != null) return
-            if (queueRepository.allTasksFlow.value.any { it.url == event.url || it.originalUrl == event.url }) return
+            if (queueRepository.visibleTasksFlow.value.any { it.url == event.url || it.originalUrl == event.url }) return
             _uiState.update { it.copy(clipboardOfferUrl = event.url) }
         }
 
@@ -200,6 +200,7 @@ internal fun DashboardViewModel.handleAddDialogEvent(event: DashboardUiEvent) {
                 state.copy(
 
                     isAddDialogVisible = event.show,
+                    addHidden = if (event.show) state.addHidden else false,
 
                     errorMessage = null,
 

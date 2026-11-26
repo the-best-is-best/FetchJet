@@ -6,7 +6,11 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.canSendToDevice
 import com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+import com.michelle.raouf.fetch_jet.feature.audio_extract.AudioExtract
 import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
+import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
+
+enum class RowMenuSection { OPEN, MEDIA, DOWNLOAD, MANAGE }
 
 enum class RowMenuEntry(val danger: Boolean = false, val dividerBefore: Boolean = false) {
     OPEN,
@@ -15,17 +19,31 @@ enum class RowMenuEntry(val danger: Boolean = false, val dividerBefore: Boolean 
     RESUME,
     EXTRACT,
     COMPRESS,
+    CUT,
+    EXTRACT_AUDIO,
     SUBTITLES,
-    SEND_TO_DEVICE(dividerBefore = true),
+    SEND_TO_DEVICE,
     COPY_LINK,
     SELECT,
     DETAILS,
-    DELETE(danger = true, dividerBefore = true),
+    UNHIDE,
+    DELETE(danger = true),
 }
+
+val RowMenuEntry.section: RowMenuSection
+    get() = when (this) {
+        RowMenuEntry.OPEN, RowMenuEntry.OPEN_FOLDER, RowMenuEntry.DETAILS -> RowMenuSection.OPEN
+        RowMenuEntry.EXTRACT, RowMenuEntry.COMPRESS, RowMenuEntry.CUT, RowMenuEntry.EXTRACT_AUDIO,
+        RowMenuEntry.SUBTITLES -> RowMenuSection.MEDIA
+        RowMenuEntry.PAUSE, RowMenuEntry.RESUME, RowMenuEntry.SEND_TO_DEVICE, RowMenuEntry.COPY_LINK -> RowMenuSection.DOWNLOAD
+        RowMenuEntry.SELECT, RowMenuEntry.UNHIDE, RowMenuEntry.DELETE -> RowMenuSection.MANAGE
+    }
 
 class RowMenuOptions(
     val canSend: Boolean = true,
     val canCompress: Boolean = true,
+    val canCut: Boolean = true,
+    val canExtractAudio: Boolean = true,
     val selectEntry: Boolean = false,
 )
 
@@ -33,15 +51,33 @@ object RowMenu {
     private val PAUSABLE = setOf(DownloadStatus.QUEUED, DownloadStatus.CONNECTING, DownloadStatus.DOWNLOADING)
     private val RESUMABLE = setOf(DownloadStatus.IDLE, DownloadStatus.PAUSED, DownloadStatus.ERROR)
 
-    fun entries(task: DownloadTask, options: RowMenuOptions = RowMenuOptions()): List<RowMenuEntry> = buildList {
+    fun entries(task: DownloadTask, options: RowMenuOptions = RowMenuOptions()): List<RowMenuEntry> =
+        grouped(task, options).sortedBy { it.section.ordinal }
+
+    fun startsSection(entries: List<RowMenuEntry>, index: Int): Boolean =
+        index > 0 && entries[index].section != entries[index - 1].section
+
+    private fun grouped(task: DownloadTask, options: RowMenuOptions): List<RowMenuEntry> = buildList {
         val done = task.status == DownloadStatus.COMPLETED
         val busy = task.postProcessLabel != null
+        if (task.hidden) {
+            if (done && !busy) add(RowMenuEntry.OPEN)
+            if (task.status in PAUSABLE && !busy) add(RowMenuEntry.PAUSE)
+            if (task.status in RESUMABLE) add(RowMenuEntry.RESUME)
+            if (options.selectEntry) add(RowMenuEntry.SELECT)
+            add(RowMenuEntry.DETAILS)
+            add(RowMenuEntry.UNHIDE)
+            add(RowMenuEntry.DELETE)
+            return@buildList
+        }
         if (done && !busy) add(RowMenuEntry.OPEN)
         if (task.destinationPath.isNotBlank()) add(RowMenuEntry.OPEN_FOLDER)
         if (task.status in PAUSABLE && !busy) add(RowMenuEntry.PAUSE)
         if (task.status in RESUMABLE) add(RowMenuEntry.RESUME)
         if (done && ArchiveTasks.canExtract(task)) add(RowMenuEntry.EXTRACT)
         if (options.canCompress && !busy && AudioCompress.canCompress(task)) add(RowMenuEntry.COMPRESS)
+        if (options.canCut && VideoCut.canCut(task)) add(RowMenuEntry.CUT)
+        if (options.canExtractAudio && AudioExtract.canExtract(task)) add(RowMenuEntry.EXTRACT_AUDIO)
         if (!busy && task.canAddSubtitles()) add(RowMenuEntry.SUBTITLES)
         if (options.canSend && task.canSendToDevice()) add(RowMenuEntry.SEND_TO_DEVICE)
         if (task.url.isNotBlank()) add(RowMenuEntry.COPY_LINK)
@@ -50,6 +86,9 @@ object RowMenu {
         add(RowMenuEntry.DELETE)
     }
 
+    fun label(entry: RowMenuEntry, s: AppLocalization, task: DownloadTask): String =
+        if (entry == RowMenuEntry.CUT && VideoCut.isAudio(task)) s.audioCutTitle else label(entry, s)
+
     fun label(entry: RowMenuEntry, s: AppLocalization): String = when (entry) {
         RowMenuEntry.OPEN -> s.rowMenuOpen
         RowMenuEntry.OPEN_FOLDER -> s.rowMenuOpenFolder
@@ -57,11 +96,14 @@ object RowMenu {
         RowMenuEntry.RESUME -> s.rowMenuResume
         RowMenuEntry.EXTRACT -> s.rowMenuExtract
         RowMenuEntry.COMPRESS -> s.rowMenuCompress
+        RowMenuEntry.CUT -> s.videoCutTitle
+        RowMenuEntry.EXTRACT_AUDIO -> s.audioExtractTitle
         RowMenuEntry.SUBTITLES -> s.subtitlesAddButton
         RowMenuEntry.SEND_TO_DEVICE -> s.rowMenuSendToDevice
         RowMenuEntry.COPY_LINK -> s.rowMenuCopyLink
         RowMenuEntry.SELECT -> s.rowMenuSelect
         RowMenuEntry.DETAILS -> s.rowMenuDetails
+        RowMenuEntry.UNHIDE -> s.hiddenUnhide
         RowMenuEntry.DELETE -> s.rowMenuDelete
     }
 }

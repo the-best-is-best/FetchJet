@@ -9,6 +9,7 @@ class LiveActivityManager: ObservableObject {
     private var currentActivity: Activity<DownloadActivityAttributes>?
     /// Downloads currently represented by the (single) activity; it ends when this empties.
     private var activeTaskIds: Set<String> = []
+    private var shownTaskId: String?
     /// Newest call handled per download (LiveActivityBridge numbers them in call order).
     private var lastOrder: [String: UInt64] = [:]
 
@@ -46,26 +47,27 @@ class LiveActivityManager: ObservableObject {
             statusText: statusText
         )
 
+        let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(30))
         if let activity = currentActivity, activity.activityState == .active {
-            Task {
-                await activity.update(
-                    ActivityContent(state: state, staleDate: Date().addingTimeInterval(30))
-                )
+            let renamed = shownTaskId == nil || (shownTaskId == taskId && activity.attributes.fileName != fileName)
+            if !renamed {
+                Task { await activity.update(content) }
+                return
             }
-        } else {
-            currentActivity = nil
-            let attributes = DownloadActivityAttributes(fileName: fileName, engineType: engineType)
-            let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(30))
-            do {
-                currentActivity = try Activity.request(
-                    attributes: attributes,
-                    content: content,
-                    pushType: nil
-                )
-                print("LiveActivityManager: Live Activity requested successfully for \(fileName)")
-            } catch {
-                print("Failed to start Live Activity: \(error.localizedDescription)")
-            }
+            Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        }
+        currentActivity = nil
+        shownTaskId = nil
+        let attributes = DownloadActivityAttributes(fileName: fileName, engineType: engineType)
+        do {
+            currentActivity = try Activity.request(
+                attributes: attributes,
+                content: content,
+                pushType: nil
+            )
+            shownTaskId = taskId
+        } catch {
+            print("Failed to start Live Activity: \(error.localizedDescription)")
         }
     }
 
@@ -75,6 +77,7 @@ class LiveActivityManager: ObservableObject {
     func endLiveActivity(order: UInt64, taskId: String, completed: Bool) {
         if isStale(order, taskId) { return }
         activeTaskIds.remove(taskId)
+        if shownTaskId == taskId { shownTaskId = nil }
         guard activeTaskIds.isEmpty, let activity = currentActivity else {
             return
         }

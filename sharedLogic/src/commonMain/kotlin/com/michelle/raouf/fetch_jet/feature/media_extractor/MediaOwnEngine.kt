@@ -233,22 +233,6 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
     }
     if (!ok || !AppFileSystem.exists(target.toPath())) throw Exception("ffmpeg could not put the streams together")
 
-    // "Cut afterwards" clip: stream-copy the chosen part out of the full file.
-    if (task.clipByCutting && (!task.clipStart.isNullOrBlank() || !task.clipEnd.isNullOrBlank())) {
-        reportPostProcess(taskId, "Cutting the clip", 0.7f)
-        val cut = "$cacheDir/cut.$targetExt"
-        val args = mutableListOf("-y")
-        task.clipStart?.takeIf { it.isNotBlank() }?.let { args += listOf("-ss", it) }
-        task.clipEnd?.takeIf { it.isNotBlank() }?.let { args += listOf("-to", it) }
-        args += listOf("-i", target, "-c", "copy", "-movflags", "+faststart", cut)
-        if (runLocalFfmpeg(args) && AppFileSystem.exists(cut.toPath())) {
-            try {
-                AppFileSystem.delete(target.toPath())
-            } catch (_: Exception) {
-            }
-            AppFileSystem.atomicMove(cut.toPath(), target.toPath())
-        }
-    }
     for (f in files) try {
         AppFileSystem.delete(f.toPath())
     } catch (_: Exception) {

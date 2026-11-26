@@ -220,7 +220,16 @@ internal fun renamedPart(name: String, sentName: String, localName: String): Str
 internal fun DashboardViewModel.handleDeviceSyncEvent(event: DashboardUiEvent) {
     when (event) {
         is DashboardUiEvent.OnShareTaskClicked ->
-            _uiState.update { it.copy(deviceShareTaskId = event.taskId, deviceSending = null) }
+            _uiState.update {
+                it.copy(
+                    deviceShareTaskId = event.taskId,
+                    deviceShareCanDelete = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.count(
+                        event.taskId, queueRepository.allTasksFlow.value,
+                        com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.counts.value
+                    ) == 0,
+                    deviceSending = null
+                )
+            }
 
         DashboardUiEvent.OnDismissShareSheet -> {
             deviceSync.cancelSend()
@@ -433,7 +442,11 @@ private suspend fun DashboardViewModel.sendWithRetry(request: SendRequest, tries
         deviceSync.send(request) { ok ->
             if (ok) {
                 // Delete here only now that the transfer has fully succeeded (owner's requirement).
-                if (request.deleteAfterSuccess && request.sourceTaskId.isNotBlank()) {
+                val derived = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.count(
+                    request.sourceTaskId, queueRepository.allTasksFlow.value,
+                    com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.counts.value
+                )
+                if (request.deleteAfterSuccess && request.sourceTaskId.isNotBlank() && derived == 0) {
                     scope.launch {
                         queueRepository.removeTask(request.sourceTaskId, deleteFile = true)
                     }

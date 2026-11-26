@@ -103,6 +103,26 @@ sealed interface UiAction {
     data object PlaylistCheck : UiAction
 
     @Serializable
+    @SerialName("PlayOpenGroup")
+    data object PlayOpenGroup : UiAction
+
+    @Serializable
+    @SerialName("PlayerPrepare")
+    data class PlayerPrepare(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlayerRelease")
+    data class PlayerRelease(val id: String = "") : UiAction
+
+    @Serializable
+    @SerialName("PlayerClosed")
+    data object PlayerClosed : UiAction
+
+    @Serializable
+    @SerialName("PlayerLibraryDownload")
+    data object PlayerLibraryDownload : UiAction
+
+    @Serializable
     @SerialName("PlaylistReadLanguages")
     data object PlaylistReadLanguages : UiAction
 
@@ -255,6 +275,10 @@ sealed interface UiAction {
     data object AudioCompressDismiss : UiAction
 
     @Serializable
+    @SerialName("AudioCompressDeleteOriginal")
+    data class AudioCompressDeleteOriginal(val on: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("DetailsSubtitles")
     data object DetailsSubtitles : UiAction
 
@@ -313,6 +337,10 @@ sealed interface UiAction {
     @Serializable
     @SerialName("AlertExtra")
     data class AlertExtra(val kind: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("AlertLink")
+    data class AlertLink(val kind: Int = 0) : UiAction
 
     @Serializable
     @SerialName("SetSettingsSection")
@@ -635,6 +663,10 @@ sealed interface UiAction {
     data object UseSingleVideo : UiAction
 
     @Serializable
+    @SerialName("ChoiceCheck")
+    data class ChoiceCheck(val kind: Int = 0, val checked: Boolean = false) : UiAction
+
+    @Serializable
     @SerialName("ChoicePrimary")
     data class ChoicePrimary(val kind: Int = 0) : UiAction
 
@@ -645,4 +677,76 @@ sealed interface UiAction {
     @Serializable
     @SerialName("ChoiceDismiss")
     data class ChoiceDismiss(val kind: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("HideChecked")
+    data object HideChecked : UiAction
+
+    @Serializable
+    @SerialName("UnhideChecked")
+    data object UnhideChecked : UiAction
+
+    @Serializable
+    @SerialName("UnhideAll")
+    data object UnhideAll : UiAction
+
+    @Serializable
+    @SerialName("UnhideGroup")
+    data object UnhideGroup : UiAction
+
+    @Serializable
+    @SerialName("HiddenChangePin")
+    data object HiddenChangePin : UiAction
+
+    @Serializable
+    @SerialName("HiddenRemovePin")
+    data object HiddenRemovePin : UiAction
+
+    @Serializable
+    @SerialName("HiddenLock")
+    data object HiddenLock : UiAction
+
+    @Serializable
+    @SerialName("HiddenRecoveryCode")
+    data object HiddenRecoveryCode : UiAction
+
+    @Serializable
+    @SerialName("HiddenRestore")
+    data object HiddenRestore : UiAction
+
+    @Serializable
+    @SerialName("DetailsTool")
+    data class DetailsTool(val code: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutChoose")
+    data class VideoCutChoose(val timeline: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutPickTime")
+    data class VideoCutPickTime(val end: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutStart")
+    data object VideoCutStart : UiAction
+
+    @Serializable
+    @SerialName("VideoCutCancel")
+    data object VideoCutCancel : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDismiss")
+    data object VideoCutDismiss : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDeleteClip")
+    data class VideoCutDeleteClip(val path: String = "") : UiAction
+
+    @Serializable
+    @SerialName("VideoCutApply")
+    data class VideoCutApply(val startMs: Int = 0, val endMs: Int = 0) : UiAction
+
+    @Serializable
+    @SerialName("VideoCutDeleteOriginal")
+    data class VideoCutDeleteOriginal(val on: Boolean = false) : UiAction
 }

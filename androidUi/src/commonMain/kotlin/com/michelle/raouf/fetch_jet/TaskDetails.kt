@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -83,7 +84,14 @@ internal fun DownloadTaskItem(
     onCompress: (() -> Unit)? = null,
     onSubtitles: (() -> Unit)? = null,
     onExtract: (() -> Unit)? = null,
+    onExtractAudio: (() -> Unit)? = null,
+    extractingAudio: Boolean = false,
+    onOpenHidden: (() -> Unit)? = null,
     compressedCopies: Int = 0,
+    onCut: (() -> Unit)? = null,
+    clips: List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip> = emptyList(),
+    onPlayClip: (com.michelle.raouf.fetch_jet.feature.video_cut.CutClip) -> Unit = {},
+    onDeleteClip: (com.michelle.raouf.fetch_jet.feature.video_cut.CutClip) -> Unit = {},
     torrentSection: (@Composable () -> Unit)? = null
 ) {
     val rawDisplayName =
@@ -531,14 +539,8 @@ internal fun DownloadTaskItem(
             )
 
             val clipboard = LocalClipboardManager.current
-            listOf(
-                LocalizationManager.Strings.detailsPage to (task.requestHeaders["Referer"]
-                    ?: task.originalUrl.orEmpty()),
-                LocalizationManager.Strings.detailsPlaylist to
-                        com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task)
-            ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }
-                .distinctBy { (_, link) -> link }
-                .forEach { (label, link) ->
+            com.michelle.raouf.fetch_jet.presentation.dashboard.detailsLinks(task)
+                .forEach { (label, link, note) ->
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -547,7 +549,7 @@ internal fun DownloadTaskItem(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
-                        Text(
+                        if (note.isEmpty()) Text(
                             text = LocalizationManager.Strings.copy,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
@@ -567,7 +569,7 @@ internal fun DownloadTaskItem(
                     }
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(
-                            text = com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(link),
+                            text = note.ifEmpty { com.michelle.raouf.fetch_jet.feature.http_downloader.displayUrl(link) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                             maxLines = 4,
@@ -612,33 +614,35 @@ internal fun DownloadTaskItem(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Actions: two equal buttons, then the red one across the full width.
             val running =
                 task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING
-            val canFolder = pathResolver.isOpenFolderSupported()
+            val canFolder = pathResolver.isOpenFolderSupported() && !task.hidden
             val openFolder = { pathResolver.openFileLocation(fullPath); Unit }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val m = Modifier.weight(1f).height(42.dp)
+                val m = Modifier.weight(1f).height(46.dp)
                 when {
                     isCompleted -> {
                         DetailPrimaryButton(
-                            LocalizationManager.Strings.detailsOpenFile,
+                            (if (com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(task, allowHidden = true) &&
+                                !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff()
+                            ) "▶  " else "↗  ") +
+                                    LocalizationManager.Strings.detailsOpenFile,
                             m
-                        ) { openDownloadedFile(fullPath, task.id) }
+                        ) { if (task.hidden && onOpenHidden != null) onOpenHidden() else openDownloadedFile(fullPath, task.id) }
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
                     }
 
                     running -> {
-                        DetailPrimaryButton(LocalizationManager.Strings.pause, m, pauseClicked)
+                        DetailPrimaryButton("⏸  ${LocalizationManager.Strings.pause}", m, pauseClicked)
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
@@ -646,101 +650,159 @@ internal fun DownloadTaskItem(
 
                     task.waitingInQueue -> {
                         DetailPrimaryButton(
-                            LocalizationManager.Strings.detailsStartNow,
+                            "⬇  ${LocalizationManager.Strings.detailsStartNow}",
                             m,
                             onResume
                         )
-                        DetailSecondaryButton(LocalizationManager.Strings.pause, m, onPause)
+                        DetailSecondaryButton("⏸  ${LocalizationManager.Strings.pause}", m, onPause)
                     }
 
                     else -> {
+                        val failed = task.status == DownloadStatus.ERROR
                         DetailPrimaryButton(
-                            if (task.status == DownloadStatus.ERROR) LocalizationManager.Strings.retry else LocalizationManager.Strings.resume,
+                            if (failed) "↻  ${LocalizationManager.Strings.retry}" else "⬇  ${LocalizationManager.Strings.resume}",
                             m,
                             onResume
                         )
                         if (canFolder) DetailSecondaryButton(
-                            LocalizationManager.Strings.detailsOpenFolder,
+                            "📂  ${LocalizationManager.Strings.detailsOpenFolder}",
                             m,
                             openFolder
                         )
                     }
                 }
             }
-            if (onExtract != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onExtract,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.extractNow,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+
+            val fileTools = buildList {
+                if (onExtract != null) add(DetailTool("📦", LocalizationManager.Strings.extractNow, onExtract))
+                if (onExtractAudio != null) add(
+                    if (extractingAudio) DetailTool("🎵", LocalizationManager.Strings.audioExtractRunning, {}, busy = true)
+                    else DetailTool("🎵", LocalizationManager.Strings.audioExtractTitle, onExtractAudio)
+                )
+                if (onShare != null) add(DetailTool("📲", LocalizationManager.Strings.sysDeviceSendTitle, onShare))
             }
-            if (onSubtitles != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onSubtitles,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.subtitlesAddButton,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            if (onCompress != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onCompress,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
+            val mediaTools = buildList {
+                if (onCut != null) add(DetailTool("✂", com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.title(com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.isAudio(task)), onCut))
+                if (onCompress != null) add(
+                    DetailTool(
+                        "🗜",
                         LocalizationManager.Strings.audioCompressTitle +
                                 if (compressedCopies > 0) " ($compressedCopies)" else "",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        onCompress
                     )
-                }
+                )
+                if (onSubtitles != null) add(DetailTool("💬", LocalizationManager.Strings.subtitlesAddButton, onSubtitles))
             }
-            if (onShare != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onShare,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Text(
-                        LocalizationManager.Strings.sysDeviceSendTitle,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+            if (fileTools.isNotEmpty()) {
+                DetailGroupLabel(LocalizationManager.Strings.detailsChipFile)
+                DetailToolGrid(fileTools)
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            if (mediaTools.isNotEmpty()) {
+                DetailGroupLabel(LocalizationManager.Strings.sectionMedia)
+                DetailToolGrid(mediaTools)
+            }
+            if (clips.isNotEmpty()) {
+                DetailGroupLabel("${LocalizationManager.Strings.videoCutClips} (${clips.size})")
+                com.michelle.raouf.fetch_jet.ui.VideoClipsSection(
+                    clips = clips,
+                    onPlay = onPlayClip,
+                    onDelete = onDeleteClip
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            androidx.compose.material3.HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = onCancel,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.06f),
                     contentColor = MaterialTheme.colorScheme.error
                 ),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
+                modifier = Modifier.fillMaxWidth().height(46.dp)
             ) {
                 Text(
-                    if (isCompleted) LocalizationManager.Strings.detailsRemoveFromList else LocalizationManager.Strings.detailsCancelDownload,
+                    "🗑  " + if (isCompleted) LocalizationManager.Strings.detailsRemoveFromList else LocalizationManager.Strings.detailsCancelDownload,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+    }
+}
+
+internal class DetailTool(val icon: String, val label: String, val onClick: () -> Unit, val busy: Boolean = false)
+
+@Composable
+internal fun DetailGroupLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.8.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 18.dp, bottom = 8.dp, start = 2.dp)
+    )
+}
+
+@Composable
+internal fun DetailToolGrid(tools: List<DetailTool>) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val columns = when {
+            maxWidth >= 640.dp -> 4
+            maxWidth >= 420.dp -> 3
+            else -> 2
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            tools.chunked(columns).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { tool -> DetailToolButton(tool, Modifier.weight(1f)) }
+                    repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DetailToolButton(tool: DetailTool, modifier: Modifier) {
+    Surface(
+        onClick = tool.onClick,
+        enabled = !tool.busy,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.height(64.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (tool.busy) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(tool.icon, fontSize = 18.sp)
+            }
+            Text(
+                tool.label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (tool.busy) 0.6f else 1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
         }
     }
 }
@@ -886,7 +948,9 @@ internal fun TaskDetailsPane(
     fillHeight: Boolean = true,
     compressedCopies: Int = 0
 ) {
-    val torrentDetails = viewModel.uiState.collectAsState().value.torrentDetails
+    val uiState = viewModel.uiState.collectAsState().value
+    val torrentDetails = uiState.torrentDetails
+    val clips = uiState.videoClips[task.id].orEmpty()
     val outer = if (fillHeight) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     Column(modifier = outer.statusBarsPadding().navigationBarsPadding()) {
         Row(
@@ -950,8 +1014,24 @@ internal fun TaskDetailsPane(
                 onExtract = if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
                     { viewModel.onEvent(DashboardUiEvent.OnExtractTaskClicked(task.id)) }
                 } else null,
+                onExtractAudio = if (com.michelle.raouf.fetch_jet.feature.audio_extract.AudioExtract.canExtract(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnExtractAudioClicked(task.id)) }
+                } else null,
+                extractingAudio = task.id in uiState.audioExtracting,
+                onOpenHidden = if (task.hidden) {
+                    { viewModel.onEvent(DashboardUiEvent.OnHiddenPlayClicked(task.id)) }
+                } else null,
                 compressedCopies = compressedCopies,
-                torrentSection = if (task.engineType == EngineType.BITTORRENT) {
+                onCut = if (com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.canCut(task)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnVideoCutClicked(task.id)) }
+                } else null,
+                clips = clips,
+                onPlayClip = { com.michelle.raouf.fetch_jet.ui.openClip(it.path) },
+                onDeleteClip = {
+                    viewModel.onEvent(DashboardUiEvent.OnVideoCutShowClips(task.id))
+                    viewModel.onEvent(DashboardUiEvent.OnVideoCutDeleteClip(it.path))
+                },
+                torrentSection =if (task.engineType == EngineType.BITTORRENT) {
                     {
                         com.michelle.raouf.fetch_jet.ui.TorrentDetailsSection(
                             taskId = task.id,

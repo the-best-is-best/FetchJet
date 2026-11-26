@@ -113,30 +113,7 @@ actual suspend fun downloadMediaWithPlatformTool(
     }
     // (No forced youtube:player_client: the "android" client now needs a PO token and only
     // produced warnings; yt-dlp's default client selection is the right one.)
-    if (!clipStart.isNullOrBlank() || !clipEnd.isNullOrBlank()) {
-        val s = clipStart?.trim()?.ifBlank { null } ?: "0"
-        val e = clipEnd?.trim()?.ifBlank { null } ?: "inf"
-        if (clipByCutting) {
-            // Full-speed download, then a local stream-copy cut by FetchJet's own yt-dlp plugin
-            // (see CutPlugin.kt; yt-dlp's "--remove-chapters *a-b" crashes in 2026.x).
-            val pluginDir = ensureCutPluginDir(parentDirOf(destinationDir))
-            val endSec = if (e == "inf") null else parseTimeToSeconds(e)
-            if (pluginDir != null) {
-                command.add("--plugin-dirs"); command.add(pluginDir)
-                command.add("--use-postprocessor"); command.add(
-                    cutPluginArg(
-                        parseTimeToSeconds(s),
-                        endSec
-                    )
-                )
-            } else {
-                command.add("--download-sections"); command.add("*$s-$e")
-            }
-        } else {
-            command.add("--download-sections")
-            command.add("*$s-$e")
-        }
-    }
+    command.addAll(clipSectionArgs(clipStart, clipEnd, clipByCutting))
     command.add("-o")
     val isScript = fileName.matches(
         Regex(

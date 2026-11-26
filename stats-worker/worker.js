@@ -193,7 +193,7 @@ var ret = d.retention || {};
 var stick = d.stickiness;
 var more = el("div", "cards");
 more.appendChild(card("الاحتفاظ بعد يوم", ret.d1 ? pct(ret.d1.rate) : "—", ret.d1 ? ret.d1.returned + " من " + ret.d1.size + " جهاز جديد" : "لسه مفيش بيانات كفاية"));
-more.appendChild(card("الاحتفاظ بعد 7 أيام", ret.d7 ? pct(ret.d7.rate) : "—", ret.d7 ? ret.d7.returned + " من " + ret.d7.size + " جهاز جديد" : "محتاج 7 أيام من البيانات"));
+more.appendChild(card("رجعوا خلال أسبوع", ret.w7 ? pct(ret.w7.rate) : "—", ret.w7 ? ret.w7.returned + " من " + ret.w7.size + " جهاز جديد فتحوه تاني خلال 7 أيام" : "محتاج 7 أيام من البيانات"));
 more.appendChild(card("النشاط اليومي ÷ الأسبوعي", stick && stick.rate !== null ? pct(stick.rate) : "—", stick ? stick.dau + " من " + stick.wau + " في آخر 7 أيام (آخر يوم كامل " + stick.day + ")" : ""));
 app.appendChild(more);
 app.appendChild(chart(d.perDay));
@@ -225,6 +225,39 @@ function clean(value, max) {
 
 const MIN_COUNTRY = 5;
 
+const RELEASES_URL = "https://api.github.com/repos/the-best-is-best/FetchJet/releases?per_page=100";
+const RELEASES_TTL_MS = 3600000;
+let releasesCache = { at: 0, versions: null };
+
+async function publishedVersions(env) {
+  if (releasesCache.versions && Date.now() - releasesCache.at < RELEASES_TTL_MS) return releasesCache.versions;
+  try {
+    const headers = { "user-agent": "FetchJet-stats", accept: "application/vnd.github+json" };
+    if (env.GITHUB_TOKEN) headers.authorization = "Bearer " + env.GITHUB_TOKEN;
+    const res = await fetch(RELEASES_URL, { headers });
+    if (!res.ok) return releasesCache.versions;
+    const list = await res.json();
+    const versions = new Set(
+      list.filter((r) => r && !r.draft && typeof r.tag_name === "string").map((r) => r.tag_name.replace(/^v/i, ""))
+    );
+    String(env.EXTRA_VERSIONS || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .forEach((v) => versions.add(v));
+    releasesCache = { at: Date.now(), versions };
+    return versions;
+  } catch (e) {
+    return releasesCache.versions;
+  }
+}
+
+async function isPublishedVersion(env, version) {
+  if (env.ALLOW_ANY_VERSION === "1") return true;
+  const versions = await publishedVersions(env);
+  return !versions || versions.has(version);
+}
+
 function json(body, status, extra) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
@@ -249,6 +282,7 @@ async function ping(request, env) {
   if (id.length < 16 || !version || !PLATFORMS.includes(platform)) {
     return json({ error: "bad fields" }, 400);
   }
+  if (!(await isPublishedVersion(env, version))) return json({ ok: true });
   const country = (request.cf && request.cf.country) || "XX";
   const day = new Date().toISOString().slice(0, 10);
   await env.DB.prepare(
@@ -318,7 +352,8 @@ async function aggregate(env, days, publicView) {
     await env.DB.prepare(
       `SELECT f.first AS day, COUNT(*) AS size,
         SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+1 day')) THEN 1 ELSE 0 END) AS d1,
-        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS d7
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day = date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS d7,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM pings x WHERE x.install_id = f.install_id AND x.day > f.first AND x.day <= date(f.first, '+7 day')) THEN 1 ELSE 0 END) AS w7
        FROM (${FIRST_SEEN}) f WHERE f.first >= ? GROUP BY f.first ORDER BY f.first`
     )
       .bind(cohortSince)
@@ -329,10 +364,12 @@ async function aggregate(env, days, publicView) {
     size: c.size,
     d1: c.day <= yesterday ? c.d1 : null,
     d7: c.day <= weekAgo ? c.d7 : null,
+    w7: c.day <= weekAgo ? c.w7 : null,
   }));
   const retention = {
     d1: pooled(cohortList.filter((c) => c.d1 !== null), "d1"),
     d7: pooled(cohortList.filter((c) => c.d7 !== null), "d7"),
+    w7: pooled(cohortList.filter((c) => c.w7 !== null), "w7"),
   };
   let shownCohorts = cohortList;
   if (publicView) shownCohorts = shownCohorts.filter((c) => c.size >= MIN_COUNTRY);

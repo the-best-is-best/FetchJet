@@ -8,6 +8,12 @@ enum class EffectKind {
     SCROLL_TO_ROW,
     NOTIFY,
     EXIT,
+    OPEN_PLAYER,
+    PLAYER_PATH,
+    PLAYER_PREPARING,
+    CLOSE_PLAYER,
+    OPEN_PDF,
+    CLOSE_PDF,
 }
 
 @Serializable

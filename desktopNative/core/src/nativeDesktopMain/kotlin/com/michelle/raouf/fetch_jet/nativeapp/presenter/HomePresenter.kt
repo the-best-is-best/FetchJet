@@ -24,11 +24,14 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.RowActionCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.TextChoiceDto
 import com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PLAYLIST_ROW_PREFIX
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWorkingText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistLanguagesUi
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskListItem
-import com.michelle.raouf.fetch_jet.presentation.dashboard.groupPlaylists
 import com.michelle.raouf.fetch_jet.presentation.dashboard.FOLDER_ROW_PREFIX
 import com.michelle.raouf.fetch_jet.presentation.dashboard.FolderGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskGroupStats
@@ -39,6 +42,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.matchesPlaylistTitle
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
+import com.michelle.raouf.fetch_jet.presentation.dashboard.HiddenUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.combine
@@ -70,6 +74,7 @@ internal data class HomeSlice(
     val playlistLanguages: PlaylistLanguagesUi? = null,
     val groupByFolder: Boolean = false,
     val openFolder: String? = null,
+    val hidden: HiddenUiState = HiddenUiState(),
 )
 
 internal data class HomeControls(
@@ -87,6 +92,7 @@ internal data class HomeExtras(
     val maxAtOnce: Int,
     val scheduled: Boolean,
     val whenDone: WhenDoneAction,
+    val playerMode: String = "",
 )
 
 private fun DashboardUiState.homeSlice() = HomeSlice(
@@ -109,6 +115,7 @@ private fun DashboardUiState.homeSlice() = HomeSlice(
     playlistLanguages = playlistLanguages,
     groupByFolder = groupByFolder,
     openFolder = openFolder,
+    hidden = hidden,
 )
 
 private class CachedRow(
@@ -266,7 +273,8 @@ internal fun Presenter.startHome() {
         queue.maxConcurrentDownloads,
         SpeedSchedule.activeCap,
         WhenDone.action,
-    ) { language, maxAtOnce, cap, whenDone -> HomeExtras(language, maxAtOnce, cap != null, whenDone) }
+        com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPlayer,
+    ) { language, maxAtOnce, cap, whenDone, playerMode -> HomeExtras(language, maxAtOnce, cap != null, whenDone, playerMode) }
     val controls = vm.uiState.map {
         HomeControls(
             selectedTab = it.selectedTab,
@@ -300,18 +308,24 @@ internal fun Presenter.startHome() {
 private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtras, cache: RowCache) {
     val strings = LocalizationManager.Strings
     val settings = slice.selectedTab == DashboardTab.SETTINGS
+    val hiddenScreen = ui.hiddenOpen && slice.hidden.unlocked && !settings
+    val lockTexts = hiddenLockTexts(slice.hidden.lockType ?: HiddenLockType.PIN)
     val records = slice.playlists
-    val openGroup = slice.openPlaylistId?.let { id ->
-        records[id]?.let { PlaylistGroup(it, playlistTasks(slice.allTasks, id)) }
+    val pool = if (hiddenScreen) slice.hidden.tasks else slice.allTasks
+    val openGroup = (if (hiddenScreen) slice.hidden.openPlaylistId else slice.openPlaylistId)?.let { id ->
+        val members = playlistTasks(pool, id)
+        records[id]?.takeIf { !hiddenScreen || members.isNotEmpty() }?.let { PlaylistGroup(it, members) }
     }
-    val openFolderGroup = if (openGroup != null) null else slice.openFolder?.let { folderGroup(slice.allTasks, records, it) }
+    val openFolderGroup = if (openGroup != null) null else (if (hiddenScreen) slice.hidden.openFolder else slice.openFolder)?.let { folderGroup(pool, records, it) }
     val pageOpen = openGroup != null || openFolderGroup != null
+    val pageBase = if (hiddenScreen) pool.sortedByDescending { it.createdAtEpochMs } else slice.filteredTasks
     val inFilter = when {
-        openGroup != null -> slice.filteredTasks.filter { it.playlistId == openGroup.id }
+        openGroup != null -> pageBase.filter { it.playlistId == openGroup.id }
         openFolderGroup != null -> {
             val ids = openFolderGroup.tasks.mapTo(HashSet()) { it.id }
-            slice.filteredTasks.filter { it.id in ids }
+            pageBase.filter { it.id in ids }
         }
+        hiddenScreen -> pageBase
         else -> slice.filteredTasks.filter { ui.sideFilter.matches(it) }
     }
     val query = ui.search.trim()
@@ -334,7 +348,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
         }
     }
 
-    val selectedTask = ui.selectedTaskId?.let { id -> slice.allTasks.firstOrNull { it.id == id } }
+    val selectedTask = ui.selectedTaskId?.let { id -> slice.allTasks.firstOrNull { it.id == id } ?: slice.hidden.tasks.firstOrNull { it.id == id } }
     val detailsOpen = selectedTask != null && !settings
     val selectionMode = ui.checkedIds.isNotEmpty()
 
@@ -352,7 +366,13 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             focusDone = done
         }
         if (task.status == DownloadStatus.COMPLETED) done++
-        rows.add(cache.row(task, task.id in ui.checkedIds, task.id == ui.selectedTaskId, slice.unit, extra.language))
+        val row = cache.row(task, task.id in ui.checkedIds, task.id == ui.selectedTaskId, slice.unit, extra.language)
+        val opening = slice.hidden.opening
+        rows.add(
+            if (hiddenScreen && opening != null && opening.taskId == task.id)
+                row.copy(stateLine = hiddenOpeningText(opening.fraction), stateIsError = false)
+            else row
+        )
         order.add(task.id)
     }
     fun addGroup(group: PlaylistGroup) {
@@ -385,10 +405,10 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
     val placedGroups = HashSet<String>()
     fun itemsOf(tasks: List<DownloadTask>): List<TaskListItem> =
         if (!folding) tasks.map { TaskListItem.Single(it) }
-        else groupDownloads(tasks, slice.allTasks, records, slice.groupByFolder)
+        else groupDownloads(tasks, pool, records, slice.groupByFolder)
             .filter { it is TaskListItem.Single || placedGroups.add(it.key) }
     cache.begin()
-    if (ui.sideFilter.groupsByState && !pageOpen) {
+    if (ui.sideFilter.groupsByState && !pageOpen && !hiddenScreen) {
         for (group in taskStateGroups(shown)) {
             val items = itemsOf(group.tasks)
             if (items.isEmpty()) continue
@@ -433,15 +453,15 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
     chrome.publish(
         ChromeDto(
             settingsOpen = settings,
-            title = if (settings) strings.moreTitle else openGroup?.title ?: openFolderGroup?.label ?: ui.sideFilter.label,
-            navState = stateFilters.map { navEntry(it, it.label, all, ui, settings) },
-            navType = typeFilters.map { navEntry(it, it.label, all, ui, settings) },
+            title = if (settings) strings.moreTitle else openGroup?.title ?: openFolderGroup?.label ?: if (hiddenScreen) strings.hiddenTitle else ui.sideFilter.label,
+            navState = stateFilters.map { navEntry(it, it.label, all, ui, settings || hiddenScreen) },
+            navType = typeFilters.map { navEntry(it, it.label, all, ui, settings || hiddenScreen) },
             navRail = listOf(
-                navEntry(SideFilter.ALL, strings.homeTabAll, all, ui, settings),
-                navEntry(SideFilter.DOWNLOADING, strings.homeTabActive, all, ui, settings),
-                navEntry(SideFilter.WAITING, strings.homeFilterWaiting, all, ui, settings),
-                navEntry(SideFilter.COMPLETED, strings.homeTabDone, all, ui, settings),
-                navEntry(SideFilter.FAILED, strings.homeFilterFailed, all, ui, settings),
+                navEntry(SideFilter.ALL, strings.homeTabAll, all, ui, settings || hiddenScreen),
+                navEntry(SideFilter.DOWNLOADING, strings.homeTabActive, all, ui, settings || hiddenScreen),
+                navEntry(SideFilter.WAITING, strings.homeFilterWaiting, all, ui, settings || hiddenScreen),
+                navEntry(SideFilter.COMPLETED, strings.homeTabDone, all, ui, settings || hiddenScreen),
+                navEntry(SideFilter.FAILED, strings.homeFilterFailed, all, ui, settings || hiddenScreen),
             ),
             search = ui.search,
             searchRev = ui.searchRev,
@@ -454,18 +474,21 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             sortOptions = TaskSortOption.entries.map { MenuOptionDto(it.label, it == slice.sortOption) },
             anyPausable = anyPausable(unfinished),
             anyResumable = anyResumable(unfinished),
-            showToolbar = shown.isNotEmpty() && !pageOpen,
+            showToolbar = shown.isNotEmpty() && !pageOpen && !hiddenScreen,
             selectionMode = selectionMode,
             selectedCountText = if (selectionMode) strings.homeSelectedCount(ui.checkedIds.size) else "",
             allChecked = order.isNotEmpty() && order.all { it in ui.checkedIds },
             listEmpty = shown.isEmpty(),
-            emptyTitle = if (shown.isNotEmpty()) "" else if (query.isNotBlank()) strings.homeNoDownloadsMatch(query) else strings.homeNoTasksInView,
-            emptyHint = if (shown.isNotEmpty()) "" else if (query.isNotBlank()) strings.homeTryAnotherName else strings.homeAddDownloadToGetStarted,
+            emptyTitle = if (shown.isNotEmpty()) "" else if (query.isNotBlank()) strings.homeNoDownloadsMatch(query) else if (hiddenScreen) strings.hiddenEmpty else strings.homeNoTasksInView,
+            emptyHint = if (shown.isNotEmpty() || hiddenScreen && query.isBlank()) "" else if (query.isNotBlank()) strings.homeTryAnotherName else strings.homeAddDownloadToGetStarted,
             toolsBannerShown = slice.toolsDownloading && slice.toolName != null,
             toolsBannerText = if (slice.toolsDownloading && slice.toolName != null)
                 strings.homeUpdatingMediaTools(slice.toolName, slice.toolFraction?.let { (it * 100).toInt() }) else "",
             toolsBannerFraction = slice.toolFraction?.coerceIn(0f, 1f) ?: 0f,
             toolsBannerIndeterminate = slice.toolFraction == null,
+            hiddenWorkShown = slice.hidden.working,
+            hiddenWorkText = if (slice.hidden.working) hiddenWorkingText(slice.hidden.workDone, slice.hidden.workTotal) else "",
+            hiddenWorkFraction = if (slice.hidden.working) slice.hidden.workFraction.coerceIn(0f, 1f) else 0f,
             whenDoneBannerShown = extra.whenDone != WhenDoneAction.NOTHING,
             whenDoneBannerText = if (extra.whenDone != WhenDoneAction.NOTHING) strings.whenDoneBanner(whenDoneLabel(extra.whenDone)) else "",
             detailsOpen = detailsOpen,
@@ -484,6 +507,9 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             playlistCanPause = (openGroup ?: openFolderGroup)?.canPause == true,
             playlistCanResume = (openGroup ?: openFolderGroup)?.canResume == true,
             playlistCanCheck = openGroup?.record?.url?.isNotBlank() == true,
+            playlistCanPlay = !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff() && com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable() &&
+                (if (hiddenScreen) (openGroup ?: openFolderGroup)?.tasks?.any { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.canPlay(it, allowHidden = true) } == true
+                else (openGroup ?: openFolderGroup)?.let { com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.hasPlayable(it.tasks) } == true),
             playlistLanguagesShown = openGroup != null && !openGroup.isPage && slice.playlistLanguages?.playlistId == openGroup.id,
             playlistLanguagesBusy = slice.playlistLanguages?.let { it.reading || it.adding } == true,
             playlistLanguagesNote = slice.playlistLanguages?.let { page ->
@@ -499,6 +525,10 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             groupIsFolder = openFolderGroup != null,
             groupIsPage = openGroup?.isPage == true,
             groupFolderPath = openFolderGroup?.path.orEmpty(),
+            hiddenOpen = hiddenScreen,
+            hiddenNote = if (hiddenScreen) strings.hiddenNoteEncrypted else "",
+            hiddenChangeLabel = if (hiddenScreen) lockTexts.change else "",
+            hiddenRemoveLabel = if (hiddenScreen) lockTexts.remove else "",
         )
     )
 

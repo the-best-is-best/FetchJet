@@ -1,6 +1,21 @@
 # FetchJet 2.1.0: work list
 
-Decided 2026-11-22 (owner), after 2.0.0 is released. Nothing here is started.
+Decided 2026-11-22 (owner), after 2.0.0 is released. Released to users as 2.1.1 (2.1.0 is the owner's own build).
+
+## Status (2026-11-23)
+
+- **Item 1, hidden downloads: done and more.** PIN on Android, iOS and the Slint desktop; hide one, several, a playlist or a
+  folder group; instant hide with one progress line; files move to a private folder; audio and video are encrypted
+  (ChaCha20 + HMAC, device-bound key) and decrypted only to a temp copy when played; + button inside Hidden starts hidden
+  downloads; no notifications; one shared row menu; recovery code (one per vault); forgot PIN through the device lock;
+  backup and restore of the downloads list; all-files-access request when a file another install owns cannot be read.
+  Tested on the A56 (debug build) and by the corehost tests on Windows. iOS and macOS: not built yet (see HANDOFF-2.1.0.md).
+- **Pattern lock: done** (Android, iOS, desktop; one pad per platform in the PIN dialogs). **Leak audit: done** (logs, toasts,
+  playlists, Recycle Bin, macOS Where-from, iOS Live Activity, yt-dlp logs).
+- **Left (testing only, no code):** build and test iOS and macOS on the Mac (HANDOFF-2.1.0.md), the extension 3.8.0 in a real
+  Chrome / Edge / Firefox, and the installers (MSI, MSIX, DMG, DEB) with `fetchjet://` links.
+- **Item 2, extension "open the app directly": done** (extension 3.8.0, plus an arrow and an "Open in FetchJet" row on the
+  page button). Not tested in a real Chrome / Edge / Firefox; the installers (MSI, MSIX, DMG, DEB) were not re-tested.
 
 ## 1. Hidden downloads (PIN, pattern later)
 

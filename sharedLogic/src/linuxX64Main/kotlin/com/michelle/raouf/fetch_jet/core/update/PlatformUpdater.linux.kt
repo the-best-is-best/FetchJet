@@ -38,7 +38,7 @@ internal object LinuxUpdater {
 
     fun installAndExit(installerPath: String) {
         val exe = checkNotNull(launcher) { "FetchJet program not found" }
-        val folder = installerPath.substringBeforeLast('/', "").ifEmpty { DesktopOs.tempDir() }
+        val folder = checkUpdateFileBeforeInstall(installerPath)
         val script = "$folder/fetchjet-update.sh"
         val log = "$folder/fetchjet-update.log"
         val dollar = '$'

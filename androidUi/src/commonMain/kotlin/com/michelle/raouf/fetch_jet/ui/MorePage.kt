@@ -44,6 +44,10 @@ import com.tbib.kmp_localization.LocalizationManager
 @Composable
 internal fun MorePage(
     onOpenSettings: () -> Unit,
+    onOpenHidden: () -> Unit,
+    onOpenBrowser: () -> Unit,
+    onBackup: () -> Unit,
+    onRestore: () -> Unit,
     onToast: (String) -> Unit
 ) {
     val s = LocalizationManager.Strings
@@ -110,6 +114,33 @@ internal fun MorePage(
                         title = s.homeSettings,
                         subtitle = s.moreSettingsHint,
                         onClick = onOpenSettings
+                    ) { MoreChevron() }
+                }
+
+                SettingsGroup {
+                    SettingRow(
+                        title = s.browserTitle,
+                        subtitle = s.browserHint,
+                        onClick = onOpenBrowser
+                    ) { MoreChevron() }
+                    SettingDivider()
+                    SettingRow(
+                        title = s.hiddenTitle,
+                        onClick = onOpenHidden
+                    ) { MoreChevron() }
+                }
+
+                SettingsGroup {
+                    SettingRow(
+                        title = s.backupExport,
+                        subtitle = s.backupExportHint,
+                        onClick = onBackup
+                    ) { MoreChevron() }
+                    SettingDivider()
+                    SettingRow(
+                        title = s.backupRestore,
+                        subtitle = s.backupRestoreHint,
+                        onClick = onRestore
                     ) { MoreChevron() }
                 }
 

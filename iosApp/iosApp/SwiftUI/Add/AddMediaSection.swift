@@ -26,8 +26,7 @@ struct AddMediaSection: View {
                 AddPlaylistCard(playlist: playlist)
                 if s.subtitlesOffered { AddSubtitlesCard() }
             } else if s.inspectedMediaQualities.isEmpty {
-                let ext = (s.inputUrl.components(separatedBy: "?").first ?? "").components(separatedBy: ".").last?.lowercased() ?? ""
-                let isAudio = ["mp3", "m4a", "flac", "wav", "aac", "ogg", "opus"].contains(ext)
+                let isAudio = MediaExtensions.shared.isAudio(name: s.inputUrl.components(separatedBy: "?").first ?? "")
                 AddOutlineButton(
                     label: isAudio ? "🎵 \(strings.inspectAudioFormats)" : "🎬 \(strings.inspectVideoQuality)",
                     enabled: !s.inputUrl.isEmpty
@@ -479,52 +478,7 @@ struct AddPlaylistCard: View {
                                 store.send(DashboardUiEventOnPlaylistEntryToggled(index: entry.index, selected: !entry.isSelected))
                             }
                         } label: {
-                            HStack(spacing: 8) {
-                                AddCheckbox(checked: entry.isSelected && !entry.locked)
-                                    .opacity(entry.locked ? 0.4 : 1)
-                                if !playlist.fromBrowser {
-                                    Text("\(position + 1).")
-                                        .font(.fj(11))
-                                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                                }
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(playlist.fromBrowser ? "\(entry.title).mp4" : entry.title)
-                                        .font(.fj(12))
-                                        .foregroundStyle(FJTheme.color.onSurface)
-                                        .lineLimit(1)
-                                    if entry.locked {
-                                        Text(strings.playlistInIt)
-                                            .font(.fj(10))
-                                            .foregroundStyle(FJTheme.color.primary)
-                                            .lineLimit(1)
-                                    } else if entry.unavailable {
-                                        Text(strings.playlistNotAvailable)
-                                            .font(.fj(10))
-                                            .foregroundStyle(FJTheme.color.error)
-                                            .lineLimit(1)
-                                    } else if entry.downloadedBefore {
-                                        Text(strings.playlistDownloadedBefore)
-                                            .font(.fj(10))
-                                            .foregroundStyle(FJTheme.color.primary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                if !playlist.fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
-                                    Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
-                                        .font(.fj(11))
-                                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                                        .lineLimit(1)
-                                }
-                                if entry.durationSeconds > 0 {
-                                    Text(store.addClockText(entry.durationSeconds))
-                                        .font(.fj(11))
-                                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                                }
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 6)
-                            .contentShape(Rectangle())
+                            AddPlaylistRowLabel(entry: entry, position: position, fromBrowser: playlist.fromBrowser)
                         }
                         .buttonStyle(.plain)
                     }
@@ -583,5 +537,71 @@ struct AddAudioConvertSection: View {
                 }
             }
         }
+    }
+}
+
+struct AddPlaylistRowLabel: View {
+    @EnvironmentObject var store: FJStore
+    let entry: PlaylistEntry
+    let position: Int
+    let fromBrowser: Bool
+
+    private var strings: AppLocalization { store.strings }
+
+    var body: some View {
+            HStack(spacing: 8) {
+                AddCheckbox(checked: entry.isSelected && !entry.locked)
+                    .opacity(entry.locked ? 0.4 : 1)
+                if !fromBrowser {
+                    Text("\(position + 1).")
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entry.shownName(fromBrowser: fromBrowser))
+                        .font(.fj(12))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                        .lineLimit(1)
+                    if entry.locked {
+                        Text(strings.playlistInIt)
+                            .font(.fj(10))
+                            .foregroundStyle(FJTheme.color.primary)
+                            .lineLimit(1)
+                    } else if entry.unavailable {
+                        Text(strings.playlistNotAvailable)
+                            .font(.fj(10))
+                            .foregroundStyle(FJTheme.color.error)
+                            .lineLimit(1)
+                    } else if entry.downloadedBefore {
+                        Text(strings.playlistDownloadedBefore)
+                            .font(.fj(10))
+                            .foregroundStyle(FJTheme.color.primary)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if entry.isFile {
+                    Text(entry.fileTag())
+                        .font(.fj(9, .bold))
+                        .foregroundStyle(FJTheme.hex(0x38BDF8))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(FJTheme.hex(0x38BDF8).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+                }
+                if !fromBrowser && !entry.unavailable && (entry.size > 0 || entry.size == -1) {
+                    Text(entry.size > 0 ? store.host.formatSizeDisplay(bytes: entry.size) : "…")
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .lineLimit(1)
+                }
+                if entry.durationSeconds > 0 {
+                    Text(store.addClockText(entry.durationSeconds))
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
     }
 }

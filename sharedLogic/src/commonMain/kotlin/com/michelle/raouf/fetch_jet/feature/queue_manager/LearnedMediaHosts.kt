@@ -43,6 +43,8 @@ object LearnedMediaHosts {
         return loaded
     }
 
+    fun all(): Set<String> = current()
+
     fun knows(host: String): Boolean {
         val h = host.lowercase().removePrefix("www.")
         if (h.isEmpty()) return false

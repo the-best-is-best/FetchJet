@@ -6,7 +6,7 @@ struct SubtitlesButton: View {
     let task: DownloadTask
 
     var body: some View {
-        TaskDetailButton(text: store.strings.subtitlesAddButton, primary: false) {
+        TaskDetailButton(text: store.strings.subtitlesAddButton, primary: false, icon: "captions.bubble") {
             store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
         }
         .sheet(isPresented: Binding(

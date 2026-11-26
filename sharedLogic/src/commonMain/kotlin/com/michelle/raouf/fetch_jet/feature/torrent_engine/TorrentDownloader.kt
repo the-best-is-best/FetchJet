@@ -10,6 +10,8 @@ import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenFiles
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenMove
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
@@ -232,6 +234,53 @@ class TorrentDownloader(
         val currentTask =
             tasksState.value[taskId] ?: return Result.failure(Exception("Task not found"))
         return start(currentTask)
+    }
+
+    suspend fun relocate(
+        taskId: String,
+        newDestination: String,
+        extraNames: List<String> = emptyList()
+    ): HiddenMove {
+        val task = tasksState.value[taskId] ?: return HiddenMove.NOTHING_TO_MOVE
+        val oldDir = task.destinationPath.trimEnd('/', '\\')
+        val newDir = newDestination.trimEnd('/', '\\')
+        if (oldDir.replace('\\', '/') == newDir.replace('\\', '/')) return HiddenMove.NOTHING_TO_MOVE
+        val names = (listOf(task.fileName) + extraNames).filter { it.isNotBlank() }
+        if (names.any { AppFileSystem.exists("$newDir/$it".toPath()) }) return HiddenMove.FAILED
+        val wasActive = task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING ||
+                task.status == DownloadStatus.QUEUED
+        jobsLock.withLock { activeJobs.remove(taskId)?.cancel() }
+        try {
+            backend.remove(taskId, deleteFiles = false)
+        } catch (_: Throwable) {
+        }
+        var result = HiddenMove.NOTHING_TO_MOVE
+        for (name in names) {
+            val one = HiddenFiles.move("$oldDir/$name".toPath(), "$newDir/$name".toPath())
+            if (one == HiddenMove.FAILED) {
+                result = one
+                break
+            }
+            if (one != HiddenMove.NOTHING_TO_MOVE && result != HiddenMove.COPIED_SOURCE_KEPT) result = one
+        }
+        if (result != HiddenMove.FAILED) {
+            updateTaskState(taskId) {
+                it.copy(
+                    destinationPath = newDestination,
+                    currentStepText = if (it.currentStepText == "Seeding") "Completed" else it.currentStepText,
+                    uploadSpeedBytesPerSec = 0L
+                )
+            }
+        } else {
+            for (name in names) {
+                HiddenFiles.move("$newDir/$name".toPath(), "$oldDir/$name".toPath())
+            }
+        }
+        if (wasActive) {
+            updateTaskState(taskId) { it.copy(status = DownloadStatus.CONNECTING, currentStepText = "Connecting to peers") }
+            launchRunner(taskId)
+        }
+        return result
     }
 
     override suspend fun cancel(taskId: String): Result<Unit> = cancel(taskId, deleteFiles = false)
@@ -559,7 +608,7 @@ class TorrentDownloader(
                 }
             }
             if (!fileOk) {
-                println("TorrentDownloader: web seed failed for '${f.path}': $lastError - falling back to peers")
+                println("TorrentDownloader: web seed failed for file ${f.index}: $lastError - falling back to peers")
                 return false
             }
             doneBytes += f.size

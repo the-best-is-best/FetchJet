@@ -8,6 +8,7 @@ import com.michelle.raouf.fetch_jet.core.power.SystemPower
 import com.michelle.raouf.fetch_jet.core.power.WhenDone
 import com.michelle.raouf.fetch_jet.core.power.WhenDoneAction
 import com.michelle.raouf.fetch_jet.core.update.APP_VERSION
+import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ShellDto
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.delay
@@ -37,8 +38,9 @@ internal fun whenDoneLabel(action: WhenDoneAction): String = when (action) {
     WhenDoneAction.SHUT_DOWN -> LocalizationManager.Strings.whenDoneShutDown
 }
 
-private fun trayTooltip(active: Map<String, DesktopTaskProgress>): String {
+private fun trayTooltip(all: Map<String, DesktopTaskProgress>, hiddenIds: Set<String>): String {
     val strings = LocalizationManager.Strings
+    val active = if (hiddenIds.isEmpty()) all else all.filterKeys { it !in hiddenIds }
     if (active.isEmpty()) return strings.desktopTrayIdleTooltip
     val lines = active.values.take(6).map { task ->
         val cleanName = if (task.fileName.length > 25) task.fileName.take(22) + "..." else task.fileName
@@ -54,18 +56,22 @@ internal fun Presenter.startShell() {
         local.map { it.systemDark }.distinctUntilChanged(),
         AppLanguage.current,
     ) { themeMode, systemDark, _ -> resolveDark(themeMode, systemDark) }
+    val hiddenIds = QueueManagerRepository.getInstance().allTasksFlow.map { list ->
+        list.filter { it.hidden }.mapTo(HashSet()) { it.id } as Set<String>
+    }.distinctUntilChanged()
     scope.launch {
         combine(
             look,
             toast,
             WhenDone.action,
             DownloadNotificationManager.activeTasks.throttleLatest(1000),
-        ) { dark, toastState, whenDone, active ->
+            hiddenIds,
+        ) { dark, toastState, whenDone, active, hidden ->
             val strings = LocalizationManager.Strings
             ShellDto(
                 windowTitle = "FetchJet $APP_VERSION - " + strings.desktopWindowTagline,
                 dark = dark,
-                trayTooltip = trayTooltip(active),
+                trayTooltip = trayTooltip(active, hidden),
                 trayShowLabel = strings.desktopTrayShowApp,
                 trayCloseLabel = strings.desktopTrayCloseApp,
                 whenDoneSupported = SystemPower.isSupported,

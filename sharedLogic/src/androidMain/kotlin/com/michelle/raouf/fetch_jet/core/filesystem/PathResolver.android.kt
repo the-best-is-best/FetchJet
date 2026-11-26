@@ -304,10 +304,21 @@ actual class PathResolver actual constructor() {
 
     actual fun fileExists(filePath: String): Boolean = resolveExistingFile(filePath) != null
 
+    private fun isReadableByUs(file: File): Boolean = try {
+        java.io.FileInputStream(file).close()
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     actual fun openFile(filePath: String): Boolean {
         val ctx = appContext ?: return false
         val file = resolveExistingFile(filePath) ?: return false
         if (file.isDirectory) return openDirectoryInExplorer(file.absolutePath)
+        if (!isReadableByUs(file) && AllFilesAccess.needed()) {
+            AllFilesAccess.openSettings()
+            return true
+        }
 
         // Never fall back to Uri.fromFile(): on API 24+ it throws FileUriExposedException.
         val fileUri: Uri = try {

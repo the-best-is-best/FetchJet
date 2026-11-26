@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 enum class MediaStateCode { HIDDEN, COURSE_READING, INSPECTING, ERROR, ENGINE_MISSING, PLAYLIST, NOT_INSPECTED, QUALITIES }
 
-enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT, MAIN_DOWNLOADER }
+enum class ChoiceDialogKind { NONE, DUPLICATE, FILE_CONFLICT, MAIN_DOWNLOADER, PLAYER_LIBRARY, PDF_READER, LIBRARY_DOWNLOAD }
 
 enum class BadgeToneCode { OTHER, COMPLETED, RUNNING, PAUSED, ERROR }
 
@@ -39,6 +39,7 @@ data class PlaylistRowDto(
     val before: Boolean = false,
     val unavailable: Boolean = false,
     val inPlaylist: Boolean = false,
+    val tag: String = "",
 )
 
 @Serializable
@@ -128,6 +129,11 @@ data class ClipPickerDto(
     val error: String = "",
     val endChip: String = "",
     val minChip: String = "",
+    val minChipHidden: Boolean = false,
+    val quick5Hidden: Boolean = false,
+    val quick15Hidden: Boolean = false,
+    val quick30Hidden: Boolean = false,
+    val quick60Hidden: Boolean = false,
     val valid: Boolean = false,
     val applyLabel: String = "",
 )
@@ -162,4 +168,6 @@ data class ChoiceDialogDto(
     val secondaryLabel: String = "",
     val secondaryDanger: Boolean = false,
     val cancelLabel: String = "",
+    val checkLabel: String = "",
+    val checked: Boolean = false,
 )

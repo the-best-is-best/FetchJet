@@ -1,6 +1,7 @@
 package com.michelle.raouf.fetch_jet.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +51,9 @@ import com.michelle.raouf.fetch_jet.core.util.localUtcOffsetMs
 import com.michelle.raouf.fetch_jet.feature.media_extractor.MediaPlaylist
 import com.michelle.raouf.fetch_jet.feature.media_extractor.allTicked
 import com.michelle.raouf.fetch_jet.feature.media_extractor.anySelectable
+import com.michelle.raouf.fetch_jet.feature.media_extractor.fileTag
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isFile
+import com.michelle.raouf.fetch_jet.feature.media_extractor.shownName
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistCountLines
 import com.michelle.raouf.fetch_jet.feature.media_extractor.PlaylistQuality
 import com.tbib.kmp_localization.LocalizationManager
@@ -191,7 +196,7 @@ fun PlaylistSelectionCard(
                             )
                             Column(modifier = Modifier.weight(1f).padding(vertical = 2.dp)) {
                                 Text(
-                                    text = if (playlist.fromBrowser) "${entry.title}.mp4" else entry.title,
+                                    text = entry.shownName(playlist.fromBrowser),
                                     fontSize = 12.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -222,6 +227,17 @@ fun PlaylistSelectionCard(
                                     )
                                 }
                             }
+                            if (entry.isFile) {
+                                val tagColor = Color(0xFF38BDF8)
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 6.dp, end = 4.dp)
+                                        .background(tagColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                                ) {
+                                    Text(entry.fileTag(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = tagColor)
+                                }
+                            }
                             if (!playlist.fromBrowser && !entry.unavailable && (entry.size > 0L || entry.size == -1L)) {
                                 Text(
                                     text = if (entry.size > 0L) formatBytes(entry.size) else "…",
@@ -233,7 +249,7 @@ fun PlaylistSelectionCard(
                             }
                             if (entry.durationSeconds > 0L) {
                                 Text(
-                                    text = clock(entry.durationSeconds),
+                                    text = clockText(entry.durationSeconds),
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(start = 6.dp, end = 4.dp)
@@ -457,14 +473,6 @@ internal fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
             )
         }
     }
-}
-
-private fun clock(sec: Long): String {
-    val h = sec / 3600
-    val m = (sec % 3600) / 60
-    val s = sec % 60
-    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
-    else "$m:${s.toString().padStart(2, '0')}"
 }
 
 /** Connections for a direct download: Auto (app setting) or a fixed count. */

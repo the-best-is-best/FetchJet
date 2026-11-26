@@ -10,6 +10,9 @@ import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
 
 internal const val MORE_SETTINGS = "more.settings"
+internal const val MORE_HIDDEN = "more.hidden"
+internal const val MORE_BACKUP = "more.backup"
+internal const val MORE_RESTORE = "more.restore"
 internal const val MORE_SHARE = "more.share"
 internal const val MORE_SITE = "more.site"
 internal const val MORE_LINK = "more.link."
@@ -56,6 +59,14 @@ internal fun Presenter.buildMoreRows(): List<SettingRowDto> {
         rows.add(infoRow(title = s.homeSettings, subtitle = s.moreSettingsHint, id = MORE_SETTINGS, clickable = true, side = "›"))
     }
     rows.group {
+        rows.add(infoRow(title = s.hiddenTitle, id = MORE_HIDDEN, clickable = true, side = "›"))
+    }
+    rows.group {
+        rows.add(infoRow(title = s.backupExport, subtitle = s.backupExportHint, id = MORE_BACKUP, clickable = true, side = "›"))
+        rows.divider()
+        rows.add(infoRow(title = s.backupRestore, subtitle = s.backupRestoreHint, id = MORE_RESTORE, clickable = true, side = "›"))
+    }
+    rows.group {
         rows.add(infoRow(title = s.moreEverywhereTitle, id = MORE_SITE, clickable = true, side = "↗"))
         rows.divider()
         rows.add(infoRow(title = s.moreShare, id = MORE_SHARE, clickable = true, side = "⤴"))
@@ -72,6 +83,9 @@ internal fun Presenter.buildMoreRows(): List<SettingRowDto> {
 internal fun Presenter.moreClick(id: String): Boolean {
     when {
         id == MORE_SETTINGS -> settingsLocal.update { it.copy(inSettings = true) }
+        id == MORE_HIDDEN -> hiddenEntry()
+        id == MORE_BACKUP -> backupExport()
+        id == MORE_RESTORE -> backupRestorePick()
         id == MORE_SHARE -> {
             val text = MoreLinks.shareText()
             sharedTexts.update { (it + text).takeLast(20) }

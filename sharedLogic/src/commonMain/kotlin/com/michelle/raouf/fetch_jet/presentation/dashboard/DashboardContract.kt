@@ -8,6 +8,7 @@ import com.michelle.raouf.fetch_jet.domain.model.anyVideoSelected
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.TorrentFileEntry
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.tbib.kmp_localization.LocalizationManager
 
 
@@ -123,6 +124,12 @@ data class DashboardUiState(
 
     val allTasks: List<DownloadTask> = emptyList(),
 
+    val hidden: HiddenUiState = HiddenUiState(),
+
+    val backup: BackupUiState = BackupUiState(),
+
+    val addHidden: Boolean = false,
+
     val filteredTasks: List<DownloadTask> = emptyList(),
 
     val selectedTab: DashboardTab = DashboardTab.ALL,
@@ -172,6 +179,7 @@ data class DashboardUiState(
 
     val removeConfirmationTaskId: String? = null,
     val removeConfirmationTaskIds: List<String> = emptyList(),
+    val removeDerivedCount: Int = 0,
     /** A browser-sent file link the user just dismissed; asks "download it in the browser instead?" */
     val browserFallbackUrl: String? = null,
     /** A file / magnet link just copied: "Download it?" (Settings > General > Watch the clipboard). */
@@ -249,6 +257,7 @@ data class DashboardUiState(
     val speedPresetHighUnit: String = "MB/s",
     /** The task whose "Send to device" sheet is open (null = closed). */
     val deviceShareTaskId: String? = null,
+    val deviceShareCanDelete: Boolean = true,
     /** Devices found on the LAN running FetchJet. */
     val discoveredDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.DiscoveredDevice> = emptyList(),
     val pairedDevices: List<com.michelle.raouf.fetch_jet.feature.device_sync.PairedDevice> = emptyList(),
@@ -259,6 +268,7 @@ data class DashboardUiState(
     val deviceSending: com.michelle.raouf.fetch_jet.feature.device_sync.SendState? = null,
     val deviceReceiving: com.michelle.raouf.fetch_jet.feature.device_sync.ReceiveState? = null,
     val audioCompress: AudioCompressUi? = null,
+    val videoCut: VideoCutUi? = null,
     val subtitlesPage: SubtitlesUi? = null,
     /** Saved playlists (shown as one row each in the downloads list). */
     val playlists: Map<String, com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistRecord> = emptyMap(),
@@ -274,7 +284,9 @@ data class DashboardUiState(
     /** The folder page that is open (its downloads instead of the whole list); a folder key, null = none. */
     val openFolder: String? = null,
     val torrentDetails: TorrentDetailsUi? = null,
-    val audioCopyCounts: Map<String, Int> = emptyMap()
+    val audioCopyCounts: Map<String, Int> = emptyMap(),
+    val videoClips: Map<String, List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip>> = emptyMap(),
+    val audioExtracting: Set<String> = emptySet()
 ) {
     /** The link box holds one web page address (not a file, video or magnet): the link is worth probing for "Find files on this page". */
     val grabShape: Boolean
@@ -465,7 +477,9 @@ data class AudioCompressUi(
     val progress: Float = 0f,
     val failed: Boolean = false,
     val copies: List<com.michelle.raouf.fetch_jet.feature.audio_compress.CompressedCopy> = emptyList(),
-    val formats: List<String> = listOf(com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.OUTPUT_EXTENSION)
+    val formats: List<String> = listOf(com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.OUTPUT_EXTENSION),
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false
 ) {
     val format: String
         get() = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.formatFor(settings, fileName, formats)
@@ -477,6 +491,38 @@ data class AudioCompressUi(
     val nothingToGain: Boolean
         get() = !reading && durationMs > 0L &&
                 firstLevel > com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress.LEVELS.size
+}
+
+data class VideoCutUi(
+    val taskId: String,
+    val fileName: String,
+    val durationMs: Long = 0,
+    val mode: com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode? = null,
+    val startMs: Long = 0,
+    val endMs: Long = 0,
+    val running: Boolean = false,
+    val progress: Float = 0f,
+    val elapsedMs: Long = 0,
+    val etaMs: Long = -1,
+    val failed: Boolean = false,
+    val message: String = "",
+    val clips: List<com.michelle.raouf.fetch_jet.feature.video_cut.CutClip> = emptyList(),
+    val timelineAvailable: Boolean = true,
+    val sourcePath: String = "",
+    val reading: Boolean = false,
+    val stopping: Boolean = false,
+    val clipsOnly: Boolean = false,
+    val outputExtension: String = "",
+    val lastClipPath: String = "",
+    val isAudio: Boolean = false,
+    val canDeleteOriginal: Boolean = false,
+    val deleteOriginal: Boolean = false
+) {
+    val lengthMs: Long
+        get() = (endMs - startMs).coerceAtLeast(0L)
+    val canStart: Boolean
+        get() = mode != null && !running && !reading && durationMs > 0L &&
+                com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut.isValidRange(startMs, endMs, durationMs)
 }
 
 /** Which named quick speed preset a setting refers to. HIGH is always Unlimited (not editable). */
@@ -701,6 +747,54 @@ sealed interface DashboardUiEvent {
 
     data class OnCopyTaskLink(val taskId: String) : DashboardUiEvent
 
+    data class OnHideTargets(
+        val taskIds: List<String> = emptyList(),
+        val playlistIds: List<String> = emptyList(),
+        val folders: List<String> = emptyList(),
+        val lockAfter: Boolean = false
+    ) : DashboardUiEvent
+
+    data object OnHiddenNoticeShown : DashboardUiEvent
+    data class OnAddHiddenToggled(val on: Boolean) : DashboardUiEvent
+    data object OnHiddenAddDownload : DashboardUiEvent
+    data class OnUnhideTasks(val taskIds: List<String>) : DashboardUiEvent
+    data object OnUnhideAll : DashboardUiEvent
+    data class OnHiddenOpenPlaylist(val playlistId: String) : DashboardUiEvent
+    data class OnHiddenOpenFolder(val folder: String) : DashboardUiEvent
+    data object OnHiddenCloseGroup : DashboardUiEvent
+    data class OnUnhideGroup(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenGroupPause(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenGroupResume(val playlistId: String = "", val folder: String = "") : DashboardUiEvent
+    data class OnHiddenSetPin(val pin: String, val lockType: HiddenLockType) : DashboardUiEvent {
+        constructor(pin: String) : this(pin, HiddenLockType.PIN)
+    }
+    data class OnHiddenUnlock(val pin: String) : DashboardUiEvent
+    data object OnHiddenLock : DashboardUiEvent
+    data object OnHiddenCover : DashboardUiEvent
+    data object OnHiddenReauth : DashboardUiEvent
+    data class OnHiddenChangePin(val oldPin: String, val newPin: String, val newLockType: HiddenLockType) : DashboardUiEvent {
+        constructor(oldPin: String, newPin: String) : this(oldPin, newPin, HiddenLockType.PIN)
+    }
+    data class OnHiddenRemoveLock(val pin: String) : DashboardUiEvent
+    data class OnHiddenOpenFile(val taskId: String) : DashboardUiEvent
+    data object OnHiddenClosePlayer : DashboardUiEvent
+    data class OnHiddenPlayClicked(val taskId: String) : DashboardUiEvent
+    data object OnHiddenGroupPlayClicked : DashboardUiEvent
+    data object OnHiddenEncryptNoticeAccepted : DashboardUiEvent
+    data object OnHiddenEncryptNoticeDismissed : DashboardUiEvent
+    data object OnHiddenShowRecoveryCode : DashboardUiEvent
+    data object OnHiddenRecoveryCodeShown : DashboardUiEvent
+    data class OnHiddenRestoreWithCode(val code: String) : DashboardUiEvent
+    data object OnHiddenForgotPin : DashboardUiEvent
+    data class OnHiddenResetPin(val pin: String, val lockType: HiddenLockType) : DashboardUiEvent {
+        constructor(pin: String) : this(pin, HiddenLockType.PIN)
+    }
+    data object OnHiddenResetCancel : DashboardUiEvent
+    data object OnBackupExportRequested : DashboardUiEvent
+    data object OnBackupWritten : DashboardUiEvent
+    data class OnBackupRestoreText(val text: String) : DashboardUiEvent
+    data object OnBackupNoticeShown : DashboardUiEvent
+
     data class OnArchivePasswordEntered(val taskId: String, val password: String) : DashboardUiEvent
 
     data object OnArchivePasswordDismissed : DashboardUiEvent
@@ -721,6 +815,28 @@ sealed interface DashboardUiEvent {
     data class OnAudioCompressDeleteCopy(val path: String) : DashboardUiEvent
 
     data object OnDismissAudioCompress : DashboardUiEvent
+
+    data class OnAudioCompressDeleteOriginalChanged(val on: Boolean) : DashboardUiEvent
+
+    data class OnVideoCutDeleteOriginalChanged(val on: Boolean) : DashboardUiEvent
+
+    data class OnVideoCutClicked(val taskId: String) : DashboardUiEvent
+
+    data class OnVideoCutModeChosen(val mode: com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode) : DashboardUiEvent
+
+    data class OnVideoCutRangeChanged(val startMs: Long, val endMs: Long) : DashboardUiEvent
+
+    data object OnVideoCutStartClicked : DashboardUiEvent
+
+    data object OnVideoCutCancelClicked : DashboardUiEvent
+
+    data object OnDismissVideoCut : DashboardUiEvent
+
+    data class OnVideoCutDeleteClip(val path: String) : DashboardUiEvent
+
+    data class OnVideoCutShowClips(val taskId: String) : DashboardUiEvent
+
+    data class OnExtractAudioClicked(val taskId: String) : DashboardUiEvent
 
     /** Open the "Send to device" sheet for a task. */
     data class OnShareTaskClicked(val taskId: String) : DashboardUiEvent
@@ -764,6 +880,8 @@ sealed interface DashboardUiEffect {
     data class ShowToast(val text: String) : DashboardUiEffect
 
     data class CopyText(val text: String) : DashboardUiEffect
+
+    data class OpenHiddenFile(val path: String) : DashboardUiEffect
 
 }
 

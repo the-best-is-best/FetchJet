@@ -25,8 +25,13 @@ struct TaskListScreen: View {
     @State private var checked: Set<String> = []
     @State private var menuPicked = false
     @State private var listWidth: CGFloat = 0
+    @State private var hideRequest: HideTargets?
 
     private var selectionMode: Bool { !checked.isEmpty }
+
+    private var actions: TaskRowActions {
+        TaskRowActions(store: store, showDetails: { store.selectedTaskId = $0.id }, select: { checked.insert($0.id) })
+    }
 
     private var previewWidth: CGFloat {
         let row = max(listWidth - 16, 200)
@@ -114,11 +119,14 @@ struct TaskListScreen: View {
                 if store.state.isDownloadingYtDlp, let tool = store.state.toolDownloadName {
                     TaskToolsBanner(tool: tool, fraction: store.state.toolDownloadFraction?.floatValue)
                 }
+                if store.state.hidden.working {
+                    TaskHiddenWorkBanner(done: Int(store.state.hidden.workDone), total: Int(store.state.hidden.workTotal))
+                }
                 if let group = openGroup {
-                    PlaylistPageBar(group: group)
+                    PlaylistPageBar(group: group, onHide: { requestHide(HideTargets(playlistIds: [group.id])) })
                         .padding(.bottom, 8)
                 } else if let folder = openFolderGroup {
-                    FolderPageBar(group: folder)
+                    FolderPageBar(group: folder, onHide: { requestHide(HideTargets(folders: [folder.folder])) })
                         .padding(.bottom, 8)
                 }
                 if !allTasks.isEmpty {
@@ -132,6 +140,7 @@ struct TaskListScreen: View {
                         onCheckAll: { all in checked = all ? Set(tasks.map { $0.id }) : [] },
                         onDelete: { store.send(DashboardUiEventOnRemoveSelectedClicked(taskIds: Array(checked))) },
                         onExport: { store.send(DashboardUiEventOnExportLinksClicked(taskIds: Array(checked))) },
+                        onHide: { requestHide(HideTargets(taskIds: Array(checked))) },
                         onClose: { checked = [] }
                     )
                     .padding(.bottom, 8)
@@ -150,6 +159,22 @@ struct TaskListScreen: View {
         .onChange(of: store.state.allTasks.map { $0.id }) { _, ids in
             let set = Set(ids)
             if !checked.isSubset(of: set) { checked = checked.intersection(set) }
+        }
+        .sheet(item: $hideRequest) { request in
+            HiddenSetPinSheet(onSet: {
+                store.hide(request, lockAfter: true)
+                checked = []
+            })
+            .environmentObject(store)
+        }
+    }
+
+    private func requestHide(_ request: HideTargets) {
+        if store.state.hidden.lockType == nil {
+            hideRequest = request
+        } else {
+            store.hide(request)
+            checked = []
         }
     }
 
@@ -257,6 +282,7 @@ struct TaskListScreen: View {
             }
             .contextMenu {
                 Button(s.open) { store.send(DashboardUiEventOnOpenPlaylist(playlistId: group.id)) }
+                Button { requestHide(HideTargets(playlistIds: [group.id])) } label: { Label(s.hiddenHide, systemImage: "eye.slash") }
                 if group.canPause {
                     Button(s.pause) { store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id)) }
                 }
@@ -298,6 +324,7 @@ struct TaskListScreen: View {
             }
             .contextMenu {
                 Button(s.open) { store.send(DashboardUiEventOnOpenFolderGroup(folder: group.folder)) }
+                Button { requestHide(HideTargets(folders: [group.folder])) } label: { Label(s.hiddenHide, systemImage: "eye.slash") }
                 if group.canPause {
                     Button(s.homePauseAll) { store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder)) }
                 }
@@ -325,7 +352,7 @@ struct TaskListScreen: View {
         let s = store.strings
         let isChecked = checked.contains(task.id)
         return TaskRowView(task: task, checked: isChecked, selectionMode: selectionMode) { action in
-            quickAction(task, action)
+            actions.quick(task, action)
         }
         .onTapGesture {
             if selectionMode {
@@ -342,10 +369,17 @@ struct TaskListScreen: View {
                 }
             } else {
                 rowMenu(task)
+                Button {
+                    menuPicked = true
+                    requestHide(HideTargets(taskIds: [task.id]))
+                } label: {
+                    Label(s.hiddenHide, systemImage: "eye.slash")
+                }
             }
         } preview: {
             TaskRowView(task: task, checked: isChecked, selectionMode: selectionMode) { _ in }
                 .environmentObject(store)
+                .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
                 .frame(width: previewWidth)
                 .fixedSize(horizontal: false, vertical: true)
                 .onAppear { menuPicked = false }
@@ -376,74 +410,25 @@ struct TaskListScreen: View {
     @ViewBuilder
     private func rowMenu(_ task: DownloadTask) -> some View {
         let s = store.strings
-        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, selectEntry: true))
-        ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-            if entry.dividerBefore { Divider() }
-            Button(role: entry.danger ? ButtonRole.destructive : nil) {
-                pickRowMenu(task, entry)
-            } label: {
-                Text(RowMenu.shared.label(entry: entry, s: s))
+        let entries = RowMenu.shared.entries(task: task, options: RowMenuOptions(canSend: true, canCompress: true, canCut: true,
+                                                                                    canExtractAudio: true, selectEntry: true))
+        ForEach(RowMenuGroups.of(entries), id: \.key) { group in
+            Section(RowMenuGroups.title(group.key, s)) {
+                ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                    Button(role: entry.danger ? ButtonRole.destructive : nil) {
+                        menuPicked = true
+                        actions.pick(task, entry)
+                    } label: {
+                        Text(RowMenu.shared.label(entry: entry, s: s, task: task))
+                    }
+                    .disabled(entry.name == "EXTRACT_AUDIO" && store.state.audioExtracting.contains(task.id))
+                }
             }
-        }
-    }
-
-    private func pickRowMenu(_ task: DownloadTask, _ entry: RowMenuEntry) {
-        menuPicked = true
-        switch entry.name {
-        case "OPEN":
-            store.openFile(task)
-        case "OPEN_FOLDER":
-            let resolver = PathResolver()
-            if resolver.isOpenFolderSupported() {
-                _ = resolver.openFileLocation(filePath: store.host.taskFilePath(task: task))
-            } else {
-                store.selectedTaskId = task.id
-            }
-        case "PAUSE":
-            quickAction(task, .pause)
-        case "RESUME":
-            store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
-        case "EXTRACT":
-            store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
-        case "COMPRESS":
-            store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
-        case "SUBTITLES":
-            store.selectedTaskId = task.id
-            store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
-        case "SEND_TO_DEVICE":
-            store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
-        case "COPY_LINK":
-            store.send(DashboardUiEventOnCopyTaskLink(taskId: task.id))
-        case "SELECT":
-            checked.insert(task.id)
-        case "DETAILS":
-            store.selectedTaskId = task.id
-        case "DELETE":
-            store.send(DashboardUiEventOnRemoveClicked(taskId: task.id))
-        default:
-            break
         }
     }
 
     private func toggle(_ id: String) {
         if checked.contains(id) { checked.remove(id) } else { checked.insert(id) }
-    }
-
-    private func quickAction(_ task: DownloadTask, _ action: TaskRowAction) {
-        switch action {
-        case .pause:
-            if task.canResume()?.boolValue == false {
-                store.selectedTaskId = task.id
-            } else {
-                store.send(DashboardUiEventOnPauseClicked(taskId: task.id))
-            }
-        case .resume, .startNow:
-            store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
-        case .open:
-            store.openFile(task)
-        case .none:
-            break
-        }
     }
 }
 
@@ -529,7 +514,9 @@ struct TaskSelectionBar: View {
     let allChecked: Bool
     let onCheckAll: (Bool) -> Void
     let onDelete: () -> Void
-    let onExport: () -> Void
+    var onExport: (() -> Void)? = nil
+    var onHide: (() -> Void)? = nil
+    var onUnhide: (() -> Void)? = nil
     let onClose: () -> Void
 
     var body: some View {
@@ -555,17 +542,43 @@ struct TaskSelectionBar: View {
             .buttonStyle(.borderless)
             .foregroundStyle(FJTheme.color.primary)
             Spacer(minLength: 0)
-            Button(action: onExport) {
-                Text(s.homeExport)
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+            if let onExport {
+                Button(action: onExport) {
+                    Text(s.homeExport)
+                        .font(.fj(12, .semibold))
+                        .lineLimit(1)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(FJTheme.color.primary)
+                .fixedSize()
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(FJTheme.color.primary)
-            .fixedSize()
+            if let onUnhide {
+                Button(action: onUnhide) {
+                    Label(s.hiddenUnhide, systemImage: "eye")
+                        .font(.fj(12, .semibold))
+                        .lineLimit(1)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(FJTheme.color.primary)
+                .fixedSize()
+            }
+            if let onHide {
+                Button(action: onHide) {
+                    Image(systemName: "eye.slash")
+                        .font(.fj(13, .semibold))
+                        .frame(width: 40, height: 34)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(FJTheme.color.primary)
+                .accessibilityLabel(s.hiddenHide)
+            }
             Button(action: onDelete) {
                 Label(s.delete_, systemImage: "trash")
                     .font(.fj(12, .semibold))
@@ -596,6 +609,27 @@ struct TaskToolsBanner: View {
             } else {
                 ProgressView().progressViewStyle(.linear)
             }
+        }
+        .tint(FJTheme.color.primary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FJTheme.color.primary.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.bottom, 8)
+    }
+}
+
+struct TaskHiddenWorkBanner: View {
+    @EnvironmentObject var store: FJStore
+    let done: Int
+    let total: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(HiddenTextsKt.hiddenWorkingText(done: Int32(done), total: Int32(total)))
+                .font(.fj(12, .semibold))
+                .foregroundStyle(FJTheme.color.primary)
+            ProgressView().progressViewStyle(.linear)
         }
         .tint(FJTheme.color.primary)
         .padding(.horizontal, 14)
@@ -741,6 +775,7 @@ struct PlaylistGroupRowView: View {
     let group: PlaylistGroup
     let checked: Bool
     let selectionMode: Bool
+    var hiddenMode = false
 
     var body: some View {
         let host = store.host
@@ -777,7 +812,13 @@ struct PlaylistGroupRowView: View {
                     .padding(.leading, 8)
                 if !selectionMode && (group.canPause || group.canResume) {
                     TaskQuickActionButton(action: group.canPause ? .pause : .resume, size: 44) {
-                        if group.canPause {
+                        if hiddenMode {
+                            if group.canPause {
+                                store.send(DashboardUiEventOnHiddenGroupPause(playlistId: group.id, folder: ""))
+                            } else {
+                                store.send(DashboardUiEventOnHiddenGroupResume(playlistId: group.id, folder: ""))
+                            }
+                        } else if group.canPause {
                             store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id))
                         } else {
                             store.send(DashboardUiEventOnPlaylistGroupResume(playlistId: group.id))
@@ -808,6 +849,7 @@ struct PlaylistGroupRowView: View {
 struct PlaylistPageBar: View {
     @EnvironmentObject var store: FJStore
     let group: PlaylistGroup
+    var onHide: (() -> Void)? = nil
 
     private func languageName(_ code: String) -> String {
         for task in group.tasks {
@@ -857,6 +899,9 @@ struct PlaylistPageBar: View {
                     if !group.record.url.isEmpty {
                         Button(group.isPage ? s.grabCheckNew : s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
                     }
+                    if let onHide {
+                        Button(action: onHide) { Label(s.hiddenHide, systemImage: "eye.slash") }
+                    }
                     if group.canPause {
                         Button(s.homePauseAll) { store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id)) }
                     }
@@ -887,6 +932,7 @@ struct PlaylistPageBar: View {
                 }
                 Spacer(minLength: 0)
             }
+            GroupPlayButton(groupKey: group.id, tasks: group.tasks)
             if !group.record.url.isEmpty {
                 Button {
                     store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id))
@@ -965,6 +1011,7 @@ struct FolderGroupRowView: View {
     let group: FolderGroup
     let checked: Bool
     let selectionMode: Bool
+    var hiddenMode = false
 
     var body: some View {
         let host = store.host
@@ -1001,7 +1048,13 @@ struct FolderGroupRowView: View {
                     .padding(.leading, 8)
                 if !selectionMode && (group.canPause || group.canResume) {
                     TaskQuickActionButton(action: group.canPause ? .pause : .resume, size: 44) {
-                        if group.canPause {
+                        if hiddenMode {
+                            if group.canPause {
+                                store.send(DashboardUiEventOnHiddenGroupPause(playlistId: "", folder: group.folder))
+                            } else {
+                                store.send(DashboardUiEventOnHiddenGroupResume(playlistId: "", folder: group.folder))
+                            }
+                        } else if group.canPause {
                             store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder))
                         } else {
                             store.send(DashboardUiEventOnFolderGroupResume(folder: group.folder))
@@ -1029,9 +1082,35 @@ struct FolderGroupRowView: View {
     }
 }
 
+struct GroupPlayButton: View {
+    @EnvironmentObject var store: FJStore
+    let groupKey: String
+    let tasks: [DownloadTask]
+
+    var body: some View {
+        if store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) {
+            Button {
+                if let queue = store.host.playbackQueue(groupKey: groupKey, tasks: tasks) {
+                    FJPlayer.shared.queue = queue
+                }
+            } label: {
+                Label(store.strings.playerPlayAll, systemImage: "play.fill")
+                    .font(.fj(13, .semibold))
+                    .foregroundStyle(FJTheme.color.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+}
+
 struct FolderPageBar: View {
     @EnvironmentObject var store: FJStore
     let group: FolderGroup
+    var onHide: (() -> Void)? = nil
 
     var body: some View {
         let s = store.strings
@@ -1051,6 +1130,9 @@ struct FolderPageBar: View {
                 Menu {
                     if canOpen {
                         Button(s.rowMenuOpenFolder) { _ = resolver.openDirectoryInExplorer(path: group.path) }
+                    }
+                    if let onHide {
+                        Button(action: onHide) { Label(s.hiddenHide, systemImage: "eye.slash") }
                     }
                     if group.canPause {
                         Button(s.homePauseAll) { store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder)) }
@@ -1087,6 +1169,7 @@ struct FolderPageBar: View {
                 }
                 Spacer(minLength: 0)
             }
+            GroupPlayButton(groupKey: "dir:" + group.folder, tasks: group.tasks)
             if canOpen {
                 Button {
                     _ = resolver.openDirectoryInExplorer(path: group.path)
@@ -1124,5 +1207,95 @@ struct FolderPageBar: View {
         .padding(12)
         .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
+    }
+}
+
+@MainActor
+struct TaskRowActions {
+    let store: FJStore
+    let showDetails: (DownloadTask) -> Void
+    let select: (DownloadTask) -> Void
+
+    func quick(_ task: DownloadTask, _ action: TaskRowAction) {
+        switch action {
+        case .pause:
+            if task.canResume()?.boolValue == false {
+                showDetails(task)
+            } else {
+                store.send(DashboardUiEventOnPauseClicked(taskId: task.id))
+            }
+        case .resume, .startNow:
+            store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
+        case .open:
+            store.openFile(task)
+        case .none:
+            break
+        }
+    }
+
+    func pick(_ task: DownloadTask, _ entry: RowMenuEntry) {
+        switch entry.name {
+        case "OPEN":
+            store.openFile(task)
+        case "OPEN_FOLDER":
+            let resolver = PathResolver()
+            if resolver.isOpenFolderSupported() {
+                _ = resolver.openFileLocation(filePath: store.host.taskFilePath(task: task))
+            } else {
+                showDetails(task)
+            }
+        case "PAUSE":
+            quick(task, .pause)
+        case "RESUME":
+            store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
+        case "EXTRACT":
+            store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+        case "COMPRESS":
+            store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
+        case "CUT":
+            store.send(DashboardUiEventOnVideoCutClicked(taskId: task.id))
+        case "EXTRACT_AUDIO":
+            store.send(DashboardUiEventOnExtractAudioClicked(taskId: task.id))
+        case "SUBTITLES":
+            showDetails(task)
+            store.send(DashboardUiEventOnSubtitlesClicked(taskId: task.id))
+        case "SEND_TO_DEVICE":
+            store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
+        case "COPY_LINK":
+            store.send(DashboardUiEventOnCopyTaskLink(taskId: task.id))
+        case "SELECT":
+            select(task)
+        case "DETAILS":
+            showDetails(task)
+        case "UNHIDE":
+            store.send(DashboardUiEventOnUnhideTasks(taskIds: [task.id]))
+        case "DELETE":
+            store.send(DashboardUiEventOnRemoveClicked(taskId: task.id))
+        default:
+            break
+        }
+    }
+}
+
+enum RowMenuGroups {
+    static func of(_ entries: [RowMenuEntry]) -> [(key: Int, entries: [RowMenuEntry])] {
+        var groups: [(key: Int, entries: [RowMenuEntry])] = []
+        for (i, entry) in entries.enumerated() {
+            if i == 0 || RowMenu.shared.startsSection(entries: entries, index: Int32(i)) {
+                groups.append((key: Int(entry.section.ordinal), entries: [entry]))
+            } else {
+                groups[groups.count - 1].entries.append(entry)
+            }
+        }
+        return groups
+    }
+
+    static func title(_ key: Int, _ s: AppLocalization) -> String {
+        switch key {
+        case 0: return s.rowMenuSectionOpen
+        case 1: return s.rowMenuSectionMedia
+        case 2: return s.rowMenuSectionDownload
+        default: return s.rowMenuSectionManage
+        }
     }
 }

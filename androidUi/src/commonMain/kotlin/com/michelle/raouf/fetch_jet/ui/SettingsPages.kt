@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -245,6 +246,7 @@ private fun DeviceListGroup(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun DownloadsPage(
     destinationPath: String,
@@ -280,7 +282,10 @@ internal fun DownloadsPage(
                     leading = { Text("📁", fontSize = 15.sp) }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = { showDirectoryPicker = true },
                         shape = RoundedCornerShape(10.dp)
@@ -715,13 +720,6 @@ internal fun TorrentPage(
 
 internal fun folderName(path: String): String =
     path.trimEnd('/', '\\').substringAfterLast('/').substringAfterLast('\\').ifBlank { path }
-
-internal fun limitText(bytes: Long): String =
-    if (bytes >= 1024L * 1024L) {
-        val mb = bytes.toDouble() / (1024.0 * 1024.0)
-        (if (mb == mb.toLong().toDouble()) mb.toLong()
-            .toString() else ((mb * 10).toLong() / 10.0).toString()) + " MB/s"
-    } else "${bytes / 1024L} KB/s"
 
 // ---------------------------------------------------------------- browser extension
 

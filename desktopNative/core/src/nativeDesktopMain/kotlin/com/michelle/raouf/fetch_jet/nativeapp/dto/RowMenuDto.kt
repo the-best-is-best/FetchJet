@@ -8,4 +8,6 @@ data class RowMenuItemDto(
     val label: String = "",
     val danger: Boolean = false,
     val divider: Boolean = false,
+    val header: String = "",
+    val disabled: Boolean = false,
 )

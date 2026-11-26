@@ -53,6 +53,17 @@ internal fun Presenter.moveFocus(shift: Boolean, target: (current: Int, last: In
 }
 
 internal fun Presenter.keyOpen() {
+    if (local.value.hiddenOpen) {
+        val focus = local.value.focusId.orEmpty()
+        com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow(focus)?.let {
+            vm.onEvent(DashboardUiEvent.OnHiddenOpenPlaylist(it))
+            return
+        }
+        com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow(focus)?.let {
+            vm.onEvent(DashboardUiEvent.OnHiddenOpenFolder(it))
+            return
+        }
+    }
     com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow(local.value.focusId.orEmpty())?.let {
         vm.onEvent(DashboardUiEvent.OnOpenPlaylist(it))
         return

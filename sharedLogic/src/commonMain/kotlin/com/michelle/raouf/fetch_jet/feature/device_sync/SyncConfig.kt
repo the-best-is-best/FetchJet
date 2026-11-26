@@ -1,12 +1,20 @@
 package com.michelle.raouf.fetch_jet.feature.device_sync
 
-internal const val DEVICE_SYNC_DISCOVERY_PORT = 28461
-internal const val DEVICE_SYNC_TCP_PORT = 28462
+internal var DEVICE_SYNC_DISCOVERY_PORT = 28461
+internal var DEVICE_SYNC_TCP_PORT = 28462
+
+object DeviceSyncPorts {
+    fun use(discovery: Int, tcp: Int) {
+        DEVICE_SYNC_DISCOVERY_PORT = discovery
+        DEVICE_SYNC_TCP_PORT = tcp
+    }
+}
 internal const val DEVICE_SYNC_ANY_HOST = "0.0.0.0"
 internal const val DEVICE_SYNC_NO_BROADCAST_ENV = "FETCHJET_SYNC_NO_BROADCAST"
 
 internal const val SYNC_CHUNK = 64 * 1024
 internal const val SYNC_MAX_FRAME = 64 * 1024 * 1024
+internal const val SYNC_MAX_CONTROL_FRAME = 256 * 1024
 internal const val SYNC_MAX_DATAGRAM = 2048
 internal const val SYNC_MAX_INBOUND = 16
 

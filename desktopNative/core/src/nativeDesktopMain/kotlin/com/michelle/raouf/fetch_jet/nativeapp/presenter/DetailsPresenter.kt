@@ -3,6 +3,7 @@ package com.michelle.raouf.fetch_jet.nativeapp.presenter
 import com.michelle.raouf.fetch_jet.feature.media_extractor.canAddSubtitles
 import com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome
 import com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCompress
+import com.michelle.raouf.fetch_jet.feature.audio_extract.AudioExtract
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage
 import com.michelle.raouf.fetch_jet.core.i18n.start.localizeStep
@@ -21,6 +22,13 @@ import com.michelle.raouf.fetch_jet.nativeapp.dto.ChipDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.ConnectionDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.DetailActionCode
 import com.michelle.raouf.fetch_jet.nativeapp.dto.DetailsDto
+import com.michelle.raouf.fetch_jet.nativeapp.dto.DetailToolCode
+import com.michelle.raouf.fetch_jet.nativeapp.dto.DetailToolDto
+import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable
+import com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback
+import com.michelle.raouf.fetch_jet.feature.video_cut.CutClip
+import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.nativeapp.dto.FileRowDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.LinkDto
 import com.michelle.raouf.fetch_jet.nativeapp.dto.PieceDto
@@ -39,7 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private data class DetailsInput(val task: DownloadTask?, val unit: String, val language: String, val tick: Long)
+private data class DetailsInput(val task: DownloadTask?, val clips: List<CutClip>, val unit: String, val language: String, val tick: Long)
 
 internal fun formatEta(seconds: Long): String {
     val s = seconds.coerceAtLeast(0L)
@@ -95,14 +103,16 @@ internal fun Presenter.startDetails() {
     val tick = MutableStateFlow(0L)
     val selected = combine(vm.uiState, local) { state, ui ->
         if (state.selectedTab == DashboardTab.SETTINGS) null
-        else ui.selectedTaskId?.let { id -> state.allTasks.firstOrNull { it.id == id } }
+        else ui.selectedTaskId?.let { id -> state.findTask(id) }?.let { task -> task to state.videoClips[task.id].orEmpty() }
     }.distinctUntilChanged().throttleLatest(HOME_PERIOD_MS)
     val unit = combine(vm.uiState, AppLanguage.current) { state, language ->
-        Triple(state.speedDisplayUnit, language, state.audioCopyCounts)
+        Triple(state.speedDisplayUnit, language, state.audioCopyCounts to state.audioExtracting)
     }
         .distinctUntilChanged()
     scope.launch {
-        combine(selected, unit, tick) { task, (speedUnit, language), now -> DetailsInput(task, speedUnit, language, now) }
+        combine(selected, unit, tick) { picked, (speedUnit, language), now ->
+            DetailsInput(picked?.first, picked?.second.orEmpty(), speedUnit, language, now)
+        }
             .collect { input ->
                 val task = input.task
                 if (task == null) {
@@ -111,7 +121,7 @@ internal fun Presenter.startDetails() {
                     detailConnections.publish(emptyList())
                     detailFiles.publish(emptyList())
                 } else {
-                    publishDetails(task, input.unit)
+                    publishDetails(task, input.unit, input.clips)
                 }
             }
     }
@@ -126,7 +136,7 @@ internal fun Presenter.startDetails() {
     }
 }
 
-private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
+private fun Presenter.publishDetails(task: DownloadTask, unit: String, clips: List<CutClip>) {
     val strings = LocalizationManager.Strings
     val completed = task.status == DownloadStatus.COMPLETED
     val name = taskDisplayName(task)
@@ -228,10 +238,7 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
     }
     val eta = task.etaSeconds()
 
-    val links = listOf(
-        strings.detailsPage to (task.requestHeaders["Referer"] ?: task.originalUrl.orEmpty()),
-        strings.detailsPlaylist to com.michelle.raouf.fetch_jet.presentation.dashboard.playlistLinkOf(task),
-    ).filter { (_, link) -> link.isNotBlank() && !com.michelle.raouf.fetch_jet.core.security.Secrets.isProtected(link) }.distinctBy { (_, link) -> link }.map { (label, link) -> LinkDto(label, link) }
+    val links = com.michelle.raouf.fetch_jet.presentation.dashboard.detailsLinks(task).map { LinkDto(it.label, it.link, it.note) }
 
     val checksumShown = !task.expectedChecksum.isNullOrBlank()
     val scan = ScanOutcome.of(task.scanResult)?.takeIf { it != ScanOutcome.NO_SCANNER }
@@ -275,6 +282,40 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
             }
         }
     }
+
+    val busy = task.postProcessLabel != null
+    val fileTools = ArrayList<DetailToolDto>(3)
+    if (secondary != DetailActionCode.NONE) {
+        fileTools += DetailToolDto(
+            DetailToolCode.SECONDARY.ordinal,
+            if (secondary == DetailActionCode.PAUSE) "⏸" else "📂",
+            secondaryLabel,
+        )
+    }
+    if (com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveTasks.canExtract(task)) {
+        fileTools += DetailToolDto(DetailToolCode.EXTRACT.ordinal, "📦", strings.extractNow)
+    }
+    if (AudioExtract.canExtract(task)) {
+        val extracting = task.id in vm.uiState.value.audioExtracting
+        fileTools += DetailToolDto(
+            DetailToolCode.EXTRACT_AUDIO.ordinal, if (extracting) "⏳" else "🎵",
+            if (extracting) strings.audioExtractRunning else strings.audioExtractTitle,
+            disabled = extracting,
+        )
+    }
+    if (task.canSendToDevice()) fileTools += DetailToolDto(DetailToolCode.SHARE.ordinal, "📲", strings.sysDeviceSendTitle)
+    val mediaTools = ArrayList<DetailToolDto>(4)
+    if (completed && !busy && MediaPlayback.canPlay(task, allowHidden = task.hidden) && !com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.isOff() && isPlayerLibraryAvailable()) {
+        mediaTools += DetailToolDto(DetailToolCode.PLAY.ordinal, "▶", strings.playerPlayAll)
+    }
+    if (!busy && AudioCompress.canCompress(task)) {
+        mediaTools += DetailToolDto(
+            DetailToolCode.COMPRESS.ordinal, "🗜", strings.audioCompressTitle +
+                (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: "")
+        )
+    }
+    if (!busy && VideoCut.canCut(task)) mediaTools += DetailToolDto(DetailToolCode.CUT.ordinal, "✂", VideoCut.title(VideoCut.isAudio(task)))
+    if (!busy && task.canAddSubtitles()) mediaTools += DetailToolDto(DetailToolCode.SUBTITLES.ordinal, "💬", strings.subtitlesAddButton)
 
     val chunks = task.displayChunks()
     val total = chunks.maxOfOrNull { it.endByte + 1 }?.takeIf { it > 0 }
@@ -426,6 +467,9 @@ private fun Presenter.publishDetails(task: DownloadTask, unit: String) {
             compressLabel = strings.audioCompressTitle +
                     (vm.uiState.value.audioCopyCounts[task.id]?.let { " ($it)" } ?: ""),
             removeLabel = if (completed) strings.detailsRemoveFromList else strings.detailsCancelDownload,
+            fileTools = fileTools,
+            mediaTools = mediaTools,
+            clips = if (VideoCut.isClip(task)) emptyList() else clips.map { videoClipRow(it) },
         )
     )
 }
@@ -463,5 +507,22 @@ internal fun Presenter.detailsAction(code: Int, primary: Boolean) {
 
         DetailActionCode.START_NOW, DetailActionCode.RESUME -> vm.onEvent(DashboardUiEvent.OnResumeClicked(id))
         DetailActionCode.NONE, null -> Unit
+    }
+}
+
+internal fun Presenter.detailsTool(code: Int) {
+    val id = local.value.selectedTaskId ?: return
+    val task = task(id) ?: return
+    when (DetailToolCode.entries.getOrNull(code)) {
+        DetailToolCode.SECONDARY -> details.current?.let { detailsAction(it.secondaryAction, false) }
+        DetailToolCode.EXTRACT -> vm.onEvent(DashboardUiEvent.OnExtractTaskClicked(id))
+        DetailToolCode.SHARE -> vm.onEvent(DashboardUiEvent.OnShareTaskClicked(id))
+        DetailToolCode.PLAY -> if (headless || !playTask(task)) openDownloadedFile(taskFullPath(task), id)
+        DetailToolCode.COMPRESS -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(id))
+        DetailToolCode.CUT -> vm.onEvent(DashboardUiEvent.OnVideoCutClicked(id))
+        DetailToolCode.SUBTITLES -> vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(id))
+        DetailToolCode.EXTRACT_AUDIO ->
+            if (id !in vm.uiState.value.audioExtracting && AudioExtract.canExtract(task)) vm.onEvent(DashboardUiEvent.OnExtractAudioClicked(id))
+        DetailToolCode.NONE, null -> Unit
     }
 }

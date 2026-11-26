@@ -7,7 +7,6 @@
 package com.deniscerri.ytdl.util
 
 import android.content.Context
-import android.os.Environment
 import java.io.File
 
 object FileUtil {
@@ -16,35 +15,12 @@ object FileUtil {
     }
 
     /**
-     * Looks for cookies.txt in multiple standard accessible paths so users can easily
-     * drop a cookies.txt file into their Downloads or Downloads/FetchJet folder to bypass
-     * age restrictions and bot verifications.
+     * The app's private cookies.txt (filesDir) only. A file in shared storage (Downloads) is
+     * never used: any app could plant one, and yt-dlp writes the cookie jar back to it.
      */
-    fun getCookieFile(
-        context: Context,
-        ignoreIfExists: Boolean = false,
-        path: (path: String) -> Unit
-    ) {
-        val candidates = listOf(
-            File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "FetchJet/cookies.txt"
-            ),
-            File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "cookies.txt"
-            ),
-            File(context.getExternalFilesDir(null), "cookies.txt"),
-            File(context.filesDir, "cookies.txt"),
-            File(context.cacheDir, "cookies.txt")
-        )
-
-        val found = candidates.firstOrNull { it.exists() && it.length() > 0 }
-        if (found != null) {
-            path(found.absolutePath)
-        } else if (ignoreIfExists) {
-            path(File(context.cacheDir, "cookies.txt").absolutePath)
-        }
+    fun getCookieFile(context: Context, path: (path: String) -> Unit) {
+        val file = File(context.filesDir, "cookies.txt")
+        if (file.isFile && file.length() > 0) path(file.absolutePath)
     }
 
 }

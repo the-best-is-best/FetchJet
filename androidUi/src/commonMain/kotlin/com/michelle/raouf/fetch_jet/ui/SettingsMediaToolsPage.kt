@@ -1,6 +1,10 @@
 package com.michelle.raouf.fetch_jet.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,6 +58,42 @@ internal fun MediaToolsPage(
                 checked = videoPlaysEverywhere,
                 onChange = { com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.setVideoPlaysEverywhere(it) }
             )
+            SettingDivider()
+            val playerMode by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPlayer.collectAsState()
+            val off = com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.OFF
+            val on = com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.ON
+            SettingRow(LocalizationManager.Strings.playerModeTitle, LocalizationManager.Strings.playerModeHintShort)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+            ) {
+                SegmentedPicker(
+                    options = listOf(on, off),
+                    selected = if (playerMode == off) off else on,
+                    label = { if (it == off) LocalizationManager.Strings.playerModeOff else LocalizationManager.Strings.playerModeOn },
+                    onSelect = { com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.set(it) }
+                )
+            }
+            SettingDivider()
+            val pdfMode by com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.inAppPdf.collectAsState()
+            SettingRow(LocalizationManager.Strings.pdfModeTitle, LocalizationManager.Strings.pdfModeHint)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+            ) {
+                val pdfOff = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.OFF
+                val pdfOn = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.ON
+                SegmentedPicker(
+                    options = listOf(pdfOn, pdfOff),
+                    selected = if (pdfMode == pdfOff) pdfOff else pdfOn,
+                    label = { if (it == pdfOff) LocalizationManager.Strings.playerModeOff else LocalizationManager.Strings.pdfModeOn },
+                    onSelect = { com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.set(it) }
+                )
+            }
         }
         if (showTools) {
             SettingsGroup(title = LocalizationManager.Strings.mediaToolsGroup) {

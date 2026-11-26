@@ -25,7 +25,10 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
-import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 /**
  * The same local bridge as the desktop app (127.0.0.1:28450), so the FetchJet extension in
@@ -38,15 +41,17 @@ import java.util.concurrent.Executors
  * or downloading (foreground service).
  */
 object ExtensionBridgeServer {
-    private const val PORT = 28450
+    private val PORT = if (BuildConfig.DEBUG) 28470 else 28450
     private const val MAX_BODY = 4 * 1024 * 1024
     private val TOKEN_PATHS = setOf("/inspect", "/add", "/links", "/download", "/show")
+    private const val MAX_CONNECTIONS = 40
+    private const val MAX_HEADERS = 100
 
     @Volatile
     private var started = false
     private lateinit var appContext: Context
     private val main = Handler(Looper.getMainLooper())
-    private val pool = Executors.newCachedThreadPool { r ->
+    private val pool = ThreadPoolExecutor(0, MAX_CONNECTIONS, 30L, TimeUnit.SECONDS, SynchronousQueue()) { r ->
         Thread(r, "fetchjet-bridge").apply {
             isDaemon = true
         }
@@ -65,7 +70,14 @@ object ExtensionBridgeServer {
                         println("ExtensionBridgeServer: listening on 127.0.0.1:$PORT")
                         while (true) {
                             val socket = server.accept()
-                            pool.execute { handle(socket) }
+                            try {
+                                pool.execute { handle(socket) }
+                            } catch (_: RejectedExecutionException) {
+                                try {
+                                    socket.close()
+                                } catch (_: Exception) {
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -120,9 +132,11 @@ object ExtensionBridgeServer {
         val parts = first.split(" ")
         if (parts.size < 2) return null
         val headers = HashMap<String, String>()
+        var count = 0
         while (true) {
             val line = readLine(input) ?: break
             if (line.isEmpty()) break
+            if (++count > MAX_HEADERS) return null
             val i = line.indexOf(':')
             if (i > 0) headers[line.substring(0, i).trim().lowercase()] =
                 line.substring(i + 1).trim()
@@ -146,18 +160,7 @@ object ExtensionBridgeServer {
         )
     }
 
-    private fun trusted(r: Req): Boolean {
-        val rawHost = r.header("Host")?.lowercase()
-        val host = when {
-            rawHost == null -> null
-            rawHost.startsWith("[") -> rawHost.substringBefore("]") + "]"
-            else -> rawHost.substringBefore(':')
-        }
-        if (host != null && host !in setOf("localhost", "127.0.0.1", "[::1]")) return false
-        val origin = r.header("Origin") ?: return true
-        return origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://") ||
-                origin.startsWith("extension://")
-    }
+    private fun trusted(r: Req): Boolean = BridgePairing.isLocalRequest(r.header("Host"), r.header("Origin"))
 
     private fun reply(
         out: OutputStream,
@@ -229,7 +232,11 @@ object ExtensionBridgeServer {
 
     // ---- inspection cache (same as desktop) ------------------------------------------------
 
-    private val inspectGates = HashMap<String, Any>()
+    private class InspectGate {
+        var users = 1
+    }
+
+    private val inspectGates = HashMap<String, InspectGate>()
 
     /** /add requests seen in the last seconds (a tap reaching us twice must not start twice). */
     private val recentAdds = HashMap<String, Long>()
@@ -252,8 +259,26 @@ object ExtensionBridgeServer {
         cached()?.let { return it }
         // The popup asks for the same video in two spellings at once: the second waits for
         // the first instead of running yt-dlp twice.
-        val gate = synchronized(inspectGates) { inspectGates.getOrPut(key) { Any() } }
-        synchronized(gate) {
+        val gate = synchronized(inspectGates) {
+            inspectGates[key]?.also { it.users++ } ?: InspectGate().also { inspectGates[key] = it }
+        }
+        try {
+            return synchronized(gate) { inspectOnce(key, url, requestHeaders, ::cached) }
+        } finally {
+            synchronized(inspectGates) {
+                gate.users--
+                if (gate.users <= 0 && inspectGates[key] === gate) inspectGates.remove(key)
+            }
+        }
+    }
+
+    private fun inspectOnce(
+        key: String,
+        url: String,
+        requestHeaders: Map<String, String>,
+        cached: () -> List<MediaQualityEntry>?
+    ): List<MediaQualityEntry> {
+        run {
             cached()?.let { return it }
             val readingKey = "inspect-" + key.hashCode()
             com.michelle.raouf.fetch_jet.core.notification.BackgroundReading.begin(
@@ -276,25 +301,11 @@ object ExtensionBridgeServer {
 
     // ---- routes -----------------------------------------------------------------------------
 
-    /**
-     * The app's token ([BridgePairing]) or an old extension the user allowed. An extension from
-     * before 1.2.0 (no `X-FetchJet-Pairing`) makes the app ask once; any other app on the phone
-     * gets 401.
-     */
+    /** The app's token ([BridgePairing]); anything else (another app on the phone) gets 401. */
     private fun authorized(r: Req): Boolean {
         if (BridgePairing.isPaired(r.header(BridgePairing.TOKEN_HEADER))) {
             BridgePairing.noteBrowser(r.header("User-Agent"), System.currentTimeMillis(), r.header("X-FetchJet-Ext"))
             return true
-        }
-        val origin = r.header("Origin")
-        if (BridgePairing.isLegacyAllowed(origin)) return true
-        if (origin != null && BridgePairing.isExtensionOrigin(origin) &&
-            !BridgePairing.isBlocked(origin) &&
-            r.header("X-FetchJet-Pairing").isNullOrBlank()
-        ) {
-            Thread({ runBlocking { BridgePairing.ask(origin, legacy = true) } }, "bridge-pair")
-                .apply { isDaemon = true }.start()
-            deliver(toast = false) {}
         }
         return false
     }
@@ -312,8 +323,7 @@ object ExtensionBridgeServer {
                 if (r.method != "POST" || r.header("X-FetchJet").isNullOrBlank() ||
                     origin == null || !BridgePairing.isExtensionOrigin(origin)
                 ) return reply(out, r, 403, "forbidden")
-                deliver(toast = false) {}
-                val allowed = runBlocking { BridgePairing.ask(origin, legacy = false) }
+                val allowed = runBlocking { BridgePairing.ask(origin) { deliver(toast = false) {} } }
                 if (allowed) BridgePairing.noteBrowser(r.header("User-Agent"), System.currentTimeMillis(), r.header("X-FetchJet-Ext"))
                 if (allowed) reply(
                     out, r, 200, """{"token":"${BridgePairing.token}"}""",
@@ -517,7 +527,8 @@ object ExtensionBridgeServer {
                     400,
                     "unsupported url"
                 )
-                val cookie = queryParam(r.query, "cookie").orEmpty()
+                val cookie = r.header("X-FetchJet-Cookie")?.trim().orEmpty().take(16 * 1024)
+                    .filter { it != '\r' && it != '\n' }
                 deliver { ExternalDownloadBridge.dispatch(url, cookie) }
                 reply(out, r, 200, "OK")
             }
@@ -653,7 +664,6 @@ object ExtensionBridgeServer {
                 .setCategory(androidx.core.app.NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
                 .setContentIntent(pi)
-                .setFullScreenIntent(pi, true)
                 .build()
             nm.notify(7001, n)
         } catch (_: Exception) {

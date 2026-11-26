@@ -8,6 +8,8 @@ import com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
+import com.michelle.raouf.fetch_jet.feature.queue_manager.HiddenWork
 import com.michelle.raouf.fetch_jet.feature.queue_manager.QueueManagerRepository
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.CancellationException
@@ -46,6 +48,11 @@ class DashboardViewModel(
         { request -> handleExternalRequest(request) }
     private val boundBatchHandler: (List<com.michelle.raouf.fetch_jet.core.network.ExternalDownloadRequest>, Boolean) -> Unit =
         { requests, review -> handleExternalBatch(requests, review) }
+
+    internal var pendingHide: DashboardUiEvent.OnHideTargets? = null
+    internal var reauthRunning = false
+    internal val accessAskedFor = HashSet<String>()
+    internal var pendingAddDialog = false
 
     internal val _uiState = MutableStateFlow(
 
@@ -138,52 +145,26 @@ class DashboardViewModel(
     init {
 
         observeQueue()
+        attachHiddenPlayback()
+        scope.launch {
+            HiddenWork.state.collect { w ->
+                _uiState.update { it.copy(hidden = it.hidden.copy(workDone = w.done, workTotal = w.total, workFraction = w.fraction)) }
+            }
+        }
         observeBehaviorSettings()
         watchPlaylists()
         scope.launch { com.michelle.raouf.fetch_jet.core.telemetry.UsagePing.sendIfDue() }
 
         val savedSettings = settingsRepository.loadSettings()
-        com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
-        defaultDestinationPath = savedSettings.destinationPath
-
-        _uiState.update {
-            it.copy(
-                destinationPath = savedSettings.destinationPath,
-                disableTorrentUpload = savedSettings.disableTorrentUpload,
-                isDarkMode = savedSettings.isDarkMode,
-                themeMode = savedSettings.themeMode,
-                globalDownloadSpeedLimitBytes = savedSettings.globalDownloadSpeedLimitBytes,
-                globalUploadSpeedLimitBytes = savedSettings.globalUploadSpeedLimitBytes,
-                speedDisplayUnit = savedSettings.speedDisplayUnit,
-                speedPresetLowBytes = savedSettings.speedPresetLowBytes,
-                speedPresetLowUnit = savedSettings.speedPresetLowUnit,
-                speedPresetMediumBytes = savedSettings.speedPresetMediumBytes,
-                speedPresetMediumUnit = savedSettings.speedPresetMediumUnit,
-                speedPresetFastBytes = savedSettings.speedPresetFastBytes,
-                speedPresetFastUnit = savedSettings.speedPresetFastUnit,
-                speedPresetHighBytes = savedSettings.speedPresetHighBytes,
-                speedPresetHighUnit = savedSettings.speedPresetHighUnit
-            )
-        }
+        applyLoadedSettings(savedSettings, force = false)
 
         // Probing the tools spawns `ffmpeg -version` (up to 2 s each, twice) and touches the
         // disk. Doing that here, inside composition, froze the first frame of the app.
         refreshToolStatus()
         autoUpdateTools()
         observeAudioCopies()
+        observeVideoClips()
         observeAddFolder()
-
-        if (savedSettings.globalDownloadSpeedLimitBytes > 0L) {
-
-            queueRepository.setGlobalDownloadSpeedLimit(savedSettings.globalDownloadSpeedLimitBytes)
-
-        }
-
-        if (savedSettings.globalUploadSpeedLimitBytes > 0L) {
-
-            queueRepository.setGlobalUploadSpeedLimit(savedSettings.globalUploadSpeedLimitBytes)
-
-        }
 
         // Time-of-day speed schedule: flip the global limit at window boundaries. The ticker
         // owns its own process-lived scope, so it survives view-model recreation.
@@ -212,6 +193,34 @@ class DashboardViewModel(
         if (bridge.onExternalRequest === boundRequestHandler) bridge.onExternalRequest = null
         if (bridge.onExternalBatch === boundBatchHandler) bridge.onExternalBatch = null
         super.onCleared()
+    }
+
+    internal fun applyLoadedSettings(savedSettings: com.michelle.raouf.fetch_jet.core.settings.AppSettings, force: Boolean) {
+        com.michelle.raouf.fetch_jet.core.i18n.start.AppLanguage.change(savedSettings.language)
+        defaultDestinationPath = savedSettings.destinationPath
+
+        _uiState.update {
+            it.copy(
+                destinationPath = savedSettings.destinationPath,
+                disableTorrentUpload = savedSettings.disableTorrentUpload,
+                isDarkMode = savedSettings.isDarkMode,
+                themeMode = savedSettings.themeMode,
+                globalDownloadSpeedLimitBytes = savedSettings.globalDownloadSpeedLimitBytes,
+                globalUploadSpeedLimitBytes = savedSettings.globalUploadSpeedLimitBytes,
+                speedDisplayUnit = savedSettings.speedDisplayUnit,
+                speedPresetLowBytes = savedSettings.speedPresetLowBytes,
+                speedPresetLowUnit = savedSettings.speedPresetLowUnit,
+                speedPresetMediumBytes = savedSettings.speedPresetMediumBytes,
+                speedPresetMediumUnit = savedSettings.speedPresetMediumUnit,
+                speedPresetFastBytes = savedSettings.speedPresetFastBytes,
+                speedPresetFastUnit = savedSettings.speedPresetFastUnit,
+                speedPresetHighBytes = savedSettings.speedPresetHighBytes,
+                speedPresetHighUnit = savedSettings.speedPresetHighUnit
+            )
+        }
+
+        if (force || savedSettings.globalDownloadSpeedLimitBytes > 0L) queueRepository.setGlobalDownloadSpeedLimit(savedSettings.globalDownloadSpeedLimitBytes)
+        if (force || savedSettings.globalUploadSpeedLimitBytes > 0L) queueRepository.setGlobalUploadSpeedLimit(savedSettings.globalUploadSpeedLimitBytes)
     }
 
     internal fun persistCurrentSettings() {
@@ -444,7 +453,7 @@ class DashboardViewModel(
             // The same video + quality already downloading or queued (a double click in the
             // popup, the page sending twice): do not start it a second time.
             val wantedFormat = selected?.formatId
-            val sameLink = queueRepository.allTasksFlow.value.filter { t ->
+            val sameLink = queueRepository.visibleTasksFlow.value.filter { t ->
                 (sameFileLink(t.url, request.url) || sameFileLink(t.originalUrl.orEmpty(), request.url)) &&
                         (wantedFormat == null || t.formatId == wantedFormat)
             }
@@ -539,7 +548,7 @@ class DashboardViewModel(
         review: Boolean = false
     ) {
         scope.launch {
-            val existing = queueRepository.allTasksFlow.value
+            val existing = queueRepository.visibleTasksFlow.value
             var added = 0
             var skipped = 0
             val mediaPages =
@@ -720,9 +729,13 @@ class DashboardViewModel(
 
         scope.launch {
 
-            queueRepository.allTasksFlow.collect { tasks ->
+            queueRepository.allTasksFlow.collect { everything ->
 
-                com.michelle.raouf.fetch_jet.core.power.WhenDone.onTasks(tasks, scope)
+                com.michelle.raouf.fetch_jet.core.power.WhenDone.onTasks(everything, scope)
+
+                askFileAccessForFailedWrites(everything)
+
+                val tasks = everything.filter { !it.hidden }
 
                 _uiState.update { state ->
 
@@ -742,9 +755,14 @@ class DashboardViewModel(
 
                         totalDownloadSpeedBytesPerSec = totalDlSpeed,
 
-                        totalUploadSpeedBytesPerSec = totalUlSpeed
+                        totalUploadSpeedBytesPerSec = totalUlSpeed,
 
-                    )
+                        hidden = state.hidden.copy(
+                            lockType = HiddenStore.state.value.lockType,
+                            tasks = hiddenTasksFor(everything, state.hidden.unlocked)
+                        )
+
+                    ).withoutEmptyHiddenGroup()
 
                 }
 
@@ -782,6 +800,20 @@ class DashboardViewModel(
             is DashboardUiEvent.OnUnblockDeviceClicked,
             is DashboardUiEvent.OnManualConnectClicked -> handleDeviceSyncEvent(event)
 
+            is DashboardUiEvent.OnHideTargets, DashboardUiEvent.OnHiddenNoticeShown, is DashboardUiEvent.OnAddHiddenToggled, DashboardUiEvent.OnHiddenAddDownload, is DashboardUiEvent.OnUnhideTasks,
+            DashboardUiEvent.OnUnhideAll, is DashboardUiEvent.OnHiddenSetPin, is DashboardUiEvent.OnHiddenUnlock,
+            DashboardUiEvent.OnHiddenLock, DashboardUiEvent.OnHiddenCover, DashboardUiEvent.OnHiddenReauth, is DashboardUiEvent.OnHiddenChangePin, is DashboardUiEvent.OnHiddenRemoveLock,
+            is DashboardUiEvent.OnHiddenOpenFile, is DashboardUiEvent.OnHiddenPlayClicked, DashboardUiEvent.OnHiddenGroupPlayClicked, DashboardUiEvent.OnHiddenClosePlayer, DashboardUiEvent.OnHiddenEncryptNoticeAccepted,
+            DashboardUiEvent.OnHiddenEncryptNoticeDismissed, DashboardUiEvent.OnHiddenShowRecoveryCode,
+            DashboardUiEvent.OnHiddenRecoveryCodeShown, is DashboardUiEvent.OnHiddenRestoreWithCode,
+            DashboardUiEvent.OnHiddenForgotPin, is DashboardUiEvent.OnHiddenResetPin, DashboardUiEvent.OnHiddenResetCancel -> handleHiddenEvent(event)
+
+            DashboardUiEvent.OnBackupExportRequested, DashboardUiEvent.OnBackupWritten,
+            is DashboardUiEvent.OnBackupRestoreText, DashboardUiEvent.OnBackupNoticeShown -> handleBackupEvent(event)
+
+            is DashboardUiEvent.OnHiddenOpenPlaylist, is DashboardUiEvent.OnHiddenOpenFolder, DashboardUiEvent.OnHiddenCloseGroup,
+            is DashboardUiEvent.OnUnhideGroup, is DashboardUiEvent.OnHiddenGroupPause, is DashboardUiEvent.OnHiddenGroupResume -> handleHiddenGroupEvent(event)
+
             is DashboardUiEvent.OnExtractTaskClicked -> queueRepository.extractNow(event.taskId)
             is DashboardUiEvent.OnArchivePasswordEntered -> {
                 _uiState.update { it.copy(archivePassword = null) }
@@ -800,7 +832,20 @@ class DashboardViewModel(
             is DashboardUiEvent.OnAudioCompressSettingsChanged,
             DashboardUiEvent.OnAudioCompressStartClicked,
             is DashboardUiEvent.OnAudioCompressDeleteCopy,
+            is DashboardUiEvent.OnAudioCompressDeleteOriginalChanged,
             DashboardUiEvent.OnDismissAudioCompress -> handleAudioCompressEvent(event)
+
+            is DashboardUiEvent.OnVideoCutClicked,
+            is DashboardUiEvent.OnVideoCutModeChosen,
+            is DashboardUiEvent.OnVideoCutRangeChanged,
+            DashboardUiEvent.OnVideoCutStartClicked,
+            DashboardUiEvent.OnVideoCutCancelClicked,
+            DashboardUiEvent.OnDismissVideoCut,
+            is DashboardUiEvent.OnVideoCutDeleteClip,
+            is DashboardUiEvent.OnVideoCutDeleteOriginalChanged,
+            is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
+
+            is DashboardUiEvent.OnExtractAudioClicked -> extractAudio(event.taskId)
 
             is DashboardUiEvent.OnSubtitlesClicked,
             is DashboardUiEvent.OnSubtitleTrackToggled,

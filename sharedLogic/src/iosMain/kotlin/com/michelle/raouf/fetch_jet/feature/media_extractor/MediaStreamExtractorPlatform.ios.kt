@@ -29,6 +29,7 @@ actual suspend fun resolvePlatformStream(url: String): String? = withContext(Dis
         args.add("--cookies")
         args.add(cookiePath)
     }
+    args.add("--")
     args.add(url)
     val bridge = IosMediaBridgeRegistry.bridge
     val output = if (bridge != null && bridge.isAvailable()) {
@@ -61,6 +62,7 @@ actual suspend fun inspectPlatformPlaylist(
             args.add("--cookies")
             args.add(cookiePath)
         }
+        args.add("--")
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         val output = if (bridge != null && bridge.isAvailable()) {
@@ -85,6 +87,7 @@ actual suspend fun runYtDlpJson(
             mutableListOf("-j", "--no-warnings", "--no-playlist", "--geo-bypass", "-f", selector)
         args.addAll(ytDlpHeaderArgs(headers, url))
         getIosCookieFile()?.let { args.add("--cookies"); args.add(it) }
+        args.add("--")
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         try {

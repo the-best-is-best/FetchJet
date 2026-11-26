@@ -8,7 +8,7 @@ struct AudioCompressButton: View {
     var body: some View {
         let count = store.state.audioCopyCounts[task.id]?.intValue ?? 0
         let title = store.strings.audioCompressTitle + (count > 0 ? " (\(count))" : "")
-        TaskDetailButton(text: title, primary: false) {
+        TaskDetailButton(text: title, primary: false, icon: "arrow.down.right.and.arrow.up.left") {
             store.send(DashboardUiEventOnAudioCompressClicked(taskId: task.id))
         }
         .sheet(isPresented: Binding(
@@ -139,6 +139,12 @@ struct AudioCompressSheet: View {
                     Text(s.audioCompressFailed)
                         .font(FJTheme.font.callout)
                         .foregroundStyle(FJTheme.color.error)
+                }
+                if page.canDeleteOriginal && !page.nothingToGain {
+                    FJDialogCheckRow(title: s.deleteOriginalAfterCompress, checked: Binding(
+                        get: { page.deleteOriginal },
+                        set: { store.send(DashboardUiEventOnAudioCompressDeleteOriginalChanged(on: $0)) }))
+                    .disabled(page.running)
                 }
                 if !page.copies.isEmpty {
                     copiesSection(s)

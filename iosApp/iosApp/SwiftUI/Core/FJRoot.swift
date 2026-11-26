@@ -45,6 +45,7 @@ struct FJRoot: View {
     @EnvironmentObject var store: FJStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @ObservedObject private var browser = FJPageBrowser.shared
+    @ObservedObject private var player = FJPlayer.shared
 
     var body: some View {
         Group {
@@ -57,6 +58,7 @@ struct FJRoot: View {
         .background(FJTheme.color.background.ignoresSafeArea())
         .tint(FJTheme.color.primary)
         .background(AppDialogsHost())
+        .background(Color.clear.modifier(FJVideoCutSheetModifier()))
         .sheet(isPresented: Binding(
             get: { store.state.isAddDialogVisible },
             set: { if !$0 { store.send(DashboardUiEventOnToggleAddDialog(show: false)) } }
@@ -69,7 +71,22 @@ struct FJRoot: View {
         )) { target in
             FJPageBrowserSheet(url: target.url) { browser.page = nil }.environmentObject(store)
         }
+        .fullScreenCover(item: Binding(
+            get: { player.queue.map(FJPlayerTarget.init) },
+            set: { if $0 == nil { player.queue = nil } }
+        )) { target in
+            FJPlayerScreen(queue: target.queue) { player.queue = nil }
+                .environmentObject(store)
+                .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
+        }
+        .fullScreenCover(item: Binding(
+            get: { store.pdf },
+            set: { if $0 == nil { store.pdf = nil } }
+        )) { target in
+            FJPdfReaderScreen(target: target) { store.pdf = nil }.environmentObject(store)
+        }
         .overlay(alignment: .bottom) { FJToastHost() }
+        .modifier(HiddenRootGuard())
         .environment(\.layoutDirection, store.isRtl ? .rightToLeft : .leftToRight)
         .id(store.language)
         .onAppear { FJInterfaceStyle.apply(store.state.themeMode) }
@@ -115,11 +132,10 @@ struct FJListPage: View {
 
 struct FJAddButton: View {
     @EnvironmentObject var store: FJStore
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        Button {
-            store.send(DashboardUiEventOnToggleAddDialog(show: true))
-        } label: {
+        Button(action: action ?? openAddDialog) {
             Image(systemName: "plus")
                 .font(.fj(24, .bold))
                 .foregroundStyle(FJTheme.color.onPrimary)
@@ -128,6 +144,10 @@ struct FJAddButton: View {
                 .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
         }
         .accessibilityLabel(store.strings.homeAddDownload)
+    }
+
+    private func openAddDialog() {
+        store.send(DashboardUiEventOnToggleAddDialog(show: true))
     }
 }
 

@@ -13,31 +13,39 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okio.Path.Companion.toPath
+import kotlin.concurrent.Volatile
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 /**
- * Who may use the local bridge (127.0.0.1:28450, desktop and Android). Before, any program on
- * the computer / phone, or any browser extension, could queue downloads by sending
- * `X-FetchJet: 1`. Now every request needs the app's secret [token] (`X-FetchJet-Token`):
+ * Who may use the local bridge (127.0.0.1:28450, desktop and Android). Every request that acts
+ * needs the app's secret [token] (`X-FetchJet-Token`):
  *  - the FetchJet extension gets it once through `POST /pair`: the app asks the user
  *    ("Allow this browser extension?") and answers with the token, the extension keeps it;
- *  - a second FetchJet instance reads it from `bridge.json` (same user);
- *  - an extension from before 1.2.0 cannot send it: the user is asked once per extension origin
- *    and the origin is remembered ([isLegacyAllowed]). Drop that path once the stores have 3.2.0.
+ *  - a second FetchJet instance reads it from `bridge.json` (same user).
+ * Extensions from before 1.2.0 (no token) used to be trusted by their `Origin` alone; a local
+ * program can fake an `Origin`, so that path is gone and the saved origins are dropped on load.
  *
  * Hardening: a local program can fake a browser `Origin`, so it could pop the "Allow?" dialog.
  * To stop a program flooding the dialog to tire the user into tapping Allow, only one dialog
- * shows at a time (a request from another origin is refused, not queued) and a repeat for the
- * same origin is ignored for [ASK_COOLDOWN] after the last one closed. Tapping **Block**
- * remembers the origin ([blocked]) so it is refused silently afterwards; tapping outside the
- * dialog is a one-time "no" and is not remembered. Allowed and blocked origins are listed in
- * Settings, where the user can revoke or unblock. Every refusal is written to the log.
+ * shows at a time (a request from another origin is refused, not queued), no new dialog shows
+ * for [ASK_COOLDOWN] after any dialog closed, and at most [MAX_ASKS] dialogs show per
+ * [ASK_WINDOW]. Tapping **Block** remembers the origin ([blocked]) so it is refused silently
+ * afterwards; tapping outside the dialog is a one-time "no" and is not remembered. Blocked
+ * origins are listed in Settings, where the user can unblock. Every refusal is written to the log.
+ *
+ * When the saved token cannot be decrypted (OS key store unavailable), it is kept on disk as it
+ * is and every request is refused until it can be read again; a new token is only made when none
+ * was saved.
  */
 object BridgePairing {
     const val TOKEN_HEADER = "X-FetchJet-Token"
     private const val ANSWER_TIMEOUT_MS = 120_000L
     private val ASK_COOLDOWN = 8.seconds
+    private val ASK_WINDOW = 10.minutes
+    private const val MAX_ASKS = 5
+    private val REVEAL_RETRY = 30.seconds
 
     @Serializable
     private data class BridgeFile(
@@ -49,7 +57,7 @@ object BridgePairing {
         val automation: Boolean = false
     )
 
-    data class Request(val origin: String, val legacy: Boolean)
+    data class Request(val origin: String, val legacy: Boolean = false)
 
     private val file get() = "${PathResolver().getSettingsDirectory()}/bridge.json".toPath()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyPrint = true }
@@ -59,27 +67,31 @@ object BridgePairing {
     private val versions = MutableStateFlow<Map<String, String>>(emptyMap())
     private val automation = MutableStateFlow(false)
 
+    /** Read from bridge.json on every call, so a flag written by the Settings UI or the CLI process counts at once. */
     val automationOn: Boolean
         get() {
-            token // loads the file
-            return automation.value
+            ensureLoaded()
+            val onDisk = readFile()?.automation ?: automation.value
+            automation.value = onDisk
+            return onDisk
         }
 
+    /** Only the app's own UI / command line (same user, same settings folder) may call this; never a bridge request. */
     fun setAutomation(on: Boolean) {
-        val current = token
+        ensureLoaded()
         automation.value = on
-        save(current)
+        save(automationOverride = on)
         println("FetchJet bridge: automation API ${if (on) "on" else "off"}")
     }
 
     /** The extension version last reported by each browser (`X-FetchJet-Ext`); 3.3.0 and newer send it. */
     val seenVersions: StateFlow<Map<String, String>>
         get() {
-            token // loads the file
+            ensureLoaded()
             return versions.asStateFlow()
         }
 
-    /** For the Settings list. */
+    /** Always empty now (origins trusted without a token are no longer accepted); kept for the Settings list. */
     val legacyAllowed: StateFlow<Set<String>> = legacyOrigins.asStateFlow()
     val blocked: StateFlow<Set<String>> = blockedOrigins.asStateFlow()
 
@@ -89,35 +101,71 @@ object BridgePairing {
      */
     val seenBrowsers: StateFlow<Map<String, Long>>
         get() {
-            token // loads the file
+            ensureLoaded()
             return seen.asStateFlow()
         }
 
-    /** The secret; made on first use and kept encrypted in bridge.json. */
-    val token: String get() = replacedToken.value ?: initialToken
+    private val plainToken = MutableStateFlow<String?>(null)
 
-    private val replacedToken = MutableStateFlow<String?>(null)
+    @Volatile
+    private var storedToken = ""
+
+    @Volatile
+    private var lastRevealTry: TimeSource.Monotonic.ValueTimeMark? = null
+
+    /** The secret, or "" while the saved one cannot be decrypted (then nothing is paired). */
+    val token: String get() = currentToken().orEmpty()
+
+    private fun currentToken(): String? {
+        ensureLoaded()
+        plainToken.value?.let { return it }
+        if (storedToken.isEmpty()) {
+            val fresh = Secrets.randomHex()
+            if (plainToken.compareAndSet(null, fresh)) save()
+            return plainToken.value
+        }
+        val last = lastRevealTry
+        if (last != null && last.elapsedNow() < REVEAL_RETRY) return null
+        lastRevealTry = TimeSource.Monotonic.markNow()
+        val opened = Secrets.reveal(storedToken)
+        if (opened == null) {
+            println("FetchJet bridge: the saved token cannot be read; every request is refused until it can")
+            return null
+        }
+        if (opened.length < 32) {
+            if (plainToken.compareAndSet(null, Secrets.randomHex())) save()
+            return plainToken.value
+        }
+        plainToken.compareAndSet(null, opened)
+        return plainToken.value
+    }
 
     /** Settings: every paired browser must pair again (a new secret replaces the old one). */
     fun unpairAll() {
-        initialToken // loads the file
-        val fresh = Secrets.randomHex()
-        replacedToken.value = fresh
+        ensureLoaded()
+        plainToken.value = Secrets.randomHex()
         seen.value = emptyMap()
         versions.value = emptyMap()
-        save(fresh)
+        save()
         println("FetchJet bridge: every paired browser was unpaired")
     }
 
-    private val initialToken: String by lazy {
-        val stored = load()
-        legacyOrigins.value = stored.legacyOrigins.toSet()
+    private val loaded: Boolean by lazy {
+        val stored = readFile() ?: BridgeFile()
         blockedOrigins.value = stored.blockedOrigins.toSet()
         seen.value = stored.seenBrowsers
         versions.value = stored.seenVersions
         automation.value = stored.automation
-        Secrets.reveal(stored.token)?.takeIf { it.length >= 32 }
-            ?: Secrets.randomHex().also { save(it) }
+        storedToken = stored.token
+        if (stored.legacyOrigins.isNotEmpty()) {
+            println("FetchJet bridge: dropped ${stored.legacyOrigins.size} origin(s) trusted without a token")
+            save()
+        }
+        true
+    }
+
+    private fun ensureLoaded() {
+        loaded
     }
 
     private class Question(val request: Request, val answer: CompletableDeferred<Boolean>)
@@ -132,10 +180,13 @@ object BridgePairing {
     private val lastClosed =
         MutableStateFlow<Map<String, TimeSource.Monotonic.ValueTimeMark>>(emptyMap())
 
+    /** When the last dialogs were shown (any origin), for [MAX_ASKS] per [ASK_WINDOW]. */
+    private val shownAt = MutableStateFlow<List<TimeSource.Monotonic.ValueTimeMark>>(emptyList())
+
     fun isPaired(sent: String?): Boolean {
         if (sent.isNullOrEmpty()) return false
-        val mine = token
-        if (sent.length != mine.length) return false
+        val mine = currentToken() ?: return false
+        if (mine.isEmpty() || sent.length != mine.length) return false
         var diff = 0
         for (i in mine.indices) diff = diff or (mine[i].code xor sent[i].code)
         return diff == 0
@@ -146,63 +197,89 @@ object BridgePairing {
                 origin.startsWith("moz-extension://") || origin.startsWith("extension://") ||
                 origin.startsWith("safari-web-extension://"))
 
-    fun isLegacyAllowed(origin: String?): Boolean {
-        token // loads the file
-        return origin != null && origin in legacyOrigins.value
+    /**
+     * The first check of every bridge request: the `Host` header (when sent) is a loopback name,
+     * and the `Origin` (when sent) is a browser extension. Web pages and DNS-rebinding hosts fail.
+     */
+    fun isLocalRequest(hostHeader: String?, origin: String?): Boolean {
+        val raw = hostHeader?.lowercase()
+        val host = when {
+            raw == null -> null
+            raw.startsWith("[") -> raw.substringBefore("]") + "]"
+            else -> raw.substringBefore(':')
+        }
+        if (host != null && host !in setOf("localhost", "127.0.0.1", "[::1]")) return false
+        return origin == null || isExtensionOrigin(origin)
     }
 
     /** A user-blocked origin is refused without asking again. */
     fun isBlocked(origin: String?): Boolean {
-        token // loads the file
+        ensureLoaded()
         return origin != null && origin in blockedOrigins.value
     }
 
     private fun recentlyClosed(origin: String): Boolean =
         lastClosed.value[origin]?.let { it.elapsedNow() < ASK_COOLDOWN } ?: false
 
+    private fun anyRecentlyClosed(): Boolean =
+        lastClosed.value.values.any { it.elapsedNow() < ASK_COOLDOWN }
+
+    private fun tooManyAsks(): Boolean =
+        shownAt.value.count { it.elapsedNow() < ASK_WINDOW } >= MAX_ASKS
+
     private fun markClosed(origin: String) {
-        lastClosed.update { it + (origin to TimeSource.Monotonic.markNow()) }
+        lastClosed.update { all ->
+            (all + (origin to TimeSource.Monotonic.markNow())).filterValues { it.elapsedNow() < ASK_COOLDOWN * 2 }
+        }
     }
 
     /**
-     * Asks the user (the bridge thread waits, at most 2 minutes). True = allowed; a legacy
-     * origin is then remembered. A second request for the same origin waits for the same answer.
-     * A request for another origin while a dialog is up, or a repeat within [ASK_COOLDOWN] of the
-     * last one closing, is refused at once (no second dialog) so a program cannot flood the user.
+     * Asks the user (the bridge thread waits, at most 2 minutes). True = allowed. A second
+     * request for the same origin waits for the same answer. [onShown] runs only when this call
+     * put a new dialog up (to bring the app forward). A request for another origin while a dialog
+     * is up, within [ASK_COOLDOWN] of any dialog closing, or past [MAX_ASKS] per [ASK_WINDOW], is
+     * refused at once so a program cannot flood the user.
      */
-    suspend fun ask(origin: String, legacy: Boolean): Boolean {
+    suspend fun ask(origin: String, onShown: () -> Unit = {}): Boolean {
         if (isBlocked(origin)) {
             println("FetchJet bridge: refused a blocked origin $origin")
             return false
         }
+        if (currentToken() == null) {
+            println("FetchJet bridge: refused pairing from $origin, the saved token cannot be read")
+            return false
+        }
         var mine: Question? = null
-        var refused = false
+        var created = false
         question.update { q ->
             when {
                 q != null && q.answer.isActive && q.request.origin == origin -> {
-                    mine = q; refused = false; q
+                    mine = q; created = false; q
                 }
 
                 q != null && q.answer.isActive -> {
-                    // Another dialog is already up: do not replace it or queue behind it.
-                    mine = null; refused = true; q
+                    mine = null; created = false; q
                 }
 
-                recentlyClosed(origin) -> {
-                    mine = null; refused = true; q
+                recentlyClosed(origin) || anyRecentlyClosed() || tooManyAsks() -> {
+                    mine = null; created = false; q
                 }
 
-                else -> Question(Request(origin, legacy), CompletableDeferred()).also {
-                    mine = it; refused = false
+                else -> Question(Request(origin), CompletableDeferred()).also {
+                    mine = it; created = true
                 }
             }
         }
-        if (refused || mine == null) {
-            println("FetchJet bridge: ignored a repeated pairing request from $origin")
+        val asked = mine
+        if (asked == null) {
+            println("FetchJet bridge: ignored a pairing request from $origin (another dialog, a recent one, or too many)")
             return false
         }
-        val asked = mine
-        if (question.value === asked) _pending.value = asked.request
+        if (created) {
+            shownAt.update { list -> list.filter { it.elapsedNow() < ASK_WINDOW } + TimeSource.Monotonic.markNow() }
+            if (question.value === asked) _pending.value = asked.request
+            onShown()
+        }
         val allowed = withTimeoutOrNull(ANSWER_TIMEOUT_MS) { asked.answer.await() } ?: false
         if (question.compareAndSet(asked, null)) _pending.value = null
         markClosed(origin)
@@ -212,10 +289,6 @@ object BridgePairing {
     /** The dialog's Allow (true) or its tap-outside / one-time "no" (false). Not remembered. */
     fun answer(allow: Boolean) {
         val q = question.value ?: return
-        if (allow && q.request.legacy) {
-            legacyOrigins.update { it + q.request.origin }
-            save(token)
-        }
         q.answer.complete(allow)
         markClosed(q.request.origin)
         if (question.compareAndSet(q, null)) _pending.value = null
@@ -225,8 +298,7 @@ object BridgePairing {
     fun block() {
         val q = question.value ?: return
         blockedOrigins.update { it + q.request.origin }
-        legacyOrigins.update { it - q.request.origin }
-        save(token)
+        save()
         println("FetchJet bridge: user blocked ${q.request.origin}")
         q.answer.complete(false)
         markClosed(q.request.origin)
@@ -239,14 +311,14 @@ object BridgePairing {
      */
     fun noteBrowser(userAgent: String?, nowMs: Long, extVersion: String? = null) {
         val id = browserIdFromUserAgent(userAgent) ?: return
-        token // loads the file
+        ensureLoaded()
         val version = extVersion?.trim()?.takeIf { it.isNotEmpty() && it.length <= 20 }
         val versionChanged = version != null && versions.value[id] != version
         val last = seen.value[id]
         if (!versionChanged && last != null && nowMs - last < 3_600_000L) return
         seen.update { it + (id to nowMs) }
         if (version != null) versions.update { it + (id to version) }
-        save(token)
+        save()
     }
 
     fun browserIdFromUserAgent(userAgent: String?): String? {
@@ -262,38 +334,42 @@ object BridgePairing {
         }
     }
 
-    /** Settings: stop trusting a previously allowed origin. */
+    /** Settings: kept for the Settings list; there are no trusted origins any more. */
     fun revokeAllowed(origin: String) {
         legacyOrigins.update { it - origin }
-        save(token)
     }
 
     /** Settings: let a blocked origin ask again. */
     fun unblock(origin: String) {
         blockedOrigins.update { it - origin }
-        save(token)
+        save()
     }
 
-    private fun load(): BridgeFile = try {
+    private fun readFile(): BridgeFile? = try {
         if (!AppFileSystem.exists(file)) BridgeFile()
         else json.decodeFromString(
             BridgeFile.serializer(),
             AppFileSystem.read(file) { readUtf8() })
     } catch (_: Throwable) {
-        BridgeFile()
+        null
     }
 
-    private fun save(plainToken: String) {
+    private fun save(automationOverride: Boolean? = null) {
         try {
+            val plain = plainToken.value
+            val tokenText = if (plain != null) Secrets.protect(plain) else storedToken
+            if (plain != null) storedToken = tokenText
+            val automationValue = automationOverride ?: (readFile()?.automation ?: automation.value)
+            automation.value = automationValue
             val text = json.encodeToString(
                 BridgeFile.serializer(),
                 BridgeFile(
-                    Secrets.protect(plainToken),
-                    legacyOrigins.value.sorted(),
+                    tokenText,
+                    emptyList(),
                     blockedOrigins.value.sorted(),
                     seen.value,
                     versions.value,
-                    automation.value
+                    automationValue
                 )
             )
             file.parent?.let { AppFileSystem.createDirectories(it) }

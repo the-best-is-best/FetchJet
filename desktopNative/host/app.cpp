@@ -1,5 +1,7 @@
 #include "app_host.h"
 #include "emoji_files.h"
+#include "pdf_reader.h"
+#include "player_mpv.h"
 
 #include <chrono>
 #include <cstdio>
@@ -14,6 +16,8 @@
 #include <vector>
 
 namespace fjhost {
+
+    void watch_minimize(bool on);
 
     namespace {
 
@@ -111,6 +115,24 @@ namespace fjhost {
                     case fjgen::EffectKind::Exit:
                         quit_app();
                         break;
+                    case fjgen::EffectKind::OpenPlayer:
+                        player::open(plain(effect.text));
+                        break;
+                    case fjgen::EffectKind::PlayerPath:
+                        player::prepared(plain(effect.title), plain(effect.text));
+                        break;
+                    case fjgen::EffectKind::PlayerPreparing:
+                        player::preparing(plain(effect.title), effect.number);
+                        break;
+                    case fjgen::EffectKind::ClosePlayer:
+                        player::close();
+                        break;
+                    case fjgen::EffectKind::OpenPdf:
+                        pdf::open(plain(effect.text));
+                        break;
+                    case fjgen::EffectKind::ClosePdf:
+                        pdf::close();
+                        break;
                     default:
                         break;
                 }
@@ -141,6 +163,8 @@ namespace fjhost {
                 os::apply_title_bar(dark);
                 os::update_tray_tip(plain(window.global<Core>().get_shell().trayTooltip));
             }
+            if (channel == fjgen::Channel::Chrome)
+                watch_minimize(window.global<Core>().get_chrome().hiddenOpen);
         }
 
         void notify_from_core(unsigned int mask) {
@@ -173,6 +197,12 @@ namespace fjhost {
             else if (service == "storeUpdates")
                 result = os::store_updates();
 #endif
+#if defined(_WIN32) || defined(__APPLE__)
+            else if (service == "authAvailable")
+                result = os::auth_available() ? "1" : "";
+            else if (service == "authVerify")
+                result = os::auth_verify(arg("reason")) ? "1" : "";
+#endif
             return os::copy_for_core(result);
         }
 
@@ -185,7 +215,28 @@ namespace fjhost {
                 g_script_timer.stop();
                 return;
             }
-            send_action(g_script[g_script_next++]);
+            const std::string &line = g_script[g_script_next++];
+            if (line.compare(0, 10, "{\"player\":") == 0) {
+                fj::Json json;
+                std::string error;
+                if (fj::parse_json(line, json, error)) {
+                    const fj::Json *name = json.find("player");
+                    const fj::Json *value = json.find("value");
+                    player::debug(name ? name->text : "", value ? value->number : 0.0);
+                }
+                return;
+            }
+            if (line.compare(0, 7, "{\"pdf\":") == 0) {
+                fj::Json json;
+                std::string error;
+                if (fj::parse_json(line, json, error)) {
+                    const fj::Json *name = json.find("pdf");
+                    const fj::Json *value = json.find("value");
+                    pdf::debug(name ? name->text : "", value ? value->number : 0.0);
+                }
+                return;
+            }
+            send_action(line);
         }
 
         std::string start_config(int argc, char **argv, bool &can_focus) {
@@ -270,6 +321,12 @@ namespace fjhost {
         return g_ui.has_value();
     }
 
+    std::string core_call(const std::string &name, const std::string &args) {
+        if (!g_core.call)
+            return "";
+        return take(g_core.call(name.c_str(), args.c_str()));
+    }
+
     std::string plain(const slint::SharedString &text) {
         return std::string(text.data(), text.size());
     }
@@ -297,6 +354,28 @@ namespace fjhost {
     }
 
     slint::Timer g_repaint_timer;
+    slint::Timer g_minimize_timer;
+    bool g_was_minimized = false;
+
+    void lock_hidden() {
+        send_action("{\"type\":\"HiddenLock\"}");
+    }
+
+    void watch_minimize(bool on) {
+        if (!on) {
+            g_minimize_timer.stop();
+            return;
+        }
+        if (g_minimize_timer.running())
+            return;
+        g_was_minimized = g_shown && os::window_minimized();
+        g_minimize_timer.start(slint::TimerMode::Repeated, std::chrono::seconds(1), [] {
+            bool minimized = g_shown && os::window_minimized();
+            if (minimized && !g_was_minimized)
+                lock_hidden();
+            g_was_minimized = minimized;
+        });
+    }
 
     void repaint_window() {
         if (g_shown && g_ui && ui().window().is_visible())
@@ -325,6 +404,9 @@ namespace fjhost {
             quit_app();
             return;
         }
+        player::close();
+        pdf::close();
+        lock_hidden();
         ui().hide();
         g_shown = false;
         os::window_hidden();
@@ -368,6 +450,8 @@ namespace fjhost {
         g_ui = AppWindow::create();
         auto &window = ui();
         register_fonts();
+        player::wire();
+        pdf::wire();
         window.global<Emoji>().on_icon([](slint::SharedString glyph, int size, int) { return emoji_icon(glyph, size); });
         window.global<Emoji>().set_ready(true);
         window.on_resized([] { repaint_soon(); });
@@ -379,6 +463,7 @@ namespace fjhost {
                 quit_app();
                 return slint::CloseRequestResponse::HideWindow;
             }
+            lock_hidden();
             g_shown = false;
             os::window_hidden();
             return slint::CloseRequestResponse::HideWindow;
@@ -405,6 +490,8 @@ namespace fjhost {
 
         g_running = false;
         os::remove_tray();
+        player::shutdown();
+        pdf::shutdown();
         g_core.shutdown();
         g_ui.reset();
         os::release_instance(instance);

@@ -58,7 +58,15 @@ internal fun copyIntoPlace(from: okio.Path, target: okio.Path): okio.Path {
         runCatching { AppFileSystem.delete(target) }.isFailure
     ) freePathNextTo(target) else target
     if (runCatching { AppFileSystem.atomicMove(from, to) }.isSuccess) return to
-    copyFileInBlocks(from, to)
+    val staged = "$to.fjcopy".toPath()
+    try {
+        if (AppFileSystem.exists(staged)) AppFileSystem.delete(staged)
+        copyFileInBlocks(from, staged)
+        AppFileSystem.atomicMove(staged, to)
+    } catch (e: Exception) {
+        runCatching { AppFileSystem.delete(staged) }
+        throw e
+    }
     return to
 }
 
@@ -145,8 +153,8 @@ internal fun deleteRecursively(path: okio.Path) {
 }
 
 internal fun trimFile(path: okio.Path, keep: Long) {
+    val tmp = "$path.trim".toPath()
     try {
-        val tmp = "$path.trim".toPath()
         AppFileSystem.source(path).buffer().use { src ->
             AppFileSystem.sink(tmp).buffer().use { out ->
                 var left = keep
@@ -159,7 +167,9 @@ internal fun trimFile(path: okio.Path, keep: Long) {
             }
         }
         AppFileSystem.atomicMove(tmp, path)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        runCatching { AppFileSystem.delete(tmp) }
+        throw e
     }
 }
 

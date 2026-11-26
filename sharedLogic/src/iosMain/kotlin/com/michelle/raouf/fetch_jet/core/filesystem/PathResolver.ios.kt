@@ -134,7 +134,7 @@ actual class PathResolver actual constructor() {
     }
 
     actual fun getTempDirectory(): String {
-        val temp = NSTemporaryDirectory()
+        val temp = NSTemporaryDirectory().trimEnd('/')
         val sub = "$temp/temp"
         val fileManager = NSFileManager.defaultManager
         if (!fileManager.fileExistsAtPath(sub)) {

@@ -4,7 +4,10 @@ import com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
 import com.michelle.raouf.fetch_jet.domain.model.isAudioOnly
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
+import com.michelle.raouf.fetch_jet.feature.media_extractor.checkClipRange
 import com.michelle.raouf.fetch_jet.feature.media_extractor.forLanguages
+import com.michelle.raouf.fetch_jet.feature.media_extractor.isFile
 import com.michelle.raouf.fetch_jet.feature.media_extractor.subtitlesFoundFor
 import com.tbib.kmp_localization.LocalizationManager
 import kotlinx.coroutines.flow.update
@@ -50,35 +53,31 @@ internal fun DashboardViewModel.addDownload(
 
     val isClippingActive =
         currentState.isClipRangeEnabled && currentState.detectedEngine == EngineType.MEDIA_STREAM
-    val clipStartSec =
-        if (isClippingActive && currentState.clipStartTime.isNotBlank()) parseHhMmToSeconds(
-            currentState.clipStartTime
-        ) else 0L
-    val clipEndSec =
-        if (isClippingActive && currentState.clipEndTime.isNotBlank()) parseHhMmToSeconds(
-            currentState.clipEndTime
-        ) else currentState.mediaDurationSeconds
-    val mediaDur = currentState.mediaDurationSeconds
-    val fullEndHhMm = if (mediaDur > 0L) formatSecondsToHhMm(mediaDur) else ""
-    val isClipEndAtEnd = currentState.clipEndTime.isBlank() ||
-            (fullEndHhMm.isNotBlank() && currentState.clipEndTime == fullEndHhMm) ||
-            (mediaDur > 0L && clipEndSec >= mediaDur)
+    val clipRange = checkClipRange(
+        isClippingActive, currentState.clipStartTime, currentState.clipEndTime, currentState.mediaDurationSeconds
+    )
 
     if (isClippingActive) {
-        if (mediaDur > 0L && !isClipEndAtEnd && clipEndSec > mediaDur) {
+        if (clipRange.startInvalid || clipRange.endInvalid) {
+            _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.invalidTimeRange) }
+            return
+        }
+        if (clipRange.endExceeds) {
             _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipEndExceedsDuration) }
             return
         }
-        if (clipEndSec > 0L && clipStartSec >= clipEndSec) {
+        if (clipRange.startAfterEnd || clipRange.startExceeds) {
             _uiState.update { it.copy(errorMessage = LocalizationManager.Strings.sysClipStartAfterEnd) }
             return
         }
     }
 
-    val isActualSubClip =
-        isClippingActive && (clipStartSec > 0L || (!isClipEndAtEnd && clipEndSec in 1 until mediaDur) || (mediaDur == 0L && clipEndSec > 0L))
+    val isActualSubClip = clipRange.isSubClip
+    val isClipEndAtEnd = clipRange.endAtEnd
+    val clipStartArg = if (isActualSubClip && clipRange.startMs > 0L) ClipTime.formatMs(clipRange.startMs) else null
+    val clipEndArg = if (isActualSubClip && !isClipEndAtEnd) ClipTime.formatMs(clipRange.endMs) else null
 
-    val allTasks = queueRepository.allTasksFlow.value
+    val allTasks = queueRepository.visibleTasksFlow.value
 
     // 1. Check for duplicate in queue. A name the user typed that differs from the existing
     // task's name means "download it again as a separate file", so it is not a duplicate.
@@ -111,12 +110,8 @@ internal fun DashboardViewModel.addDownload(
             state = currentState,
             url = url,
             qualities = selectedQualities,
-            clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipStartTime
-            ) else null,
-            clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipEndTime
-            ) else null,
+            clipStart = clipStartArg,
+            clipEnd = clipEndArg,
             clipByCutting = isActualSubClip && currentState.clipFastMode
         )
         return
@@ -162,6 +157,7 @@ internal fun DashboardViewModel.addDownload(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         queueRepository.enqueueTask(
             url = url,
+            hidden = currentState.addHidden,
             customDestinationPath = currentState.destinationPath,
             // A synthesized placeholder ("download_123456") must not be forced on the engine:
             // left null, the HTTP engine names the file from Content-Disposition / final URL.
@@ -179,12 +175,8 @@ internal fun DashboardViewModel.addDownload(
             maxDownloadSpeedBytesPerSec = currentState.selectedDownloadSpeedLimitBytes,
             maxUploadSpeedBytesPerSec = currentState.selectedUploadSpeedLimitBytes,
             forcedEngineType = currentState.detectedEngine,
-            clipStart = if (isActualSubClip && currentState.clipStartTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipStartTime
-            ) else null,
-            clipEnd = if (isActualSubClip && !isClipEndAtEnd && currentState.clipEndTime.isNotBlank()) normalizeHhMmForYtDlp(
-                currentState.clipEndTime
-            ) else null,
+            clipStart = clipStartArg,
+            clipEnd = clipEndArg,
             clipByCutting = isActualSubClip && currentState.clipFastMode,
             requestHeaders = headersForLink(url),
             scheduledAtMs = currentState.scheduleStartMs,
@@ -194,6 +186,7 @@ internal fun DashboardViewModel.addDownload(
             embedSubtitles = currentState.embedSubtitles,
             subtitleFormat = currentState.subtitleFormat
         ).onSuccess { task ->
+            if (currentState.addHidden && startedHidden(task)) noteHiddenDone()
             pendingExternalUrl = null
             pendingExternalHeaders = emptyMap()
             pendingExternalFileName = null
@@ -210,6 +203,7 @@ internal fun DashboardViewModel.addDownload(
                     suggestedFileName = "",
                     isLoading = false,
                     isAddDialogVisible = false,
+                    addHidden = false,
                     inspectedTorrentFiles = emptyList(),
                     inspectedTorrentName = null,
                     inspectedMediaQualities = emptyList(),
@@ -228,7 +222,7 @@ internal fun DashboardViewModel.addDownload(
                     mediaDurationSeconds = 0L
                 )
             }
-            _uiEffect.emit(
+            if (!currentState.addHidden) _uiEffect.emit(
                 DashboardUiEffect.ShowToast(
                     LocalizationManager.Strings.sysStartedDownload(startedName(task.fileName, task.url))
                 )
@@ -264,6 +258,7 @@ internal fun DashboardViewModel.addSeveralQualities(
     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
     scope.launch {
         var added = 0
+        var hiddenStarted = false
         var failed = 0
         val usedNames = mutableSetOf<String>()
         for (q in qualities) {
@@ -286,6 +281,7 @@ internal fun DashboardViewModel.addSeveralQualities(
                 url = url,
                 customDestinationPath = destDir,
                 customFileName = fileName,
+                hidden = state.addHidden,
                 // only this quality selected for this download
                 mediaQualities = state.inspectedMediaQualities.map { it.copy(isSelected = it.index == q.index && it.formatId == q.formatId) },
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
@@ -295,8 +291,9 @@ internal fun DashboardViewModel.addSeveralQualities(
                 clipByCutting = clipByCutting,
                 requestHeaders = headersForLink(url),
                 scheduledAtMs = state.scheduleStartMs
-            ).onSuccess { added++ }.onFailure { failed++ }
+            ).onSuccess { added++; if (state.addHidden && startedHidden(it)) hiddenStarted = true }.onFailure { failed++ }
         }
+        if (hiddenStarted) noteHiddenDone()
         pendingExternalUrl = null
         pendingExternalHeaders = emptyMap()
         pendingExternalFileName = null
@@ -312,6 +309,7 @@ internal fun DashboardViewModel.addSeveralQualities(
                 suggestedFileName = "",
                 isLoading = false,
                 isAddDialogVisible = false,
+                addHidden = false,
                 inspectedMediaQualities = emptyList(),
                 inspectedPlaylist = null,
                 inspectedMediaTitle = null,
@@ -327,7 +325,7 @@ internal fun DashboardViewModel.addSeveralQualities(
                 ) else null
             )
         }
-        _uiEffect.emit(
+        if (!state.addHidden) _uiEffect.emit(
             DashboardUiEffect.ShowToast(
                 LocalizationManager.Strings.sysAddedQualityDownloads(
                     added,
@@ -381,6 +379,7 @@ internal fun DashboardViewModel.addPlaylist(
         } catch (_: Exception) {
         }
         var added = 0
+        var hiddenStarted = false
         var failed = 0
         val usedNames = mutableSetOf<String>()
         val playlistId = joining?.id ?: ("pl_" + com.michelle.raouf.fetch_jet.feature.queue_manager.nowEpochMs() + "_" + kotlin.random.Random.nextInt(1000, 9999))
@@ -410,8 +409,9 @@ internal fun DashboardViewModel.addPlaylist(
             )
         }
         for (entry in selected) {
-            val name = queueRepository.pathResolver.sanitizeFileName(entry.title)
-            var fileName = if (name.endsWith(
+            val courseFile = playlist.fromBrowser && entry.isFile
+            val name = queueRepository.pathResolver.sanitizeFileName(if (courseFile) entry.fileName else entry.title)
+            var fileName = if (courseFile || name.endsWith(
                     ".$playlistExt",
                     ignoreCase = true
                 )
@@ -427,11 +427,11 @@ internal fun DashboardViewModel.addPlaylist(
             usedNames.add(fileName.lowercase())
             // A course the extension read (Udemy) lists the lectures' own streams: an HLS
             // playlist goes to the own HLS engine (best rendition), a file is a plain download.
-            val hls = playlist.fromBrowser &&
+            val hls = playlist.fromBrowser && !courseFile &&
                     com.michelle.raouf.fetch_jet.feature.media_extractor.HlsDownloader.isHlsUrl(
                         entry.url
                     )
-            val file =
+            val file = courseFile ||
                 playlist.fromBrowser && !hls && engineForDirectFile(entry.url) == EngineType.HTTP_DIRECT
             val pseudoQuality = com.michelle.raouf.fetch_jet.domain.model.MediaQualityEntry(
                 index = 0,
@@ -449,6 +449,7 @@ internal fun DashboardViewModel.addPlaylist(
                 url = entry.url,
                 customDestinationPath = destDir,
                 customFileName = fileName,
+                hidden = state.addHidden,
                 mediaQualities = if (file) emptyList() else listOf(pseudoQuality),
                 maxDownloadSpeedBytesPerSec = state.selectedDownloadSpeedLimitBytes,
                 forcedEngineType = if (file) EngineType.HTTP_DIRECT else EngineType.MEDIA_STREAM,
@@ -461,8 +462,9 @@ internal fun DashboardViewModel.addPlaylist(
                 embedSubtitles = embed,
                 subtitleFormat = subtitleFormat,
                 subtitleLanguages = if (subtitleLanguages.isEmpty() || file || playlistTracksFor(entry.url, subtitleLanguages) != null) "" else subtitleLanguages.joinToString(",")
-            ).onSuccess { added++ }.onFailure { failed++ }
+            ).onSuccess { added++; if (state.addHidden && startedHidden(it)) hiddenStarted = true }.onFailure { failed++ }
         }
+        if (hiddenStarted) noteHiddenDone()
         if (grouped && added == 0 && joining == null) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.remove(listOf(playlistId))
         _uiState.update {
             it.copy(
@@ -475,6 +477,7 @@ internal fun DashboardViewModel.addPlaylist(
                 suggestedFileName = "",
                 isLoading = false,
                 isAddDialogVisible = false,
+                addHidden = false,
                 inspectedPlaylist = null,
                 checkingPlaylistId = null,
                 inspectedSubtitles = emptyList(),
@@ -487,7 +490,7 @@ internal fun DashboardViewModel.addPlaylist(
             )
         }
         singleVideoUrl = null
-        _uiEffect.emit(
+        if (!state.addHidden) _uiEffect.emit(
             DashboardUiEffect.ShowToast(
                 LocalizationManager.Strings.sysAddedPlaylistVideos(
                     added,
@@ -544,8 +547,9 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
             AppFileSystem.createDirectories(destDir.toPath())
         } catch (_: Exception) {
         }
-        val existing = queueRepository.allTasksFlow.value
+        val existing = queueRepository.visibleTasksFlow.value
         var added = 0
+        var hiddenStarted = false
         var skipped = 0
         val pageUrl = state.inputUrl.trim()
         val fromPage = selected.all { it.folder.isNotBlank() }
@@ -596,6 +600,7 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 customDestinationPath = destDir,
                 customFileName = listedName ?: videoName ?: entry.fileName,
                 keepExistingFiles = true,
+                hidden = state.addHidden,
                 mediaQualities = entry.mediaQualities,
                 requestHeaders = if (quality != null) headersForLink(entry.url) else emptyMap(),
                 disableUpload = state.disableTorrentUpload,
@@ -613,8 +618,9 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                     entry.subtitles.forLanguages(subtitleLanguages) else emptyList(),
                 embedSubtitles = state.embedSubtitles,
                 subtitleFormat = state.subtitleFormat
-            ).onSuccess { added++ }.onFailure { skipped++ }
+            ).onSuccess { added++; if (state.addHidden && startedHidden(it)) hiddenStarted = true }.onFailure { skipped++ }
         }
+        if (hiddenStarted) noteHiddenDone()
         if (pageGrouped && added == 0 && pageGroup == null) com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.remove(listOf(pageGroupId))
         pendingExternalUrl = null
         pendingExternalHeaders = emptyMap()
@@ -630,12 +636,13 @@ internal fun DashboardViewModel.addLinkList(state: DashboardUiState) {
                 suggestedFileName = "",
                 isLoading = false,
                 isAddDialogVisible = false,
+                addHidden = false,
                 scheduleStartMs = 0L,
                 selectedConnections = 0,
                 scrollToTopSignal = it.scrollToTopSignal + 1
             )
         }
-        _uiEffect.emit(
+        if (!state.addHidden) _uiEffect.emit(
             DashboardUiEffect.ShowToast(
                 LocalizationManager.Strings.sysAddedLinkDownloads(added, skipped)
             )

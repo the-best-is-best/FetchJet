@@ -1,6 +1,6 @@
 const FJ_PLATFORM = {
   name: "safari",
-  hidden: ["rowAutoLaunch", "rowNotifications", "rowCaptureDownloads", "rowAutoResolve", "rowHoldKey", "rowMinSize", "cardShortcuts"],
+  hidden: ["rowAutoLaunch", "rowOpenDirectly", "rowNotifications", "rowCaptureDownloads", "rowAutoResolve", "rowHoldKey", "rowMinSize", "cardShortcuts"],
   shortcutsPage: "",
   shortcutsText: "",
   cookiesNote: "optCookiesHintDevice",

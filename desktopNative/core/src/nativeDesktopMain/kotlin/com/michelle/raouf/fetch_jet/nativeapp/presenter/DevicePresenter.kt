@@ -45,6 +45,7 @@ private data class DeviceSlice(
     val fileName: String,
     val fileSize: String,
     val canTransfer: Boolean,
+    val canDelete: Boolean,
     val devices: List<DiscoveredDevice>,
     val sending: SendState?,
     val pairing: PairingState?,
@@ -58,6 +59,7 @@ private fun DashboardUiState.deviceSlice(): DeviceSlice {
         fileName = task?.fileName.orEmpty(),
         fileSize = task?.let { sizeText(it) }.orEmpty(),
         canTransfer = task?.canTransferToDevice() == true,
+        canDelete = deviceShareCanDelete,
         devices = discoveredDevices,
         sending = deviceSending,
         pairing = devicePairing,
@@ -192,7 +194,8 @@ private fun Presenter.publishDevices(s: DeviceSlice, ui: DeviceLocal) {
             noMatch = s.devices.isNotEmpty() && shown.isEmpty(),
             canTransfer = s.canTransfer,
             transfer = ui.transfer,
-            deleteAfter = ui.deleteAfter,
+            deleteAfter = ui.deleteAfter && s.canDelete,
+            deleteBlocked = !s.canDelete,
             manualShown = ui.manualShown,
             manualIp = ui.manualIp,
             manualRev = deviceEcho.of("manual").rev(ui.manualIp),
@@ -283,7 +286,7 @@ internal fun Presenter.deviceSend() {
             taskId,
             target,
             if (ui.transfer) SendMode.TRANSFER_AND_CONTINUE else SendMode.LINK_ONLY,
-            ui.deleteAfter,
+            ui.deleteAfter && vm.uiState.value.deviceShareCanDelete,
         )
     )
 }

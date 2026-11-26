@@ -209,6 +209,23 @@ internal fun Presenter.settingPick(id: String, index: Int) {
             if (mode != vm.uiState.value.themeMode) vm.onEvent(DashboardUiEvent.OnThemeModeChanged(mode))
         }
 
+        id == "desktopPlayer" -> listOf(
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.ON,
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.OFF,
+        ).getOrNull(index)?.let {
+            com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode.set(it)
+            settingsPoke()
+        }
+
+        id == "pdfReader" -> listOf(
+            com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.ASK,
+            com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.ON,
+            com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.OFF,
+        ).getOrNull(index)?.let {
+            com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode.set(it)
+            settingsPoke()
+        }
+
         id == "speedUnit" -> SPEED_UNITS.getOrNull(index)?.let { vm.onEvent(DashboardUiEvent.OnSpeedDisplayUnitChanged(it)) }
         id == "whenDone" -> WhenDoneAction.entries.getOrNull(index)?.let { WhenDone.choose(it) }
         id == "stopRatio" -> STOP_RATIOS.getOrNull(index)?.let {
@@ -523,6 +540,8 @@ internal fun Presenter.settingClick(id: String) {
         id.startsWith("login.remove.") -> NetworkSettings.removeLogin(id.removePrefix("login.remove."))
         id == "toolsFolder" -> openFolder(vm.uiState.value.toolsDirectoryPath)
         id == "tools" -> vm.onEvent(DashboardUiEvent.OnDownloadYtDlpClicked)
+        id == "playerLibrary" -> playerLibraryDownload()
+        id == "pdfLibrary" -> pdfLibraryDownload()
         id == "updateSee" -> updateShow()
         id == "updateCheck" -> UpdateManager.checkNow()
         id == "releaseNotes" -> openExternal("https://github.com/$UPDATE_REPOSITORY/releases")

@@ -36,6 +36,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>FetchJet finds your other devices on this Wi-Fi network so you can send a download between them.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>FetchJet uses Face ID or your passcode to confirm it is you before resetting the hidden downloads PIN.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_fetchjet._tcp</string>

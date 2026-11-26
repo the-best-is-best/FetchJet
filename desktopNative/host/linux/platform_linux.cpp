@@ -444,7 +444,7 @@ namespace fjhost::os {
 
     void show_notice(const std::string &title, const std::string &text) {
         if (on_path("notify-send")) {
-            run_detached({"notify-send", "--app-name=FetchJet", "--icon=fetchjet", title, text});
+            run_detached({"notify-send", "--app-name=FetchJet", "--icon=fetchjet", "--", title, text});
             return;
         }
         std::fprintf(stderr, "FetchJet notice: %s: %s\n", title.c_str(), text.c_str());

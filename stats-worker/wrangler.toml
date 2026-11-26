@@ -1,0 +1,13 @@
+name = "fetchjet"
+main = "worker.js"
+compatibility_date = "2026-11-16"
+workers_dev = true
+preview_urls = false
+
+[vars]
+EXTRA_VERSIONS = "1.5.1"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fetchjet-stats"
+database_id = "714b4f7a-ad51-46d2-a87e-d0dbd83b2b7f"

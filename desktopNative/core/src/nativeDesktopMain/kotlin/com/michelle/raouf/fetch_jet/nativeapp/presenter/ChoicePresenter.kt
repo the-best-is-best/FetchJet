@@ -17,7 +17,14 @@ import kotlinx.coroutines.launch
 internal fun Presenter.startChoices() {
     val source = vm.uiState.map { it.duplicateTaskAlert to it.fileConflictAlert }.distinctUntilChanged()
     scope.launch {
-        combine(source, AppLanguage.current, mainSetupAsk) { pair, _, setup -> Triple(pair.first, pair.second, setup) }.collect { (duplicate, conflict, setup) ->
+        val asks = combine(playerAsk, pdfAsk, libraryWaitFlow()) { player, pdf, wait -> Triple(player, pdf, wait) }
+        combine(source, AppLanguage.current, mainSetupAsk, asks) { pair, _, setup, ask -> listOf(pair.first, pair.second, setup, ask.first, ask.second, ask.third) }.collect { values ->
+            val duplicate = values[0] as com.michelle.raouf.fetch_jet.domain.model.DownloadTask?
+            val conflict = values[1] as com.michelle.raouf.fetch_jet.presentation.dashboard.FileConflictData?
+            val setup = values[2] as com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?
+            val player = values[3] as PlayerAsk?
+            val pdf = values[4] as PdfAsk?
+            val wait = values[5] as LibraryWaitView?
             val strings = LocalizationManager.Strings
             val list = ArrayList<ChoiceDialogDto>(3)
             if (duplicate != null) {
@@ -70,6 +77,9 @@ internal fun Presenter.startChoices() {
                 )
             }
             if (setup != null) list += mainDownloaderDialog(setup)
+            if (player != null) list += playerAskDialog(player)
+            if (pdf != null) list += pdfAskDialog(pdf)
+            if (wait != null) list += libraryWaitDialog(wait)
             choices.publish(list)
         }
     }
@@ -83,6 +93,9 @@ internal fun Presenter.choicePrimary(kind: Int) {
         }
 
         ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupAccept()
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAskDownload()
+        ChoiceDialogKind.PDF_READER -> pdfAskDownload()
+        ChoiceDialogKind.LIBRARY_DOWNLOAD -> libraryWaitRetry()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -92,6 +105,9 @@ internal fun Presenter.choiceSecondary(kind: Int) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnRestartDuplicateClicked)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnConfirmOverwriteClicked)
         ChoiceDialogKind.MAIN_DOWNLOADER -> Unit
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAskSystem()
+        ChoiceDialogKind.PDF_READER -> pdfAskSystem()
+        ChoiceDialogKind.LIBRARY_DOWNLOAD -> libraryWaitOther()
         ChoiceDialogKind.NONE, null -> Unit
     }
 }
@@ -101,6 +117,16 @@ internal fun Presenter.choiceDismiss(kind: Int) {
         ChoiceDialogKind.DUPLICATE -> vm.onEvent(DashboardUiEvent.OnDismissDuplicateDialog)
         ChoiceDialogKind.FILE_CONFLICT -> vm.onEvent(DashboardUiEvent.OnDismissFileConflictDialog)
         ChoiceDialogKind.MAIN_DOWNLOADER -> mainSetupDecline()
+        ChoiceDialogKind.PLAYER_LIBRARY -> playerAsk.value = null
+        ChoiceDialogKind.PDF_READER -> pdfAsk.value = null
+        ChoiceDialogKind.LIBRARY_DOWNLOAD -> libraryWaitCancel()
         ChoiceDialogKind.NONE, null -> Unit
+    }
+}
+
+internal fun Presenter.choiceCheck(kind: Int, checked: Boolean) {
+    when (ChoiceDialogKind.entries.getOrNull(kind)) {
+        ChoiceDialogKind.PLAYER_LIBRARY -> Unit
+        else -> Unit
     }
 }

@@ -83,12 +83,6 @@ class PostProcessTracker(
                 }
             }
 
-            // [FetchJetCut] Cutting clip from Title.mp4   (our plugin, writes Title.temp.mp4)
-            line.startsWith("[FetchJetCut] Cutting clip from") -> {
-                val target = line.substringAfter("Cutting clip from ").trim()
-                start("Cutting clip", tempOf(target), null, 0L)
-            }
-
             // [ModifyChapters] Removing chapters from Title.mp4   (the local cut of a clip)
             line.startsWith("[ModifyChapters]") -> {
                 val target = quotedOr(line, line.substringAfter(" from ", ""))

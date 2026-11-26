@@ -5,6 +5,7 @@ import { TextField } from "../widgets/TextField.slint";
 import { EmojiIcon } from "../widgets/Icons.slint";
 import { ElideText } from "../widgets/ElideText.slint";
 import { Gap, SmallChip } from "../widgets/Kit.slint";
+import { CheckBox } from "../widgets/CheckBox.slint";
 import { Core, ChoiceDialogDto, BadgeToneCode, ClipPickerField } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
@@ -196,10 +197,35 @@ component ChoiceOverlay inherits Rectangle {
                 wrap: word-wrap;
                 min-height: 24px;
             }
+            if root.data.checkLabel != "": Gap {
+                size: 10px;
+            }
+            if root.data.checkLabel != "": HBox {
+                height: 32px;
+                spacing: 12px;
+                cross-axis-alignment: center;
+                CheckBox {
+                    checked: root.data.checked;
+                    label: root.data.checkLabel;
+                    toggled(on) => { Act.choiceCheck(root.data.kind, on); }
+                }
+                Text {
+                    text: root.data.checkLabel;
+                    color: Theme.on-surface;
+                    font-family: Theme.font;
+                    font-size: 13px;
+                    horizontal-stretch: 1;
+                    horizontal-alignment: Dir.start;
+                    vertical-alignment: center;
+                    TouchArea {
+                        clicked => { Act.choiceCheck(root.data.kind, !root.data.checked); }
+                    }
+                }
+            }
             Gap {
                 size: 18px;
             }
-            Rectangle {
+            if root.data.primaryLabel != "": Rectangle {
                 height: 48px;
                 FilledButton {
                     width: parent.width;
@@ -209,7 +235,7 @@ component ChoiceOverlay inherits Rectangle {
                     clicked => { Act.choicePrimary(root.data.kind); }
                 }
             }
-            if root.data.secondaryLabel != "": Gap {
+            if root.data.secondaryLabel != "" && root.data.primaryLabel != "": Gap {
                 size: 8px;
             }
             if root.data.secondaryLabel != "": Rectangle {
@@ -481,7 +507,7 @@ export component ClipPickerDialog inherits Rectangle {
                 HBox {
                     spacing: 6px;
                     alignment: start;
-                    SmallChip {
+                    if !Core.clipPicker.quick5Hidden: SmallChip {
                         label: "+5m";
                         border-radius: 16px;
                         pad: 12px;
@@ -490,7 +516,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(0); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick15Hidden: SmallChip {
                         label: "+15m";
                         border-radius: 16px;
                         pad: 12px;
@@ -499,7 +525,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(1); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick30Hidden: SmallChip {
                         label: "+30m";
                         border-radius: 16px;
                         pad: 12px;
@@ -508,7 +534,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(2); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.quick60Hidden: SmallChip {
                         label: "+1h";
                         border-radius: 16px;
                         pad: 12px;
@@ -526,7 +552,7 @@ export component ClipPickerDialog inherits Rectangle {
                         line: Theme.outline;
                         clicked => { Act.clipPickerQuick(4); }
                     }
-                    SmallChip {
+                    if !Core.clipPicker.minChipHidden: SmallChip {
                         label: Core.clipPicker.minChip;
                         border-radius: 16px;
                         pad: 12px;

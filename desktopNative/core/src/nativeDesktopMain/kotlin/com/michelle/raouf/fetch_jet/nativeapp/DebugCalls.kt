@@ -21,6 +21,8 @@ import com.michelle.raouf.fetch_jet.feature.device_sync.SendState
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.BrowserDialog
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.DeviceDebug
 import com.michelle.raouf.fetch_jet.nativeapp.presenter.showBrowserDialog
+import com.michelle.raouf.fetch_jet.nativeapp.presenter.debugPlayHidden
+import com.michelle.raouf.fetch_jet.nativeapp.presenter.debugPlayTask
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
@@ -52,6 +54,8 @@ internal object DebugCalls {
             memory()
         }
         "stats" -> stats()
+        "playHidden" -> NativeApp.presenter.debugPlayHidden(text(args, "id"))
+        "playTask" -> NativeApp.presenter.debugPlayTask(text(args, "id"))
         "addDirect" -> addDirect(args)
         "testLink" -> testLink()
         "extensionSteps" -> extensionSteps(args)
@@ -95,9 +99,15 @@ internal object DebugCalls {
             put("on", com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.wakeForSchedule.value)
             put("armedAtMs", com.michelle.raouf.fetch_jet.core.power.WakeForSchedule.armedAtMs.value)
         }.toString()
+        "hideAnyType" -> {
+            com.michelle.raouf.fetch_jet.feature.hidden.HiddenMedia.mediaOnly = text(args, "on") != "true"
+            "{}"
+        }
         "opened" -> buildJsonObject {
             putJsonArray("links") { for (link in NativeApp.presenter.openedLinks.value) add(kotlinx.serialization.json.JsonPrimitive(link)) }
+            putJsonArray("hidden") { repeat(NativeApp.presenter.openedHidden.value.size) { add(kotlinx.serialization.json.JsonPrimitive("hidden")) } }
             putJsonArray("shared") { for (text in NativeApp.presenter.sharedTexts.value) add(kotlinx.serialization.json.JsonPrimitive(text)) }
+            put("secretCopies", NativeApp.presenter.secretCopies.value)
         }.toString()
         "sections" -> {
             NativeApp.presenter.debugSections.value = text(args, "all") == "true"
@@ -267,6 +277,9 @@ internal object DebugCalls {
                 put("waitingInQueue", task.waitingInQueue)
                 put("resumable", task.serverSupportsResume?.toString() ?: "unknown")
                 put("checksumVerified", task.checksumVerified?.toString() ?: "unknown")
+                put("cutFrom", task.cutFromTaskId)
+                put("cutStartMs", task.cutStartMs)
+                put("cutEndMs", task.cutEndMs)
             }
         }
     }.toString()
@@ -294,6 +307,7 @@ internal object DebugCalls {
             put("toolsDownloading", s.isDownloadingYtDlp)
             put("torrentReady", s.isTorrentEngineReady)
             put("linkList", s.linkList.size)
+            put("addHidden", s.addHidden)
             putJsonArray("qualities") { for (q in s.inspectedMediaQualities) add(kotlinx.serialization.json.JsonPrimitive(q.qualityLabel)) }
             put("inspectMediaError", s.inspectMediaError.orEmpty())
             put("isInspectingMedia", s.isInspectingMedia)

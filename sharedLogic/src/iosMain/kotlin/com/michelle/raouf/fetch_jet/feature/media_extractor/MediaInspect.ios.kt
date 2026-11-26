@@ -132,6 +132,7 @@ actual suspend fun inspectPlatformQualities(
             args.add("--cookies")
             args.add(cookiePath)
         }
+        args.add("--")
         args.add(trimmedUrl)
         val bridge = IosMediaBridgeRegistry.bridge
         val output = if (bridge != null && bridge.isAvailable()) {

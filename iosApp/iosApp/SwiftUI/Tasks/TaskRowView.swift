@@ -5,8 +5,6 @@ enum TaskRowAction { case pause, resume, startNow, open, none }
 
 @MainActor
 enum TaskUi {
-    static let audioExt: Set<String> = ["mp3", "m4a", "aac", "flac", "wav", "ogg", "opus"]
-
     static func displayName(_ task: DownloadTask, _ host: IosAppHost) -> String {
         var raw = task.fileName
         if raw.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -20,10 +18,11 @@ enum TaskUi {
     static func kindTag(_ task: DownloadTask) -> String {
         let name = task.fileName
         let ext: String = name.contains(".") ? (name.components(separatedBy: ".").last ?? "").lowercased() : ""
+        let media = MediaExtensions.shared
         if task.engineType == .bittorrent { return "MAG" }
-        if task.engineType == .mediaStream { return audioExt.contains(ext) ? "AUD" : "VID" }
-        if audioExt.contains(ext) { return "AUD" }
-        if ["mp4", "mkv", "webm", "mov", "avi"].contains(ext) { return "VID" }
+        if task.engineType == .mediaStream { return media.isAudio(name: name) ? "AUD" : "VID" }
+        if media.isAudio(name: name) { return "AUD" }
+        if media.isVideo(name: name) { return "VID" }
         if (2...4).contains(ext.count) && ext.allSatisfy({ $0.isLetter || $0.isNumber }) { return ext.uppercased() }
         return "FILE"
     }
@@ -205,8 +204,8 @@ struct TaskQuickActionButton: View {
             let (icon, label): (String, String) = {
                 switch action {
                 case .pause: return ("pause.fill", s.pause)
-                case .resume: return ("play.fill", s.resume)
-                case .startNow: return ("play.fill", s.homeStartNow)
+                case .resume: return ("arrow.down.to.line", s.resume)
+                case .startNow: return ("arrow.down.to.line", s.homeStartNow)
                 case .open: return (play ? "play.fill" : "arrow.up.forward.square", s.open)
                 case .none: return ("", "")
                 }

@@ -338,32 +338,32 @@ private struct TaskDetailsContent: View {
 
     private var links: some View {
         let s = store.strings
-        let page = task.requestHeaders["Referer"] ?? task.originalUrl ?? ""
-        var items: [(String, String)] = []
-        let playlist = PlaylistGroupsKt.playlistLinkOf(task: task)
-        for (label, link) in [(s.detailsPage, page), (s.detailsPlaylist, playlist)] where !link.isEmpty && !Secrets.shared.isProtected(stored: link) {
-            if !items.contains(where: { $0.1 == link }) { items.append((label, link)) }
-        }
-        return ForEach(items, id: \.1) { label, link in
+        let items = DetailsLinksKt.detailsLinks(task: task)
+        return ForEach(items, id: \.label) { item in
+            let label = item.label
+            let link = item.link
+            let note = item.note
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(label)
                         .font(.fj(11))
                         .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     Spacer()
-                    Button {
-                        UIPasteboard.general.string = link
-                        store.showToast(s.copied)
-                    } label: {
-                        Text(s.copy)
-                            .font(.fj(11, .semibold))
-                            .foregroundStyle(FJTheme.color.primary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                    if note.isEmpty {
+                        Button {
+                            UIPasteboard.general.string = link
+                            store.showToast(s.copied)
+                        } label: {
+                            Text(s.copy)
+                                .font(.fj(11, .semibold))
+                                .foregroundStyle(FJTheme.color.primary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
-                Text(store.host.displayUrl(url: link))
+                Text(note.isEmpty ? store.host.displayUrl(url: link) : note)
                     .font(.fj(12))
                     .foregroundStyle(FJTheme.color.onSurface.opacity(0.75))
                     .lineLimit(4)
@@ -392,60 +392,90 @@ private struct TaskDetailsContent: View {
         let s = store.strings
         let running = TaskUi.isRunning(task)
         let resolver = PathResolver()
-        let canFolder = resolver.isOpenFolderSupported()
+        let canFolder = resolver.isOpenFolderSupported() && !task.hidden
         let path = fullPath
         let openFolder = { _ = resolver.openFileLocation(filePath: path) }
-        VStack(spacing: 8) {
+        let canExtract = ArchiveTasks.shared.canExtract(task: task)
+        let canSend = task.canSendToDevice()
+        let canAudio = AudioExtract.shared.canExtract(task: task)
+        let extracting = store.state.audioExtracting.contains(task.id)
+        let canCut = VideoCut.shared.canCut(task: task)
+        let canCompress = !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task)
+        let canSubtitles = task.canAddSubtitles()
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 if isCompleted {
-                    TaskDetailButton(text: s.detailsOpenFile, primary: true) { store.openFile(task) }
-                    if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
+                    TaskDetailButton(text: s.detailsOpenFile, primary: true,
+                                     icon: MediaPlayback.shared.canPlay(task: task, allowHidden: task.hidden) ? "play.fill" : "doc") { store.openFile(task) }
                 } else if running {
-                    TaskDetailButton(text: s.pause, primary: true) { pauseClicked() }
-                    if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
+                    TaskDetailButton(text: s.pause, primary: true, icon: "pause.fill") { pauseClicked() }
                 } else if task.waitingInQueue {
-                    TaskDetailButton(text: s.detailsStartNow, primary: true) {
+                    TaskDetailButton(text: s.detailsStartNow, primary: true, icon: "arrow.down.to.line") {
                         store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
                     }
-                    TaskDetailButton(text: s.pause, primary: false) {
+                    TaskDetailButton(text: s.pause, primary: false, icon: "pause") {
                         store.send(DashboardUiEventOnPauseClicked(taskId: task.id))
                     }
                 } else {
-                    TaskDetailButton(text: task.status == .error ? s.retry : s.resume, primary: true) {
+                    TaskDetailButton(text: task.status == .error ? s.retry : s.resume, primary: true,
+                                     icon: task.status == .error ? "arrow.clockwise" : "arrow.down.to.line") {
                         store.send(DashboardUiEventOnResumeClicked(taskId: task.id))
                     }
-                    if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, action: openFolder) }
                 }
             }
-            if ArchiveTasks.shared.canExtract(task: task) {
-                TaskDetailButton(text: s.extractNow, primary: false) {
-                    store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+            if canFolder || canExtract || canSend || canAudio {
+                LazyVGrid(columns: tileColumns, spacing: 8) {
+                    if canFolder { TaskDetailButton(text: s.detailsOpenFolder, primary: false, icon: "folder", action: openFolder) }
+                    if canExtract {
+                        TaskDetailButton(text: s.extractNow, primary: false, icon: "archivebox") {
+                            store.send(DashboardUiEventOnExtractTaskClicked(taskId: task.id))
+                        }
+                    }
+                    if canAudio {
+                        TaskDetailButton(text: extracting ? s.audioExtractRunning : s.audioExtractTitle, primary: false,
+                                         icon: "waveform") {
+                            store.send(DashboardUiEventOnExtractAudioClicked(taskId: task.id))
+                        }
+                        .disabled(extracting)
+                        .opacity(extracting ? 0.6 : 1)
+                    }
+                    if canSend {
+                        TaskDetailButton(text: s.sysDeviceSendTitle, primary: false, icon: "iphone.and.arrow.forward") {
+                            store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
+                        }
+                    }
                 }
             }
-            if task.canAddSubtitles() {
-                SubtitlesButton(task: task)
-            }
-            if !AudioCompressPlace.onRow && AudioCompress.shared.canCompress(task: task) {
-                AudioCompressButton(task: task)
-            }
-            if task.canSendToDevice() {
-                TaskDetailButton(text: s.sysDeviceSendTitle, primary: false) {
-                    store.send(DashboardUiEventOnShareTaskClicked(taskId: task.id))
+            if canCut || canCompress || canSubtitles {
+                LazyVGrid(columns: tileColumns, spacing: 8) {
+                    if canCut {
+                        TaskDetailButton(text: VideoCut.shared.title(audio: VideoCut.shared.isAudio(task: task)), primary: false, icon: "scissors") {
+                            store.send(DashboardUiEventOnVideoCutClicked(taskId: task.id))
+                        }
+                    }
+                    if canCompress { AudioCompressButton(task: task) }
+                    if canSubtitles { SubtitlesButton(task: task) }
                 }
             }
+            VideoCutClipsSection(task: task)
             Button {
                 store.send(DashboardUiEventOnCancelClicked(taskId: task.id))
             } label: {
-                Text(isCompleted ? s.detailsRemoveFromList : s.detailsCancelDownload)
+                Label(isCompleted ? s.detailsRemoveFromList : s.detailsCancelDownload, systemImage: "trash")
                     .font(.fj(13, .semibold))
                     .foregroundStyle(FJTheme.color.error)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42)
+                    .frame(height: 44)
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.error.opacity(0.35), lineWidth: 1))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.top, 6)
         }
+    }
+
+    private var tileColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 150), spacing: 8)]
     }
 
     private func pauseClicked() {
@@ -493,23 +523,32 @@ struct TaskDetailStat: View {
 struct TaskDetailButton: View {
     let text: String
     let primary: Bool
+    var icon: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(text)
-                .font(.fj(13, primary ? .bold : .semibold))
-                .lineLimit(1)
-                .foregroundStyle(primary ? FJTheme.color.onPrimary : FJTheme.color.onSurface)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(primary ? FJTheme.color.primary : Color.clear, in: RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    if !primary {
-                        RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outlineVariant.opacity(0.6), lineWidth: 1)
-                    }
+            HStack(spacing: 6) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.fj(13, .semibold))
                 }
-                .contentShape(Rectangle())
+                Text(text)
+                    .font(.fj(13, primary ? .bold : .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(primary ? FJTheme.color.onPrimary : FJTheme.color.onSurface)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(primary ? FJTheme.color.primary : FJTheme.color.surfaceVariant.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                if !primary {
+                    RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outlineVariant.opacity(0.6), lineWidth: 1)
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

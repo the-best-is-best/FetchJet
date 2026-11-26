@@ -256,6 +256,11 @@ fun AudioCompressDialog(page: AudioCompressUi, onEvent: (DashboardUiEvent) -> Un
                             }
                         }
                     }
+                    if (page.canDeleteOriginal && !page.nothingToGain) {
+                        DeleteOriginalRow(s.deleteOriginalAfterCompress, page.deleteOriginal) {
+                            if (!page.running) onEvent(DashboardUiEvent.OnAudioCompressDeleteOriginalChanged(it))
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),

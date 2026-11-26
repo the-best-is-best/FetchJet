@@ -9,4 +9,16 @@
     <exclude
         domain="file"
         path="logs/" />
+    <exclude
+        domain="file"
+        path="settings/hidden.json" />
+    <exclude
+        domain="file"
+        path="settings/hidden.json.bak" />
+    <exclude
+        domain="file"
+        path="settings/hidden.json.bad" />
+    <exclude
+        domain="file"
+        path="settings/hidden_files/" />
 </full-backup-content>

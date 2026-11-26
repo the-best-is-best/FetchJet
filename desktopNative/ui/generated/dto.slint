@@ -140,6 +140,7 @@ export struct PlaylistRowDto {
     before: bool,
     unavailable: bool,
     inPlaylist: bool,
+    tag: string,
 }
 
 export struct ClipChipDto {
@@ -225,6 +226,11 @@ export struct ClipPickerDto {
     error: string,
     endChip: string,
     minChip: string,
+    minChipHidden: bool,
+    quick5Hidden: bool,
+    quick15Hidden: bool,
+    quick30Hidden: bool,
+    quick60Hidden: bool,
     valid: bool,
     applyLabel: string,
 }
@@ -257,6 +263,8 @@ export struct ChoiceDialogDto {
     secondaryLabel: string,
     secondaryDanger: bool,
     cancelLabel: string,
+    checkLabel: string,
+    checked: bool,
 }
 
 export struct AddTorrentDto {
@@ -288,12 +296,57 @@ export struct AlertDto {
     round: bool,
     inputLabel: string,
     inputSecret: bool,
+    inputPattern: bool,
+    inputRev: int,
+    inputDisabled: bool,
+    hintError: bool,
+    linkLabel: string,
 }
 
 export struct AudioCopyDto {
     path: string,
     name: string,
     size: string,
+}
+
+export struct VideoClipDto {
+    path: string,
+    name: string,
+    nameRtl: bool,
+    size: string,
+    range: string,
+}
+
+export struct VideoCutDto {
+    open: bool,
+    needsTools: bool,
+    audio: bool,
+    chooser: bool,
+    timeline: bool,
+    clipsOnly: bool,
+    reading: bool,
+    timelineOff: bool,
+    fileName: string,
+    fileNameRtl: bool,
+    duration: string,
+    start: string,
+    startFriendly: string,
+    end: string,
+    endFriendly: string,
+    length: string,
+    rangeError: bool,
+    canStart: bool,
+    running: bool,
+    stopping: bool,
+    progress: float,
+    percent: string,
+    elapsed: string,
+    timeLeft: string,
+    failed: bool,
+    message: string,
+    clips: [VideoClipDto],
+    canDeleteOriginal: bool,
+    deleteOriginal: bool,
 }
 
 export struct AudioCompressDto {
@@ -331,6 +384,9 @@ export struct AudioCompressDto {
     channelOptions: [string],
     channelPick: int,
     progressText: string,
+    cut: VideoCutDto,
+    canDeleteOriginal: bool,
+    deleteOriginal: bool,
 }
 
 export struct ChipDto {
@@ -342,6 +398,14 @@ export struct ChipDto {
 export struct LinkDto {
     label: string,
     url: string,
+    note: string,
+}
+
+export struct DetailToolDto {
+    code: int,
+    icon: string,
+    label: string,
+    disabled: bool,
 }
 
 export struct DetailsDto {
@@ -396,6 +460,9 @@ export struct DetailsDto {
     canSubtitles: bool,
     compressLabel: string,
     removeLabel: string,
+    fileTools: [DetailToolDto],
+    mediaTools: [DetailToolDto],
+    clips: [VideoClipDto],
 }
 
 export struct PieceDto {
@@ -449,6 +516,7 @@ export struct DeviceSheetDto {
     canTransfer: bool,
     transfer: bool,
     deleteAfter: bool,
+    deleteBlocked: bool,
     manualShown: bool,
     manualIp: string,
     manualRev: int,
@@ -534,6 +602,7 @@ export struct ChromeDto {
     playlistCanPause: bool,
     playlistCanResume: bool,
     playlistCanCheck: bool,
+    playlistCanPlay: bool,
     playlistLanguagesShown: bool,
     playlistLanguagesBusy: bool,
     playlistLanguagesNote: string,
@@ -541,6 +610,13 @@ export struct ChromeDto {
     groupIsFolder: bool,
     groupIsPage: bool,
     groupFolderPath: string,
+    hiddenOpen: bool,
+    hiddenNote: string,
+    hiddenChangeLabel: string,
+    hiddenRemoveLabel: string,
+    hiddenWorkShown: bool,
+    hiddenWorkText: string,
+    hiddenWorkFraction: float,
 }
 
 export struct StatusDto {
@@ -591,6 +667,8 @@ export struct RowMenuItemDto {
     label: string,
     danger: bool,
     divider: bool,
+    header: string,
+    disabled: bool,
 }
 
 export struct SettingsSectionDto {
@@ -836,6 +914,9 @@ export global ChoiceDialogKind {
     out property <int> duplicate: 1;
     out property <int> file-conflict: 2;
     out property <int> main-downloader: 3;
+    out property <int> player-library: 4;
+    out property <int> pdf-reader: 5;
+    out property <int> library-download: 6;
 }
 
 export global BadgeToneCode {
@@ -875,6 +956,9 @@ export global AlertKind {
     out property <int> extension-from-file: 11;
     out property <int> extension-failed: 12;
     out property <int> archive-password: 13;
+    out property <int> hidden-pin: 14;
+    out property <int> hidden-notice: 15;
+    out property <int> hidden-recovery: 16;
 }
 
 export global ToneCode {
@@ -898,6 +982,18 @@ export global DetailActionCode {
     out property <int> pause: 3;
     out property <int> start-now: 4;
     out property <int> resume: 5;
+}
+
+export global DetailToolCode {
+    out property <int> none: 0;
+    out property <int> secondary: 1;
+    out property <int> extract: 2;
+    out property <int> share: 3;
+    out property <int> play: 4;
+    out property <int> compress: 5;
+    out property <int> cut: 6;
+    out property <int> subtitles: 7;
+    out property <int> extract-audio: 8;
 }
 
 export global PieceStateCode {
@@ -931,6 +1027,12 @@ export global EffectKind {
     out property <int> scroll-to-row: 2;
     out property <int> notify: 3;
     out property <int> exit: 4;
+    out property <int> open-player: 5;
+    out property <int> player-path: 6;
+    out property <int> player-preparing: 7;
+    out property <int> close-player: 8;
+    out property <int> open-pdf: 9;
+    out property <int> close-pdf: 10;
 }
 
 export global SideFilterCode {

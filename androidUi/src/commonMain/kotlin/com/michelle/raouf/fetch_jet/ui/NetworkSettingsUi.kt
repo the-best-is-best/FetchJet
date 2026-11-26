@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -163,21 +166,58 @@ private fun ProxyCard(isIos: Boolean) {
 @Composable
 private fun SiteLoginsCard() {
     val logins by NetworkSettings.logins.collectAsState()
+    val sessions by NetworkSettings.cookies.collectAsState()
+    var signInSite by remember { mutableStateOf<String?>(null) }
+    var removing by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     var site by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val canAdd = SiteLogin.cleanSite(site).contains('.') && user.isNotBlank()
+    val canSignIn = SiteLogin.cleanSite(site).contains('.')
+    signInSite?.let { target ->
+        SiteSignInDialog(target) { cookie ->
+            if (cookie != null) NetworkSettings.saveCookie(target, cookie)
+            signInSite = null
+        }
+    }
+
+    removing?.let { (name, action) ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text(LocalizationManager.Strings.netRemoveConfirm) },
+            text = { Text(name) },
+            confirmButton = {
+                TextButton(onClick = { action(); removing = null }) {
+                    Text(LocalizationManager.Strings.netRemove, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removing = null }) { Text(LocalizationManager.Strings.cancel) }
+            }
+        )
+    }
 
     SettingsGroup(
         title = LocalizationManager.Strings.netLoginsGroup,
         footer = LocalizationManager.Strings.netLoginsHint
     ) {
-        if (logins.isEmpty()) {
+        if (logins.isEmpty() && sessions.isEmpty()) {
             SettingRow(title = LocalizationManager.Strings.netLoginsEmpty)
+        }
+        sessions.forEach { session ->
+            SettingRow(title = session.site, subtitle = LocalizationManager.Strings.netLoginBrowserTag) {
+                TextButton(onClick = { removing = session.site to { clearBrowserLogin(session.site); NetworkSettings.removeCookie(session.site) } }) {
+                    Text(
+                        LocalizationManager.Strings.netRemove,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            SettingDivider()
         }
         logins.forEach { login ->
             SettingRow(title = login.site, subtitle = login.user) {
-                TextButton(onClick = { NetworkSettings.removeLogin(login.site) }) {
+                TextButton(onClick = { removing = login.site to { clearBrowserLogin(login.site); NetworkSettings.removeLogin(login.site) } }) {
                     Text(
                         LocalizationManager.Strings.netRemove,
                         color = MaterialTheme.colorScheme.error
@@ -215,6 +255,11 @@ private fun SiteLoginsCard() {
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                OutlinedButton(
+                    enabled = canSignIn,
+                    onClick = { signInSite = site.trim() }
+                ) { Text(LocalizationManager.Strings.netLoginBrowser) }
+                Spacer(Modifier.width(8.dp))
                 Button(
                     enabled = canAdd,
                     onClick = {

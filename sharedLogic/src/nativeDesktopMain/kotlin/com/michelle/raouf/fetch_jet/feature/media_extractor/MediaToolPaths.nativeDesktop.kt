@@ -75,14 +75,14 @@ fun isSystemFfmpegInstalled(): Boolean {
     return result
 }
 
-actual suspend fun runLocalFfmpeg(args: List<String>): Boolean = withContext(Dispatchers.IO) {
+actual suspend fun runLocalFfmpeg(args: List<String>, timeoutMs: Long): Boolean = withContext(Dispatchers.IO) {
     val bin = getExistingFfmpegBinary()
         ?: (if (isSystemFfmpegInstalled()) "ffmpeg" else null)
         ?: return@withContext false
     try {
         val out = StringBuilder()
         val result = DesktopOs.runProcess(
-            listOf(bin) + args, mergeStderr = true, timeoutMs = 30L * 60 * 1000, keepOutput = false,
+            listOf(bin) + args, mergeStderr = true, timeoutMs = timeoutMs, keepOutput = false,
             onStdoutLine = {
                 out.appendLine(it)
                 if (out.length > 8000) out.deleteRange(0, out.length - 4000)

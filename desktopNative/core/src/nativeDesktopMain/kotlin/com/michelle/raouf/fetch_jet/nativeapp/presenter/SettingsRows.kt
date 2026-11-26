@@ -949,6 +949,80 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
                 )
             )
         }
+        rows.divider()
+        val playerMode = com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode
+        rows.add(
+            pickerRow(
+                "desktopPlayer",
+                s.playerModeTitle,
+                s.playerModeHint,
+                listOf(s.playerModeOn, s.playerModeOff),
+                when {
+                    playerMode.isOn() -> 1
+                    playerMode.isOff() -> 2
+                    else -> 0
+                },
+                below = true,
+            )
+        )
+        if (playerMode.isOn() && !com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady()) {
+            val libmpv = v.isDownloadingYtDlp && v.toolDownloadName == "libmpv"
+            rows.add(noteRow(s.playerAskText, ToneCode.MUTED))
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 8,
+                    bottom = 14,
+                    buttons = listOf(
+                        button(
+                            "playerLibrary",
+                            if (libmpv) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("libmpv", (it * 100).toInt()) } ?: s.mediaDownloadingTool("libmpv")
+                            else s.playerAskDownload,
+                            filled = true,
+                            enabled = !v.isDownloadingYtDlp,
+                            busy = libmpv,
+                        )
+                    ),
+                )
+            )
+        }
+        rows.divider()
+        val pdfMode = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode
+        rows.add(
+            pickerRow(
+                "pdfReader",
+                s.pdfModeTitle,
+                s.pdfModeHint,
+                listOf(s.playerModeAsk, s.pdfModeOn, s.playerModeOff),
+                when {
+                    pdfMode.isOn() -> 2
+                    pdfMode.isOff() -> 3
+                    else -> 1
+                },
+                below = true,
+            )
+        )
+        if (pdfMode.isOn() && !com.michelle.raouf.fetch_jet.feature.pdf_reader.isPdfLibraryReady()) {
+            val pdfium = v.isDownloadingYtDlp && v.toolDownloadName == "PDFium"
+            rows.add(noteRow(s.pdfAskText, ToneCode.MUTED))
+            rows.add(
+                SettingRowDto(
+                    kind = SettingKind.BUTTONS.ordinal,
+                    top = 8,
+                    bottom = 14,
+                    buttons = listOf(
+                        button(
+                            "pdfLibrary",
+                            if (pdfium) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("PDFium", (it * 100).toInt()) } ?: s.mediaDownloadingTool("PDFium")
+                            else s.pdfAskDownload,
+                            filled = true,
+                            enabled = !v.isDownloadingYtDlp,
+                            busy = pdfium,
+                        )
+                    ),
+                )
+            )
+        }
         if (v.toolsDirectoryPath.isNotBlank()) {
             rows.divider()
             rows.add(

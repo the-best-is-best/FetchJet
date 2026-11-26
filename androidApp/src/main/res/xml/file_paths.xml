@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <!-- Downloads: any folder the user picked on shared storage. -->
     <external-path
         name="external_files"
         path="." />
-    <external-cache-path
-        name="external_cache"
-        path="." />
-    <files-path
-        name="internal_files"
-        path="." />
+    <!-- The in-app update APK (UpdateManager: <temp>/fetchjet-update). -->
     <cache-path
-        name="internal_cache"
-        path="." />
-    <!-- root-path "." exposed the entire filesystem through the FileProvider;
-         downloads live on external storage, cache or app files, all covered above. -->
+        name="update_cache"
+        path="temp/fetchjet-update/" />
+    <external-cache-path
+        name="update_external_cache"
+        path="temp/fetchjet-update/" />
 </paths>

@@ -4,6 +4,7 @@ import { FilledButton, OutlinedButton } from "../widgets/Buttons.slint";
 import { LinearProgress } from "../widgets/Progress.slint";
 import { StepSlider } from "../widgets/Slider.slint";
 import { PickMenu } from "../widgets/Menu.slint";
+import { CheckLine } from "../widgets/CheckBox.slint";
 import { Core, AudioCopyDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
@@ -393,6 +394,12 @@ export component AudioCompressDialog inherits Rectangle {
                     text: Tr.audioCompressFailed;
                     line: 18px;
                     color: Theme.error;
+                }
+                if Core.audioCompress.canDeleteOriginal && !Core.audioCompress.nothing: CheckLine {
+                    text: Tr.deleteOriginalAfterCompress;
+                    checked: Core.audioCompress.deleteOriginal;
+                    enabled: !Core.audioCompress.running;
+                    toggled(on) => { Act.audioCompressDeleteOriginal(on); }
                 }
                 if Core.audioCompress.copies.length > 0: Caption {
                     text: Tr.audioCompressCopies;

@@ -94,6 +94,7 @@ kotlin {
             implementation(libs.libtorrent4j.android.x64)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.preference.ktx)
+            implementation(libs.androidx.media3.transformer)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.ytdlnis.packages.python)
             implementation(libs.commons.io)

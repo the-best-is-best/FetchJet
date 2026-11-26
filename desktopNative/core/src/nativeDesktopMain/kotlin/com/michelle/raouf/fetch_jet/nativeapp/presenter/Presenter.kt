@@ -63,6 +63,8 @@ internal data class LocalUi(
     val systemDark: Boolean = false,
     val missingFileTaskId: String? = null,
     val restartPauseTaskId: String? = null,
+    val hiddenOpen: Boolean = false,
+    val filterRev: Int = 0,
 )
 
 internal data class ToastState(val text: String = "", val shown: Boolean = false)
@@ -133,10 +135,13 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         com.michelle.raouf.fetch_jet.nativeapp.dto.RowMenuItemDto.serializer(), notifier
     )
     val rowMenuTask = MutableStateFlow<String?>(null)
+    val hiddenLocal = MutableStateFlow(HiddenLocal())
     val torrentLocal = MutableStateFlow(TorrentLocal())
     val debugSections = MutableStateFlow(false)
     val openedLinks = MutableStateFlow<List<String>>(emptyList())
+    val openedHidden = MutableStateFlow<List<String>>(emptyList())
     val sharedTexts = MutableStateFlow<List<String>>(emptyList())
+    val secretCopies = MutableStateFlow(0)
     val mainSetupAsk = MutableStateFlow<com.michelle.raouf.fetch_jet.core.setup.MainDownloaderState?>(null)
 
     val channels: List<UiChannel> = listOf(
@@ -156,6 +161,7 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
             vm.uiEffect.collect { effect ->
                 when (effect) {
                     is DashboardUiEffect.ShowToast -> showToast(effect.text)
+                    is DashboardUiEffect.OpenHiddenFile -> openHiddenPath(effect.path)
                     is DashboardUiEffect.CopyText -> com.michelle.raouf.fetch_jet.platform.desktop.DesktopOs.setClipboardText(effect.text)
                 }
             }
@@ -198,6 +204,8 @@ internal class Presenter(notifier: ChangeNotifier, val headless: Boolean) {
         startSubtitlesPage()
         startTorrentDetails()
         startMainDownloaderSetup()
+        startHidden()
+        startBackup()
     }
 
     fun showToast(text: String) {

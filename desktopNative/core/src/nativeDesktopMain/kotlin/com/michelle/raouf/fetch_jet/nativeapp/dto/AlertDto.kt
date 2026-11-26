@@ -17,6 +17,9 @@ enum class AlertKind {
     EXTENSION_FROM_FILE,
     EXTENSION_FAILED,
     ARCHIVE_PASSWORD,
+    HIDDEN_PIN,
+    HIDDEN_NOTICE,
+    HIDDEN_RECOVERY,
 }
 
 @Serializable
@@ -41,4 +44,9 @@ data class AlertDto(
     val round: Boolean = false,
     val inputLabel: String = "",
     val inputSecret: Boolean = false,
+    val inputPattern: Boolean = false,
+    val inputRev: Int = 0,
+    val inputDisabled: Boolean = false,
+    val hintError: Boolean = false,
+    val linkLabel: String = "",
 )

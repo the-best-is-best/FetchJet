@@ -233,6 +233,7 @@ struct DeviceSendSheet: View {
         if canTransfer {
             modeRow(s.sysDeviceModeTransfer, s.sysDeviceModeTransferDesc, .transferAndContinue)
         }
+        if store.state.deviceShareCanDelete {
         Button { deleteAfter.toggle() } label: {
             HStack(spacing: 10) {
                 Image(systemName: deleteAfter ? "checkmark.square.fill" : "square")
@@ -247,6 +248,7 @@ struct DeviceSendSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        }
     }
 
     private func modeRow(_ title: String, _ desc: String, _ value: SendMode) -> some View {
@@ -348,7 +350,7 @@ struct DeviceSendSheet: View {
                 guard let id = selectedId else { return }
                 ipFocused = false
                 store.send(DashboardUiEventOnSendToDeviceClicked(
-                    taskId: taskId, deviceId: id, mode: mode, deleteAfterSuccess: deleteAfter))
+                    taskId: taskId, deviceId: id, mode: mode, deleteAfterSuccess: deleteAfter && store.state.deviceShareCanDelete))
             }
         }
         .padding(.horizontal, 20)

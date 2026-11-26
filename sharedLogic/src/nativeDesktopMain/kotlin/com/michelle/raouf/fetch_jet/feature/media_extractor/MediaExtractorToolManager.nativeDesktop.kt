@@ -69,7 +69,7 @@ private suspend fun readText(url: String): String {
     return response.bodyAsText()
 }
 
-private suspend fun downloadTo(url: String, dest: String, onProgress: (Float?) -> Unit = {}): String {
+internal suspend fun downloadTo(url: String, dest: String, onProgress: (Float?) -> Unit = {}): String {
     val tmp = "$dest.tmp"
     val out = DesktopOs.openFile(tmp, write = true) ?: throw IllegalStateException("cannot write $tmp")
     val digest = HashingSink.sha256(blackholeSink())

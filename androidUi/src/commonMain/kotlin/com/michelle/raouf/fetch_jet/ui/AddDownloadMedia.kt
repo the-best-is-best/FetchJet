@@ -368,14 +368,8 @@ internal fun QuickTimeChip(
 }
 
 /** 42:44 / 1:05:09 - a clock reading, so 42 minutes is never shown as "00:42". */
-internal fun clockText(totalSeconds: Long): String {
-    val t = totalSeconds.coerceAtLeast(0L)
-    val h = t / 3600
-    val m = (t % 3600) / 60
-    val s = t % 60
-    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
-    else "$m:${s.toString().padStart(2, '0')}"
-}
+internal fun clockText(totalSeconds: Long): String =
+    com.michelle.raouf.fetch_jet.feature.media_player.MediaPlayback.formatTime(totalSeconds.coerceAtLeast(0L) * 1000L)
 
 /** One of the two clip download choices: a card, highlighted when chosen. */
 @Composable
@@ -421,6 +415,84 @@ internal fun ClipModeOption(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun ClipRangeCards(
+    startText: String,
+    endText: String,
+    startError: Boolean,
+    endError: Boolean,
+    onStartClick: () -> Unit,
+    onEndClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ClipTimeCard(
+            label = LocalizationManager.Strings.clipStartTimeFrom,
+            value = startText,
+            error = startError,
+            onClick = onStartClick,
+            modifier = Modifier.weight(1f)
+        )
+        ClipTimeCard(
+            label = LocalizationManager.Strings.clipEndTimeTo,
+            value = endText,
+            error = endError,
+            onClick = onEndClick,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ClipTimeCard(
+    label: String,
+    value: String,
+    error: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(
+            if (error) 1.5.dp else 1.dp,
+            if (error) colors.error else colors.primary.copy(alpha = 0.5f)
+        ),
+        color = if (error) colors.errorContainer.copy(alpha = 0.15f) else colors.surface
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (error) colors.error else colors.onSurfaceVariant
+                )
+                Text("🕒", fontSize = 12.sp)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (error) colors.error else colors.primary
+            )
+            Text(
+                text = formatSecondsToDisplayFriendly(parseHhMmToSeconds(value)),
+                fontSize = 10.sp,
+                color = colors.onSurfaceVariant
+            )
         }
     }
 }
@@ -751,116 +823,14 @@ internal fun MediaInspectionSection(
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
 
-                            val isStartHasError =
-                                isStartAfterEnd || isStartExceedingVideo
-                            val isEndHasError = isStartAfterEnd || isEndExceedingVideo
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                // Start Time Card (Clickable)
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { showStartTimePicker = true },
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(
-                                        if (isStartHasError) 1.5.dp else 1.dp,
-                                        if (isStartHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary.copy(
-                                            alpha = 0.5f
-                                        )
-                                    ),
-                                    color = if (isStartHasError) MaterialTheme.colorScheme.errorContainer.copy(
-                                        alpha = 0.15f
-                                    ) else MaterialTheme.colorScheme.surface
-                                ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = LocalizationManager.Strings.clipStartTimeFrom,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (isStartHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text("🕒", fontSize = 12.sp)
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        val startDisplay =
-                                            clipStartTime.ifBlank { "00:00" }
-                                        Text(
-                                            text = startDisplay,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isStartHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = formatSecondsToDisplayFriendly(
-                                                parseHhMmToSeconds(
-                                                    startDisplay
-                                                )
-                                            ),
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                // End Time Card (Clickable)
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { showEndTimePicker = true },
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(
-                                        if (isEndHasError) 1.5.dp else 1.dp,
-                                        if (isEndHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary.copy(
-                                            alpha = 0.5f
-                                        )
-                                    ),
-                                    color = if (isEndHasError) MaterialTheme.colorScheme.errorContainer.copy(
-                                        alpha = 0.15f
-                                    ) else MaterialTheme.colorScheme.surface
-                                ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = LocalizationManager.Strings.clipEndTimeTo,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = if (isEndHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text("🕒", fontSize = 12.sp)
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        val endDisplay =
-                                            clipEndTime.ifBlank { fullVideoDurationHhMm }
-                                        Text(
-                                            text = endDisplay,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isEndHasError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = formatSecondsToDisplayFriendly(
-                                                parseHhMmToSeconds(
-                                                    endDisplay
-                                                )
-                                            ),
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
+                            ClipRangeCards(
+                                startText = clipStartTime.ifBlank { "00:00" },
+                                endText = clipEndTime.ifBlank { fullVideoDurationHhMm },
+                                startError = isStartAfterEnd || isStartExceedingVideo,
+                                endError = isStartAfterEnd || isEndExceedingVideo,
+                                onStartClick = { showStartTimePicker = true },
+                                onEndClick = { showEndTimePicker = true }
+                            )
 
                             if (clipValidationErrorMessage != null) {
                                 Spacer(modifier = Modifier.height(8.dp))

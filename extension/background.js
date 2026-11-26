@@ -56,6 +56,7 @@ const DEFAULT_SETTINGS = {
   holdKey: "alt",             // hold this key while clicking to download with the browser
   notifications: true,
   autoLaunch: true,           // start FetchJet when it is not running (off = browser downloads it)
+  openDirectly: false,        // open the app with fetchjet://download instead of the silent local send
   autoResolve: true,          // ask the app (yt-dlp) for qualities when a page plays a video
   pagePanel: true             // floating "Download this video" button on pages
 };
@@ -148,10 +149,25 @@ function isArchiveOrgDirectoryOrDetails(url) {
   } catch (_) { return false; }
 }
 
+function relatedHosts(a, b) {
+  return !!a && !!b && (a === b || a.endsWith("." + b) || b.endsWith("." + a));
+}
+
+const LOOPBACK_HOSTS = new Set(["localhost", "0.0.0.0", "[::]", "[::1]"]);
+
+function isAppBridgeUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase().replace(/\.$/, "");
+    const loopback = LOOPBACK_HOSTS.has(host) || host.endsWith(".localhost") || /^127\.\d+\.\d+\.\d+$/.test(host) || /^\[::ffff:(7f[0-9a-f]{2}:[0-9a-f]{1,4}|0:0)\]$/.test(host);
+    return loopback && Number(u.port) === FETCHJET_PORT;
+  } catch (_) { return false; }
+}
+
 function isValidDownloadUrl(url) {
   if (!url || typeof url !== "string") return false;
-  if (url.includes("fetchjet_fallback=1") || url.includes("kortex_fallback=1")) return false;
-  if (url.includes(`localhost:${FETCHJET_PORT}`) || url.includes(`127.0.0.1:${FETCHJET_PORT}`)) return false;
+  if (url.includes("fetchjet_fallback=1")) return false;
+  if (isAppBridgeUrl(url)) return false;
   const lower = url.toLowerCase();
   if (!(lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("magnet:") || /^ftps?:\/\//.test(lower))) return false;
   if (isArchiveOrgDirectoryOrDetails(url)) return false;
@@ -281,14 +297,21 @@ async function appFetch(path, init = {}, timeoutMs = 0) {
   const send = async () => {
     const controller = new AbortController();
     const t = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
-    if (init.signal) init.signal.addEventListener("abort", () => controller.abort());
+    const onAbort = () => controller.abort();
+    if (init.signal) {
+      if (init.signal.aborted) controller.abort();
+      else init.signal.addEventListener("abort", onAbort, { once: true });
+    }
     try {
       return await fetch(`${FETCHJET_BASE}${path}`, {
         ...init,
         headers: await appHeaders(init.headers || {}),
         signal: controller.signal
       });
-    } finally { if (t) clearTimeout(t); }
+    } finally {
+      if (t) clearTimeout(t);
+      if (init.signal) init.signal.removeEventListener("abort", onAbort);
+    }
   };
   const res = await send();
   if (res.status !== 401) return res;
@@ -364,8 +387,6 @@ async function cookieStoreOf(from) {
   } catch (_) { return null; }
 }
 
-const siteOf = (host) => String(host || "").toLowerCase().split(".").slice(-2).join(".");
-
 async function pageCookieFallback(url, from) {
   if (!ON_IOS) return "";
   try {
@@ -374,7 +395,7 @@ async function pageCookieFallback(url, from) {
     if (tabId == null) return "";
     const res = await api.tabs.sendMessage(tabId, { action: "pageCookie" }, { frameId: 0 });
     if (!res || !res.cookie || !res.page) return "";
-    return siteOf(new URL(res.page).hostname) === siteOf(new URL(url).hostname) ? res.cookie : "";
+    return hostOf(res.page) && hostOf(res.page) === hostOf(url) ? res.cookie : "";
   } catch (_) { return ""; }
 }
 
@@ -417,39 +438,24 @@ async function postJson(path, body, timeoutMs = 2500) {
   }, timeoutMs);
 }
 
-/** Sends one link; compatible with older app builds that only know GET /download. */
-let lastDeliverPairing = false;
-
+/** Sends one link: { ok, pairing } (pairing: the app answered 401). */
 async function deliverOne(request) {
-  lastDeliverPairing = false;
   try {
     // With a chosen quality the app may have to re-run yt-dlp when its cache expired.
     const res = await postJson("/add", request, request.formatId ? 90000 : 2500);
-    if (res.status === 409) return false; // quality gone: the caller re-inspects
-    if (res.ok) return true;
-    if (res.status === 401) { lastDeliverPairing = true; return false; }
-    if (res.status === 404) {
-      const legacy = `/download?url=${encodeURIComponent(request.url)}&cookie=${encodeURIComponent(request.cookie || "")}`;
-      const r2 = await appFetch(legacy, { method: "GET" });
-      if (r2.status === 401) lastDeliverPairing = true;
-      return r2.ok;
-    }
-    return false;
-  } catch (_) { return false; }
+    return { ok: res.ok, pairing: res.status === 401 };
+  } catch (_) { return { ok: false, pairing: false }; }
 }
 
 async function deliverBatch(requests) {
-  lastDeliverPairing = false;
   try {
     const res = await postJson("/links", requests, 5000);
-    if (res.ok) return true;
-    if (res.status === 401) { lastDeliverPairing = true; return false; }
     if (res.status === 404) { // old app: one by one
       for (const r of requests) await deliverOne(r);
-      return true;
+      return { ok: true, pairing: false };
     }
-    return false;
-  } catch (_) { return false; }
+    return { ok: res.ok, pairing: res.status === 401 };
+  } catch (_) { return { ok: false, pairing: false }; }
 }
 
 // The browser asks "Open FetchJet?" the first time an extension opens fetchjet:// (the answer
@@ -479,7 +485,7 @@ async function launchApp(firstUrl) {
   try {
     // Firefox for Android only hands a link to another app from the visible tab.
     const onAndroid = /android/i.test(navigator.userAgent);
-    const tab = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(firstUrl || ""), active: onAndroid });
+    const tab = await openProtocolTab(PROTOCOL + encodeURIComponent(firstUrl || ""), onAndroid, 0);
     if (tab && tab.id != null) keepLaunchTab(tab.id, onAndroid);
     return true;
   } catch (_) { return false; }
@@ -501,8 +507,15 @@ function iosSessionPage(request) {
   } catch (_) { return ""; }
 }
 
+function iosRequest(request) {
+  if (!request || !request.cookie || relatedHosts(hostOf(request.url), hostOf(request.referer))) return request;
+  const { cookie, ...rest } = request;
+  return rest;
+}
+
 function openAppWith(payload, tabId = null) {
-  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(payload)), tabId);
+  const clean = Array.isArray(payload) ? payload.map(iosRequest) : iosRequest(payload);
+  return openAppAt(IOS_ADD + encodeURIComponent(JSON.stringify(clean)), tabId);
 }
 
 async function openAppAt(url, tabId = null) {
@@ -516,6 +529,22 @@ async function openAppAt(url, tabId = null) {
     else await api.tabs.create({ url, active: true });
     return true;
   } catch (_) { return false; }
+}
+
+async function openProtocolTab(url, active, removeAfterMs = 6000) {
+  const tab = await api.tabs.create({ url, active });
+  if (removeAfterMs && tab && tab.id != null) setTimeout(() => api.tabs.remove(tab.id).catch(() => {}), removeAfterMs);
+  return tab;
+}
+
+const DIRECT_BATCH_MAX = 3;
+
+function isDirectOpenLink(request) {
+  return isPlainLink(request) && !request.fileName && !request.referer;
+}
+
+function isPlainLink(request) {
+  return !request.formatId && !request.audioUrl && !request.playlist && !request.openClip && !request.direct;
 }
 
 async function waitForApp(maxMs = 12000) {
@@ -543,6 +572,7 @@ async function notify(message, extra = {}) {
  */
 async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "", direct = false, openClip = false, audioUrl = "", playlist = null, from = null, quiet = false }, source = "") {
   if (!isValidDownloadUrl(url)) return { ok: false, reason: "unsupported url" };
+  const settings = await getSettings();
   const request = await buildRequest({ url, referer, fileName, formatId, direct, openClip, audioUrl, playlist, from });
   if (ON_IOS) {
     const page = iosSessionPage(request);
@@ -550,8 +580,16 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
     return (await openAppWith(request)) ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
   }
 
-  if (await deliverOne(request)) return { ok: true };
-  if (lastDeliverPairing) {
+  if (settings.openDirectly && isDirectOpenLink(request)) {
+    try {
+      await openProtocolTab(PROTOCOL + encodeURIComponent(request.url), true);
+      return { ok: true };
+    } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
+  }
+
+  const sent = await deliverOne(request);
+  if (sent.ok) return { ok: true };
+  if (sent.pairing) {
     if (!quiet) await notify(fjT("errNeedsPairing"));
     return { ok: false, reason: "pairing required" };
   }
@@ -565,8 +603,8 @@ async function sendToFetchJet({ url, referer = "", fileName = "", formatId = "",
   if (await waitForApp()) {
     // The launcher may already have passed the URL on the command line; /add is idempotent
     // enough (duplicate check in the app) that re-sending with cookies is the safer choice.
-    const ok = await deliverOne(request);
-    return ok ? { ok } : { ok, reason: lastDeliverPairing ? "pairing required" : "" };
+    const again = await deliverOne(request);
+    return again.ok ? { ok: true } : { ok: false, reason: again.pairing ? "pairing required" : "" };
   }
   return { ok: false, reason: "app did not start" };
 }
@@ -576,7 +614,7 @@ async function sendBatchToFetchJet(items, referer = "", group = "", from = null)
   for (const it of items) {
     const url = typeof it === "string" ? it : it.url;
     if (isValidDownloadUrl(url) && !unique.has(url)) {
-      unique.set(url, { url, referer: (it && it.referer) || referer, fileName: (it && it.fileName) || "" });
+      unique.set(url, { url, referer: (it && it.referer) || referer, fileName: (it && it.fileName) || "", audioUrl: (it && it.audioUrl) || "" });
     }
   }
   if (unique.size === 0) return { ok: false, reason: "no links", count: 0 };
@@ -584,19 +622,31 @@ async function sendBatchToFetchJet(items, referer = "", group = "", from = null)
   for (const it of unique.values()) requests.push(await buildRequest({ ...it, group, from }));
   if (ON_IOS) return { ok: await openAppWith(requests), count: requests.length };
 
+  if (requests.length <= DIRECT_BATCH_MAX && !requests.some(r => r.fileName) && (await getSettings()).openDirectly) {
+    let opened = 0;
+    for (const r of requests) {
+      try {
+        await openProtocolTab(PROTOCOL + encodeURIComponent(r.url), opened === 0);
+        opened++;
+      } catch (_) {}
+      await new Promise(res => setTimeout(res, 400));
+    }
+    return { ok: opened > 0, count: opened };
+  }
+
   if (!(await pingApp())) {
     if (!(await launchApp(requests[0].url)) || !(await waitForApp())) {
       await notify(fjT("notifyNotRunning"));
       return { ok: false, reason: "app not running", count: 0 };
     }
   }
-  const ok = await deliverBatch(requests);
-  if (!ok && lastDeliverPairing) {
+  const sent = await deliverBatch(requests);
+  if (!sent.ok && sent.pairing) {
     await notify(fjT("errNeedsPairing"));
     return { ok: false, reason: "pairing required", count: 0 };
   }
-  if (ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
-  return { ok, count: requests.length };
+  if (sent.ok) await notify(requests.length === 1 ? fjT("notifyOneLinkSent") : fjT("notifyLinksSent", { n: requests.length }));
+  return { ok: sent.ok, count: requests.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -855,6 +905,12 @@ async function sniffMedia(details) {
   if (!settings.enabled || !settings.captureMedia) return;
   const url = details.url;
   if (!isValidDownloadUrl(url) || SKIP_MEDIA_HOSTS.test(hostOf(url))) return;
+  if ([details.initiator, details.originUrl, details.documentUrl, url].some(u => CANVA_ORIGIN.test(hostOf(u || ""))) &&
+    !/^(image|text|font)\/|json|javascript|css|html/.test(header(details.responseHeaders, "content-type").toLowerCase())) {
+    let tabUrl = "";
+    try { tabUrl = ((await api.tabs.get(details.tabId)) || {}).url || ""; } catch (_) {}
+    if (canvaDesign(tabUrl)) return addCanvaMedia(details, tabUrl);
+  }
 
   const ctype = header(details.responseHeaders, "content-type").toLowerCase();
   const ext = extensionOf(url);
@@ -996,14 +1052,16 @@ async function addYoutubeStream(tabId, stream, sk) {
 }
 
 /** GET /inspect on the app: yt-dlp qualities of a page as popup items. */
-async function inspectWithApp(pageUrl, from = null) {
+async function inspectWithApp(pageUrl, from = null, withCookies = true) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 90000);
   try {
     // The page's cookies and referer travel with the request: sites that need a login (Udemy,
     // Vimeo private videos...) then answer yt-dlp exactly like they answer the browser.
     const headers = { "X-FetchJet-Referer": pageUrl };
-    try { const c = await cookieHeaderFor(pageUrl, from || tabsResolving(pageUrl)); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    if (withCookies) {
+      try { const c = await cookieHeaderFor(pageUrl, from || tabsResolving(pageUrl)); if (c) headers["X-FetchJet-Cookie"] = c; } catch (_) {}
+    }
     const res = await appFetch(`/inspect?url=${encodeURIComponent(pageUrl)}`, { signal: controller.signal, headers });
     if (res.status === 401) return { resolveError: fjT("errNeedsPairing"), needsPairing: true };
     // The app answers errors as plain text ("missing X-FetchJet header"): never parse those as JSON.
@@ -1097,7 +1155,7 @@ async function resolveYoutube(tabId, pageUrl, force = false) {
 async function resolvePage(tabId, page, force = false, embedded = false) {
   // YouTube's own pages go through resolveYoutube; a YouTube player embedded elsewhere goes here.
   if (!page || !/^https?:/i.test(page) || (ytVideoId(page) && !embedded)) return;
-  if (UDEMY_COURSE_PAGE.test(page)) return;
+  if (UDEMY_COURSE_PAGE.test(page) || canvaDesign(page)) return;
   const current = await tabState(RES_KEY, tabId);
   if (APP_SLEEPS && !(await appAwake())) {
     if (!(current && current.page === page && current.openApp)) {
@@ -1119,7 +1177,10 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
   resolving.set(tabId, page);
   await setTabState(RES_KEY, tabId, { page, resolving: true });
   pushToTab(tabId);
-  const change = await inspectWithApp(page);
+  // Cookies only for the tab's own site: a frame can name any link without a click.
+  let tabUrl = "";
+  try { tabUrl = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) {}
+  const change = await inspectWithApp(page, null, relatedHosts(hostOf(page), hostOf(tabUrl)));
   if (resolving.get(tabId) === page) resolving.delete(tabId);
   const now = await tabState(RES_KEY, tabId);
   if (now && now.page === page) {
@@ -1130,6 +1191,8 @@ async function resolvePage(tabId, page, force = false, embedded = false) {
 
 /** Everything the popup and the page button show for a tab, in one list. */
 async function itemsForTab(tabId) {
+  const canva = await canvaForTab(tabId);
+  if (canva) return canva;
   const [yt, res, mediaAll] = await Promise.all([tabState(YT_KEY, tabId), tabState(RES_KEY, tabId), sessionGet(MEDIA_KEY)]);
   const media = Object.values(mediaAll[tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0));
   const items = [];
@@ -1225,6 +1288,8 @@ async function udemyCourseForTab(tabId) {
  * (null when it has none; `drm` when it is protected).
  */
 async function readUdemyCourseInPage(slug, part) {
+  const pageHost = String(location.hostname || "").toLowerCase();
+  if (pageHost !== "udemy.com" && !pageHost.endsWith(".udemy.com")) return { error: "not a Udemy page" };
   const headers = { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" };
   const get = async (path) => {
     const r = await fetch(path.startsWith("http") ? path : location.origin + path, { credentials: "include", headers });
@@ -1254,12 +1319,48 @@ async function readUdemyCourseInPage(slug, part) {
           .sort((a, b) => (parseInt(b.label, 10) || 0) - (parseInt(a.label, 10) || 0));
         return files.length ? srcOf(files[0]) : "";
       };
+      const typeOf = (a) => (a && (a.asset_type || a.assetType)) || "";
+      const fileOf = (a) => {
+        const urls = a && a.download_urls;
+        if (!urls || typeof urls !== "object") return "";
+        const type = typeOf(a);
+        const lists = [urls[type]].concat(Object.keys(urls).filter(k => k !== type && k !== "Video").map(k => urls[k]));
+        for (const list of lists) {
+          for (const x of [].concat(list || [])) {
+            const u = (x && (x.file || x.src)) || "";
+            if (/^https?:/i.test(u)) return u;
+          }
+        }
+        return "";
+      };
+      const external = (a) => typeOf(a) === "ExternalLink" || !!(a && a.external_url);
       return await Promise.all(part.lectures.map(async (lec) => {
         try {
-          const d = await get(`/api-2.0/users/me/subscribed-courses/${part.id}/lectures/${lec.id}/?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`);
-          const url = d.asset ? pick(d.asset) : "";
-          if (url) return { url, title: d.title || lec.title || "" };
-          return { drm: !!(d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length)) };
+          const lecturePath = `/api-2.0/users/me/subscribed-courses/${part.id}/lectures/${lec.id}/`;
+          let d;
+          try { d = await get(`${lecturePath}?fields[lecture]=title,asset,supplementary_assets&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed,title,filename,external_url`); }
+          catch (_) { d = await get(`${lecturePath}?fields[lecture]=title,asset&fields[asset]=asset_type,media_sources,stream_urls,download_urls,course_is_drmed`); }
+          const out = { title: d.title || lec.title || "" };
+          const kind = lec.kind || "video";
+          if (kind === "video") {
+            const url = d.asset ? pick(d.asset) : "";
+            if (url) out.url = url;
+            else out.drm = !!(d.asset && (d.asset.course_is_drmed || (d.asset.media_sources || []).length));
+          } else if (kind === "file" && d.asset) {
+            const url = fileOf(d.asset);
+            if (url) out.file = { url, name: d.asset.filename || d.asset.title || "" };
+          }
+          const resources = [];
+          for (const a of [].concat(d.supplementary_assets || [])) {
+            if (!a || external(a)) continue;
+            let url = fileOf(a);
+            if (!url && a.id) {
+              try { url = fileOf(await get(`${lecturePath}supplementary-assets/${a.id}/?fields[asset]=download_urls,filename,title,asset_type`)); } catch (_) {}
+            }
+            if (url) resources.push({ url, name: a.filename || a.title || "" });
+          }
+          if (resources.length) out.resources = resources;
+          return out;
         } catch (_) { return {}; }
       }));
     }
@@ -1269,23 +1370,464 @@ async function readUdemyCourseInPage(slug, part) {
       const c = await get(`/api-2.0/courses/${id || encodeURIComponent(slug)}/?fields[course]=id,title`);
       id = String(c.id || id); title = c.title || "";
     } catch (e) { if (!id) throw e; }
-    const query = "?page_size=1000&fields[lecture]=title,object_index,asset&fields[chapter]=title,object_index&fields[asset]=asset_type";
+    const query = "?page_size=1000&fields[lecture]=title,object_index,asset,supplementary_assets&fields[chapter]=title,object_index&fields[asset]=asset_type,external_url";
+    const plainQuery = "?page_size=1000&fields[lecture]=title,object_index,asset&fields[chapter]=title,object_index&fields[asset]=asset_type";
     let page;
     try { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${query}`); }
-    catch (_) { page = await get(`/api-2.0/courses/${id}/cached-subscriber-curriculum-items/${query}`); }
+    catch (_) {
+      try { page = await get(`/api-2.0/courses/${id}/cached-subscriber-curriculum-items/${query}`); }
+      catch (_) { page = await get(`/api-2.0/courses/${id}/subscriber-curriculum-items/${plainQuery}`); }
+    }
     let items = page.results || [];
-    while (page.next) { page = await get(page.next); items = items.concat(page.results || []); }
-    const lectures = items.filter(e => e._class === "lecture" &&
-      (!e.asset || (e.asset.asset_type || e.asset.assetType) === "Video")).map(e => ({ id: e.id, title: e.title || "" }));
+    const pagesSeen = new Set();
+    while (page.next && pagesSeen.size < 50) {
+      const next = new URL(page.next, location.origin);
+      if (next.origin !== location.origin || pagesSeen.has(next.href)) break;
+      pagesSeen.add(next.href);
+      page = await get(next.href);
+      items = items.concat(page.results || []);
+    }
+    const FILE_TYPES = ["E-Book", "File", "Presentation", "Audio", "SourceCode"];
+    const lectures = [];
+    for (const e of items) {
+      if (e._class !== "lecture") continue;
+      const type = e.asset ? (e.asset.asset_type || e.asset.assetType || "") : "Video";
+      const kind = type === "Video" ? "video" : FILE_TYPES.includes(type) ? "file" : "";
+      const resources = [].concat(e.supplementary_assets || []).filter(a => a &&
+        (a.asset_type || a.assetType) !== "ExternalLink" && !a.external_url).length;
+      if (kind || resources) lectures.push({ id: e.id, title: e.title || "", kind: kind || "none" });
+    }
     return { id, title, lectures };
   } catch (e) {
     return { error: (e && e.message) || "error" };
   }
 }
 
+const UDEMY_HOSTS = /(^|\.)(udemy\.com|udemycdn\.com)$/i;
+
+function udemyLink(url) {
+  try { const u = new URL(url); return u.protocol === "https:" && UDEMY_HOSTS.test(u.hostname); } catch (_) { return false; }
+}
+
+function udemyFileName(number, name, fileName, url) {
+  const extOf = (s) => {
+    const m = /\.([a-z0-9]{1,8})$/i.exec(String(s || "").trim());
+    return m && /[a-z]/i.test(m[1]) ? m[1].toLowerCase() : "";
+  };
+  let ext = extOf(fileName);
+  if (!ext) {
+    try {
+      const u = new URL(url);
+      const disposition = u.searchParams.get("response-content-disposition") || "";
+      const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+      ext = extOf(m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "") || extOf(decodeURIComponent(u.pathname.split("/").pop() || ""));
+    } catch (_) {}
+  }
+  const base = String(name || fileName || "").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim() || "file";
+  const named = ext && !base.toLowerCase().endsWith("." + ext);
+  return `${number} - ${base}${named ? "." + ext : ""}`;
+}
+
 /** Tells the app how far the course reading is (it shows "12 / 80"), or why it failed. */
 async function courseProgressToApp(courseUrl, referer, extra, from = null) {
   try { await postJson("/add", { ...(await buildRequest({ url: courseUrl, referer, from })), ...extra }, 2500); } catch (_) {}
+}
+
+const CANVA_KEY = "fetchjet_canva_by_tab";
+const CANVA_PAGE = /^https:\/\/([\w-]+\.)?canva\.(com|cn)\/design\/([\w-]+)/i;
+const CANVA_ORIGIN = /(^|\.)(canva\.(com|cn)|canva-apps\.com|canvausercontent\.com)$/i;
+const CANVA_PREVIEW = /thumb|poster|preview|sprite|storyboard|filmstrip|waveform|placeholder|image-resize|document-image/i;
+const CANVA_PLAY_WINDOW = 8000;
+const CANVA_PAIR_MS = 1500;
+const CANVA_FILE_EXTS = new Set(["mp4", "m4v", "mov", "webm", "mkv", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav", "weba"]);
+const CANVA_AUDIO_EXTS = new Set(["mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav", "weba"]);
+const CANVA_TYPE_EXT = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "video/x-matroska": "mkv", "video/x-m4v": "m4v", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac", "audio/webm": "weba" };
+
+const canvaDesign = (url) => { const m = CANVA_PAGE.exec(String(url || "")); return m ? m[3] : ""; };
+const canvaTitle = (t) => String(t || "").replace(/\s*[-–|·]\s*Canva\s*$/i, "").trim();
+const stripExt = (n) => String(n || "").replace(/\.[a-z0-9]{2,5}$/i, "");
+const nameExt = (n) => { const m = /\.([a-z0-9]{2,5})$/i.exec(String(n || "")); return m ? m[1].toLowerCase() : ""; };
+const safeBase = (n) => String(n || "").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim().slice(0, 150).replace(/[. ]+$/, "");
+const fmtClock = (s) => { s = Math.round(s); return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+function stripQuery(url) {
+  try {
+    const u = new URL(url);
+    const keys = [...new Set([...u.searchParams.keys()])];
+    return u.origin + u.pathname + (keys.length ? "?" + keys.join("&") : "");
+  } catch (_) { return String(url || "").split("?")[0]; }
+}
+
+function canvaTokens(url, design = "") {
+  let text = String(url || "");
+  for (let i = 0; i < 2; i++) { try { text = decodeURIComponent(text); } catch (_) { break; } }
+  const out = new Set();
+  for (const m of text.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)) out.add(m[0].toLowerCase());
+  for (const m of text.matchAll(/(?:^|[^A-Za-z0-9_-])([VM][A-Z][A-Za-z0-9_-]{9})(?=$|[^A-Za-z0-9_-])/g)) out.add(m[1]);
+  let path = "";
+  try { path = decodeURIComponent(new URL(url).pathname); } catch (_) {}
+  for (const part of path.split(/[/:]/)) {
+    const seg = part.replace(/\.[A-Za-z0-9]{2,5}$/, "");
+    if (/^[A-Za-z0-9_-]{16,}$/.test(seg) && /\d/.test(seg) && /[a-z]/i.test(seg)) out.add(seg);
+  }
+  if (design) out.delete(design);
+  return [...out].slice(0, 12);
+}
+
+function canvaServerName(url, headers) {
+  const fromDisposition = (v) => {
+    const m = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)|filename\s*=\s*"?([^";]+)"?/i.exec(v || "");
+    if (!m) return "";
+    const raw = (m[1] || m[2]).trim();
+    try { return decodeURIComponent(raw); } catch (_) { return raw; }
+  };
+  let name = fromDisposition(header(headers, "content-disposition"));
+  try {
+    const u = new URL(url);
+    name = name || fromDisposition(u.searchParams.get("response-content-disposition")) || u.searchParams.get("filename") || "";
+  } catch (_) {}
+  return /\.[a-z0-9]{2,5}$/i.test(name) ? baseName(name) : "";
+}
+
+function canvaState(all, tabId, design, page, memo = null) {
+  const state = all[tabId];
+  if (state && state.design === design) return state;
+  const kept = memo && memo.design === design ? memo : null;
+  return { design, page, files: {}, figures: [], plays: [], pairs: { ...((kept && kept.pairs) || {}) }, binds: {}, remembered: { ...((kept && kept.names) || {}) }, log: [], next: 0 };
+}
+
+const CANVA_MEMO_KEY = "fetchjet_canva_memo_by_tab";
+
+async function rememberCanva(tabId, state, memos) {
+  const old = memos[tabId];
+  const memo = old && old.design === state.design ? { design: state.design, names: { ...old.names }, pairs: { ...old.pairs } } : { design: state.design, names: {}, pairs: {} };
+  const { clips, named } = canvaNaming(state);
+  for (const c of clips) {
+    const fig = named.get(c.key);
+    if (fig && fig.name) for (const k of c.keys) memo.names[k] = { name: fig.name, page: fig.page || 0 };
+    if (c.video && c.audio) memo.pairs[c.video.key] = c.audio.key;
+  }
+  for (const part of ["names", "pairs"]) {
+    const keys = Object.keys(memo[part]);
+    if (keys.length > 200) for (const k of keys.slice(0, keys.length - 200)) delete memo[part][k];
+  }
+  if (JSON.stringify(old) === JSON.stringify(memo)) return;
+  memos[tabId] = memo;
+  await sessionSet(CANVA_MEMO_KEY, memos);
+}
+
+function canvaClips(state) {
+  const files = Object.entries(state.files || {}).map(([key, f]) => ({ key, ...f }));
+  const parent = new Map(files.map(f => [f.key, f.key]));
+  const find = (k) => { while (parent.get(k) !== k) k = parent.get(k); return k; };
+  const members = (root) => files.filter(f => find(f.key) === root);
+  const fits = (keys) => {
+    const all = files.filter(f => keys.includes(find(f.key)));
+    return all.filter(f => !f.audio && !f.preview).length <= 1 && all.filter(f => f.audio && !f.preview).length <= 1;
+  };
+  const join = (a, b) => {
+    const ra = find(a), rb = find(b);
+    if (ra === rb || !fits([ra, rb])) return;
+    parent.set(rb, ra);
+  };
+  for (const [v, a] of Object.entries(state.pairs || {})) if (parent.has(v) && parent.has(a)) join(v, a);
+  const groupBy = (sig) => {
+    const by = new Map();
+    for (const f of files) for (const t of sig(f)) { if (!by.has(t)) by.set(t, []); by.get(t).push(f.key); }
+    for (const keys of by.values()) {
+      if (keys.length < 2 || keys.length > 4) continue;
+      const roots = [...new Set(keys.map(find))];
+      if (roots.length > 1 && fits(roots)) for (const k of keys) join(keys[0], k);
+    }
+  };
+  groupBy(f => f.tokens || []);
+  const firsts = [...new Set(files.map(f => find(f.key)))].map(root => {
+    const mine = members(root);
+    return { root, v: mine.some(f => !f.audio), a: mine.some(f => f.audio), first: Math.min(...mine.map(f => f.first || Infinity)) };
+  }).filter(g => isFinite(g.first));
+  const nearest = (g, want) => {
+    const near = firsts.filter(x => x !== g && want(x) && Math.abs(x.first - g.first) <= CANVA_PAIR_MS)
+      .sort((x, y) => Math.abs(x.first - g.first) - Math.abs(y.first - g.first));
+    if (!near.length) return null;
+    const best = Math.abs(near[0].first - g.first);
+    const rival = firsts.filter(x => x !== g && x !== near[0] && (x.v !== near[0].v || x.a !== near[0].a ? false : true) && Math.abs(x.first - g.first) <= CANVA_PAIR_MS)
+      .map(x => Math.abs(x.first - g.first));
+    return rival.some(d => d < best + 200) ? null : near[0];
+  };
+  for (const g of firsts.filter(x => x.v && !x.a)) {
+    const a = nearest(g, x => x.a && !x.v);
+    if (!a || nearest(a, x => x.v && !x.a) !== g) continue;
+    join(g.root, a.root);
+  }
+  groupBy(f => { const last = (f.dir || "").split("/").pop(); return last.length >= 8 && /\d/.test(last) ? [f.dir] : []; });
+  const clips = [];
+  for (const root of new Set(files.map(f => find(f.key)))) {
+    const mine = members(root);
+    const best = (audio) => mine.filter(f => !!f.audio === audio).sort((a, b) => (a.preview - b.preview) || ((b.size || 0) - (a.size || 0)))[0] || null;
+    const video = best(false), audio = best(true);
+    clips.push({
+      key: (video || audio).key, keys: mine.map(f => f.key), video, audio,
+      tokens: [...new Set(mine.flatMap(f => f.tokens || []))], order: Math.min(...mine.map(f => f.order)),
+      hits: mine.flatMap(f => f.hits || []), serverName: (video && video.serverName) || (audio && audio.serverName) || ""
+    });
+  }
+  return clips.sort((a, b) => a.order - b.order);
+}
+
+function bindCanvaPlays(state, now = Date.now()) {
+  for (const p of state.plays || []) {
+    if (p.done) continue;
+    const clips = canvaClips(state);
+    const byToken = clips.filter(c => (p.ids || []).some(t => c.tokens.includes(t)));
+    if (byToken.length === 1) { p.key = byToken[0].key; p.done = true; continue; }
+    const from = p.since - 500, to = p.at + CANVA_PLAY_WINDOW;
+    const hit = clips.filter(c => c.hits.some(t => t >= from && t <= to));
+    p.key = "";
+    if (hit.length === 1) p.key = hit[0].key;
+    else if (hit.length === 2) {
+      const v = hit.find(c => c.video && !c.audio), a = hit.find(c => c.audio && !c.video);
+      if (v && a) { state.pairs = { ...(state.pairs || {}), [v.video.key]: a.audio.key }; p.key = v.key; }
+    }
+    if (now > to) p.done = true;
+  }
+}
+
+function logCanva(state, details, note) {
+  const h = (n) => header(details.responseHeaders, n);
+  state.log = [...(state.log || []).slice(-119), {
+    t: Date.now(), url: stripQuery(details.url), status: details.statusCode, mime: h("content-type"),
+    length: h("content-length"), range: h("content-range"), initiator: details.initiator || details.originUrl || "",
+    type: details.type || "", frameId: details.frameId, note
+  }];
+}
+
+async function addCanvaMedia(details, pageUrl) {
+  const url = String(details.url).split("#")[0];
+  const headers = details.responseHeaders;
+  const ctype = header(headers, "content-type").toLowerCase().split(";")[0].trim();
+  const all = await sessionGet(CANVA_KEY);
+  const memos = await sessionGet(CANVA_MEMO_KEY);
+  const design = canvaDesign(pageUrl);
+  const state = canvaState(all, details.tabId, design, pageUrl, memos[details.tabId]);
+  state.page = pageUrl;
+  const save = async (note) => { logCanva(state, details, note); all[details.tabId] = state; await sessionSet(CANVA_KEY, all); };
+  let host = "", path = "";
+  try { const u = new URL(url); host = u.hostname; path = u.pathname; } catch (_) { return; }
+  const ext = extensionOf(url);
+  if (!/^media\.canva\.(com|cn)$/i.test(host) || !/^\/v2\/files\//i.test(path) || !CANVA_FILE_EXTS.has(ext) || /^(image|text|font)\//.test(ctype)) {
+    if ((state.log || []).some(x => x.url === stripQuery(url))) return;
+    return save("ignored");
+  }
+  const tokens = canvaTokens(url, design);
+  const stream = false;
+  const range = /\/(\d+)\s*$/.exec(header(headers, "content-range"));
+  const size = range ? parseInt(range[1], 10) : details.statusCode === 200 ? (parseInt(header(headers, "content-length"), 10) || 0) : 0;
+  if (!stream && size > 0 && size < 512 * 1024) return save("small");
+  const key = host + path;
+  const now = Date.now();
+  const file = {
+    url, size, stream, tokens, dir: path.replace(/\/[^/]*$/, ""),
+    audio: /^audio\//.test(ctype) || CANVA_AUDIO_EXTS.has(ext),
+    preview: CANVA_PREVIEW.test(path),
+    ext: MEDIA_EXTS.has(ext) ? ext : (CANVA_TYPE_EXT[ctype] || ""), serverName: canvaServerName(url, headers)
+  };
+  const old = state.files[key];
+  let shown = true;
+  if (!old) {
+    const keys = Object.keys(state.files);
+    if (keys.length >= 80) delete state.files[keys[0]];
+    state.next = (state.next || 0) + 1;
+    state.files[key] = { ...file, order: state.next, hits: [now], first: now };
+  } else {
+    shown = false;
+    old.hits = [...(old.hits || []).filter(t => now - t < 60000).slice(-29), now];
+    old.url = url;
+    if (size > (old.size || 0)) { old.size = size; shown = true; }
+    if (!old.serverName && file.serverName) { old.serverName = file.serverName; shown = true; }
+  }
+  const before = (state.plays || []).map(p => p.key || "").join("|");
+  bindCanvaPlays(state, now);
+  if ((state.plays || []).map(p => p.key || "").join("|") !== before) shown = true;
+  await save(old ? "again" : "file");
+  await rememberCanva(details.tabId, state, memos);
+  if (shown) pushToTab(details.tabId);
+}
+
+function canvaBox(box) {
+  if (!Array.isArray(box) || box.length !== 4) return null;
+  const nums = box.map(Number);
+  return nums.every(n => Number.isFinite(n) && Math.abs(n) <= 100000) ? nums : null;
+}
+
+async function addCanvaFigures(tab, figures, play, bind) {
+  const design = canvaDesign(tab && tab.url);
+  if (!design) return { ok: false };
+  await serial(async () => {
+    const all = await sessionGet(CANVA_KEY);
+    const memos = await sessionGet(CANVA_MEMO_KEY);
+    const state = canvaState(all, tab.id, design, tab.url, memos[tab.id]);
+    const cleanIds = (ids) => (Array.isArray(ids) ? ids : []).map(String).filter(i => i.length >= 8 && i.length <= 64 && i !== design).slice(0, 12);
+    const list = Array.isArray(figures) ? figures : [];
+    if (list.length) state.figures.forEach(g => { g.visible = false; });
+    for (const f of list.slice(0, 200)) {
+      const name = String((f && f.name) || "").trim().slice(0, 200);
+      if (!name) continue;
+      const page = Number(f.page) || 0;
+      const fig = { name, page, ids: cleanIds(f.ids), thumb: /^https:/i.test(f.thumb || "") ? String(f.thumb).slice(0, 2000) : "", duration: Number(f.duration) || 0, box: canvaBox(f.box), boxFrom: String(f.boxFrom || "").slice(0, 20), visible: !!f.visible };
+      const same = state.figures.find(g => g.name === name && (!page || !g.page || g.page === page));
+      if (same) {
+        same.page = same.page || page;
+        same.ids = [...new Set([...same.ids, ...fig.ids])].slice(0, 12);
+        if (fig.thumb) same.thumb = fig.thumb;
+        if (fig.duration) same.duration = fig.duration;
+        if (fig.box) { same.box = fig.box; same.boxFrom = fig.boxFrom; }
+        same.visible = fig.visible;
+      } else state.figures.push(fig);
+    }
+    if (state.figures.length > 300) state.figures = state.figures.slice(-300);
+    if (play && (play.name || play.at)) {
+      const at = Number(play.at) || Date.now();
+      const since = Math.min(at, Number(play.since) || at - 3000);
+      state.plays = [...(state.plays || []).slice(-19), { name: String(play.name || "").slice(0, 200), page: Number(play.page) || 0, ids: cleanIds(play.ids), since, at, key: "" }];
+      const fig = play.name ? state.figures.find(g => g.name === play.name && (!play.page || !g.page || g.page === Number(play.page))) : null;
+      if (fig && play.duration) fig.duration = Number(play.duration) || fig.duration;
+    }
+    if (bind && bind.key && bind.name && state.files[bind.key]) {
+      state.binds = { ...(state.binds || {}), [bind.key]: { name: String(bind.name).slice(0, 200), page: Number(bind.page) || 0 } };
+    }
+    bindCanvaPlays(state);
+    all[tab.id] = state;
+    await sessionSet(CANVA_KEY, all);
+    await rememberCanva(tab.id, state, memos);
+  });
+  pushToTab(tab.id);
+  return { ok: true };
+}
+
+function canvaNaming(state) {
+  const clips = canvaClips(state);
+  const figures = state.figures || [];
+  const figKey = (g) => `${g.page || 0}|${g.name}`;
+  const used = new Set();
+  const named = new Map();
+  const take = (c, fig) => {
+    if (!fig || named.has(c.key)) return;
+    named.set(c.key, fig);
+    figures.forEach(g => { if (g.name === fig.name && (!fig.page || !g.page || g.page === fig.page)) used.add(figKey(g)); });
+  };
+  const figureOf = (name, page) => figures.find(g => g.name === name && (!page || !g.page || g.page === page)) || { name, page: page || 0, ids: [] };
+  for (const c of clips) for (const k of c.keys) if (state.binds && state.binds[k]) take(c, figureOf(state.binds[k].name, state.binds[k].page));
+  for (const c of clips) {
+    if (named.has(c.key)) continue;
+    const hits = figures.filter(g => g.ids.some(t => c.tokens.includes(t)));
+    const names = [...new Set(hits.map(figKey))];
+    if (names.length !== 1) continue;
+    const shared = hits[0].ids.filter(t => c.tokens.includes(t));
+    if (shared.some(t => clips.filter(o => o.tokens.includes(t)).length === 1)) take(c, hits[0]);
+  }
+  const plays = (state.plays || []).filter(p => p.key).sort((a, b) => a.at - b.at);
+  const clipOf = (key) => clips.find(c => c.keys.includes(key));
+  for (const p of plays.slice().reverse()) { const c = clipOf(p.key); if (c && p.name) take(c, figureOf(p.name, p.page)); }
+  for (const c of clips) for (const k of c.keys) { const r = state.remembered && state.remembered[k]; if (r) take(c, figureOf(r.name, r.page)); }
+  for (const c of clips) {
+    if (named.has(c.key) || !c.serverName) continue;
+    const base = stripExt(c.serverName).toLowerCase();
+    take(c, figures.find(g => stripExt(g.name).toLowerCase() === base) || { name: c.serverName, page: 0, ids: [] });
+  }
+  const shownFree = () => figures.filter(g => g.visible && !used.has(figKey(g)) && !CANVA_AUDIO_EXTS.has(nameExt(g.name)));
+  const lastPlay = (state.plays || []).slice(-1)[0];
+  const lastClip = lastPlay && lastPlay.key ? clipOf(lastPlay.key) : null;
+  if (lastClip && lastClip.video && !named.has(lastClip.key)) {
+    const shown = shownFree();
+    if (new Set(shown.map(figKey)).size === 1) take(lastClip, shown[0]);
+  }
+  const leftVideos = clips.filter(c => !named.has(c.key) && c.video);
+  if (leftVideos.length === 1) {
+    const shown = shownFree();
+    if (new Set(shown.map(figKey)).size === 1) take(leftVideos[0], shown[0]);
+  }
+  const left = clips.filter(c => !named.has(c.key));
+  if (left.length === 1) {
+    const free = figures.filter(g => !used.has(figKey(g)));
+    const fits = [...new Set(free.filter(g => !g.ids.length || !left[0].tokens.length).map(figKey))];
+    if (fits.length === 1 && free.length === free.filter(g => figKey(g) === fits[0]).length) take(left[0], free[0]);
+  }
+  return { clips, named, clipOf };
+}
+
+function canvaItems(state, tabTitle, pageUrl) {
+  const { clips, named, clipOf } = canvaNaming(state);
+  const last = (state.plays || []).slice(-1)[0];
+  const playingClip = last && last.key ? clipOf(last.key) : null;
+  const title = safeBase(canvaTitle(tabTitle)) || "Canva";
+  const merge = appMerges && !ON_IOS;
+  const taken = new Set();
+  const unique = (base, ext) => {
+    let name = `${base}.${ext}`;
+    for (let k = 2; taken.has(name.toLowerCase()); k++) name = `${base} (${k}).${ext}`;
+    taken.add(name.toLowerCase());
+    return name;
+  };
+  const items = [];
+  let videos = 0, audios = 0;
+  for (const c of clips) {
+    const fig = named.get(c.key) || null;
+    const isAudio = !c.video;
+    const n = isAudio ? ++audios : ++videos;
+    const playing = !!playingClip && playingClip.key === c.key;
+    const base = safeBase(fig ? stripExt(fig.name) : "") || `${title} - ${isAudio ? "audio " : ""}${n}`;
+    const label = fig ? fig.name : fjT(isAudio ? "itemCanvaAudio" : "itemCanvaVideo", { n });
+    const duration = fig && fig.duration ? fig.duration : 0;
+    const parts = [playing ? fjT("itemCanvaPlaying") : "", fig && fig.page ? fjT("itemCanvaPage", { n: fig.page }) : "", duration ? fmtClock(duration) : ""].filter(Boolean);
+    const common = { kind: "media", canva: true, clipKey: c.key, referer: pageUrl, figure: fig ? fig.name : "", page: fig ? fig.page || 0 : 0, thumb: fig ? fig.thumb || "" : "", duration, playing };
+    const make = (main, audioUrl, size, ext, extraLabel) => {
+      const fileName = unique(base, ext);
+      const note = parts.join(" · ");
+      return {
+        ...common, label: extraLabel ? `${label} · ${extraLabel}` : (fig ? fileName : label), url: main.url, audioUrl, size, ext,
+        stream: !!main.stream, fileName, note, sub: [note, size ? fmtBytes(size) : ""].filter(Boolean).join(" · ")
+      };
+    };
+    if (c.video && c.audio && merge) items.push(make(c.video, c.audio.url, (c.video.size || 0) + (c.audio.size || 0), "mp4"));
+    else {
+      if (c.video) items.push(make(c.video, "", c.video.stream ? 0 : (c.video.size || 0), c.video.stream ? "mp4" : (c.video.ext || nameExt(fig && fig.name) || "mp4"), c.audio ? fjT("badgeVideo") : ""));
+      if (c.audio) items.push(make(c.audio, "", c.audio.size || 0, c.audio.ext || "m4a", c.video ? fjT("badgeAudio") : ""));
+    }
+    if (playing) items.forEach(i => { if (i.clipKey === c.key) i.note = i.note || fjT("itemCanvaPlaying"); });
+  }
+  return items.sort((a, b) => (b.playing ? 1 : 0) - (a.playing ? 1 : 0));
+}
+
+async function canvaForTab(tabId) {
+  let tab = null;
+  try { tab = await api.tabs.get(tabId); } catch (_) { return null; }
+  const design = canvaDesign(tab && tab.url);
+  if (!design) return null;
+  const state = await tabState(CANVA_KEY, tabId);
+  const mine = state && state.design === design ? state : canvaState({}, tabId, design, tab.url);
+  const items = canvaItems(mine, tab.title, tab.url);
+  if (!items.length && mine.figures.length) items.push({ label: fjT("itemCanvaWait"), sub: fjT("itemCanvaWaitSub"), disabled: true });
+  return { items, title: canvaTitle(tab.title) };
+}
+
+async function canvaReport(tabId) {
+  let tab = null;
+  try { tab = await api.tabs.get(tabId); } catch (_) {}
+  const state = (await tabState(CANVA_KEY, tabId)) || {};
+  let live = null;
+  try { live = await api.tabs.sendMessage(tabId, { action: "canvaDebug" }); } catch (_) {}
+  return {
+    extension: EXT_VERSION, page: stripQuery((tab && tab.url) || ""), appMerges, live,
+    remembered: (await tabState(CANVA_MEMO_KEY, tabId)) || null,
+    captures: state.log || [],
+    files: canvaClips(state.files ? state : { files: {} }).map(c => ({
+      key: c.key, keys: c.keys, tokens: c.tokens, first: Math.min(...c.keys.map(k => (state.files[k] || {}).first || Infinity)), video: c.video ? { url: stripQuery(c.video.url), size: c.video.size, ext: c.video.ext, preview: c.video.preview } : null,
+      audio: c.audio ? { url: stripQuery(c.audio.url), size: c.audio.size, ext: c.audio.ext, preview: c.audio.preview } : null
+    })),
+    figures: (state.figures || []).map(g => ({ label: g.name, page: g.page, thumb: stripQuery(g.thumb), ids: g.ids, duration: g.duration, box: g.box, boxFrom: g.boxFrom || "", visible: !!g.visible })),
+    plays: (state.plays || []).map(p => ({ name: p.name, page: p.page, since: p.since, at: p.at, key: p.key })),
+    pairs: state.pairs || {}, binds: state.binds || {}
+  };
 }
 
 /**
@@ -1317,7 +1859,7 @@ async function pushToTab(tabId) {
 async function clearTab(tabId) {
   seenStreams.delete(tabId);
   videoPages.delete(tabId);
-  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null), setTabState(DRM_KEY, tabId, null)]);
+  await Promise.all([clearMediaForTab(tabId), setTabState(YT_KEY, tabId, null), setTabState(RES_KEY, tabId, null), setTabState(DRM_KEY, tabId, null), setTabState(CANVA_KEY, tabId, null)]);
   updateBadge(tabId, 0);
   api.tabs.sendMessage(tabId, { action: "fetchjetItems", items: [] }).catch(() => {});
   refreshMenus(tabId).catch(() => {});
@@ -1377,8 +1919,19 @@ async function downloadItem(item, tab) {
       const part = await inPage({ id: head.id, lectures: head.lectures.slice(i, i + 12) });
       if (!Array.isArray(part)) return fail(fjT("courseFailed", { reason: part && part.error ? `(${part.error})` : "" }));
       part.forEach((r, k) => {
-        if (r && r.url) entries.push({ title: `${String(i + k + 1).padStart(3, "0")} - ${r.title}`, url: r.url });
-        else if (r && r.drm) drm++;
+        if (!r) return;
+        const number = String(i + k + 1).padStart(3, "0");
+        if (r.url) { if (udemyLink(r.url)) entries.push({ title: `${number} - ${r.title}`, url: r.url }); }
+        else if (r.drm) drm++;
+        if (r.file && udemyLink(r.file.url)) {
+          const fileName = udemyFileName(number, r.title, r.file.name, r.file.url);
+          entries.push({ title: fileName, url: r.file.url, fileName });
+        }
+        for (const res of r.resources || []) {
+          if (!res || !udemyLink(res.url)) continue;
+          const fileName = udemyFileName(number, res.name, res.name, res.url);
+          entries.push({ title: fileName, url: res.url, fileName });
+        }
       });
     }
     if (!entries.length) return fail(drm ? fjT("courseAllDrm") : fjT("courseFailed", { reason: "" }));
@@ -1394,8 +1947,7 @@ async function downloadItem(item, tab) {
       return ok ? { ok: true } : { ok: false, reason: "could not open FetchJet" };
     }
     try {
-      const t = await api.tabs.create({ url: PROTOCOL + encodeURIComponent(item.url), active: true });
-      if (t && t.id != null) setTimeout(() => api.tabs.remove(t.id).catch(() => {}), 1500);
+      await openProtocolTab(PROTOCOL + encodeURIComponent(item.url), true, 1500);
       return { ok: true };
     } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
   }
@@ -1422,11 +1974,11 @@ async function downloadItem(item, tab) {
   // A captured HLS/DASH playlist: the app merges it into one video; name it after the page
   // (the lecture / video title), not after the playlist's hash.
   let fileName = item.fileName || "";
-  if (item.kind === "media" && /\.(m3u8|mpd)$/i.test(fileName)) {
+  if (item.kind === "media" && !item.canva && (item.stream || /\.(m3u8|mpd)$/i.test(fileName))) {
     // The app lists the playlist's renditions and the user picks one there: no quality in the name.
     fileName = `${clean}.mp4`;
   }
-  return sendToFetchJet({ url: item.url, referer: item.referer || pageUrl, fileName, direct: true, from: tab }, "media");
+  return sendToFetchJet({ url: item.url, audioUrl: item.audioUrl || "", referer: item.referer || pageUrl, fileName, direct: true, from: tab }, "media");
 }
 
 /** YouTube tab: make sure the qualities are (being) fetched, whatever brought us here. */
@@ -1443,7 +1995,9 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (info.url) {
     const yt = await tabState(YT_KEY, tabId);
     const newId = ytVideoId(info.url);
-    if (!(yt && newId && yt.videoId === newId)) await clearTab(tabId); // not the same video
+    const canva = canvaDesign(info.url) ? await tabState(CANVA_KEY, tabId) : null;
+    const sameDesign = !!canva && canva.design === canvaDesign(info.url);
+    if (!(yt && newId && yt.videoId === newId) && !sameDesign) await clearTab(tabId); // not the same video
   } else if (info.status === "loading") {
     // Plain reload: same URL, new page - forget what the old page played.
     const yt = await tabState(YT_KEY, tabId);
@@ -1456,7 +2010,7 @@ api.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   }
   if (info.url || info.status === "loading" || info.status === "complete") ensureYoutubeResolved(tabId, url);
 });
-api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}).then(() => shownBadges.delete(tabId)); });
+api.tabs.onRemoved.addListener((tabId) => { clearTab(tabId).catch(() => {}).then(() => { shownBadges.delete(tabId); return setTabState(CANVA_MEMO_KEY, tabId, null); }).catch(() => {}); });
 
 // ---------------------------------------------------------------------------
 // 3. Context menus & keyboard commands
@@ -1471,7 +2025,8 @@ const MENU = {
   selectionLinks: "fetchjet-selection-links",
   pageMedia: "fetchjet-page-media",
   course: "fetchjet-course",
-  playlist: "fetchjet-playlist"
+  playlist: "fetchjet-playlist",
+  canvaAll: "fetchjet-canva-all"
 };
 
 function installMenus() {
@@ -1487,6 +2042,7 @@ function installMenus() {
     create({ id: MENU.course, title: fjT("itemCourse"), contexts: ["page", "frame", "video"], visible: false });
     create({ id: MENU.playlist, title: fjT("itemPlaylist"), contexts: ["page", "frame"], visible: false });
     create({ id: MENU.page, title: fjT("menuPage"), contexts: ["page", "frame"], visible: false });
+    create({ id: MENU.canvaAll, title: fjT("menuCanvaAll"), contexts: ["page", "frame", "image", "video"], visible: false });
     create({ id: MENU.allLinks, title: fjT("menuAllLinks"), contexts: ["page", "frame"] });
     create({ id: MENU.pageMedia, title: fjT("menuPageMedia"), contexts: ["action"] });
     api.tabs.query({ active: true, currentWindow: true }).then(([t]) => t && refreshMenus(t.id)).catch(() => {});
@@ -1510,14 +2066,16 @@ async function refreshMenus(tabId) {
   } catch (_) { return; }
   const course = appCourses && !ON_IOS ? await udemyCourseForTab(tabId) : null;
   const list = course ? null : await listUrlForTab(tabId);
+  const canva = course || list ? null : await canvaForTab(tabId);
+  const canvaFiles = canva ? canva.items.filter(i => i.canva).length : 0;
   let video = false;
-  if (!course) {
+  if (!course && !canva) {
     let url = "";
     try { url = ((await api.tabs.get(tabId)) || {}).url || ""; } catch (_) {}
     const all = await sessionGet(MEDIA_KEY);
     video = !!ytVideoId(url) || videoPages.get(tabId) === true || Object.keys(all[tabId] || {}).length > 0;
   }
-  const want = { [MENU.course]: !!course, [MENU.playlist]: !!list, [MENU.page]: video, [MENU.allLinks]: !course && !list && !video };
+  const want = { [MENU.course]: !!course, [MENU.playlist]: !!list, [MENU.page]: video, [MENU.allLinks]: !course && !list && !video && !canva, [MENU.canvaAll]: canvaFiles > 0 };
   for (const [id, visible] of Object.entries(want)) {
     if (shownMenus.get(id) === visible) continue;
     shownMenus.set(id, visible);
@@ -1554,6 +2112,7 @@ if (api.contextMenus) {
       case MENU.selectionLinks:
         return collectAndSendLinks(tab, { selectionOnly: true, frameId: info.frameId });
       case MENU.pageMedia:
+      case MENU.canvaAll:
         return sendDetectedMedia(tab && tab.id);
     }
   });
@@ -1623,6 +2182,12 @@ async function tabGroupName(tabOrId) {
 
 async function sendDetectedMedia(tabId) {
   if (tabId == null) return { ok: false, count: 0 };
+  const canva = await canvaForTab(tabId);
+  if (canva) {
+    const files = canva.items.filter(i => i.canva);
+    if (!files.length) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
+    return sendBatchToFetchJet(files.map(i => ({ url: i.url, referer: i.referer, fileName: i.fileName, audioUrl: i.audioUrl || "" })), "", await tabGroupName(tabId), tabId);
+  }
   const all = await sessionGet(MEDIA_KEY);
   const items = Object.values(all[tabId] || {});
   if (items.length === 0) { await notify(fjT("notifyNoMedia")); return { ok: false, count: 0 }; }
@@ -1678,16 +2243,41 @@ async function askingTab(request, sender) {
   } catch (_) { return null; }
 }
 
+function fromExtensionPage(sender) {
+  if (!sender || (sender.id && sender.id !== api.runtime.id)) return false;
+  const base = api.runtime.getURL("");
+  return !!base && typeof sender.url === "string" && sender.url.startsWith(base);
+}
+
+/** Only the popup and the options page may ask for these (they act on any tab or on the settings). */
+const EXTENSION_PAGE_ACTIONS = new Set(["saveSettings", "sendDetectedMedia", "collectAndSendLinks", "clearDetectedMedia", "canvaReport", "resolveTab", "checkStatus"]);
+
+async function hideSiteFor(tab) {
+  const site = hostOf((tab && tab.url) || "");
+  if (!site) return { ok: false };
+  await serial(async () => {
+    const settings = await getSettings();
+    const hiddenSites = settings.hiddenSites || [];
+    if (!hiddenSites.includes(site)) await saveSettings({ hiddenSites: [...hiddenSites, site] });
+  });
+  return { ok: true };
+}
+
 api.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const own = fromExtensionPage(sender);
+  if (!own && (!sender || !sender.tab || EXTENSION_PAGE_ACTIONS.has(request && request.action))) {
+    sendResponse({ ok: false, reason: "not allowed" });
+    return false;
+  }
+  if (!own && request && request.tabId != null) request = { ...request, tabId: undefined };
   (async () => {
     switch (request && request.action) {
-      case "sendToFetchJet":
-      case "sendToKortex": {
+      case "sendToFetchJet": {
         const referer = request.referer || (sender.tab && sender.tab.url) || "";
         return sendToFetchJet({ url: request.url, referer, fileName: request.fileName || "", from: await askingTab(request, sender) }, "message");
       }
-      case "sendBatch":
-        return sendBatchToFetchJet(request.items || [], request.referer || (sender.tab && sender.tab.url) || "", sender.tab ? await tabGroupName(sender.tab) : "", await askingTab(request, sender));
+      case "hideSite":
+        return hideSiteFor(sender.tab);
       case "sendDetectedMedia":
         return sendDetectedMedia(request.tabId);
       case "collectAndSendLinks": {
@@ -1708,6 +2298,16 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!page) return { ok: false };
         return { ok: await openAppAt("fetchjet://browse?url=" + encodeURIComponent(page), tab && tab.id) };
       }
+      case "openPageDialog": {
+        if (ON_IOS) return { ok: false, reason: "unsupported url" };
+        let page = request.page || (sender.tab && sender.tab.url) || "";
+        try { if (!/^https?:$/.test(new URL(page).protocol)) page = ""; } catch (_) { page = ""; }
+        if (!page) return { ok: false, reason: "unsupported url" };
+        try {
+          await openProtocolTab(PROTOCOL + encodeURIComponent(page), true);
+          return { ok: true };
+        } catch (_) { return { ok: false, reason: "could not open FetchJet" }; }
+      }
       case "launchApp": {
         const launched = await launchApp(request.url || "");
         const online = launched ? await waitForApp(12000) : false;
@@ -1717,10 +2317,6 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return getSettings();
       case "saveSettings":
         return saveSettings(request.settings || {});
-      case "getDetectedMedia": {
-        const all = await sessionGet(MEDIA_KEY);
-        return { items: Object.values(all[request.tabId] || {}).sort((a, b) => (b.size || 0) - (a.size || 0)) };
-      }
       case "getItems": {
         const tabId = request.tabId != null ? request.tabId : (sender.tab && sender.tab.id);
         if (tabId != null) { try { const t = await api.tabs.get(tabId); ensureYoutubeResolved(tabId, t.url); } catch (_) {} }
@@ -1756,16 +2352,17 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       case "resolveVideo":
         return resolveVideo(request, sender.tab || null);
+      case "canvaFigures":
+        if (!sender.tab || sender.tab.id == null || (sender.frameId || 0) !== 0) return { ok: false };
+        return addCanvaFigures(sender.tab, request.figures, request.play || null, request.bind || null);
+      case "canvaReport":
+        return canvaReport(request.tabId != null ? request.tabId : (sender.tab && sender.tab.id));
       case "mediaSeen": {
         // iOS: media URLs the page loaded, read by the content script (no webRequest there).
         if (!ON_IOS || !sender.tab || sender.tab.id == null) return { ok: false };
         for (const url of (request.urls || []).slice(0, 20)) {
           await sniffMedia({ tabId: sender.tab.id, statusCode: 200, url, responseHeaders: [], documentUrl: sender.url || "" });
         }
-        return { ok: true };
-      }
-      case "openPanel": {
-        try { await api.tabs.sendMessage(request.tabId, { action: "openPanel" }); } catch (_) {}
         return { ok: true };
       }
       case "clearDetectedMedia":

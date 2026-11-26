@@ -257,7 +257,30 @@ object ArchiveExtractor {
         }
     }
 
+    internal fun checkListing(entries: List<ExternalEntry>, limits: ExtractLimits): Long {
+        var files = 0
+        var bytes = 0L
+        for (entry in entries) {
+            if (entry.isLink) throw ArchiveException("the archive holds a link (${entry.path.take(120)}): it is not extracted")
+            if (!isSafeEntryPath(entry.path)) throw ArchiveException("the archive holds an unsafe path (${entry.path.take(120)}): it is not extracted")
+            if (entry.isDirectory) continue
+            files++
+            bytes += entry.size.coerceAtLeast(0L)
+            if (files > limits.maxFiles) throw ArchiveException("the archive holds too many files")
+            if (bytes > limits.maxBytes) throw ArchiveException("the archive is larger than the limit")
+        }
+        return bytes
+    }
+
+    internal fun isSafeEntryPath(name: String): Boolean {
+        val unified = name.replace('\\', '/')
+        if (unified.isEmpty() || unified.startsWith("/") || unified.any { it.code == 0 }) return false
+        if (unified.length >= 2 && unified[1] == ':' && unified[0].isLetter()) return false
+        return unified.split('/').none { it == ".." }
+    }
+
     private suspend fun external(archive: Path, work: Path, password: String?, run: Run) {
+        checkListing(listWithExternalArchiver(archive.toString(), password), run.limits)
         ExternalArchiver.extract(archive.toString(), work.toString(), password, run.onProgress)
         for (path in AppFileSystem.listRecursively(work).toList()) {
             val meta = AppFileSystem.metadataOrNull(path) ?: continue

@@ -226,6 +226,12 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         return out
     }
 
+    private static func debugLog(_ text: @autoclosure () -> String) {
+        #if DEBUG
+        NSLog("%@", text())
+        #endif
+    }
+
     public func executeYtDlpCancellable(
         runId: String,
         args: [String],
@@ -236,7 +242,8 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
         }
         guard ensureEngine() else { return 1 }
         let argv = sanitize(args)
-        NSLog("[yt-dlp] run: %@", redactedForLog(argv).joined(separator: " "))
+        NSLog("[yt-dlp] run started")
+        Self.debugLog("[yt-dlp] run: \(redactedForLog(argv).joined(separator: " "))")
         var hookCount = 0
         // ffmpeg (clipping / merging / HLS) prints its "size= ... time= ..." progress to stderr;
         // forward it live so the Kotlin parser can animate the bar during those phases.
@@ -261,11 +268,12 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
                 // Surface yt-dlp's own log lines; Kotlin parses "[download]"/"[ffmpeg]" markers.
                 progressCallback?.onProgress(progressPercent: -1, speedBytesPerSec: 0, line: message)
                 if level == "error" || !message.hasPrefix("[download]") {
-                    NSLog("[yt-dlp] %@: %@", level, message)
+                    Self.debugLog("[yt-dlp] \(level): \(message)")
                 }
             }
         )
-        NSLog("[yt-dlp] run finished, %d progress hook calls, error: %@", hookCount, result ?? "none")
+        NSLog("[yt-dlp] run finished, %d progress hook calls, failed: %@", hookCount, result == nil ? "no" : "yes")
+        Self.debugLog("[yt-dlp] run error: \(result ?? "none")")
         recordRunError(result)
         if let error = result {
             progressCallback?.onProgress(progressPercent: -1, speedBytesPerSec: 0, line: "ERROR: \(error)")
@@ -297,7 +305,7 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
                     }
                 case "error":
                     errors.append(message)
-                    NSLog("[yt-dlp] %@", message)
+                    Self.debugLog("[yt-dlp] \(message)")
                 default:
                     break
                 }
@@ -314,7 +322,8 @@ public final class NativeMediaExtractorBridge: NSObject, IosMediaExecutionBridge
             }
             .joined(separator: "\n")
             recordRunError(reason.isEmpty ? "yt-dlp produced no output" : reason)
-            NSLog("[yt-dlp] capture failed: %@", reason)
+            NSLog("[yt-dlp] capture failed")
+            Self.debugLog("[yt-dlp] capture failed: \(reason)")
             return nil
         }
         recordRunError(nil)

@@ -17,7 +17,8 @@ internal class ChunkLayout(
     initial: List<DownloadChunk>,
     private val host: String = "",
     private val limits: HostLimits = HostLimits.shared,
-    private val clockMs: (() -> Long)? = null
+    private val clockMs: (() -> Long)? = null,
+    private val tuner: ConnectionTuner? = null
 ) {
     class Piece(val index: Int, val start: Long, initialEnd: Long, initialDownloaded: Long) {
         @Volatile
@@ -106,6 +107,20 @@ internal class ChunkLayout(
 
     suspend fun total(): Long = mutex.withLock { pieces.sumOf { min(it.downloaded, it.length) } }
 
+    /** Feeds the connection tuner with the download so far; call a few times a second. */
+    suspend fun tune(nowMs: Long, downloaded: Long, totalLength: Long) {
+        val t = tuner ?: return
+        val running = mutex.withLock { pieces.count { it.running } }
+        t.onSample(nowMs, downloaded, running, (totalLength - downloaded).coerceAtLeast(0L))
+    }
+
+    fun rememberTuning() {
+        val t = tuner ?: return
+        ConnectionTuner.learn(host, t.bestKnown)
+    }
+
+    val activeConnections: Int get() = tuner?.cap ?: 0
+
     suspend fun snapshot(): List<DownloadChunk> = mutex.withLock {
         pieces.sortedBy { it.start }.map {
             DownloadChunk(
@@ -131,7 +146,7 @@ internal class ChunkLayout(
             if (pieces.count { it.running } >= connectionCap) limits.climb(host, connectionCap)
             connectionCap++; lastBusyMs = now
         }
-        if (pieces.count { it.running } >= connectionCap) return@withLock null
+        if (pieces.count { it.running } >= min(connectionCap, tuner?.cap ?: Int.MAX_VALUE)) return@withLock null
         val piece = pieces.firstOrNull { !it.running && !it.isCompleted && it.retryAtMs <= now }
             ?.also { it.running = true }
             ?: split()?.also { it.running = true }

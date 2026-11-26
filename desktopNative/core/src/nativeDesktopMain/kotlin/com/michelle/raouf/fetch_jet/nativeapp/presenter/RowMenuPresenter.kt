@@ -5,6 +5,9 @@ import com.michelle.raouf.fetch_jet.domain.model.canResume
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenu
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuEntry
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions
+import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuSection
+import com.michelle.raouf.fetch_jet.feature.row_menu.section
+import com.michelle.raouf.fetch_jet.core.i18n.data_provider.AppLocalization
 import com.michelle.raouf.fetch_jet.nativeapp.dto.RowMenuItemDto
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.tbib.kmp_localization.LocalizationManager
@@ -19,11 +22,50 @@ private fun Presenter.rowMenuEntries(id: String): List<RowMenuEntry> {
 }
 
 internal fun Presenter.openRowMenu(id: String) {
+    val s = LocalizationManager.Strings
+    val inHidden = local.value.hiddenOpen
+    if (rowIsGroup(id)) {
+        rowMenuTask.value = id
+        rowMenu.publish(listOf(if (inHidden) RowMenuItemDto(UNHIDE_KEY, s.hiddenUnhide) else RowMenuItemDto(HIDE_KEY, s.hiddenHide)))
+        return
+    }
     val entries = rowMenuEntries(id)
     if (entries.isEmpty()) return closeRowMenu()
-    val s = LocalizationManager.Strings
     rowMenuTask.value = id
-    rowMenu.publish(entries.map { RowMenuItemDto(it.ordinal, RowMenu.label(it, s), it.danger, it.dividerBefore) })
+    val task = task(id) ?: return closeRowMenu()
+    val extracting = id in vm.uiState.value.audioExtracting
+    val rows = entries.map { entry ->
+        val running = entry == RowMenuEntry.EXTRACT_AUDIO && extracting
+        entry.section to RowMenuItemDto(
+            entry.ordinal,
+            if (running) s.audioExtractRunning else RowMenu.label(entry, s, task),
+            entry.danger,
+            disabled = running,
+        )
+    }.toMutableList()
+    if (!inHidden) rows.add((rows.size - 1).coerceAtLeast(0), RowMenuSection.MANAGE to RowMenuItemDto(HIDE_KEY, s.hiddenHide))
+    rowMenu.publish(rows.mapIndexed { index, (section, item) ->
+        val starts = index == 0 || rows[index - 1].first != section
+        item.copy(divider = starts && index > 0, header = if (starts) sectionLabel(section, s) else "")
+    })
+}
+
+private fun sectionLabel(section: RowMenuSection, s: AppLocalization): String = when (section) {
+    RowMenuSection.OPEN -> s.rowMenuSectionOpen
+    RowMenuSection.MEDIA -> s.rowMenuSectionMedia
+    RowMenuSection.DOWNLOAD -> s.rowMenuSectionDownload
+    RowMenuSection.MANAGE -> s.rowMenuSectionManage
+}
+
+private fun Presenter.menuRows(id: String): Set<String> {
+    val checked = local.value.checkedIds
+    return if (id in checked && checked.size > 1) checked else setOf(id)
+}
+
+private fun Presenter.unhideMenuRows(id: String) {
+    if (!local.value.hiddenOpen) return
+    vm.onEvent(DashboardUiEvent.OnUnhideTasks(expandPlaylistRows(menuRows(id))))
+    local.update { it.copy(checkedIds = emptySet(), selectedTaskId = null, focusId = null) }
 }
 
 internal fun Presenter.closeRowMenu() {
@@ -35,6 +77,8 @@ internal fun Presenter.pickRowMenu(key: Int) {
     val id = rowMenuTask.value
     closeRowMenu()
     id ?: return
+    if (key == HIDE_KEY) return hideTargets(hiddenTargetOf(menuRows(id)))
+    if (key == UNHIDE_KEY) return unhideMenuRows(id)
     val entry = RowMenuEntry.entries.getOrNull(key) ?: return
     if (entry !in rowMenuEntries(id)) return
     val task = task(id) ?: return
@@ -48,11 +92,15 @@ internal fun Presenter.pickRowMenu(key: Int) {
         RowMenuEntry.RESUME -> vm.onEvent(DashboardUiEvent.OnResumeClicked(id))
         RowMenuEntry.EXTRACT -> vm.onEvent(DashboardUiEvent.OnExtractTaskClicked(id))
         RowMenuEntry.COMPRESS -> vm.onEvent(DashboardUiEvent.OnAudioCompressClicked(id))
+        RowMenuEntry.CUT -> vm.onEvent(DashboardUiEvent.OnVideoCutClicked(id))
+        RowMenuEntry.EXTRACT_AUDIO ->
+            if (id !in vm.uiState.value.audioExtracting) vm.onEvent(DashboardUiEvent.OnExtractAudioClicked(id))
         RowMenuEntry.SUBTITLES -> vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(id))
         RowMenuEntry.SEND_TO_DEVICE -> vm.onEvent(DashboardUiEvent.OnShareTaskClicked(id))
         RowMenuEntry.COPY_LINK -> vm.onEvent(DashboardUiEvent.OnCopyTaskLink(id))
         RowMenuEntry.SELECT -> local.update { it.copy(checkedIds = it.checkedIds + id) }
         RowMenuEntry.DETAILS -> local.update { it.copy(selectedTaskId = id) }
+        RowMenuEntry.UNHIDE -> unhideMenuRows(id)
         RowMenuEntry.DELETE -> vm.onEvent(DashboardUiEvent.OnRemoveClicked(id))
     }
 }

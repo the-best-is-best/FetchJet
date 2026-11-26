@@ -39,6 +39,94 @@ interface AppLocalization : LocalizationProvider {
     val moreSource: String
     val morePrivacy: String
     val moreStats: String
+    val hiddenTitle: String
+    val browserTitle: String
+    val browserHint: String
+    val browserAddressHint: String
+    val browserSendPage: String
+    val browserDownloadMedia: String
+    val hiddenHide: String
+    val hiddenUnhide: String
+    val hiddenUnhideAll: String
+    val hiddenSetPinTitle: String
+    val hiddenSetPinHint: String
+    val hiddenEnterPin: String
+    val hiddenConfirmPin: String
+    val hiddenPinMismatch: String
+    val hiddenInvalidPin: String
+    val hiddenWrongPin: String
+    val hiddenLockedFor: String
+    val hiddenChangePin: String
+    val hiddenOldPin: String
+    val hiddenNewPin: String
+    val hiddenRemovePin: String
+    val hiddenRemoveWarn: String
+    val hiddenLock: String
+    val hiddenEmpty: String
+    val hiddenHiddenToast: String
+    val hiddenNoteEncrypted: String
+    val hiddenNoteAnyType: String
+    val hiddenWorking: String
+    val hiddenNoticeTitle: String
+    val hiddenNoticeBody: String
+    val hiddenNoticeAccept: String
+    val hiddenOpening: String
+    val hiddenNoticeCopyLeft: String
+    val hiddenNoticeMoveFailed: String
+    val hiddenNoticeOpenFailed: String
+    val hiddenRecoveryTitle: String
+    val hiddenRecoveryBody: String
+    val hiddenRecoveryCopy: String
+    val hiddenRecoveryRestoreTitle: String
+    val hiddenRecoveryRestoreHint: String
+    val hiddenRecoveryEnter: String
+    val hiddenForgotPin: String
+    val hiddenForgotReason: String
+    val hiddenReauthReason: String
+    val hiddenResetPinTitle: String
+    val hiddenNoticeRestoreDone: String
+    val hiddenNoticeRestoreWrong: String
+    val hiddenNoticeRestoreNothing: String
+    val hiddenNoticeRecoveryUnavailable: String
+    val hiddenNoticeAuthFailed: String
+    val hiddenNoticeResetDone: String
+    val hiddenNoticeResetExpired: String
+    val hiddenNoticeNeedFileAccess: String
+    val hiddenNoticeNotMedia: String
+    val hiddenCoverUnlock: String
+    val hiddenCoverExit: String
+    val hiddenLockTypeTitle: String
+    val hiddenLockTypePin: String
+    val hiddenLockTypePattern: String
+    val hiddenPatternDraw: String
+    val hiddenPatternEnter: String
+    val hiddenPatternAgain: String
+    val hiddenPatternTooShort: String
+    val hiddenPatternMismatch: String
+    val hiddenWrongPattern: String
+    val hiddenUsePin: String
+    val hiddenUsePattern: String
+    val hiddenOldPattern: String
+    val hiddenNewPattern: String
+    val hiddenChangePattern: String
+    val hiddenRemovePattern: String
+    val hiddenRemovePatternWarn: String
+    val hiddenForgotPattern: String
+    val hiddenNoticePatternChanged: String
+    val hiddenDownloadName: String
+    val backupExport: String
+    val backupRestore: String
+    val backupExportHint: String
+    val backupRestoreHint: String
+    val backupDone: String
+    val backupNothingNew: String
+    val backupNeedRestart: String
+    val backupSkipped: String
+    val backupWrongPlatform: String
+    val backupSettingsDone: String
+    val backupInvalid: String
+    val backupHiddenBlocked: String
+    val backupFailed: String
     val homeDownloads: String
 
     val homeTabAll: String
@@ -722,8 +810,13 @@ interface AppLocalization : LocalizationProvider {
     val netLoginsHint: String
     val netLoginSite: String
     val netLoginAdd: String
+    val netLoginBrowser: String
+    val netLoginBrowserTag: String
+    val netLoginBrowserDone: String
+    val netLoginBrowserHint: String
     val netLoginsEmpty: String
     val netRemove: String
+    val netRemoveConfirm: String
     fun netLoginsCount(n: Int): String
     val sysTabAllDownloads: String
     val sysTabActive: String
@@ -783,6 +876,7 @@ interface AppLocalization : LocalizationProvider {
     val subtitlesNoneInList: String
     val playlistVideoJoined: String
     val detailsPlaylist: String
+    val detailsLinkSensitive: String
     val popUpAskText: String
     val popUpAskAllow: String
     val popUpAskLater: String
@@ -794,6 +888,44 @@ interface AppLocalization : LocalizationProvider {
     val sysReadingChannelName: String
     val sysReadingVideosCount: String
     val playlistGroupDone: String
+    val playerAllFinished: String
+    val playerStartOver: String
+    val playerPlayAll: String
+    val playerAskTitle: String
+    val playerAskText: String
+    val playerAskDownload: String
+    val playerAskSystem: String
+    val playerAskRemember: String
+    val playerAskLater: String
+    val playerModeTitle: String
+    val playerModeHint: String
+    val playerModeHintShort: String
+    val playerSubtitles: String
+    val playerAutoplay: String
+    val playerVolume: String
+    val playerMute: String
+    val playerBrightness: String
+    val playerFullscreen: String
+    val playerSubtitlesOff: String
+    val playerSubtitlesOpenFile: String
+    val playerSubtitlesTrack: String
+    val playerSubtitlesInVideo: String
+    val playerSubtitlesFiles: String
+    val playerSubtitlesFailed: String
+    val playerModeAsk: String
+    val playerModeOn: String
+    val playerModeOff: String
+    val pdfModeTitle: String
+    val pdfModeHint: String
+    val pdfModeOn: String
+    val pdfAskTitle: String
+    val pdfAskText: String
+    val pdfAskDownload: String
+    val pdfPage: String
+    val pdfGoToPage: String
+    val pdfFitWidth: String
+    val pdfOpenFailed: String
+    val pdfPasswordProtected: String
     val playlistCheckNew: String
     val playlistBack: String
     val playlistDeleteAll: String
@@ -932,6 +1064,42 @@ interface AppLocalization : LocalizationProvider {
     val audioCompressHigherQuality: String
     val audioCompressSmallerFile: String
     val audioCompressNothing: String
+    val videoCutTitle: String
+    val videoCutByTime: String
+    val videoCutByTimeHint: String
+    val videoCutOnTimeline: String
+    val videoCutOnTimelineHint: String
+    val videoCutNeedsPlayerLibrary: String
+    val videoCutFrom: String
+    val videoCutTo: String
+    val videoCutDuration: String
+    val videoCutPlayRange: String
+    val videoCutApply: String
+    val videoCutRunning: String
+    val videoCutElapsed: String
+    val videoCutLeft: String
+    val videoCutStopping: String
+    val videoCutFailed: String
+    val videoCutClips: String
+    val videoCutDeleteClip: String
+    val videoCutTimelineNeedsMp4: String
+    val videoCutSaved: String
+    val videoCutNeedsTools: String
+    val deleteOriginalAfterCut: String
+    val deleteOriginalAfterCompress: String
+    val audioCompressSaved: String
+    val removeAlsoDerived: String
+    val audioCutTitle: String
+    val audioCutOnTimelineHint: String
+    val audioExtractTitle: String
+    val audioExtractRunning: String
+    val audioExtractDone: String
+    val audioExtractFailed: String
+    val audioExtractNoAudio: String
+    val rowMenuSectionOpen: String
+    val rowMenuSectionMedia: String
+    val rowMenuSectionDownload: String
+    val rowMenuSectionManage: String
 
     // --- Device sync (ROADMAP-1.3.0 item 4) ---
     val sysDeviceSendTitle: String

@@ -46,16 +46,19 @@ internal object DesktopPaths {
 
     fun temp(): String {
         val isolated = DesktopApp.homeOverride != null || DesktopApp.isDevelopmentBuild
-        val path = if (isolated) {
-            DesktopOs.join(DesktopOs.join(settings(), "tmp"), "FetchJetDownloads")
-        } else {
-            DesktopOs.join(DesktopOs.tempDir(), "FetchJetDownloads")
+        val own = DesktopOs.join(DesktopOs.join(settings(), "tmp"), "FetchJetDownloads")
+        val path = if (isolated) own else DesktopOs.join(DesktopOs.tempDir(), "FetchJetDownloads")
+        if (tempReady.isNotEmpty() && (tempReady == path || tempReady == own)) return tempReady
+        val ready = when {
+            PrivateFolder.ensure(path) -> path
+            path != own && PrivateFolder.ensure(own) -> own
+            else -> {
+                if (!DesktopOs.isDirectory(own)) DesktopOs.createDirectories(own)
+                own
+            }
         }
-        if (tempReady != path) {
-            if (!DesktopOs.isDirectory(path)) DesktopOs.createDirectories(path)
-            tempReady = path
-        }
-        return path
+        tempReady = ready
+        return ready
     }
 
     fun parentOf(path: String): String? = if (sep == '\\') windowsParentOf(path) else posixParentOf(path)

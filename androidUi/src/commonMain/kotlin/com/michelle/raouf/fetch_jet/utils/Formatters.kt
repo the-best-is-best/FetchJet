@@ -1,5 +1,6 @@
 ﻿package com.michelle.raouf.fetch_jet.utils
 
+import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
 import kotlin.math.round
 
 fun ltr(text: String): String = if (text.isEmpty()) text else "\u2066$text\u2069"
@@ -126,31 +127,9 @@ fun decodeUnicodeText(input: String): String {
     }
 }
 
-/**
- * Formats total seconds into a HH:MM string (padded with leading zeros).
- */
-fun formatSecondsToHhMm(totalSeconds: Long): String {
-    // Always HH:MM:SS. A two-part "HH:MM" is read by yt-dlp / ffmpeg as MM:SS, so a
-    // 10-minute clip came out as 10 seconds; three parts are unambiguous everywhere.
-    val s = if (totalSeconds < 0L) 0L else totalSeconds
-    val hours = s / 3600
-    val minutes = (s % 3600) / 60
-    val seconds = s % 60
-    return "${hours.toString().padStart(2, '0')}:${
-        minutes.toString().padStart(2, '0')
-    }:${seconds.toString().padStart(2, '0')}"
-}
+fun formatSecondsToHhMm(totalSeconds: Long): String = ClipTime.format(totalSeconds)
 
-/**
- * Parses a HH:MM or HH:MM:SS string into total seconds.
- */
-fun parseHhMmToSeconds(hhMm: String): Long {
-    val parts = hhMm.split(":")
-    val h = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-    val m = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-    val s = parts.getOrNull(2)?.toLongOrNull() ?: 0L
-    return (h * 3600L + m * 60L + s).coerceAtLeast(0L)
-}
+fun parseHhMmToSeconds(hhMm: String): Long = ClipTime.wholeSeconds(hhMm)
 
 /**
  * Formats total seconds into a friendly description including hours, minutes, and seconds.

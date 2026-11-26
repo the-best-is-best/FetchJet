@@ -33,6 +33,7 @@ data class DeviceSheetDto(
     val canTransfer: Boolean = false,
     val transfer: Boolean = false,
     val deleteAfter: Boolean = false,
+    val deleteBlocked: Boolean = false,
     val manualShown: Boolean = false,
     val manualIp: String = "",
     val manualRev: Int = 0,

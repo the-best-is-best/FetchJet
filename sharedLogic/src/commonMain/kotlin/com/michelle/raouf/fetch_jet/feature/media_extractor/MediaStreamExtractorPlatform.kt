@@ -19,7 +19,9 @@ fun ytDlpHeaderArgs(headers: Map<String, String>, url: String = ""): List<String
         host.endsWith("youtube.com") || host.endsWith("youtu.be") || host.endsWith("googlevideo.com")
     headers.forEach { (k, v) ->
         if (youtube && k.equals("Cookie", true)) return@forEach
-        if (k.isNotBlank() && v.isNotBlank() && !k.contains(':') && !v.contains('\n')) {
+        if (k.isNotBlank() && v.isNotBlank() && !k.contains(':') &&
+            !k.contains('\n') && !k.contains('\r') && !v.contains('\n') && !v.contains('\r')
+        ) {
             add("--add-headers"); add("$k:$v")
         }
     }
@@ -64,8 +66,8 @@ expect suspend fun downloadMediaWithPlatformTool(
     clipStart: String? = null,
     clipEnd: String? = null,
     /**
-     * true: download the whole video at full speed and cut it locally afterwards (yt-dlp
-     * --remove-chapters with time ranges, stream copy). false: --download-sections, which only
+     * true: download the whole video at full speed and cut it locally afterwards
+     * (MediaClipCut.kt). false: --download-sections, which only
      * fetches the part but through ffmpeg on one connection that YouTube throttles.
      */
     clipByCutting: Boolean = false,

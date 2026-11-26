@@ -126,6 +126,11 @@ struct FJRemoveDialog: View {
         FJDialogFrame(title: s.removeDialogTitle(count: Int32(count))) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(s.removeDialogMessage(count: Int32(count))).fjBody()
+                if store.state.removeDerivedCount > 0 {
+                    Text(DashboardTaskEventsKt.removeDerivedText(count: store.state.removeDerivedCount))
+                        .font(FJTheme.font.callout)
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                }
                 FJDialogCheckRow(title: s.removeDialogAlsoDeleteFiles, checked: $deleteFile)
             }
         } buttons: {

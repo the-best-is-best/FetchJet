@@ -48,6 +48,9 @@
             browser keeps the download when FetchJet is not running. Uses
             the native messaging host or the fetchjet:// link handler registered by
                 the installer.</small></label><input id="autoLaunch" type="checkbox"></div>
+        <div class="row" id="rowOpenDirectly"><label><span data-i18n="optOpenDirectly">Open FetchJet directly instead of the silent send</span><small
+                data-i18n="optOpenDirectlyHint">Off: links go to the app quietly with the site's cookies and the video qualities. On: the browser opens FetchJet with the link each time and may ask "Open FetchJet?" the first time.</small></label><input
+                id="openDirectly" type="checkbox"></div>
         <div class="row" id="rowNotifications"><label data-i18n="optNotifications">Show
             notifications</label><input
                 id="notifications" type="checkbox">
@@ -157,6 +160,7 @@
         <button data-i18n="optSave" id="save">Save</button>
         <span class="saved" id="saved"></span></div>
 </div>
+<p id="extVersion" dir="ltr" style="opacity:.6;font-size:12px;text-align:center;margin:16px 0"></p>
 <script src="i18n/i18n.js"></script>
 <script src="i18n/en.js"></script>
 <script src="i18n/ar.js"></script>

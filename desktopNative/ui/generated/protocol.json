@@ -264,7 +264,10 @@
    "NONE",
    "DUPLICATE",
    "FILE_CONFLICT",
-   "MAIN_DOWNLOADER"
+   "MAIN_DOWNLOADER",
+   "PLAYER_LIBRARY",
+   "PDF_READER",
+   "LIBRARY_DOWNLOAD"
   ],
   "BadgeToneCode": [
    "OTHER",
@@ -299,7 +302,10 @@
    "EXTENSION_STEPS",
    "EXTENSION_FROM_FILE",
    "EXTENSION_FAILED",
-   "ARCHIVE_PASSWORD"
+   "ARCHIVE_PASSWORD",
+   "HIDDEN_PIN",
+   "HIDDEN_NOTICE",
+   "HIDDEN_RECOVERY"
   ],
   "ChannelKind": [
    "STRINGS",
@@ -328,6 +334,17 @@
    "START_NOW",
    "RESUME"
   ],
+  "DetailToolCode": [
+   "NONE",
+   "SECONDARY",
+   "EXTRACT",
+   "SHARE",
+   "PLAY",
+   "COMPRESS",
+   "CUT",
+   "SUBTITLES",
+   "EXTRACT_AUDIO"
+  ],
   "PieceStateCode": [
    "IDLE",
    "COMPLETED",
@@ -355,7 +372,13 @@
    "SHOW_WINDOW",
    "SCROLL_TO_ROW",
    "NOTIFY",
-   "EXIT"
+   "EXIT",
+   "OPEN_PLAYER",
+   "PLAYER_PATH",
+   "PLAYER_PREPARING",
+   "CLOSE_PLAYER",
+   "OPEN_PDF",
+   "CLOSE_PDF"
   ],
   "SideFilterCode": [
    "ALL",
@@ -910,6 +933,10 @@
    [
     "inPlaylist",
     "Boolean"
+   ],
+   [
+    "tag",
+    "String"
    ]
   ],
   "ClipChipDto": [
@@ -1212,6 +1239,26 @@
     "String"
    ],
    [
+    "minChipHidden",
+    "Boolean"
+   ],
+   [
+    "quick5Hidden",
+    "Boolean"
+   ],
+   [
+    "quick15Hidden",
+    "Boolean"
+   ],
+   [
+    "quick30Hidden",
+    "Boolean"
+   ],
+   [
+    "quick60Hidden",
+    "Boolean"
+   ],
+   [
     "valid",
     "Boolean"
    ],
@@ -1318,6 +1365,14 @@
    [
     "cancelLabel",
     "String"
+   ],
+   [
+    "checkLabel",
+    "String"
+   ],
+   [
+    "checked",
+    "Boolean"
    ]
   ],
   "AddTorrentDto": [
@@ -1422,6 +1477,26 @@
    [
     "inputSecret",
     "Boolean"
+   ],
+   [
+    "inputPattern",
+    "Boolean"
+   ],
+   [
+    "inputRev",
+    "Int"
+   ],
+   [
+    "inputDisabled",
+    "Boolean"
+   ],
+   [
+    "hintError",
+    "Boolean"
+   ],
+   [
+    "linkLabel",
+    "String"
    ]
   ],
   "AudioCopyDto": [
@@ -1436,6 +1511,146 @@
    [
     "size",
     "String"
+   ]
+  ],
+  "VideoClipDto": [
+   [
+    "path",
+    "String"
+   ],
+   [
+    "name",
+    "String"
+   ],
+   [
+    "nameRtl",
+    "Boolean"
+   ],
+   [
+    "size",
+    "String"
+   ],
+   [
+    "range",
+    "String"
+   ]
+  ],
+  "VideoCutDto": [
+   [
+    "open",
+    "Boolean"
+   ],
+   [
+    "needsTools",
+    "Boolean"
+   ],
+   [
+    "audio",
+    "Boolean"
+   ],
+   [
+    "chooser",
+    "Boolean"
+   ],
+   [
+    "timeline",
+    "Boolean"
+   ],
+   [
+    "clipsOnly",
+    "Boolean"
+   ],
+   [
+    "reading",
+    "Boolean"
+   ],
+   [
+    "timelineOff",
+    "Boolean"
+   ],
+   [
+    "fileName",
+    "String"
+   ],
+   [
+    "fileNameRtl",
+    "Boolean"
+   ],
+   [
+    "duration",
+    "String"
+   ],
+   [
+    "start",
+    "String"
+   ],
+   [
+    "startFriendly",
+    "String"
+   ],
+   [
+    "end",
+    "String"
+   ],
+   [
+    "endFriendly",
+    "String"
+   ],
+   [
+    "length",
+    "String"
+   ],
+   [
+    "rangeError",
+    "Boolean"
+   ],
+   [
+    "canStart",
+    "Boolean"
+   ],
+   [
+    "running",
+    "Boolean"
+   ],
+   [
+    "stopping",
+    "Boolean"
+   ],
+   [
+    "progress",
+    "Float"
+   ],
+   [
+    "percent",
+    "String"
+   ],
+   [
+    "elapsed",
+    "String"
+   ],
+   [
+    "timeLeft",
+    "String"
+   ],
+   [
+    "failed",
+    "Boolean"
+   ],
+   [
+    "message",
+    "String"
+   ],
+   [
+    "clips",
+    "List<VideoClipDto>"
+   ],
+   [
+    "canDeleteOriginal",
+    "Boolean"
+   ],
+   [
+    "deleteOriginal",
+    "Boolean"
    ]
   ],
   "AudioCompressDto": [
@@ -1574,6 +1789,18 @@
    [
     "progressText",
     "String"
+   ],
+   [
+    "cut",
+    "VideoCutDto"
+   ],
+   [
+    "canDeleteOriginal",
+    "Boolean"
+   ],
+   [
+    "deleteOriginal",
+    "Boolean"
    ]
   ],
   "ChipDto": [
@@ -1598,6 +1825,28 @@
    [
     "url",
     "String"
+   ],
+   [
+    "note",
+    "String"
+   ]
+  ],
+  "DetailToolDto": [
+   [
+    "code",
+    "Int"
+   ],
+   [
+    "icon",
+    "String"
+   ],
+   [
+    "label",
+    "String"
+   ],
+   [
+    "disabled",
+    "Boolean"
    ]
   ],
   "DetailsDto": [
@@ -1804,6 +2053,18 @@
    [
     "removeLabel",
     "String"
+   ],
+   [
+    "fileTools",
+    "List<DetailToolDto>"
+   ],
+   [
+    "mediaTools",
+    "List<DetailToolDto>"
+   ],
+   [
+    "clips",
+    "List<VideoClipDto>"
    ]
   ],
   "PieceDto": [
@@ -1965,6 +2226,10 @@
    ],
    [
     "deleteAfter",
+    "Boolean"
+   ],
+   [
+    "deleteBlocked",
     "Boolean"
    ],
    [
@@ -2258,6 +2523,10 @@
     "Boolean"
    ],
    [
+    "playlistCanPlay",
+    "Boolean"
+   ],
+   [
     "playlistLanguagesShown",
     "Boolean"
    ],
@@ -2284,6 +2553,34 @@
    [
     "groupFolderPath",
     "String"
+   ],
+   [
+    "hiddenOpen",
+    "Boolean"
+   ],
+   [
+    "hiddenNote",
+    "String"
+   ],
+   [
+    "hiddenChangeLabel",
+    "String"
+   ],
+   [
+    "hiddenRemoveLabel",
+    "String"
+   ],
+   [
+    "hiddenWorkShown",
+    "Boolean"
+   ],
+   [
+    "hiddenWorkText",
+    "String"
+   ],
+   [
+    "hiddenWorkFraction",
+    "Float"
    ]
   ],
   "StatusDto": [
@@ -2453,6 +2750,14 @@
    ],
    [
     "divider",
+    "Boolean"
+   ],
+   [
+    "header",
+    "String"
+   ],
+   [
+    "disabled",
     "Boolean"
    ]
   ],
@@ -3205,6 +3510,21 @@
   "PlaylistResumeAll": [],
   "PlaylistRemove": [],
   "PlaylistCheck": [],
+  "PlayOpenGroup": [],
+  "PlayerPrepare": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "PlayerRelease": [
+   [
+    "id",
+    "String"
+   ]
+  ],
+  "PlayerClosed": [],
+  "PlayerLibraryDownload": [],
   "PlaylistReadLanguages": [],
   "PlaylistAddLanguage": [
    [
@@ -3370,6 +3690,12 @@
    ]
   ],
   "AudioCompressDismiss": [],
+  "AudioCompressDeleteOriginal": [
+   [
+    "on",
+    "Boolean"
+   ]
+  ],
   "DetailsSubtitles": [],
   "SubtitlesToggle": [
    [
@@ -3450,6 +3776,12 @@
    ]
   ],
   "AlertExtra": [
+   [
+    "kind",
+    "Int"
+   ]
+  ],
+  "AlertLink": [
    [
     "kind",
     "Int"
@@ -3863,6 +4195,16 @@
    ]
   ],
   "UseSingleVideo": [],
+  "ChoiceCheck": [
+   [
+    "kind",
+    "Int"
+   ],
+   [
+    "checked",
+    "Boolean"
+   ]
+  ],
   "ChoicePrimary": [
    [
     "kind",
@@ -3879,6 +4221,58 @@
    [
     "kind",
     "Int"
+   ]
+  ],
+  "HideChecked": [],
+  "UnhideChecked": [],
+  "UnhideAll": [],
+  "UnhideGroup": [],
+  "HiddenChangePin": [],
+  "HiddenRemovePin": [],
+  "HiddenLock": [],
+  "HiddenRecoveryCode": [],
+  "HiddenRestore": [],
+  "DetailsTool": [
+   [
+    "code",
+    "Int"
+   ]
+  ],
+  "VideoCutChoose": [
+   [
+    "timeline",
+    "Boolean"
+   ]
+  ],
+  "VideoCutPickTime": [
+   [
+    "end",
+    "Boolean"
+   ]
+  ],
+  "VideoCutStart": [],
+  "VideoCutCancel": [],
+  "VideoCutDismiss": [],
+  "VideoCutDeleteClip": [
+   [
+    "path",
+    "String"
+   ]
+  ],
+  "VideoCutApply": [
+   [
+    "startMs",
+    "Int"
+   ],
+   [
+    "endMs",
+    "Int"
+   ]
+  ],
+  "VideoCutDeleteOriginal": [
+   [
+    "on",
+    "Boolean"
    ]
   ]
  },
@@ -3918,6 +4312,94 @@
   "moreSource",
   "morePrivacy",
   "moreStats",
+  "hiddenTitle",
+  "browserTitle",
+  "browserHint",
+  "browserAddressHint",
+  "browserSendPage",
+  "browserDownloadMedia",
+  "hiddenHide",
+  "hiddenUnhide",
+  "hiddenUnhideAll",
+  "hiddenSetPinTitle",
+  "hiddenSetPinHint",
+  "hiddenEnterPin",
+  "hiddenConfirmPin",
+  "hiddenPinMismatch",
+  "hiddenInvalidPin",
+  "hiddenWrongPin",
+  "hiddenLockedFor",
+  "hiddenChangePin",
+  "hiddenOldPin",
+  "hiddenNewPin",
+  "hiddenRemovePin",
+  "hiddenRemoveWarn",
+  "hiddenLock",
+  "hiddenEmpty",
+  "hiddenHiddenToast",
+  "hiddenNoteEncrypted",
+  "hiddenNoteAnyType",
+  "hiddenWorking",
+  "hiddenNoticeTitle",
+  "hiddenNoticeBody",
+  "hiddenNoticeAccept",
+  "hiddenOpening",
+  "hiddenNoticeCopyLeft",
+  "hiddenNoticeMoveFailed",
+  "hiddenNoticeOpenFailed",
+  "hiddenRecoveryTitle",
+  "hiddenRecoveryBody",
+  "hiddenRecoveryCopy",
+  "hiddenRecoveryRestoreTitle",
+  "hiddenRecoveryRestoreHint",
+  "hiddenRecoveryEnter",
+  "hiddenForgotPin",
+  "hiddenForgotReason",
+  "hiddenReauthReason",
+  "hiddenResetPinTitle",
+  "hiddenNoticeRestoreDone",
+  "hiddenNoticeRestoreWrong",
+  "hiddenNoticeRestoreNothing",
+  "hiddenNoticeRecoveryUnavailable",
+  "hiddenNoticeAuthFailed",
+  "hiddenNoticeResetDone",
+  "hiddenNoticeResetExpired",
+  "hiddenNoticeNeedFileAccess",
+  "hiddenNoticeNotMedia",
+  "hiddenCoverUnlock",
+  "hiddenCoverExit",
+  "hiddenLockTypeTitle",
+  "hiddenLockTypePin",
+  "hiddenLockTypePattern",
+  "hiddenPatternDraw",
+  "hiddenPatternEnter",
+  "hiddenPatternAgain",
+  "hiddenPatternTooShort",
+  "hiddenPatternMismatch",
+  "hiddenWrongPattern",
+  "hiddenUsePin",
+  "hiddenUsePattern",
+  "hiddenOldPattern",
+  "hiddenNewPattern",
+  "hiddenChangePattern",
+  "hiddenRemovePattern",
+  "hiddenRemovePatternWarn",
+  "hiddenForgotPattern",
+  "hiddenNoticePatternChanged",
+  "hiddenDownloadName",
+  "backupExport",
+  "backupRestore",
+  "backupExportHint",
+  "backupRestoreHint",
+  "backupDone",
+  "backupNothingNew",
+  "backupNeedRestart",
+  "backupSkipped",
+  "backupWrongPlatform",
+  "backupSettingsDone",
+  "backupInvalid",
+  "backupHiddenBlocked",
+  "backupFailed",
   "homeDownloads",
   "homeTabAll",
   "homeTabActive",
@@ -4488,8 +4970,13 @@
   "netLoginsHint",
   "netLoginSite",
   "netLoginAdd",
+  "netLoginBrowser",
+  "netLoginBrowserTag",
+  "netLoginBrowserDone",
+  "netLoginBrowserHint",
   "netLoginsEmpty",
   "netRemove",
+  "netRemoveConfirm",
   "sysTabAllDownloads",
   "sysTabActive",
   "sysTabCompleted",
@@ -4534,6 +5021,7 @@
   "subtitlesNoneInList",
   "playlistVideoJoined",
   "detailsPlaylist",
+  "detailsLinkSensitive",
   "popUpAskText",
   "popUpAskAllow",
   "popUpAskLater",
@@ -4545,6 +5033,44 @@
   "sysReadingChannelName",
   "sysReadingVideosCount",
   "playlistGroupDone",
+  "playerAllFinished",
+  "playerStartOver",
+  "playerPlayAll",
+  "playerAskTitle",
+  "playerAskText",
+  "playerAskDownload",
+  "playerAskSystem",
+  "playerAskRemember",
+  "playerAskLater",
+  "playerModeTitle",
+  "playerModeHint",
+  "playerModeHintShort",
+  "playerSubtitles",
+  "playerAutoplay",
+  "playerVolume",
+  "playerMute",
+  "playerBrightness",
+  "playerFullscreen",
+  "playerSubtitlesOff",
+  "playerSubtitlesOpenFile",
+  "playerSubtitlesTrack",
+  "playerSubtitlesInVideo",
+  "playerSubtitlesFiles",
+  "playerSubtitlesFailed",
+  "playerModeAsk",
+  "playerModeOn",
+  "playerModeOff",
+  "pdfModeTitle",
+  "pdfModeHint",
+  "pdfModeOn",
+  "pdfAskTitle",
+  "pdfAskText",
+  "pdfAskDownload",
+  "pdfPage",
+  "pdfGoToPage",
+  "pdfFitWidth",
+  "pdfOpenFailed",
+  "pdfPasswordProtected",
   "playlistCheckNew",
   "playlistBack",
   "playlistDeleteAll",
@@ -4653,6 +5179,42 @@
   "audioCompressHigherQuality",
   "audioCompressSmallerFile",
   "audioCompressNothing",
+  "videoCutTitle",
+  "videoCutByTime",
+  "videoCutByTimeHint",
+  "videoCutOnTimeline",
+  "videoCutOnTimelineHint",
+  "videoCutNeedsPlayerLibrary",
+  "videoCutFrom",
+  "videoCutTo",
+  "videoCutDuration",
+  "videoCutPlayRange",
+  "videoCutApply",
+  "videoCutRunning",
+  "videoCutElapsed",
+  "videoCutLeft",
+  "videoCutStopping",
+  "videoCutFailed",
+  "videoCutClips",
+  "videoCutDeleteClip",
+  "videoCutTimelineNeedsMp4",
+  "videoCutSaved",
+  "videoCutNeedsTools",
+  "deleteOriginalAfterCut",
+  "deleteOriginalAfterCompress",
+  "audioCompressSaved",
+  "removeAlsoDerived",
+  "audioCutTitle",
+  "audioCutOnTimelineHint",
+  "audioExtractTitle",
+  "audioExtractRunning",
+  "audioExtractDone",
+  "audioExtractFailed",
+  "audioExtractNoAudio",
+  "rowMenuSectionOpen",
+  "rowMenuSectionMedia",
+  "rowMenuSectionDownload",
+  "rowMenuSectionManage",
   "sysDeviceSendTitle",
   "sysDeviceNoDevices",
   "sysDeviceSearching",

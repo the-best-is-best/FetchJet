@@ -31,6 +31,10 @@ function setStatus(state, text) {
   $("statusText").textContent = text;
 }
 
+function showExtVersion() {
+  $("extVersion").textContent = fjT("extVersion", { version: api.runtime.getManifest().version });
+}
+
 async function checkStatus() {
   setStatus("busy", fjT("popupChecking"));
   try {
@@ -96,9 +100,17 @@ function mediaRow(it, hero) {
   const badge = document.createElement("span"); badge.className = `kind ${b.cls}`; badge.textContent = it.disabled ? "…" : b.text;
   const name = document.createElement("span"); name.className = "name"; name.title = it.sub || it.url || "";
   name.textContent = it.label;
-  if (it.sub && it.kind !== "media") { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = it.sub; name.appendChild(sub); }
+  const subText = it.note || (it.kind !== "media" ? it.sub : "");
+  if (subText) { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = subText; name.appendChild(sub); }
   const size = document.createElement("span"); size.className = "size"; size.dir = "ltr";
   size.textContent = it.kind === "media" && !it.stream ? human(it.size) : "";
+  if (it.thumb) {
+    const img = document.createElement("img");
+    img.src = it.thumb; img.alt = ""; img.referrerPolicy = "no-referrer";
+    img.style.cssText = "flex:0 0 auto;width:34px;height:34px;object-fit:cover;border-radius:6px;background:var(--line)";
+    img.addEventListener("error", () => img.remove());
+    row.append(img);
+  }
   row.append(badge, name, size);
   if (!it.disabled) {
     const btn = document.createElement("button");
@@ -135,7 +147,7 @@ async function loadMedia() {
   // What the user most likely wants goes first, on its own: the whole course / list, else the
   // best quality FetchJet found. Everything else sits under "More options".
   const usable = items.filter(i => !i.disabled);
-  const hero = usable.find(i => i.kind === "course" || i.kind === "playlist") ||
+  const hero = usable.find(i => i.kind === "course" || i.kind === "playlist") || usable.find(i => i.playing) ||
     usable.find(i => i.kind === "ytdlp") || (usable.length === 1 ? usable[0] : null);
   $("sendPageBtn").classList.toggle("primary", !hero);
   if (hero) list.appendChild(mediaRow(hero, true));
@@ -210,8 +222,9 @@ function renderTexts() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  fjOnLanguage(() => { renderTexts(); checkStatus(); loadMedia(); });
+  fjOnLanguage(() => { renderTexts(); showExtVersion(); checkStatus(); loadMedia(); });
   renderTexts();
+  showExtVersion();
   setStatus("busy", fjT("popupChecking"));
   settings = await send({ action: "getSettings" });
   if (!FJ_PLATFORM.qualitiesInPopup) $("resolveBtn").style.display = "none";
@@ -244,7 +257,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const r = await send({ action: "sendDetectedMedia", tabId: currentTab.id });
     if (r && r.ok) flash(r.count === 1 ? fjT("popupItemsSentOne") : fjT("popupItemsSent", { n: r.count })); else flash(fjT("popupCouldNotSend"), true);
   });
-  $("clearMediaBtn").addEventListener("click", async () => { await send({ action: "clearDetectedMedia", tabId: currentTab.id }); loadMedia(); });
+  $("clearMediaBtn").addEventListener("click", async (e) => {
+    if (e.shiftKey) {
+      const text = JSON.stringify(await send({ action: "canvaReport", tabId: currentTab.id }), null, 1);
+      try { await navigator.clipboard.writeText(text); } catch (_) {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+      }
+      flash(fjT("popupCanvaCopied"));
+      return;
+    }
+    await send({ action: "clearDetectedMedia", tabId: currentTab.id }); loadMedia();
+  });
   $("resolveBtn").addEventListener("click", async () => {
     if (!currentTab || !isWebPage(currentTab.url)) return;
     $("resolveBtn").textContent = fjT("popupWorking");

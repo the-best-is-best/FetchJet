@@ -17,8 +17,7 @@ object Secrets {
 
     /** A random secret as hex ([bytes] long before encoding). */
     fun randomHex(bytes: Int = 32): String =
-        SecretBox.randomBytes(bytes)
-            .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+        hexOf(SecretBox.randomBytes(bytes))
 
     /** The text to store. Falls back to [plain] when the platform key is not available. */
     @OptIn(ExperimentalEncodingApi::class)

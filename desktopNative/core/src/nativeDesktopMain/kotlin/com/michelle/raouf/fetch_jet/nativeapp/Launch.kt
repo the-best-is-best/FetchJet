@@ -163,7 +163,7 @@ internal object Launch {
         val name = file.takeIf { it.isNotBlank() }?.let { repository.pathResolver.sanitizeFileName(it) }?.takeIf { it.isNotBlank() }
         val pages = ArrayList<String>()
         for (url in urls) {
-            val known = repository.allTasksFlow.value.any {
+            val known = repository.visibleTasksFlow.value.any {
                 it.url.equals(url, ignoreCase = true) || it.originalUrl.equals(url, ignoreCase = true)
             }
             if (known) continue
@@ -306,7 +306,6 @@ internal object Launch {
         return when (word) {
             "status" -> "/api/status" + (rest.firstOrNull()?.let { "?id=" + value(it) } ?: "")
             "automation" -> "/api/automation" + when (rest.firstOrNull()?.lowercase()) {
-                "on" -> "?on=1"
                 "off" -> "?on=0"
                 else -> ""
             }
@@ -353,6 +352,10 @@ internal object Launch {
         val startedAtLogin = config.args.any { it.trim() == AUTOSTART_ARG } ||
             (config.args.isEmpty() && DesktopApp.looksLikeLoginStart())
         val plainArgs = config.args.filter { it.trim() != AUTOSTART_ARG }
+        if (plainArgs.size >= 2 && plainArgs[0].trim().equals("automation", true) && plainArgs[1].trim().equals("on", true)) {
+            BridgePairing.setAutomation(true)
+            return LaunchResult(exit = true, output = """{"automation":${BridgePairing.automationOn}}""", code = 0)
+        }
         apiPath(plainArgs)?.let { return runApi(port, it) }
         val command = parseCommand(plainArgs)
         val url = command.urls.firstOrNull().orEmpty()

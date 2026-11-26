@@ -19,6 +19,7 @@ const insert = db.prepare("INSERT INTO pings (day, install_id, version, platform
 
 const env = {
   STATS_TOKEN: "secret",
+  ALLOW_ANY_VERSION: "1",
   DB: {
     prepare(sql) {
       const st = db.prepare(sql);
@@ -129,7 +130,19 @@ test("retention D1 and D7 exact (pooled over eligible cohorts)", async () => {
   assert.equal(body.retention.d7.size, d7c.reduce((a, c) => a + c.size, 0));
   assert.equal(body.retention.d7.returned, d7c.reduce((a, c) => a + c.d7, 0));
   assert.equal(body.retention.d7.rate, rate(d7c, "d7"));
-  // independent check straight from the model: "exactly on D+7", not "within 7 days"
+  // within 7 days: opened again on any day after the first one, up to D+7
+  let w7 = 0, sw = 0;
+  Object.entries(first).forEach(([id, f]) => {
+    if (f > dayOf(7)) return;
+    sw++;
+    const last = Date.parse(f) + 7 * DAY;
+    const came = Object.keys(active).some((day) => day > f && Date.parse(day) <= last && active[day].has(id));
+    if (came) w7++;
+  });
+  assert.equal(body.retention.w7.returned, w7);
+  assert.equal(body.retention.w7.size, sw);
+  assert.ok(body.retention.w7.rate >= body.retention.d7.rate);
+  // independent check straight from the model: "exactly on D+7"
   let r7 = 0, s7 = 0;
   Object.entries(first).forEach(([id, f]) => {
     if (f > dayOf(7)) return;
@@ -145,7 +158,7 @@ test("cohort list: today has D1/D7 null, D7 null for young cohorts, private keep
   const { body } = await get("/stats?token=secret&days=30");
   assert.equal(body.cohorts.length, 10);
   const today = body.cohorts.find((c) => c.day === dayOf(0));
-  assert.deepEqual(today, { day: dayOf(0), size: 7, d1: null, d7: null });
+  assert.deepEqual(today, { day: dayOf(0), size: 7, d1: null, d7: null, w7: null });
   const y = body.cohorts.find((c) => c.day === dayOf(1));
   assert.equal(y.d1, cohortSpec.find((c) => c.back === 1).d1);
   assert.equal(y.d7, null);
@@ -241,6 +254,39 @@ test("ping still inserts", async () => {
   db.prepare("DELETE FROM pings WHERE install_id = 'abcdefghijklmnop1234'").run();
 });
 
+test("only published GitHub versions are counted", async () => {
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify([
+      { tag_name: "v2.0.0", draft: false },
+      { tag_name: "v2.1.0", draft: true },
+      { tag_name: "v1.5.0", draft: false },
+    ]), { status: 200 });
+  };
+  try {
+    const gated = { STATS_TOKEN: "secret", DB: env.DB, EXTRA_VERSIONS: "1.5.1" };
+    const send = async (id, version) => {
+      const res = await worker.fetch(new Request("https://x.test/ping", { method: "POST", body: JSON.stringify({ id, version, platform: "windows" }) }), gated);
+      assert.equal(res.status, 200);
+    };
+    const count = (id) => db.prepare("SELECT COUNT(*) AS n FROM pings WHERE install_id = ?").get(id).n;
+    await send("gateinstall0000001", "2.0.0");
+    await send("gateinstall0000002", "2.1.0");
+    await send("gateinstall0000003", "9.9.9");
+    await send("gateinstall0000004", "1.5.1");
+    assert.equal(count("gateinstall0000001"), 1);
+    assert.equal(count("gateinstall0000002"), 0);
+    assert.equal(count("gateinstall0000003"), 0);
+    assert.equal(count("gateinstall0000004"), 1);
+    assert.ok(calls <= 1, "the release list is fetched once and cached");
+  } finally {
+    globalThis.fetch = realFetch;
+    db.prepare("DELETE FROM pings WHERE install_id LIKE 'gateinstall%'").run();
+  }
+});
+
 async function pageHtml() {
   const res = await worker.fetch(new Request("https://x.test/dashboard"), env);
   return res.text();
@@ -286,7 +332,7 @@ test("dashboard renders new/returning chart, retention cards, stickiness, adopti
   const data = (await get("/public?days=30")).body;
   const { app } = await runPage(html, data, "?days=30");
   const t = textOf(app);
-  for (const s of ["جدد", "راجعين", "الاحتفاظ بعد يوم", "الاحتفاظ بعد 7 أيام", "النشاط اليومي ÷ الأسبوعي", "انتشار الإصدار", "إحصائيات FetchJet"]) {
+  for (const s of ["جدد", "راجعين", "الاحتفاظ بعد يوم", "رجعوا خلال أسبوع", "النشاط اليومي ÷ الأسبوعي", "انتشار الإصدار", "إحصائيات FetchJet"]) {
     assert.ok(t.includes(s), s);
   }
   assert.ok(!t.includes("حصل خطأ"), "page showed the error box");
@@ -300,6 +346,7 @@ test("dashboard shows the dash and hint when D7 is missing", async () => {
   const html = await pageHtml();
   const data = (await get("/public?days=30")).body;
   data.retention.d7 = null;
+  data.retention.w7 = null;
   const { app } = await runPage(html, data, "?days=30");
   assert.ok(textOf(app).includes("محتاج 7 أيام من البيانات"));
   assert.ok(textOf(app).includes("—"));

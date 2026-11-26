@@ -5,6 +5,10 @@ import com.michelle.raouf.fetch_jet.core.filesystem.PathResolver
 import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.notification.DownloadNotificationManager
 import com.michelle.raouf.fetch_jet.core.util.verifyFileChecksum
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenFiles
+import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
+import com.michelle.raouf.fetch_jet.feature.hidden.logName
+import com.michelle.raouf.fetch_jet.feature.hidden.shownName
 import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.domain.model.EngineType
@@ -158,10 +162,10 @@ class QueueManagerRepository(
         }
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    internal val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val taskSequence = MutableStateFlow(0L)
 
-    private fun generateUniqueTaskId(): String {
+    internal fun generateUniqueTaskId(): String {
         val sequence = taskSequence.updateAndGet { it + 1 }
         val randomNum = kotlin.random.Random.nextLong(100000L, 999999L)
         return "task_${sequence}_$randomNum"
@@ -172,7 +176,7 @@ class QueueManagerRepository(
     // engine: an engine only ever sees a download when it really starts.
 
     /** Waiting downloads, by id. */
-    private val pendingTasks = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
+    internal val pendingTasks = MutableStateFlow<Map<String, DownloadTask>>(emptyMap())
 
     private val queueSettingsFile get() = "${pathResolver.getSettingsDirectory()}/queue.properties".toPath()
 
@@ -369,7 +373,7 @@ class QueueManagerRepository(
             .sortedByDescending { it.createdAtEpochMs }
     }
 
-    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+    private val overlaidTasksFlow = combine(
         baseTasksFlow,
         _checksumResults,
         extractState,
@@ -398,11 +402,33 @@ class QueueManagerRepository(
                 postProcessStartedAtMs = state.startedAt
             )
         }
+    }
+
+    val allTasksFlow: StateFlow<List<DownloadTask>> = combine(
+        overlaidTasksFlow,
+        HiddenStore.state,
+        HiddenWork.leaving
+    ) { tasks, hiddenState, leaving ->
+        if (hiddenState.ids.isEmpty() && hiddenState.playlists.isEmpty()) tasks
+        else tasks.map {
+            when {
+                it.id in leaving -> {
+                    val origin = HiddenStore.originOf(it.id)
+                    if (origin != null && HiddenFiles.isPrivate(pathResolver, it.destinationPath)) it.copy(destinationPath = origin) else it
+                }
+                hiddenState.hides(it) -> it.copy(hidden = true)
+                else -> it
+            }
+        }
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val visibleTasksFlow: StateFlow<List<DownloadTask>> = allTasksFlow
+        .map { tasks -> tasks.filter { !it.hidden } }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     private val _archiveEvents = kotlinx.coroutines.flow.MutableSharedFlow<com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent>(extraBufferCapacity = 16)
 
@@ -439,6 +465,7 @@ class QueueManagerRepository(
             val title = runningPlaylists.remove(id).orEmpty()
             val members = tasks.filter { it.playlistId == id }
             if (members.isEmpty()) continue
+            if (members.all { it.hidden }) continue
             val done = members.count { it.status == DownloadStatus.COMPLETED }
             val failed = members.size - done
             val text = com.michelle.raouf.fetch_jet.feature.media_extractor.playlistDoneText(title, done, failed)
@@ -449,12 +476,18 @@ class QueueManagerRepository(
         }
     }
 
+    internal val hideLock = Mutex()
+
+    internal val finishWatch = MutableStateFlow<Map<String, String>>(emptyMap())
+
     init {
+        HiddenStore.ensureLoaded()
         observeTasksForNotifications()
         observeArchiveExtraction()
         observeChecksumVerification()
         loadAndRestoreTasks()
         observeTasksForPersistence()
+        observeHiddenTasks()
         // Starts queued / scheduled downloads when a slot frees up or their time comes.
         scope.launch {
             while (true) {
@@ -496,6 +529,10 @@ class QueueManagerRepository(
                 }
 
                 tasks.forEach { task ->
+                    if (task.hidden) {
+                        if (activeRunningTaskIds.remove(task.id)) notificationManager.cancelNotification(task.id)
+                        return@forEach
+                    }
                     if (task.status == DownloadStatus.DOWNLOADING || task.status == DownloadStatus.CONNECTING) {
                         activeRunningTaskIds.add(task.id)
                         completedNotifiedTaskIds.remove(task.id)
@@ -573,8 +610,8 @@ class QueueManagerRepository(
                     runCatching {
                         com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(
                             task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName,
-                            task.url,
-                            task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+                            if (task.hidden) "" else task.url,
+                            if (task.hidden) null else task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
                         )
                     }
                     val scan = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.scanFiles.value &&
@@ -616,9 +653,11 @@ class QueueManagerRepository(
                     com.michelle.raouf.fetch_jet.feature.file_scan.ScanOutcome.FAILED, e.message ?: "error"
                 )
             }
-            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.fileName}: ${result.outcome.code} ${result.detail}" }
+            com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Scan ${task.logName()}: ${result.outcome.code} ${if (task.hidden) "" else result.detail}" }
             scanResults.update { it + (task.id to result.outcome.code) }
-            _scanEvents.emit(com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.fileName, result.outcome, result.detail))
+            _scanEvents.emit(
+                com.michelle.raouf.fetch_jet.feature.file_scan.ScanEvent(task.shownName(), result.outcome, if (task.hidden) "" else result.detail)
+            )
             return result.outcome
         } finally {
             scanState.update { it - task.id }
@@ -653,7 +692,7 @@ class QueueManagerRepository(
         try {
             val path = (task.destinationPath.trimEnd('/', '\\') + "/" + task.fileName).toPath()
             if (!quietIfIncomplete) {
-                _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, 0, null, started = true))
+                _archiveEvents.emit(com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.shownName(), 0, null, started = true))
             }
             val event = try {
                 val result = com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.extract(
@@ -665,18 +704,22 @@ class QueueManagerRepository(
                     }
                 }
                 result.items.forEach { markExtracted(task, it) }
-                if (com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.trashArchiveAfterExtract.value &&
+                if (!task.hidden && com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.trashArchiveAfterExtract.value &&
                     com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported
                 ) {
                     com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path.toString())
                 }
-                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.fileName, result.files, null, destination = result.destination)
+                com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(task.shownName(), result.files, null, destination = result.destination)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.fileName}: ${e.message}" }
+                com.michelle.raouf.fetch_jet.core.log.AppLog.d { "Extract failed for ${task.logName()}: ${if (task.hidden) e::class.simpleName else e.message}" }
                 com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveEvent(
-                    task.fileName, 0, e.message ?: "error", taskId = task.id,
+                    task.shownName(), 0,
+                    (e.message ?: "error").let {
+                        if (task.hidden && it != com.michelle.raouf.fetch_jet.feature.archive_extract.ArchiveExtractor.MISSING_PART) "error" else it
+                    },
+                    taskId = task.id,
                     needsPassword = e is com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException,
                     wrongPassword = (e as? com.michelle.raouf.fetch_jet.feature.archive_extract.ArchivePasswordException)?.wrong == true,
                 )
@@ -696,16 +739,17 @@ class QueueManagerRepository(
     }
 
     private fun markExtracted(task: DownloadTask, destination: String) {
-        val page = task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val page = if (task.hidden) null else task.originalUrl ?: task.requestHeaders.entries.firstOrNull { it.key.equals("Referer", true) }?.value
+        val source = if (task.hidden) "" else task.url
         val top = destination.toPath()
-        runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(top.toString(), task.url, page) }
+        runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(top.toString(), source, page) }
         val isFolder = runCatching {
             com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.metadataOrNull(top)?.isDirectory == true
         }.getOrDefault(false)
         if (!isFolder) return
         runCatching {
             com.michelle.raouf.fetch_jet.core.filesystem.AppFileSystem.listRecursively(top).forEach { path ->
-                runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), task.url, page) }
+                runCatching { com.michelle.raouf.fetch_jet.feature.file_scan.FileScanner.markFromInternet(path.toString(), source, page) }
             }
         }
     }
@@ -809,12 +853,69 @@ class QueueManagerRepository(
         com.michelle.raouf.fetch_jet.feature.media_extractor.inspectPlatformPlaylist(url, headers)
 
     private fun trashInsteadOfDelete(task: DownloadTask, path: String): Boolean =
-        task.status == DownloadStatus.COMPLETED &&
+        !task.hidden && task.status == DownloadStatus.COMPLETED &&
                 com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.deleteToTrash.value &&
                 com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported &&
                 com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path)
 
-    private fun freeNameIn(destDir: String, fileName: String): String {
+    private fun putOnEngine(task: DownloadTask) {
+        when (task.engineType) {
+            EngineType.HTTP_DIRECT -> httpEngine.enqueueTask(task)
+            EngineType.BITTORRENT -> Unit
+            EngineType.MEDIA_STREAM -> mediaEngine.enqueueTask(task)
+        }
+    }
+
+    /** Removes the tasks with their clips and compressed copies (the list's Remove). */
+    suspend fun removeTasksWithDerived(taskIds: List<String>, deleteFile: Boolean) {
+        val copies = com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.let { it.load(); it.counts.value }
+        val plan = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.removalPlan(taskIds, allTasksFlow.value, copies)
+        (taskIds.distinct() + plan.clipIds).forEach { removeTask(it, deleteFile) }
+        plan.copies.forEach { (owner, paths) ->
+            paths.forEach { path ->
+                if (deleteFile) {
+                    val gone = com.michelle.raouf.fetch_jet.core.settings.BehaviorSettings.deleteToTrash.value &&
+                            com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.isSupported &&
+                            com.michelle.raouf.fetch_jet.core.filesystem.SystemTrash.moveToTrash(path)
+                    if (!gone) runCatching { AppFileSystem.delete(path.toPath()) }
+                }
+                com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.remove(owner, path)
+            }
+        }
+    }
+
+    /** A clip that replaces the file it was cut from: it takes the source's link and the source goes. */
+    suspend fun promoteClip(clip: DownloadTask, sourceId: String): DownloadTask? {
+        val source = allTasksFlow.value.firstOrNull { it.id == sourceId } ?: return null
+        val promoted = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.promotedClip(clip, source)
+        if (promoted.engineType != clip.engineType) {
+            when (clip.engineType) {
+                EngineType.HTTP_DIRECT -> httpEngine.cancel(clip.id)
+                EngineType.BITTORRENT -> Unit
+                EngineType.MEDIA_STREAM -> mediaEngine.cancel(clip.id)
+            }
+        }
+        putOnEngine(promoted)
+        removeTask(source.id, deleteFile = true)
+        return promoted
+    }
+
+    /** The compressed copy takes the original's place in the same task; the original file goes. */
+    fun replaceWithCompressed(taskId: String, copyPath: String): DownloadTask? {
+        val task = allTasksFlow.value.firstOrNull { it.id == taskId } ?: return null
+        val copy = copyPath.toPath()
+        val bytes = AppFileSystem.metadataOrNull(copy)?.size ?: return null
+        val old = "${task.destinationPath.trimEnd('/', '\\')}/${task.fileName}"
+        if (old.toPath() != copy && AppFileSystem.exists(old.toPath())) {
+            if (!trashInsteadOfDelete(task, old)) runCatching { AppFileSystem.delete(old.toPath()) }
+        }
+        val changed = com.michelle.raouf.fetch_jet.feature.derived.DerivedItems.compressedSource(task, copy.name, bytes)
+        putOnEngine(changed)
+        com.michelle.raouf.fetch_jet.feature.audio_compress.AudioCopiesStore.remove(taskId, copyPath)
+        return changed
+    }
+
+    internal fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
         val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
             .filter { it.destinationPath.trimEnd('/', '\\') == dir }
@@ -837,7 +938,7 @@ class QueueManagerRepository(
         forcedEngineType: EngineType? = null,
         clipStart: String? = null,
         clipEnd: String? = null,
-        /** Clip: whole video at full speed, then a local cut (see CutPlugin.kt). Off = only the
+        /** Clip: whole video at full speed, then a local cut (see MediaClipCut.kt). Off = only the
          *  clip is fetched (--download-sections), which YouTube throttles to about playback rate. */
         clipByCutting: Boolean = false,
         requestHeaders: Map<String, String> = emptyMap(),
@@ -861,7 +962,8 @@ class QueueManagerRepository(
         keepExistingFiles: Boolean = false,
         /** A finished video taken from another device as a plain file: [pageUrl] still offers its subtitles. */
         subtitlesFromPage: Boolean = false,
-        pageUrl: String = ""
+        pageUrl: String = "",
+        hidden: Boolean = false
     ): Result<DownloadTask> {
         // A quoted / file:// .torrent path is stored as a plain path.
         val trimmedUrl = url.trim().let {
@@ -957,7 +1059,7 @@ class QueueManagerRepository(
         val shownDownloaded = if (shownTotal > 0L) displayDownloadedBytes.coerceIn(0L, shownTotal) else 0L
         val sameFolderList = if (playlistId.isBlank() && engineType != EngineType.BITTORRENT)
             com.michelle.raouf.fetch_jet.feature.playlist_group.PlaylistStore.inFolder(destDir) else null
-        val task = DownloadTask(
+        val plainTask = DownloadTask(
             id = taskId,
             url = targetUrl,
             fileName = safeFileName?.let {
@@ -996,11 +1098,14 @@ class QueueManagerRepository(
             playlistTitle = sameFolderList?.title ?: playlistTitle,
             subtitleLanguages = if (engineType == EngineType.MEDIA_STREAM) subtitleLanguages else ""
         )
+        val wantsHidden = shouldStartHidden(plainTask, destDir, hidden)
+        val task = if (wantsHidden) startHidden(plainTask, destDir) else plainTask
+        val goHidden = task !== plainTask
 
         // Later (scheduled), others already waiting, or no free slot: join the queue. The check
         // and the start happen under the pump's lock, and a started task is in its engine (counted
         // as running) before the lock opens, so adds made in a tight loop never exceed the limit.
-        return pumpLock.withLock {
+        val result = pumpLock.withLock {
             if (task.scheduledAtMs > 0L || pendingTasks.value.isNotEmpty() || !hasFreeSlot()) {
                 pendingTasks.update { it + (task.id to task.copy(status = DownloadStatus.QUEUED)) }
                 pumpQueue()
@@ -1021,6 +1126,8 @@ class QueueManagerRepository(
                 Result.failure(e)
             }
         }
+        if (goHidden && result.isFailure) forgetHidden(taskId)
+        return result
     }
 
     suspend fun pauseTask(taskId: String): Result<Unit> {
@@ -1064,9 +1171,11 @@ class QueueManagerRepository(
     suspend fun removeTask(taskId: String, deleteFile: Boolean): Result<Unit> {
         resumeQueue.update { it - taskId }
         if (pendingTasks.getAndUpdate { it - taskId }.containsKey(taskId)) {
+            forgetHidden(taskId)
             return Result.success(Unit)
         }
         val task = allTasksFlow.value.find { it.id == taskId }
+            ?.let { if (!it.hidden && HiddenStore.state.value.hides(it)) it.copy(hidden = true) else it }
             ?: return Result.failure(Exception("Task not found"))
         when (task.engineType) {
             EngineType.HTTP_DIRECT -> httpEngine.cancel(taskId)
@@ -1087,23 +1196,28 @@ class QueueManagerRepository(
                 when (task.engineType) {
                     EngineType.HTTP_DIRECT, EngineType.MEDIA_STREAM -> {
                         // 1. Delete destination files
-                        if (task.destinationPath.isNotBlank() && effectiveFileName.isNotBlank()) {
+                        if (task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
                             val destDir = task.destinationPath
+                            val finalFile = "$destDir/${task.fileName}"
                             val filePathsToCheck = mutableListOf(
-                                "$destDir/$effectiveFileName",
-                                "$destDir/$effectiveFileName.part",
-                                "$destDir/$effectiveFileName.ytdl",
-                                "$destDir/$effectiveFileName.temp"
+                                "$destDir/${task.fileName}.part",
+                                "$destDir/${task.fileName}.ytdl",
+                                "$destDir/${task.fileName}.temp"
                             )
                             for (i in 0..16) {
-                                filePathsToCheck.add("$destDir/$effectiveFileName.part$i")
+                                filePathsToCheck.add("$destDir/${task.fileName}.part$i")
+                            }
+                            try {
+                                val okPath = finalFile.toPath()
+                                if (ownsDestinationFile(task, AppFileSystem.metadataOrNull(okPath)?.size)) {
+                                    if (!trashInsteadOfDelete(task, finalFile)) AppFileSystem.delete(okPath)
+                                }
+                            } catch (_: Exception) {
                             }
                             for (p in filePathsToCheck) {
                                 try {
                                     val okPath = p.toPath()
-                                    if (AppFileSystem.exists(okPath)) {
-                                        if (p != filePathsToCheck.first() || !trashInsteadOfDelete(task, p)) AppFileSystem.delete(okPath)
-                                    }
+                                    if (AppFileSystem.exists(okPath)) AppFileSystem.delete(okPath)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -1149,7 +1263,10 @@ class QueueManagerRepository(
                     }
 
                     EngineType.BITTORRENT -> {
-                        if (task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
+                        val hash = magnetHexInfoHash(task.url)
+                        val partFile = if (hash != null && task.destinationPath.isNotBlank()) "${task.destinationPath}/.$hash.parts".toPath() else null
+                        val wroteFiles = torrentWroteFiles(task, partFile != null && AppFileSystem.exists(partFile))
+                        if (wroteFiles && task.destinationPath.isNotBlank() && task.fileName.isNotBlank()) {
                             val dirPath = "${task.destinationPath}/${task.fileName}".toPath()
                             if (AppFileSystem.exists(dirPath)) {
                                 try {
@@ -1158,7 +1275,7 @@ class QueueManagerRepository(
                                 }
                             }
                         }
-                        for (fileEntry in task.torrentFiles) {
+                        if (wroteFiles) for (fileEntry in task.torrentFiles) {
                             val filePathStr =
                                 "${task.destinationPath}/${if (fileEntry.path.startsWith("${task.fileName}/")) fileEntry.path else "${task.fileName}/${fileEntry.path}"}"
                             val filePathObj = filePathStr.toPath()
@@ -1169,9 +1286,7 @@ class QueueManagerRepository(
                                 }
                             }
                         }
-                        val hash = magnetHexInfoHash(task.url)
-                        if (hash != null && task.destinationPath.isNotBlank()) {
-                            val partFile = "${task.destinationPath}/.$hash.parts".toPath()
+                        if (partFile != null) {
                             try {
                                 if (AppFileSystem.exists(partFile)) AppFileSystem.delete(partFile)
                             } catch (_: Exception) {
@@ -1184,10 +1299,12 @@ class QueueManagerRepository(
             }
         }
 
+        if (task.hidden) finishHiddenRemoval(task, deleteFile)
+        else finishWatch.update { it - taskId }
         return Result.success(Unit)
     }
 
-    private fun magnetHexInfoHash(url: String): String? {
+    internal fun magnetHexInfoHash(url: String): String? {
         if (!url.contains("xt=urn:btih:", ignoreCase = true)) return null
         val raw = url.substringAfter("xt=urn:btih:").substringBefore('&').trim()
         if (raw.length == 40 && raw.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return raw.lowercase()
@@ -1252,6 +1369,11 @@ class QueueManagerRepository(
 
     fun updateTorrentFilePriority(taskId: String, fileIndex: Int, priority: Int) {
         torrentEngine.updateFilePriority(taskId, fileIndex, priority)
+    }
+
+    fun addFinishedFile(task: DownloadTask): DownloadTask {
+        val done = task.copy(status = DownloadStatus.COMPLETED, engineType = EngineType.HTTP_DIRECT)
+        return httpEngine.enqueueTask(done)
     }
 
     /** Makes a saved download one of a playlist's videos. */

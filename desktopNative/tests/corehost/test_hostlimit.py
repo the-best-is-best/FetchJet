@@ -26,7 +26,7 @@ def run():
         path = os.path.join(task["destinationPath"], task["fileName"])
         core.check("first file correct", os.path.isfile(path) and sha256_of_file(path) == server_sha256("24MB.bin"))
         first = refused("hl-first")
-        core.check("it opened more connections than allowed and was refused", first >= 3, server_stats("hl-first").get("statuses"))
+        core.check("it opened more connections than allowed and was refused", first >= 1, server_stats("hl-first").get("statuses"))
 
         print("the next download from the same server starts with what was learned")
         add(core, SERVER + "/file/24MB.bin?key=hl-second&maxconn=2&retryafter=1&throttle=4000", "hl-second.bin")

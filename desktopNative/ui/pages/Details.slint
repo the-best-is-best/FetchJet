@@ -8,7 +8,8 @@ import { EmojiIcon } from "../widgets/Icons.slint";
 import { ElideText } from "../widgets/ElideText.slint";
 import { Switch } from "../widgets/Kit.slint";
 import { TextField } from "../widgets/TextField.slint";
-import { Core, ChipDto, ConnectionDto, FileRowDto, PieceDto, PieceStateCode, DetailActionCode, TorrentTrackerDto, TorrentPeerDto } from "../generated/dto.slint";
+import { ClipRow } from "VideoCut.slint";
+import { Core, DetailToolDto, ChipDto, ConnectionDto, FileRowDto, PieceDto, PieceStateCode, DetailActionCode, TorrentTrackerDto, TorrentPeerDto } from "../generated/dto.slint";
 import { Act } from "../generated/actions.slint";
 import { Tr } from "../generated/tr.slint";
 
@@ -669,6 +670,65 @@ component TorrentSection inherits VerticalLayout {
     if !Core.torrentDetails.loading && Core.torrentDetails.supported: TorrentReady { }
 }
 
+component ToolButton inherits Rectangle {
+    in property <DetailToolDto> data;
+    accessible-role: button;
+    accessible-label: root.data.label;
+    accessible-enabled: !root.data.disabled;
+    accessible-action-default => {
+        if !root.data.disabled {
+            Act.detailsTool(root.data.code);
+        }
+    }
+    height: 40px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: Theme.outline-variant.with-alpha(0.7);
+    background: Theme.surface-variant.with-alpha(0.5);
+    ta := TouchArea {
+        enabled: !root.data.disabled;
+        clicked => { Act.detailsTool(root.data.code); }
+    }
+    HBox {
+        x: (parent.width - min(self.preferred-width, parent.width - 16px)) / 2;
+        width: min(self.preferred-width, parent.width - 16px);
+        spacing: 6px;
+        cross-axis-alignment: center;
+        EmojiIcon {
+            glyph: root.data.icon;
+            size: 14px;
+        }
+        T {
+            text: root.data.label;
+            line: 40px;
+            tracking: 0.1px;
+            font-size: 13px;
+            font-weight: 600;
+            color: root.data.disabled ? Theme.on-surface-variant.with-alpha(0.6) : Theme.on-surface;
+            overflow: elide;
+        }
+    }
+    Hover {
+        border-radius: 10px;
+        hovered: ta.has-hover && !root.data.disabled;
+        pressed: ta.pressed && !root.data.disabled;
+    }
+}
+
+component ToolGrid inherits Rectangle {
+    in property <[DetailToolDto]> tools;
+    private property <length> half: (root.width - 8px) / 2;
+    height: Math.ceil(root.tools.length / 2) * 48px - 8px;
+    for tool[i] in root.tools: ToolButton {
+        private property <bool> alone: Math.mod(i, 2) == 0 && i == root.tools.length - 1;
+        private property <bool> second: Math.mod(i, 2) == 1;
+        data: tool;
+        width: self.alone ? root.width : root.half;
+        x: self.alone ? 0 : (self.second != Dir.rtl ? root.half + 8px : 0);
+        y: Math.floor(i / 2) * 48px;
+    }
+}
+
 component DetailsBody inherits VerticalLayout {
     in-out property <bool> show-files: false;
     padding-left: 20px;
@@ -967,6 +1027,7 @@ component DetailsBody inherits VerticalLayout {
                 horizontal-stretch: 1;
             }
             Rectangle {
+                visible: link.note == "";
                 width: copy.preferred-width + 12px;
                 height: 20px;
                 border-radius: 4px;
@@ -998,7 +1059,7 @@ component DetailsBody inherits VerticalLayout {
             height: 3px;
         }
         Text {
-            text: link.url;
+            text: link.note != "" ? link.note : link.url;
             color: Theme.on-surface.with-alpha(0.75);
             font-family: Theme.font;
             font-size: 12px;
@@ -1054,71 +1115,63 @@ component DetailsBody inherits VerticalLayout {
     Rectangle {
         height: 18px;
     }
-    HBox {
-        height: 42px;
-        spacing: 8px;
-        FilledButton {
-            text: Core.details.primaryLabel;
-            height: 42px;
-            border-radius: 10px;
-            pad: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            horizontal-stretch: 1;
-            clicked => { Act.detailsAction(Core.details.primaryAction, true); }
-        }
-        if Core.details.secondaryAction != DetailActionCode.none: OutlinedButton {
-            text: Core.details.secondaryLabel;
-            height: 42px;
-            border-radius: 10px;
-            pad: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            ink: Theme.on-surface;
-            line: Theme.outline-variant.with-alpha(0.6);
-            horizontal-stretch: 1;
-            clicked => { Act.detailsAction(Core.details.secondaryAction, false); }
+    FilledButton {
+        text: Core.details.primaryLabel;
+        height: 44px;
+        border-radius: 12px;
+        pad: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        clicked => { Act.detailsAction(Core.details.primaryAction, true); }
+    }
+    if Core.details.fileTools.length > 0: Rectangle {
+        height: 8px;
+    }
+    if Core.details.fileTools.length > 0: ToolGrid {
+        tools: Core.details.fileTools;
+    }
+    if Core.details.mediaTools.length > 0: Rectangle {
+        height: 16px;
+        Rectangle {
+            y: 7px;
+            height: 1px;
+            background: Theme.outline-variant.with-alpha(0.5);
         }
     }
-    if Core.details.canExtract: Rectangle {
-        height: 8px;
+    if Core.details.mediaTools.length > 0: ToolGrid {
+        tools: Core.details.mediaTools;
     }
-    if Core.details.canExtract: OutlinedButton {
-        text: Tr.extractNow;
-        height: 42px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        clicked => { Act.detailsExtract(); }
+    if Core.details.clips.length > 0: Rectangle {
+        height: 16px;
     }
-    if Core.details.canSubtitles: Rectangle {
-        height: 8px;
+    if Core.details.clips.length > 0: T {
+        text: Tr.videoCutClips;
+        line: 20px;
+        tracking: 0.4px;
+        font-size: 12px;
+        font-weight: 700;
+        color: Theme.on-surface-variant;
     }
-    if Core.details.canSubtitles: OutlinedButton {
-        text: Tr.subtitlesAddButton;
-        height: 42px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        clicked => { Act.detailsSubtitles(); }
-    }
-    if Core.details.canShare: Rectangle {
-        height: 8px;
-    }
-    if Core.details.canShare: OutlinedButton {
-        text: Tr.sysDeviceSendTitle;
-        height: 42px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        clicked => { Act.detailsShare(); }
+    for clip in Core.details.clips: VerticalLayout {
+        spacing: 0px;
+        Rectangle {
+            height: 6px;
+        }
+        ClipRow {
+            data: clip;
+        }
     }
     Rectangle {
-        height: 8px;
+        height: 16px;
+        Rectangle {
+            y: 7px;
+            height: 1px;
+            background: Theme.outline-variant.with-alpha(0.5);
+        }
     }
     OutlinedButton {
         text: Core.details.removeLabel;
-        height: 42px;
+        height: 40px;
         border-radius: 10px;
         font-size: 13px;
         font-weight: 600;

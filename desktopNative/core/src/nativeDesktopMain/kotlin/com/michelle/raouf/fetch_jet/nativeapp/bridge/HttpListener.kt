@@ -188,6 +188,7 @@ internal class HttpListener(
         while (true) {
             val sizeLine = input.readUTF8Line(64) ?: return null
             val size = sizeLine.substringBefore(';').trim().toIntOrNull(16) ?: return null
+            if (size < 0 || size > maxBodyBytes - total) return null
             if (size == 0) {
                 while (true) {
                     val trailer = input.readUTF8Line(MAX_LINE) ?: break
@@ -196,7 +197,6 @@ internal class HttpListener(
                 break
             }
             total += size
-            if (total > maxBodyBytes) return null
             parts.add(input.readByteArray(size))
             input.readUTF8Line(8)
         }

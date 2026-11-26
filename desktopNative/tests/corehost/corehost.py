@@ -3,7 +3,9 @@ import hashlib
 import json
 import os
 import queue
+import re
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -197,7 +199,11 @@ class Core:
         return data.get("rows", [])
 
     def strings(self):
+        deadline = time.time() + 10
         data = self.snapshot("tr") or {}
+        while not data.get("values") and time.time() < deadline:
+            time.sleep(0.05)
+            data = self.snapshot("tr") or {}
         return dict(zip(PROTOCOL["tr"], data.get("values", [])))
 
     def fixture(self, path, extra=None):
@@ -315,7 +321,9 @@ class Core:
 def refuse_in_tests(action_type, fields):
     key = str(fields.get("id", ""))
     reason = None
-    if action_type == "DownloadTools" or (action_type == "SettingClick" and key in ("tools", "updateCheck")):
+    if action_type in ("DownloadTools", "PlayerLibraryDownload") or (action_type == "SettingClick" and key in ("tools", "updateCheck", "playerLibrary")):
+        reason = "it downloads from the internet"
+    elif action_type == "SettingClick" and key == "pdfLibrary" and not os.environ.get("FETCHJET_PDFIUM_URL"):
         reason = "it downloads from the internet"
     elif action_type == "SetWhenDone" and fields.get("index", 0) != 0:
         reason = "it can put the PC to sleep or shut it down"
@@ -336,6 +344,64 @@ def sha256_of_file(path):
                 break
             digest.update(block)
     return digest.hexdigest()
+
+
+LIBMPV_NAME = "libmpv.2.dylib" if ON_MAC else "libmpv.so.2" if ON_LINUX else "libmpv-2.dll"
+PLAYER_EXE = os.environ.get("FJ_PLAYER_EXE", os.path.join(REPO, "desktopNative", "build-mac", "package", "stage", "FetchJet.app", "Contents",
+                                                         "MacOS", "FetchJet") if ON_MAC
+                            else os.path.expanduser("~/fetchjet-native/host-build/FetchJet") if ON_LINUX
+                            else os.path.join(REPO, "desktopNative", "build-release", "Release", "FetchJet.exe"))
+PLAYER_LIBMPV = os.environ.get("FJ_PLAYER_LIBMPV", os.path.expanduser("~/fetchjet-native/work/libmpv/libmpv.so.2") if ON_LINUX and not ON_MAC
+                               else "E:/tools/mpv-subs/dist/libmpv-2.dll")
+DESKRUN = os.path.join(REPO, "desktopNative", "tools", "shot", "build", "Release", "deskrun.exe")
+
+
+def pinned_libmpv_sha():
+    source = os.path.join(REPO, "sharedLogic", "src", "nativeDesktopMain", "kotlin", "com", "michelle", "raouf", "fetch_jet",
+                          "feature", "media_extractor", "PlayerLibrary.nativeDesktop.kt")
+    key = "MACOS_ARM64_SHA256" if ON_MAC else "LINUX_X64_SHA256" if ON_LINUX else "WINDOWS_X64_SHA256"
+    with open(source, encoding="utf-8") as handle:
+        found = re.search(key + r' = "([0-9a-f]*)"', handle.read())
+    return found.group(1) if found else ""
+
+
+def window_runner():
+    return [] if ON_LINUX else [DESKRUN]
+
+
+def run_window(args, env, total, after, capture):
+    if not ON_LINUX:
+        command = [DESKRUN, "--timeout", str(total + 4000), "--after", str(after), "--capture", capture, "--"] + list(args)
+        result = subprocess.run(command, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=total / 1000 + 60)
+        return result.stdout + result.stderr
+    env = dict(env)
+    env.pop("WAYLAND_DISPLAY", None)
+    process = subprocess.Popen(list(args), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+    try:
+        output, _ = process.communicate(timeout=after / 1000)
+        return output.decode("utf-8", "replace") + "\nwindow: the program ended by itself"
+    except subprocess.TimeoutExpired:
+        shot = "no screenshot on this system"
+        tool = os.environ.get("FJ_X11_SHOT", "")
+        if tool and os.path.isfile(tool):
+            picture = os.path.splitext(capture)[0] + ".png"
+            taken = subprocess.run([sys.executable, "-I", tool, "FetchJet", picture], env=env, capture_output=True, text=True, timeout=30)
+            shot = (taken.stdout + taken.stderr).strip()
+        process.terminate()
+        try:
+            output, _ = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            output, _ = process.communicate()
+        return output.decode("utf-8", "replace") + "\nwindow: stopped after %d ms (%s)" % (after, shot)
+
+
+def install_libmpv(home, source):
+    tools = os.path.join(home, "tools")
+    os.makedirs(tools, exist_ok=True)
+    shutil.copy2(source, os.path.join(tools, LIBMPV_NAME))
+    with open(os.path.join(tools, "libmpv.sha256"), "w", encoding="utf-8") as handle:
+        handle.write(pinned_libmpv_sha())
 
 
 def http_text(url, timeout=10):

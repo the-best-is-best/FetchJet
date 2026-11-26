@@ -248,7 +248,7 @@ private suspend fun HttpChunkDownloader.ftpSingleStream(
 }
 
 private suspend fun HttpChunkDownloader.finishSingleFile(taskId: String, partFile: Path, finalDestPath: String, totalLength: Long) {
-    val savedPath = copyIntoPlace(partFile, finalDestPath.toPath())
+    val savedPath = copyIntoPlace(partFile, com.michelle.raouf.fetch_jet.feature.hidden.retargetFinal(tasksState.value[taskId]?.destinationPath, finalDestPath.toPath()))
     partFile.parent?.let { deleteRecursively(it) }
     val total = AppFileSystem.metadataOrNull(savedPath)?.size ?: if (totalLength > 0) totalLength else 0L
     updateTaskState(taskId) {

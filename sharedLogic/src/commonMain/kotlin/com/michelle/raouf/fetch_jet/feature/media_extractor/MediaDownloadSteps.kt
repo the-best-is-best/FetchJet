@@ -11,6 +11,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.update
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -95,7 +96,8 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnHls(
     clipStartSec = initialTask.clipStart?.takeIf { it.isNotBlank() }
         ?.let { parseTimeToSecondsOrNull(it) },
     clipEndSec = initialTask.clipEnd?.takeIf { it.isNotBlank() }
-        ?.let { parseTimeToSecondsOrNull(it) }
+        ?.let { parseTimeToSecondsOrNull(it) },
+    onClipOffset = { offset -> hlsClipOffsetsMs.update { it + (taskId to (offset * 1000.0).toLong()) } }
 )
 
 internal suspend fun MediaStreamDownloader.downloadWithYtDlp(
@@ -264,8 +266,14 @@ internal suspend fun MediaStreamDownloader.moveFinishedFileIntoPlace(
                 finalTargetPath.parent?.let { AppFileSystem.createDirectories(it) }
             } catch (_: Exception) {
             }
-            val actualFinalPath =
+            val actualFinalPath = com.michelle.raouf.fetch_jet.feature.hidden.retargetFinal(
+                tasksState.value[taskId]?.destinationPath,
                 "${initialTask.destinationPath}/${foundCachePath.name}".toPath()
+            )
+            try {
+                actualFinalPath.parent?.let { AppFileSystem.createDirectories(it) }
+            } catch (_: Exception) {
+            }
             val savedPath = moveIntoPlace(taskId, foundCachePath, actualFinalPath)
             deleteRecursively(cacheDir.toPath())
             updateTaskState(taskId) {
@@ -408,6 +416,7 @@ suspend fun MediaStreamDownloader.addSubtitlesToFinished(
     try {
         val result = fetchSubtitlesInto(tracks, tempDir, task.requestHeaders, if (task.embedSubtitles) "srt" else task.subtitleFormat, onTrackDone)
         if (result.files.isEmpty()) return SubtitleAddResult(emptyList(), result.refused, result.failed, task.embedSubtitles)
+        result.files.forEach { (_, file) -> SubtitleShift.shiftFile(file, task) }
         val embedded = task.embedSubtitles && embedSubtitleFiles(videoPath, result.files, tempDir)
         val added = if (embedded) result.files.map { it.first } else placeSubtitleFilesBeside(videoPath, result.files)
         val notPlaced = result.files.map { it.first }.filter { it !in added }
@@ -437,6 +446,7 @@ internal suspend fun MediaStreamDownloader.downloadWithHttpFallback(
             "manifest"
         ) || initialTask.url.contains("m3u8") || initialTask.url.contains("videoplayback")
 
+    val finalTargetPath = com.michelle.raouf.fetch_jet.feature.hidden.retargetDir(tasksState.value[taskId]?.destinationPath, finalTargetPath)
     val directStreamUrl = if (isDirectVideo) {
         initialTask.url
     } else if (isYouTubeUrl(effectiveUrl)) {

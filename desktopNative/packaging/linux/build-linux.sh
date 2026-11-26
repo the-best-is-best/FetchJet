@@ -59,7 +59,8 @@ if [ -d "$SLINT_DIR/licenses" ]; then
     cp "$SLINT_DIR"/licenses/* "$STAGE/licenses/slint/" 2>/dev/null || true
 fi
 
-ICON="$REPO/desktopNative/packaging/msix/Assets/Square150x150Logo.scale-200.png"
+ICONS="$REPO/desktopNative/packaging/linux/icons/hicolor"
+ICON="$ICONS/256x256/apps/fetchjet.png"
 need "$ICON"
 install -m 644 "$ICON" "$STAGE/fetchjet.png"
 : > "$STAGE/FetchJet.installed"
@@ -81,12 +82,16 @@ EOF_DESKTOP
 tar -C "$OUT" -czf "$OUT/$NAME.tar.gz" "$NAME"
 
 ROOT="$OUT/deb-root"
-mkdir -p "$ROOT/DEBIAN" "$ROOT/opt" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/usr/share/icons/hicolor/256x256/apps"
+mkdir -p "$ROOT/DEBIAN" "$ROOT/opt" "$ROOT/usr/bin" "$ROOT/usr/share/applications" "$ROOT/usr/share/icons"
 cp -a "$STAGE" "$ROOT/opt/fetchjet"
 rm -f "$ROOT/opt/fetchjet/fetchjet.desktop"
 ln -s /opt/fetchjet/FetchJet "$ROOT/usr/bin/fetchjet"
 sed 's|^Exec=FetchJet|Exec=/opt/fetchjet/FetchJet|' "$STAGE/fetchjet.desktop" > "$ROOT/usr/share/applications/fetchjet.desktop"
-install -m 644 "$ICON" "$ROOT/usr/share/icons/hicolor/256x256/apps/fetchjet.png"
+for dir in "$ICONS"/*/apps; do
+    size="$(basename "$(dirname "$dir")")"
+    mkdir -p "$ROOT/usr/share/icons/hicolor/$size/apps"
+    install -m 644 "$dir"/fetchjet.* "$ROOT/usr/share/icons/hicolor/$size/apps/"
+done
 SIZE_KB="$(du -sk "$ROOT/opt" | cut -f1)"
 cat > "$ROOT/DEBIAN/control" <<EOF_CONTROL
 Package: fetchjet

@@ -493,6 +493,9 @@ def coordinator():
 
 
 if __name__ == "__main__":
+    if sys.platform == "darwin":
+        print("skip  test_send_subtitles needs several loopback addresses (127.0.0.2 / .3): not on macOS")
+        sys.exit(0)
     role = sys.argv[1] if len(sys.argv) > 1 else ""
     if role == "receiver":
         receiver(sys.argv[2])

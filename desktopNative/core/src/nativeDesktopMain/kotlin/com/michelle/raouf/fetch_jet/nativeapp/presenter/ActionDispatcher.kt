@@ -17,6 +17,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow
 import com.michelle.raouf.fetch_jet.presentation.dashboard.folderOfRow
 import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenTaskIdsOfRows
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.update
@@ -27,20 +28,22 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.SystemTheme -> local.update { it.copy(systemDark = action.dark) }
         is UiAction.SetFilter -> {
             val filter = SideFilter.entries.getOrNull(action.filter) ?: return
-            local.update { it.copy(sideFilter = filter) }
+            local.update { it.copy(sideFilter = filter, filterRev = it.filterRev + 1) }
             vm.onEvent(DashboardUiEvent.OnClosePlaylist)
             vm.onEvent(DashboardUiEvent.OnCloseFolderGroup)
             vm.onEvent(DashboardUiEvent.OnTabSelected(DashboardTab.ALL))
         }
 
         is UiAction.OpenPlaylist -> openPlaylist(action.id)
-        UiAction.ClosePlaylist -> {
+        UiAction.ClosePlaylist -> if (local.value.hiddenOpen) vm.onEvent(DashboardUiEvent.OnHiddenCloseGroup) else {
             vm.onEvent(DashboardUiEvent.OnClosePlaylist)
             vm.onEvent(DashboardUiEvent.OnCloseFolderGroup)
         }
-        UiAction.PlaylistPauseAll -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupPause(it)) }
+        UiAction.PlaylistPauseAll -> if (local.value.hiddenOpen) hiddenGroupEvent { p, f -> DashboardUiEvent.OnHiddenGroupPause(p, f) }
+        else openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupPause(it)) }
             ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupPause(it)) }
-        UiAction.PlaylistResumeAll -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupResume(it)) }
+        UiAction.PlaylistResumeAll -> if (local.value.hiddenOpen) hiddenGroupEvent { p, f -> DashboardUiEvent.OnHiddenGroupResume(p, f) }
+        else openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupResume(it)) }
             ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupResume(it)) }
         UiAction.PlaylistRemove -> openFolderKey()?.let { vm.onEvent(DashboardUiEvent.OnFolderGroupRemove(it)) }
             ?: openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistGroupRemove(it)) }
@@ -50,6 +53,11 @@ internal fun Presenter.dispatch(action: UiAction) {
                 ?: openPlaylistId()?.let { id -> state.allTasks.firstOrNull { it.playlistId == id }?.destinationPath ?: state.playlists[id]?.folder }
             if (path != null && !headless) scope.launch(kotlinx.coroutines.Dispatchers.IO) { pathResolver.openDirectoryInExplorer(path) }
         }
+        UiAction.PlayOpenGroup -> playOpenGroup()
+        is UiAction.PlayerPrepare -> playerPrepare(action.id)
+        is UiAction.PlayerRelease -> playerRelease(action.id)
+        UiAction.PlayerClosed -> playerClosed()
+        UiAction.PlayerLibraryDownload -> playerLibraryDownload()
         UiAction.PlaylistCheck -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistCheck(it)) }
         UiAction.PlaylistReadLanguages -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistReadLanguages(it)) }
         is UiAction.PlaylistAddLanguage -> openPlaylistId()?.let { vm.onEvent(DashboardUiEvent.OnPlaylistAddLanguage(it, action.code)) }
@@ -126,12 +134,20 @@ internal fun Presenter.dispatch(action: UiAction) {
         }
 
         is UiAction.ListKey -> listKey(action.key, action.shift, action.rows)
-        UiAction.CloseDetails -> local.update { it.copy(selectedTaskId = null) }
+        UiAction.CloseDetails -> {
+            if (local.value.hiddenOpen && !hiddenPlayer.value) vm.onEvent(DashboardUiEvent.OnHiddenClosePlayer)
+            local.update { it.copy(selectedTaskId = null) }
+        }
         UiAction.CancelWhenDone -> WhenDone.cancel()
         is UiAction.SetWhenDone -> WhenDoneAction.entries.getOrNull(action.index)?.let { WhenDone.choose(it) }
         is UiAction.SetUrl -> addSetUrl(action.text)
-        is UiAction.ShowAddDialog -> vm.onEvent(DashboardUiEvent.OnToggleAddDialog(action.show))
+        is UiAction.ShowAddDialog -> {
+            if (action.show && local.value.hiddenOpen && vm.uiState.value.hidden.unlocked) vm.onEvent(DashboardUiEvent.OnHiddenAddDownload)
+            else vm.onEvent(DashboardUiEvent.OnToggleAddDialog(action.show))
+        }
+
         UiAction.StartDownload -> vm.onEvent(DashboardUiEvent.OnAddDownloadClicked)
+
         is UiAction.SetDestination -> {
             addFields.destination.fromUi(action.path)
             vm.onEvent(DashboardUiEvent.OnDestinationPathChanged(action.path))
@@ -165,6 +181,16 @@ internal fun Presenter.dispatch(action: UiAction) {
         UiAction.AudioCompressStart -> vm.onEvent(DashboardUiEvent.OnAudioCompressStartClicked)
         is UiAction.AudioCompressDelete -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteCopy(action.path))
         UiAction.AudioCompressDismiss -> vm.onEvent(DashboardUiEvent.OnDismissAudioCompress)
+        is UiAction.AudioCompressDeleteOriginal -> vm.onEvent(DashboardUiEvent.OnAudioCompressDeleteOriginalChanged(action.on))
+        is UiAction.DetailsTool -> detailsTool(action.code)
+        is UiAction.VideoCutChoose -> videoCutChoose(action.timeline)
+        is UiAction.VideoCutPickTime -> videoCutPickTime(action.end)
+        UiAction.VideoCutStart -> vm.onEvent(DashboardUiEvent.OnVideoCutStartClicked)
+        UiAction.VideoCutCancel -> vm.onEvent(DashboardUiEvent.OnVideoCutCancelClicked)
+        UiAction.VideoCutDismiss -> vm.onEvent(DashboardUiEvent.OnDismissVideoCut)
+        is UiAction.VideoCutDeleteClip -> videoCutDeleteClip(action.path)
+        is UiAction.VideoCutApply -> videoCutApply(action.startMs, action.endMs)
+        is UiAction.VideoCutDeleteOriginal -> vm.onEvent(DashboardUiEvent.OnVideoCutDeleteOriginalChanged(action.on))
         UiAction.DetailsSubtitles -> local.value.selectedTaskId?.let { vm.onEvent(DashboardUiEvent.OnSubtitlesClicked(it)) }
         is UiAction.SubtitlesToggle -> vm.onEvent(DashboardUiEvent.OnSubtitleTrackToggled(action.key, action.selected))
         UiAction.SubtitlesAdd -> vm.onEvent(DashboardUiEvent.OnSubtitlesAddClicked)
@@ -194,6 +220,7 @@ internal fun Presenter.dispatch(action: UiAction) {
         is UiAction.AlertDismiss -> alertDismiss(action.kind, action.fromScrim)
         is UiAction.AlertText -> alertText(action.kind, action.text)
         is UiAction.AlertExtra -> alertExtra(action.kind)
+        is UiAction.AlertLink -> alertLink(action.kind)
         is UiAction.SetSettingsSection -> settingsOpenSection(action.index)
         UiAction.OpenMore -> settingsLocal.update { it.copy(inSettings = false) }
         is UiAction.SettingToggle -> settingToggle(action.id, action.on)
@@ -312,13 +339,23 @@ internal fun Presenter.dispatch(action: UiAction) {
 
         is UiAction.SetPlaylistOldestFirst -> vm.onEvent(DashboardUiEvent.OnPlaylistOldestFirst(action.on))
         UiAction.UseSingleVideo -> vm.onEvent(DashboardUiEvent.OnPlaylistUseSingleVideo)
+        is UiAction.ChoiceCheck -> choiceCheck(action.kind, action.checked)
         is UiAction.ChoicePrimary -> choicePrimary(action.kind)
         is UiAction.ChoiceSecondary -> choiceSecondary(action.kind)
         is UiAction.ChoiceDismiss -> choiceDismiss(action.kind)
+        UiAction.HideChecked -> hideChecked()
+        UiAction.UnhideChecked -> unhideChecked()
+        UiAction.UnhideAll -> unhideAll()
+        UiAction.UnhideGroup -> unhideGroup()
+        UiAction.HiddenChangePin -> hiddenStartChange()
+        UiAction.HiddenRemovePin -> hiddenStartRemove()
+        UiAction.HiddenLock -> hiddenLockAll()
+        UiAction.HiddenRecoveryCode -> hiddenShowRecovery()
+        UiAction.HiddenRestore -> hiddenStartRestore()
     }
 }
 
-internal fun Presenter.task(id: String): DownloadTask? = vm.uiState.value.allTasks.firstOrNull { it.id == id }
+internal fun Presenter.task(id: String): DownloadTask? = vm.uiState.value.findTask(id)
 
 private fun Presenter.openPlaylistId(): String? = vm.uiState.value.openPlaylistId
 
@@ -326,16 +363,20 @@ private fun Presenter.openFolderKey(): String? = vm.uiState.value.openFolder
 
 private fun Presenter.openFolderGroup(folder: String) {
     local.update { it.copy(selectedTaskId = null, checkedIds = emptySet(), focusId = null, anchorId = null) }
+    if (local.value.hiddenOpen) return vm.onEvent(DashboardUiEvent.OnHiddenOpenFolder(folder))
     vm.onEvent(DashboardUiEvent.OnOpenFolderGroup(folder))
 }
 
 private fun Presenter.openPlaylist(id: String) {
     local.update { it.copy(selectedTaskId = null, checkedIds = emptySet(), focusId = null, anchorId = null) }
+    if (local.value.hiddenOpen) return vm.onEvent(DashboardUiEvent.OnHiddenOpenPlaylist(id))
     vm.onEvent(DashboardUiEvent.OnOpenPlaylist(id))
 }
 
 /** Checked rows as task ids: a playlist or folder row stands for all its downloads. */
-internal fun Presenter.expandPlaylistRows(ids: Collection<String>): List<String> = ids.flatMap { id ->
+internal fun Presenter.expandPlaylistRows(ids: Collection<String>): List<String> = if (local.value.hiddenOpen) {
+    vm.uiState.value.hiddenTaskIdsOfRows(ids)
+} else ids.flatMap { id ->
     val state = vm.uiState.value
     val playlist = playlistIdOfRow(id)
     val folder = folderOfRow(id)
@@ -376,6 +417,15 @@ private fun Presenter.rowClick(id: String, control: Boolean, shift: Boolean) {
 }
 
 private fun Presenter.rowQuickAction(id: String) {
+    if (local.value.hiddenOpen && rowIsGroup(id)) {
+        val state = vm.uiState.value
+        val tasks = state.hiddenTaskIdsOfRows(listOf(id)).mapNotNull { task(it) }
+        val playlist = playlistIdOfRow(id).orEmpty()
+        val folder = folderOfRow(id).orEmpty()
+        if (anyPausable(tasks)) vm.onEvent(DashboardUiEvent.OnHiddenGroupPause(playlist, folder))
+        else if (anyResumable(tasks)) vm.onEvent(DashboardUiEvent.OnHiddenGroupResume(playlist, folder))
+        return
+    }
     folderOfRow(id)?.let { folder ->
         val state = vm.uiState.value
         val tasks = folderTasks(state.allTasks, state.playlists, folder)
@@ -402,6 +452,15 @@ private fun Presenter.rowQuickAction(id: String) {
 }
 
 internal fun Presenter.openDownloadedFile(fullPath: String, taskId: String) {
+    if (local.value.hiddenOpen) {
+        if (!headless && playHiddenTask(taskId)) return
+        if (task(taskId)?.let { readPdf(it) } == true) return
+        return vm.onEvent(DashboardUiEvent.OnHiddenOpenFile(taskId))
+    }
+    task(taskId)?.let {
+        if (!headless && playTask(it)) return
+        if (readPdf(it)) return
+    }
     scope.launch(Dispatchers.IO) {
         if (!pathResolver.fileExists(fullPath)) {
             local.update { it.copy(missingFileTaskId = taskId) }

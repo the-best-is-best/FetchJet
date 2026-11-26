@@ -49,6 +49,9 @@ namespace ChoiceDialogKind {
     inline constexpr int Duplicate = 1;
     inline constexpr int FileConflict = 2;
     inline constexpr int MainDownloader = 3;
+    inline constexpr int PlayerLibrary = 4;
+    inline constexpr int PdfReader = 5;
+    inline constexpr int LibraryDownload = 6;
 }
 
 namespace BadgeToneCode {
@@ -88,6 +91,9 @@ namespace AlertKind {
     inline constexpr int ExtensionFromFile = 11;
     inline constexpr int ExtensionFailed = 12;
     inline constexpr int ArchivePassword = 13;
+    inline constexpr int HiddenPin = 14;
+    inline constexpr int HiddenNotice = 15;
+    inline constexpr int HiddenRecovery = 16;
 }
 
 namespace ToneCode {
@@ -111,6 +117,18 @@ namespace DetailActionCode {
     inline constexpr int Pause = 3;
     inline constexpr int StartNow = 4;
     inline constexpr int Resume = 5;
+}
+
+namespace DetailToolCode {
+    inline constexpr int None = 0;
+    inline constexpr int Secondary = 1;
+    inline constexpr int Extract = 2;
+    inline constexpr int Share = 3;
+    inline constexpr int Play = 4;
+    inline constexpr int Compress = 5;
+    inline constexpr int Cut = 6;
+    inline constexpr int Subtitles = 7;
+    inline constexpr int ExtractAudio = 8;
 }
 
 namespace PieceStateCode {
@@ -144,6 +162,12 @@ namespace EffectKind {
     inline constexpr int ScrollToRow = 2;
     inline constexpr int Notify = 3;
     inline constexpr int Exit = 4;
+    inline constexpr int OpenPlayer = 5;
+    inline constexpr int PlayerPath = 6;
+    inline constexpr int PlayerPreparing = 7;
+    inline constexpr int ClosePlayer = 8;
+    inline constexpr int OpenPdf = 9;
+    inline constexpr int ClosePdf = 10;
 }
 
 namespace SideFilterCode {
@@ -435,6 +459,7 @@ inline PlaylistRowDto parse_PlaylistRowDto(const fj::Json &j) {
     d.before = fj::flag(j, "before");
     d.unavailable = fj::flag(j, "unavailable");
     d.inPlaylist = fj::flag(j, "inPlaylist");
+    d.tag = fj::text(j, "tag");
     return d;
 }
 
@@ -528,6 +553,11 @@ inline ClipPickerDto parse_ClipPickerDto(const fj::Json &j) {
     d.error = fj::text(j, "error");
     d.endChip = fj::text(j, "endChip");
     d.minChip = fj::text(j, "minChip");
+    d.minChipHidden = fj::flag(j, "minChipHidden");
+    d.quick5Hidden = fj::flag(j, "quick5Hidden");
+    d.quick15Hidden = fj::flag(j, "quick15Hidden");
+    d.quick30Hidden = fj::flag(j, "quick30Hidden");
+    d.quick60Hidden = fj::flag(j, "quick60Hidden");
     d.valid = fj::flag(j, "valid");
     d.applyLabel = fj::text(j, "applyLabel");
     return d;
@@ -564,6 +594,8 @@ inline ChoiceDialogDto parse_ChoiceDialogDto(const fj::Json &j) {
     d.secondaryLabel = fj::text(j, "secondaryLabel");
     d.secondaryDanger = fj::flag(j, "secondaryDanger");
     d.cancelLabel = fj::text(j, "cancelLabel");
+    d.checkLabel = fj::text(j, "checkLabel");
+    d.checked = fj::flag(j, "checked");
     return d;
 }
 
@@ -599,6 +631,11 @@ inline AlertDto parse_AlertDto(const fj::Json &j) {
     d.round = fj::flag(j, "round");
     d.inputLabel = fj::text(j, "inputLabel");
     d.inputSecret = fj::flag(j, "inputSecret");
+    d.inputPattern = fj::flag(j, "inputPattern");
+    d.inputRev = fj::integer(j, "inputRev");
+    d.inputDisabled = fj::flag(j, "inputDisabled");
+    d.hintError = fj::flag(j, "hintError");
+    d.linkLabel = fj::text(j, "linkLabel");
     return d;
 }
 
@@ -607,6 +644,50 @@ inline AudioCopyDto parse_AudioCopyDto(const fj::Json &j) {
     d.path = fj::text(j, "path");
     d.name = fj::text(j, "name");
     d.size = fj::text(j, "size");
+    return d;
+}
+
+inline VideoClipDto parse_VideoClipDto(const fj::Json &j) {
+    VideoClipDto d{};
+    d.path = fj::text(j, "path");
+    d.name = fj::text(j, "name");
+    d.nameRtl = fj::flag(j, "nameRtl");
+    d.size = fj::text(j, "size");
+    d.range = fj::text(j, "range");
+    return d;
+}
+
+inline VideoCutDto parse_VideoCutDto(const fj::Json &j) {
+    VideoCutDto d{};
+    d.open = fj::flag(j, "open");
+    d.needsTools = fj::flag(j, "needsTools");
+    d.audio = fj::flag(j, "audio");
+    d.chooser = fj::flag(j, "chooser");
+    d.timeline = fj::flag(j, "timeline");
+    d.clipsOnly = fj::flag(j, "clipsOnly");
+    d.reading = fj::flag(j, "reading");
+    d.timelineOff = fj::flag(j, "timelineOff");
+    d.fileName = fj::text(j, "fileName");
+    d.fileNameRtl = fj::flag(j, "fileNameRtl");
+    d.duration = fj::text(j, "duration");
+    d.start = fj::text(j, "start");
+    d.startFriendly = fj::text(j, "startFriendly");
+    d.end = fj::text(j, "end");
+    d.endFriendly = fj::text(j, "endFriendly");
+    d.length = fj::text(j, "length");
+    d.rangeError = fj::flag(j, "rangeError");
+    d.canStart = fj::flag(j, "canStart");
+    d.running = fj::flag(j, "running");
+    d.stopping = fj::flag(j, "stopping");
+    d.progress = fj::real(j, "progress");
+    d.percent = fj::text(j, "percent");
+    d.elapsed = fj::text(j, "elapsed");
+    d.timeLeft = fj::text(j, "timeLeft");
+    d.failed = fj::flag(j, "failed");
+    d.message = fj::text(j, "message");
+    d.clips = fj::struct_model<VideoClipDto>(j, "clips", parse_VideoClipDto);
+    d.canDeleteOriginal = fj::flag(j, "canDeleteOriginal");
+    d.deleteOriginal = fj::flag(j, "deleteOriginal");
     return d;
 }
 
@@ -646,6 +727,9 @@ inline AudioCompressDto parse_AudioCompressDto(const fj::Json &j) {
     d.channelOptions = fj::text_model(j, "channelOptions");
     d.channelPick = fj::integer(j, "channelPick");
     d.progressText = fj::text(j, "progressText");
+    d.cut = parse_VideoCutDto(fj::child(j, "cut"));
+    d.canDeleteOriginal = fj::flag(j, "canDeleteOriginal");
+    d.deleteOriginal = fj::flag(j, "deleteOriginal");
     return d;
 }
 
@@ -661,6 +745,16 @@ inline LinkDto parse_LinkDto(const fj::Json &j) {
     LinkDto d{};
     d.label = fj::text(j, "label");
     d.url = fj::text(j, "url");
+    d.note = fj::text(j, "note");
+    return d;
+}
+
+inline DetailToolDto parse_DetailToolDto(const fj::Json &j) {
+    DetailToolDto d{};
+    d.code = fj::integer(j, "code");
+    d.icon = fj::text(j, "icon");
+    d.label = fj::text(j, "label");
+    d.disabled = fj::flag(j, "disabled");
     return d;
 }
 
@@ -717,6 +811,9 @@ inline DetailsDto parse_DetailsDto(const fj::Json &j) {
     d.canSubtitles = fj::flag(j, "canSubtitles");
     d.compressLabel = fj::text(j, "compressLabel");
     d.removeLabel = fj::text(j, "removeLabel");
+    d.fileTools = fj::struct_model<DetailToolDto>(j, "fileTools", parse_DetailToolDto);
+    d.mediaTools = fj::struct_model<DetailToolDto>(j, "mediaTools", parse_DetailToolDto);
+    d.clips = fj::struct_model<VideoClipDto>(j, "clips", parse_VideoClipDto);
     return d;
 }
 
@@ -780,6 +877,7 @@ inline DeviceSheetDto parse_DeviceSheetDto(const fj::Json &j) {
     d.canTransfer = fj::flag(j, "canTransfer");
     d.transfer = fj::flag(j, "transfer");
     d.deleteAfter = fj::flag(j, "deleteAfter");
+    d.deleteBlocked = fj::flag(j, "deleteBlocked");
     d.manualShown = fj::flag(j, "manualShown");
     d.manualIp = fj::text(j, "manualIp");
     d.manualRev = fj::integer(j, "manualRev");
@@ -875,6 +973,7 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.playlistCanPause = fj::flag(j, "playlistCanPause");
     d.playlistCanResume = fj::flag(j, "playlistCanResume");
     d.playlistCanCheck = fj::flag(j, "playlistCanCheck");
+    d.playlistCanPlay = fj::flag(j, "playlistCanPlay");
     d.playlistLanguagesShown = fj::flag(j, "playlistLanguagesShown");
     d.playlistLanguagesBusy = fj::flag(j, "playlistLanguagesBusy");
     d.playlistLanguagesNote = fj::text(j, "playlistLanguagesNote");
@@ -882,6 +981,13 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.groupIsFolder = fj::flag(j, "groupIsFolder");
     d.groupIsPage = fj::flag(j, "groupIsPage");
     d.groupFolderPath = fj::text(j, "groupFolderPath");
+    d.hiddenOpen = fj::flag(j, "hiddenOpen");
+    d.hiddenNote = fj::text(j, "hiddenNote");
+    d.hiddenChangeLabel = fj::text(j, "hiddenChangeLabel");
+    d.hiddenRemoveLabel = fj::text(j, "hiddenRemoveLabel");
+    d.hiddenWorkShown = fj::flag(j, "hiddenWorkShown");
+    d.hiddenWorkText = fj::text(j, "hiddenWorkText");
+    d.hiddenWorkFraction = fj::real(j, "hiddenWorkFraction");
     return d;
 }
 
@@ -938,6 +1044,8 @@ inline RowMenuItemDto parse_RowMenuItemDto(const fj::Json &j) {
     d.label = fj::text(j, "label");
     d.danger = fj::flag(j, "danger");
     d.divider = fj::flag(j, "divider");
+    d.header = fj::text(j, "header");
+    d.disabled = fj::flag(j, "disabled");
     return d;
 }
 
@@ -1288,6 +1396,94 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_moreSource(next());
     tr.set_morePrivacy(next());
     tr.set_moreStats(next());
+    tr.set_hiddenTitle(next());
+    tr.set_browserTitle(next());
+    tr.set_browserHint(next());
+    tr.set_browserAddressHint(next());
+    tr.set_browserSendPage(next());
+    tr.set_browserDownloadMedia(next());
+    tr.set_hiddenHide(next());
+    tr.set_hiddenUnhide(next());
+    tr.set_hiddenUnhideAll(next());
+    tr.set_hiddenSetPinTitle(next());
+    tr.set_hiddenSetPinHint(next());
+    tr.set_hiddenEnterPin(next());
+    tr.set_hiddenConfirmPin(next());
+    tr.set_hiddenPinMismatch(next());
+    tr.set_hiddenInvalidPin(next());
+    tr.set_hiddenWrongPin(next());
+    tr.set_hiddenLockedFor(next());
+    tr.set_hiddenChangePin(next());
+    tr.set_hiddenOldPin(next());
+    tr.set_hiddenNewPin(next());
+    tr.set_hiddenRemovePin(next());
+    tr.set_hiddenRemoveWarn(next());
+    tr.set_hiddenLock(next());
+    tr.set_hiddenEmpty(next());
+    tr.set_hiddenHiddenToast(next());
+    tr.set_hiddenNoteEncrypted(next());
+    tr.set_hiddenNoteAnyType(next());
+    tr.set_hiddenWorking(next());
+    tr.set_hiddenNoticeTitle(next());
+    tr.set_hiddenNoticeBody(next());
+    tr.set_hiddenNoticeAccept(next());
+    tr.set_hiddenOpening(next());
+    tr.set_hiddenNoticeCopyLeft(next());
+    tr.set_hiddenNoticeMoveFailed(next());
+    tr.set_hiddenNoticeOpenFailed(next());
+    tr.set_hiddenRecoveryTitle(next());
+    tr.set_hiddenRecoveryBody(next());
+    tr.set_hiddenRecoveryCopy(next());
+    tr.set_hiddenRecoveryRestoreTitle(next());
+    tr.set_hiddenRecoveryRestoreHint(next());
+    tr.set_hiddenRecoveryEnter(next());
+    tr.set_hiddenForgotPin(next());
+    tr.set_hiddenForgotReason(next());
+    tr.set_hiddenReauthReason(next());
+    tr.set_hiddenResetPinTitle(next());
+    tr.set_hiddenNoticeRestoreDone(next());
+    tr.set_hiddenNoticeRestoreWrong(next());
+    tr.set_hiddenNoticeRestoreNothing(next());
+    tr.set_hiddenNoticeRecoveryUnavailable(next());
+    tr.set_hiddenNoticeAuthFailed(next());
+    tr.set_hiddenNoticeResetDone(next());
+    tr.set_hiddenNoticeResetExpired(next());
+    tr.set_hiddenNoticeNeedFileAccess(next());
+    tr.set_hiddenNoticeNotMedia(next());
+    tr.set_hiddenCoverUnlock(next());
+    tr.set_hiddenCoverExit(next());
+    tr.set_hiddenLockTypeTitle(next());
+    tr.set_hiddenLockTypePin(next());
+    tr.set_hiddenLockTypePattern(next());
+    tr.set_hiddenPatternDraw(next());
+    tr.set_hiddenPatternEnter(next());
+    tr.set_hiddenPatternAgain(next());
+    tr.set_hiddenPatternTooShort(next());
+    tr.set_hiddenPatternMismatch(next());
+    tr.set_hiddenWrongPattern(next());
+    tr.set_hiddenUsePin(next());
+    tr.set_hiddenUsePattern(next());
+    tr.set_hiddenOldPattern(next());
+    tr.set_hiddenNewPattern(next());
+    tr.set_hiddenChangePattern(next());
+    tr.set_hiddenRemovePattern(next());
+    tr.set_hiddenRemovePatternWarn(next());
+    tr.set_hiddenForgotPattern(next());
+    tr.set_hiddenNoticePatternChanged(next());
+    tr.set_hiddenDownloadName(next());
+    tr.set_backupExport(next());
+    tr.set_backupRestore(next());
+    tr.set_backupExportHint(next());
+    tr.set_backupRestoreHint(next());
+    tr.set_backupDone(next());
+    tr.set_backupNothingNew(next());
+    tr.set_backupNeedRestart(next());
+    tr.set_backupSkipped(next());
+    tr.set_backupWrongPlatform(next());
+    tr.set_backupSettingsDone(next());
+    tr.set_backupInvalid(next());
+    tr.set_backupHiddenBlocked(next());
+    tr.set_backupFailed(next());
     tr.set_homeDownloads(next());
     tr.set_homeTabAll(next());
     tr.set_homeTabActive(next());
@@ -1858,8 +2054,13 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_netLoginsHint(next());
     tr.set_netLoginSite(next());
     tr.set_netLoginAdd(next());
+    tr.set_netLoginBrowser(next());
+    tr.set_netLoginBrowserTag(next());
+    tr.set_netLoginBrowserDone(next());
+    tr.set_netLoginBrowserHint(next());
     tr.set_netLoginsEmpty(next());
     tr.set_netRemove(next());
+    tr.set_netRemoveConfirm(next());
     tr.set_sysTabAllDownloads(next());
     tr.set_sysTabActive(next());
     tr.set_sysTabCompleted(next());
@@ -1904,6 +2105,7 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_subtitlesNoneInList(next());
     tr.set_playlistVideoJoined(next());
     tr.set_detailsPlaylist(next());
+    tr.set_detailsLinkSensitive(next());
     tr.set_popUpAskText(next());
     tr.set_popUpAskAllow(next());
     tr.set_popUpAskLater(next());
@@ -1915,6 +2117,44 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_sysReadingChannelName(next());
     tr.set_sysReadingVideosCount(next());
     tr.set_playlistGroupDone(next());
+    tr.set_playerAllFinished(next());
+    tr.set_playerStartOver(next());
+    tr.set_playerPlayAll(next());
+    tr.set_playerAskTitle(next());
+    tr.set_playerAskText(next());
+    tr.set_playerAskDownload(next());
+    tr.set_playerAskSystem(next());
+    tr.set_playerAskRemember(next());
+    tr.set_playerAskLater(next());
+    tr.set_playerModeTitle(next());
+    tr.set_playerModeHint(next());
+    tr.set_playerModeHintShort(next());
+    tr.set_playerSubtitles(next());
+    tr.set_playerAutoplay(next());
+    tr.set_playerVolume(next());
+    tr.set_playerMute(next());
+    tr.set_playerBrightness(next());
+    tr.set_playerFullscreen(next());
+    tr.set_playerSubtitlesOff(next());
+    tr.set_playerSubtitlesOpenFile(next());
+    tr.set_playerSubtitlesTrack(next());
+    tr.set_playerSubtitlesInVideo(next());
+    tr.set_playerSubtitlesFiles(next());
+    tr.set_playerSubtitlesFailed(next());
+    tr.set_playerModeAsk(next());
+    tr.set_playerModeOn(next());
+    tr.set_playerModeOff(next());
+    tr.set_pdfModeTitle(next());
+    tr.set_pdfModeHint(next());
+    tr.set_pdfModeOn(next());
+    tr.set_pdfAskTitle(next());
+    tr.set_pdfAskText(next());
+    tr.set_pdfAskDownload(next());
+    tr.set_pdfPage(next());
+    tr.set_pdfGoToPage(next());
+    tr.set_pdfFitWidth(next());
+    tr.set_pdfOpenFailed(next());
+    tr.set_pdfPasswordProtected(next());
     tr.set_playlistCheckNew(next());
     tr.set_playlistBack(next());
     tr.set_playlistDeleteAll(next());
@@ -2023,6 +2263,42 @@ inline void apply_tr(const Tr &tr, const fj::Json &j) {
     tr.set_audioCompressHigherQuality(next());
     tr.set_audioCompressSmallerFile(next());
     tr.set_audioCompressNothing(next());
+    tr.set_videoCutTitle(next());
+    tr.set_videoCutByTime(next());
+    tr.set_videoCutByTimeHint(next());
+    tr.set_videoCutOnTimeline(next());
+    tr.set_videoCutOnTimelineHint(next());
+    tr.set_videoCutNeedsPlayerLibrary(next());
+    tr.set_videoCutFrom(next());
+    tr.set_videoCutTo(next());
+    tr.set_videoCutDuration(next());
+    tr.set_videoCutPlayRange(next());
+    tr.set_videoCutApply(next());
+    tr.set_videoCutRunning(next());
+    tr.set_videoCutElapsed(next());
+    tr.set_videoCutLeft(next());
+    tr.set_videoCutStopping(next());
+    tr.set_videoCutFailed(next());
+    tr.set_videoCutClips(next());
+    tr.set_videoCutDeleteClip(next());
+    tr.set_videoCutTimelineNeedsMp4(next());
+    tr.set_videoCutSaved(next());
+    tr.set_videoCutNeedsTools(next());
+    tr.set_deleteOriginalAfterCut(next());
+    tr.set_deleteOriginalAfterCompress(next());
+    tr.set_audioCompressSaved(next());
+    tr.set_removeAlsoDerived(next());
+    tr.set_audioCutTitle(next());
+    tr.set_audioCutOnTimelineHint(next());
+    tr.set_audioExtractTitle(next());
+    tr.set_audioExtractRunning(next());
+    tr.set_audioExtractDone(next());
+    tr.set_audioExtractFailed(next());
+    tr.set_audioExtractNoAudio(next());
+    tr.set_rowMenuSectionOpen(next());
+    tr.set_rowMenuSectionMedia(next());
+    tr.set_rowMenuSectionDownload(next());
+    tr.set_rowMenuSectionManage(next());
     tr.set_sysDeviceSendTitle(next());
     tr.set_sysDeviceNoDevices(next());
     tr.set_sysDeviceSearching(next());
@@ -2206,6 +2482,11 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_playlistResumeAll([send]() { fj::ActionWriter w("PlaylistResumeAll"); send(w.finish()); });
     act.on_playlistRemove([send]() { fj::ActionWriter w("PlaylistRemove"); send(w.finish()); });
     act.on_playlistCheck([send]() { fj::ActionWriter w("PlaylistCheck"); send(w.finish()); });
+    act.on_playOpenGroup([send]() { fj::ActionWriter w("PlayOpenGroup"); send(w.finish()); });
+    act.on_playerPrepare([send](slint::SharedString id) { fj::ActionWriter w("PlayerPrepare"); w.add("id", id); send(w.finish()); });
+    act.on_playerRelease([send](slint::SharedString id) { fj::ActionWriter w("PlayerRelease"); w.add("id", id); send(w.finish()); });
+    act.on_playerClosed([send]() { fj::ActionWriter w("PlayerClosed"); send(w.finish()); });
+    act.on_playerLibraryDownload([send]() { fj::ActionWriter w("PlayerLibraryDownload"); send(w.finish()); });
     act.on_playlistReadLanguages([send]() { fj::ActionWriter w("PlaylistReadLanguages"); send(w.finish()); });
     act.on_playlistAddLanguage([send](slint::SharedString code) { fj::ActionWriter w("PlaylistAddLanguage"); w.add("code", code); send(w.finish()); });
     act.on_playlistLanguagesClose([send]() { fj::ActionWriter w("PlaylistLanguagesClose"); send(w.finish()); });
@@ -2244,6 +2525,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_audioCompressSetFormat([send](int index) { fj::ActionWriter w("AudioCompressSetFormat"); w.add("index", index); send(w.finish()); });
     act.on_audioCompressDelete([send](slint::SharedString path) { fj::ActionWriter w("AudioCompressDelete"); w.add("path", path); send(w.finish()); });
     act.on_audioCompressDismiss([send]() { fj::ActionWriter w("AudioCompressDismiss"); send(w.finish()); });
+    act.on_audioCompressDeleteOriginal([send](bool on) { fj::ActionWriter w("AudioCompressDeleteOriginal"); w.add("on", on); send(w.finish()); });
     act.on_detailsSubtitles([send]() { fj::ActionWriter w("DetailsSubtitles"); send(w.finish()); });
     act.on_subtitlesToggle([send](slint::SharedString key, bool selected) { fj::ActionWriter w("SubtitlesToggle"); w.add("key", key); w.add("selected", selected); send(w.finish()); });
     act.on_subtitlesAdd([send]() { fj::ActionWriter w("SubtitlesAdd"); send(w.finish()); });
@@ -2259,6 +2541,7 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_alertDismiss([send](int kind, bool fromScrim) { fj::ActionWriter w("AlertDismiss"); w.add("kind", kind); w.add("fromScrim", fromScrim); send(w.finish()); });
     act.on_alertText([send](int kind, slint::SharedString text) { fj::ActionWriter w("AlertText"); w.add("kind", kind); w.add("text", text); send(w.finish()); });
     act.on_alertExtra([send](int kind) { fj::ActionWriter w("AlertExtra"); w.add("kind", kind); send(w.finish()); });
+    act.on_alertLink([send](int kind) { fj::ActionWriter w("AlertLink"); w.add("kind", kind); send(w.finish()); });
     act.on_setSettingsSection([send](int index) { fj::ActionWriter w("SetSettingsSection"); w.add("index", index); send(w.finish()); });
     act.on_openMore([send]() { fj::ActionWriter w("OpenMore"); send(w.finish()); });
     act.on_settingToggle([send](slint::SharedString id, bool on) { fj::ActionWriter w("SettingToggle"); w.add("id", id); w.add("on", on); send(w.finish()); });
@@ -2339,9 +2622,28 @@ template <class Send> void bind_actions(const Act &act, Send send) {
     act.on_groupOpenFolderOnDisk([send]() { fj::ActionWriter w("GroupOpenFolderOnDisk"); send(w.finish()); });
     act.on_setPlaylistOldestFirst([send](bool on) { fj::ActionWriter w("SetPlaylistOldestFirst"); w.add("on", on); send(w.finish()); });
     act.on_useSingleVideo([send]() { fj::ActionWriter w("UseSingleVideo"); send(w.finish()); });
+    act.on_choiceCheck([send](int kind, bool checked) { fj::ActionWriter w("ChoiceCheck"); w.add("kind", kind); w.add("checked", checked); send(w.finish()); });
     act.on_choicePrimary([send](int kind) { fj::ActionWriter w("ChoicePrimary"); w.add("kind", kind); send(w.finish()); });
     act.on_choiceSecondary([send](int kind) { fj::ActionWriter w("ChoiceSecondary"); w.add("kind", kind); send(w.finish()); });
     act.on_choiceDismiss([send](int kind) { fj::ActionWriter w("ChoiceDismiss"); w.add("kind", kind); send(w.finish()); });
+    act.on_hideChecked([send]() { fj::ActionWriter w("HideChecked"); send(w.finish()); });
+    act.on_unhideChecked([send]() { fj::ActionWriter w("UnhideChecked"); send(w.finish()); });
+    act.on_unhideAll([send]() { fj::ActionWriter w("UnhideAll"); send(w.finish()); });
+    act.on_unhideGroup([send]() { fj::ActionWriter w("UnhideGroup"); send(w.finish()); });
+    act.on_hiddenChangePin([send]() { fj::ActionWriter w("HiddenChangePin"); send(w.finish()); });
+    act.on_hiddenRemovePin([send]() { fj::ActionWriter w("HiddenRemovePin"); send(w.finish()); });
+    act.on_hiddenLock([send]() { fj::ActionWriter w("HiddenLock"); send(w.finish()); });
+    act.on_hiddenRecoveryCode([send]() { fj::ActionWriter w("HiddenRecoveryCode"); send(w.finish()); });
+    act.on_hiddenRestore([send]() { fj::ActionWriter w("HiddenRestore"); send(w.finish()); });
+    act.on_detailsTool([send](int code) { fj::ActionWriter w("DetailsTool"); w.add("code", code); send(w.finish()); });
+    act.on_videoCutChoose([send](bool timeline) { fj::ActionWriter w("VideoCutChoose"); w.add("timeline", timeline); send(w.finish()); });
+    act.on_videoCutPickTime([send](bool end) { fj::ActionWriter w("VideoCutPickTime"); w.add("end", end); send(w.finish()); });
+    act.on_videoCutStart([send]() { fj::ActionWriter w("VideoCutStart"); send(w.finish()); });
+    act.on_videoCutCancel([send]() { fj::ActionWriter w("VideoCutCancel"); send(w.finish()); });
+    act.on_videoCutDismiss([send]() { fj::ActionWriter w("VideoCutDismiss"); send(w.finish()); });
+    act.on_videoCutDeleteClip([send](slint::SharedString path) { fj::ActionWriter w("VideoCutDeleteClip"); w.add("path", path); send(w.finish()); });
+    act.on_videoCutApply([send](int startMs, int endMs) { fj::ActionWriter w("VideoCutApply"); w.add("startMs", startMs); w.add("endMs", endMs); send(w.finish()); });
+    act.on_videoCutDeleteOriginal([send](bool on) { fj::ActionWriter w("VideoCutDeleteOriginal"); w.add("on", on); send(w.finish()); });
 }
 
 }

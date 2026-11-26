@@ -253,7 +253,10 @@ internal fun Presenter.startAdd() {
     }
     scope.launch {
         slices.map { it.visible }.distinctUntilChanged().collect { visible ->
-            if (!visible) addLocal.value = AddLocal()
+            if (!visible) {
+                addLocal.value = AddLocal()
+                if (vm.uiState.value.addHidden) vm.onEvent(DashboardUiEvent.OnAddHiddenToggled(false))
+            }
         }
     }
 }

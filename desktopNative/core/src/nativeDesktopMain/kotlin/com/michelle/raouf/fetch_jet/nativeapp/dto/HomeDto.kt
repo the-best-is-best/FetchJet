@@ -75,6 +75,7 @@ data class ChromeDto(
     val playlistCanPause: Boolean = false,
     val playlistCanResume: Boolean = false,
     val playlistCanCheck: Boolean = false,
+    val playlistCanPlay: Boolean = false,
     val playlistLanguagesShown: Boolean = false,
     val playlistLanguagesBusy: Boolean = false,
     val playlistLanguagesNote: String = "",
@@ -82,6 +83,13 @@ data class ChromeDto(
     val groupIsFolder: Boolean = false,
     val groupIsPage: Boolean = false,
     val groupFolderPath: String = "",
+    val hiddenOpen: Boolean = false,
+    val hiddenNote: String = "",
+    val hiddenChangeLabel: String = "",
+    val hiddenRemoveLabel: String = "",
+    val hiddenWorkShown: Boolean = false,
+    val hiddenWorkText: String = "",
+    val hiddenWorkFraction: Float = 0f,
 )
 
 @Serializable

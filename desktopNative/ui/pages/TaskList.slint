@@ -19,7 +19,26 @@ component SortMenu inherits OptionsMenu {
     picked(index) => { Act.setSort(index); }
 }
 
+component BarButton inherits OutlinedButton {
+    height: 34px;
+    border-radius: 10px;
+    pad: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+component BarFilledButton inherits FilledButton {
+    height: 34px;
+    border-radius: 10px;
+    pad: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 component ToolsBanner inherits Rectangle {
+    in property <string> text: Core.chrome.toolsBannerText;
+    in property <float> fraction: Core.chrome.toolsBannerFraction;
+    in property <bool> indeterminate: Core.chrome.toolsBannerIndeterminate;
     height: 46px + 8px;
     Rectangle {
         y: 0;
@@ -30,7 +49,7 @@ component ToolsBanner inherits Rectangle {
             x: 14px;
             y: 10px;
             width: parent.width - 28px;
-            text: Core.chrome.toolsBannerText;
+            text: root.text;
             line: 16px;
             tracking: 0.4px;
             font-size: 12px;
@@ -42,8 +61,8 @@ component ToolsBanner inherits Rectangle {
             x: 14px;
             y: 32px;
             width: parent.width - 28px;
-            value: Core.chrome.toolsBannerFraction;
-            indeterminate: Core.chrome.toolsBannerIndeterminate;
+            value: root.fraction;
+            indeterminate: root.indeterminate;
         }
     }
 }
@@ -85,25 +104,15 @@ component ListToolbar inherits Rectangle {
         height: 34px;
         spacing: 8px;
         cross-axis-alignment: center;
-        OutlinedButton {
+        BarButton {
             glyph: "⏸";
             text: Tr.homePauseAll;
-            height: 34px;
-            border-radius: 10px;
-            pad: 12px;
-            font-size: 12px;
-            font-weight: 600;
             enabled: Core.chrome.anyPausable;
             clicked => { Act.pauseAll(); }
         }
-        OutlinedButton {
-            glyph: Dir.rtl ? "◀" : "▶";
+        BarButton {
+            glyph: "⬇";
             text: Tr.homeResumeAll;
-            height: 34px;
-            border-radius: 10px;
-            pad: 12px;
-            font-size: 12px;
-            font-weight: 600;
             enabled: Core.chrome.anyResumable;
             clicked => { Act.resumeAll(); }
         }
@@ -149,61 +158,45 @@ component PlaylistBar inherits Rectangle {
                 overflow: elide;
                 horizontal-stretch: 1;
             }
-            if !Core.chrome.groupIsFolder: OutlinedButton {
+            if Core.chrome.playlistCanPlay: BarButton {
+                glyph: "🎬";
+                text: Tr.playerPlayAll;
+                clicked => { Act.playOpenGroup(); }
+            }
+            if !Core.chrome.groupIsFolder && !Core.chrome.hiddenOpen: BarButton {
                 glyph: "🔄";
                 text: Core.chrome.groupIsPage ? Tr.grabCheckNew : Tr.playlistCheckNew;
-                height: 34px;
-                border-radius: 10px;
-                pad: 12px;
-                font-size: 12px;
-                font-weight: 600;
                 enabled: Core.chrome.playlistCanCheck;
                 clicked => { Act.playlistCheck(); }
             }
-            OutlinedButton {
+            if !Core.chrome.hiddenOpen: BarButton {
                 glyph: "📂";
                 text: Tr.rowMenuOpenFolder;
-                height: 34px;
-                border-radius: 10px;
-                pad: 12px;
-                font-size: 12px;
-                font-weight: 600;
                 clicked => { Act.groupOpenFolderOnDisk(); }
             }
-            OutlinedButton {
+            BarButton {
                 glyph: "⏸";
                 text: Tr.homePauseAll;
-                height: 34px;
-                border-radius: 10px;
-                pad: 12px;
-                font-size: 12px;
-                font-weight: 600;
                 enabled: Core.chrome.playlistCanPause;
                 clicked => { Act.playlistPauseAll(); }
             }
-            OutlinedButton {
-                glyph: Dir.rtl ? "◀" : "▶";
+            BarButton {
+                glyph: "⬇";
                 text: Tr.homeResumeAll;
-                height: 34px;
-                border-radius: 10px;
-                pad: 12px;
-                font-size: 12px;
-                font-weight: 600;
                 enabled: Core.chrome.playlistCanResume;
                 clicked => { Act.playlistResumeAll(); }
             }
-            OutlinedButton {
+            if Core.chrome.hiddenOpen: BarButton {
+                text: Tr.hiddenUnhide;
+                clicked => { Act.unhideGroup(); }
+            }
+            if !Core.chrome.hiddenOpen: BarButton {
                 glyph: "🗑";
                 text: (Core.chrome.groupIsFolder || Core.chrome.groupIsPage) ? Tr.folderDeleteAll : Tr.playlistDeleteAll;
-                height: 34px;
-                border-radius: 10px;
-                pad: 12px;
-                font-size: 12px;
-                font-weight: 600;
                 clicked => { Act.playlistRemove(); }
             }
         }
-        if Core.chrome.groupIsFolder: HBox {
+        if Core.chrome.groupIsFolder && !Core.chrome.hiddenOpen: HBox {
             height: 26px;
             cross-axis-alignment: center;
             T {
@@ -214,7 +207,7 @@ component PlaylistBar inherits Rectangle {
                 horizontal-stretch: 1;
             }
         }
-        if !Core.chrome.groupIsFolder && !Core.chrome.groupIsPage: HBox {
+        if !Core.chrome.groupIsFolder && !Core.chrome.groupIsPage && !Core.chrome.hiddenOpen: HBox {
             height: 30px;
             spacing: 8px;
             cross-axis-alignment: center;
@@ -236,7 +229,7 @@ component PlaylistBar inherits Rectangle {
                 horizontal-stretch: 1;
             }
         }
-        if Core.chrome.playlistLanguagesShown: HBox {
+        if Core.chrome.playlistLanguagesShown && !Core.chrome.hiddenOpen: HBox {
             height: 40px;
             spacing: 6px;
             cross-axis-alignment: center;
@@ -276,6 +269,92 @@ component PlaylistBar inherits Rectangle {
     }
 }
 
+component HiddenActions inherits HBox {
+    spacing: 8px;
+    cross-axis-alignment: center;
+    horizontal-stretch: 0;
+    BarButton {
+        text: Tr.hiddenUnhideAll;
+        enabled: !Core.chrome.listEmpty;
+        clicked => { Act.unhideAll(); }
+    }
+    BarButton {
+        text: Core.chrome.hiddenChangeLabel;
+        clicked => { Act.hiddenChangePin(); }
+    }
+    BarButton {
+        text: Core.chrome.hiddenRemoveLabel;
+        clicked => { Act.hiddenRemovePin(); }
+    }
+}
+
+component HiddenRecoveryActions inherits HBox {
+    spacing: 8px;
+    cross-axis-alignment: center;
+    horizontal-stretch: 0;
+    BarButton {
+        text: Tr.hiddenRecoveryTitle;
+        clicked => { Act.hiddenRecoveryCode(); }
+    }
+    BarButton {
+        text: Tr.hiddenRecoveryRestoreTitle;
+        clicked => { Act.hiddenRestore(); }
+    }
+}
+
+component HiddenBar inherits Rectangle {
+    private property <bool> narrow: root.width < 1000px;
+    VerticalLayout {
+        spacing: 6px;
+        padding-bottom: 8px;
+        HBox {
+            height: 34px;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            T {
+                text: Tr.hiddenTitle;
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if !root.narrow: HiddenActions { }
+            if !root.narrow: HiddenRecoveryActions { }
+            BarFilledButton {
+                text: Tr.hiddenLock;
+                clicked => { Act.hiddenLock(); }
+            }
+        }
+        if root.narrow: HBox {
+            height: 34px;
+            cross-axis-alignment: center;
+            HiddenActions { }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+        if root.narrow: HBox {
+            height: 34px;
+            cross-axis-alignment: center;
+            HiddenRecoveryActions { }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+        }
+        HBox {
+            height: 26px;
+            cross-axis-alignment: center;
+            T {
+                text: Core.chrome.hiddenNote;
+                font-size: 11px;
+                color: Theme.on-surface-variant;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+}
+
 component SelectionBar inherits Rectangle {
     height: 34px + 8px;
     HBox {
@@ -307,22 +386,20 @@ component SelectionBar inherits Rectangle {
         Rectangle {
             horizontal-stretch: 1;
         }
-        OutlinedButton {
+        if !Core.chrome.hiddenOpen: BarButton {
+            text: Tr.hiddenHide;
+            clicked => { Act.hideChecked(); }
+        }
+        if Core.chrome.hiddenOpen: BarButton {
+            text: Tr.hiddenUnhide;
+            clicked => { Act.unhideChecked(); }
+        }
+        if !Core.chrome.hiddenOpen: BarButton {
             text: Tr.homeExport;
-            height: 34px;
-            border-radius: 10px;
-            pad: 12px;
-            font-size: 12px;
-            font-weight: 600;
             clicked => { Act.exportChecked(); }
         }
-        FilledButton {
+        BarFilledButton {
             text: "🗑  " + Tr.delete;
-            height: 34px;
-            border-radius: 10px;
-            pad: 12px;
-            font-size: 12px;
-            font-weight: 600;
             container: Theme.error;
             ink: Theme.on-error;
             clicked => { Act.removeChecked(); }
@@ -612,9 +689,15 @@ export component TaskList inherits Rectangle {
         VerticalLayout {
             spacing: 0px;
             if Core.chrome.toolsBannerShown: ToolsBanner { }
+            if Core.chrome.hiddenWorkShown: ToolsBanner {
+                text: Core.chrome.hiddenWorkText;
+                fraction: Core.chrome.hiddenWorkFraction;
+                indeterminate: Core.chrome.hiddenWorkFraction <= 0;
+            }
             if Core.chrome.whenDoneBannerShown: WhenDoneBanner { }
             if Core.chrome.selectionMode: SelectionBar { }
             if !Core.chrome.selectionMode && Core.chrome.playlistOpen: PlaylistBar { }
+            if !Core.chrome.selectionMode && Core.chrome.hiddenOpen && !Core.chrome.playlistOpen: HiddenBar { }
             if !Core.chrome.selectionMode && Core.chrome.showToolbar: ListToolbar { }
             if !Core.chrome.listEmpty && root.width >= 720px: ColumnsHeader { }
             Rectangle {

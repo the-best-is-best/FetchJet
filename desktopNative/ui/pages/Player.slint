@@ -1,0 +1,1590 @@
+import { Theme, Dir } from "../theme.slint";
+import { HBox, T, Hover } from "../widgets/Base.slint";
+import { ElideText } from "../widgets/ElideText.slint";
+import { FilledButton } from "../widgets/Buttons.slint";
+import { ListView } from "../widgets/Scroll.slint";
+import { Tr } from "../generated/tr.slint";
+import { Spinner } from "../widgets/Kit.slint";
+import { RowMenuPopup } from "../widgets/Menu.slint";
+import { RowMenuItemDto, Core } from "../generated/dto.slint";
+import { Act } from "../generated/actions.slint";
+import { CheckLine } from "../widgets/CheckBox.slint";
+
+export struct PlayerRow { title: string, video: bool, active: bool }
+
+export struct TrimTile { img: image, at: float, len: float }
+
+export global PlayerUi {
+    in-out property <bool> open;
+    in property <image> frame;
+    in property <bool> has-video;
+    in property <string> title;
+    in property <int> index;
+    in property <int> count;
+    in property <bool> playing;
+    in property <float> position-s;
+    in property <float> duration-s;
+    in property <string> position-label;
+    in property <string> duration-label;
+    in property <float> speed;
+    in property <string> speed-label;
+    in property <int> hold;
+    in property <bool> finished;
+    in property <bool> failed;
+    in property <bool> opening;
+    in property <int> opening-percent;
+    in property <[PlayerRow]> items;
+    in property <[string]> speed-labels;
+    callback close();
+    callback toggle-play();
+    callback seek(float);
+    callback skip(int);
+    callback next();
+    callback previous();
+    callback pick(int);
+    callback set-speed(int);
+    callback hold-start(bool);
+    callback hold-end();
+    callback start-over();
+    callback surface-size(int, int);
+    callback controls-shown(bool);
+    in property <float> volume: 100;
+    in property <bool> muted;
+    in property <bool> autoplay: true;
+    in property <bool> fullscreen;
+    callback set-volume(float);
+    callback toggle-mute();
+    callback set-autoplay(bool);
+    callback toggle-fullscreen();
+    in property <[RowMenuItemDto]> sub-items;
+    in property <int> sub-checked: -1;
+    in property <bool> sub-on;
+    in property <int> sub-menu-tick;
+    in property <string> notice;
+    callback sub-menu();
+    callback sub-pick(int);
+    in property <bool> trim;
+    in property <bool> trim-ready;
+    in property <[TrimTile]> trim-thumbs;
+    in property <bool> trim-audio;
+    in property <[float]> trim-wave;
+    in property <float> trim-wave-first;
+    in property <float> trim-wave-step;
+    in property <float> trim-view-start;
+    in property <float> trim-view-span: 1;
+    in property <bool> trim-zoom-in;
+    in property <bool> trim-zoom-out;
+    in property <float> trim-start;
+    in property <float> trim-end: 1;
+    in property <float> trim-playhead;
+    in property <string> trim-start-label;
+    in property <string> trim-end-label;
+    in property <string> trim-length-label;
+    in property <int> trim-active;
+    callback trim-drag-view(int, float);
+    callback trim-drag-end();
+    callback trim-pan(float);
+    callback trim-zoom(float, float);
+    callback trim-overview(float);
+    callback trim-seek(float);
+    callback trim-select(int);
+    callback trim-nudge(int, int);
+    callback trim-step(int, int);
+    callback trim-play-range();
+    callback trim-apply();
+    callback trim-cancel();
+    callback trim-strip-size(int, int);
+}
+
+export component PBtn inherits Rectangle {
+    in property <string> commands;
+    in property <bool> filled;
+    in property <bool> enabled: true;
+    in property <length> size: 44px;
+    in property <length> glyph-size: 24px;
+    in property <color> ink: #FFFFFF;
+    in property <color> container: transparent;
+    in property <string> label;
+    callback clicked();
+    width: root.size;
+    height: root.size;
+    border-radius: root.size / 2;
+    background: root.container;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: root.ink;
+        hovered: ta.has-hover && root.enabled;
+        pressed: ta.pressed && root.enabled;
+    }
+    Path {
+        x: (parent.width - root.glyph-size) / 2;
+        y: (parent.height - root.glyph-size) / 2;
+        width: root.glyph-size;
+        height: root.glyph-size;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: root.commands;
+        fill: root.filled ? (root.enabled ? root.ink : root.ink.with-alpha(0.35)) : transparent;
+        stroke: root.filled ? transparent : (root.enabled ? root.ink : root.ink.with-alpha(0.35));
+        stroke-width: 2px;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+    }
+}
+
+component Arrows inherits Rectangle {
+    in property <bool> forward;
+    width: 22px;
+    height: 14px;
+    Path {
+        width: parent.width;
+        height: parent.height;
+        viewbox-width: 22;
+        viewbox-height: 14;
+        commands: root.forward ? "M 1 1 L 10 7 L 1 13 Z M 12 1 L 21 7 L 12 13 Z" : "M 10 1 L 1 7 L 10 13 Z M 21 1 L 12 7 L 21 13 Z";
+        fill: #FFFFFF;
+    }
+}
+
+component Seek inherits Rectangle {
+    in property <float> position;
+    in property <float> duration;
+    out property <bool> dragging: ta.pressed;
+    out property <float> dragged-s: root.live * root.duration;
+    callback released(float);
+    private property <float> frac: root.duration > 0 ? clamp(root.position / root.duration, 0, 1) : 0;
+    private property <float> live: ta.pressed ? clamp(ta.mouse-x / max(root.width, 1px), 0, 1) : root.frac;
+    height: 20px;
+    accessible-role: slider;
+    accessible-value: root.position;
+    accessible-value-minimum: 0;
+    accessible-value-maximum: root.duration;
+    Rectangle {
+        y: (parent.height - self.height) / 2;
+        height: ta.pressed || ta.has-hover ? 5px : 3px;
+        border-radius: self.height / 2;
+        background: #FFFFFF40;
+        Rectangle {
+            x: 0px;
+            y: 0px;
+            width: parent.width * root.live;
+            height: parent.height;
+            border-radius: parent.border-radius;
+            background: Theme.primary;
+        }
+    }
+    Rectangle {
+        x: clamp(root.width * root.live - self.width / 2, 0px, root.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: ta.pressed || ta.has-hover ? 14px : 10px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Theme.primary;
+    }
+    ta := TouchArea {
+        enabled: root.duration > 0;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                root.released(clamp(self.mouse-x / max(root.width, 1px), 0, 1) * root.duration);
+            }
+        }
+    }
+}
+
+component PSwitch inherits Rectangle {
+    in property <bool> checked;
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background: root.checked ? Theme.primary : #FFFFFF40;
+    animate background { duration: 120ms; }
+    Rectangle {
+        x: (root.checked != Dir.rtl) ? parent.width - self.width - 2px : 2px;
+        y: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background: #FFFFFF;
+        animate x { duration: 120ms; }
+    }
+}
+
+component Autoplay inherits Rectangle {
+    width: line.preferred-width + 8px;
+    height: 32px;
+    border-radius: 16px;
+    accessible-role: switch;
+    accessible-label: Tr.playerAutoplay;
+    accessible-checkable: true;
+    accessible-checked: PlayerUi.autoplay;
+    accessible-action-default => { PlayerUi.set-autoplay(!PlayerUi.autoplay); }
+    ta := TouchArea {
+        clicked => { PlayerUi.set-autoplay(!PlayerUi.autoplay); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    line := HBox {
+        x: 4px;
+        width: parent.width - 8px;
+        height: parent.height;
+        spacing: 8px;
+        cross-axis-alignment: center;
+        PSwitch {
+            checked: PlayerUi.autoplay;
+        }
+        Text {
+            text: Tr.playerAutoplay;
+            color: #FFFFFFE6;
+            font-family: Theme.font;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component Speaker inherits Rectangle {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    accessible-role: button;
+    accessible-label: Tr.playerMute;
+    accessible-checkable: true;
+    accessible-checked: PlayerUi.muted;
+    accessible-action-default => { PlayerUi.toggle-mute(); }
+    ta := TouchArea {
+        clicked => { PlayerUi.toggle-mute(); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Path {
+        x: 7px;
+        y: 7px;
+        width: 22px;
+        height: 22px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: "M 3 9 L 7 9 L 12 4.5 L 12 19.5 L 7 15 L 3 15 Z";
+        fill: #FFFFFF;
+    }
+    Path {
+        x: 7px;
+        y: 7px;
+        width: 22px;
+        height: 22px;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        commands: PlayerUi.muted || PlayerUi.volume <= 0 ? "M 16 9 L 22 15 M 22 9 L 16 15"
+            : PlayerUi.volume < 50 ? "M 15.5 9 Q 17.5 12 15.5 15"
+            : "M 15.5 9 Q 17.5 12 15.5 15 M 18.5 6 Q 22.5 12 18.5 18";
+        stroke: #FFFFFF;
+        stroke-width: 2px;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: transparent;
+    }
+}
+
+component Volume inherits Rectangle {
+    private property <length> pad: 7px;
+    private property <length> span: max(root.width - 2 * root.pad, 1px);
+    private property <float> dragged;
+    private property <float> share: (ta.pressed ? root.dragged : (PlayerUi.muted ? 0 : PlayerUi.volume)) / 200;
+    private property <length> fill-to: root.pad + root.share * root.span;
+    pure function value-at(x: length) -> float {
+        Math.round(clamp(x - root.pad, 0px, root.span) / root.span * 40) * 5
+    }
+    width: 96px;
+    height: 28px;
+    accessible-role: slider;
+    accessible-label: Tr.playerVolume;
+    accessible-value: Math.round(PlayerUi.volume) + "%";
+    accessible-value-minimum: 0;
+    accessible-value-maximum: 200;
+    accessible-value-step: 5;
+    accessible-action-increment => { PlayerUi.set-volume(min(200, PlayerUi.volume + 5)); }
+    accessible-action-decrement => { PlayerUi.set-volume(max(0, PlayerUi.volume - 5)); }
+    Rectangle {
+        x: root.pad;
+        y: (parent.height - self.height) / 2;
+        width: root.span;
+        height: 3px;
+        border-radius: 1.5px;
+        background: #FFFFFF40;
+    }
+    Rectangle {
+        x: root.pad;
+        y: (parent.height - self.height) / 2;
+        width: root.fill-to - root.pad;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Theme.primary;
+    }
+    Rectangle {
+        x: root.pad + root.span / 2 - 1px;
+        y: (parent.height - self.height) / 2;
+        width: 2px;
+        height: 11px;
+        border-radius: 1px;
+        background: #FFFFFFCC;
+    }
+    Rectangle {
+        x: root.fill-to - self.width / 2;
+        y: (parent.height - self.height) / 2;
+        width: ta.pressed || ta.has-hover ? 14px : 10px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #FFFFFF;
+    }
+    ta := TouchArea {
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.dragged = root.value-at(self.mouse-x);
+                PlayerUi.set-volume(root.dragged);
+            }
+        }
+        moved => {
+            if self.pressed && root.value-at(self.mouse-x) != root.dragged {
+                root.dragged = root.value-at(self.mouse-x);
+                PlayerUi.set-volume(root.dragged);
+            }
+        }
+    }
+}
+
+component CcButton inherits Rectangle {
+    callback clicked();
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    accessible-role: button;
+    accessible-label: Tr.playerSubtitles;
+    accessible-action-default => { root.clicked(); }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    Hover {
+        border-radius: root.border-radius;
+        ink: #FFFFFF;
+        hovered: ta.has-hover;
+        pressed: ta.pressed;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 26px;
+        height: 18px;
+        border-radius: 4px;
+        border-width: PlayerUi.sub-on ? 0px : 1.5px;
+        border-color: #FFFFFF;
+        background: PlayerUi.sub-on ? #FFFFFF : transparent;
+        Text {
+            text: "CC";
+            color: PlayerUi.sub-on ? #000000 : #FFFFFF;
+            font-family: Theme.font;
+            font-size: 11px;
+            font-weight: 800;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component RowTag inherits Rectangle {
+    in property <bool> video;
+    width: tag.preferred-width + 14px;
+    height: 20px;
+    border-radius: 10px;
+    background: Theme.primary.with-alpha(0.16);
+    tag := Text {
+        text: root.video ? Tr.linkTagVideo : Tr.linkTagAudio;
+        color: Theme.primary;
+        font-family: Theme.font;
+        font-size: 10px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component ListSheet inherits Rectangle {
+    callback dismissed();
+    background: #00000099;
+    TouchArea {
+        clicked => { root.dismissed(); }
+    }
+    Rectangle {
+        y: parent.height - self.height;
+        height: parent.height * 0.6;
+        background: Theme.surface;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        clip: true;
+        TouchArea { }
+        Rectangle {
+            y: 10px;
+            width: 40px;
+            height: 4px;
+            border-radius: 2px;
+            background: Theme.on-surface.with-alpha(0.2);
+        }
+        ListView {
+            y: 24px;
+            height: parent.height - 24px;
+            content-height: PlayerUi.items.length * 56px + 12px;
+            for row[i] in PlayerUi.items: Rectangle {
+                x: 8px;
+                y: i * 56px;
+                width: parent.width - 16px;
+                height: 56px;
+                border-radius: 10px;
+                background: row.active ? Theme.primary.with-alpha(0.16) : transparent;
+                accessible-role: button;
+                accessible-label: row.title;
+                accessible-action-default => {
+                    PlayerUi.pick(i);
+                    root.dismissed();
+                }
+                ta := TouchArea {
+                    clicked => {
+                        PlayerUi.pick(i);
+                        root.dismissed();
+                    }
+                }
+                HBox {
+                    x: 12px;
+                    width: parent.width - 24px;
+                    height: parent.height;
+                    spacing: 12px;
+                    cross-axis-alignment: center;
+                    Text {
+                        width: 28px;
+                        text: i + 1;
+                        color: row.active ? Theme.primary : Theme.on-surface-variant;
+                        font-family: Theme.font;
+                        font-size: 13px;
+                        font-weight: row.active ? 700 : 400;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    ElideText {
+                        text: row.title;
+                        font-size: 14px;
+                        font-weight: row.active ? 700 : 400;
+                        ink: row.active ? Theme.primary : Theme.on-surface;
+                        behind: row.active ? Theme.surface : Theme.surface;
+                        tracking: 0.1px;
+                        height: 56px;
+                    }
+                    RowTag {
+                        video: row.video;
+                    }
+                }
+                Hover {
+                    border-radius: parent.border-radius;
+                    hovered: ta.has-hover;
+                    pressed: ta.pressed;
+                }
+            }
+        }
+    }
+}
+
+component TrimHandle inherits Rectangle {
+    in property <int> side;
+    in property <bool> active;
+    callback grab();
+    callback drag(length);
+    callback release();
+    width: 18px;
+    background: Theme.primary;
+    border-top-left-radius: root.side == 0 ? 8px : 0px;
+    border-bottom-left-radius: root.side == 0 ? 8px : 0px;
+    border-top-right-radius: root.side == 1 ? 8px : 0px;
+    border-bottom-right-radius: root.side == 1 ? 8px : 0px;
+    border-width: root.active ? 2px : 0px;
+    border-color: #FFFFFF;
+    accessible-role: slider;
+    accessible-label: root.side == 0 ? Tr.videoCutFrom : Tr.videoCutTo;
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 3px;
+        height: 22px;
+        border-radius: 1.5px;
+        background: root.active ? Theme.on-primary : Theme.on-primary.with-alpha(0.55);
+    }
+    ta := TouchArea {
+        mouse-cursor: ew-resize;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.grab();
+            }
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                root.release();
+            }
+        }
+        moved => {
+            if self.pressed {
+                root.drag(self.mouse-x - self.pressed-x);
+            }
+        }
+    }
+}
+
+component TrimStrip inherits Rectangle {
+    private property <length> hw: 18px;
+    private property <length> track-x: root.hw;
+    private property <length> track-w: max(root.width - 2 * root.hw, 1px);
+    private property <float> vs: PlayerUi.trim-view-start;
+    private property <float> vw: max(PlayerUi.trim-view-span, 0.000001);
+    private property <length> sx: root.track-x + (PlayerUi.trim-start - root.vs) / root.vw * root.track-w;
+    private property <length> ex: root.track-x + (PlayerUi.trim-end - root.vs) / root.vw * root.track-w;
+    private property <length> csx: clamp(root.sx, root.track-x, root.track-x + root.track-w);
+    private property <length> cex: clamp(root.ex, root.track-x, root.track-x + root.track-w);
+    private property <length> px: root.track-x + (PlayerUi.trim-playhead - root.vs) / root.vw * root.track-w;
+    private property <bool> panning;
+    private property <length> last-x;
+    function report() {
+        PlayerUi.trim-strip-size(Math.round(root.track-w / 1phx), Math.round(thumbs.height / 1phx));
+    }
+    height: 60px;
+    init => { root.report(); }
+    changed width => { root.report(); }
+    thumbs := Rectangle {
+        x: root.track-x;
+        y: 4px;
+        width: root.track-w;
+        height: parent.height - 8px;
+        background: PlayerUi.trim-audio ? #1C1C24 : #FFFFFF14;
+        clip: true;
+        if PlayerUi.trim-audio: Rectangle {
+            private property <length> step: PlayerUi.trim-wave-step / root.vw * root.track-w;
+            private property <length> first: (PlayerUi.trim-wave-first - root.vs) / root.vw * root.track-w;
+            for peak[i] in PlayerUi.trim-wave: Rectangle {
+                x: parent.first + i * parent.step + parent.step * 0.2;
+                width: max(1px, parent.step * 0.6);
+                height: max(1.5px, clamp(peak, 0, 1) * parent.height * 0.9);
+                y: (parent.height - self.height) / 2;
+                background: #8FA3C8;
+            }
+        }
+        for tile in PlayerUi.trim-thumbs: Image {
+            x: (tile.at - root.vs) / root.vw * root.track-w;
+            width: tile.len / root.vw * root.track-w + 1px;
+            height: parent.height;
+            source: tile.img;
+            image-fit: cover;
+        }
+    }
+    scrub := TouchArea {
+        x: root.track-x;
+        width: root.track-w;
+        enabled: PlayerUi.trim-ready;
+        mouse-cursor: root.panning ? MouseCursor.grabbing : MouseCursor.default;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.panning = false;
+                root.last-x = self.mouse-x;
+            }
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                if !root.panning {
+                    PlayerUi.trim-seek(clamp(root.vs + self.mouse-x / self.width * root.vw, 0, 1));
+                }
+                root.panning = false;
+            }
+        }
+        moved => {
+            if self.pressed {
+                if !root.panning && abs(self.mouse-x - self.pressed-x) > 4px {
+                    root.panning = true;
+                }
+                if root.panning {
+                    PlayerUi.trim-pan((root.last-x - self.mouse-x) / self.width);
+                }
+                root.last-x = self.mouse-x;
+            }
+        }
+        scroll-event(e) => {
+            if e.modifiers.control {
+                if e.delta-y != 0px {
+                    PlayerUi.trim-zoom(e.delta-y > 0 ? 0.8 : 1.25, clamp(self.mouse-x / self.width, 0, 1));
+                }
+                return accept;
+            }
+            PlayerUi.trim-pan(-(abs(e.delta-x) > abs(e.delta-y) ? e.delta-x : e.delta-y) / self.width);
+            accept
+        }
+    }
+    Rectangle {
+        x: root.track-x;
+        y: thumbs.y;
+        width: max(0px, root.csx - root.track-x);
+        height: thumbs.height;
+        background: #000000B8;
+    }
+    Rectangle {
+        x: root.cex;
+        y: thumbs.y;
+        width: max(0px, root.track-x + root.track-w - root.cex);
+        height: thumbs.height;
+        background: #000000B8;
+    }
+    Rectangle {
+        x: root.csx;
+        y: 0px;
+        width: max(0px, root.cex - root.csx);
+        height: 4px;
+        background: Theme.primary;
+    }
+    Rectangle {
+        x: root.csx;
+        y: parent.height - 4px;
+        width: max(0px, root.cex - root.csx);
+        height: 4px;
+        background: Theme.primary;
+    }
+    if root.px >= root.track-x - 1px && root.px <= root.track-x + root.track-w + 1px: Rectangle {
+        x: root.px - 1px;
+        y: -5px;
+        width: 2px;
+        height: parent.height + 10px;
+        border-radius: 1px;
+        background: #FFFFFF;
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        clip: true;
+        TrimHandle {
+            side: 0;
+            x: root.sx - self.width;
+            height: parent.height;
+            visible: self.x > -self.width && self.x < parent.width;
+            active: PlayerUi.trim-active == 0;
+            grab => { PlayerUi.trim-select(0); }
+            drag(d) => { PlayerUi.trim-drag-view(0, (root.sx + d - root.track-x) / root.track-w); }
+            release => { PlayerUi.trim-drag-end(); }
+        }
+        TrimHandle {
+            side: 1;
+            x: root.ex;
+            height: parent.height;
+            visible: self.x > -self.width && self.x < parent.width;
+            active: PlayerUi.trim-active == 1;
+            grab => { PlayerUi.trim-select(1); }
+            drag(d) => { PlayerUi.trim-drag-view(1, (root.ex + d - root.track-x) / root.track-w); }
+            release => { PlayerUi.trim-drag-end(); }
+        }
+    }
+}
+
+component TrimOverview inherits Rectangle {
+    private property <float> vs: clamp(PlayerUi.trim-view-start, 0, 1);
+    private property <float> vw: clamp(PlayerUi.trim-view-span, 0, 1);
+    height: 10px;
+    Rectangle {
+        y: (parent.height - self.height) / 2;
+        height: 4px;
+        border-radius: 2px;
+        background: #FFFFFF14;
+    }
+    thumb := Rectangle {
+        x: min(parent.width * root.vs, parent.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: max(24px, parent.width * root.vw);
+        height: area.has-hover || area.pressed ? 8px : 6px;
+        border-radius: self.height / 2;
+        background: area.pressed ? #FFFFFFB3 : area.has-hover ? #FFFFFF8C : #FFFFFF59;
+    }
+    area := TouchArea {
+        enabled: PlayerUi.trim-ready;
+        mouse-cursor: default;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                PlayerUi.trim-overview(clamp(self.mouse-x / self.width, 0, 1));
+            }
+        }
+        moved => {
+            if self.pressed {
+                PlayerUi.trim-overview(clamp(self.mouse-x / self.width, 0, 1));
+            }
+        }
+        scroll-event(e) => {
+            PlayerUi.trim-pan(-(abs(e.delta-x) > abs(e.delta-y) ? e.delta-x : e.delta-y) / self.width);
+            accept
+        }
+    }
+}
+
+component TrimTime inherits Rectangle {
+    in property <string> caption;
+    in property <string> value;
+    in property <bool> active;
+    in property <TextHorizontalAlignment> align;
+    callback clicked();
+    Text {
+        y: 0px;
+        width: parent.width;
+        height: 16px;
+        text: root.caption;
+        color: #FFFFFFA6;
+        font-family: Theme.font;
+        font-size: 11px;
+        horizontal-alignment: root.align;
+        vertical-alignment: center;
+    }
+    Text {
+        y: 16px;
+        width: parent.width;
+        height: 22px;
+        text: root.value;
+        color: root.active ? Theme.primary : #FFFFFF;
+        font-family: Theme.font;
+        font-size: 15px;
+        font-weight: 700;
+        horizontal-alignment: root.align;
+        vertical-alignment: center;
+    }
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component TrimPanel inherits Rectangle {
+    height: 204px + (Core.audioCompress.cut.canDeleteOriginal ? 36px : 0px);
+    background: #000000E6;
+    TouchArea { }
+    Rectangle {
+        x: 16px;
+        y: 10px;
+        width: parent.width - 32px;
+        height: 40px;
+        TrimTime {
+            x: 0px;
+            width: parent.width * 0.34;
+            caption: Tr.videoCutFrom;
+            value: PlayerUi.trim-start-label;
+            active: PlayerUi.trim-active == 0;
+            align: left;
+            clicked => { PlayerUi.trim-select(0); }
+        }
+        TrimTime {
+            x: parent.width * 0.33;
+            width: parent.width * 0.34;
+            caption: Tr.videoCutDuration;
+            value: PlayerUi.trim-length-label;
+            align: center;
+        }
+        TrimTime {
+            x: parent.width * 0.66;
+            width: parent.width * 0.34;
+            caption: Tr.videoCutTo;
+            value: PlayerUi.trim-end-label;
+            active: PlayerUi.trim-active == 1;
+            align: right;
+            clicked => { PlayerUi.trim-select(1); }
+        }
+    }
+    TrimStrip {
+        x: 16px;
+        y: 60px;
+        width: parent.width - 32px;
+    }
+    if Core.audioCompress.cut.canDeleteOriginal: CheckLine {
+        x: 16px;
+        y: 202px;
+        width: parent.width - 32px;
+        height: 32px;
+        ink: #FFFFFF;
+        text: Tr.deleteOriginalAfterCut;
+        checked: Core.audioCompress.cut.deleteOriginal;
+        toggled(on) => { Act.videoCutDeleteOriginal(on); }
+    }
+    if PlayerUi.trim-view-span < 0.999: TrimOverview {
+        x: 34px;
+        y: 131px;
+        width: parent.width - 68px;
+    }
+    Rectangle {
+        x: 16px;
+        y: 144px;
+        width: parent.width - 32px;
+        height: 56px;
+        cancel := FilledButton {
+            x: Dir.rtl ? parent.width - self.width : 0px;
+            y: (parent.height - self.height) / 2;
+            width: self.min-width;
+            pad: 20px;
+            text: Tr.cancel;
+            container: #FFFFFF1F;
+            ink: #FFFFFF;
+            clicked => { PlayerUi.trim-cancel(); }
+        }
+        HorizontalLayout {
+            x: Dir.rtl ? cancel.x - 12px - self.preferred-width : cancel.x + cancel.width + 12px;
+            width: self.preferred-width;
+            height: parent.height;
+            spacing: 4px;
+            alignment: center;
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                size: 34px;
+                glyph-size: 18px;
+                filled: true;
+                enabled: PlayerUi.trim-ready && PlayerUi.trim-zoom-out;
+                container: #FFFFFF14;
+                commands: "M 5 11 L 19 11 L 19 13 L 5 13 Z";
+                label: "-";
+                clicked => { PlayerUi.trim-zoom(1.6, 0.5); }
+            }
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                size: 34px;
+                glyph-size: 18px;
+                filled: true;
+                enabled: PlayerUi.trim-ready && PlayerUi.trim-zoom-in;
+                container: #FFFFFF14;
+                commands: "M 11 5 L 13 5 L 13 11 L 19 11 L 19 13 L 13 13 L 13 19 L 11 19 L 11 13 L 5 13 L 5 11 L 11 11 Z";
+                label: "+";
+                clicked => { PlayerUi.trim-zoom(0.625, 0.5); }
+            }
+        }
+        HorizontalLayout {
+            x: (parent.width - self.preferred-width) / 2;
+            width: self.preferred-width;
+            spacing: 12px;
+            alignment: center;
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                commands: "M 19 6 L 11 12 L 19 18 Z M 6 6 L 8 6 L 8 18 L 6 18 Z";
+                filled: true;
+                enabled: PlayerUi.trim-ready;
+                container: #FFFFFF14;
+                label: PlayerUi.trim-audio ? "-10 ms" : "-1";
+                clicked => { PlayerUi.trim-nudge(PlayerUi.trim-active, -1); }
+            }
+            PBtn {
+                size: 52px;
+                glyph-size: 28px;
+                filled: true;
+                enabled: PlayerUi.trim-ready;
+                container: #FFFFFF26;
+                commands: PlayerUi.playing ? "M 7 5 L 10 5 L 10 19 L 7 19 Z M 14 5 L 17 5 L 17 19 L 14 19 Z" : "M 2 5 L 5.5 5 L 5.5 6.8 L 3.8 6.8 L 3.8 17.2 L 5.5 17.2 L 5.5 19 L 2 19 Z M 22 5 L 18.5 5 L 18.5 6.8 L 20.2 6.8 L 20.2 17.2 L 18.5 17.2 L 18.5 19 L 22 19 Z M 9 7 L 16.5 12 L 9 17 Z";
+                label: Tr.videoCutPlayRange;
+                clicked => { PlayerUi.trim-play-range(); }
+            }
+            PBtn {
+                y: (parent.height - self.height) / 2;
+                commands: "M 5 6 L 13 12 L 5 18 Z M 16 6 L 18 6 L 18 18 L 16 18 Z";
+                filled: true;
+                enabled: PlayerUi.trim-ready;
+                container: #FFFFFF14;
+                label: PlayerUi.trim-audio ? "+10 ms" : "+1";
+                clicked => { PlayerUi.trim-nudge(PlayerUi.trim-active, 1); }
+            }
+        }
+        FilledButton {
+            x: Dir.rtl ? 0px : parent.width - self.width;
+            y: (parent.height - self.height) / 2;
+            width: self.min-width;
+            pad: 26px;
+            font-weight: 700;
+            text: Tr.videoCutApply;
+            enabled: PlayerUi.trim-ready;
+            clicked => { PlayerUi.trim-apply(); }
+        }
+    }
+}
+
+export component PlayerPage inherits Rectangle {
+    private property <bool> shown: true;
+    private property <bool> list-open: false;
+    private property <bool> speed-open: false;
+    private property <bool> subs-open: false;
+    private property <int> sub-tick: PlayerUi.sub-menu-tick;
+    changed sub-tick => { root.open-subs(); }
+    changed subs-open => {
+        if !self.subs-open {
+            keys.focus();
+            root.wake();
+        }
+    }
+    function open-subs() {
+        root.wake();
+        root.speed-open = false;
+        root.list-open = false;
+        PlayerUi.sub-menu();
+        root.subs-open = true;
+        sub-menu.show();
+    }
+    private property <bool> holding: false;
+    private property <bool> suppress: false;
+    private property <bool> held: false;
+    private property <length> down-x: 0px;
+    private property <length> down-y: 0px;
+    private property <bool> controls-on: PlayerUi.trim || root.shown || !PlayerUi.playing || PlayerUi.finished || PlayerUi.failed || PlayerUi.opening || root.list-open || root.speed-open || root.subs-open;
+    pure function two(n: int) -> string {
+        return (n < 10 ? "0" : "") + n;
+    }
+    pure function fmt(s: float) -> string {
+        return (Math.floor(s / 3600) > 0 ? Math.floor(s / 3600) + ":" + root.two(Math.floor(Math.mod(s, 3600) / 60)) : "" + Math.floor(Math.mod(s, 3600) / 60))
+            + ":" + root.two(Math.floor(Math.mod(s, 60)));
+    }
+    function wake() {
+        root.shown = true;
+        hide-timer.restart();
+    }
+    background: #000000;
+    init => { keys.focus(); }
+    changed controls-on => { PlayerUi.controls-shown(self.controls-on); }
+    changed width => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
+    changed height => { PlayerUi.surface-size(Math.round(self.width / 1phx), Math.round(self.height / 1phx)); }
+    hide-timer := Timer {
+        interval: 3000ms;
+        running: PlayerUi.playing && root.shown && !root.list-open && !root.speed-open && !root.subs-open && !PlayerUi.finished && !PlayerUi.failed;
+        triggered => { root.shown = false; }
+    }
+    hold-timer := Timer {
+        interval: 350ms;
+        running: root.holding;
+        triggered => {
+            root.holding = false;
+            root.held = true;
+            root.suppress = true;
+            PlayerUi.hold-start(root.down-x > video.width / 2);
+        }
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            root.wake();
+            if PlayerUi.trim {
+                if e.text == Key.Escape {
+                    PlayerUi.trim-cancel();
+                    return accept;
+                }
+                if e.text == " " {
+                    PlayerUi.trim-play-range();
+                    return accept;
+                }
+                if e.text == Key.LeftArrow || e.text == Key.RightArrow {
+                    if e.modifiers.shift {
+                        PlayerUi.trim-step(PlayerUi.trim-active, e.text == Key.LeftArrow ? -1000 : 1000);
+                    } else {
+                        PlayerUi.trim-nudge(PlayerUi.trim-active, e.text == Key.LeftArrow ? -1 : 1);
+                    }
+                    return accept;
+                }
+                if e.text == Key.Tab || e.text == Key.Backtab {
+                    PlayerUi.trim-select(PlayerUi.trim-active == 0 ? 1 : 0);
+                    return accept;
+                }
+                if e.text == "+" || e.text == "=" {
+                    PlayerUi.trim-zoom(0.625, 0.5);
+                    return accept;
+                }
+                if e.text == "-" || e.text == "_" {
+                    PlayerUi.trim-zoom(1.6, 0.5);
+                    return accept;
+                }
+                if e.text == Key.UpArrow || e.text == Key.DownArrow {
+                    return accept;
+                }
+                return reject;
+            }
+            if e.text == Key.Escape {
+                if root.list-open {
+                    root.list-open = false;
+                } else if root.speed-open {
+                    root.speed-open = false;
+                } else if root.subs-open {
+                    root.subs-open = false;
+                } else if PlayerUi.fullscreen {
+                    PlayerUi.toggle-fullscreen();
+                } else {
+                    PlayerUi.close();
+                }
+                return accept;
+            }
+            if e.text == " " {
+                PlayerUi.toggle-play();
+                return accept;
+            }
+            if e.text == Key.LeftArrow {
+                PlayerUi.skip(-10000);
+                return accept;
+            }
+            if e.text == Key.RightArrow {
+                PlayerUi.skip(10000);
+                return accept;
+            }
+            if e.text == Key.UpArrow || e.text == Key.DownArrow {
+                return accept;
+            }
+            reject
+        }
+    }
+    video := Rectangle {
+        y: PlayerUi.trim ? 60px : 0px;
+        width: parent.width;
+        height: PlayerUi.trim ? max(0px, parent.height - 60px - 204px - (Core.audioCompress.cut.canDeleteOriginal ? 36px : 0px)) : parent.height;
+        if PlayerUi.has-video: Image {
+            width: parent.width;
+            height: parent.height;
+            source: PlayerUi.frame;
+            image-fit: contain;
+        }
+        if !PlayerUi.has-video && !PlayerUi.failed && !PlayerUi.opening: Rectangle {
+            width: parent.width;
+            height: parent.height;
+            VerticalLayout {
+                alignment: center;
+                spacing: 18px;
+                Rectangle {
+                    height: 120px;
+                    Rectangle {
+                        width: 120px;
+                        height: 120px;
+                        border-radius: 60px;
+                        background: Theme.primary.with-alpha(0.18);
+                        Path {
+                            x: 30px;
+                            y: 30px;
+                            width: 60px;
+                            height: 60px;
+                            viewbox-width: 24;
+                            viewbox-height: 24;
+                            commands: "M 9 18 V 5 L 20 3 V 16";
+                            stroke: Theme.primary;
+                            stroke-width: 2px;
+                            stroke-line-cap: round;
+                            stroke-line-join: round;
+                            fill: transparent;
+                        }
+                        Path {
+                            x: 30px;
+                            y: 30px;
+                            width: 60px;
+                            height: 60px;
+                            viewbox-width: 24;
+                            viewbox-height: 24;
+                            commands: "M 9 18 A 3 3 0 1 1 3 18 A 3 3 0 1 1 9 18 Z M 20 16 A 3 3 0 1 1 14 16 A 3 3 0 1 1 20 16 Z";
+                            fill: Theme.primary;
+                        }
+                    }
+                }
+                Text {
+                    x: 0px;
+                    width: parent.width;
+                    height: 60px;
+                    text: PlayerUi.title;
+                    color: #FFFFFF;
+                    font-family: Theme.font;
+                    font-size: 20px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: top;
+                    wrap: word-wrap;
+                    overflow: elide;
+                }
+            }
+        }
+        if PlayerUi.opening && !PlayerUi.failed: VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            alignment: center;
+            spacing: 14px;
+            HorizontalLayout {
+                alignment: center;
+                Spinner {
+                    size: 48px;
+                    stroke: 2.5px;
+                    ink: #FFFFFF;
+                }
+            }
+            Text {
+                text: PlayerUi.opening-percent > 0 ? Tr.hiddenOpening + "  " + PlayerUi.opening-percent + "%" : Tr.hiddenOpening;
+                color: #FFFFFF;
+                font-family: Theme.font;
+                font-size: 16px;
+                horizontal-alignment: center;
+            }
+        }
+        if PlayerUi.failed: Rectangle {
+            width: 96px;
+            height: 96px;
+            border-radius: 20px;
+            background: #FFFFFF14;
+            Path {
+                x: 24px;
+                y: 24px;
+                width: 48px;
+                height: 48px;
+                viewbox-width: 24;
+                viewbox-height: 24;
+                commands: "M 12 3 L 22 20 L 2 20 Z M 12 9 L 12 14 M 12 17 L 12 17.01";
+                stroke: Theme.error;
+                stroke-width: 2px;
+                stroke-line-cap: round;
+                stroke-line-join: round;
+                fill: transparent;
+            }
+        }
+        video-ta := TouchArea {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.move {
+                    root.wake();
+                }
+                if e.button == PointerEventButton.left && e.kind == PointerEventKind.down && !PlayerUi.trim {
+                    root.suppress = false;
+                    root.down-x = self.mouse-x;
+                    root.down-y = self.mouse-y;
+                    root.holding = true;
+                    root.list-open = false;
+                    root.speed-open = false;
+                    root.subs-open = false;
+                }
+                if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                    root.holding = false;
+                    if root.held {
+                        root.held = false;
+                        PlayerUi.hold-end();
+                    }
+                }
+            }
+            moved => {
+                if root.holding && (abs(self.mouse-x - root.down-x) > 12px || abs(self.mouse-y - root.down-y) > 12px) {
+                    root.holding = false;
+                    root.suppress = true;
+                }
+            }
+            clicked => {
+                if PlayerUi.trim {
+                    PlayerUi.trim-play-range();
+                } else if !root.suppress {
+                    root.shown = !root.controls-on;
+                    hide-timer.restart();
+                }
+            }
+            double-clicked => {
+                if !PlayerUi.trim {
+                    root.suppress = true;
+                    PlayerUi.skip(self.mouse-x > self.width / 2 ? 10000 : -10000);
+                }
+            }
+        }
+    }
+    if PlayerUi.has-video && !PlayerUi.playing && !PlayerUi.finished && !PlayerUi.failed && !PlayerUi.opening && !PlayerUi.trim && PlayerUi.hold == 0: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: video.y + (video.height - self.height) / 2;
+        width: 72px;
+        height: 72px;
+        border-radius: 36px;
+        background: big-ta.has-hover ? #000000B3 : #00000080;
+        border-width: 1px;
+        border-color: #FFFFFF33;
+        accessible-role: button;
+        accessible-label: ">";
+        accessible-action-default => { PlayerUi.toggle-play(); }
+        big-ta := TouchArea {
+            clicked => {
+                PlayerUi.toggle-play();
+                root.wake();
+            }
+        }
+        Path {
+            x: 25px;
+            y: 22px;
+            width: 28px;
+            height: 28px;
+            viewbox-width: 24;
+            viewbox-height: 24;
+            commands: "M 5 3 L 21 12 L 5 21 Z";
+            fill: #FFFFFF;
+        }
+    }
+    if PlayerUi.hold != 0: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: 72px;
+        width: 86px;
+        height: 34px;
+        border-radius: 17px;
+        background: #000000B3;
+        HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+            Arrows {
+                y: (parent.height - self.height) / 2;
+                forward: PlayerUi.hold > 0;
+            }
+            Text {
+                text: "2x";
+                color: #FFFFFF;
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+        }
+    }
+    if PlayerUi.notice != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: PlayerUi.hold != 0 ? 116px : 72px;
+        width: min(notice-text.preferred-width + 32px, parent.width - 32px);
+        height: 36px;
+        border-radius: 18px;
+        background: #000000CC;
+        notice-text := Text {
+            x: 16px;
+            width: parent.width - 32px;
+            text: PlayerUi.notice;
+            color: #FFFFFF;
+            font-family: Theme.font;
+            font-size: 14px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    if root.speed-open: TouchArea {
+        clicked => { root.speed-open = false; }
+    }
+    top-bar := Rectangle {
+        y: 0;
+        width: parent.width;
+        height: 60px;
+        background: @linear-gradient(180deg, #000000B3 0%, #00000000 100%);
+        opacity: root.controls-on ? 1 : 0;
+        visible: self.opacity > 0.01;
+        animate opacity { duration: 150ms; }
+        TouchArea {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.move {
+                    root.wake();
+                }
+            }
+        }
+        HBox {
+            x: 8px;
+            width: parent.width - 16px;
+            height: parent.height;
+            spacing: 8px;
+            cross-axis-alignment: center;
+            PBtn {
+                commands: "M 5 5 L 19 19 M 19 5 L 5 19";
+                label: Tr.cancel;
+                clicked => {
+                    if PlayerUi.trim {
+                        PlayerUi.trim-cancel();
+                    } else {
+                        PlayerUi.close();
+                    }
+                }
+            }
+            if PlayerUi.trim: Text {
+                text: PlayerUi.trim-audio ? Tr.audioCutTitle : Tr.videoCutTitle;
+                color: Theme.primary;
+                font-family: Theme.font;
+                font-size: 16px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+            ElideText {
+                text: PlayerUi.title;
+                font-size: 16px;
+                font-weight: 600;
+                ink: #FFFFFF;
+                behind: #000000;
+                tracking: 0.1px;
+                height: 60px;
+            }
+            if PlayerUi.count > 1: Text {
+                text: (PlayerUi.index + 1) + "/" + PlayerUi.count;
+                color: #FFFFFFCC;
+                font-family: Theme.font;
+                font-size: 14px;
+                vertical-alignment: center;
+            }
+            if PlayerUi.count > 1 && !PlayerUi.trim: PBtn {
+                commands: "M 9 6 L 20 6 M 9 12 L 20 12 M 9 18 L 20 18 M 4 6 L 4.01 6 M 4 12 L 4.01 12 M 4 18 L 4.01 18";
+                label: Tr.playerPlayAll;
+                clicked => {
+                    root.list-open = !root.list-open;
+                    root.speed-open = false;
+                }
+            }
+        }
+    }
+    if PlayerUi.finished && PlayerUi.count > 1 && !PlayerUi.trim: Rectangle {
+        x: 16px;
+        y: parent.height - 112px - self.height + 8px;
+        width: parent.width - 32px;
+        height: 56px;
+        border-radius: 14px;
+        background: #000000CC;
+        border-width: 1px;
+        border-color: #FFFFFF26;
+        HBox {
+            x: 16px;
+            width: parent.width - 32px;
+            height: parent.height;
+            spacing: 12px;
+            cross-axis-alignment: center;
+            Text {
+                horizontal-stretch: 1;
+                text: Tr.playerAllFinished;
+                color: #FFFFFF;
+                font-family: Theme.font;
+                font-size: 14px;
+                font-weight: 600;
+                horizontal-alignment: Dir.start;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            FilledButton {
+                height: 36px;
+                pad: 18px;
+                text: Tr.playerStartOver;
+                clicked => { PlayerUi.start-over(); }
+            }
+        }
+    }
+    bottom-bar := Rectangle {
+        y: parent.height - self.height;
+        width: parent.width;
+        height: 112px;
+        background: @linear-gradient(180deg, #00000000 0%, #00000099 40%, #000000D9 100%);
+        opacity: root.controls-on ? 1 : 0;
+        visible: self.opacity > 0.01 && !PlayerUi.trim;
+        animate opacity { duration: 150ms; }
+        TouchArea {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.move {
+                    root.wake();
+                }
+            }
+        }
+        Rectangle {
+            x: 16px;
+            y: 22px;
+            width: parent.width - 32px;
+            height: 16px;
+            Text {
+                x: 0px;
+                width: parent.width / 2;
+                height: parent.height;
+                text: seek.dragging ? root.fmt(seek.dragged-s) : PlayerUi.position-label;
+                color: #FFFFFF;
+                font-family: Theme.font;
+                font-size: 12px;
+                horizontal-alignment: left;
+                vertical-alignment: center;
+            }
+            Text {
+                x: parent.width / 2;
+                width: parent.width / 2;
+                height: parent.height;
+                text: PlayerUi.duration-label;
+                color: #FFFFFFB3;
+                font-family: Theme.font;
+                font-size: 12px;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+        seek := Seek {
+            x: 16px;
+            y: 38px;
+            width: parent.width - 32px;
+            position: PlayerUi.position-s;
+            duration: PlayerUi.duration-s;
+            released(s) => {
+                PlayerUi.seek(s);
+                root.wake();
+            }
+        }
+        HBox {
+            x: 10px;
+            y: 62px;
+            width: parent.width - 20px;
+            height: 44px;
+            spacing: 4px;
+            cross-axis-alignment: center;
+            HorizontalLayout {
+                width: 120px;
+                spacing: 4px;
+                alignment: center;
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 36px;
+                    glyph-size: 18px;
+                    commands: "M 5 5 L 7 5 L 7 19 L 5 19 Z M 19 5 L 9 12 L 19 19 Z";
+                    filled: true;
+                    enabled: PlayerUi.index > 0;
+                    label: "<";
+                    clicked => { PlayerUi.previous(); }
+                }
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 40px;
+                    glyph-size: 22px;
+                    filled: true;
+                    commands: PlayerUi.playing ? "M 7 5 L 10 5 L 10 19 L 7 19 Z M 14 5 L 17 5 L 17 19 L 14 19 Z" : "M 7 4.5 L 19 12 L 7 19.5 Z";
+                    label: PlayerUi.playing ? "||" : ">";
+                    clicked => { PlayerUi.toggle-play(); }
+                }
+                PBtn {
+                    y: (parent.height - self.height) / 2;
+                    size: 36px;
+                    glyph-size: 18px;
+                    commands: "M 17 5 L 19 5 L 19 19 L 17 19 Z M 5 5 L 15 12 L 5 19 Z";
+                    filled: true;
+                    enabled: PlayerUi.index < PlayerUi.count - 1;
+                    label: ">";
+                    clicked => { PlayerUi.next(); }
+                }
+            }
+            Rectangle {
+                width: 6px;
+            }
+            speed-box := Rectangle {
+                width: 46px;
+                height: 32px;
+                Rectangle {
+                    border-radius: 16px;
+                    background: root.speed-open ? #FFFFFF26 : transparent;
+                    Text {
+                        text: PlayerUi.speed-label;
+                        color: #FFFFFF;
+                        font-family: Theme.font;
+                        font-size: 13px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    speed-ta := TouchArea {
+                        clicked => {
+                            root.speed-open = !root.speed-open;
+                            root.list-open = false;
+                        }
+                    }
+                    Hover {
+                        border-radius: parent.border-radius;
+                        ink: #FFFFFF;
+                        hovered: speed-ta.has-hover;
+                        pressed: speed-ta.pressed;
+                    }
+                }
+                if root.speed-open: Rectangle {
+                    x: Dir.rtl ? parent.width - self.width : 0px;
+                    y: -self.height - 8px;
+                    width: 96px;
+                    height: PlayerUi.speed-labels.length * 40px + 12px;
+                    border-radius: 12px;
+                    background: Theme.surface-container;
+                    border-width: 1px;
+                    border-color: Theme.outline-variant;
+                    TouchArea { }
+                    for label[i] in PlayerUi.speed-labels: Rectangle {
+                        x: 4px;
+                        y: 6px + i * 40px;
+                        width: parent.width - 8px;
+                        height: 40px;
+                        border-radius: 8px;
+                        background: label == PlayerUi.speed-label ? Theme.primary.with-alpha(0.16) : transparent;
+                        item-ta := TouchArea {
+                            clicked => {
+                                PlayerUi.set-speed(i);
+                                root.speed-open = false;
+                            }
+                        }
+                        Text {
+                            text: label;
+                            color: label == PlayerUi.speed-label ? Theme.primary : Theme.on-surface;
+                            font-family: Theme.font;
+                            font-size: 14px;
+                            font-weight: label == PlayerUi.speed-label ? 700 : 400;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        Hover {
+                            border-radius: parent.border-radius;
+                            hovered: item-ta.has-hover;
+                            pressed: item-ta.pressed;
+                        }
+                    }
+                }
+            }
+            Autoplay { }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+            Speaker { }
+            Volume { }
+            Text {
+                width: 42px;
+                text: Math.round(PlayerUi.muted ? 0 : PlayerUi.volume) + "%";
+                color: #FFFFFFE6;
+                font-family: Theme.font;
+                font-size: 12px;
+                horizontal-alignment: Dir.rtl ? right : left;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                width: PlayerUi.has-video ? 36px : 0px;
+                height: 36px;
+                visible: PlayerUi.has-video;
+                CcButton {
+                    clicked => { root.open-subs(); }
+                }
+                sub-menu := RowMenuPopup {
+                    x: Dir.rtl ? 0px : parent.width - self.width;
+                    y: -self.tall - 8px;
+                    items: PlayerUi.sub-items;
+                    checkable: true;
+                    checked-key: PlayerUi.sub-checked;
+                    picked(key) => {
+                        root.subs-open = false;
+                        PlayerUi.sub-pick(key);
+                    }
+                    active-changed(on) => { root.subs-open = on; }
+                }
+            }
+            PBtn {
+                size: 36px;
+                glyph-size: 20px;
+                commands: PlayerUi.fullscreen
+                    ? "M 9 4 L 9 9 L 4 9 M 15 4 L 15 9 L 20 9 M 20 15 L 15 15 L 15 20 M 9 20 L 9 15 L 4 15"
+                    : "M 4 9 L 4 4 L 9 4 M 15 4 L 20 4 L 20 9 M 20 15 L 20 20 L 15 20 M 9 20 L 4 20 L 4 15";
+                label: Tr.playerFullscreen;
+                clicked => { PlayerUi.toggle-fullscreen(); }
+            }
+        }
+    }
+    if PlayerUi.trim: TrimPanel {
+        y: parent.height - self.height;
+        width: parent.width;
+    }
+    if root.list-open: ListSheet {
+        dismissed => { root.list-open = false; }
+    }
+}
