@@ -924,7 +924,9 @@
           el("span", { class: "count", id: "count" }),
           el("span", { class: "side", id: "close", title: fjT("hideButton"), text: "✕" })),
         list));
-    const b = { host, root, video, open: false, own: null, loading: false, dismissed: false, lifts: 0 };
+    const b = { host, root, video, open: false, own: null, loading: false, dismissed: false, lifts: 0, hover: false, lastRect: null };
+    host.addEventListener("mouseenter", () => { b.hover = true; if (b.video.tagName === "VIDEO") b.link = ownLink(b.video); });
+    host.addEventListener("mouseleave", () => { b.hover = false; if (!b.open) b.link = ""; setTimeout(place, 0); });
     fjOnTheme((theme) => { const w = root.querySelector(".wrap"); if (w) w.setAttribute("data-theme", theme); });
     root.querySelector(".wrap").setAttribute("data-theme", fjTheme());
     const mainEl = root.getElementById("main");
@@ -964,7 +966,7 @@
     renderOne(b, byKind(b.video, "looking"));
     const anchor = b.video.tagName !== "VIDEO";
     const zoom = anchor && b.video === zoomEl ? zoomAudio() : null;
-    const page = zoom ? "" : anchor ? audioPageUrl() : ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
+    const page = zoom ? "" : anchor ? audioPageUrl() : b.link || ownLink(b.video) || (directSrc(b.video) || !TOP ? "" : location.href);
     const msg = { action: "resolveVideo", page, src: zoom ? (zoom.currentSrc || zoom.src) : anchor ? "" : directSrc(b.video), frame: !TOP };
     if (tries) msg.poll = true;
     api.runtime.sendMessage(msg).then((res) => {
@@ -984,7 +986,7 @@
 
   function openInApp(b) {
     const anchor = b.video.tagName !== "VIDEO";
-    const page = anchor ? audioPageUrl() : ownLink(b.video) || (TOP ? linkFor(b.video) : "");
+    const page = anchor ? audioPageUrl() : b.link || ownLink(b.video) || (TOP ? linkFor(b.video) : "");
     sendOne(b, { action: "openPageDialog", page });
   }
 
@@ -1150,10 +1152,12 @@
   function placeOne(b) {
     if (b.dismissed) return;
     const fs = document.fullscreenElement || document.webkitFullscreenElement;
-    const r = b.video.getBoundingClientRect();
+    let r = b.video.getBoundingClientRect();
     const small = isCanvaAnchor(b.video);
-    const onScreen = r.bottom > 0 && r.top < innerHeight && r.width >= (small ? 48 : 200) && r.height >= (small ? 32 : 100) && b.video.isConnected &&
+    let onScreen = r.bottom > 0 && r.top < innerHeight && r.width >= (small ? 48 : 200) && r.height >= (small ? 32 : 100) && b.video.isConnected &&
       !(fs && fs.tagName === "VIDEO") && (!fs || fs.contains(b.video.el || b.video) || fs.shadowRoot);
+    if (onScreen) b.lastRect = r;
+    else if ((b.hover || b.open) && b.lastRect) { r = b.lastRect; onScreen = true; }
     b.host.style.display = onScreen ? "block" : "none";
     if (!onScreen) return;
     const top = layer(), next = b.host.nextElementSibling;
@@ -1257,8 +1261,10 @@
     const all = allVideos();
     const seen = all.filter(v => { const r = v.getBoundingClientRect(); return r.width >= 200 && r.height >= 100 && !covered(v); });
     const vids = distinct(seen);
-    for (const [v, b] of bubbles) if (!v.isConnected || (v.tagName !== "VIDEO" && !all.includes(v))) { b.host.remove(); bubbles.delete(v); }
-    for (const [v, b] of bubbles) if (!b.dismissed && !vids.includes(v)) { b.host.remove(); bubbles.delete(v); }
+    const held = (b) => b.hover || b.open;
+    for (const [v, b] of bubbles) if (!held(b) && (!v.isConnected || (v.tagName !== "VIDEO" && !all.includes(v)))) { b.host.remove(); bubbles.delete(v); }
+    for (const [v, b] of bubbles) if (!held(b) && !b.dismissed && !vids.includes(v)) { b.host.remove(); bubbles.delete(v); }
+    for (const b of bubbles.values()) if (held(b) && !b.dismissed && !vids.includes(b.video)) placeOne(b);
     const oneVideoSite = /(^|\.)youtube\.com$/i.test(location.hostname);
     for (const v of vids.slice(0, 12)) {
       if (oneVideoSite && !isMain(v)) {
@@ -1272,6 +1278,15 @@
         const show = v.tagName !== "VIDEO" || v === fileHero || isZoomMedia(v) || (isMain(v) ? (items.length || playing(v)) : !(v.paused && !(v.duration > 3) && !directSrc(v)));
         if (!show) continue;
         b = makeBubble(v);
+      }
+      if (TOP && v.tagName === "VIDEO" && !b.hover) {
+        const link = linkFor(v);
+        if (link && b.boundLink && link !== b.boundLink) {
+          b.own = null; b.open = false; b.loading = false; b.link = "";
+          if (isMain(v)) items = [];
+          renderOne(b);
+        }
+        if (link) b.boundLink = link;
       }
       if (!b.dismissed) placeOne(b);
     }
