@@ -17,6 +17,8 @@ final class FJStore: ObservableObject {
     @Published var selectedTaskId: String?
     @Published var missingFileTaskId: String?
     @Published var pdf: FJPdfTarget?
+    @Published var moreInSettings = false
+    @Published var moreInHidden = false
     private(set) var lastEffect: DashboardUiEffect?
     var onEffect: ((DashboardUiEffect) -> Void)?
     private var watchers: [IosCancelable] = []
@@ -74,6 +76,10 @@ final class FJStore: ObservableObject {
 
     private func apply(_ s: DashboardUiState) {
         state = s
+        if s.selectedTab != .settings && (moreInSettings || moreInHidden) {
+            moreInSettings = false
+            moreInHidden = false
+        }
         if let notice = s.hidden.notice {
             showToast(HiddenTextsKt.hiddenNoticeText(notice: notice))
             send(DashboardUiEventOnHiddenNoticeShown.shared)

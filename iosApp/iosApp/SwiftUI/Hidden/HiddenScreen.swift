@@ -41,6 +41,7 @@ private struct HiddenGroupRef {
 struct HiddenScreen: View {
     @EnvironmentObject var store: FJStore
     let onBack: () -> Void
+    @Environment(\.verticalSizeClass) private var verticalSize
     @State private var checked: Set<String> = []
     @State private var detailId: String?
     @State private var sheet: HiddenSheetKind?
@@ -81,6 +82,23 @@ struct HiddenScreen: View {
     }
     private var selectionMode: Bool { !checked.isEmpty }
 
+    private var foldHeader: Bool {
+        verticalSize == .compact && inPage && !selectionMode && !store.state.hidden.tasks.isEmpty
+    }
+
+    @ViewBuilder
+    private var groupBar: some View {
+        if let playlist = store.state.hiddenOpenPlaylist() {
+            HiddenGroupBar(tag: "LIST", title: playlist.title, summary: playlist.summaryText,
+                           canPause: playlist.canPause, canResume: playlist.canResume,
+                           playlistId: playlist.id, folder: "")
+        } else if let folder = store.state.hiddenOpenFolder() {
+            HiddenGroupBar(tag: "DIR", title: folder.label, summary: folder.summaryText, path: folder.path,
+                           canPause: folder.canPause, canResume: folder.canResume,
+                           playlistId: "", folder: folder.folder)
+        }
+    }
+
     private func addHidden() {
         store.send(DashboardUiEventOnHiddenAddDownload.shared)
     }
@@ -95,14 +113,8 @@ struct HiddenScreen: View {
                     .foregroundStyle(FJTheme.color.onSurfaceVariant)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4)
-                if let playlist = store.state.hiddenOpenPlaylist() {
-                    HiddenGroupBar(tag: "LIST", title: playlist.title, summary: playlist.summaryText,
-                                   canPause: playlist.canPause, canResume: playlist.canResume,
-                                   playlistId: playlist.id, folder: "")
-                } else if let folder = store.state.hiddenOpenFolder() {
-                    HiddenGroupBar(tag: "DIR", title: folder.label, summary: folder.summaryText,
-                                   canPause: folder.canPause, canResume: folder.canResume,
-                                   playlistId: "", folder: folder.folder)
+                if !foldHeader {
+                    groupBar
                 }
                 if selectionMode {
                     TaskSelectionBar(
@@ -193,7 +205,10 @@ struct HiddenScreen: View {
                 sheet = nil
             }
         }
-        .onDisappear { if !FJStore.previewShown() { store.hiddenLock() } }
+        .onDisappear {
+            let stillOpen = store.moreInHidden && store.state.selectedTab == .settings
+            if !stillOpen && !FJStore.previewShown() { store.hiddenLock() }
+        }
     }
 
     private func emptyState(_ s: AppLocalization) -> some View {
@@ -214,6 +229,12 @@ struct HiddenScreen: View {
 
     private func list(_ rows: [HiddenRow]) -> some View {
         List {
+            if foldHeader {
+                groupBar
+                    .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 6, trailing: 8))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
             ForEach(rows) { entry in rowView(entry) }
             Color.clear.frame(height: 40)
                 .listRowSeparator(.hidden)
@@ -347,73 +368,32 @@ private struct HiddenGroupBar: View {
     let tag: String
     let title: String
     let summary: String
+    var path: String? = nil
     let canPause: Bool
     let canResume: Bool
     let playlistId: String
     let folder: String
 
     var body: some View {
-        let s = store.strings
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                TaskKindSquare(tag: tag, size: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.fj(16, .bold))
-                        .foregroundStyle(FJTheme.color.onSurface)
-                        .lineLimit(2)
-                    Text(summary)
-                        .font(.fj(12))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                }
-                Spacer(minLength: 0)
+        let play: (() -> Void)? = store.host.hiddenGroupCanPlay() ? {
+            if let queue = store.host.hiddenGroupPlaybackQueue() {
+                store.send(DashboardUiEventOnHiddenGroupPlayClicked.shared)
+                FJPlayer.shared.queue = queue
             }
-            if store.host.hiddenGroupCanPlay() {
-                Button {
-                    if let queue = store.host.hiddenGroupPlaybackQueue() {
-                        store.send(DashboardUiEventOnHiddenGroupPlayClicked.shared)
-                        FJPlayer.shared.queue = queue
-                    }
-                } label: {
-                    Label(s.playerPlayAll, systemImage: "play.fill")
-                        .font(.fj(13, .semibold))
-                        .foregroundStyle(FJTheme.color.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(FJTheme.color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
-                        .contentShape(RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-            }
-            HStack(spacing: 8) {
-                if canPause {
-                    Button(s.homePauseAll) {
-                        store.send(DashboardUiEventOnHiddenGroupPause(playlistId: playlistId, folder: folder))
-                    }
-                    .font(.fj(12, .semibold))
-                    .buttonStyle(.borderless)
-                }
-                if canResume {
-                    Button(s.homeResumeAll) {
-                        store.send(DashboardUiEventOnHiddenGroupResume(playlistId: playlistId, folder: folder))
-                    }
-                    .font(.fj(12, .semibold))
-                    .buttonStyle(.borderless)
-                }
-                Spacer(minLength: 0)
-                Button {
-                    store.send(DashboardUiEventOnUnhideGroup(playlistId: playlistId, folder: folder))
-                } label: {
-                    Label(s.hiddenUnhide, systemImage: "eye")
-                        .font(.fj(12, .semibold))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-            }
-        }
-        .padding(12)
-        .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
+        } : nil
+        GroupPageBar(
+            tag: tag,
+            title: title,
+            summary: summary,
+            path: path,
+            actions: GroupBarActions(
+                onPlay: play,
+                canPause: canPause,
+                canResume: canResume,
+                onPauseAll: { store.send(DashboardUiEventOnHiddenGroupPause(playlistId: playlistId, folder: folder)) },
+                onResumeAll: { store.send(DashboardUiEventOnHiddenGroupResume(playlistId: playlistId, folder: folder)) },
+                onUnhide: { store.send(DashboardUiEventOnUnhideGroup(playlistId: playlistId, folder: folder)) }
+            )
+        )
     }
 }

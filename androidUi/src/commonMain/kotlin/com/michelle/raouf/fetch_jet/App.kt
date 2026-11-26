@@ -166,6 +166,10 @@ fun App(
     }
     val selectedTask = state.allTasks.firstOrNull { it.id == selectedTaskId }
     var wideLayout by remember { mutableStateOf(false) }
+    val moreNav = remember { MoreNav() }
+    LaunchedEffect(state.selectedTab) {
+        if (state.selectedTab != DashboardTab.SETTINGS) moreNav.reset()
+    }
     // The desktop sidebar filters on its own over "All": coming from a tablet/phone tab
     // (e.g. Completed) switch the list back to All so it matches the sidebar.
     LaunchedEffect(wideLayout) {
@@ -304,6 +308,8 @@ fun App(
                 val isMedium = screenWidth in 680.dp..<1100.dp
                 val sidePanel = screenWidth >= 1280.dp
                 SideEffect { wideLayout = !isCompact }
+                val groupFolded = com.michelle.raouf.fetch_jet.ui.isShortScreen() &&
+                    (state.openFolder != null || state.openPlaylistId != null)
 
                 if (isCompact) {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -340,7 +346,7 @@ fun App(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             if (state.selectedTab == DashboardTab.SETTINGS) {
-                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
+                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState, nav = moreNav)
                             } else {
                                 TaskListArea(
                                     tasks = state.filteredTasks,
@@ -429,7 +435,7 @@ fun App(
                                     .padding(horizontal = 16.dp, vertical = 10.dp)
                             ) {
                                 FjTopBar(
-                                    showSearch = state.selectedTab != DashboardTab.SETTINGS,
+                                    showSearch = state.selectedTab != DashboardTab.SETTINGS && !(groupFolded && searchQuery.isEmpty()),
                                     compact = isMedium,
                                     title = if (state.selectedTab == DashboardTab.SETTINGS) LocalizationManager.Strings.moreTitle else sideFilter.label,
                                     searchQuery = searchQuery,
@@ -460,7 +466,7 @@ fun App(
                                 )
 
                                 if (state.selectedTab == DashboardTab.SETTINGS) {
-                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
+                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState, nav = moreNav)
                                 } else {
                                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         TaskListArea(
@@ -485,7 +491,7 @@ fun App(
                                             externalSearch = searchQuery
                                         )
                                     }
-                                    QueueStatusBar(
+                                    if (!groupFolded) QueueStatusBar(
                                         tasks = state.allTasks,
                                         globalLimitBytes = state.globalDownloadSpeedLimitBytes,
                                         speedDisplayUnit = state.speedDisplayUnit

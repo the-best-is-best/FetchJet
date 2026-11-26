@@ -496,14 +496,21 @@ private fun HiddenGroupPageHeader(
     onPauseAll: () -> Unit,
     onResumeAll: () -> Unit,
     onUnhide: () -> Unit,
-    onPlay: (() -> Unit)?
+    onPlay: (() -> Unit)?,
+    compact: Boolean
 ) {
-    GroupPageHeader(title, summary, path, onBack) {
-        if (onPlay != null) PlayGroupButton(onPlay)
-        PauseResumeAllButtons(canPause, canResume, onPauseAll, onResumeAll)
-        OutlinedButton(onClick = onUnhide, shape = RoundedCornerShape(10.dp)) {
-            Text(LocalizationManager.Strings.hiddenUnhide, fontSize = 12.sp)
-        }
+    GroupPageHeader(title, summary, path, onBack, compact) {
+        GroupActionButtons(
+            GroupActions(
+                onPlay = onPlay,
+                canPause = canPause,
+                canResume = canResume,
+                onPauseAll = onPauseAll,
+                onResumeAll = onResumeAll,
+                onUnhide = onUnhide
+            ),
+            compact
+        )
     }
 }
 
@@ -513,7 +520,8 @@ private enum class HiddenDialog { NONE, CHANGE, REMOVE, RESTORE }
 internal fun HiddenScreen(
     state: DashboardUiState,
     viewModel: DashboardViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    stillOpen: () -> Boolean = { false }
 ) {
     val s = LocalizationManager.Strings
     val openPlaylist = state.hiddenOpenPlaylist()
@@ -538,7 +546,7 @@ internal fun HiddenScreen(
             { viewModel.onEvent(DashboardUiEvent.OnHiddenGroupPlayClicked) }
         } else null
     SecureWindowEffect(true)
-    DisposableEffect(Unit) { onDispose { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
+    DisposableEffect(Unit) { onDispose { if (!stillOpen()) viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
     LaunchedEffect(rowKeys) {
         val ids = rowKeys.toHashSet()
         if (!ids.containsAll(checked)) checked = checked.filterTo(HashSet()) { it in ids }
@@ -641,7 +649,9 @@ internal fun HiddenScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
         )
-        if (!selecting) {
+        val shortScreen = isShortScreen()
+        val headerInList = shortScreen && inPage && !selecting && tasks.isNotEmpty()
+        val groupHeader: @Composable () -> Unit = {
             if (openPlaylist != null) {
                 HiddenGroupPageHeader(
                     title = openPlaylist.title,
@@ -656,7 +666,8 @@ internal fun HiddenScreen(
                         viewModel.onEvent(DashboardUiEvent.OnUnhideGroup(playlistId = openPlaylist.id))
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
                     },
-                    onPlay = playPage
+                    onPlay = playPage,
+                    compact = shortScreen
                 )
             } else if (openFolder != null) {
                 HiddenGroupPageHeader(
@@ -672,10 +683,12 @@ internal fun HiddenScreen(
                         viewModel.onEvent(DashboardUiEvent.OnUnhideGroup(folder = openFolder.folder))
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
                     },
-                    onPlay = playPage
+                    onPlay = playPage,
+                    compact = shortScreen
                 )
             }
         }
+        if (!selecting && !headerInList) groupHeader()
         if (state.hidden.working) HiddenWorkBanner(state.hidden)
         if (tasks.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -687,6 +700,7 @@ internal fun HiddenScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp)
             ) {
+                if (headerInList) item(key = "page-header") { groupHeader() }
                 items(items, key = { it.key }) { item ->
                     if (item is TaskListItem.Group) {
                         val group = item.group

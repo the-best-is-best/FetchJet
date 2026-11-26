@@ -124,20 +124,31 @@ internal fun SettingsContentView(
     )
 }
 
+internal class MoreNav {
+    var inSettings by androidx.compose.runtime.mutableStateOf(false)
+    var hiddenFlow by androidx.compose.runtime.mutableStateOf(false)
+
+    fun reset() {
+        inSettings = false
+        hiddenFlow = false
+    }
+}
+
 @Composable
 internal fun MoreContentView(
     state: com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState,
     viewModel: DashboardViewModel,
     pathResolver: PathResolver,
-    snackbarHostState: androidx.compose.material3.SnackbarHostState
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
+    nav: MoreNav
 ) {
-    var inSettings by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var inSettings by nav::inSettings
     val jump by com.michelle.raouf.fetch_jet.ui.SettingsJump.section.collectAsState()
     androidx.compose.runtime.LaunchedEffect(jump) {
         if (jump != null) inSettings = true
     }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var hiddenFlow by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var hiddenFlow by nav::hiddenFlow
     val hiddenUnlocked = state.hidden.unlocked
     androidx.compose.runtime.LaunchedEffect(hiddenUnlocked) {
         if (!hiddenUnlocked) hiddenFlow = false
@@ -146,7 +157,8 @@ internal fun MoreContentView(
         com.michelle.raouf.fetch_jet.ui.HiddenScreen(
             state = state,
             viewModel = viewModel,
-            onClose = { hiddenFlow = false }
+            onClose = { hiddenFlow = false },
+            stillOpen = { nav.hiddenFlow && viewModel.uiState.value.selectedTab == com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardTab.SETTINGS }
         )
     } else if (!inSettings) {
         com.michelle.raouf.fetch_jet.ui.MorePage(

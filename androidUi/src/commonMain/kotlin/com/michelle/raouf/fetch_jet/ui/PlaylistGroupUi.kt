@@ -21,6 +21,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -57,11 +59,27 @@ fun PlaylistPageHeader(
     onDismissLanguages: () -> Unit,
     onOpenFolder: (() -> Unit)? = null,
     onPlay: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        GroupHeaderRow(group.title, group.summaryText, onBack) {
-            PageActions(group, onCheck, onPauseAll, onResumeAll, onDelete, onHide, onOpenFolder, onPlay)
+        GroupHeaderRow(group.title, group.summaryText, onBack, oneRow = compact) {
+            GroupActionButtons(
+                GroupActions(
+                    onPlay = onPlay,
+                    onOpenFolder = onOpenFolder,
+                    checkLabel = if (group.record.url.isNotBlank()) (if (group.isPage) s.grabCheckNew else s.playlistCheckNew) else null,
+                    onCheck = onCheck,
+                    canPause = group.canPause,
+                    canResume = group.canResume,
+                    onPauseAll = onPauseAll,
+                    onResumeAll = onResumeAll,
+                    onHide = onHide,
+                    deleteLabel = if (group.isPage) s.folderDeleteAll else s.playlistDeleteAll,
+                    onDelete = onDelete
+                ),
+                compact
+            )
         }
         if (group.isPage) return@Column
         val record = group.record
@@ -116,36 +134,6 @@ fun PlaylistPageHeader(
     }
 }
 
-@Composable
-private fun PageActions(
-    group: PlaylistGroup,
-    onCheck: () -> Unit,
-    onPauseAll: () -> Unit,
-    onResumeAll: () -> Unit,
-    onDelete: () -> Unit,
-    onHide: () -> Unit,
-    onOpenFolder: (() -> Unit)?,
-    onPlay: (() -> Unit)?,
-) {
-    val s = LocalizationManager.Strings
-    val shape = RoundedCornerShape(10.dp)
-    if (onPlay != null) PlayGroupButton(onPlay)
-    if (onOpenFolder != null) {
-        OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
-    }
-    if (group.record.url.isNotBlank()) {
-        OutlinedButton(onClick = onCheck, shape = shape) { Text("⟳ " + (if (group.isPage) s.grabCheckNew else s.playlistCheckNew), fontSize = 12.sp) }
-    }
-    PauseResumeAllButtons(group.canPause, group.canResume, onPauseAll, onResumeAll)
-    OutlinedButton(onClick = onHide, shape = shape) { Text("🙈 " + s.hiddenHide, fontSize = 12.sp) }
-    OutlinedButton(
-        onClick = onDelete,
-        shape = shape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-    ) { Text("🗑 " + (if (group.isPage) s.folderDeleteAll else s.playlistDeleteAll), fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
-}
-
-
 /**
  * The top of an open folder ("group by folder"): back, its name, the full path and count,
  * open the folder, pause / resume all, delete all. No Check, no subtitles: that is for playlists.
@@ -161,23 +149,120 @@ fun FolderPageHeader(
     onDelete: () -> Unit,
     onHide: () -> Unit,
     onPlay: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
-    val actions: @Composable () -> Unit = {
-        val shape = RoundedCornerShape(10.dp)
-        if (onPlay != null) PlayGroupButton(onPlay)
-        if (canOpenFolder) {
-            OutlinedButton(onClick = onOpenFolder, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
-        }
-        PauseResumeAllButtons(group.canPause, group.canResume, onPauseAll, onResumeAll)
-        OutlinedButton(onClick = onHide, shape = shape) { Text("🙈 " + s.hiddenHide, fontSize = 12.sp) }
+    val actions = GroupActions(
+        onPlay = onPlay,
+        onOpenFolder = if (canOpenFolder) onOpenFolder else null,
+        canPause = group.canPause,
+        canResume = group.canResume,
+        onPauseAll = onPauseAll,
+        onResumeAll = onResumeAll,
+        onHide = onHide,
+        deleteLabel = s.folderDeleteAll,
+        onDelete = onDelete
+    )
+    GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, compact) {
+        GroupActionButtons(actions, compact)
+    }
+}
+
+/**
+ * The buttons of an open group (playlist, folder, or the same inside Hidden). Each page fills
+ * only the actions it has; null = not shown. On a short screen the rare ones go behind ⋮.
+ */
+class GroupActions(
+    val onPlay: (() -> Unit)? = null,
+    val onOpenFolder: (() -> Unit)? = null,
+    val checkLabel: String? = null,
+    val onCheck: () -> Unit = {},
+    val canPause: Boolean = false,
+    val canResume: Boolean = false,
+    val onPauseAll: () -> Unit = {},
+    val onResumeAll: () -> Unit = {},
+    val onHide: (() -> Unit)? = null,
+    val onUnhide: (() -> Unit)? = null,
+    val deleteLabel: String? = null,
+    val onDelete: () -> Unit = {},
+)
+
+@Composable
+internal fun GroupActionButtons(actions: GroupActions, compact: Boolean) {
+    val s = LocalizationManager.Strings
+    val shape = RoundedCornerShape(10.dp)
+    actions.onPlay?.let { PlayGroupButton(it) }
+    actions.onOpenFolder?.let {
+        OutlinedButton(onClick = it, shape = shape) { Text("📂 " + s.rowMenuOpenFolder, fontSize = 12.sp) }
+    }
+    actions.checkLabel?.let { label ->
+        OutlinedButton(onClick = actions.onCheck, shape = shape) { Text("⟳ " + label, fontSize = 12.sp) }
+    }
+    if (compact) {
+        GroupMoreMenu(actions)
+        return
+    }
+    PauseResumeAllButtons(actions.canPause, actions.canResume, actions.onPauseAll, actions.onResumeAll)
+    actions.onHide?.let {
+        OutlinedButton(onClick = it, shape = shape) { Text("🙈 " + s.hiddenHide, fontSize = 12.sp) }
+    }
+    actions.onUnhide?.let {
+        OutlinedButton(onClick = it, shape = shape) { Text(s.hiddenUnhide, fontSize = 12.sp) }
+    }
+    actions.deleteLabel?.let { label ->
         OutlinedButton(
-            onClick = onDelete,
+            onClick = actions.onDelete,
             shape = shape,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        ) { Text("🗑 " + s.folderDeleteAll, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+        ) { Text("🗑 " + label, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
     }
-    GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, actions)
+}
+
+@Composable
+private fun GroupMoreMenu(actions: GroupActions) {
+    val s = LocalizationManager.Strings
+    var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.foundation.layout.Box {
+        OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(10.dp)) { Text("⋮", fontSize = 14.sp) }
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text("⏸ " + s.homePauseAll) },
+                enabled = actions.canPause,
+                onClick = { open = false; actions.onPauseAll() }
+            )
+            androidx.compose.material3.DropdownMenuItem(
+                text = { Text("⬇ " + s.homeResumeAll) },
+                enabled = actions.canResume,
+                onClick = { open = false; actions.onResumeAll() }
+            )
+            actions.onHide?.let { hide ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text("🙈 " + s.hiddenHide) },
+                    onClick = { open = false; hide() }
+                )
+            }
+            actions.onUnhide?.let { unhide ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text(s.hiddenUnhide) },
+                    onClick = { open = false; unhide() }
+                )
+            }
+            actions.deleteLabel?.let { label ->
+                androidx.compose.material3.HorizontalDivider()
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text("🗑 " + label, color = MaterialTheme.colorScheme.error) },
+                    onClick = { open = false; actions.onDelete() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun isShortScreen(): Boolean {
+    val window = androidx.compose.ui.platform.LocalWindowInfo.current
+    val height = with(androidx.compose.ui.platform.LocalDensity.current) { window.containerSize.height.toDp() }
+    return height < 500.dp
 }
 
 @Composable
@@ -185,16 +270,17 @@ internal fun GroupHeaderRow(
     title: String,
     summary: String,
     onBack: () -> Unit,
+    oneRow: Boolean = false,
     actions: @Composable () -> Unit
 ) {
     val s = LocalizationManager.Strings
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        if (maxWidth >= 720.dp) {
+        if (oneRow || maxWidth >= 720.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onBack) { Text("◀ " + s.playlistBack, fontSize = 13.sp) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(summary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text(summary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 actions()
             }
@@ -222,11 +308,13 @@ internal fun GroupPageHeader(
     summary: String,
     path: String?,
     onBack: () -> Unit,
+    compact: Boolean = false,
     actions: @Composable () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        GroupHeaderRow(title, summary, onBack, actions)
-        if (path != null) {
+        val line = if (compact && path != null) "$summary · $path" else summary
+        GroupHeaderRow(title, line, onBack, oneRow = compact, actions = actions)
+        if (path != null && !compact) {
             Text(
                 path,
                 fontSize = 11.sp,

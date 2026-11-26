@@ -20,6 +20,7 @@ private struct ListRow: Identifiable {
 struct TaskListScreen: View {
     @EnvironmentObject var store: FJStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.verticalSizeClass) private var verticalSize
     @State private var search = ""
     @State private var collapsed: Set<String> = []
     @State private var checked: Set<String> = []
@@ -49,6 +50,19 @@ struct TaskListScreen: View {
     }
 
     private var inGroupPage: Bool { store.state.openPlaylistId != nil || openFolderGroup != nil }
+
+    private var foldHeader: Bool {
+        verticalSize == .compact && inGroupPage && !selectionMode && !shownTasks.isEmpty
+    }
+
+    @ViewBuilder
+    private var pageBar: some View {
+        if let group = openGroup {
+            PlaylistPageBar(group: group, onHide: { requestHide(HideTargets(playlistIds: [group.id])) })
+        } else if let folder = openFolderGroup {
+            FolderPageBar(group: folder, onHide: { requestHide(HideTargets(folders: [folder.folder])) })
+        }
+    }
 
     private var allTasks: [DownloadTask] {
         if let id = store.state.openPlaylistId, store.state.playlists[id] != nil {
@@ -122,14 +136,10 @@ struct TaskListScreen: View {
                 if store.state.hidden.working {
                     TaskHiddenWorkBanner(done: Int(store.state.hidden.workDone), total: Int(store.state.hidden.workTotal))
                 }
-                if let group = openGroup {
-                    PlaylistPageBar(group: group, onHide: { requestHide(HideTargets(playlistIds: [group.id])) })
-                        .padding(.bottom, 8)
-                } else if let folder = openFolderGroup {
-                    FolderPageBar(group: folder, onHide: { requestHide(HideTargets(folders: [folder.folder])) })
-                        .padding(.bottom, 8)
+                if !foldHeader {
+                    pageBar.padding(.bottom, 8)
                 }
-                if !allTasks.isEmpty {
+                if !allTasks.isEmpty && !(foldHeader && search.isEmpty) {
                     TaskSearchField(text: $search)
                         .padding(.bottom, 8)
                 }
@@ -208,6 +218,12 @@ struct TaskListScreen: View {
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                if foldHeader {
+                    pageBar
+                        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 6, trailing: 8))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
                 if store.state.selectedTab == .all && !inGroupPage {
                     let sections = groups(tasks)
                     let sectionRows: [[ListRow]] = {
@@ -873,6 +889,36 @@ struct PlaylistPageBar: View {
 
     var body: some View {
         let s = store.strings
+        let resolver = PathResolver()
+        let folder = group.tasks.first?.destinationPath ?? group.record.folder
+        let openFolder: (() -> Void)? = resolver.isOpenFolderSupported() && !folder.isEmpty
+            ? { _ = resolver.openDirectoryInExplorer(path: folder) } : nil
+        GroupPageBar(
+            tag: "LIST",
+            title: group.title,
+            summary: group.summaryText,
+            onBack: { store.send(DashboardUiEventOnClosePlaylist.shared) },
+            actions: GroupBarActions(
+                onPlay: groupPlayAction(store, key: group.id, tasks: group.tasks),
+                onOpenFolder: openFolder,
+                checkLabel: group.record.url.isEmpty ? nil : (group.isPage ? s.grabCheckNew : s.playlistCheckNew),
+                onCheck: { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) },
+                canPause: group.canPause,
+                canResume: group.canResume,
+                onPauseAll: { store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id)) },
+                onResumeAll: { store.send(DashboardUiEventOnPlaylistGroupResume(playlistId: group.id)) },
+                onHide: onHide,
+                deleteLabel: group.isPage ? s.folderDeleteAll : s.playlistDeleteAll,
+                onDelete: { store.send(DashboardUiEventOnPlaylistGroupRemove(playlistId: group.id)) }
+            )
+        ) {
+            if !group.isPage { subtitlesBlock }
+        }
+    }
+
+    @ViewBuilder
+    private var subtitlesBlock: some View {
+        let s = store.strings
         let languages = group.record.subtitleLanguages
         let page: PlaylistLanguagesUi? = {
             guard let p = store.state.playlistLanguages, p.playlistId == group.id else { return nil }
@@ -881,73 +927,6 @@ struct PlaylistPageBar: View {
         let subtitlesLine = languages.isEmpty ? s.playlistNoSubtitles
             : s.playlistSubtitlesFor.replacingOccurrences(of: "%1", with: languages.map { languageName($0) }.joined(separator: ", "))
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Button {
-                    store.send(DashboardUiEventOnClosePlaylist.shared)
-                } label: {
-                    Label(s.playlistBack, systemImage: "chevron.backward")
-                        .font(.fj(13, .semibold))
-                        .foregroundStyle(FJTheme.color.primary)
-                }
-                .buttonStyle(.borderless)
-                Spacer(minLength: 0)
-                Menu {
-                    let resolver = PathResolver()
-                    if resolver.isOpenFolderSupported(), let folder = group.tasks.first?.destinationPath ?? Optional(group.record.folder), !folder.isEmpty {
-                        Button(s.rowMenuOpenFolder) { _ = resolver.openDirectoryInExplorer(path: folder) }
-                    }
-                    if !group.record.url.isEmpty {
-                        Button(group.isPage ? s.grabCheckNew : s.playlistCheckNew) { store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id)) }
-                    }
-                    if let onHide {
-                        Button(action: onHide) { Label(s.hiddenHide, systemImage: "eye.slash") }
-                    }
-                    if group.canPause {
-                        Button(s.homePauseAll) { store.send(DashboardUiEventOnPlaylistGroupPause(playlistId: group.id)) }
-                    }
-                    if group.canResume {
-                        Button(s.homeResumeAll) { store.send(DashboardUiEventOnPlaylistGroupResume(playlistId: group.id)) }
-                    }
-                    Divider()
-                    Button(group.isPage ? s.folderDeleteAll : s.playlistDeleteAll, role: .destructive) {
-                        store.send(DashboardUiEventOnPlaylistGroupRemove(playlistId: group.id))
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.fj(18))
-                        .foregroundStyle(FJTheme.color.primary)
-                        .frame(width: 36, height: 36)
-                }
-            }
-            HStack(spacing: 10) {
-                TaskKindSquare(tag: "LIST", size: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(group.title)
-                        .font(.fj(16, .bold))
-                        .foregroundStyle(FJTheme.color.onSurface)
-                        .lineLimit(2)
-                    Text(group.summaryText)
-                        .font(.fj(12))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                }
-                Spacer(minLength: 0)
-            }
-            GroupPlayButton(groupKey: group.id, tasks: group.tasks)
-            if !group.record.url.isEmpty {
-                Button {
-                    store.send(DashboardUiEventOnPlaylistCheck(playlistId: group.id))
-                } label: {
-                    Label(group.isPage ? s.grabCheckNew : s.playlistCheckNew, systemImage: "arrow.triangle.2.circlepath")
-                        .font(.fj(13, .semibold))
-                        .foregroundStyle(FJTheme.color.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-            }
-            if !group.isPage {
             HStack(spacing: 8) {
                 Text("💬 " + subtitlesLine)
                     .font(.fj(12))
@@ -998,11 +977,7 @@ struct PlaylistPageBar: View {
                 .padding(10)
                 .background(FJTheme.color.surface, in: RoundedRectangle(cornerRadius: 10))
             }
-            }
         }
-        .padding(12)
-        .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -1082,28 +1057,257 @@ struct FolderGroupRowView: View {
     }
 }
 
-struct GroupPlayButton: View {
+/** What an open group page can do; each page fills only its own actions (nil = not shown). */
+struct GroupBarActions {
+    var onPlay: (() -> Void)? = nil
+    var onOpenFolder: (() -> Void)? = nil
+    var checkLabel: String? = nil
+    var onCheck: () -> Void = {}
+    var canPause = false
+    var canResume = false
+    var onPauseAll: () -> Void = {}
+    var onResumeAll: () -> Void = {}
+    var onHide: (() -> Void)? = nil
+    var onUnhide: (() -> Void)? = nil
+    var deleteLabel: String? = nil
+    var onDelete: () -> Void = {}
+}
+
+@MainActor
+func groupPlayAction(_ store: FJStore, key: String, tasks: [DownloadTask]) -> (() -> Void)? {
+    guard store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) else { return nil }
+    return {
+        if let queue = store.host.playbackQueue(groupKey: key, tasks: tasks) {
+            FJPlayer.shared.queue = queue
+        }
+    }
+}
+
+/**
+ * The top of an open playlist / folder, in the list and in Hidden alike. On a short screen
+ * (iPhone on its side) it is one row: title, the main buttons as icons, the rest behind ⋯.
+ */
+struct GroupPageBar<Extra: View>: View {
     @EnvironmentObject var store: FJStore
-    let groupKey: String
-    let tasks: [DownloadTask]
+    @Environment(\.verticalSizeClass) private var verticalSize
+    let tag: String
+    let title: String
+    let summary: String
+    let path: String?
+    let onBack: (() -> Void)?
+    let actions: GroupBarActions
+    let extra: () -> Extra
+
+    init(tag: String, title: String, summary: String, path: String? = nil, onBack: (() -> Void)? = nil,
+         actions: GroupBarActions, @ViewBuilder extra: @escaping () -> Extra) {
+        self.tag = tag
+        self.title = title
+        self.summary = summary
+        self.path = path
+        self.onBack = onBack
+        self.actions = actions
+        self.extra = extra
+    }
 
     var body: some View {
-        if store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) {
-            Button {
-                if let queue = store.host.playbackQueue(groupKey: groupKey, tasks: tasks) {
-                    FJPlayer.shared.queue = queue
+        if verticalSize == .compact { compactBar } else { fullBar }
+    }
+
+    private var compactBar: some View {
+        let s = store.strings
+        let line = path.map { summary + " \u{00B7} " + $0 } ?? summary
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                if let onBack {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.backward")
+                            .font(.fj(15, .semibold))
+                            .foregroundStyle(FJTheme.color.primary)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(s.playlistBack)
                 }
-            } label: {
-                Label(store.strings.playerPlayAll, systemImage: "play.fill")
-                    .font(.fj(13, .semibold))
-                    .foregroundStyle(FJTheme.color.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+                TaskKindSquare(tag: tag, size: 30)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.fj(14, .bold))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                        .lineLimit(1)
+                    Text(line)
+                        .font(.fj(11))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                if let play = actions.onPlay {
+                    GroupIconButton(systemImage: "play.fill", label: s.playerPlayAll, action: play)
+                }
+                if let open = actions.onOpenFolder {
+                    GroupIconButton(systemImage: "folder", label: s.rowMenuOpenFolder, action: open)
+                }
+                if let label = actions.checkLabel {
+                    GroupIconButton(systemImage: "arrow.triangle.2.circlepath", label: label, action: actions.onCheck)
+                }
+                menu
             }
-            .buttonStyle(.borderless)
+            extra().padding(.horizontal, 4)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
+    }
+
+    private var fullBar: some View {
+        let s = store.strings
+        return VStack(alignment: .leading, spacing: 8) {
+            if let onBack {
+                HStack(spacing: 8) {
+                    Button(action: onBack) {
+                        Label(s.playlistBack, systemImage: "chevron.backward")
+                            .font(.fj(13, .semibold))
+                            .foregroundStyle(FJTheme.color.primary)
+                    }
+                    .buttonStyle(.borderless)
+                    Spacer(minLength: 0)
+                    menu
+                }
+            }
+            HStack(spacing: 10) {
+                TaskKindSquare(tag: tag, size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.fj(16, .bold))
+                        .foregroundStyle(FJTheme.color.onSurface)
+                        .lineLimit(2)
+                    Text(summary)
+                        .font(.fj(12))
+                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
+                    if let path {
+                        Text(path)
+                            .font(.fj(11))
+                            .foregroundStyle(FJTheme.color.onSurfaceVariant.opacity(0.8))
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            if let play = actions.onPlay {
+                wideButton(s.playerPlayAll, "play.fill", play)
+            }
+            if let open = actions.onOpenFolder {
+                wideButton(s.rowMenuOpenFolder, "folder", open)
+            }
+            if let label = actions.checkLabel {
+                wideButton(label, "arrow.triangle.2.circlepath", actions.onCheck)
+            }
+            HStack(spacing: 8) {
+                if actions.canPause {
+                    Button(s.homePauseAll, action: actions.onPauseAll)
+                        .font(.fj(12, .semibold))
+                        .buttonStyle(.borderless)
+                }
+                if actions.canResume {
+                    Button(s.homeResumeAll, action: actions.onResumeAll)
+                        .font(.fj(12, .semibold))
+                        .buttonStyle(.borderless)
+                }
+                Spacer(minLength: 0)
+                if let unhide = actions.onUnhide {
+                    Button(action: unhide) {
+                        Label(s.hiddenUnhide, systemImage: "eye")
+                            .font(.fj(12, .semibold))
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(FJTheme.color.primary)
+                }
+                if let label = actions.deleteLabel {
+                    Button(label, role: .destructive, action: actions.onDelete)
+                        .font(.fj(12, .semibold))
+                        .foregroundStyle(FJTheme.color.error)
+                        .buttonStyle(.borderless)
+                }
+            }
+            extra()
+        }
+        .padding(12)
+        .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
+    }
+
+    private func wideButton(_ title: String, _ icon: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.fj(13, .semibold))
+                .foregroundStyle(FJTheme.color.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.borderless)
+    }
+
+    private var menu: some View {
+        let s = store.strings
+        return Menu {
+            if let open = actions.onOpenFolder {
+                Button(s.rowMenuOpenFolder, action: open)
+            }
+            if let label = actions.checkLabel {
+                Button(label, action: actions.onCheck)
+            }
+            if let hide = actions.onHide {
+                Button(action: hide) { Label(s.hiddenHide, systemImage: "eye.slash") }
+            }
+            if let unhide = actions.onUnhide {
+                Button(action: unhide) { Label(s.hiddenUnhide, systemImage: "eye") }
+            }
+            if actions.canPause {
+                Button(s.homePauseAll, action: actions.onPauseAll)
+            }
+            if actions.canResume {
+                Button(s.homeResumeAll, action: actions.onResumeAll)
+            }
+            if let label = actions.deleteLabel {
+                Divider()
+                Button(label, role: .destructive, action: actions.onDelete)
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.fj(18))
+                .foregroundStyle(FJTheme.color.primary)
+                .frame(width: 36, height: 34)
+        }
+    }
+}
+
+extension GroupPageBar where Extra == EmptyView {
+    init(tag: String, title: String, summary: String, path: String? = nil, onBack: (() -> Void)? = nil,
+         actions: GroupBarActions) {
+        self.init(tag: tag, title: title, summary: summary, path: path, onBack: onBack, actions: actions) { EmptyView() }
+    }
+}
+
+struct GroupIconButton: View {
+    let systemImage: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.fj(14, .semibold))
+                .foregroundStyle(FJTheme.color.primary)
+                .frame(width: 36, height: 34)
+                .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(label)
     }
 }
 
@@ -1115,98 +1319,26 @@ struct FolderPageBar: View {
     var body: some View {
         let s = store.strings
         let resolver = PathResolver()
-        let canOpen = resolver.isOpenFolderSupported()
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Button {
-                    store.send(DashboardUiEventOnCloseFolderGroup.shared)
-                } label: {
-                    Label(s.playlistBack, systemImage: "chevron.backward")
-                        .font(.fj(13, .semibold))
-                        .foregroundStyle(FJTheme.color.primary)
-                }
-                .buttonStyle(.borderless)
-                Spacer(minLength: 0)
-                Menu {
-                    if canOpen {
-                        Button(s.rowMenuOpenFolder) { _ = resolver.openDirectoryInExplorer(path: group.path) }
-                    }
-                    if let onHide {
-                        Button(action: onHide) { Label(s.hiddenHide, systemImage: "eye.slash") }
-                    }
-                    if group.canPause {
-                        Button(s.homePauseAll) { store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder)) }
-                    }
-                    if group.canResume {
-                        Button(s.homeResumeAll) { store.send(DashboardUiEventOnFolderGroupResume(folder: group.folder)) }
-                    }
-                    Divider()
-                    Button(s.folderDeleteAll, role: .destructive) {
-                        store.send(DashboardUiEventOnFolderGroupRemove(folder: group.folder))
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.fj(18))
-                        .foregroundStyle(FJTheme.color.primary)
-                        .frame(width: 36, height: 36)
-                }
-            }
-            HStack(spacing: 10) {
-                TaskKindSquare(tag: "DIR", size: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(group.label)
-                        .font(.fj(16, .bold))
-                        .foregroundStyle(FJTheme.color.onSurface)
-                        .lineLimit(2)
-                    Text(group.summaryText)
-                        .font(.fj(12))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant)
-                    Text(group.path)
-                        .font(.fj(11))
-                        .foregroundStyle(FJTheme.color.onSurfaceVariant.opacity(0.8))
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                }
-                Spacer(minLength: 0)
-            }
-            GroupPlayButton(groupKey: "dir:" + group.folder, tasks: group.tasks)
-            if canOpen {
-                Button {
-                    _ = resolver.openDirectoryInExplorer(path: group.path)
-                } label: {
-                    Label(s.rowMenuOpenFolder, systemImage: "folder")
-                        .font(.fj(13, .semibold))
-                        .foregroundStyle(FJTheme.color.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(FJTheme.color.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.primary.opacity(0.5), lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-            }
-            HStack(spacing: 8) {
-                if group.canPause {
-                    Button(s.homePauseAll) { store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder)) }
-                        .font(.fj(12, .semibold))
-                        .buttonStyle(.borderless)
-                }
-                if group.canResume {
-                    Button(s.homeResumeAll) { store.send(DashboardUiEventOnFolderGroupResume(folder: group.folder)) }
-                        .font(.fj(12, .semibold))
-                        .buttonStyle(.borderless)
-                }
-                Spacer(minLength: 0)
-                Button(s.folderDeleteAll, role: .destructive) {
-                    store.send(DashboardUiEventOnFolderGroupRemove(folder: group.folder))
-                }
-                .font(.fj(12, .semibold))
-                .foregroundStyle(FJTheme.color.error)
-                .buttonStyle(.borderless)
-            }
-        }
-        .padding(12)
-        .background(FJTheme.color.surfaceVariant.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(FJTheme.color.outlineVariant.opacity(0.35), lineWidth: 1))
+        let openFolder: (() -> Void)? = resolver.isOpenFolderSupported()
+            ? { _ = resolver.openDirectoryInExplorer(path: group.path) } : nil
+        GroupPageBar(
+            tag: "DIR",
+            title: group.label,
+            summary: group.summaryText,
+            path: group.path,
+            onBack: { store.send(DashboardUiEventOnCloseFolderGroup.shared) },
+            actions: GroupBarActions(
+                onPlay: groupPlayAction(store, key: "dir:" + group.folder, tasks: group.tasks),
+                onOpenFolder: openFolder,
+                canPause: group.canPause,
+                canResume: group.canResume,
+                onPauseAll: { store.send(DashboardUiEventOnFolderGroupPause(folder: group.folder)) },
+                onResumeAll: { store.send(DashboardUiEventOnFolderGroupResume(folder: group.folder)) },
+                onHide: onHide,
+                deleteLabel: s.folderDeleteAll,
+                onDelete: { store.send(DashboardUiEventOnFolderGroupRemove(folder: group.folder)) }
+            )
+        )
     }
 }
 
