@@ -513,7 +513,8 @@ private enum class HiddenDialog { NONE, CHANGE, REMOVE, RESTORE }
 internal fun HiddenScreen(
     state: DashboardUiState,
     viewModel: DashboardViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    stillOpen: () -> Boolean = { false }
 ) {
     val s = LocalizationManager.Strings
     val openPlaylist = state.hiddenOpenPlaylist()
@@ -538,7 +539,7 @@ internal fun HiddenScreen(
             { viewModel.onEvent(DashboardUiEvent.OnHiddenGroupPlayClicked) }
         } else null
     SecureWindowEffect(true)
-    DisposableEffect(Unit) { onDispose { viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
+    DisposableEffect(Unit) { onDispose { if (!stillOpen()) viewModel.onEvent(DashboardUiEvent.OnHiddenLock) } }
     LaunchedEffect(rowKeys) {
         val ids = rowKeys.toHashSet()
         if (!ids.containsAll(checked)) checked = checked.filterTo(HashSet()) { it in ids }

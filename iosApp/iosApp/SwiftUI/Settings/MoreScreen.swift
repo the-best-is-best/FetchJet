@@ -20,8 +20,14 @@ struct FJBackupDocument: FileDocument {
 struct MoreScreen: View {
     @EnvironmentObject var store: FJStore
     @StateObject private var live = SettingsLive()
-    @State private var inSettings = false
-    @State private var inHidden = false
+    private var inSettings: Bool {
+        get { store.moreInSettings }
+        nonmutating set { store.moreInSettings = newValue }
+    }
+    private var inHidden: Bool {
+        get { store.moreInHidden }
+        nonmutating set { store.moreInHidden = newValue }
+    }
     @State private var pinSheet: HiddenSheetKind?
     @State private var restoring = false
     @Environment(\.openURL) private var openURL

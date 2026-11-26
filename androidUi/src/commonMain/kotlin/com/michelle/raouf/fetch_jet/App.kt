@@ -166,6 +166,10 @@ fun App(
     }
     val selectedTask = state.allTasks.firstOrNull { it.id == selectedTaskId }
     var wideLayout by remember { mutableStateOf(false) }
+    val moreNav = remember { MoreNav() }
+    LaunchedEffect(state.selectedTab) {
+        if (state.selectedTab != DashboardTab.SETTINGS) moreNav.reset()
+    }
     // The desktop sidebar filters on its own over "All": coming from a tablet/phone tab
     // (e.g. Completed) switch the list back to All so it matches the sidebar.
     LaunchedEffect(wideLayout) {
@@ -340,7 +344,7 @@ fun App(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             if (state.selectedTab == DashboardTab.SETTINGS) {
-                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
+                                MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState, nav = moreNav)
                             } else {
                                 TaskListArea(
                                     tasks = state.filteredTasks,
@@ -460,7 +464,7 @@ fun App(
                                 )
 
                                 if (state.selectedTab == DashboardTab.SETTINGS) {
-                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState)
+                                    MoreContentView(state = state, viewModel = viewModel, pathResolver = pathResolver, snackbarHostState = snackbarHostState, nav = moreNav)
                                 } else {
                                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         TaskListArea(

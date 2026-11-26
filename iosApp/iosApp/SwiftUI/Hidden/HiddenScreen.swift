@@ -193,7 +193,10 @@ struct HiddenScreen: View {
                 sheet = nil
             }
         }
-        .onDisappear { if !FJStore.previewShown() { store.hiddenLock() } }
+        .onDisappear {
+            let stillOpen = store.moreInHidden && store.state.selectedTab == .settings
+            if !stillOpen && !FJStore.previewShown() { store.hiddenLock() }
+        }
     }
 
     private func emptyState(_ s: AppLocalization) -> some View {
