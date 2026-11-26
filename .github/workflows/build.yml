@@ -176,8 +176,8 @@ jobs:
           fi
 
   build-android:
-    needs: plan
-    if: needs.plan.outputs.android == 'true'
+    needs: [ plan, build-extension ]
+    if: ${{ !cancelled() && needs.plan.outputs.android == 'true' && (needs.build-extension.result == 'success' || needs.build-extension.result == 'skipped') }}
     # RUNNER_ANDROID = win-host builds it on your Windows PC (see scripts/setup-windows-runner.ps1).
     runs-on: ${{ vars.RUNNER_ANDROID || 'ubuntu-latest' }}
     # The signing secrets are stored in the "release-build" environment (Settings -> Environments).
@@ -270,8 +270,8 @@ jobs:
 
 
   build-desktop-linux:
-    needs: plan
-    if: needs.plan.outputs.linux == 'true'
+    needs: [ plan, build-extension ]
+    if: ${{ !cancelled() && needs.plan.outputs.linux == 'true' && (needs.build-extension.result == 'success' || needs.build-extension.result == 'skipped') }}
     runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     env:
       SLINT_LINUX_SDK_URL: ${{ vars.FETCHJET_SLINT_LINUX_SDK_URL || 'https://github.com/slint-ui/slint/releases/download/v1.18.1/Slint-cpp-1.18.1-Linux-x86_64.tar.gz' }}
@@ -401,8 +401,8 @@ jobs:
 
 
   build-desktop-windows:
-    needs: plan
-    if: needs.plan.outputs.windows == 'true'
+    needs: [ plan, build-extension ]
+    if: ${{ !cancelled() && needs.plan.outputs.windows == 'true' && (needs.build-extension.result == 'success' || needs.build-extension.result == 'skipped') }}
     # RUNNER_WINDOWS = win-host builds it on your Windows PC (see scripts/setup-windows-runner.ps1).
     runs-on: ${{ vars.RUNNER_WINDOWS || 'windows-latest' }}
     steps:
@@ -529,8 +529,8 @@ jobs:
 
 
   build-desktop-macos:
-    needs: plan
-    if: needs.plan.outputs.macos == 'true'
+    needs: [ plan, build-extension ]
+    if: ${{ !cancelled() && needs.plan.outputs.macos == 'true' && (needs.build-extension.result == 'success' || needs.build-extension.result == 'skipped') }}
     # RUNNER_MACOS = mac-host builds it on your own Mac (see scripts/setup-macos-runner.sh).
     runs-on: ${{ vars.RUNNER_MACOS || 'macos-latest' }}
     steps:
@@ -643,8 +643,8 @@ jobs:
   # The App Store build (FETCHJET_EDITION=store) is archived and uploaded from Xcode with
   # your signing identity; it is not produced here.
   build-ios-ipa:
-    needs: plan
-    if: needs.plan.outputs.ios == 'true'
+    needs: [ plan, build-extension ]
+    if: ${{ !cancelled() && needs.plan.outputs.ios == 'true' && (needs.build-extension.result == 'success' || needs.build-extension.result == 'skipped') }}
     runs-on: ${{ vars.RUNNER_MACOS || 'macos-latest' }}
     timeout-minutes: 120
     steps:
