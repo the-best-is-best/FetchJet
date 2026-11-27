@@ -16,6 +16,7 @@
 **Téléchargements**
 - **Un même nom n'est jamais écrasé :** un nouveau téléchargement dont le nom est déjà utilisé par un autre téléchargement dans ce dossier, même encore en cours, reçoit un nom numéroté. Avant, une vidéo ajoutée pendant qu'une autre du même titre se téléchargeait encore pouvait remplacer ce fichier.
 - **Mises à jour plus rapides :** la mise à jour de l'application se télécharge maintenant avec le moteur de FetchJet sur plusieurs connexions, comme vos téléchargements. Cela commence avec la mise à jour qui suit la 2.2.0 (la 2.2.0 elle-même se télécharge encore à l'ancienne).
+- **Vidéos qui s'arrêtaient avec « HTTP Error 410 » :** quand un site refuse le lien du fichier d'une vidéo, FetchJet télécharge maintenant la même qualité depuis le flux du site au lieu d'échouer.
 - **Trouver les fichiers de cette page** trouve plus de fichiers : toutes les tailles d'une image, les liens gardés dans les attributs de la page, et les liens sans nom de fichier qui mènent à un fichier.
 
 **Corrections**

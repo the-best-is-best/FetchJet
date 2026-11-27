@@ -16,6 +16,7 @@
 **Descargas**
 - **Un mismo nombre nunca se sobrescribe:** una descarga nueva cuyo nombre ya usa otra descarga en esa carpeta, aunque siga en curso, recibe un nombre numerado. Antes, un vídeo añadido mientras otro con el mismo título aún se descargaba podía reemplazar ese archivo.
 - **Actualizaciones más rápidas:** la actualización de la app ahora se descarga con el propio motor de FetchJet por varias conexiones, igual que tus descargas. Empieza con la actualización posterior a la 2.2.0 (la 2.2.0 en sí aún se descarga a la manera antigua).
+- **Vídeos que se detenían con "HTTP Error 410":** cuando un sitio rechaza el enlace del archivo de un vídeo, FetchJet ahora descarga la misma calidad desde el stream del sitio en lugar de fallar.
 - **Buscar archivos en esta página** encuentra más archivos: todos los tamaños de una imagen, enlaces guardados en atributos de la página y enlaces sin nombre de archivo que llevan a un archivo.
 
 **Correcciones**

@@ -16,6 +16,7 @@
 **Downloads**
 - **Same name never written over:** a new download whose name is already used by another download in that folder, even one still running, gets a numbered name. Before, a video added while another one of the same title was still downloading could replace that file.
 - **Faster updates:** the app update now downloads with FetchJet's own engine over several connections, the same way as your downloads. It starts with the update after 2.2.0 (2.2.0 itself still downloads the old way).
+- **Videos that stopped with "HTTP Error 410":** when a site refuses the file link of a video, FetchJet now downloads the same quality from the site's stream instead of failing.
 - **Find files on this page** finds more: every size of a picture, links kept in page attributes, and links without a file name that point to a file.
 
 **Fixes**

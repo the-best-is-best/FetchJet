@@ -16,6 +16,7 @@
 **İndirmeler**
 - **Aynı adın üzerine asla yazılmaz:** adı o klasörde başka bir indirme tarafından kullanılan yeni bir indirme, o indirme hâlâ sürüyor olsa bile, numaralı bir ad alır. Önceden, aynı başlıklı başka bir video hâlâ inerken eklenen bir video o dosyanın yerine geçebiliyordu.
 - **Daha hızlı güncellemeler:** uygulama güncellemesi artık indirmeleriniz gibi FetchJet'in kendi motoruyla, birkaç bağlantı üzerinden iner. Bu, 2.2.0'dan sonraki güncellemeyle başlar (2.2.0'ın kendisi hâlâ eski yolla iner).
+- **"HTTP Error 410" ile duran videolar:** bir site videonun dosya bağlantısını reddettiğinde FetchJet artık başarısız olmak yerine aynı kaliteyi sitenin akışından indirir.
 - **Bu sayfadaki dosyaları bul** daha fazlasını bulur: bir görselin tüm boyutları, sayfa özniteliklerinde tutulan bağlantılar ve dosya adı olmadan bir dosyayı gösteren bağlantılar.
 
 **Düzeltmeler**

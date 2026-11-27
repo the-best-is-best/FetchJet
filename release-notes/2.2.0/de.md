@@ -16,6 +16,7 @@
 **Downloads**
 - **Gleicher Name wird nie überschrieben:** Ein neuer Download, dessen Name in diesem Ordner schon von einem anderen Download benutzt wird, auch von einem, der noch läuft, bekommt einen nummerierten Namen. Vorher konnte ein Video, das hinzugefügt wurde, während ein anderes mit demselben Titel noch lud, diese Datei ersetzen.
 - **Schnellere Updates:** Das App-Update wird jetzt mit FetchJets eigener Engine über mehrere Verbindungen geladen, genauso wie deine Downloads. Das gilt ab dem Update nach 2.2.0 (2.2.0 selbst wird noch auf die alte Art geladen).
+- **Videos, die mit "HTTP Error 410" abbrachen:** Wenn eine Website den Dateilink eines Videos verweigert, lädt FetchJet jetzt dieselbe Qualität aus dem Stream der Website, statt abzubrechen.
 - **Dateien auf dieser Seite finden** findet mehr Dateien: jede Größe eines Bildes, Links in Seitenattributen und Links ohne Dateinamen, die auf eine Datei zeigen.
 
 **Fehlerbehebungen**

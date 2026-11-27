@@ -16,6 +16,7 @@
 **Unduhan**
 - **Nama sama tidak pernah ditimpa:** unduhan baru yang namanya sudah dipakai unduhan lain di folder itu, bahkan yang masih berjalan, mendapat nama bernomor. Sebelumnya, video yang ditambahkan saat video lain dengan judul sama masih diunduh bisa menggantikan file itu.
 - **Pembaruan lebih cepat:** pembaruan aplikasi kini diunduh dengan mesin FetchJet sendiri melalui beberapa koneksi, sama seperti unduhan Anda. Ini berlaku mulai pembaruan setelah 2.2.0 (2.2.0 sendiri masih diunduh dengan cara lama).
+- **Video yang berhenti dengan "HTTP Error 410":** saat situs menolak tautan file sebuah video, FetchJet kini mengunduh kualitas yang sama dari stream situs itu, bukan gagal.
 - **Cari file di halaman ini** menemukan lebih banyak: semua ukuran sebuah gambar, tautan yang disimpan di atribut halaman, dan tautan tanpa nama file yang mengarah ke sebuah file.
 
 **Perbaikan**

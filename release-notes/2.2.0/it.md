@@ -16,6 +16,7 @@
 **Download**
 - **Lo stesso nome non viene mai sovrascritto:** un nuovo download il cui nome è già usato da un altro download in quella cartella, anche se ancora in corso, riceve un nome numerato. Prima, un video aggiunto mentre un altro con lo stesso titolo era ancora in download poteva sostituire quel file.
 - **Aggiornamenti più veloci:** l'aggiornamento dell'app ora si scarica con il motore di FetchJet su più connessioni, come i tuoi download. Vale a partire dall'aggiornamento successivo alla 2.2.0 (la 2.2.0 stessa si scarica ancora nel modo vecchio).
+- **Video che si fermavano con "HTTP Error 410":** quando un sito rifiuta il link del file di un video, FetchJet ora scarica la stessa qualità dallo stream del sito invece di fallire.
 - **Trova i file in questa pagina** trova più file: tutte le dimensioni di un'immagine, i link negli attributi della pagina e i link senza nome di file che portano a un file.
 
 **Correzioni**
