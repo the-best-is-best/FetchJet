@@ -12,7 +12,8 @@ data class ResolvedStream(
     val size: Long,
     val hasVideo: Boolean,
     val hasAudio: Boolean,
-    val headers: Map<String, String>
+    val headers: Map<String, String>,
+    val height: Int = 0
 )
 
 data class ResolvedMedia(
@@ -69,6 +70,12 @@ object DirectMediaResolver {
         return hlsOnly
     }
 
+    /** The page's HLS stream of the same picture size, for when its plain file link is refused. */
+    suspend fun resolveHls(url: String, height: Int, headers: Map<String, String>): ResolvedMedia? {
+        val json = runYtDlpJson(url, hlsFallbackSelector(height), headers) ?: return null
+        return parse(json)?.takeIf { it.hlsUrl != null }
+    }
+
     /** Why the last [parse] said no (for the log), and the rejected format's height. */
     private var lastReject: String = ""
     private var lastRejectHeight: Int = 0
@@ -123,7 +130,8 @@ object DirectMediaResolver {
                 size = f.getLong("filesize") ?: f.getLong("filesize_approx") ?: -1L,
                 hasVideo = !vcodec.equals("none", true),
                 hasAudio = !acodec.equals("none", true),
-                headers = hdrs
+                headers = hdrs,
+                height = (f["height"] as? Number)?.toInt() ?: 0
             )
         }
         if (streams.isEmpty() || streams.size > 2) {
