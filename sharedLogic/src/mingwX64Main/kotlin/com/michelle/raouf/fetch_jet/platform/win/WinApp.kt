@@ -46,10 +46,6 @@ object WinApp {
         winGetEnv("FETCHJET_LEGACY") == "1" || (exeDir.isNotEmpty() && winExists("$exeDir\\$LEGACY_MARKER"))
     }
 
-    val osMajorMinor: Pair<Int, Int>? by lazy { winOsVersion() }
-
-    val isWindows7: Boolean get() = osMajorMinor.let { it != null && (it.first < 6 || (it.first == 6 && it.second <= 1)) }
-
     val launcherPath: String? get() = if (kind == WinInstallKind.DEVELOPMENT || kind == WinInstallKind.PORTABLE) null else exePath
 
     val appHome: String

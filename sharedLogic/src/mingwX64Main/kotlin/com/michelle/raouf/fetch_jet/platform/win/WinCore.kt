@@ -97,18 +97,6 @@ fun winMemoryUse(): WinMemoryUse? = memScoped {
     WinMemoryUse(privateBytes = words[9], workingSetBytes = words[2])
 }
 
-fun winOsVersion(): Pair<Int, Int>? = memScoped {
-    val ntdll = GetModuleHandleW("ntdll.dll") ?: return null
-    val query = GetProcAddress(ntdll, "RtlGetVersion")
-        ?.reinterpret<CFunction<(COpaquePointer?) -> Int>>() ?: return null
-    val size = 284
-    val info = allocArray<ByteVar>(size)
-    val words = info.reinterpret<UIntVar>()
-    words[0] = size.toUInt()
-    if (query(info) != 0) return null
-    words[1].toInt() to words[2].toInt()
-}
-
 fun winThreadId(): UInt = GetCurrentThreadId()
 
 fun winUptimeMs(): Long = GetTickCount64().toLong()

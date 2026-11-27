@@ -14,7 +14,7 @@ private val windowsToolAssets: DesktopToolAssets by lazy {
         ffmpegGzipped = true,
         denoZip = "deno-x86_64-pc-windows-msvc.zip",
         bundledQuickJs = if (WinApp.isLegacy && WinApp.exeDir.isNotEmpty()) "${WinApp.exeDir}\\qjs.exe" else null,
-        playerSupported = !WinApp.isWindows7,
+        legacyPlayer = WinApp.isLegacy,
         ytDlpRepo = if (WinApp.isLegacy) LEGACY_YT_DLP_REPO else UPSTREAM_YT_DLP_REPO,
     )
 }

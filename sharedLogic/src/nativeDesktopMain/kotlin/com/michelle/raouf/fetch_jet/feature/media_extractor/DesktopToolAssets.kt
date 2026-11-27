@@ -8,7 +8,7 @@ internal class DesktopToolAssets(
     val ffmpegGzipped: Boolean,
     val denoZip: String,
     val bundledQuickJs: String? = null,
-    val playerSupported: Boolean = true,
+    val legacyPlayer: Boolean = false,
     val ytDlpRepo: String = UPSTREAM_YT_DLP_REPO,
 )
 

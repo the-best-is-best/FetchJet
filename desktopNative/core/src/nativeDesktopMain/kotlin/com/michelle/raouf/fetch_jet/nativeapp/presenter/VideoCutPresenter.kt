@@ -1,7 +1,6 @@
 package com.michelle.raouf.fetch_jet.nativeapp.presenter
 
 import com.michelle.raouf.fetch_jet.feature.media_extractor.ClipTime
-import com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable
 import com.michelle.raouf.fetch_jet.feature.video_cut.CutClip
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode
@@ -40,7 +39,7 @@ internal fun buildVideoCut(page: VideoCutUi?, known: List<CutClip>): VideoCutDto
         timeline = page.mode == VideoCutMode.TIMELINE,
         clipsOnly = page.clipsOnly,
         reading = page.reading,
-        timelineOff = !page.timelineAvailable || !isPlayerLibraryAvailable(),
+        timelineOff = !page.timelineAvailable,
         fileName = page.fileName,
         fileNameRtl = startsRightToLeft(page.fileName),
         duration = if (page.durationMs > 0L) ltr(cutLength(page.durationMs)) else "",
@@ -69,7 +68,7 @@ internal fun buildVideoCut(page: VideoCutUi?, known: List<CutClip>): VideoCutDto
 internal fun Presenter.videoCutChoose(timeline: Boolean) {
     val page = vm.uiState.value.videoCut ?: return
     if (!timeline) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
-    if (!page.timelineAvailable || !isPlayerLibraryAvailable()) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
+    if (!page.timelineAvailable) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIME))
     val task = task(page.taskId)
     if (task == null || headless) return vm.onEvent(DashboardUiEvent.OnVideoCutModeChosen(VideoCutMode.TIMELINE))
     openTrimPlayer(task, PlayerTrim(page.taskId, page.startMs, page.endMs))
