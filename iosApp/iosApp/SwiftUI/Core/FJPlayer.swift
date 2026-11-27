@@ -447,6 +447,7 @@ struct FJPlayerSurface: UIViewRepresentable {
         private var kind: FJLevel.Kind?
         private var horizontal = false
         private var seeking = false
+        private var downPoint: CGPoint?
         private var startValue: Double = 0
         private var savedBrightness: CGFloat?
         private weak var screen: UIScreen?
@@ -487,15 +488,27 @@ struct FJPlayerSurface: UIViewRepresentable {
 
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             guard let pan = g as? UIPanGestureRecognizer, let view = pan.view else { return true }
-            let velocity = pan.velocity(in: view)
-            let y = pan.location(in: view).y
+            let location = pan.location(in: view)
+            var move = pan.translation(in: view)
+            if let downPoint {
+                move = CGPoint(x: location.x - downPoint.x, y: location.y - downPoint.y)
+            }
+            if hypot(move.x, move.y) < 4 { move = pan.velocity(in: view) }
+            let y = downPoint?.y ?? location.y
             let edge: CGFloat = 44
-            if parent.seekable && abs(velocity.x) > abs(velocity.y) * 1.5 {
+            if parent.seekable && abs(move.x) > abs(move.y) * 1.5 {
                 horizontal = true
                 return true
             }
             horizontal = false
-            return abs(velocity.y) > abs(velocity.x) * 1.5 && y > edge && y < view.bounds.height - edge
+            return abs(move.y) > abs(move.x) * 1.5 && y > edge && y < view.bounds.height - edge
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            if g is UIPanGestureRecognizer, let view = g.view, !seeking {
+                downPoint = touch.location(in: view)
+            }
+            return true
         }
 
         @objc func pan(_ g: UIPanGestureRecognizer) {
@@ -520,7 +533,8 @@ struct FJPlayerSurface: UIViewRepresentable {
             case .changed:
                 guard let kind else { return }
                 let span = max(view.bounds.height * 0.7, 1)
-                let value = min(1, max(0, startValue - Double(g.translation(in: view).y / span)))
+                let dy = downPoint.map { g.location(in: view).y - $0.y } ?? g.translation(in: view).y
+                let value = min(1, max(0, startValue - Double(dy / span)))
                 switch kind {
                 case .volume:
                     if let slider = view.volumeSlider { slider.value = Float(value) } else { parent.player.volume = Float(value) }
@@ -531,6 +545,7 @@ struct FJPlayerSurface: UIViewRepresentable {
             case .ended, .cancelled, .failed:
                 if kind != nil { parent.onLevel(nil) }
                 kind = nil
+                downPoint = nil
             default: break
             }
         }
@@ -540,16 +555,26 @@ struct FJPlayerSurface: UIViewRepresentable {
             case .began:
                 seeking = true
                 parent.onSeekStart()
+                parent.onSeekMove(seekFraction(g, in: view))
             case .changed:
                 guard seeking else { return }
-                let width = max(view.bounds.width, 1)
-                parent.onSeekMove(Double(g.translation(in: view).x / width))
+                parent.onSeekMove(seekFraction(g, in: view))
             case .ended, .cancelled, .failed:
-                if seeking { parent.onSeekEnd() }
+                if seeking {
+                    if g.state == .ended { parent.onSeekMove(seekFraction(g, in: view)) }
+                    parent.onSeekEnd()
+                }
                 seeking = false
                 horizontal = false
+                downPoint = nil
             default: break
             }
+        }
+
+        private func seekFraction(_ g: UIPanGestureRecognizer, in view: UIView) -> Double {
+            let width = max(view.bounds.width, 1)
+            let dx = downPoint.map { g.location(in: view).x - $0.x } ?? g.translation(in: view).x
+            return Double(dx / width)
         }
     }
 }

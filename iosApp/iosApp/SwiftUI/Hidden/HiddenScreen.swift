@@ -72,13 +72,14 @@ struct HiddenScreen: View {
         store.state.hiddenTaskIdsOfRows(keys: Array(keys))
     }
 
+    private func closePage() {
+        checked = []
+        store.send(DashboardUiEventOnHiddenCloseGroup.shared)
+    }
+
     private func goBack() {
-        if inPage {
-            checked = []
-            store.send(DashboardUiEventOnHiddenCloseGroup.shared)
-        } else {
-            onBack()
-        }
+        if inPage { closePage() }
+        onBack()
     }
     private var selectionMode: Bool { !checked.isEmpty }
 
@@ -91,11 +92,11 @@ struct HiddenScreen: View {
         if let playlist = store.state.hiddenOpenPlaylist() {
             HiddenGroupBar(tag: "LIST", title: playlist.title, summary: playlist.summaryText,
                            canPause: playlist.canPause, canResume: playlist.canResume,
-                           playlistId: playlist.id, folder: "")
+                           playlistId: playlist.id, folder: "", onBack: closePage)
         } else if let folder = store.state.hiddenOpenFolder() {
             HiddenGroupBar(tag: "DIR", title: folder.label, summary: folder.summaryText, path: folder.path,
                            canPause: folder.canPause, canResume: folder.canResume,
-                           playlistId: "", folder: folder.folder)
+                           playlistId: "", folder: folder.folder, onBack: closePage)
         }
     }
 
@@ -149,7 +150,7 @@ struct HiddenScreen: View {
                 Button(action: goBack) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.backward").font(.fj(15, .semibold))
-                        Text(inPage ? s.playlistBack : s.moreTitle).font(.fj(17))
+                        Text(s.moreTitle).font(.fj(17))
                     }
                 }
             }
@@ -373,6 +374,7 @@ private struct HiddenGroupBar: View {
     let canResume: Bool
     let playlistId: String
     let folder: String
+    let onBack: () -> Void
 
     var body: some View {
         let play: (() -> Void)? = store.host.hiddenGroupCanPlay() ? {
@@ -386,6 +388,7 @@ private struct HiddenGroupBar: View {
             title: title,
             summary: summary,
             path: path,
+            onBack: onBack,
             actions: GroupBarActions(
                 onPlay: play,
                 canPause: canPause,

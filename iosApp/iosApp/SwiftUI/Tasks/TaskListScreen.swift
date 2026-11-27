@@ -549,100 +549,98 @@ struct TaskSelectionBar: View {
     var onUnhide: (() -> Void)? = nil
     var onMerge: (() -> Void)? = nil
     let onClose: () -> Void
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         let s = store.strings
-        HStack(spacing: 8) {
-            Button(action: onClose) {
-                Image(systemName: "xmark").font(.fj(14, .semibold))
-                    .frame(width: 34, height: 34)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                closeButton
+                countText.layoutPriority(1)
+                checkAllButton
+                Spacer(minLength: 0)
+                actions(s)
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(FJTheme.color.onSurface)
-            Text(s.homeSelectedCount(count: Int32(count)))
-                .font(.fj(13, .semibold))
-                .foregroundStyle(FJTheme.color.onSurface)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Button { onCheckAll(!allChecked) } label: {
-                Text(allChecked ? s.selectNone : s.selectAll)
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(FJTheme.color.primary)
-            Spacer(minLength: 0)
-            if let onExport {
-                Button(action: onExport) {
-                    Text(s.homeExport)
-                        .font(.fj(12, .semibold))
-                        .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .fixedSize()
-            }
-            if let onUnhide {
-                Button(action: onUnhide) {
-                    Label(s.hiddenUnhide, systemImage: "eye")
-                        .font(.fj(12, .semibold))
-                        .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .fixedSize()
-            }
-            if let onHide {
-                Button(action: onHide) {
-                    Image(systemName: "eye.slash")
-                        .font(.fj(13, .semibold))
-                        .frame(width: 40, height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .accessibilityLabel(s.hiddenHide)
-            }
-            if let onMerge {
-                Button(action: onMerge) {
-                    Group {
-                        if sizeClass == .regular {
-                            Label(s.mergeVideos, systemImage: "arrow.triangle.merge")
-                        } else {
-                            Image(systemName: "arrow.triangle.merge")
-                        }
+            HStack(spacing: 8) {
+                closeButton
+                countText.fixedSize()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        checkAllButton
+                        actions(s)
                     }
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, sizeClass == .regular ? 12 : 0)
-                    .frame(minWidth: 40)
-                    .frame(height: 34)
-                    .background(FJTheme.color.primary, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(FJTheme.color.onPrimary)
                 }
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .accessibilityLabel(s.mergeVideos)
+                .defaultScrollAnchor(.trailing)
             }
-            Button(action: onDelete) {
-                Label(s.delete_, systemImage: "trash")
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(FJTheme.color.error, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(FJTheme.color.onError)
-            }
-            .buttonStyle(.borderless)
-            .fixedSize()
+        }
+    }
+
+    private var closeButton: some View {
+        Button(action: onClose) {
+            Image(systemName: "xmark").font(.fj(14, .semibold))
+                .frame(width: 34, height: 34)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.onSurface)
+    }
+
+    private var countText: some View {
+        Text(store.strings.homeSelectedCount(count: Int32(count)))
+            .font(.fj(13, .semibold))
+            .foregroundStyle(FJTheme.color.onSurface)
+            .lineLimit(1)
+    }
+
+    private var checkAllButton: some View {
+        Button { onCheckAll(!allChecked) } label: {
+            Text(allChecked ? store.strings.selectNone : store.strings.selectAll)
+                .font(.fj(12, .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 4)
+                .frame(height: 34)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.primary)
+        .fixedSize()
+    }
+
+    private func outlined(_ title: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.fj(12, .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.primary)
+        .fixedSize()
+    }
+
+    private func filled(_ title: String, _ icon: String, _ color: Color, _ onColor: Color, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.fj(12, .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(color, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(onColor)
+        }
+        .buttonStyle(.borderless)
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func actions(_ s: AppLocalization) -> some View {
+        if let onExport { outlined(s.homeExport, onExport) }
+        if let onHide { outlined(s.hiddenHide, onHide) }
+        if let onMerge {
+            filled(s.mergeVideos, "square.on.square", FJTheme.color.primary, FJTheme.color.onPrimary, onMerge)
+        }
+        filled(s.delete_, "trash", FJTheme.color.error, FJTheme.color.onError, onDelete)
+        if let onUnhide {
+            filled(s.hiddenUnhide, "eye", FJTheme.color.primary, FJTheme.color.onPrimary, onUnhide)
         }
     }
 }
