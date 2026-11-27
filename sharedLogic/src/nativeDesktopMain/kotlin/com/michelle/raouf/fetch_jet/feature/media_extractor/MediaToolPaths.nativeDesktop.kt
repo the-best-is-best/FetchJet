@@ -40,6 +40,8 @@ fun getExistingFfmpegBinary(): String? = DesktopOs.join(getToolsDir(), programNa
 
 fun getExistingDenoBinary(): String? = DesktopOs.join(getToolsDir(), programName("deno")).takeIf { isFile(it) }
 
+fun getExistingQuickJsBinary(): String? = desktopToolAssets.bundledQuickJs?.takeIf { isFile(it) }
+
 fun getYtDlpCacheDir(): String {
     val dir = DesktopOs.join(DesktopOs.join(DesktopPaths.settings(), "cache"), "yt-dlp")
     if (DesktopOs.fileInfo(dir)?.isDirectory != true) DesktopOs.createDirectories(dir)
@@ -48,7 +50,8 @@ fun getYtDlpCacheDir(): String {
 
 fun ytDlpRuntimeArgs(): List<String> = buildList {
     add("--js-runtimes")
-    add(getExistingDenoBinary()?.let { "deno:$it" } ?: "deno")
+    if (desktopToolAssets.bundledQuickJs != null) add(getExistingQuickJsBinary()?.let { "quickjs:$it" } ?: "quickjs")
+    else add(getExistingDenoBinary()?.let { "deno:$it" } ?: "deno")
     add("--js-runtimes")
     add("node")
     add("--cache-dir")

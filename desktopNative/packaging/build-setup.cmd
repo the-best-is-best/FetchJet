@@ -24,6 +24,7 @@ if not defined VER (
 )
 
 set "MSI=%FJ_OUT%\FetchJet-%VER%.msi"
+if "%FJ_LEGACY%"=="1" set "MSI=%FJ_OUT%\FetchJet-%VER%-Windows-7-8-8.1.msi"
 if not exist "%MSI%" (
     echo build-setup: FAILED: no %MSI%, run packaging\build-msi.cmd first
     exit /b 1
@@ -32,6 +33,7 @@ if not exist "%MSI%" (
 if not exist "%OBJ%" mkdir "%OBJ%"
 del /q "%OBJ%\*.wixobj" 2>nul
 set "SETUP=%FJ_OUT%\FetchJet-%VER%-setup.exe"
+if "%FJ_LEGACY%"=="1" set "SETUP=%FJ_OUT%\FetchJet-%VER%-Setup-Windows-7-8-8.1.exe"
 if exist "%SETUP%" del /q "%SETUP%"
 
 echo START %DATE% %TIME% version %VER% msi %MSI% wix %WIXBIN% > "%LOG%"

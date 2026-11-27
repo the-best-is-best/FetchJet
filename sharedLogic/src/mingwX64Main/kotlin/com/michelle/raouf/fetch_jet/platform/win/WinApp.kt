@@ -7,6 +7,7 @@ enum class WinInstallKind { DEVELOPMENT, INSTALLED, STORE, PORTABLE }
 object WinApp {
     const val INSTALLED_MARKER = "FetchJet.installed"
     const val PORTABLE_MARKER = "FetchJet.portable"
+    const val LEGACY_MARKER = "FetchJet.legacy"
     const val PORTABLE_DATA = "data"
     const val HOME_FOLDER = ".fetch_jet"
 
@@ -40,6 +41,14 @@ object WinApp {
     val isDevelopmentBuild: Boolean get() = kind == WinInstallKind.DEVELOPMENT
 
     val isPortable: Boolean get() = kind == WinInstallKind.PORTABLE
+
+    val isLegacy: Boolean by lazy {
+        winGetEnv("FETCHJET_LEGACY") == "1" || (exeDir.isNotEmpty() && winExists("$exeDir\\$LEGACY_MARKER"))
+    }
+
+    val osMajorMinor: Pair<Int, Int>? by lazy { winOsVersion() }
+
+    val isWindows7: Boolean get() = osMajorMinor.let { it != null && (it.first < 6 || (it.first == 6 && it.second <= 1)) }
 
     val launcherPath: String? get() = if (kind == WinInstallKind.DEVELOPMENT || kind == WinInstallKind.PORTABLE) null else exePath
 

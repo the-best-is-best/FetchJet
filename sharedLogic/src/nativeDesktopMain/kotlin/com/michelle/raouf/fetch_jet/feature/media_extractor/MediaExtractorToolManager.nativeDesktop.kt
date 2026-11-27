@@ -43,7 +43,8 @@ actual fun getMediaExtractorToolStatus(): String {
 }
 
 actual fun getJsRuntimeStatus(): JsRuntimeStatus =
-    JsRuntimeStatus(name = "deno", isReady = getExistingDenoBinary() != null)
+    if (desktopToolAssets.bundledQuickJs != null) JsRuntimeStatus(name = "QuickJS", isReady = getExistingQuickJsBinary() != null)
+    else JsRuntimeStatus(name = "deno", isReady = getExistingDenoBinary() != null)
 
 actual fun isMediaExtractorToolInstalled(): Boolean = getExistingYtDlpBinary() != null
 
@@ -128,8 +129,20 @@ internal suspend fun downloadTo(url: String, dest: String, onProgress: (Float?) 
     }
 }
 
-private suspend fun fetchPublishedYtDlpSha256(assetName: String): String? = try {
-    readText("https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS")
+private val YT_DLP_REPO: String get() = desktopToolAssets.ytDlpRepo
+private val ytDlpPinsTag: Boolean get() = YT_DLP_REPO != UPSTREAM_YT_DLP_REPO
+
+private fun ytDlpReleaseBase(tag: String?): String =
+    if (tag == null) "https://github.com/$YT_DLP_REPO/releases/latest/download"
+    else "https://github.com/$YT_DLP_REPO/releases/download/$tag"
+
+private fun ytDlpTagFile(toolsDir: String): String = DesktopOs.join(toolsDir, "yt-dlp.release")
+
+private fun installedYtDlpTag(toolsDir: String): String =
+    runCatching { AppFileSystem.read(ytDlpTagFile(toolsDir).toPath()) { readUtf8() }.trim() }.getOrDefault("")
+
+private suspend fun fetchPublishedYtDlpSha256(assetName: String, tag: String?): String? = try {
+    readText("${ytDlpReleaseBase(tag)}/SHA2-256SUMS")
         .lineSequence()
         .map { it.trim() }
         .firstOrNull { it.endsWith("  $assetName") || it.endsWith(" $assetName") }
@@ -166,15 +179,16 @@ private suspend fun installedVersion(binary: String, timeoutSec: Long = 30): Str
 private fun sameVersion(installed: String?, latestTag: String?): Boolean =
     latestTag == null || installed == null || installed == latestTag.removePrefix("v")
 
-private suspend fun installYtDlp(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
-    val expected = fetchPublishedYtDlpSha256(YT_DLP_ASSET)
+private suspend fun installYtDlp(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit, latestTag: String? = null) {
+    val tag = if (ytDlpPinsTag) latestTag ?: latestGitHubReleaseTag(YT_DLP_REPO) else null
+    val expected = fetchPublishedYtDlpSha256(YT_DLP_ASSET, tag)
         ?: throw IllegalStateException("yt-dlp checksum list not available, try again later")
     val zip = DesktopOs.join(toolsDir, "$YT_DLP_ASSET.download")
     val live = ytDlpFolder()
     val fresh = DesktopOs.join(toolsDir, "yt-dlp-dir.new")
     val old = DesktopOs.join(toolsDir, "yt-dlp-dir.old")
     try {
-        val actual = downloadTo("https://github.com/yt-dlp/yt-dlp/releases/latest/download/$YT_DLP_ASSET", zip) {
+        val actual = downloadTo("${ytDlpReleaseBase(tag)}/$YT_DLP_ASSET", zip) {
             onProgress(ToolDownloadProgress("yt-dlp", it))
         }
         if (expected != actual) {
@@ -196,6 +210,7 @@ private suspend fun installYtDlp(toolsDir: String, onProgress: (ToolDownloadProg
         }
         DesktopOs.deleteRecursively(old)
         DesktopOs.deleteFile(DesktopOs.join(toolsDir, programName("yt-dlp")))
+        if (tag != null) AppFileSystem.write(ytDlpTagFile(toolsDir).toPath()) { writeUtf8(tag) }
     } finally {
         DesktopOs.deleteFile(zip)
         DesktopOs.deleteRecursively(fresh)
@@ -267,6 +282,10 @@ private suspend fun installDeno(toolsDir: String, onProgress: (ToolDownloadProgr
     }
 }
 
+private suspend fun installJsRuntime(toolsDir: String, onProgress: (ToolDownloadProgress) -> Unit) {
+    if (desktopToolAssets.bundledQuickJs == null) installDeno(toolsDir, onProgress)
+}
+
 actual suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress) -> Unit): Boolean =
     withContext(Dispatchers.IO) {
         try {
@@ -274,11 +293,11 @@ actual suspend fun downloadMediaExtractorTool(onProgress: (ToolDownloadProgress)
             installYtDlp(toolsDir, onProgress)
             installFfmpeg(toolsDir, onProgress)
             try {
-                installDeno(toolsDir, onProgress)
+                installJsRuntime(toolsDir, onProgress)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                AppLog.e("deno could not be installed: ${e.message}")
+                AppLog.e("JS runtime could not be installed: ${e.message}")
             }
             true
         } catch (e: CancellationException) {
@@ -307,16 +326,21 @@ actual suspend fun autoUpdateMediaTools(onProgress: (ToolDownloadProgress) -> Un
             }
         }
 
-        val ytDlpTag = latestGitHubReleaseTag("yt-dlp/yt-dlp")
-        val denoTag = latestGitHubReleaseTag("denoland/deno")
+        val bundledQuickJs = desktopToolAssets.bundledQuickJs != null
+        val ytDlpTag = latestGitHubReleaseTag(YT_DLP_REPO)
+        val denoTag = if (!bundledQuickJs) latestGitHubReleaseTag("denoland/deno") else null
         step("yt-dlp", {
             val bin = getExistingYtDlpBinary()
-            bin == null || ytDlpFolderBinary() == null || !sameVersion(installedVersion(bin), ytDlpTag)
-        }) { installYtDlp(toolsDir, onProgress) }
+            when {
+                bin == null || ytDlpFolderBinary() == null -> true
+                ytDlpPinsTag -> ytDlpTag != null && installedYtDlpTag(toolsDir) != ytDlpTag
+                else -> !sameVersion(installedVersion(bin), ytDlpTag)
+            }
+        }) { installYtDlp(toolsDir, onProgress, ytDlpTag) }
         step("ffmpeg", { ffmpegNeedsInstall() }) {
             installFfmpeg(toolsDir, onProgress)
         }
-        step("deno", {
+        if (!bundledQuickJs) step("deno", {
             val bin = getExistingDenoBinary()
             bin == null || !sameVersion(installedVersion(bin), denoTag)
         }) { installDeno(toolsDir, onProgress) }

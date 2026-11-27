@@ -36,9 +36,20 @@ internal object WindowsUpdater {
     fun firstAsset(assets: List<ReleaseAsset>, vararg extensions: String): ReleaseAsset? =
         assets.firstOrNull { asset -> extensions.any { asset.name.endsWith(it, ignoreCase = true) } }
 
-    fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? =
-        if (WinApp.isPortable) firstAsset(assets, PortableUpdater.ASSET_SUFFIX)
-        else firstAsset(assets, ".msi") ?: firstAsset(assets, ".exe")
+    const val LEGACY_SETUP_SUFFIX = "-Setup-Windows-7-8-8.1.exe"
+    const val LEGACY_PORTABLE_SUFFIX = "-windows-7-8-8.1-portable.zip"
+
+    private fun isLegacyAsset(asset: ReleaseAsset): Boolean =
+        asset.name.endsWith(LEGACY_SETUP_SUFFIX, ignoreCase = true) || asset.name.endsWith(LEGACY_PORTABLE_SUFFIX, ignoreCase = true)
+
+    fun pickAsset(assets: List<ReleaseAsset>): ReleaseAsset? {
+        if (WinApp.isLegacy) {
+            return firstAsset(assets, if (WinApp.isPortable) LEGACY_PORTABLE_SUFFIX else LEGACY_SETUP_SUFFIX)
+        }
+        val normal = assets.filterNot { isLegacyAsset(it) }
+        return if (WinApp.isPortable) firstAsset(normal, PortableUpdater.ASSET_SUFFIX)
+        else firstAsset(normal, ".msi") ?: firstAsset(normal, ".exe")
+    }
 
     fun installerCommand(installer: String): List<String> =
         if (installer.endsWith(".msi", ignoreCase = true)) {

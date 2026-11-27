@@ -949,42 +949,44 @@ private fun mediaRows(rows: Rows, v: SettingsSlice) {
                 )
             )
         }
-        rows.divider()
         val playerMode = com.michelle.raouf.fetch_jet.feature.media_player.PlayerMode
-        rows.add(
-            pickerRow(
-                "desktopPlayer",
-                s.playerModeTitle,
-                s.playerModeHint,
-                listOf(s.playerModeOn, s.playerModeOff),
-                when {
-                    playerMode.isOn() -> 1
-                    playerMode.isOff() -> 2
-                    else -> 0
-                },
-                below = true,
-            )
-        )
-        if (playerMode.isOn() && !com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady()) {
-            val libmpv = v.isDownloadingYtDlp && v.toolDownloadName == "libmpv"
-            rows.add(noteRow(s.playerAskText, ToneCode.MUTED))
+        if (com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryAvailable()) {
+            rows.divider()
             rows.add(
-                SettingRowDto(
-                    kind = SettingKind.BUTTONS.ordinal,
-                    top = 8,
-                    bottom = 14,
-                    buttons = listOf(
-                        button(
-                            "playerLibrary",
-                            if (libmpv) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("libmpv", (it * 100).toInt()) } ?: s.mediaDownloadingTool("libmpv")
-                            else s.playerAskDownload,
-                            filled = true,
-                            enabled = !v.isDownloadingYtDlp,
-                            busy = libmpv,
-                        )
-                    ),
+                pickerRow(
+                    "desktopPlayer",
+                    s.playerModeTitle,
+                    s.playerModeHint,
+                    listOf(s.playerModeOn, s.playerModeOff),
+                    when {
+                        playerMode.isOn() -> 1
+                        playerMode.isOff() -> 2
+                        else -> 0
+                    },
+                    below = true,
                 )
             )
+            if (playerMode.isOn() && !com.michelle.raouf.fetch_jet.feature.media_extractor.isPlayerLibraryReady()) {
+                val libmpv = v.isDownloadingYtDlp && v.toolDownloadName == "libmpv"
+                rows.add(noteRow(s.playerAskText, ToneCode.MUTED))
+                rows.add(
+                    SettingRowDto(
+                        kind = SettingKind.BUTTONS.ordinal,
+                        top = 8,
+                        bottom = 14,
+                        buttons = listOf(
+                            button(
+                                "playerLibrary",
+                                if (libmpv) v.toolDownloadFraction?.let { s.mediaDownloadingToolPercent("libmpv", (it * 100).toInt()) } ?: s.mediaDownloadingTool("libmpv")
+                                else s.playerAskDownload,
+                                filled = true,
+                                enabled = !v.isDownloadingYtDlp,
+                                busy = libmpv,
+                            )
+                        ),
+                    )
+                )
+            }
         }
         rows.divider()
         val pdfMode = com.michelle.raouf.fetch_jet.feature.pdf_reader.PdfMode

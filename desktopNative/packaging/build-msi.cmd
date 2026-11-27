@@ -32,6 +32,7 @@ if not exist "%FJ_STAGE%\FetchJet.exe" (
 if not exist "%OBJ%" mkdir "%OBJ%"
 del /q "%OBJ%\*.wixobj" "%OBJ%\files.wxs" 2>nul
 set "MSI=%FJ_OUT%\FetchJet-%VER%.msi"
+if "%FJ_LEGACY%"=="1" set "MSI=%FJ_OUT%\FetchJet-%VER%-Windows-7-8-8.1.msi"
 if exist "%MSI%" del /q "%MSI%"
 
 echo START %DATE% %TIME% version %VER% stage %FJ_STAGE% wix %WIXBIN% > "%LOG%"

@@ -28,7 +28,7 @@ internal val playerLibrary = OnDemandLibrary(
             file,
             "https://github.com/${PlayerLibraryPin.REPOSITORY}/releases/download/${PlayerLibraryPin.RELEASE_TAG}/" +
                 "libmpv-$platform-${PlayerLibraryPin.VERSION}.gz",
-            sha,
+            if (desktopToolAssets.playerSupported) sha else "",
         )
     },
     systemPaths = {
@@ -44,9 +44,9 @@ fun getExistingPlayerLibrary(): String? = playerLibrary.existing()
 
 fun isPlayerLibraryOutdated(): Boolean = playerLibrary.isOutdated()
 
-fun isPlayerLibraryReady(): Boolean = playerLibrary.isReady()
+fun isPlayerLibraryReady(): Boolean = desktopToolAssets.playerSupported && playerLibrary.isReady()
 
-fun isPlayerLibraryAvailable(): Boolean = playerLibrary.isAvailable()
+fun isPlayerLibraryAvailable(): Boolean = desktopToolAssets.playerSupported && playerLibrary.isAvailable()
 
 suspend fun downloadPlayerLibrary(onProgress: (ToolDownloadProgress) -> Unit = {}): String? = playerLibrary.download(onProgress)
 
