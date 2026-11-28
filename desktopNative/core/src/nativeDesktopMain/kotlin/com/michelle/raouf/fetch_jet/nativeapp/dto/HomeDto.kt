@@ -47,7 +47,6 @@ data class ChromeDto(
     val scheduled: Boolean = false,
     val speedOptions: List<MenuOptionDto> = emptyList(),
     val sortLabel: String = "",
-    val sortChoice: String = "",
     val sortOptions: List<MenuOptionDto> = emptyList(),
     val anyPausable: Boolean = false,
     val anyResumable: Boolean = false,

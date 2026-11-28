@@ -292,7 +292,7 @@ internal fun GroupHeaderRow(
     val s = LocalizationManager.Strings
     // Sort sits next to the title; on a short screen (oneRow) it is in the ⋮ menu instead.
     val sort: @Composable () -> Unit = {
-        if (!oneRow) sortOption?.let { SortMenuButton(it, onSort, short = true) }
+        if (!oneRow) sortOption?.let { SortMenuButton(it, onSort) }
     }
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         if (oneRow || maxWidth >= 720.dp) {

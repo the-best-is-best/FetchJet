@@ -20,8 +20,7 @@ component SortMenu inherits OptionsMenu {
 }
 
 component SortButton inherits TextButton {
-    in property <bool> short;
-    text: short ? "⇅ " + Core.chrome.sortChoice : Core.chrome.sortLabel;
+    text: Core.chrome.sortLabel;
     trail: "▾";
     height: 34px;
     pad: 10px;
@@ -161,9 +160,7 @@ component PlaylistBar inherits Rectangle {
                 overflow: elide;
                 horizontal-stretch: 1;
             }
-            SortButton {
-                short: true;
-            }
+            SortButton { }
         }
         HBox {
             height: 34px;

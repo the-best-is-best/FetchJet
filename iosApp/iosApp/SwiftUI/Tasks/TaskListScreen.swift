@@ -818,7 +818,7 @@ struct TaskListHeader: View {
 
 struct TaskSortMenu: View {
     @EnvironmentObject var store: FJStore
-    var short = false
+    var inPage = false
 
     var body: some View {
         let current = store.state.sortOption
@@ -831,8 +831,8 @@ struct TaskSortMenu: View {
                 }
             }
         } label: {
-            if short {
-                Label(current.label + " \u{25BE}", systemImage: "arrow.up.arrow.down")
+            if inPage {
+                Text(store.strings.homeSortBy(option: current.label) + " \u{25BE}")
                     .font(.fj(12, .semibold))
                     .foregroundStyle(FJTheme.color.primary)
                     .lineLimit(1)
@@ -1253,7 +1253,7 @@ struct GroupPageBar<Extra: View>: View {
                     }
                 }
                 Spacer(minLength: 0)
-                TaskSortMenu(short: true)
+                TaskSortMenu(inPage: true)
             }
             if let play = actions.onPlay {
                 wideButton(s.playerPlayAll, "play.fill", play)
