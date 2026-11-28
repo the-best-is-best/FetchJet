@@ -33,6 +33,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.folderTasks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenGroupQueue
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenQueueFor
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
+import com.michelle.raouf.fetch_jet.presentation.dashboard.sortTasks
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCut
 import com.michelle.raouf.fetch_jet.feature.video_cut.VideoCutMode
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
@@ -228,8 +229,8 @@ internal fun Presenter.playOpenGroup() {
     val folder = state.openFolder
     val playlist = state.openPlaylistId
     val (key, tasks) = when {
-        playlist != null -> playlist to playlistTasks(state.allTasks, playlist)
-        folder != null -> "dir:$folder" to folderTasks(state.allTasks, state.playlists, folder)
+        playlist != null -> playlist to sortTasks(playlistTasks(state.allTasks, playlist), state.sortOption)
+        folder != null -> "dir:$folder" to sortTasks(folderTasks(state.allTasks, state.playlists, folder), state.sortOption)
         else -> return
     }
     val queue = MediaPlayback.queueForGroup(key, tasks) ?: return

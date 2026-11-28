@@ -66,6 +66,7 @@ import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenOpening
 import com.michelle.raouf.fetch_jet.feature.hidden.HiddenStore
 import com.michelle.raouf.fetch_jet.feature.row_menu.RowMenuOptions
+import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiEvent
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardUiState
 import com.michelle.raouf.fetch_jet.presentation.dashboard.DashboardViewModel
@@ -497,6 +498,8 @@ private fun HiddenGroupPageHeader(
     onResumeAll: () -> Unit,
     onUnhide: () -> Unit,
     onPlay: (() -> Unit)?,
+    sortOption: TaskSortOption,
+    onSort: (TaskSortOption) -> Unit,
     compact: Boolean
 ) {
     GroupPageHeader(title, summary, path, onBack, compact) {
@@ -507,7 +510,9 @@ private fun HiddenGroupPageHeader(
                 canResume = canResume,
                 onPauseAll = onPauseAll,
                 onResumeAll = onResumeAll,
-                onUnhide = onUnhide
+                onUnhide = onUnhide,
+                sortOption = sortOption,
+                onSort = onSort
             ),
             compact
         )
@@ -667,6 +672,8 @@ internal fun HiddenScreen(
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
                     },
                     onPlay = playPage,
+                    sortOption = state.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             } else if (openFolder != null) {
@@ -684,6 +691,8 @@ internal fun HiddenScreen(
                         viewModel.onEvent(DashboardUiEvent.OnHiddenCloseGroup)
                     },
                     onPlay = playPage,
+                    sortOption = state.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             }

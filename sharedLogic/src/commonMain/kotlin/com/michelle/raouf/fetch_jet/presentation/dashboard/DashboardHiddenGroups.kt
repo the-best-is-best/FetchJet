@@ -12,14 +12,14 @@ fun DashboardUiState.hiddenItems(): List<TaskListItem> =
 fun DashboardUiState.hiddenOpenPlaylist(): PlaylistGroup? {
     val id = hidden.openPlaylistId ?: return null
     val record = playlists[id] ?: return null
-    val tasks = playlistTasks(hidden.tasks, id)
+    val tasks = sortTasks(playlistTasks(hidden.tasks, id), sortOption)
     return if (tasks.isEmpty()) null else PlaylistGroup(record, tasks)
 }
 
 fun DashboardUiState.hiddenOpenFolder(): FolderGroup? {
     if (hiddenOpenPlaylist() != null) return null
     val folder = hidden.openFolder ?: return null
-    return folderGroup(hidden.tasks, playlists, folder)
+    return folderGroup(hidden.tasks, playlists, folder)?.let { it.copy(tasks = sortTasks(it.tasks, sortOption)) }
 }
 
 fun DashboardUiState.hiddenPageTasks(): List<DownloadTask>? =

@@ -76,10 +76,13 @@ struct TaskListScreen: View {
 
     private var allTasks: [DownloadTask] {
         if let id = store.state.openPlaylistId, store.state.playlists[id] != nil {
-            return store.state.allTasks.filter { $0.playlistId == id }
+            return DashboardFiltersKt.sortTasks(filtered: store.state.allTasks.filter { $0.playlistId == id },
+                                                sort: store.state.sortOption)
         }
         if let folder = openFolderGroup {
-            return PlaylistGroupsKt.folderTasks(all: store.state.allTasks, records: store.state.playlists, folder: folder.folder)
+            return DashboardFiltersKt.sortTasks(
+                filtered: PlaylistGroupsKt.folderTasks(all: store.state.allTasks, records: store.state.playlists, folder: folder.folder),
+                sort: store.state.sortOption)
         }
         return store.state.filteredTasks
     }
@@ -734,15 +737,7 @@ struct TaskListHeader: View {
             Menu {
                 Button(s.homePauseAll) { store.send(DashboardUiEventOnPauseAllClicked.shared) }.disabled(!canPause)
                 Button(s.homeResumeAll) { store.send(DashboardUiEventOnResumeAllClicked.shared) }.disabled(!canResume)
-                Menu(s.homeSortBy(option: st.sortOption.label)) {
-                    ForEach(TaskSortOption.entries, id: \.ordinal) { opt in
-                        Button {
-                            store.send(DashboardUiEventOnSortChanged(sort: opt))
-                        } label: {
-                            if opt == st.sortOption { Label(opt.label, systemImage: "checkmark") } else { Text(opt.label) }
-                        }
-                    }
-                }
+                TaskSortMenu()
                 Divider()
                 Button(dark ? s.homeLightTheme : s.homeDarkTheme) {
                     store.send(DashboardUiEventOnThemeModeChanged(mode: dark ? "light" : "dark"))
@@ -818,6 +813,23 @@ struct TaskListHeader: View {
             }
         }
         .fixedSize()
+    }
+}
+
+struct TaskSortMenu: View {
+    @EnvironmentObject var store: FJStore
+
+    var body: some View {
+        let current = store.state.sortOption
+        Menu(store.strings.homeSortBy(option: current.label)) {
+            ForEach(TaskSortOption.entries, id: \.ordinal) { opt in
+                Button {
+                    store.send(DashboardUiEventOnSortChanged(sort: opt))
+                } label: {
+                    if opt == current { Label(opt.label, systemImage: "checkmark") } else { Text(opt.label) }
+                }
+            }
+        }
     }
 }
 
@@ -1112,7 +1124,8 @@ struct GroupBarActions {
 func groupPlayAction(_ store: FJStore, key: String, tasks: [DownloadTask]) -> (() -> Void)? {
     guard store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) else { return nil }
     return {
-        if let queue = store.host.playbackQueue(groupKey: key, tasks: tasks) {
+        let shown = DashboardFiltersKt.sortTasks(filtered: tasks, sort: store.state.sortOption)
+        if let queue = store.host.playbackQueue(groupKey: key, tasks: shown) {
             FJPlayer.shared.queue = queue
         }
     }
@@ -1307,6 +1320,7 @@ struct GroupPageBar<Extra: View>: View {
             if actions.canResume {
                 Button(s.homeResumeAll, action: actions.onResumeAll)
             }
+            TaskSortMenu()
             if let label = actions.deleteLabel {
                 Divider()
                 Button(label, role: .destructive, action: actions.onDelete)

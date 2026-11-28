@@ -19,6 +19,20 @@ component SortMenu inherits OptionsMenu {
     picked(index) => { Act.setSort(index); }
 }
 
+component SortButton inherits TextButton {
+    text: Core.chrome.sortLabel;
+    trail: "▾";
+    height: 34px;
+    pad: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    clicked => { menu.show(); }
+    menu := SortMenu {
+        x: Dir.rtl ? 0 : root.width - self.width;
+        y: root.height;
+    }
+}
+
 component BarButton inherits OutlinedButton {
     height: 34px;
     border-radius: 10px;
@@ -119,19 +133,7 @@ component ListToolbar inherits Rectangle {
         Rectangle {
             horizontal-stretch: 1;
         }
-        sort := TextButton {
-            text: Core.chrome.sortLabel;
-            trail: "▾";
-            height: 34px;
-            pad: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            clicked => { menu.show(); }
-            menu := SortMenu {
-                x: Dir.rtl ? 0 : sort.width - self.width;
-                y: sort.height;
-            }
-        }
+        SortButton { }
     }
 }
 
@@ -158,6 +160,7 @@ component PlaylistBar inherits Rectangle {
                 overflow: elide;
                 horizontal-stretch: 1;
             }
+            SortButton { }
             if Core.chrome.playlistCanPlay: BarButton {
                 glyph: "🎬";
                 text: Tr.playerPlayAll;

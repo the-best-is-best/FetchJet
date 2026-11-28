@@ -33,6 +33,9 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistLanguagesUi
+import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
+import com.michelle.raouf.fetch_jet.SortMenuButton
+import com.michelle.raouf.fetch_jet.SortMenuEntry
 import com.tbib.kmp_localization.LocalizationManager
 
 /** A language code as the name one of the videos' tracks gave it, else the code itself. */
@@ -59,6 +62,8 @@ fun PlaylistPageHeader(
     onDismissLanguages: () -> Unit,
     onOpenFolder: (() -> Unit)? = null,
     onPlay: (() -> Unit)? = null,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
@@ -76,7 +81,9 @@ fun PlaylistPageHeader(
                     onResumeAll = onResumeAll,
                     onHide = onHide,
                     deleteLabel = if (group.isPage) s.folderDeleteAll else s.playlistDeleteAll,
-                    onDelete = onDelete
+                    onDelete = onDelete,
+                    sortOption = sortOption,
+                    onSort = onSort
                 ),
                 compact
             )
@@ -149,6 +156,8 @@ fun FolderPageHeader(
     onDelete: () -> Unit,
     onHide: () -> Unit,
     onPlay: (() -> Unit)? = null,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
@@ -161,7 +170,9 @@ fun FolderPageHeader(
         onResumeAll = onResumeAll,
         onHide = onHide,
         deleteLabel = s.folderDeleteAll,
-        onDelete = onDelete
+        onDelete = onDelete,
+        sortOption = sortOption,
+        onSort = onSort
     )
     GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, compact) {
         GroupActionButtons(actions, compact)
@@ -185,6 +196,8 @@ class GroupActions(
     val onUnhide: (() -> Unit)? = null,
     val deleteLabel: String? = null,
     val onDelete: () -> Unit = {},
+    val sortOption: TaskSortOption? = null,
+    val onSort: (TaskSortOption) -> Unit = {},
 )
 
 @Composable
@@ -216,6 +229,7 @@ internal fun GroupActionButtons(actions: GroupActions, compact: Boolean) {
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) { Text("🗑 " + label, fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
     }
+    actions.sortOption?.let { SortMenuButton(it, actions.onSort) }
 }
 
 @Composable
@@ -235,6 +249,7 @@ private fun GroupMoreMenu(actions: GroupActions) {
                 enabled = actions.canResume,
                 onClick = { open = false; actions.onResumeAll() }
             )
+            actions.sortOption?.let { sort -> SortMenuEntry(sort) { open = false; actions.onSort(it) } }
             actions.onHide?.let { hide ->
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text("🙈 " + s.hiddenHide) },

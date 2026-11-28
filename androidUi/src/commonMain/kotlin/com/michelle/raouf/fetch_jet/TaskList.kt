@@ -45,6 +45,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.inFolderGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.matchesPlaylistTitle
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
+import com.michelle.raouf.fetch_jet.presentation.dashboard.sortTasks
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -161,9 +162,11 @@ internal fun TaskListArea(
     val uiState by viewModel.uiState.collectAsState()
     val records = uiState.playlists
     val openGroup = uiState.openPlaylistId?.let { id ->
-        records[id]?.let { PlaylistGroup(it, playlistTasks(uiState.allTasks, id)) }
+        records[id]?.let { PlaylistGroup(it, sortTasks(playlistTasks(uiState.allTasks, id), uiState.sortOption)) }
     }
-    val openFolder = if (openGroup == null) uiState.openFolder?.let { folderGroup(uiState.allTasks, records, it) } else null
+    val openFolder = if (openGroup == null) uiState.openFolder?.let { folder ->
+        folderGroup(uiState.allTasks, records, folder)?.let { it.copy(tasks = sortTasks(it.tasks, uiState.sortOption)) }
+    } else null
     val inPage = openGroup != null || openFolder != null
     val shortScreen = com.michelle.raouf.fetch_jet.ui.isShortScreen()
     val grouped = groupByState && !inPage
@@ -522,6 +525,8 @@ internal fun TaskListArea(
                     onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
                         ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } },
                     onPlay = playGroup(openGroup.id, openGroup.tasks),
+                    sortOption = uiState.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             } else if (openFolder != null) {
@@ -536,6 +541,8 @@ internal fun TaskListArea(
                     onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
                     onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) },
                     onPlay = playGroup(FOLDER_ROW_PREFIX + openFolder.folder, openFolder.tasks),
+                    sortOption = uiState.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             }
@@ -991,34 +998,54 @@ internal fun ListToolbar(
             )
         }
         Spacer(Modifier.weight(1f))
-        var open by remember { mutableStateOf(false) }
-        Box {
-            androidx.compose.material3.TextButton(
-                onClick = { open = true },
-                modifier = Modifier.height(34.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp)
-            ) {
+        SortMenuButton(sortOption, onSort)
+    }
+}
+
+@Composable
+internal fun SortOptionItems(sortOption: TaskSortOption, onPick: (TaskSortOption) -> Unit) {
+    TaskSortOption.entries.forEach { opt ->
+        DropdownMenuItem(
+            text = {
                 Text(
-                    "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    (if (opt == sortOption) "✓  " else "     ") + opt.label,
+                    fontSize = 13.sp
                 )
-            }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                TaskSortOption.entries.forEach { opt ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                (if (opt == sortOption) "✓  " else "     ") + opt.label,
-                                fontSize = 13.sp
-                            )
-                        },
-                        onClick = { open = false; onSort(opt) }
-                    )
-                }
-            }
+            },
+            onClick = { onPick(opt) }
+        )
+    }
+}
+
+@Composable
+internal fun SortMenuButton(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        androidx.compose.material3.TextButton(
+            onClick = { open = true },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) {
+            Text(
+                "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            SortOptionItems(sortOption) { open = false; onSort(it) }
         }
     }
+}
+
+@Composable
+internal fun SortMenuEntry(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit) {
+    var sortOpen by remember { mutableStateOf(false) }
+    DropdownMenuItem(
+        text = { Text("${LocalizationManager.Strings.homeSortBy(sortOption.label)}  " + if (sortOpen) "▴" else "▾") },
+        onClick = { sortOpen = !sortOpen }
+    )
+    if (sortOpen) SortOptionItems(sortOption) { sortOpen = false; onSort(it) }
 }
 
 /** Shown instead of the toolbar while rows are checked: 3 selected · Select all ···· Delete  ✕ */

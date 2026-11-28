@@ -646,7 +646,6 @@ internal fun FjPhoneHeader(
             onPickDownloadLimit
         )
         var open by remember { mutableStateOf(false) }
-        var sortOpen by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { open = true }) {
                 Text(
@@ -655,7 +654,7 @@ internal fun FjPhoneHeader(
                     fontWeight = FontWeight.Bold
                 )
             }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false; sortOpen = false }) {
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 if (showListActions) {
                     val unfinished = tasks.filter { it.status != DownloadStatus.COMPLETED }
                     DropdownMenuItem(
@@ -668,23 +667,7 @@ internal fun FjPhoneHeader(
                         enabled = anyResumable(unfinished),
                         onClick = { open = false; onResumeAll() }
                     )
-                    DropdownMenuItem(
-                        text = { Text("${LocalizationManager.Strings.homeSortBy(sortOption.label)}  " + if (sortOpen) "▴" else "▾") },
-                        onClick = { sortOpen = !sortOpen }
-                    )
-                    if (sortOpen) {
-                        TaskSortOption.entries.forEach { opt ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        (if (opt == sortOption) "✓  " else "     ") + opt.label,
-                                        fontSize = 13.sp
-                                    )
-                                },
-                                onClick = { open = false; sortOpen = false; onSort(opt) }
-                            )
-                        }
-                    }
+                    SortMenuEntry(sortOption) { open = false; onSort(it) }
                     HorizontalDivider()
                 }
                 DropdownMenuItem(

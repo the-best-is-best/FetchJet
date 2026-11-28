@@ -28,6 +28,7 @@ import com.michelle.raouf.fetch_jet.feature.hidden.HiddenLockType
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenLockTexts
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenOpeningText
 import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenWorkingText
+import com.michelle.raouf.fetch_jet.presentation.dashboard.hiddenPageTasks
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroupStatus
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistLanguagesUi
@@ -75,6 +76,7 @@ internal data class HomeSlice(
     val groupByFolder: Boolean = false,
     val openFolder: String? = null,
     val hidden: HiddenUiState = HiddenUiState(),
+    val hiddenPage: List<DownloadTask>? = null,
 )
 
 internal data class HomeControls(
@@ -116,6 +118,7 @@ private fun DashboardUiState.homeSlice() = HomeSlice(
     groupByFolder = groupByFolder,
     openFolder = openFolder,
     hidden = hidden,
+    hiddenPage = hiddenPageTasks(),
 )
 
 private class CachedRow(
@@ -318,7 +321,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
     }
     val openFolderGroup = if (openGroup != null) null else (if (hiddenScreen) slice.hidden.openFolder else slice.openFolder)?.let { folderGroup(pool, records, it) }
     val pageOpen = openGroup != null || openFolderGroup != null
-    val pageBase = if (hiddenScreen) pool.sortedByDescending { it.createdAtEpochMs } else slice.filteredTasks
+    val pageBase = if (hiddenScreen) slice.hiddenPage ?: pool.sortedByDescending { it.createdAtEpochMs } else slice.filteredTasks
     val inFilter = when {
         openGroup != null -> pageBase.filter { it.playlistId == openGroup.id }
         openFolderGroup != null -> {
