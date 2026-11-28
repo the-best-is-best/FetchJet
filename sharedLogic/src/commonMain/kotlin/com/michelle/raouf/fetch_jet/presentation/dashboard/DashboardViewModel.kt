@@ -687,6 +687,14 @@ class DashboardViewModel(
             }
         }
         scope.launch {
+            BehaviorSettings.taskSort.collect { name ->
+                val sort = TaskSortOption.entries.firstOrNull { it.name == name } ?: TaskSortOption.DATE_DESC
+                _uiState.update { state ->
+                    state.copy(sortOption = sort, filteredTasks = filterTasks(state.allTasks, state.selectedTab, sort))
+                }
+            }
+        }
+        scope.launch {
             BehaviorSettings.extractArchives.collect { on ->
                 _uiState.update { it.copy(extractArchives = on) }
             }

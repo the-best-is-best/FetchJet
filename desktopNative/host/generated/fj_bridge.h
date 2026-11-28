@@ -984,6 +984,7 @@ inline ChromeDto parse_ChromeDto(const fj::Json &j) {
     d.scheduled = fj::flag(j, "scheduled");
     d.speedOptions = fj::struct_model<MenuOptionDto>(j, "speedOptions", parse_MenuOptionDto);
     d.sortLabel = fj::text(j, "sortLabel");
+    d.sortChoice = fj::text(j, "sortChoice");
     d.sortOptions = fj::struct_model<MenuOptionDto>(j, "sortOptions", parse_MenuOptionDto);
     d.anyPausable = fj::flag(j, "anyPausable");
     d.anyResumable = fj::flag(j, "anyResumable");

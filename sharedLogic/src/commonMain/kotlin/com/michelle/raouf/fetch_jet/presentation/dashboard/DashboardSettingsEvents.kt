@@ -157,14 +157,7 @@ internal fun DashboardViewModel.handleSettingsEvent(event: DashboardUiEvent) {
 
         }
 
-        is DashboardUiEvent.OnSortChanged -> {
-            _uiState.update { state ->
-                state.copy(
-                    sortOption = event.sort,
-                    filteredTasks = filterTasks(state.allTasks, state.selectedTab, event.sort)
-                )
-            }
-        }
+        is DashboardUiEvent.OnSortChanged -> BehaviorSettings.setTaskSort(event.sort.name)
 
         is DashboardUiEvent.OnDefaultConnectionsChanged -> BehaviorSettings.setConnections(event.connections)
         DashboardUiEvent.OnDownloadYtDlpClicked -> {

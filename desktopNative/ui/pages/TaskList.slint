@@ -20,7 +20,8 @@ component SortMenu inherits OptionsMenu {
 }
 
 component SortButton inherits TextButton {
-    text: Core.chrome.sortLabel;
+    in property <bool> short;
+    text: short ? "⇅ " + Core.chrome.sortChoice : Core.chrome.sortLabel;
     trail: "▾";
     height: 34px;
     pad: 10px;
@@ -160,7 +161,14 @@ component PlaylistBar inherits Rectangle {
                 overflow: elide;
                 horizontal-stretch: 1;
             }
-            SortButton { }
+            SortButton {
+                short: true;
+            }
+        }
+        HBox {
+            height: 34px;
+            spacing: 8px;
+            cross-axis-alignment: center;
             if Core.chrome.playlistCanPlay: BarButton {
                 glyph: "🎬";
                 text: Tr.playerPlayAll;
@@ -197,6 +205,9 @@ component PlaylistBar inherits Rectangle {
                 glyph: "🗑";
                 text: (Core.chrome.groupIsFolder || Core.chrome.groupIsPage) ? Tr.folderDeleteAll : Tr.playlistDeleteAll;
                 clicked => { Act.playlistRemove(); }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
             }
         }
         if Core.chrome.groupIsFolder && !Core.chrome.hiddenOpen: HBox {

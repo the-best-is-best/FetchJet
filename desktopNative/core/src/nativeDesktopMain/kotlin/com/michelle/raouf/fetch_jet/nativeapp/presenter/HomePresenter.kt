@@ -474,6 +474,7 @@ private fun Presenter.publishHome(slice: HomeSlice, ui: LocalUi, extra: HomeExtr
             scheduled = extra.scheduled,
             speedOptions = speedOptions,
             sortLabel = strings.homeSortBy(slice.sortOption.label),
+            sortChoice = slice.sortOption.label,
             sortOptions = TaskSortOption.entries.map { MenuOptionDto(it.label, it == slice.sortOption) },
             anyPausable = anyPausable(unfinished),
             anyResumable = anyResumable(unfinished),

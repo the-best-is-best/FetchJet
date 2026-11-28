@@ -1018,7 +1018,7 @@ internal fun SortOptionItems(sortOption: TaskSortOption, onPick: (TaskSortOption
 }
 
 @Composable
-internal fun SortMenuButton(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit) {
+internal fun SortMenuButton(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit, short: Boolean = false) {
     var open by remember { mutableStateOf(false) }
     Box {
         androidx.compose.material3.TextButton(
@@ -1027,7 +1027,7 @@ internal fun SortMenuButton(sortOption: TaskSortOption, onSort: (TaskSortOption)
             contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
             Text(
-                "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
+                if (short) "⇅ ${sortOption.label} ▾" else "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )

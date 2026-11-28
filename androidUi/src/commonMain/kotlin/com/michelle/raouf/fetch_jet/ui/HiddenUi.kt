@@ -502,7 +502,7 @@ private fun HiddenGroupPageHeader(
     onSort: (TaskSortOption) -> Unit,
     compact: Boolean
 ) {
-    GroupPageHeader(title, summary, path, onBack, compact) {
+    GroupPageHeader(title, summary, path, onBack, compact, sortOption, onSort) {
         GroupActionButtons(
             GroupActions(
                 onPlay = onPlay,

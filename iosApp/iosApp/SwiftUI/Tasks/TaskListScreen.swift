@@ -818,16 +818,27 @@ struct TaskListHeader: View {
 
 struct TaskSortMenu: View {
     @EnvironmentObject var store: FJStore
+    var short = false
 
     var body: some View {
         let current = store.state.sortOption
-        Menu(store.strings.homeSortBy(option: current.label)) {
+        Menu {
             ForEach(TaskSortOption.entries, id: \.ordinal) { opt in
                 Button {
                     store.send(DashboardUiEventOnSortChanged(sort: opt))
                 } label: {
                     if opt == current { Label(opt.label, systemImage: "checkmark") } else { Text(opt.label) }
                 }
+            }
+        } label: {
+            if short {
+                Label(current.label + " \u{25BE}", systemImage: "arrow.up.arrow.down")
+                    .font(.fj(12, .semibold))
+                    .foregroundStyle(FJTheme.color.primary)
+                    .lineLimit(1)
+                    .fixedSize()
+            } else {
+                Text(store.strings.homeSortBy(option: current.label))
             }
         }
     }
@@ -1242,6 +1253,7 @@ struct GroupPageBar<Extra: View>: View {
                     }
                 }
                 Spacer(minLength: 0)
+                TaskSortMenu(short: true)
             }
             if let play = actions.onPlay {
                 wideButton(s.playerPlayAll, "play.fill", play)
@@ -1320,7 +1332,9 @@ struct GroupPageBar<Extra: View>: View {
             if actions.canResume {
                 Button(s.homeResumeAll, action: actions.onResumeAll)
             }
-            TaskSortMenu()
+            if verticalSize == .compact {
+                TaskSortMenu()
+            }
             if let label = actions.deleteLabel {
                 Divider()
                 Button(label, role: .destructive, action: actions.onDelete)
