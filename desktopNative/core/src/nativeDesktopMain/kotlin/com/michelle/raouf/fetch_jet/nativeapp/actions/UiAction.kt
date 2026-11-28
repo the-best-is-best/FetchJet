@@ -749,4 +749,40 @@ sealed interface UiAction {
     @Serializable
     @SerialName("VideoCutDeleteOriginal")
     data class VideoCutDeleteOriginal(val on: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("MergeChecked")
+    data object MergeChecked : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeMove")
+    data class VideoMergeMove(val id: String = "", val up: Boolean = false) : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeName")
+    data class VideoMergeName(val text: String = "") : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeStart")
+    data object VideoMergeStart : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeCancel")
+    data object VideoMergeCancel : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeDismiss")
+    data object VideoMergeDismiss : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeSaveCopy")
+    data object VideoMergeSaveCopy : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeOverwrite")
+    data object VideoMergeOverwrite : UiAction
+
+    @Serializable
+    @SerialName("VideoMergeConflictDismiss")
+    data object VideoMergeConflictDismiss : UiAction
 }

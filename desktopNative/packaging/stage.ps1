@@ -3,7 +3,10 @@ param(
     [string]$HostDir = '',
     [string]$CoreDll = '',
     [string]$RedistDir = '',
-    [switch]$RequireFreshCore
+    [switch]$RequireFreshCore,
+    [switch]$Legacy,
+    [string]$UcrtDir = 'C:\Program Files (x86)\Windows Kits\10\Redist\10.0.26100.0\ucrt\DLLs\x64',
+    [string]$QuickJs = 'E:\tools\legacy\qjs-build\qjs.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,7 +95,10 @@ $vcFiles = @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') | ForEach
 
 $torrentRoot = Join-Path $native 'torrent'
 $torrentDll = $null
-if (Test-Path -LiteralPath $torrentRoot) {
+if ($Legacy) {
+    $torrentDll = Need (Join-Path $HostDir 'fjtorrent.dll')
+    $quickJsExe = Need $QuickJs
+} elseif (Test-Path -LiteralPath $torrentRoot) {
     $torrentDll = Get-ChildItem -LiteralPath $torrentRoot -Recurse -File -Filter 'fjtorrent.dll' -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
 }
@@ -146,6 +152,13 @@ foreach ($t in $resTrees) {
     Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "..\res\$t") -File | ForEach-Object { Put $_.FullName "$t\$($_.Name)" }
 }
 [System.IO.File]::WriteAllBytes((Join-Path $stageFull 'FetchJet.installed'), [byte[]]@())
+if ($Legacy) {
+    $ucrt = @(Get-ChildItem -LiteralPath $UcrtDir -File -Filter '*.dll' -ErrorAction SilentlyContinue)
+    if (-not $ucrt) { Fail "Universal CRT DLLs not found in $UcrtDir" }
+    foreach ($u in $ucrt) { Put $u.FullName $u.Name }
+    Put $quickJsExe.FullName 'qjs.exe'
+    [System.IO.File]::WriteAllBytes((Join-Path $stageFull 'FetchJet.legacy'), [byte[]]@())
+}
 
 $all = Get-ChildItem -LiteralPath $stageFull -Recurse -File
 $total = ($all | Measure-Object Length -Sum).Sum
@@ -158,6 +171,7 @@ Write-Host "stage: FetchJet.exe   $($exe.FullName) ($($exe.Length) bytes, $($exe
 Write-Host "stage: slint_cpp.dll  $($slint.FullName) ($($slint.Length) bytes)"
 Write-Host "stage: fjcore.dll     $($core.FullName) ($($core.Length) bytes, $($core.LastWriteTime)); newest core source $($newestSource.LastWriteTime): $(if ($coreFresh) { 'up to date' } else { 'OLDER' })"
 Write-Host "stage: VC runtime     $RedistDir"
+if ($Legacy) { Write-Host "stage: legacy (Windows 7 / 8 / 8.1): FetchJet.legacy marker, Universal CRT from $UcrtDir, qjs.exe from $($quickJsExe.FullName)" }
 if ($torrentDll) { Write-Host "stage: fjtorrent.dll  $($torrentDll.FullName) ($($torrentDll.LastWriteTime))" } else { Write-Host 'stage: fjtorrent.dll  not found under desktopNative\torrent, not staged' }
 Write-Host ("stage: {0} files, {1:N0} bytes in {2}" -f $all.Count, $total, $stageFull)
 Write-Host "stage: file list $listFile"

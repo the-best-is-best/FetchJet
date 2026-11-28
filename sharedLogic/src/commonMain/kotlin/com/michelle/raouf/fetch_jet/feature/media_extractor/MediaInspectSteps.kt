@@ -277,6 +277,16 @@ fun videoWithAudioSelector(formatId: String): String =
         "$formatId+bestaudio[ext=m4a]/$formatId+bestaudio/$formatId/best"
     else "$formatId+bestaudio/$formatId+bestaudio[ext=m4a]/$formatId/best"
 
+fun hlsFallbackSelector(height: Int): String =
+    if (height > 0) "best[height<=$height][protocol^=m3u8]" else "best[protocol^=m3u8]"
+
+/** The picture height of the chosen quality: the stream's, else the one in the format id or the link ("480p-2000k", "480P_2000K"). */
+fun chosenHeight(streamHeights: List<Int>, formatId: String?, url: String): Int =
+    streamHeights.filter { it > 0 }.minOrNull()
+        ?: Regex("""(\d{3,4})p""", RegexOption.IGNORE_CASE).find(formatId.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+        ?: Regex("""(\d{3,4})P_""", RegexOption.IGNORE_CASE).find(url.substringBefore('?'))?.groupValues?.get(1)?.toIntOrNull()
+        ?: 0
+
 fun httpsFallbackSelector(height: Int, audioOnly: Boolean): String {
     if (audioOnly) return "bestaudio[protocol^=http]/best[protocol^=http]"
     val size = if (height > 0) "[height<=$height]" else ""

@@ -123,7 +123,7 @@
           hideOlder: "Hide older versions", showOlder: "Show older versions ({n})", preRelease: "pre-release", beta: "beta",
           whatChanged: "what changed", onGitHub: "on GitHub", release1: "1 release", releasesN: "{n} releases", offline: "offline",
           loadError: 'Could not load the release list ({e}). Open <a href="{releases}">the releases page on GitHub</a> instead.',
-          fileMsi: "Installer (.msi)", fileZip: "Portable, no install (.zip)", fileExe: "Setup (.exe)", fileDeb: "Debian / Ubuntu (.deb)",
+          fileMsi: "Installer (.msi)", fileZip: "Portable, no install (.zip)", fileExe: "Setup (.exe)", fileLegacy: "Windows 7 / 8 / 8.1 (.exe)", fileDeb: "Debian / Ubuntu (.deb)",
           fileTar: "Portable (.tar.gz)", fileDmg: "Apple Silicon (.dmg)", fileXpi: "Firefox (.xpi)", fileExtZip: "Chrome / Edge (.zip)"
         }
       };
@@ -257,7 +257,7 @@
           return m ? m[1] : name;
         }
         if (platform === "extension") return /\.xpi$/i.test(name) ? t("fileXpi") : t("fileExtZip");
-        if (platform === "windows") return /\.msi$/i.test(name) ? t("fileMsi") : /\.zip$/i.test(name) ? t("fileZip") : t("fileExe");
+        if (platform === "windows") return /-Windows-7-8-8\.1\.exe$/i.test(name) ? t("fileLegacy") : /\.msi$/i.test(name) ? t("fileMsi") : /\.zip$/i.test(name) ? t("fileZip") : t("fileExe");
         if (platform === "linux") return /\.deb$/i.test(name) ? t("fileDeb") : t("fileTar");
         if (platform === "macos") return t("fileDmg");
         return name;

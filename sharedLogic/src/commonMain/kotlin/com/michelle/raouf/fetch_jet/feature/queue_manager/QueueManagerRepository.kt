@@ -915,6 +915,13 @@ class QueueManagerRepository(
         return changed
     }
 
+    internal fun freeNameAmongTasks(destDir: String, fileName: String, exceptId: String = ""): String {
+        val dir = destDir.trimEnd('/', '\\')
+        val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
+            .filter { it.id != exceptId && it.engineType != EngineType.BITTORRENT && it.destinationPath.trimEnd('/', '\\') == dir }
+        return firstFreeFileName(fileName) { name -> others.any { it.fileName.equals(name, ignoreCase = true) } }
+    }
+
     internal fun freeNameIn(destDir: String, fileName: String): String {
         val dir = destDir.trimEnd('/', '\\')
         val others = (getAllCurrentTasks() + pendingTasks.value.values + allTasksFlow.value)
@@ -1063,7 +1070,11 @@ class QueueManagerRepository(
             id = taskId,
             url = targetUrl,
             fileName = safeFileName?.let {
-                if (keepExistingFiles && engineType != EngineType.BITTORRENT) freeNameIn(destDir, it) else it
+                when {
+                    engineType == EngineType.BITTORRENT -> it
+                    keepExistingFiles -> freeNameIn(destDir, it)
+                    else -> freeNameAmongTasks(destDir, it, taskId)
+                }
             }
                 ?: torrentName ?: "",
             destinationPath = destDir,

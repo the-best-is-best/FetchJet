@@ -14,6 +14,7 @@ import { SettingsPanel } from "pages/Settings.slint";
 import { UpdateDialog } from "pages/UpdateDialog.slint";
 import { AudioCompressDialog } from "pages/AudioCompress.slint";
 import { VideoCutDialog } from "pages/VideoCut.slint";
+import { VideoMergeDialog } from "pages/VideoMerge.slint";
 import { SubtitlesDialog } from "pages/SubtitlesPage.slint";
 import { DeviceSheet, PairingDialog } from "pages/DeviceSheet.slint";
 import { ShortcutsDialog } from "pages/Shortcuts.slint";
@@ -84,7 +85,7 @@ export component AppWindow inherits Window {
     private property <length> nav: root.medium ? 84px : 232px;
     private property <length> panel: root.details-side ? 340px : 0px;
     private property <bool> overlay-open: Core.chrome.settingsOpen || Core.add.visible || Core.clipPicker.open || Core.deviceSheet.open
-        || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.audioCompress.cut.open || Core.subtitlesPage.open || Core.updateDialog.open
+        || Core.devicePairing.state != PairingCode.none || Core.audioCompress.open || Core.audioCompress.cut.open || Core.audioCompress.merge.open || Core.subtitlesPage.open || Core.updateDialog.open
         || Core.alerts.length > 0 || Core.choices.length > 0 || PlayerUi.open || PdfUi.open;
     changed overlay-open => {
         if !root.overlay-open {
@@ -172,6 +173,7 @@ export component AppWindow inherits Window {
     }
     if Core.add.visible: AddDialog { }
     if Core.audioCompress.cut.open: VideoCutDialog { }
+    if Core.audioCompress.merge.open: VideoMergeDialog { }
     if Core.clipPicker.open: ClipPickerDialog { }
     if Core.deviceSheet.open: DeviceSheet { }
     if Core.devicePairing.state != PairingCode.none: PairingDialog { }

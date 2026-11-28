@@ -62,6 +62,7 @@ class SiteGrabber(
         val depth = options.depth.coerceIn(1, 4)
         val found = LinkedHashMap<String, GrabbedFile>()
         val toProbe = LinkedHashMap<String, String>()
+        val guesses = LinkedHashMap<String, String>()
         val visited = HashSet<String>()
         visited.add(startUrl)
         var level = listOf(startUrl)
@@ -143,6 +144,10 @@ class SiteGrabber(
                         for (link in scan.pages) {
                             if (PageLinks.sameSite(startUrl, link) && visited.add(link)) next.add(link)
                         }
+                    } else {
+                        for (link in scan.pages) {
+                            if (link !in visited && PageLinks.sameSite(startUrl, link) && mayBeFile(link)) guesses.addOnce(link, page.finalUrl)
+                        }
                     }
                 }
                 flush()
@@ -154,8 +159,9 @@ class SiteGrabber(
 
         val probes = toProbe.entries.filter { it.key !in found }.take(options.probeLimit)
         if (probes.size < toProbe.size) reachedLimit = true
+        val guessed = guesses.entries.filter { it.key !in found && it.key !in toProbe }.take(options.probeLimit / 2)
         coroutineScope {
-            probes.map { entry ->
+            (probes + guessed).map { entry ->
                 async {
                     val probe = gate.withPermit { runCatching { fetcher.probe(entry.key) }.getOrNull() }
                     if (probe != null) {
@@ -178,6 +184,13 @@ class SiteGrabber(
     private fun hasExtension(name: String): Boolean {
         val ext = name.substringAfterLast('.', "")
         return ext.length in 2..8 && ext.all { it.isLetterOrDigit() }
+    }
+
+    private fun mayBeFile(url: String): Boolean {
+        if (url.substringBefore('#').substringBefore('?').endsWith('/')) return false
+        if (url.substringAfter('?', "").length > 120) return false
+        val name = PageLinks.fileNameOf(url)
+        return name.isNotBlank() && !hasExtension(name)
     }
 
     private fun isChallenge(page: FetchedPage): Boolean {

@@ -116,6 +116,16 @@ object BridgePairing {
     /** The secret, or "" while the saved one cannot be decrypted (then nothing is paired). */
     val token: String get() = currentToken().orEmpty()
 
+    fun ensureToken() {
+        currentToken()
+    }
+
+    fun savedToken(): String {
+        val stored = readFile()?.token.orEmpty()
+        if (stored.isEmpty()) return ""
+        return Secrets.reveal(stored)?.takeIf { it.length >= 32 }.orEmpty()
+    }
+
     private fun currentToken(): String? {
         ensureLoaded()
         plainToken.value?.let { return it }

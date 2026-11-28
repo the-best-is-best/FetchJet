@@ -23,6 +23,11 @@ struct FJLevel: Equatable {
     let value: Double
 }
 
+struct FJSeekPreview: Equatable {
+    let target: Double
+    let delta: Double
+}
+
 final class FJPlayerModel: ObservableObject {
     let queue: PlaybackQueue
     let player = AVPlayer()
@@ -39,6 +44,7 @@ final class FJPlayerModel: ObservableObject {
     @Published var videoSize: CGSize = .zero
     @Published var autoplay: Bool
     @Published var level: FJLevel?
+    @Published var seekPreview: FJSeekPreview?
     @Published var artwork: UIImage?
     var scrubbing = false {
         didSet {
@@ -61,6 +67,12 @@ final class FJPlayerModel: ObservableObject {
     private var wasPlayingBeforeHold = false
     private var rewindTarget: Double = 0
     private var rewindSeeking = false
+    private var dragActive = false
+    private var dragStart: Double = 0
+    private var dragTarget: Double = 0
+    private var dragSeeking = false
+    private var wasPlayingBeforeDrag = false
+    private var pendingResume = false
 
     init(queue: PlaybackQueue) {
         self.queue = queue
@@ -111,6 +123,12 @@ final class FJPlayerModel: ObservableObject {
         let entry = queue.items[index]
         PlayerProgress.shared.remember(groupKey: queue.groupKey, taskId: entry.taskId)
         loadToken += 1
+        pendingResume = false
+        if dragActive {
+            dragActive = false
+            seekPreview = nil
+            scrubbing = false
+        }
         prepareJob?.cancel(cause: nil)
         prepareJob = nil
         if let old = preparedId, old != entry.taskId {
@@ -252,6 +270,69 @@ final class FJPlayerModel: ObservableObject {
 
     func skip(_ ms: Int64) { seek(position + Double(ms) / 1000) }
 
+    var canDragSeek: Bool {
+        item.isVideo && duration > 0 && !preparing && !failed && hold == 0
+    }
+
+    func beginDragSeek() {
+        guard canDragSeek, !dragActive else { return }
+        dragActive = true
+        wasPlayingBeforeDrag = playing || pendingResume
+        pendingResume = false
+        player.pause()
+        let now = player.currentTime().seconds
+        dragStart = now.isFinite ? min(max(now, 0), duration) : position
+        dragTarget = dragStart
+        scrubbing = true
+        seekPreview = FJSeekPreview(target: dragStart, delta: 0)
+    }
+
+    func dragSeek(fraction: Double) {
+        guard dragActive else { return }
+        let span = min(90, duration)
+        dragTarget = min(max(dragStart + fraction * span, 0), duration)
+        position = dragTarget
+        seekPreview = FJSeekPreview(target: dragTarget, delta: dragTarget - dragStart)
+        pumpDragSeek()
+    }
+
+    private func pumpDragSeek() {
+        guard dragActive, !dragSeeking else { return }
+        dragSeeking = true
+        let target = dragTarget
+        let tolerance = CMTime(seconds: 0.5, preferredTimescale: 600)
+        player.seek(
+            to: CMTime(seconds: target, preferredTimescale: 600),
+            toleranceBefore: tolerance, toleranceAfter: tolerance
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.dragSeeking = false
+                if self.dragActive && self.dragTarget != target { self.pumpDragSeek() }
+            }
+        }
+    }
+
+    func endDragSeek() {
+        guard dragActive else { return }
+        dragActive = false
+        let target = dragTarget
+        pendingResume = wasPlayingBeforeDrag
+        position = target
+        seekPreview = nil
+        player.seek(
+            to: CMTime(seconds: target, preferredTimescale: 600),
+            toleranceBefore: .zero, toleranceAfter: .zero
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.pendingResume else { return }
+                self.pendingResume = false
+                self.player.playImmediately(atRate: self.speed)
+            }
+        }
+        scrubbing = false
+    }
+
     func setSpeed(_ value: Float) {
         speed = value
         if playing { player.rate = value }
@@ -320,11 +401,15 @@ final class FJPlayerModel: ObservableObject {
 struct FJPlayerSurface: UIViewRepresentable {
     let player: AVPlayer
     let showVideo: Bool
+    let seekable: Bool
     let onTap: () -> Void
     let onDoubleTap: (Bool) -> Void
     let onHoldStart: (Bool) -> Void
     let onHoldEnd: () -> Void
     let onLevel: (FJLevel?) -> Void
+    let onSeekStart: () -> Void
+    let onSeekMove: (Double) -> Void
+    let onSeekEnd: () -> Void
 
     func makeUIView(context: Context) -> FJPlayerView {
         let view = FJPlayerView()
@@ -360,6 +445,9 @@ struct FJPlayerSurface: UIViewRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: FJPlayerSurface
         private var kind: FJLevel.Kind?
+        private var horizontal = false
+        private var seeking = false
+        private var downPoint: CGPoint?
         private var startValue: Double = 0
         private var savedBrightness: CGFloat?
         private weak var screen: UIScreen?
@@ -400,14 +488,35 @@ struct FJPlayerSurface: UIViewRepresentable {
 
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             guard let pan = g as? UIPanGestureRecognizer, let view = pan.view else { return true }
-            let velocity = pan.velocity(in: view)
-            let y = pan.location(in: view).y
+            let location = pan.location(in: view)
+            var move = pan.translation(in: view)
+            if let downPoint {
+                move = CGPoint(x: location.x - downPoint.x, y: location.y - downPoint.y)
+            }
+            if hypot(move.x, move.y) < 4 { move = pan.velocity(in: view) }
+            let y = downPoint?.y ?? location.y
             let edge: CGFloat = 44
-            return abs(velocity.y) > abs(velocity.x) * 1.5 && y > edge && y < view.bounds.height - edge
+            if parent.seekable && abs(move.x) > abs(move.y) * 1.5 {
+                horizontal = true
+                return true
+            }
+            horizontal = false
+            return abs(move.y) > abs(move.x) * 1.5 && y > edge && y < view.bounds.height - edge
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            if g is UIPanGestureRecognizer, let view = g.view, !seeking {
+                downPoint = touch.location(in: view)
+            }
+            return true
         }
 
         @objc func pan(_ g: UIPanGestureRecognizer) {
             guard let view = g.view as? FJPlayerView else { return }
+            if horizontal || seeking {
+                seekPan(g, in: view)
+                return
+            }
             switch g.state {
             case .began:
                 if g.location(in: view).x > view.bounds.width / 2 {
@@ -424,7 +533,8 @@ struct FJPlayerSurface: UIViewRepresentable {
             case .changed:
                 guard let kind else { return }
                 let span = max(view.bounds.height * 0.7, 1)
-                let value = min(1, max(0, startValue - Double(g.translation(in: view).y / span)))
+                let dy = downPoint.map { g.location(in: view).y - $0.y } ?? g.translation(in: view).y
+                let value = min(1, max(0, startValue - Double(dy / span)))
                 switch kind {
                 case .volume:
                     if let slider = view.volumeSlider { slider.value = Float(value) } else { parent.player.volume = Float(value) }
@@ -435,8 +545,36 @@ struct FJPlayerSurface: UIViewRepresentable {
             case .ended, .cancelled, .failed:
                 if kind != nil { parent.onLevel(nil) }
                 kind = nil
+                downPoint = nil
             default: break
             }
+        }
+
+        private func seekPan(_ g: UIPanGestureRecognizer, in view: UIView) {
+            switch g.state {
+            case .began:
+                seeking = true
+                parent.onSeekStart()
+                parent.onSeekMove(seekFraction(g, in: view))
+            case .changed:
+                guard seeking else { return }
+                parent.onSeekMove(seekFraction(g, in: view))
+            case .ended, .cancelled, .failed:
+                if seeking {
+                    if g.state == .ended { parent.onSeekMove(seekFraction(g, in: view)) }
+                    parent.onSeekEnd()
+                }
+                seeking = false
+                horizontal = false
+                downPoint = nil
+            default: break
+            }
+        }
+
+        private func seekFraction(_ g: UIPanGestureRecognizer, in view: UIView) -> Double {
+            let width = max(view.bounds.width, 1)
+            let dx = downPoint.map { g.location(in: view).x - $0.x } ?? g.translation(in: view).x
+            return Double(dx / width)
         }
     }
 }
@@ -534,8 +672,9 @@ struct FJPlayerScreen: View {
     private var hasHidden: Bool { queue.items.contains { $0.hidden } }
     private var showsFinishedBar: Bool { model.finished && (queue.items.count > 1 || !queue.groupKey.isEmpty) }
     private var showsCenter: Bool {
-        !model.preparing && !model.failed && model.hold == 0 && model.level == nil && !showsFinishedBar
+        !model.preparing && !model.failed && model.hold == 0 && !overlayShown && !showsFinishedBar
     }
+    private var overlayShown: Bool { model.level != nil || model.seekPreview != nil }
 
     var body: some View {
         ZStack {
@@ -543,20 +682,24 @@ struct FJPlayerScreen: View {
             FJPlayerSurface(
                 player: model.player,
                 showVideo: model.item.isVideo,
+                seekable: model.canDragSeek,
                 onTap: { model.toggleControls() },
                 onDoubleTap: { forward in
                     model.skip(forward ? playback.SKIP_MS : -playback.SKIP_MS)
                 },
                 onHoldStart: { model.beginHold(forward: $0) },
                 onHoldEnd: { model.endHold() },
-                onLevel: { model.showLevel($0) }
+                onLevel: { model.showLevel($0) },
+                onSeekStart: { model.beginDragSeek() },
+                onSeekMove: { model.dragSeek(fraction: $0) },
+                onSeekEnd: { model.endDragSeek() }
             )
             .ignoresSafeArea()
 
             if model.item.isVideo {
                 FJSubtitleOverlay(subtitles: model.subtitles, videoSize: model.videoSize,
-                                  barTop: model.controls && model.level == nil ? barTop : nil)
-                if model.controls && model.level == nil {
+                                  barTop: model.controls && !overlayShown ? barTop : nil)
+                if model.controls && !overlayShown {
                     videoControls.transition(.opacity)
                 } else if !model.playing && showsCenter {
                     playButton.transition(.opacity)
@@ -565,6 +708,7 @@ struct FJPlayerScreen: View {
                 audioControls
             }
             if let level = model.level { levelBox(level) }
+            if let preview = model.seekPreview { seekBox(preview) }
             if model.hold != 0 {
                 Text(model.hold > 0 ? "▶▶  2x" : "◀◀  2x")
                     .font(.subheadline)
@@ -588,6 +732,7 @@ struct FJPlayerScreen: View {
         }
         .animation(.easeInOut(duration: 0.25), value: model.controls)
         .animation(.easeInOut(duration: 0.2), value: model.level == nil)
+        .animation(.easeInOut(duration: 0.2), value: model.seekPreview == nil)
         .statusBarHidden(!model.controls)
         .overlay {
             if hasHidden && phase != .active { Color.black.ignoresSafeArea() }
@@ -850,6 +995,27 @@ struct FJPlayerScreen: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(isVolume ? (muted ? s.playerMute : s.playerVolume) : s.playerBrightness)
         .accessibilityValue(percent)
+    }
+
+    private func seekBox(_ preview: FJSeekPreview) -> some View {
+        let seconds = Int(preview.delta.rounded())
+        let delta = seconds < 0 ? "(-\(-seconds)s)" : "(+\(seconds)s)"
+        let label = "\(time(preview.target)) / \(time(model.duration))"
+        return VStack(spacing: 6) {
+            Text(label)
+                .font(.title3.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.white)
+            Text(delta)
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(Color.white.opacity(0.85))
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .environment(\.layoutDirection, .leftToRight)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label) \(delta)")
     }
 
     private var finishedBar: some View {

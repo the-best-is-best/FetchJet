@@ -13,8 +13,13 @@ internal fun DashboardViewModel.filterTasks(
     tasks: List<DownloadTask>,
     tab: DashboardTab,
     sort: TaskSortOption = TaskSortOption.DATE_DESC
-): List<DownloadTask> {
-    val filtered = filterByTab(tasks, tab)
+): List<DownloadTask> = sortTasks(filterByTab(tasks, tab), sort)
+
+/**
+ * The list order for [sort]: unfinished first, then finished, the sort inside each. Used by the
+ * main list and by an open playlist or folder page, so the page and its Play follow the same order.
+ */
+fun sortTasks(filtered: List<DownloadTask>, sort: TaskSortOption): List<DownloadTask> {
     val sizeOf =
         { t: DownloadTask -> if (t.totalBytes > 0) t.totalBytes else t.approximateTotalBytes }
     val comparator: Comparator<DownloadTask> = when (sort) {

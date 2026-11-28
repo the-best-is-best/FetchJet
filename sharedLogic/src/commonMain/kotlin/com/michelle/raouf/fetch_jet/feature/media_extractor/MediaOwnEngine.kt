@@ -92,6 +92,7 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
     val knownSizes = LongArray(streams.size) { streams[it].size.coerceAtLeast(0L) }
     val doneBytes = LongArray(streams.size)
     val files = ArrayList<String>()
+    try {
     for ((i, stream) in streams.withIndex()) {
         val label = when {
             streams.size == 1 -> "Downloading"
@@ -146,6 +147,37 @@ internal suspend fun MediaStreamDownloader.downloadWithOwnEngine(
                     )
                 }
             }
+        )
+    }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        // Some sites refuse their plain file links at once (HTTP 410) while their HLS stream of
+        // the same size plays: download that instead of failing.
+        if (doneBytes.sum() > 0L || pairedAudio != null || audioTarget ||
+            tasksState.value[taskId]?.status == DownloadStatus.PAUSED
+        ) throw e
+        val height = chosenHeight(
+            streams.filter { it.hasVideo }.map { it.height },
+            task.formatId,
+            streams.firstOrNull { it.hasVideo }?.url.orEmpty()
+        )
+        val hls = DirectMediaResolver.resolveHls(sourceUrl, height, headersUsed)
+        val hlsUrl = hls?.hlsUrl ?: throw e
+        com.michelle.raouf.fetch_jet.core.log.AppLog.e(
+            "MediaStream: file link refused (${e.message?.take(80)}), HLS up to ${height}p " +
+                    "(streams ${streams.joinToString { "${it.height}p" }}, format ${task.formatId})"
+        )
+        for (f in files) runCatching { AppFileSystem.delete(f.toPath()) }
+        updateTaskState(taskId) {
+            if (it.status == DownloadStatus.PAUSED) it else it.copy(currentStepText = "Downloading parts…")
+        }
+        return downloadWithOwnHls(
+            taskId,
+            task.copy(requestHeaders = hls.hlsHeaders + headersUsed),
+            hlsUrl,
+            cacheDir,
+            hlsOutputFor(cacheDir, fileName, cacheTargetPath.toPath())
         )
     }
 

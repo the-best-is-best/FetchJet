@@ -187,4 +187,13 @@ export global Act {
     callback videoCutDeleteClip(path: string);
     callback videoCutApply(startMs: int, endMs: int);
     callback videoCutDeleteOriginal(on: bool);
+    callback mergeChecked();
+    callback videoMergeMove(id: string, up: bool);
+    callback videoMergeName(text: string);
+    callback videoMergeStart();
+    callback videoMergeCancel();
+    callback videoMergeDismiss();
+    callback videoMergeSaveCopy();
+    callback videoMergeOverwrite();
+    callback videoMergeConflictDismiss();
 }

@@ -33,6 +33,9 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.PlaylistLanguagesUi
+import com.michelle.raouf.fetch_jet.presentation.dashboard.TaskSortOption
+import com.michelle.raouf.fetch_jet.SortMenuButton
+import com.michelle.raouf.fetch_jet.SortMenuEntry
 import com.tbib.kmp_localization.LocalizationManager
 
 /** A language code as the name one of the videos' tracks gave it, else the code itself. */
@@ -59,11 +62,13 @@ fun PlaylistPageHeader(
     onDismissLanguages: () -> Unit,
     onOpenFolder: (() -> Unit)? = null,
     onPlay: (() -> Unit)? = null,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        GroupHeaderRow(group.title, group.summaryText, onBack, oneRow = compact) {
+        GroupHeaderRow(group.title, group.summaryText, onBack, oneRow = compact, sortOption = sortOption, onSort = onSort) {
             GroupActionButtons(
                 GroupActions(
                     onPlay = onPlay,
@@ -76,7 +81,9 @@ fun PlaylistPageHeader(
                     onResumeAll = onResumeAll,
                     onHide = onHide,
                     deleteLabel = if (group.isPage) s.folderDeleteAll else s.playlistDeleteAll,
-                    onDelete = onDelete
+                    onDelete = onDelete,
+                    sortOption = sortOption,
+                    onSort = onSort
                 ),
                 compact
             )
@@ -149,6 +156,8 @@ fun FolderPageHeader(
     onDelete: () -> Unit,
     onHide: () -> Unit,
     onPlay: (() -> Unit)? = null,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     compact: Boolean = false,
 ) {
     val s = LocalizationManager.Strings
@@ -161,9 +170,11 @@ fun FolderPageHeader(
         onResumeAll = onResumeAll,
         onHide = onHide,
         deleteLabel = s.folderDeleteAll,
-        onDelete = onDelete
+        onDelete = onDelete,
+        sortOption = sortOption,
+        onSort = onSort
     )
-    GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, compact) {
+    GroupPageHeader("📁 " + group.label, group.summaryText, group.path, onBack, compact, sortOption, onSort) {
         GroupActionButtons(actions, compact)
     }
 }
@@ -185,6 +196,8 @@ class GroupActions(
     val onUnhide: (() -> Unit)? = null,
     val deleteLabel: String? = null,
     val onDelete: () -> Unit = {},
+    val sortOption: TaskSortOption? = null,
+    val onSort: (TaskSortOption) -> Unit = {},
 )
 
 @Composable
@@ -235,6 +248,7 @@ private fun GroupMoreMenu(actions: GroupActions) {
                 enabled = actions.canResume,
                 onClick = { open = false; actions.onResumeAll() }
             )
+            actions.sortOption?.let { sort -> SortMenuEntry(sort) { open = false; actions.onSort(it) } }
             actions.onHide?.let { hide ->
                 androidx.compose.material3.DropdownMenuItem(
                     text = { Text("🙈 " + s.hiddenHide) },
@@ -271,9 +285,15 @@ internal fun GroupHeaderRow(
     summary: String,
     onBack: () -> Unit,
     oneRow: Boolean = false,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     actions: @Composable () -> Unit
 ) {
     val s = LocalizationManager.Strings
+    // Sort sits next to the title; on a short screen (oneRow) it is in the ⋮ menu instead.
+    val sort: @Composable () -> Unit = {
+        if (!oneRow) sortOption?.let { SortMenuButton(it, onSort) }
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         if (oneRow || maxWidth >= 720.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -282,6 +302,7 @@ internal fun GroupHeaderRow(
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(summary, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                sort()
                 actions()
             }
         } else {
@@ -292,6 +313,7 @@ internal fun GroupHeaderRow(
                         Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(summary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
+                    sort()
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp),
@@ -309,11 +331,13 @@ internal fun GroupPageHeader(
     path: String?,
     onBack: () -> Unit,
     compact: Boolean = false,
+    sortOption: TaskSortOption? = null,
+    onSort: (TaskSortOption) -> Unit = {},
     actions: @Composable () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
         val line = if (compact && path != null) "$summary · $path" else summary
-        GroupHeaderRow(title, line, onBack, oneRow = compact, actions = actions)
+        GroupHeaderRow(title, line, onBack, oneRow = compact, sortOption = sortOption, onSort = onSort, actions = actions)
         if (path != null && !compact) {
             Text(
                 path,

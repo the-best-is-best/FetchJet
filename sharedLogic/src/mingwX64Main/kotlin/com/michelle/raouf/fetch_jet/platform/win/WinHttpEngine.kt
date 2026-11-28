@@ -351,6 +351,19 @@ private class WinHttpCall(private val session: COpaquePointer, private val data:
     }
 }
 
+private const val OPTION_SECURE_PROTOCOLS = 84u
+private const val PROTOCOL_TLS1_1 = 0x00000200u
+private const val PROTOCOL_TLS1_2 = 0x00000800u
+
+internal fun winHttpLegacyTls(session: COpaquePointer) {
+    if (!WinApp.isLegacy) return
+    memScoped {
+        val protocols = alloc<UIntVar>()
+        protocols.value = PROTOCOL_TLS1_1 or PROTOCOL_TLS1_2
+        WinHttpSetOption(session, OPTION_SECURE_PROTOCOLS, protocols.ptr, sizeOf<UIntVar>().toUInt())
+    }
+}
+
 private fun winHttpStatus(handle: COpaquePointer?, context: ULong, status: UInt, info: COpaquePointer?, length: UInt) {
     if (context == 0uL) return
     try {
@@ -375,6 +388,7 @@ private class WinHttpNativeEngine(override val config: WinHttpConfig) : HttpClie
             WinHttpOpen(null, ACCESS_NAMED_PROXY, list, "<-loopback>", FLAG_ASYNC)
         }
         session = opened ?: throw WinHttpException(GetLastError(), "Could not start WinHTTP")
+        winHttpLegacyTls(session)
         WinHttpSetStatusCallback(session, staticCFunction(::winHttpStatus), NOTIFY_FLAGS, 0u)
         coroutineContext.job.invokeOnCompletion { WinHttpCloseHandle(session) }
     }

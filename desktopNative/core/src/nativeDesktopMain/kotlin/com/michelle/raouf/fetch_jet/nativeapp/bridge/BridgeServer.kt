@@ -65,7 +65,10 @@ internal class BridgeServer(
     suspend fun start(): Boolean {
         val created = HttpListener(scope, "127.0.0.1", port, MAX_BODY) { request -> handle(request) }
         val ok = created.start()
-        if (ok) listener = created
+        if (ok) {
+            listener = created
+            BridgePairing.ensureToken()
+        }
         println(if (ok) "bridge: listening on 127.0.0.1:$port" else "bridge: not started")
         return ok
     }

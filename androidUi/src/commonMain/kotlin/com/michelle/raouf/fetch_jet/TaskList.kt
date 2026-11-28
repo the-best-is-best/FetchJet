@@ -6,6 +6,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -44,6 +45,7 @@ import com.michelle.raouf.fetch_jet.presentation.dashboard.inFolderGroup
 import com.michelle.raouf.fetch_jet.presentation.dashboard.matchesPlaylistTitle
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistIdOfRow
 import com.michelle.raouf.fetch_jet.presentation.dashboard.playlistTasks
+import com.michelle.raouf.fetch_jet.presentation.dashboard.sortTasks
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,6 +69,8 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -158,9 +162,11 @@ internal fun TaskListArea(
     val uiState by viewModel.uiState.collectAsState()
     val records = uiState.playlists
     val openGroup = uiState.openPlaylistId?.let { id ->
-        records[id]?.let { PlaylistGroup(it, playlistTasks(uiState.allTasks, id)) }
+        records[id]?.let { PlaylistGroup(it, sortTasks(playlistTasks(uiState.allTasks, id), uiState.sortOption)) }
     }
-    val openFolder = if (openGroup == null) uiState.openFolder?.let { folderGroup(uiState.allTasks, records, it) } else null
+    val openFolder = if (openGroup == null) uiState.openFolder?.let { folder ->
+        folderGroup(uiState.allTasks, records, folder)?.let { it.copy(tasks = sortTasks(it.tasks, uiState.sortOption)) }
+    } else null
     val inPage = openGroup != null || openFolder != null
     val shortScreen = com.michelle.raouf.fetch_jet.ui.isShortScreen()
     val grouped = groupByState && !inPage
@@ -519,6 +525,8 @@ internal fun TaskListArea(
                     onOpenFolder = openGroup.tasks.firstOrNull()?.takeIf { pathResolver.isOpenFolderSupported() }
                         ?.let { first -> { pathResolver.openFileLocation(fullPathOf(first)) } },
                     onPlay = playGroup(openGroup.id, openGroup.tasks),
+                    sortOption = uiState.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             } else if (openFolder != null) {
@@ -533,11 +541,22 @@ internal fun TaskListArea(
                     onDelete = { viewModel.onEvent(DashboardUiEvent.OnFolderGroupRemove(openFolder.folder)) },
                     onHide = { requestHide(emptyList(), emptyList(), listOf(openFolder.folder)) },
                     onPlay = playGroup(FOLDER_ROW_PREFIX + openFolder.folder, openFolder.tasks),
+                    sortOption = uiState.sortOption,
+                    onSort = { viewModel.onEvent(DashboardUiEvent.OnSortChanged(it)) },
                     compact = shortScreen
                 )
             }
         }
         val rowKeys = itemsOf(tasks).map { it.key }
+        val mergeTasks = remember(checkedIds, uiState.allTasks, shownOrder) {
+            if (checkedIds.size < 2 && checkedIds.none { playlistIdOfRow(it) != null || folderOfRow(it) != null }) emptyList() else {
+                val byId = uiState.allTasks.associateBy { it.id }
+                val shownIndex = shownOrder.withIndex().associate { it.value.id to it.index }
+                val allIndex = uiState.allTasks.withIndex().associate { it.value.id to it.index }
+                expandIds(checkedIds).mapNotNull { byId[it] }
+                    .sortedWith(compareBy({ shownIndex[it.id] ?: Int.MAX_VALUE }, { allIndex[it.id] ?: Int.MAX_VALUE }))
+            }
+        }
         if (selectionMode) {
             SelectionBar(
                 count = checkedIds.size,
@@ -548,7 +567,10 @@ internal fun TaskListArea(
                 onDelete = { viewModel.onEvent(DashboardUiEvent.OnRemoveSelectedClicked(expandIds(checkedIds))) },
                 onExport = { viewModel.onEvent(DashboardUiEvent.OnExportLinksClicked(expandIds(checkedIds))) },
                 onHide = { requestHideKeys(checkedIds) },
-                onClose = { checkedIds = emptySet() }
+                onClose = { checkedIds = emptySet() },
+                onMerge = if (com.michelle.raouf.fetch_jet.feature.video_merge.VideoMerge.canMergeAll(mergeTasks)) {
+                    { viewModel.onEvent(DashboardUiEvent.OnMergeVideosClicked(mergeTasks.map { it.id })) }
+                } else null
             )
         } else if (inPage && !headerInList) {
             pageHeader()
@@ -976,34 +998,54 @@ internal fun ListToolbar(
             )
         }
         Spacer(Modifier.weight(1f))
-        var open by remember { mutableStateOf(false) }
-        Box {
-            androidx.compose.material3.TextButton(
-                onClick = { open = true },
-                modifier = Modifier.height(34.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp)
-            ) {
+        SortMenuButton(sortOption, onSort)
+    }
+}
+
+@Composable
+internal fun SortOptionItems(sortOption: TaskSortOption, onPick: (TaskSortOption) -> Unit) {
+    TaskSortOption.entries.forEach { opt ->
+        DropdownMenuItem(
+            text = {
                 Text(
-                    "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    (if (opt == sortOption) "✓  " else "     ") + opt.label,
+                    fontSize = 13.sp
                 )
-            }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                TaskSortOption.entries.forEach { opt ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                (if (opt == sortOption) "✓  " else "     ") + opt.label,
-                                fontSize = 13.sp
-                            )
-                        },
-                        onClick = { open = false; onSort(opt) }
-                    )
-                }
-            }
+            },
+            onClick = { onPick(opt) }
+        )
+    }
+}
+
+@Composable
+internal fun SortMenuButton(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        androidx.compose.material3.TextButton(
+            onClick = { open = true },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) {
+            Text(
+                "${LocalizationManager.Strings.homeSortBy(sortOption.label)}  ▾",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            SortOptionItems(sortOption) { open = false; onSort(it) }
         }
     }
+}
+
+@Composable
+internal fun SortMenuEntry(sortOption: TaskSortOption, onSort: (TaskSortOption) -> Unit) {
+    var sortOpen by remember { mutableStateOf(false) }
+    DropdownMenuItem(
+        text = { Text("${LocalizationManager.Strings.homeSortBy(sortOption.label)}  " + if (sortOpen) "▴" else "▾") },
+        onClick = { sortOpen = !sortOpen }
+    )
+    if (sortOpen) SortOptionItems(sortOption) { sortOpen = false; onSort(it) }
 }
 
 /** Shown instead of the toolbar while rows are checked: 3 selected · Select all ···· Delete  ✕ */
@@ -1016,7 +1058,8 @@ internal fun SelectionBar(
     onExport: (() -> Unit)? = null,
     onHide: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
-    onUnhide: (() -> Unit)? = null
+    onUnhide: (() -> Unit)? = null,
+    onMerge: (() -> Unit)? = null
 ) {
     val s = LocalizationManager.Strings
     val shape = RoundedCornerShape(10.dp)
@@ -1024,25 +1067,7 @@ internal fun SelectionBar(
     val label: @Composable (String, Color) -> Unit = { text, color ->
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, softWrap = false)
     }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
-        Text(
-            s.homeSelectedCount(count),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        androidx.compose.material3.TextButton(
-            onClick = { onCheckAll(!allChecked) },
-            modifier = Modifier.height(34.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp)
-        ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+    val actions: @Composable () -> Unit = {
         if (onExport != null) {
             OutlinedButton(onClick = onExport, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
                 label(s.homeExport, Color.Unspecified)
@@ -1051,6 +1076,11 @@ internal fun SelectionBar(
         if (onHide != null) {
             OutlinedButton(onClick = onHide, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
                 label(s.hiddenHide, Color.Unspecified)
+            }
+        }
+        if (onMerge != null) {
+            androidx.compose.material3.Button(onClick = onMerge, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
+                label("⧉ ${s.mergeVideos}", MaterialTheme.colorScheme.onPrimary)
             }
         }
         if (onDelete != null) {
@@ -1065,6 +1095,55 @@ internal fun SelectionBar(
         if (onUnhide != null) {
             androidx.compose.material3.Button(onClick = onUnhide, shape = shape, contentPadding = padding, modifier = Modifier.height(34.dp)) {
                 label(s.hiddenUnhide, Color.Unspecified)
+            }
+        }
+    }
+    val head: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+        IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
+        Text(
+            s.homeSelectedCount(count),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        androidx.compose.material3.TextButton(
+            onClick = { onCheckAll(!allChecked) },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
+        ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 560.dp) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) { Text("✕", fontSize = 14.sp) }
+                Text(s.homeSelectedCount(count), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                Row(
+                    modifier = Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.TextButton(
+                        onClick = { onCheckAll(!allChecked) },
+                        modifier = Modifier.height(34.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) { label(if (allChecked) s.selectNone else s.selectAll, Color.Unspecified) }
+                    actions()
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                head()
+                actions()
             }
         }
     }

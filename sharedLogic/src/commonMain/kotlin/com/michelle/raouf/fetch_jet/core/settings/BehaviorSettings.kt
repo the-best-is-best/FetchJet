@@ -55,6 +55,15 @@ object BehaviorSettings {
         _groupByFolder.value = on; write("groupByFolder", on.toString())
     }
 
+    private val _taskSort = MutableStateFlow(read("taskSort").orEmpty())
+
+    /** The list's Sort (a `TaskSortOption` name, "" = default); the main list, groups and Hidden share it. */
+    val taskSort: StateFlow<String> = _taskSort.asStateFlow()
+
+    fun setTaskSort(name: String) {
+        _taskSort.value = name; write("taskSort", name)
+    }
+
     val PLAYER_MODES: List<String> get() = listOf("ask", "on", "off")
 
     private fun defaultPlayerMode(): String =
@@ -277,6 +286,7 @@ object BehaviorSettings {
         put("clipboardVideoPages", _clipboardVideoPages.value.toString())
         put("sortIntoFolders", _sortIntoFolders.value.toString())
         put("groupByFolder", _groupByFolder.value.toString())
+        if (_taskSort.value.isNotEmpty()) put("taskSort", _taskSort.value)
         put("videoPlaysEverywhere", _videoPlaysEverywhere.value.toString())
         put("extractArchives", _extractArchives.value.toString())
         put("extractPlace", _extractPlace.value.name)
@@ -298,6 +308,7 @@ object BehaviorSettings {
         flag("clipboardVideoPages", this::setClipboardVideoPages)
         flag("sortIntoFolders", this::setSortIntoFolders)
         flag("groupByFolder", this::setGroupByFolder)
+        values["taskSort"]?.let { setTaskSort(it) }
         flag("videoPlaysEverywhere", this::setVideoPlaysEverywhere)
         flag("extractArchives", this::setExtractArchives)
         flag("deleteToTrash", this::setDeleteToTrash)

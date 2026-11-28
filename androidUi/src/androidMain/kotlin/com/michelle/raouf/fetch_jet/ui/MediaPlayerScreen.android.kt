@@ -25,7 +25,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.displayCutoutPadding
-import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -127,6 +126,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+
+private const val SCRUB_SPAN_MS = 90_000L
 
 private fun mediaFileDurationMs(path: String): Long {
     val r = MediaMetadataRetriever()
@@ -304,6 +305,8 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
     var swipe by remember { mutableStateOf<PlayerGlyph?>(null) }
     var swiping by remember { mutableStateOf(false) }
     var swipeLevel by remember { mutableFloatStateOf(0f) }
+    var scrubFrom by remember { mutableLongStateOf(-1L) }
+    var scrubTo by remember { mutableLongStateOf(0L) }
     val autoplay by BehaviorSettings.playerAutoplay.collectAsState()
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val dialogWindow = remember { arrayOfNulls<Window>(1) }
@@ -761,6 +764,8 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                         val right = down.position.x >= size.width / 2f
                         var mode = 0
                         var start = 0f
+                        var resume = false
+                        var lastSeek = -1L
                         try {
                             while (true) {
                                 val event = awaitPointerEvent()
@@ -776,7 +781,24 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                                         swipe = if (right) PlayerGlyph.VOLUME else PlayerGlyph.BRIGHTNESS
                                         swipeLevel = start
                                         swiping = true
+                                    } else if (abs(dx) > slop && abs(dx) > abs(dy) * 1.5f && hold == 0 && duration > 0L &&
+                                        event.changes.count { it.pressed } == 1
+                                    ) {
+                                        mode = 2
+                                        resume = player.isPlaying
+                                        player.pause()
+                                        scrubFrom = player.currentPosition.coerceAtLeast(0L)
+                                        scrubTo = scrubFrom
                                     } else if (abs(dx) > slop) mode = -1
+                                }
+                                if (mode == 2) {
+                                    change.consume()
+                                    val span = minOf(duration, SCRUB_SPAN_MS).toFloat()
+                                    scrubTo = (scrubFrom + (dx / size.width) * span).toLong().coerceIn(0L, duration)
+                                    if (abs(scrubTo - lastSeek) >= 200L) {
+                                        lastSeek = scrubTo
+                                        player.seekTo(scrubTo)
+                                    }
                                 }
                                 if (mode == 1) {
                                     change.consume()
@@ -786,13 +808,18 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                             }
                         } finally {
                             if (mode == 1) swiping = false
+                            if (mode == 2) {
+                                player.setSeekParameters(SeekParameters.EXACT)
+                                player.seekTo(scrubTo)
+                                player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
+                                position = scrubTo
+                                scrubFrom = -1L
+                                if (resume) player.play()
+                            }
                         }
                     }
                 }
             )
-
-            Box(Modifier.align(Alignment.CenterStart).width(48.dp).height(200.dp).systemGestureExclusion())
-            Box(Modifier.align(Alignment.CenterEnd).width(48.dp).height(200.dp).systemGestureExclusion())
 
             swipe?.let { kind ->
                 Column(
@@ -816,6 +843,23 @@ private fun MediaPlayerContent(queue: PlaybackQueue, onClose: () -> Unit) {
                         )
                     }
                     Text("${(swipeLevel * 100).roundToInt()}%", color = Color.White, fontSize = 13.sp)
+                }
+            }
+
+            if (scrubFrom >= 0L) {
+                val delta = (scrubTo - scrubFrom) / 1000L
+                Column(
+                    modifier = Modifier.align(Alignment.Center).clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xB3000000)).padding(horizontal = 18.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "⁦${MediaPlayback.formatTime(scrubTo)} / ${MediaPlayback.formatTime(duration)}⁩",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text("⁦${if (delta >= 0) "+" else "-"}${MediaPlayback.formatTime(abs(delta) * 1000L)}⁩", color = Color.White, fontSize = 14.sp)
                 }
             }
 

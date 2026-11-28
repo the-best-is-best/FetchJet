@@ -92,9 +92,10 @@ internal fun Presenter.startAudioCompress() {
             vm.uiState.map { it.audioCompress }.distinctUntilChanged(),
             vm.uiState.map { state -> state.videoCut to state.videoCut?.let { state.videoClips[it.taskId] }.orEmpty() }
                 .distinctUntilChanged(),
+            vm.uiState.map { it.videoMerge }.distinctUntilChanged(),
             AppLanguage.current,
-        ) { page, cut, _ ->
-            buildAudioCompress(page).copy(cut = buildVideoCut(cut.first, cut.second))
+        ) { page, cut, merge, _ ->
+            buildAudioCompress(page).copy(cut = buildVideoCut(cut.first, cut.second), merge = buildVideoMerge(merge))
         }.collect { audioCompress.publish(it) }
     }
 }

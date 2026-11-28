@@ -285,7 +285,7 @@ internal object Launch {
             try {
                 val response = client.get("http://127.0.0.1:$port$path") {
                     header("X-FetchJet", "1")
-                    if (withToken) header(BridgePairing.TOKEN_HEADER, BridgePairing.token)
+                    if (withToken) header(BridgePairing.TOKEN_HEADER, BridgePairing.savedToken())
                 }
                 response.status.value to response.bodyAsText()
             } finally {

@@ -49,6 +49,16 @@ struct TaskListScreen: View {
         return PlaylistGroupsKt.folderGroup(all: store.state.allTasks, records: store.state.playlists, folder: folder)
     }
 
+    private var canMergeChecked: Bool {
+        checked.count >= 2 && VideoMerge.shared.canMergeAll(tasks: store.state.allTasks.filter { checked.contains($0.id) })
+    }
+
+    private func mergeOrder(_ shown: [DownloadTask]) -> [String] {
+        let first = shown.map { $0.id }.filter { checked.contains($0) }
+        let seen = Set(first)
+        return first + store.state.allTasks.map { $0.id }.filter { checked.contains($0) && !seen.contains($0) }
+    }
+
     private var inGroupPage: Bool { store.state.openPlaylistId != nil || openFolderGroup != nil }
 
     private var foldHeader: Bool {
@@ -66,10 +76,13 @@ struct TaskListScreen: View {
 
     private var allTasks: [DownloadTask] {
         if let id = store.state.openPlaylistId, store.state.playlists[id] != nil {
-            return store.state.allTasks.filter { $0.playlistId == id }
+            return DashboardFiltersKt.sortTasks(filtered: store.state.allTasks.filter { $0.playlistId == id },
+                                                sort: store.state.sortOption)
         }
         if let folder = openFolderGroup {
-            return PlaylistGroupsKt.folderTasks(all: store.state.allTasks, records: store.state.playlists, folder: folder.folder)
+            return DashboardFiltersKt.sortTasks(
+                filtered: PlaylistGroupsKt.folderTasks(all: store.state.allTasks, records: store.state.playlists, folder: folder.folder),
+                sort: store.state.sortOption)
         }
         return store.state.filteredTasks
     }
@@ -151,6 +164,10 @@ struct TaskListScreen: View {
                         onDelete: { store.send(DashboardUiEventOnRemoveSelectedClicked(taskIds: Array(checked))) },
                         onExport: { store.send(DashboardUiEventOnExportLinksClicked(taskIds: Array(checked))) },
                         onHide: { requestHide(HideTargets(taskIds: Array(checked))) },
+                        onMerge: canMergeChecked ? {
+                            store.send(DashboardUiEventOnMergeVideosClicked(taskIds: mergeOrder(tasks)))
+                            checked = []
+                        } : nil,
                         onClose: { checked = [] }
                     )
                     .padding(.bottom, 8)
@@ -533,79 +550,100 @@ struct TaskSelectionBar: View {
     var onExport: (() -> Void)? = nil
     var onHide: (() -> Void)? = nil
     var onUnhide: (() -> Void)? = nil
+    var onMerge: (() -> Void)? = nil
     let onClose: () -> Void
 
     var body: some View {
         let s = store.strings
-        HStack(spacing: 8) {
-            Button(action: onClose) {
-                Image(systemName: "xmark").font(.fj(14, .semibold))
-                    .frame(width: 34, height: 34)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                closeButton
+                countText.layoutPriority(1)
+                checkAllButton
+                Spacer(minLength: 0)
+                actions(s)
             }
-            .buttonStyle(.borderless)
+            HStack(spacing: 8) {
+                closeButton
+                countText.fixedSize()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        checkAllButton
+                        actions(s)
+                    }
+                }
+                .defaultScrollAnchor(.trailing)
+            }
+        }
+    }
+
+    private var closeButton: some View {
+        Button(action: onClose) {
+            Image(systemName: "xmark").font(.fj(14, .semibold))
+                .frame(width: 34, height: 34)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.onSurface)
+    }
+
+    private var countText: some View {
+        Text(store.strings.homeSelectedCount(count: Int32(count)))
+            .font(.fj(13, .semibold))
             .foregroundStyle(FJTheme.color.onSurface)
-            Text(s.homeSelectedCount(count: Int32(count)))
-                .font(.fj(13, .semibold))
-                .foregroundStyle(FJTheme.color.onSurface)
+            .lineLimit(1)
+    }
+
+    private var checkAllButton: some View {
+        Button { onCheckAll(!allChecked) } label: {
+            Text(allChecked ? store.strings.selectNone : store.strings.selectAll)
+                .font(.fj(12, .semibold))
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Button { onCheckAll(!allChecked) } label: {
-                Text(allChecked ? s.selectNone : s.selectAll)
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(FJTheme.color.primary)
-            Spacer(minLength: 0)
-            if let onExport {
-                Button(action: onExport) {
-                    Text(s.homeExport)
-                        .font(.fj(12, .semibold))
-                        .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .fixedSize()
-            }
-            if let onUnhide {
-                Button(action: onUnhide) {
-                    Label(s.hiddenUnhide, systemImage: "eye")
-                        .font(.fj(12, .semibold))
-                        .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .fixedSize()
-            }
-            if let onHide {
-                Button(action: onHide) {
-                    Image(systemName: "eye.slash")
-                        .font(.fj(13, .semibold))
-                        .frame(width: 40, height: 34)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(FJTheme.color.primary)
-                .accessibilityLabel(s.hiddenHide)
-            }
-            Button(action: onDelete) {
-                Label(s.delete_, systemImage: "trash")
-                    .font(.fj(12, .semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(FJTheme.color.error, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(FJTheme.color.onError)
-            }
-            .buttonStyle(.borderless)
-            .fixedSize()
+                .padding(.horizontal, 4)
+                .frame(height: 34)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.primary)
+        .fixedSize()
+    }
+
+    private func outlined(_ title: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.fj(12, .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(FJTheme.color.outline, lineWidth: 1))
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(FJTheme.color.primary)
+        .fixedSize()
+    }
+
+    private func filled(_ title: String, _ icon: String, _ color: Color, _ onColor: Color, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.fj(12, .semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(color, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(onColor)
+        }
+        .buttonStyle(.borderless)
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func actions(_ s: AppLocalization) -> some View {
+        if let onExport { outlined(s.homeExport, onExport) }
+        if let onHide { outlined(s.hiddenHide, onHide) }
+        if let onMerge {
+            filled(s.mergeVideos, "square.on.square", FJTheme.color.primary, FJTheme.color.onPrimary, onMerge)
+        }
+        filled(s.delete_, "trash", FJTheme.color.error, FJTheme.color.onError, onDelete)
+        if let onUnhide {
+            filled(s.hiddenUnhide, "eye", FJTheme.color.primary, FJTheme.color.onPrimary, onUnhide)
         }
     }
 }
@@ -699,15 +737,7 @@ struct TaskListHeader: View {
             Menu {
                 Button(s.homePauseAll) { store.send(DashboardUiEventOnPauseAllClicked.shared) }.disabled(!canPause)
                 Button(s.homeResumeAll) { store.send(DashboardUiEventOnResumeAllClicked.shared) }.disabled(!canResume)
-                Menu(s.homeSortBy(option: st.sortOption.label)) {
-                    ForEach(TaskSortOption.entries, id: \.ordinal) { opt in
-                        Button {
-                            store.send(DashboardUiEventOnSortChanged(sort: opt))
-                        } label: {
-                            if opt == st.sortOption { Label(opt.label, systemImage: "checkmark") } else { Text(opt.label) }
-                        }
-                    }
-                }
+                TaskSortMenu()
                 Divider()
                 Button(dark ? s.homeLightTheme : s.homeDarkTheme) {
                     store.send(DashboardUiEventOnThemeModeChanged(mode: dark ? "light" : "dark"))
@@ -783,6 +813,34 @@ struct TaskListHeader: View {
             }
         }
         .fixedSize()
+    }
+}
+
+struct TaskSortMenu: View {
+    @EnvironmentObject var store: FJStore
+    var inPage = false
+
+    var body: some View {
+        let current = store.state.sortOption
+        Menu {
+            ForEach(TaskSortOption.entries, id: \.ordinal) { opt in
+                Button {
+                    store.send(DashboardUiEventOnSortChanged(sort: opt))
+                } label: {
+                    if opt == current { Label(opt.label, systemImage: "checkmark") } else { Text(opt.label) }
+                }
+            }
+        } label: {
+            if inPage {
+                Text(store.strings.homeSortBy(option: current.label) + " \u{25BE}")
+                    .font(.fj(12, .semibold))
+                    .foregroundStyle(FJTheme.color.primary)
+                    .lineLimit(1)
+                    .fixedSize()
+            } else {
+                Text(store.strings.homeSortBy(option: current.label))
+            }
+        }
     }
 }
 
@@ -1077,7 +1135,8 @@ struct GroupBarActions {
 func groupPlayAction(_ store: FJStore, key: String, tasks: [DownloadTask]) -> (() -> Void)? {
     guard store.host.inAppPlayerOn() && MediaPlayback.shared.hasPlayable(tasks: tasks, allowHidden: false) else { return nil }
     return {
-        if let queue = store.host.playbackQueue(groupKey: key, tasks: tasks) {
+        let shown = DashboardFiltersKt.sortTasks(filtered: tasks, sort: store.state.sortOption)
+        if let queue = store.host.playbackQueue(groupKey: key, tasks: shown) {
             FJPlayer.shared.queue = queue
         }
     }
@@ -1194,6 +1253,7 @@ struct GroupPageBar<Extra: View>: View {
                     }
                 }
                 Spacer(minLength: 0)
+                TaskSortMenu(inPage: true)
             }
             if let play = actions.onPlay {
                 wideButton(s.playerPlayAll, "play.fill", play)
@@ -1271,6 +1331,9 @@ struct GroupPageBar<Extra: View>: View {
             }
             if actions.canResume {
                 Button(s.homeResumeAll, action: actions.onResumeAll)
+            }
+            if verticalSize == .compact {
+                TaskSortMenu()
             }
             if let label = actions.deleteLabel {
                 Divider()

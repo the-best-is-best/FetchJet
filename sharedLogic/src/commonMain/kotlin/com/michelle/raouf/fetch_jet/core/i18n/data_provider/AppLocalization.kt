@@ -1084,6 +1084,18 @@ interface AppLocalization : LocalizationProvider {
     val videoCutDeleteClip: String
     val videoCutTimelineNeedsMp4: String
     val videoCutSaved: String
+    val mergeVideos: String
+    val mergeTitle: String
+    val mergeHint: String
+    val mergeFileName: String
+    val mergeChecking: String
+    val mergeNotSame: String
+    val mergeMoveUp: String
+    val mergeMoveDown: String
+    val mergeSaved: String
+    val mergeFailed: String
+    val mergeRunning: String
+    val mergeNeedsTools: String
     val videoCutNeedsTools: String
     val deleteOriginalAfterCut: String
     val deleteOriginalAfterCompress: String

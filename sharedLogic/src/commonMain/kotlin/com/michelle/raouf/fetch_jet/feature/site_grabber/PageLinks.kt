@@ -16,6 +16,7 @@ object PageLinks {
     )
     private val pageAttributes = setOf("href", "data-href", "data-url", "data-link")
     private val setAttributes = setOf("srcset", "data-srcset", "data-lazy-srcset")
+    private val dataUrlEndings = listOf("src", "href", "url", "file", "link", "download", "video", "audio", "original")
     private val metaProperties = setOf(
         "og:image", "og:image:url", "og:image:secure_url", "og:video", "og:video:url", "og:video:secure_url",
         "og:audio", "og:audio:url", "twitter:image", "twitter:player:stream"
@@ -61,9 +62,11 @@ object PageLinks {
             for ((attribute, value) in attributes) {
                 when {
                     attribute in fileAttributes -> add(value, !(name == "a" || name == "iframe"), name == "a")
-                    attribute in setAttributes -> largestOf(value)?.let { add(it, true, false) }
+                    attribute in setAttributes -> allOf(value).forEach { add(it, true, false) }
                     attribute in pageAttributes -> add(value, false, name == "a" || attribute != "href")
                     attribute.startsWith("data-") && value.startsWith("http", ignoreCase = true) -> add(value, false, false)
+                    attribute.startsWith("data-") && dataUrlEndings.any { attribute.endsWith(it) } &&
+                            value.isNotBlank() && value.none { it.isWhitespace() } && value.first() !in "{[" -> add(value, false, false)
                 }
             }
         }
@@ -189,20 +192,10 @@ object PageLinks {
         return out
     }
 
-    private fun largestOf(srcset: String): String? {
-        var best: String? = null
-        var bestSize = -1.0
-        for (candidate in srcset.split(',')) {
-            val pieces = candidate.trim().split(Regex("""\s+"""))
-            val url = pieces.firstOrNull()?.takeIf { it.isNotBlank() } ?: continue
-            val size = pieces.getOrNull(1)?.let { d -> d.dropLast(1).toDoubleOrNull() } ?: 1.0
-            if (size >= bestSize) {
-                bestSize = size
-                best = url
-            }
-        }
-        return best
-    }
+    private fun allOf(srcset: String): List<String> =
+        srcset.split(',').mapNotNull { candidate ->
+            candidate.trim().split(Regex("""\s+""")).firstOrNull()?.takeIf { it.isNotBlank() }
+        }.distinct()
 
     fun decode(text: String): String {
         if ('&' !in text) return text

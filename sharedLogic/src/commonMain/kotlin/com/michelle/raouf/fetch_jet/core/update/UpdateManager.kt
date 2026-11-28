@@ -8,6 +8,14 @@ import com.michelle.raouf.fetch_jet.core.i18n.data_provider.Strings
 import com.michelle.raouf.fetch_jet.core.network.NetworkClient
 import com.michelle.raouf.fetch_jet.core.network.useNetworkSettings
 import com.michelle.raouf.fetch_jet.core.util.MiniJson
+import com.michelle.raouf.fetch_jet.domain.model.DownloadStatus
+import com.michelle.raouf.fetch_jet.domain.model.DownloadTask
+import com.michelle.raouf.fetch_jet.domain.model.EngineType
+import com.michelle.raouf.fetch_jet.feature.http_downloader.HttpChunkDownloader
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import com.michelle.raouf.fetch_jet.core.util.getArray
 import com.michelle.raouf.fetch_jet.core.util.getLong
 import com.michelle.raouf.fetch_jet.core.util.getString
@@ -17,12 +25,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.prepareGet
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
-import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -33,7 +37,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
 import okio.buffer
@@ -419,40 +422,16 @@ object UpdateManager {
                 )
             }
             val dir = "${pathResolver.getTempDirectory()}/fetchjet-update".toPath()
-            val target = dir / asset.name
-            val part = dir / "${asset.name}.part"
+            var target = dir / asset.name
             val ok = runCatching {
                 AppFileSystem.createDirectories(dir)
-                client.prepareGet(asset.url) {
-                    header("User-Agent", "FetchJet/$APP_VERSION")
-                }.execute { response ->
-                    if (!response.status.isSuccess()) throw Exception("HTTP ${response.status.value}")
-                    val total = response.contentLength() ?: asset.size
-                    val channel = response.bodyAsChannel()
-                    val buffer = ByteArray(64 * 1024)
-                    var done = 0L
-                    val hashing = okio.HashingSink.sha256(AppFileSystem.sink(part))
-                    hashing.buffer().use { sink ->
-                        while (isActive && !channel.isClosedForRead) {
-                            val n = channel.readAvailable(buffer, 0, buffer.size)
-                            if (n <= 0) break
-                            sink.write(buffer, 0, n)
-                            done += n
-                            if (total > 0L) _state.update {
-                                it.copy(
-                                    downloadProgress = (done.toFloat() / total).coerceIn(
-                                        0f,
-                                        1f
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    if (total > 0L && done < total) throw Exception("download interrupted")
-                    // GitHub's own SHA-256 of the file: a changed or broken download is not installed.
-                    if (asset.sha256.isNotEmpty() && hashing.hash.hex() != asset.sha256) {
-                        throw Exception("checksum does not match the release")
-                    }
+                if (AppFileSystem.exists(target)) AppFileSystem.delete(target)
+                target = downloadWithEngine(asset.url, dir.toString(), asset.name)
+                val total = AppFileSystem.metadataOrNull(target)?.size ?: 0L
+                if (asset.size > 0L && total != asset.size) throw Exception("download interrupted")
+                // GitHub's own SHA-256 of the file: a changed or broken download is not installed.
+                if (asset.sha256.isNotEmpty() && sha256Of(target) != asset.sha256) {
+                    throw Exception("checksum does not match the release")
                 }
                 // Signed by FetchJet's own key in CI (<file>.sig): a file that GitHub serves but
                 // was not built by the owner's release workflow is never installed.
@@ -461,13 +440,10 @@ object UpdateManager {
                 val sig = client.get(sigAsset.url) {
                     header("User-Agent", "FetchJet/$APP_VERSION")
                 }.bodyAsText()
-                if (!verifyUpdateSignature(part.toString(), sig)) {
+                if (!verifyUpdateSignature(target.toString(), sig)) {
                     throw Exception("the release file signature is not valid")
                 }
-                val sigFile = dir / sigAsset.name
-                if (AppFileSystem.exists(target)) AppFileSystem.delete(target)
-                AppFileSystem.atomicMove(part, target)
-                AppFileSystem.write(sigFile) { writeUtf8(sig) }
+                AppFileSystem.write(dir / sigAsset.name) { writeUtf8(sig) }
             }
             ok.onSuccess {
                 _state.update {
@@ -482,8 +458,9 @@ object UpdateManager {
                 }
                 if (installWhenDone) installNow()
             }.onFailure { e ->
+                withContext(NonCancellable) { updateEngine.cancel(UPDATE_TASK_ID) }
                 try {
-                    AppFileSystem.delete(part)
+                    AppFileSystem.delete(target)
                 } catch (_: Throwable) {
                 }
                 _state.update {
@@ -495,6 +472,44 @@ object UpdateManager {
                 }
             }
         }
+    }
+
+    private const val UPDATE_TASK_ID = "fetchjet-update"
+    private val updateEngine by lazy { HttpChunkDownloader() }
+
+    internal suspend fun downloadWithEngine(url: String, dir: String, name: String): okio.Path {
+        val engine = updateEngine
+        engine.cancel(UPDATE_TASK_ID)
+        engine.start(
+            DownloadTask(
+                id = UPDATE_TASK_ID,
+                url = url,
+                fileName = name,
+                destinationPath = dir,
+                engineType = EngineType.HTTP_DIRECT,
+                requestHeaders = mapOf("User-Agent" to "FetchJet/$APP_VERSION")
+            )
+        ).getOrThrow()
+        var shown = -1f
+        val done = engine.getAllTasksFlow().map { it[UPDATE_TASK_ID] }.first { task ->
+            if (task != null && task.totalBytes > 0L) {
+                val fraction = (task.downloadedBytes.toFloat() / task.totalBytes).coerceIn(0f, 1f)
+                if (fraction - shown >= 0.01f || fraction >= 1f) {
+                    shown = fraction
+                    _state.update { it.copy(downloadProgress = fraction) }
+                }
+            }
+            task == null || task.status == DownloadStatus.COMPLETED || task.status == DownloadStatus.ERROR
+        } ?: throw Exception("download interrupted")
+        if (done.status != DownloadStatus.COMPLETED) throw Exception(done.errorMessage ?: "download failed")
+        engine.cancel(UPDATE_TASK_ID)
+        return "${done.destinationPath.trimEnd('/', '\\')}/${done.fileName}".toPath()
+    }
+
+    internal fun sha256Of(file: okio.Path): String {
+        val hashing = okio.HashingSink.sha256(okio.blackholeSink())
+        AppFileSystem.source(file).buffer().use { source -> hashing.buffer().use { sink -> sink.writeAll(source) } }
+        return hashing.hash.hex()
     }
 
     // ---- settings file (key=value) -----------------------------------------------------------

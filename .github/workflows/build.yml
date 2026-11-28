@@ -453,6 +453,15 @@ jobs:
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\packaging\ci-windows.ps1 -Step package
 
+      # Windows 7 / 8 / 8.1 edition: same fjcore.dll, its own host / Slint / torrent / qjs.exe.
+      # Only its Setup.exe goes to the release: an older FetchJet updater takes the first .msi it sees.
+      - name: Windows 7 / 8 / 8.1 Setup (checked against the Windows 7 DLLs)
+        id: legacy
+        if: needs.plan.outputs.desktop_engine == 'native'
+        continue-on-error: true
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File desktopNative\legacy\ci-legacy.ps1
+
       - name: Upload the unsigned installers for SignPath
         id: unsigned
         if: needs.plan.outputs.release == 'true' && needs.plan.outputs.desktop_engine == 'native' && vars.SIGNPATH_ORGANIZATION_ID != ''
@@ -501,6 +510,7 @@ jobs:
             E:/tools/probes/package/ci/out/FetchJet-*-setup.exe
             E:/tools/probes/package/ci/out/FetchJet-*.msix
             E:/tools/probes/package/ci/out/FetchJet-*-native-stage.zip
+            E:/tools/legacy/ci/out/FetchJet-*-Setup-Windows-7-8-8.1.exe
           if-no-files-found: error
           retention-days: 7
 
@@ -512,6 +522,7 @@ jobs:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
           TAG: v${{ needs.plan.outputs.version }}
           ENGINE: ${{ needs.plan.outputs.desktop_engine }}
+          LEGACY_OUTCOME: ${{ steps.legacy.outcome }}
         run: |
           shopt -s nullglob   # (no globstar: macOS ships bash 3.2)
             # The updater (JVM and native) takes the first .msi; Setup.exe and the portable zip are for people; the stage zip stays a workflow artifact.
@@ -521,6 +532,14 @@ jobs:
           fi
           FILES=( /e/tools/probes/package/ci/out/FetchJet-*.msi /e/tools/probes/package/ci/out/FetchJet-*-setup.exe /e/tools/probes/package/ci/out/FetchJet-*-store.msix /e/tools/probes/package/ci/out/FetchJet-*-windows-portable.zip )
           [ ${#FILES[@]} -gt 0 ] || { echo "::error::No Windows files were produced"; exit 1; }
+          if [ "$ENGINE" = "native" ]; then
+            LEGACY=( /e/tools/legacy/ci/out/FetchJet-*-Setup-Windows-7-8-8.1.exe )
+            if [ "$LEGACY_OUTCOME" = "success" ] && [ ${#LEGACY[@]} -eq 1 ]; then
+              FILES+=( "${LEGACY[0]}" )
+            else
+              echo "::warning::The Windows 7 / 8 / 8.1 Setup.exe was not built ($LEGACY_OUTCOME): this release has none, the normal Windows files are uploaded"
+            fi
+          fi
           # Every file gets <file>.sig: the in-app updater installs only signed files.
           bash scripts/sign-release-file.sh "${FILES[@]}"
           SIGS=(); for f in "${FILES[@]}"; do SIGS+=("$f.sig"); done; FILES+=("${SIGS[@]}")

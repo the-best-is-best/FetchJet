@@ -687,6 +687,14 @@ class DashboardViewModel(
             }
         }
         scope.launch {
+            BehaviorSettings.taskSort.collect { name ->
+                val sort = TaskSortOption.entries.firstOrNull { it.name == name } ?: TaskSortOption.DATE_DESC
+                _uiState.update { state ->
+                    state.copy(sortOption = sort, filteredTasks = filterTasks(state.allTasks, state.selectedTab, sort))
+                }
+            }
+        }
+        scope.launch {
             BehaviorSettings.extractArchives.collect { on ->
                 _uiState.update { it.copy(extractArchives = on) }
             }
@@ -844,6 +852,17 @@ class DashboardViewModel(
             is DashboardUiEvent.OnVideoCutDeleteClip,
             is DashboardUiEvent.OnVideoCutDeleteOriginalChanged,
             is DashboardUiEvent.OnVideoCutShowClips -> handleVideoCutEvent(event)
+
+            is DashboardUiEvent.OnMergeVideosClicked,
+            is DashboardUiEvent.OnMergeMoveClicked,
+            is DashboardUiEvent.OnMergeMoveTo,
+            is DashboardUiEvent.OnMergeNameChanged,
+            DashboardUiEvent.OnMergeStartClicked,
+            DashboardUiEvent.OnMergeSaveAsCopyClicked,
+            DashboardUiEvent.OnMergeOverwriteClicked,
+            DashboardUiEvent.OnMergeConflictDismissed,
+            DashboardUiEvent.OnMergeCancelClicked,
+            DashboardUiEvent.OnDismissMerge -> handleVideoMergeEvent(event)
 
             is DashboardUiEvent.OnExtractAudioClicked -> extractAudio(event.taskId)
 
