@@ -18,6 +18,7 @@
 - **Daha hızlı güncellemeler:** uygulama güncellemesi artık indirmeleriniz gibi FetchJet'in kendi motoruyla, birkaç bağlantı üzerinden iner. Bu, 2.2.0'dan sonraki güncellemeyle başlar (2.2.0'ın kendisi hâlâ eski yolla iner).
 - **"HTTP Error 410" ile duran videolar:** bir site videonun dosya bağlantısını reddettiğinde FetchJet artık başarısız olmak yerine aynı kaliteyi sitenin akışından indirir.
 - **Bu sayfadaki dosyaları bul** daha fazlasını bulur: bir görselin tüm boyutları, sayfa özniteliklerinde tutulan bağlantılar ve dosya adı olmadan bir dosyayı gösteren bağlantılar.
+- **Oynatma listeleri ve klasörlerde sıralama:** sıralama artık bir oynatma listesi veya klasör sayfasında adın yanında. Sayfa buna uyar ve tümünü oynat düğmesi gördüğünüz sırayla oynatır. Seçiminiz tüm uygulama için aynıdır ve yeniden başlattıktan sonra korunur.
 
 **Düzeltmeler**
 - **Android:** telefondaki seçim çubuğu sayıyı ve ✕'i yerinde tutar, düğmeleri de sıkışıp kesilmek yerine tek satırda kayar.

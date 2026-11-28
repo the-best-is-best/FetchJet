@@ -18,6 +18,7 @@
 - **Schnellere Updates:** Das App-Update wird jetzt mit FetchJets eigener Engine über mehrere Verbindungen geladen, genauso wie deine Downloads. Das gilt ab dem Update nach 2.2.0 (2.2.0 selbst wird noch auf die alte Art geladen).
 - **Videos, die mit "HTTP Error 410" abbrachen:** Wenn eine Website den Dateilink eines Videos verweigert, lädt FetchJet jetzt dieselbe Qualität aus dem Stream der Website, statt abzubrechen.
 - **Dateien auf dieser Seite finden** findet mehr Dateien: jede Größe eines Bildes, Links in Seitenattributen und Links ohne Dateinamen, die auf eine Datei zeigen.
+- **Sortierung in Playlists und Ordnern:** Die Sortierung steht jetzt neben dem Namen auf der Seite einer Playlist oder eines Ordners. Die Seite folgt ihr, und „Alle abspielen“ spielt in der angezeigten Reihenfolge. Die Wahl gilt für die ganze App und bleibt nach einem Neustart erhalten.
 
 **Fehlerbehebungen**
 - **Android:** Die Auswahlleiste auf dem Smartphone hält die Anzahl und ✕ an ihrem Platz, und ihre Tasten scrollen in einer Zeile, statt gequetscht und abgeschnitten zu werden.

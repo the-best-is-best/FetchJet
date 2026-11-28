@@ -18,6 +18,7 @@
 - **Mises à jour plus rapides :** la mise à jour de l'application se télécharge maintenant avec le moteur de FetchJet sur plusieurs connexions, comme vos téléchargements. Cela commence avec la mise à jour qui suit la 2.2.0 (la 2.2.0 elle-même se télécharge encore à l'ancienne).
 - **Vidéos qui s'arrêtaient avec « HTTP Error 410 » :** quand un site refuse le lien du fichier d'une vidéo, FetchJet télécharge maintenant la même qualité depuis le flux du site au lieu d'échouer.
 - **Trouver les fichiers de cette page** trouve plus de fichiers : toutes les tailles d'une image, les liens gardés dans les attributs de la page, et les liens sans nom de fichier qui mènent à un fichier.
+- **Tri dans les playlists et les dossiers :** le tri se trouve désormais à côté du nom sur la page d’une playlist ou d’un dossier. La page le suit, et le bouton « tout lire » lit dans l’ordre affiché. Votre choix vaut pour toute l’application et reste après un redémarrage.
 
 **Corrections**
 - **Android :** sur un téléphone, la barre de sélection garde le nombre et ✕ en place et ses boutons défilent sur une seule ligne, au lieu d'être serrés et coupés.

@@ -18,6 +18,7 @@
 - **Aggiornamenti più veloci:** l'aggiornamento dell'app ora si scarica con il motore di FetchJet su più connessioni, come i tuoi download. Vale a partire dall'aggiornamento successivo alla 2.2.0 (la 2.2.0 stessa si scarica ancora nel modo vecchio).
 - **Video che si fermavano con "HTTP Error 410":** quando un sito rifiuta il link del file di un video, FetchJet ora scarica la stessa qualità dallo stream del sito invece di fallire.
 - **Trova i file in questa pagina** trova più file: tutte le dimensioni di un'immagine, i link negli attributi della pagina e i link senza nome di file che portano a un file.
+- **Ordinamento in playlist e cartelle:** l’ordinamento ora si trova accanto al nome nella pagina di una playlist o di una cartella. La pagina lo segue, e il pulsante per riprodurre tutto rispetta l’ordine che vedi. La scelta vale per tutta l’app e resta dopo il riavvio.
 
 **Correzioni**
 - **Android:** sul telefono la barra di selezione tiene fermi il conteggio e ✕ e i suoi pulsanti scorrono su una sola riga, invece di essere schiacciati e tagliati.

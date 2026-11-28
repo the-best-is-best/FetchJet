@@ -18,6 +18,7 @@
 - **Actualizaciones más rápidas:** la actualización de la app ahora se descarga con el propio motor de FetchJet por varias conexiones, igual que tus descargas. Empieza con la actualización posterior a la 2.2.0 (la 2.2.0 en sí aún se descarga a la manera antigua).
 - **Vídeos que se detenían con "HTTP Error 410":** cuando un sitio rechaza el enlace del archivo de un vídeo, FetchJet ahora descarga la misma calidad desde el stream del sitio en lugar de fallar.
 - **Buscar archivos en esta página** encuentra más archivos: todos los tamaños de una imagen, enlaces guardados en atributos de la página y enlaces sin nombre de archivo que llevan a un archivo.
+- **Orden en listas de reproducción y carpetas:** la opción de ordenar está ahora junto al nombre en la página de una lista o carpeta. La página la respeta, y el botón de reproducir todo sigue el orden que ves. La elección es la misma en toda la app y se conserva al reiniciar.
 
 **Correcciones**
 - **Android:** en un teléfono, la barra de selección mantiene el número y ✕ en su sitio y sus botones se desplazan en una sola fila, en vez de quedar apretados y cortados.
